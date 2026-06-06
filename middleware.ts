@@ -4,25 +4,29 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+
+  // Local preview: skip auth so the seeded Sound Vault renders without a session.
+  if (process.env.NEXT_PUBLIC_VAULT_DEMO === 'true') return res
+
   const supabase = createMiddlewareClient({ req, res })
   const { data: { session } } = await supabase.auth.getSession()
 
-  const isArtistRoute   = req.nextUrl.pathname.startsWith('/(artist)')
-  const isIndustryRoute = req.nextUrl.pathname.startsWith('/(industry)')
-  const isAuthRoute     = req.nextUrl.pathname.startsWith('/(auth)')
-  const isProtected     = isArtistRoute || isIndustryRoute ||
-                          req.nextUrl.pathname.startsWith('/dashboard') ||
-                          req.nextUrl.pathname.startsWith('/releases') ||
-                          req.nextUrl.pathname.startsWith('/settings')
+  // Route groups like (artist) are NOT part of the URL, so match real path prefixes.
+  const { pathname } = req.nextUrl
+  const isAuthRoute = pathname.startsWith('/signin') || pathname.startsWith('/signup')
+  const isProtected =
+    pathname.startsWith('/vault') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/settings')
 
   if (isProtected && !session) {
     const url = new URL('/signin', req.url)
-    url.searchParams.set('next', req.nextUrl.pathname)
+    url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
   if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+    return NextResponse.redirect(new URL('/vault', req.url))
   }
 
   return res

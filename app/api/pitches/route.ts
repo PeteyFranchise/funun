@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 
-// POST /api/pitches — send a pitch from a release to an industry professional
+// POST /api/pitches — send a pitch from a vault project to an industry professional
 export async function POST(request: Request) {
   const supabase = createApiClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Check pitch credits
@@ -21,27 +23,29 @@ export async function POST(request: Request) {
     )
   }
 
-  const { release_id, recipient_id, message } = await request.json()
+  const { project_id, recipient_id, message } = await request.json()
 
-  if (!release_id || !recipient_id) {
-    return NextResponse.json({ error: 'release_id and recipient_id are required' }, { status: 400 })
+  if (!project_id || !recipient_id) {
+    return NextResponse.json({ error: 'project_id and recipient_id are required' }, { status: 400 })
   }
 
-  // Verify release belongs to this artist and has sufficient readiness
-  const { data: release } = await supabase
-    .from('releases')
-    .select('readiness_score, title')
-    .eq('id', release_id)
+  // Verify project belongs to this artist and has sufficient readiness
+  const { data: project } = await supabase
+    .from('vault_projects')
+    .select('vault_readiness_score, title')
+    .eq('id', project_id)
     .eq('user_id', user.id)
     .single()
 
-  if (!release) {
-    return NextResponse.json({ error: 'Release not found' }, { status: 404 })
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  if (release.readiness_score < 60) {
+  if (project.vault_readiness_score < 60) {
     return NextResponse.json(
-      { error: `Your release needs a readiness score of at least 60 to pitch. Current score: ${release.readiness_score}` },
+      {
+        error: `Your project needs a Vault Readiness Score of at least 60 to pitch. Current score: ${project.vault_readiness_score}`,
+      },
       { status: 400 }
     )
   }
@@ -65,19 +69,19 @@ export async function POST(request: Request) {
   const { data: existing } = await supabase
     .from('pitches')
     .select('id')
-    .eq('release_id', release_id)
+    .eq('project_id', project_id)
     .eq('recipient_id', recipient_id)
     .single()
 
   if (existing) {
-    return NextResponse.json({ error: 'You have already pitched this release to this person' }, { status: 409 })
+    return NextResponse.json({ error: 'You have already pitched this project to this person' }, { status: 409 })
   }
 
   // Create the pitch
   const { data: pitch, error } = await supabase
     .from('pitches')
     .insert({
-      release_id,
+      project_id,
       artist_id: user.id,
       recipient_id,
       message: message || null,
@@ -96,7 +100,7 @@ export async function POST(request: Request) {
 
   // Record as a submission for tracking
   await supabase.from('submissions').insert({
-    release_id,
+    project_id,
     user_id: user.id,
     destination_type: 'industry_pitch',
     destination_name: recipient.display_name,
@@ -110,23 +114,27 @@ export async function POST(request: Request) {
 // GET /api/pitches — list pitches sent by this artist
 export async function GET(request: Request) {
   const supabase = createApiClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
-  const releaseId = searchParams.get('release_id')
+  const projectId = searchParams.get('project_id')
 
   let query = supabase
     .from('pitches')
-    .select(`
+    .select(
+      `
       *,
-      releases (id, title, type, cover_art_url),
+      vault_projects (id, title, type, cover_art_url),
       industry_profiles!recipient_id (display_name, role, company, verified)
-    `)
+    `
+    )
     .eq('artist_id', user.id)
     .order('sent_at', { ascending: false })
 
-  if (releaseId) query = query.eq('release_id', releaseId)
+  if (projectId) query = query.eq('project_id', projectId)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
