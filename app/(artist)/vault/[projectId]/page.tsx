@@ -7,6 +7,8 @@ import { readinessItemsForProject, readinessLabel, type ReadinessTone } from '@/
 import { getDemoProject } from '@/lib/vault/demo-store'
 import { AddTrackForm } from '@/components/vault/AddTrackForm'
 import { EditProjectForm } from '@/components/vault/EditProjectForm'
+import { CoverArtUpload } from '@/components/vault/CoverArtUpload'
+import { AssetUpload } from '@/components/vault/AssetUpload'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,16 +162,11 @@ export default async function VaultProjectPage({
 
       {/* Header */}
       <header className="mt-6 flex flex-col gap-6 border-b border-white/10 pb-8 sm:flex-row sm:items-start">
-        <div className="h-32 w-32 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500/40 to-fuchsia-500/30">
-          {project.cover_art_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={project.cover_art_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-4xl font-semibold text-white/70">
-              {VAULT_PROJECT_TYPE_LABELS[project.type].charAt(0)}
-            </div>
-          )}
-        </div>
+        <CoverArtUpload
+          projectId={project.id}
+          coverUrl={project.cover_art_url}
+          fallbackLetter={VAULT_PROJECT_TYPE_LABELS[project.type].charAt(0)}
+        />
 
         <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-wide text-white/40">
@@ -300,6 +297,7 @@ export default async function VaultProjectPage({
                 ))}
               </div>
             )}
+            <AssetUpload projectId={project.id} />
           </div>
 
           <div>
