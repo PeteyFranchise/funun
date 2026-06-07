@@ -10,6 +10,7 @@ import { EditProjectForm } from '@/components/vault/EditProjectForm'
 import { CoverArtUpload } from '@/components/vault/CoverArtUpload'
 import { AssetUpload } from '@/components/vault/AssetUpload'
 import { DocumentManager } from '@/components/vault/DocumentManager'
+import { ToolsPanel } from '@/components/tools/ToolsPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,12 @@ type DetailProject = {
   tracks: { id: string; title?: string; track_number?: number; isrc: string | null; duration_seconds?: number | null }[]
   vault_assets: { id: string; type: string; url?: string }[]
   vault_documents: { id: string; type: string; status: string }[]
-  tool_outputs: { id: string; tool_slug: string; title?: string | null }[]
+  tool_outputs: {
+    id: string
+    tool_slug: string
+    title?: string | null
+    output?: Record<string, unknown>
+  }[]
 }
 
 function ReadinessRing({ score, tone }: { score: number; tone: ReadinessTone }) {
@@ -126,7 +132,7 @@ export default async function VaultProjectPage({
         tracks (id, title, track_number, isrc, duration_seconds),
         vault_assets (id, type, url),
         vault_documents (id, type, status),
-        tool_outputs (id, tool_slug, title)
+        tool_outputs (id, tool_slug, title, output)
       `
       )
       .eq('id', projectId)
@@ -304,6 +310,8 @@ export default async function VaultProjectPage({
           <DocumentManager projectId={project.id} documents={project.vault_documents} />
         </aside>
       </div>
+
+      <ToolsPanel projectId={project.id} outputs={project.tool_outputs} />
     </div>
   )
 }

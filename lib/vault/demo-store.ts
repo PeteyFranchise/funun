@@ -183,6 +183,22 @@ export async function deleteDemoDocument(
   return project
 }
 
+export async function addDemoToolOutput(
+  projectId: string,
+  input: { tool_slug: string; title?: string }
+): Promise<VaultProjectRow | null> {
+  const projects = await readStore()
+  const project = projects.find(p => p.id === projectId)
+  if (!project) return null
+
+  project.tool_outputs.push({ id: `demo-tool-${Date.now()}`, tool_slug: input.tool_slug })
+  project.vault_readiness_score = recomputeScore(project)
+  project.updated_at = new Date().toISOString()
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(projects, null, 2), 'utf8')
+  return project
+}
+
 export async function deleteDemoProject(projectId: string): Promise<boolean> {
   const projects = await readStore()
   const next = projects.filter(p => p.id !== projectId)
