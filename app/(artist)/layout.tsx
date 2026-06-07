@@ -18,6 +18,9 @@ export default function ArtistLayout({ children }: { children: React.ReactNode }
             <Link href="/vault" className="transition hover:text-white">
               Sound Vault
             </Link>
+            <Link href="/settings" className="transition hover:text-white">
+              Settings
+            </Link>
             {!DEMO && <SignOutButton />}
           </nav>
         </div>
