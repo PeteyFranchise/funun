@@ -6,6 +6,7 @@ import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { readinessItemsForProject, readinessLabel, type ReadinessTone } from '@/lib/vault/readiness'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import { AddTrackForm } from '@/components/vault/AddTrackForm'
+import { EditProjectForm } from '@/components/vault/EditProjectForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -194,6 +195,21 @@ export default async function VaultProjectPage({
           </div>
         </div>
       </header>
+
+      <div className="mt-6 flex justify-end">
+        <EditProjectForm
+          projectId={project.id}
+          initial={{
+            title: project.title,
+            type: project.type,
+            status: project.status,
+            genre: project.genre,
+            sub_genre: project.sub_genre,
+            release_date: project.release_date,
+            notes: project.notes,
+          }}
+        />
+      </div>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Readiness checklist */}

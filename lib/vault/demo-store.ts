@@ -93,6 +93,32 @@ export async function addDemoProject(input: {
   return project
 }
 
+export async function updateDemoProject(
+  projectId: string,
+  patch: Partial<VaultProjectRow>
+): Promise<VaultProjectRow | null> {
+  const projects = await readStore()
+  const project = projects.find(p => p.id === projectId)
+  if (!project) return null
+
+  Object.assign(project, patch)
+  // Type drives which readiness items apply, so the score can shift.
+  project.vault_readiness_score = recomputeScore(project)
+  project.updated_at = new Date().toISOString()
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(projects, null, 2), 'utf8')
+  return project
+}
+
+export async function deleteDemoProject(projectId: string): Promise<boolean> {
+  const projects = await readStore()
+  const next = projects.filter(p => p.id !== projectId)
+  if (next.length === projects.length) return false
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(next, null, 2), 'utf8')
+  return true
+}
+
 export async function addDemoTrack(
   projectId: string,
   input: { title: string; isrc?: string | null; track_number?: number }
