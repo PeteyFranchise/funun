@@ -9,6 +9,7 @@ import { AddTrackForm } from '@/components/vault/AddTrackForm'
 import { EditProjectForm } from '@/components/vault/EditProjectForm'
 import { CoverArtUpload } from '@/components/vault/CoverArtUpload'
 import { AssetUpload } from '@/components/vault/AssetUpload'
+import { DocumentManager } from '@/components/vault/DocumentManager'
 
 export const dynamic = 'force-dynamic'
 
@@ -300,34 +301,7 @@ export default async function VaultProjectPage({
             <AssetUpload projectId={project.id} />
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-white">
-              Documents <span className="text-white/40">{project.vault_documents.length}</span>
-            </h3>
-            {project.vault_documents.length === 0 ? (
-              <p className="mt-2 text-xs text-white/40">No documents yet.</p>
-            ) : (
-              <ul className="mt-2 space-y-1.5">
-                {project.vault_documents.map(d => (
-                  <li
-                    key={d.id}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm"
-                  >
-                    <span className="truncate text-white/80">{d.type.replace(/_/g, ' ')}</span>
-                    <span
-                      className={`shrink-0 text-xs ${
-                        d.status === 'signed' || d.status === 'verified'
-                          ? 'text-emerald-300'
-                          : 'text-amber-300'
-                      }`}
-                    >
-                      {d.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <DocumentManager projectId={project.id} documents={project.vault_documents} />
         </aside>
       </div>
     </div>

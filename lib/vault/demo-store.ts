@@ -126,6 +126,63 @@ export async function addDemoAsset(
   return project
 }
 
+export async function addDemoDocument(
+  projectId: string,
+  input: { type: string; status: string }
+): Promise<VaultProjectRow | null> {
+  const projects = await readStore()
+  const project = projects.find(p => p.id === projectId)
+  if (!project) return null
+
+  project.vault_documents.push({
+    id: `demo-doc-${Date.now()}`,
+    type: input.type,
+    status: input.status,
+  })
+  project.vault_readiness_score = recomputeScore(project)
+  project.updated_at = new Date().toISOString()
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(projects, null, 2), 'utf8')
+  return project
+}
+
+export async function updateDemoDocument(
+  projectId: string,
+  docId: string,
+  patch: { status: string }
+): Promise<VaultProjectRow | null> {
+  const projects = await readStore()
+  const project = projects.find(p => p.id === projectId)
+  if (!project) return null
+  const doc = project.vault_documents.find(d => d.id === docId)
+  if (!doc) return null
+
+  doc.status = patch.status
+  project.vault_readiness_score = recomputeScore(project)
+  project.updated_at = new Date().toISOString()
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(projects, null, 2), 'utf8')
+  return project
+}
+
+export async function deleteDemoDocument(
+  projectId: string,
+  docId: string
+): Promise<VaultProjectRow | null> {
+  const projects = await readStore()
+  const project = projects.find(p => p.id === projectId)
+  if (!project) return null
+  const before = project.vault_documents.length
+  project.vault_documents = project.vault_documents.filter(d => d.id !== docId)
+  if (project.vault_documents.length === before) return null
+
+  project.vault_readiness_score = recomputeScore(project)
+  project.updated_at = new Date().toISOString()
+
+  await fs.writeFile(STORE_PATH, JSON.stringify(projects, null, 2), 'utf8')
+  return project
+}
+
 export async function deleteDemoProject(projectId: string): Promise<boolean> {
   const projects = await readStore()
   const next = projects.filter(p => p.id !== projectId)
