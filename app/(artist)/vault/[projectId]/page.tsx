@@ -1,17 +1,17 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { VaultProjectStatus, VaultProjectType } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { readinessItemsForProject, readinessLabel, type ReadinessTone } from '@/lib/vault/readiness'
 import { getDemoProject } from '@/lib/vault/demo-store'
-import { AddTrackForm } from '@/components/vault/AddTrackForm'
 import { EditProjectForm } from '@/components/vault/EditProjectForm'
 import { CoverArtUpload } from '@/components/vault/CoverArtUpload'
 import { AssetUpload } from '@/components/vault/AssetUpload'
 import { DocumentManager } from '@/components/vault/DocumentManager'
 import { ToolsPanel } from '@/components/tools/ToolsPanel'
 import { ProjectTabs } from '@/components/vault/ProjectTabs'
+import { TrackList, type PlayerTrack } from '@/components/vault/TrackList'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +45,15 @@ type DetailProject = {
   release_date: string | null
   vault_readiness_score: number
   notes: string | null
-  tracks: { id: string; title?: string; track_number?: number; isrc: string | null; duration_seconds?: number | null }[]
+  tracks: {
+    id: string
+    title?: string
+    track_number?: number
+    isrc: string | null
+    duration_seconds?: number | null
+    audio_file_url?: string | null
+    explicit?: boolean
+  }[]
   vault_assets: { id: string; type: string; url?: string }[]
   vault_documents: { id: string; type: string; status: string }[]
   tool_outputs: {
@@ -96,13 +104,6 @@ function releaseLine(p: Pick<DetailProject, 'release_date' | 'status'>): string 
   return p.status === 'released' ? `Released ${formatted}` : `Releases ${formatted}`
 }
 
-function formatDuration(seconds?: number | null): string | null {
-  if (!seconds || seconds <= 0) return null
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
 const STATUS_DOT: Record<'complete' | 'warning' | 'missing', string> = {
   complete: 'bg-emerald-400',
   warning: 'bg-amber-400',
@@ -130,7 +131,7 @@ export default async function VaultProjectPage({
       .select(
         `
         *,
-        tracks (id, title, track_number, isrc, duration_seconds),
+        tracks (id, title, track_number, isrc, duration_seconds, audio_file_url, explicit),
         vault_assets (id, type, url),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug, title, output)
@@ -162,15 +163,43 @@ export default async function VaultProjectPage({
     (a, b) => (a.track_number ?? 0) - (b.track_number ?? 0)
   )
 
-  const contentsCount =
-    tracks.length + project.vault_assets.length + project.vault_documents.length
+  // Track audio lives in a PRIVATE bucket — playback is artist-only. Mint
+  // short-lived signed URLs server-side so only this owner-rendered page can
+  // stream them. Demo mode has no real storage, so skip.
+  const signedByPath: Record<string, string> = {}
+  if (!DEMO) {
+    const paths = tracks
+      .map(t => t.audio_file_url)
+      .filter((p): p is string => Boolean(p))
+    if (paths.length > 0) {
+      const service = createServiceClient()
+      const { data: signed } = await service.storage
+        .from('track-audio')
+        .createSignedUrls(paths, 60 * 60 * 2)
+      for (const row of signed ?? []) {
+        if (row.signedUrl && row.path) signedByPath[row.path] = row.signedUrl
+      }
+    }
+  }
+
+  const playerTracks: PlayerTrack[] = tracks.map(t => ({
+    id: t.id,
+    track_number: t.track_number,
+    title: t.title,
+    isrc: t.isrc,
+    duration_seconds: t.duration_seconds,
+    explicit: t.explicit,
+    audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
+  }))
+
+  const contentsCount = project.vault_assets.length + project.vault_documents.length
 
   const readinessPanel = (
     <section>
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-white">Vault Readiness</h2>
+        <h2 className="text-lg font-semibold text-white">Release Readiness</h2>
         <span className="text-sm text-white/40">
-          {completeCount}/{items.length} items · {earnedPoints}/{totalPoints} pts
+          {completeCount}/{items.length} · {earnedPoints}/{totalPoints} pts
         </span>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -179,7 +208,7 @@ export default async function VaultProjectPage({
           style={{ width: `${project.vault_readiness_score}%` }}
         />
       </div>
-      <ul className="mt-5 grid grid-cols-1 gap-2 lg:grid-cols-2">
+      <ul className="mt-5 space-y-2">
         {items.map(item => (
           <li
             key={item.key}
@@ -214,34 +243,7 @@ export default async function VaultProjectPage({
   )
 
   const contentsPanel = (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <div>
-        <h3 className="text-sm font-semibold text-white">
-          Tracks <span className="text-white/40">{tracks.length}</span>
-        </h3>
-        {tracks.length === 0 ? (
-          <p className="mt-2 text-xs text-white/40">No tracks uploaded yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-1.5">
-            {tracks.map((t, i) => (
-              <li
-                key={t.id}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm"
-              >
-                <span className="min-w-0 truncate text-white/80">
-                  <span className="text-white/40">{t.track_number ?? i + 1}.</span>{' '}
-                  {t.title ?? 'Untitled track'}
-                </span>
-                <span className="shrink-0 text-xs text-white/40">
-                  {t.isrc ? t.isrc : formatDuration(t.duration_seconds) ?? 'No ISRC'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <AddTrackForm projectId={project.id} />
-      </div>
-
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <div>
         <h3 className="text-sm font-semibold text-white">
           Assets <span className="text-white/40">{project.vault_assets.length}</span>
@@ -325,16 +327,31 @@ export default async function VaultProjectPage({
         />
       </div>
 
-      <div className="mt-6">
+      {/* Tracks (left) + Release Readiness (right) */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <TrackList projectId={project.id} tracks={playerTracks} canManage />
+        </div>
+        <div className="lg:col-span-2">{readinessPanel}</div>
+      </div>
+
+      {/* Assets / Documents / Tools */}
+      <div className="mt-8">
         <ProjectTabs
-          counts={{
-            readiness: `${completeCount}/${items.length}`,
-            contents: contentsCount,
-            tools: project.tool_outputs.length,
-          }}
-          readiness={readinessPanel}
-          contents={contentsPanel}
-          tools={<ToolsPanel projectId={project.id} outputs={project.tool_outputs} />}
+          items={[
+            {
+              key: 'contents',
+              label: 'Assets & Documents',
+              badge: contentsCount,
+              content: contentsPanel,
+            },
+            {
+              key: 'tools',
+              label: 'Tools',
+              badge: project.tool_outputs.length,
+              content: <ToolsPanel projectId={project.id} outputs={project.tool_outputs} />,
+            },
+          ]}
         />
       </div>
     </div>
