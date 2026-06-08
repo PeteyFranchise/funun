@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TOOLS, type ToolSlug, type EpkOutput } from '@/lib/tools/registry'
+import { TOOLS, type ToolSlug, type EpkOutput, type DropReadyOutput } from '@/lib/tools/registry'
 
 type Output = {
   id: string
@@ -13,6 +13,12 @@ type Output = {
 
 function isEpk(o: Record<string, unknown> | undefined): o is EpkOutput & Record<string, unknown> {
   return !!o && typeof o.bio_short === 'string'
+}
+
+function isDropReady(
+  o: Record<string, unknown> | undefined
+): o is DropReadyOutput & Record<string, unknown> {
+  return !!o && typeof o.instagram_caption === 'string'
 }
 
 function EpkCard({ data }: { data: EpkOutput }) {
@@ -42,6 +48,44 @@ function EpkCard({ data }: { data: EpkOutput }) {
       <Field label="Pitch angles">
         <ul className="list-inside list-disc space-y-1 text-white/70">
           {data.pitch_angles?.map((f, i) => <li key={i}>{f}</li>)}
+        </ul>
+      </Field>
+    </div>
+  )
+}
+
+function CopyBlock({ label, text }: { label: string; text: string }) {
+  return (
+    <Field label={label}>
+      <p className="whitespace-pre-wrap rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white/70">
+        {text}
+      </p>
+    </Field>
+  )
+}
+
+function DropReadyCard({ data }: { data: DropReadyOutput }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <CopyBlock label="Instagram caption" text={data.instagram_caption} />
+      <CopyBlock label="TikTok caption" text={data.tiktok_caption} />
+      <CopyBlock label="X / Twitter post" text={data.twitter_post} />
+      <CopyBlock label="Short announcement" text={data.short_announcement} />
+      <Field label="Hashtags">
+        <div className="flex flex-wrap gap-1.5">
+          {data.hashtags?.map((h, i) => (
+            <span
+              key={i}
+              className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/60"
+            >
+              #{h.replace(/^#/, '')}
+            </span>
+          ))}
+        </div>
+      </Field>
+      <Field label="Posting tips">
+        <ul className="list-inside list-disc space-y-1 text-white/70">
+          {data.posting_tips?.map((t, i) => <li key={i}>{t}</li>)}
         </ul>
       </Field>
     </div>
@@ -140,6 +184,8 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
               <p className="mb-3 text-sm font-semibold text-white">{o.title ?? o.tool_slug}</p>
               {isEpk(o.output) ? (
                 <EpkCard data={o.output} />
+              ) : isDropReady(o.output) ? (
+                <DropReadyCard data={o.output} />
               ) : (
                 <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-white/60">
                   {JSON.stringify(o.output, null, 2)}

@@ -33,7 +33,7 @@ export const TOOLS: ToolDef[] = [
     tagline: 'Release-day captions',
     description: 'Platform-ready captions and announcement copy for your release.',
     readinessItem: 'caption_copy',
-    available: false,
+    available: true,
   },
   {
     slug: 'soundbait',
@@ -126,4 +126,71 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
   "pitch_angles": ["3-4 distinct angles a writer/curator could cover this release from"],
   "pull_quote": "a single punchy line that captures the artist's identity"
 }`
+}
+
+// ─── DropReady ────────────────────────────────────────────────────────
+export type DropReadyOutput = {
+  instagram_caption: string
+  tiktok_caption: string
+  twitter_post: string
+  short_announcement: string
+  hashtags: string[]
+  posting_tips: string[]
+}
+
+export function buildDropReadyPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string {
+  const artist = profile.artist_name || 'this artist'
+  const handles = [
+    profile.instagram_handle && `Instagram: ${profile.instagram_handle}`,
+    profile.tiktok_handle && `TikTok: ${profile.tiktok_handle}`,
+    profile.spotify_url && `Spotify: ${profile.spotify_url}`,
+  ].filter(Boolean)
+
+  return `You are a social media strategist writing release-day announcement copy for an independent artist.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+${handles.length ? handles.join('\n') : 'No social handles provided.'}
+
+RELEASE (the project being announced)
+Title: ${project.title}
+Type: ${project.type}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.sub_genre ? `Sub-genre: ${project.sub_genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.trackTitles.length ? `Tracks: ${project.trackTitles.join(', ')}` : ''}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+Write platform-native release-day copy. Match the artist's genre and voice. Be specific and grounded in the details above — do not invent streaming numbers, press quotes, chart positions, or collaborators that were not provided. Keep each caption ready to copy-paste (the Twitter/X post must fit in 280 characters).
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "instagram_caption": "Instagram caption with line breaks and 2-4 relevant emoji",
+  "tiktok_caption": "short, punchy TikTok caption (under 150 characters)",
+  "twitter_post": "an X/Twitter post under 280 characters including the title",
+  "short_announcement": "1-2 sentence neutral announcement reusable anywhere",
+  "hashtags": ["6-10 relevant hashtags without the # symbol"],
+  "posting_tips": ["3-4 concrete tips for timing and rollout on release day"]
+}`
+}
+
+// ─── Prompt dispatcher ────────────────────────────────────────────────
+export function buildToolPrompt(
+  slug: ToolSlug,
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string | null {
+  switch (slug) {
+    case 'epkfyi':
+      return buildEpkPrompt(profile, project)
+    case 'dropready':
+      return buildDropReadyPrompt(profile, project)
+    default:
+      return null
+  }
 }

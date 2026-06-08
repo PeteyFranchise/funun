@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
-import { getTool, buildEpkPrompt, type ToolProjectContext } from '@/lib/tools/registry'
+import { getTool, buildToolPrompt, type ToolProjectContext } from '@/lib/tools/registry'
 import { addDemoToolOutput } from '@/lib/vault/demo-store'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
@@ -75,7 +75,14 @@ export async function POST(
       .filter((t): t is string => Boolean(t)),
   }
 
-  const prompt = buildEpkPrompt((profile ?? { artist_name: null }) as ArtistProfile, ctx)
+  const prompt = buildToolPrompt(
+    tool.slug,
+    (profile ?? { artist_name: null }) as ArtistProfile,
+    ctx
+  )
+  if (!prompt) {
+    return NextResponse.json({ error: 'This tool is coming soon' }, { status: 400 })
+  }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let output: Record<string, unknown> | null
