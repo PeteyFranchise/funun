@@ -106,3 +106,26 @@ export function isValidIswc(raw: string | null | undefined): boolean {
   const check = Number(v.slice(10))
   return iswcCheckDigit(body) === check
 }
+
+// ── IPI (Interested Party Information) ───────────────────────────────
+// The global ID for a songwriter or publisher, issued by the CISAC IPI
+// System when they affiliate with a PRO. We can't mint these — only
+// capture and shape-check them. The IPI "Name Number" is up to 11 digits
+// (the older CAE form is 9); both appear in the wild. We deliberately do
+// NOT validate the mod-101 check digit — that algorithm isn't verified
+// here, and we won't fake a confidence we don't have.
+
+/** Digits only. */
+export function normalizeIpi(raw: string | null | undefined): string {
+  return (raw ?? '').replace(/\D/g, '')
+}
+
+/** Shape check: 9–11 digits. */
+export function isValidIpi(raw: string | null | undefined): boolean {
+  return /^\d{9,11}$/.test(normalizeIpi(raw))
+}
+
+/** Left-zero-pad an IPI to the 11-digit CWR "IPI Name #" field width. */
+export function ipiName11(raw: string | null | undefined): string {
+  return normalizeIpi(raw).padStart(11, '0').slice(-11)
+}

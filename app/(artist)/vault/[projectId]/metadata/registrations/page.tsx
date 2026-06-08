@@ -104,12 +104,20 @@ export default async function RegistrationsPage({
             their portal.
           </p>
         </div>
-        <a
-          href={`/api/vault/${projectId}/metadata/registrations`}
-          className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
-        >
-          Download .txt
-        </a>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/vault/${projectId}/metadata/cwr`}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+          >
+            CWR export →
+          </Link>
+          <a
+            href={`/api/vault/${projectId}/metadata/registrations`}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+          >
+            Download .txt
+          </a>
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-indigo-400/20 bg-indigo-400/[0.04] p-4 text-xs text-white/60">
