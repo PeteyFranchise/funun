@@ -116,13 +116,20 @@ function assessWork(title: string, writers: Composer[], hasThirdPartyPublisher: 
 }
 
 /** Is a publisher value a real third party (vs. blank / self-published)? */
-function hasThirdPartyPublisher(bundle: ReleaseBundle): boolean {
-  return Boolean(bundle.rights.publisher && bundle.rights.publisher.trim())
+function isThirdPartyPublisher(publisher: string | null | undefined): boolean {
+  return Boolean(publisher && publisher.trim())
 }
 
-export function assessCwrReadiness(bundle: ReleaseBundle, sender?: CwrSender): CwrReadiness {
-  const thirdParty = hasThirdPartyPublisher(bundle)
-  const works = bundle.tracks
+/** Minimal shape readiness needs — so the client studio can call it from its
+ *  own state without assembling a full ReleaseBundle. */
+export type CwrReadinessInput = {
+  tracks: { title: string; composers: Composer[] }[]
+  publisher: string | null
+}
+
+export function assessCwrReadiness(input: CwrReadinessInput, sender?: CwrSender): CwrReadiness {
+  const thirdParty = isThirdPartyPublisher(input.publisher)
+  const works = input.tracks
     .filter(t => t.composers.length > 0)
     .map(t => assessWork(t.title, t.composers, thirdParty))
 
@@ -200,7 +207,7 @@ export function buildCwrFile(
   sender: CwrSender,
   now: Date = new Date()
 ): string | null {
-  const thirdParty = hasThirdPartyPublisher(bundle)
+  const thirdParty = isThirdPartyPublisher(bundle.rights.publisher)
   const readyTracks = bundle.tracks.filter(
     t => t.composers.length > 0 && assessWork(t.title, t.composers, thirdParty).ready
   )

@@ -75,7 +75,10 @@ export default async function CwrPage({
 
   const bundle = buildBundle(projectRow, trackRows, artistName)
   const sender = defaultSelfSubmitSender(bundle)
-  const readiness = assessCwrReadiness(bundle, sender)
+  const readiness = assessCwrReadiness(
+    { tracks: bundle.tracks, publisher: bundle.rights.publisher },
+    sender
+  )
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">

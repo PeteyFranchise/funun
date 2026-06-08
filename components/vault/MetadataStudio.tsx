@@ -13,6 +13,7 @@ import {
 } from '@/lib/metadata/schema'
 import { validateRelease, type ValidationReport } from '@/lib/metadata/validate'
 import { isValidIswc, isValidIswcShape } from '@/lib/metadata/identifiers'
+import { assessCwrReadiness, type CwrReadiness } from '@/lib/metadata/cwr'
 
 // ─── MetadataStudio ──────────────────────────────────────────────────
 // Capture UI for everything a release needs before delivery: release-level
@@ -110,6 +111,15 @@ export function MetadataStudio({
         })),
       }),
     [release, tracks, releaseTitle, releaseType, coverArtUrl, coverWidth, coverHeight]
+  )
+
+  const cwrReadiness: CwrReadiness = useMemo(
+    () =>
+      assessCwrReadiness({
+        tracks: tracks.map(t => ({ title: t.title, composers: t.composers })),
+        publisher: release.publisher || null,
+      }),
+    [tracks, release.publisher]
   )
 
   function setReleaseField(k: keyof ReleaseState, v: string) {
@@ -322,6 +332,9 @@ export function MetadataStudio({
         })}
       </section>
 
+      {/* CWR registration readiness */}
+      <CwrReadinessPanel readiness={cwrReadiness} projectId={projectId} />
+
       <div className="flex items-center justify-between border-t border-white/10 pt-6">
         <Link href={`/vault/${projectId}`} className="text-sm text-white/50 transition hover:text-white">
           ← Back to project
@@ -385,6 +398,75 @@ function ValidationPanel({ report }: { report: ValidationReport }) {
         </ul>
       )}
     </div>
+  )
+}
+
+// ─── CWR readiness panel ─────────────────────────────────────────────
+// Compact summary of how many works are ready for Common Works Registration;
+// the full per-work breakdown + export live at /metadata/cwr.
+function CwrReadinessPanel({
+  readiness,
+  projectId,
+}: {
+  readiness: CwrReadiness
+  projectId: string
+}) {
+  const { totalWorks, readyCount } = readiness
+  const allReady = totalWorks > 0 && readyCount === totalWorks
+  const noneReady = readyCount === 0
+
+  return (
+    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-white">PRO registration (CWR)</h2>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                totalWorks === 0
+                  ? 'bg-white/10 text-white/50'
+                  : allReady
+                    ? 'bg-emerald-400/15 text-emerald-200'
+                    : noneReady
+                      ? 'bg-amber-400/15 text-amber-200'
+                      : 'bg-amber-400/10 text-amber-200/90'
+              }`}
+            >
+              {totalWorks === 0 ? 'No works yet' : `${readyCount}/${totalWorks} ready`}
+            </span>
+          </div>
+          <p className="mt-1 max-w-xl text-xs text-white/50">
+            {totalWorks === 0
+              ? 'Add composers to a track to register its work with your PRO and The MLC.'
+              : allReady
+                ? 'Every work has the IPIs, society, and splits CWR needs. Open the export to download a draft file.'
+                : 'Some works are missing the IPIs, society, or splits CWR needs. Open the export to see exactly what each one needs.'}
+          </p>
+        </div>
+        <Link
+          href={`/vault/${projectId}/metadata/cwr`}
+          className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+        >
+          CWR export →
+        </Link>
+      </div>
+
+      {totalWorks > 0 && !allReady && (
+        <ul className="mt-3 space-y-1.5">
+          {readiness.works
+            .filter(w => !w.ready)
+            .slice(0, 4)
+            .map((w, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                <span className="text-white/70">
+                  <span className="text-white/90">{w.title}</span> — {w.errors[0]}
+                </span>
+              </li>
+            ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
