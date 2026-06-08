@@ -2,7 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TOOLS, type ToolSlug, type EpkOutput, type DropReadyOutput } from '@/lib/tools/registry'
+import {
+  TOOLS,
+  type ToolSlug,
+  type EpkOutput,
+  type DropReadyOutput,
+  type SoundBaitOutput,
+  type DistroAdvisorOutput,
+  type RoyaltyAuditOutput,
+} from '@/lib/tools/registry'
 
 type Output = {
   id: string
@@ -19,6 +27,24 @@ function isDropReady(
   o: Record<string, unknown> | undefined
 ): o is DropReadyOutput & Record<string, unknown> {
   return !!o && typeof o.instagram_caption === 'string'
+}
+
+function isSoundBait(
+  o: Record<string, unknown> | undefined
+): o is SoundBaitOutput & Record<string, unknown> {
+  return !!o && Array.isArray(o.hooks) && Array.isArray(o.video_concepts)
+}
+
+function isDistroAdvisor(
+  o: Record<string, unknown> | undefined
+): o is DistroAdvisorOutput & Record<string, unknown> {
+  return !!o && Array.isArray(o.metadata_review) && typeof o.release_timing === 'string'
+}
+
+function isRoyaltyAudit(
+  o: Record<string, unknown> | undefined
+): o is RoyaltyAuditOutput & Record<string, unknown> {
+  return !!o && typeof o.pro_recommendation === 'string' && Array.isArray(o.royalty_types)
 }
 
 function EpkCard({ data }: { data: EpkOutput }) {
@@ -88,6 +114,90 @@ function DropReadyCard({ data }: { data: DropReadyOutput }) {
           {data.posting_tips?.map((t, i) => <li key={i}>{t}</li>)}
         </ul>
       </Field>
+    </div>
+  )
+}
+
+function BulletList({ label, items }: { label: string; items?: string[] }) {
+  return (
+    <Field label={label}>
+      <ul className="list-inside list-disc space-y-1 text-white/70">
+        {items?.map((t, i) => <li key={i}>{t}</li>)}
+      </ul>
+    </Field>
+  )
+}
+
+function TagRow({ label, items }: { label: string; items?: string[] }) {
+  return (
+    <Field label={label}>
+      <div className="flex flex-wrap gap-1.5">
+        {items?.map((h, i) => (
+          <span
+            key={i}
+            className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/60"
+          >
+            #{h.replace(/^#/, '')}
+          </span>
+        ))}
+      </div>
+    </Field>
+  )
+}
+
+function SoundBaitCard({ data }: { data: SoundBaitOutput }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <BulletList label="Hooks" items={data.hooks} />
+      <BulletList label="Video concepts" items={data.video_concepts} />
+      <BulletList label="Posting plan" items={data.posting_plan} />
+      <BulletList label="Sound tips" items={data.sound_tips} />
+      <BulletList label="Caption templates" items={data.caption_templates} />
+      <TagRow label="Hashtags" items={data.hashtags} />
+    </div>
+  )
+}
+
+function DistroAdvisorCard({ data }: { data: DistroAdvisorOutput }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <Field label="Metadata review">
+        <ul className="space-y-2 text-white/70">
+          {data.metadata_review?.map((m, i) => (
+            <li key={i} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <p className="font-medium text-white/90">{m.field}</p>
+              <p className="mt-0.5 text-white/60">{m.recommendation}</p>
+            </li>
+          ))}
+        </ul>
+      </Field>
+      <CopyBlock label="Release timing" text={data.release_timing} />
+      <BulletList label="Platform priorities" items={data.platform_priorities} />
+      <BulletList label="Pre-save strategy" items={data.pre_save_strategy} />
+      <BulletList label="Common pitfalls" items={data.common_pitfalls} />
+      <BulletList label="Submission checklist" items={data.submission_checklist} />
+    </div>
+  )
+}
+
+function RoyaltyAuditCard({ data }: { data: RoyaltyAuditOutput }) {
+  return (
+    <div className="space-y-4 text-sm">
+      <CopyBlock label="PRO recommendation" text={data.pro_recommendation} />
+      <BulletList label="Registration steps" items={data.registration_steps} />
+      <Field label="Royalty types">
+        <ul className="space-y-2 text-white/70">
+          {data.royalty_types?.map((r, i) => (
+            <li key={i} className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <p className="font-medium text-white/90">{r.type}</p>
+              <p className="mt-0.5 text-white/60">{r.description}</p>
+            </li>
+          ))}
+        </ul>
+      </Field>
+      <BulletList label="Split sheet guidance" items={data.split_sheet_guidance} />
+      <BulletList label="Collection setup" items={data.collection_setup} />
+      <BulletList label="Action items" items={data.action_items} />
     </div>
   )
 }
@@ -185,6 +295,12 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
                 <EpkCard data={o.output} />
               ) : isDropReady(o.output) ? (
                 <DropReadyCard data={o.output} />
+              ) : isSoundBait(o.output) ? (
+                <SoundBaitCard data={o.output} />
+              ) : isDistroAdvisor(o.output) ? (
+                <DistroAdvisorCard data={o.output} />
+              ) : isRoyaltyAudit(o.output) ? (
+                <RoyaltyAuditCard data={o.output} />
               ) : (
                 <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-white/60">
                   {JSON.stringify(o.output, null, 2)}

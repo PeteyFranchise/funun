@@ -89,7 +89,9 @@ export async function POST(
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2000,
+      // Some tools (DistroAdvisor, RoyaltyAudit) emit long structured JSON;
+      // 2000 truncated them mid-object and broke JSON parsing.
+      max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })
     const text = message.content

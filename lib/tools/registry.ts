@@ -41,7 +41,7 @@ export const TOOLS: ToolDef[] = [
     tagline: 'TikTok hook strategy',
     description: 'Short-form hooks and a posting plan to seed your release on TikTok.',
     readinessItem: 'tiktok_strategy',
-    available: false,
+    available: true,
   },
   {
     slug: 'distroadvisor',
@@ -49,7 +49,7 @@ export const TOOLS: ToolDef[] = [
     tagline: 'Distribution & metadata',
     description: 'Metadata checks and distribution guidance before you submit.',
     readinessItem: 'metadata',
-    available: false,
+    available: true,
   },
   {
     slug: 'royaltyaudit',
@@ -57,7 +57,7 @@ export const TOOLS: ToolDef[] = [
     tagline: 'PRO & royalty setup',
     description: 'Make sure your PRO registration and royalty splits are airtight.',
     readinessItem: 'pro_registration',
-    available: false,
+    available: true,
   },
 ]
 
@@ -179,6 +179,144 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 }`
 }
 
+// ─── SoundBait ────────────────────────────────────────────────────────
+export type SoundBaitOutput = {
+  hooks: string[]
+  video_concepts: string[]
+  posting_plan: string[]
+  sound_tips: string[]
+  caption_templates: string[]
+  hashtags: string[]
+}
+
+export function buildSoundBaitPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string {
+  const artist = profile.artist_name || 'this artist'
+
+  return `You are a short-form video strategist who specializes in breaking independent music on TikTok and Reels.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+${profile.tiktok_handle ? `TikTok: ${profile.tiktok_handle}` : 'No TikTok handle provided.'}
+
+RELEASE (the project to seed on short-form)
+Title: ${project.title}
+Type: ${project.type}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.sub_genre ? `Sub-genre: ${project.sub_genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.trackTitles.length ? `Tracks: ${project.trackTitles.join(', ')}` : ''}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+Design a short-form hook strategy to build momentum before and on release day. Be specific to the artist's genre and the release. Do not invent streaming numbers, trends that don't exist, or collaborators that were not provided. Hooks should be sayable on camera or as on-screen text; concepts should be filmable by a solo independent artist with a phone.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "hooks": ["5-6 scroll-stopping opening lines or on-screen text hooks"],
+  "video_concepts": ["4-5 concrete short-form video concepts tied to this release"],
+  "posting_plan": ["4-6 steps describing what to post and when, from teaser through release week"],
+  "sound_tips": ["3-4 tips for which clip/section of the song to use and how to leverage the sound"],
+  "caption_templates": ["3-4 reusable caption templates"],
+  "hashtags": ["6-10 relevant hashtags without the # symbol"]
+}`
+}
+
+// ─── DistroAdvisor ────────────────────────────────────────────────────
+export type DistroAdvisorOutput = {
+  metadata_review: { field: string; recommendation: string }[]
+  release_timing: string
+  platform_priorities: string[]
+  pre_save_strategy: string[]
+  common_pitfalls: string[]
+  submission_checklist: string[]
+}
+
+export function buildDistroAdvisorPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string {
+  const artist = profile.artist_name || 'this artist'
+
+  return `You are a digital distribution and metadata expert advising an independent artist before they submit a release to a distributor (e.g. DistroKid, TuneCore, CD Baby).
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+
+RELEASE (the project being submitted)
+Title: ${project.title}
+Type: ${project.type}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.sub_genre ? `Sub-genre: ${project.sub_genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.trackTitles.length ? `Tracks: ${project.trackTitles.join(', ')}` : 'No track titles provided.'}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+Review the release for distribution readiness. Give practical, current best-practice guidance. Do not invent details about the release that were not provided — where information is missing, frame the recommendation as something the artist should confirm or supply. The metadata_review should cover fields like primary/featured artists, genre, explicit flags, ISRC/UPC, release date lead time, artwork specs, and credits.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "metadata_review": [
+    { "field": "name of a metadata field", "recommendation": "specific guidance for this release" }
+  ],
+  "release_timing": "1 paragraph on ideal release date/day and lead time before submission",
+  "platform_priorities": ["3-4 platforms/DSPs to prioritize and why"],
+  "pre_save_strategy": ["3-4 concrete pre-save / pre-add tactics"],
+  "common_pitfalls": ["3-4 distribution mistakes to avoid"],
+  "submission_checklist": ["5-7 items to confirm before hitting submit"]
+}`
+}
+
+// ─── RoyaltyAudit ─────────────────────────────────────────────────────
+export type RoyaltyAuditOutput = {
+  pro_recommendation: string
+  registration_steps: string[]
+  royalty_types: { type: string; description: string }[]
+  split_sheet_guidance: string[]
+  collection_setup: string[]
+  action_items: string[]
+}
+
+export function buildRoyaltyAuditPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string {
+  const artist = profile.artist_name || 'this artist'
+
+  return `You are a music publishing and royalties advisor helping an independent artist make sure they collect every royalty they are owed for a release.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+
+RELEASE (the project to audit for royalty setup)
+Title: ${project.title}
+Type: ${project.type}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.trackTitles.length ? `Tracks: ${project.trackTitles.join(', ')}` : ''}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+Audit the artist's royalty and PRO setup and explain what to put in place. Give accurate, general guidance about how music royalties work (performance, mechanical, neighbouring/digital, sync) and the organizations that collect them. Tailor the PRO recommendation to the artist's location if provided; if location is unknown, say so and explain how to choose. Do not give personalized legal or financial advice or guarantee specific payouts — frame everything as standard industry setup steps the artist should complete or confirm with the relevant organizations.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "pro_recommendation": "1 paragraph recommending which PRO to register with (and why), based on location",
+  "registration_steps": ["4-6 ordered steps to register works and the songwriter"],
+  "royalty_types": [
+    { "type": "name of a royalty type", "description": "what it is and who collects it" }
+  ],
+  "split_sheet_guidance": ["3-4 tips for documenting songwriter/producer splits for this release"],
+  "collection_setup": ["3-4 accounts/services to set up to collect all royalties (e.g. publishing admin, SoundExchange, MLC)"],
+  "action_items": ["4-6 concrete next steps specific to this release"]
+}`
+}
+
 // ─── Prompt dispatcher ────────────────────────────────────────────────
 export function buildToolPrompt(
   slug: ToolSlug,
@@ -190,6 +328,12 @@ export function buildToolPrompt(
       return buildEpkPrompt(profile, project)
     case 'dropready':
       return buildDropReadyPrompt(profile, project)
+    case 'soundbait':
+      return buildSoundBaitPrompt(profile, project)
+    case 'distroadvisor':
+      return buildDistroAdvisorPrompt(profile, project)
+    case 'royaltyaudit':
+      return buildRoyaltyAuditPrompt(profile, project)
     default:
       return null
   }
