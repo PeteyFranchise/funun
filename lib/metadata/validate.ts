@@ -5,6 +5,7 @@
 // guards) and client-side (live report in the studio).
 
 import type { Composer, ReleaseRights } from '@/lib/metadata/schema'
+import { isValidIswc as isValidIswcFull, isValidIswcShape } from '@/lib/metadata/identifiers'
 
 export type CheckLevel = 'error' | 'warn' | 'ok'
 
@@ -43,11 +44,10 @@ export function isValidUpc(raw: string | null | undefined): boolean {
   return /^\d{12,13}$/.test(v)
 }
 
-/** ISWC = T followed by 9 digits + 1 check digit, e.g. T-123456789-0. */
+/** ISWC = T + 9 digits + 1 CISAC check digit, e.g. T-034.524.680-1. */
 export function isValidIswc(raw: string | null | undefined): boolean {
   if (!raw) return false
-  const v = raw.replace(/[\s-]/g, '').toUpperCase()
-  return /^T\d{10}$/.test(v)
+  return isValidIswcFull(raw)
 }
 
 const EMBEDDABLE_EXT = ['mp3', 'flac']
@@ -150,9 +150,13 @@ export function validateRelease(release: ReleaseForCheck): ValidationReport {
       add(`isrc:${t.id}`, 'ISRC', 'error', 'No ISRC — required to track plays and royalties.', T)
     }
 
-    // ISWC (optional but validate if present)
-    if (t.iswc && !isValidIswc(t.iswc)) {
-      add(`iswc:${t.id}`, 'ISWC', 'warn', 'ISWC format looks wrong (expected T-DDDDDDDDD-C).', T)
+    // ISWC (optional, PRO-issued — validate shape + check digit if present)
+    if (t.iswc) {
+      if (!isValidIswcShape(t.iswc)) {
+        add(`iswc:${t.id}`, 'ISWC', 'warn', 'ISWC format looks wrong (expected T-DDDDDDDDD-C).', T)
+      } else if (!isValidIswcFull(t.iswc)) {
+        add(`iswc:${t.id}`, 'ISWC', 'warn', 'ISWC check digit doesn’t match — re-check the code from your PRO.', T)
+      }
     }
 
     // Composers

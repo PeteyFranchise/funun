@@ -20,6 +20,9 @@ const DEMO_PROFILE: ArtistProfile = {
   monthly_listeners: 12500,
   total_streams: null,
   sound_identity: null,
+  isrc_country_code: 'US',
+  isrc_registrant_code: 'D3M',
+  isrc_year_counters: { '26': 3 },
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }

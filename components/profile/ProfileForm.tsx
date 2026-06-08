@@ -26,6 +26,8 @@ type FormState = {
   spotify_url: string
   career_stage: 1 | 2 | 3 | 4
   monthly_listeners: string
+  isrc_country_code: string
+  isrc_registrant_code: string
 }
 
 function toForm(p: ArtistProfile): FormState {
@@ -40,6 +42,8 @@ function toForm(p: ArtistProfile): FormState {
     spotify_url: p.spotify_url ?? '',
     career_stage: p.career_stage ?? 1,
     monthly_listeners: p.monthly_listeners != null ? String(p.monthly_listeners) : '',
+    isrc_country_code: p.isrc_country_code ?? '',
+    isrc_registrant_code: p.isrc_registrant_code ?? '',
   }
 }
 
@@ -188,6 +192,42 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
               placeholder="https://open.spotify.com/artist/…"
               className={`mt-1 ${inputClass}`}
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
+          <p className="mt-1 text-xs text-white/40">
+            If you hold your own ISRC registrant code, add it here and ArtistOS can mint
+            compliant ISRCs for your tracks automatically. Don’t have one? Your distributor
+            assigns ISRCs for free — leave this blank. To self-register, apply once at your
+            national ISRC agency (US: usisrc.org).
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Country code</label>
+            <input
+              value={form.isrc_country_code}
+              onChange={e => set('isrc_country_code', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
+              placeholder="US"
+              maxLength={2}
+              className={`mt-1 ${inputClass} uppercase`}
+            />
+            <p className="mt-1 text-xs text-white/30">2 letters — country of the registrant.</p>
+          </div>
+          <div>
+            <label className={labelClass}>Registrant code</label>
+            <input
+              value={form.isrc_registrant_code}
+              onChange={e => set('isrc_registrant_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))}
+              placeholder="S1Z"
+              maxLength={3}
+              className={`mt-1 ${inputClass} uppercase`}
+            />
+            <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
           </div>
         </div>
       </section>

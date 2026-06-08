@@ -206,6 +206,11 @@ export type ArtistProfile = {
   monthly_listeners: number | null
   total_streams: number | null
   sound_identity: SoundIdentity | null
+  // ISRC self-assignment (migration 007) — set once when the artist holds
+  // their own registrant code; counters track the last designation per year.
+  isrc_country_code: string | null
+  isrc_registrant_code: string | null
+  isrc_year_counters: Record<string, number> | null
   created_at: string
   updated_at: string
 }

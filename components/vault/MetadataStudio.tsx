@@ -12,6 +12,7 @@ import {
   type Composer,
 } from '@/lib/metadata/schema'
 import { validateRelease, type ValidationReport } from '@/lib/metadata/validate'
+import { isValidIswc, isValidIswcShape } from '@/lib/metadata/identifiers'
 
 // ─── MetadataStudio ──────────────────────────────────────────────────
 // Capture UI for everything a release needs before delivery: release-level
@@ -77,6 +78,7 @@ export function MetadataStudio({
   const [savingRelease, setSavingRelease] = useState(false)
   const [savingTrack, setSavingTrack] = useState<string | null>(null)
   const [embedState, setEmbedState] = useState<Record<string, { busy: boolean; url?: string; msg?: string }>>({})
+  const [isrcState, setIsrcState] = useState<Record<string, { busy: boolean; msg?: string; needsSetup?: boolean }>>({})
 
   const report: ValidationReport = useMemo(
     () =>
@@ -179,6 +181,25 @@ export function MetadataStudio({
     }
   }
 
+  async function generateIsrc(t: StudioTrack) {
+    setIsrcState(s => ({ ...s, [t.id]: { busy: true } }))
+    try {
+      const res = await fetch(`/api/vault/${projectId}/tracks/${t.id}/isrc`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) {
+        setIsrcState(s => ({
+          ...s,
+          [t.id]: { busy: false, msg: json.error ?? 'Could not generate', needsSetup: json.needsSetup },
+        }))
+        return
+      }
+      setTrack(t.id, { isrc: json.data.isrc })
+      setIsrcState(s => ({ ...s, [t.id]: { busy: false } }))
+    } catch {
+      setIsrcState(s => ({ ...s, [t.id]: { busy: false, msg: 'Network error' } }))
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -245,8 +266,13 @@ export function MetadataStudio({
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <TextField label="ISRC" value={t.isrc} onChange={v => setTrack(t.id, { isrc: v.toUpperCase() })} placeholder="CC-XXX-YY-NNNNN" />
-                <TextField label="ISWC" value={t.iswc} onChange={v => setTrack(t.id, { iswc: v.toUpperCase() })} placeholder="T-DDDDDDDDD-C" />
+                <IsrcField
+                  value={t.isrc}
+                  onChange={v => setTrack(t.id, { isrc: v.toUpperCase() })}
+                  onGenerate={() => generateIsrc(t)}
+                  state={isrcState[t.id]}
+                />
+                <IswcField value={t.iswc} onChange={v => setTrack(t.id, { iswc: v.toUpperCase() })} />
                 <SelectField label="Language" value={t.language} onChange={v => setTrack(t.id, { language: v })} options={[{ value: '', label: 'Use release default' }, ...LANGUAGES.map(l => ({ value: l.code, label: l.label }))]} />
               </div>
 
@@ -459,6 +485,81 @@ function ComposerEditor({
         + Add writer
       </button>
     </div>
+  )
+}
+
+// ─── ISRC field (with one-click generation) ──────────────────────────
+function IsrcField({
+  value,
+  onChange,
+  onGenerate,
+  state,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onGenerate: () => void
+  state?: { busy: boolean; msg?: string; needsSetup?: boolean }
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs text-white/40">ISRC</span>
+      <div className="mt-1 flex gap-1.5">
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="CC-XXX-YY-NNNNN"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={state?.busy || Boolean(value)}
+          title={value ? 'Clear the ISRC to mint a new one' : 'Mint an ISRC under your registrant code'}
+          className="shrink-0 rounded-lg border border-white/15 px-2.5 py-2 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-30"
+        >
+          {state?.busy ? '…' : 'Generate'}
+        </button>
+      </div>
+      {state?.msg && (
+        <span className="mt-1 block text-xs text-amber-300/90">
+          {state.msg}
+          {state.needsSetup && (
+            <>
+              {' '}
+              <Link href="/settings" className="underline hover:text-amber-200">
+                Open Settings
+              </Link>
+            </>
+          )}
+        </span>
+      )}
+    </label>
+  )
+}
+
+// ─── ISWC field (PRO-issued — validate, don't generate) ───────────────
+function IswcField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const shapeOk = isValidIswcShape(value)
+  const fullOk = isValidIswc(value)
+  const hint = !value
+    ? 'Issued by your PRO when you register the work — you can’t self-assign it.'
+    : !shapeOk
+      ? 'Expected T-DDDDDDDDD-C.'
+      : !fullOk
+        ? 'Check digit doesn’t match — re-check the code from your PRO.'
+        : 'Valid ISWC.'
+  const tone = !value ? 'text-white/30' : fullOk ? 'text-emerald-300/90' : 'text-amber-300/90'
+  return (
+    <label className="block">
+      <span className="text-xs text-white/40">ISWC</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="T-DDDDDDDDD-C"
+        className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+      />
+      <span className={`mt-1 block text-xs ${tone}`}>{hint}</span>
+    </label>
   )
 }
 

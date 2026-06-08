@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
+import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 
 const EDITABLE_FIELDS = [
   'artist_name',
@@ -13,6 +14,8 @@ const EDITABLE_FIELDS = [
   'spotify_url',
   'career_stage',
   'monthly_listeners',
+  'isrc_country_code',
+  'isrc_registrant_code',
 ] as const
 
 function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
@@ -33,6 +36,16 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
         const n = Number(value)
         if (Number.isFinite(n) && n >= 0) update[key] = Math.round(n)
       }
+      continue
+    }
+    if (key === 'isrc_country_code') {
+      const cc = normalizeCountry(typeof value === 'string' ? value : '')
+      update[key] = cc || null
+      continue
+    }
+    if (key === 'isrc_registrant_code') {
+      const reg = normalizeRegistrant(typeof value === 'string' ? value : '')
+      update[key] = reg || null
       continue
     }
     if (typeof value === 'string') {
