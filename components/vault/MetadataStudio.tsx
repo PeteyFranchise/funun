@@ -326,13 +326,21 @@ export function MetadataStudio({
         <Link href={`/vault/${projectId}`} className="text-sm text-white/50 transition hover:text-white">
           ← Back to project
         </Link>
-        <Link
-          href={`/vault/${projectId}/metadata/onesheet`}
-          target="_blank"
-          className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white"
-        >
-          Open one-sheet ↗
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/vault/${projectId}/metadata/registrations`}
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white"
+          >
+            Registration packages →
+          </Link>
+          <Link
+            href={`/vault/${projectId}/metadata/onesheet`}
+            target="_blank"
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white"
+          >
+            Open one-sheet ↗
+          </Link>
+        </div>
       </div>
     </div>
   )
