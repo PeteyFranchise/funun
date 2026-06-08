@@ -45,6 +45,8 @@ export type VaultProject = {
   upc: string | null
   is_public: boolean
   notes: string | null
+  content_id_registered: boolean
+  content_id_dismissed_until: string | null
   // Relations
   tracks?: Track[]
   assets?: VaultAsset[]
@@ -255,6 +257,8 @@ export type Track = {
   producers: string[]
   mixing_engineer: string | null
   mastering_engineer: string | null
+  has_sample: boolean
+  sample_details: string | null
   metadata: Record<string, unknown>
   created_at: string
 }

@@ -34,6 +34,8 @@ function row(
     upc: null,
     is_public: false,
     notes: null,
+    content_id_registered: false,
+    content_id_dismissed_until: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     tracks: [],

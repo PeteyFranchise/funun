@@ -80,6 +80,8 @@ export async function addDemoProject(input: {
     upc: null,
     is_public: false,
     notes: null,
+    content_id_registered: false,
+    content_id_dismissed_until: null,
     created_at: now,
     updated_at: now,
     tracks: [],
