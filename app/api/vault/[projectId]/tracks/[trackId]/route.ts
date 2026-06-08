@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
+import { sanitizeComposers } from '@/lib/metadata/schema'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -8,12 +9,15 @@ type RouteCtx = { params: Promise<{ projectId: string; trackId: string }> }
 type TrackUpdate = {
   title?: string
   isrc?: string | null
+  iswc?: string | null
+  language?: string | null
   writers?: string[]
   producers?: string[]
   mixing_engineer?: string | null
   mastering_engineer?: string | null
   has_sample?: boolean
   sample_details?: string | null
+  metadata?: Record<string, unknown>
 }
 
 function asStringArray(v: unknown): string[] | undefined {
@@ -29,7 +33,14 @@ function sanitize(body: Record<string, unknown>): TrackUpdate {
   if ('has_sample' in body && typeof body.has_sample === 'boolean') {
     update.has_sample = body.has_sample
   }
-  for (const key of ['isrc', 'mixing_engineer', 'mastering_engineer', 'sample_details'] as const) {
+  for (const key of [
+    'isrc',
+    'iswc',
+    'language',
+    'mixing_engineer',
+    'mastering_engineer',
+    'sample_details',
+  ] as const) {
     if (!(key in body)) continue
     const value = body[key]
     if (value === null) update[key] = null
@@ -41,6 +52,16 @@ function sanitize(body: Record<string, unknown>): TrackUpdate {
   for (const key of ['writers', 'producers'] as const) {
     const arr = asStringArray(body[key])
     if (arr) update[key] = arr
+  }
+  // Metadata Studio: composer rows live under metadata.composers. The
+  // PATCH handler merges this into the existing JSONB so other keys survive.
+  if ('metadata' in body && body.metadata && typeof body.metadata === 'object') {
+    const incoming = body.metadata as Record<string, unknown>
+    const next: Record<string, unknown> = {}
+    if ('composers' in incoming) {
+      next.composers = sanitizeComposers(incoming.composers)
+    }
+    if (Object.keys(next).length > 0) update.metadata = next
   }
   return update
 }
@@ -68,6 +89,21 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Merge the metadata JSONB so we don't clobber keys we didn't touch.
+  if (update.metadata) {
+    const { data: existing } = await supabase
+      .from('tracks')
+      .select('metadata')
+      .eq('id', trackId)
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    update.metadata = {
+      ...((existing?.metadata as Record<string, unknown> | null) ?? {}),
+      ...update.metadata,
+    }
+  }
 
   const { data, error } = await supabase
     .from('tracks')

@@ -47,6 +47,16 @@ export type VaultProject = {
   notes: string | null
   content_id_registered: boolean
   content_id_dismissed_until: string | null
+  // Metadata Studio — release-level rights & contact (migration 006)
+  label: string | null
+  publisher: string | null
+  c_line: string | null
+  p_line: string | null
+  copyright_year: number | null
+  primary_language: string | null
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
   // Relations
   tracks?: Track[]
   assets?: VaultAsset[]
@@ -259,6 +269,8 @@ export type Track = {
   mastering_engineer: string | null
   has_sample: boolean
   sample_details: string | null
+  iswc: string | null
+  language: string | null
   metadata: Record<string, unknown>
   created_at: string
 }

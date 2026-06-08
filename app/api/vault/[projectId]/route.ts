@@ -25,6 +25,17 @@ type ProjectUpdate = {
   notes?: string | null
   content_id_registered?: boolean
   content_id_dismissed_until?: string | null
+  // Metadata Studio — release rights & contact
+  upc?: string | null
+  label?: string | null
+  publisher?: string | null
+  c_line?: string | null
+  p_line?: string | null
+  copyright_year?: number | null
+  primary_language?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
 }
 
 function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: string } {
@@ -47,7 +58,21 @@ function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: strin
     }
     update.status = body.status as VaultProjectStatus
   }
-  for (const key of ['genre', 'sub_genre', 'release_date', 'notes'] as const) {
+  for (const key of [
+    'genre',
+    'sub_genre',
+    'release_date',
+    'notes',
+    'upc',
+    'label',
+    'publisher',
+    'c_line',
+    'p_line',
+    'primary_language',
+    'contact_name',
+    'contact_email',
+    'contact_phone',
+  ] as const) {
     if (!(key in body)) continue
     const value = body[key]
     if (value === null) {
@@ -55,6 +80,15 @@ function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: strin
     } else if (typeof value === 'string') {
       const trimmed = value.trim()
       update[key] = trimmed === '' ? null : trimmed
+    }
+  }
+  // Copyright year — numeric, or null to clear.
+  if ('copyright_year' in body) {
+    const v = body.copyright_year
+    if (v === null || v === '') update.copyright_year = null
+    else {
+      const n = Number(v)
+      update.copyright_year = Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null
     }
   }
   // ContentID actions (Stage 3): confirm setup, or dismiss for 30 days.
