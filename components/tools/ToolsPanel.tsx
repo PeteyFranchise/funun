@@ -127,9 +127,8 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
   }
 
   return (
-    <section className="mt-10">
-      <h2 className="text-lg font-semibold text-white">Tools</h2>
-      <p className="mt-1 text-sm text-white/50">
+    <section>
+      <p className="text-sm text-white/50">
         Generate launch-ready assets from your project and profile.
       </p>
 
