@@ -14,6 +14,34 @@ const DOC_TYPES = [
 const DOC_STATUSES = ['pending', 'signed', 'verified'] as const
 type DocStatus = (typeof DOC_STATUSES)[number]
 
+// GET /api/vault/[projectId]/documents — list documents for a project.
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  const { projectId } = await params
+
+  if (DEMO) {
+    return NextResponse.json({ data: [] })
+  }
+
+  const supabase = createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data, error } = await supabase
+    .from('vault_documents')
+    .select('id, type, status, track_id, document_data, signed_at, created_at')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ data: data ?? [] })
+}
+
 // POST /api/vault/[projectId]/documents — add a document record.
 export async function POST(
   request: Request,

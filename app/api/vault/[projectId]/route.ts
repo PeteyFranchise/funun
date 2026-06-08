@@ -23,6 +23,8 @@ type ProjectUpdate = {
   sub_genre?: string | null
   release_date?: string | null
   notes?: string | null
+  content_id_registered?: boolean
+  content_id_dismissed_until?: string | null
 }
 
 function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: string } {
@@ -54,6 +56,14 @@ function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: strin
       const trimmed = value.trim()
       update[key] = trimmed === '' ? null : trimmed
     }
+  }
+  // ContentID actions (Stage 3): confirm setup, or dismiss for 30 days.
+  if ('content_id_registered' in body && typeof body.content_id_registered === 'boolean') {
+    update.content_id_registered = body.content_id_registered
+  }
+  if ('content_id_dismissed_until' in body) {
+    const v = body.content_id_dismissed_until
+    update.content_id_dismissed_until = v === null ? null : String(v)
   }
 
   return update

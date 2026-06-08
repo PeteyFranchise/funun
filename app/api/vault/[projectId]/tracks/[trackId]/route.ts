@@ -1,0 +1,84 @@
+import { NextResponse } from 'next/server'
+import { createApiClient } from '@/lib/supabase/server'
+
+const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+
+type RouteCtx = { params: Promise<{ projectId: string; trackId: string }> }
+
+type TrackUpdate = {
+  title?: string
+  isrc?: string | null
+  writers?: string[]
+  producers?: string[]
+  mixing_engineer?: string | null
+  mastering_engineer?: string | null
+  has_sample?: boolean
+  sample_details?: string | null
+}
+
+function asStringArray(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  return v.map(x => String(x).trim()).filter(Boolean)
+}
+
+function sanitize(body: Record<string, unknown>): TrackUpdate {
+  const update: TrackUpdate = {}
+  if ('title' in body && typeof body.title === 'string' && body.title.trim()) {
+    update.title = body.title.trim()
+  }
+  if ('has_sample' in body && typeof body.has_sample === 'boolean') {
+    update.has_sample = body.has_sample
+  }
+  for (const key of ['isrc', 'mixing_engineer', 'mastering_engineer', 'sample_details'] as const) {
+    if (!(key in body)) continue
+    const value = body[key]
+    if (value === null) update[key] = null
+    else if (typeof value === 'string') {
+      const t = value.trim()
+      update[key] = t === '' ? null : t
+    }
+  }
+  for (const key of ['writers', 'producers'] as const) {
+    const arr = asStringArray(body[key])
+    if (arr) update[key] = arr
+  }
+  return update
+}
+
+// PATCH /api/vault/[projectId]/tracks/[trackId] — update track metadata,
+// including the Stage 3 sample flag (has_sample / sample_details).
+export async function PATCH(request: Request, { params }: RouteCtx) {
+  const { projectId, trackId } = await params
+
+  if (DEMO) {
+    return NextResponse.json(
+      { error: 'Editing tracks is not available in demo mode' },
+      { status: 400 }
+    )
+  }
+
+  const body = (await request.json()) as Record<string, unknown>
+  const update = sanitize(body)
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
+  const supabase = createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data, error } = await supabase
+    .from('tracks')
+    .update(update)
+    .eq('id', trackId)
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .select()
+    .maybeSingle()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
+  return NextResponse.json({ data })
+}
