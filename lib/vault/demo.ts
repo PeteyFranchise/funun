@@ -11,7 +11,14 @@ export type VaultProjectRow = Omit<
   VaultProject,
   'tracks' | 'assets' | 'documents' | 'submissions' | 'tool_outputs'
 > & {
-  tracks: { id: string; title?: string; track_number?: number; isrc: string | null }[]
+  tracks: {
+    id: string
+    title?: string
+    track_number?: number
+    isrc: string | null
+    iswc?: string | null
+    metadata?: Record<string, unknown> | null
+  }[]
   vault_assets: { id: string; type: string }[]
   vault_documents: { id: string; type: string; status: string }[]
   tool_outputs: { id: string; tool_slug: string }[]
@@ -64,7 +71,18 @@ export const DEMO_VAULT_PROJECTS: VaultProjectRow[] = [
       genre: 'R&B',
       release_date: '2026-03-14',
       vault_readiness_score: 90,
-      tracks: [{ id: 't1', isrc: 'USX9P2600001' }],
+      tracks: [
+        {
+          id: 't1',
+          isrc: 'USX9P2600001',
+          iswc: 'T3450824601',
+          metadata: {
+            composers: [
+              { name: 'Demo Artist', role: 'composer_lyricist', pro: 'ASCAP', ipi: '00123456789', split: 100 },
+            ],
+          },
+        },
+      ],
       vault_assets: [{ id: 'a1', type: 'cover_art' }],
       vault_documents: [
         { id: 'd1', type: 'split_sheet', status: 'signed' },

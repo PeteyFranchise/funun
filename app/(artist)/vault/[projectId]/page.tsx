@@ -50,6 +50,8 @@ type DetailProject = {
     title?: string
     track_number?: number
     isrc: string | null
+    iswc?: string | null
+    metadata?: Record<string, unknown> | null
     duration_seconds?: number | null
     audio_file_url?: string | null
     explicit?: boolean
@@ -131,7 +133,7 @@ export default async function VaultProjectPage({
       .select(
         `
         *,
-        tracks (id, title, track_number, isrc, duration_seconds, audio_file_url, explicit),
+        tracks (id, title, track_number, isrc, iswc, metadata, duration_seconds, audio_file_url, explicit),
         vault_assets (id, type, url),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug, title, output)

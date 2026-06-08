@@ -136,12 +136,12 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
   },
   {
     key: 'pro_registration',
-    label: 'PRO registration confirmed',
-    description: 'Songs registered with ASCAP, BMI, or SESAC',
+    label: 'PRO registration ready',
+    description: 'Every track has an ISWC for ASCAP/BMI/SESAC & The MLC',
     points: 10,
     applies_to: ['single', 'ep', 'album'],
-    action_label: 'Audit with RoyaltyAudit →',
-    action_tool: 'royaltyaudit',
+    action_label: 'Add ISWC in Metadata Studio →',
+    action_tool: undefined,
   },
   {
     key: 'hire_right',
@@ -163,12 +163,12 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
   },
   {
     key: 'metadata',
-    label: 'Metadata optimised',
-    description: 'DSP metadata fields complete and correct',
+    label: 'Metadata captured',
+    description: 'Composers and publishing splits captured for every track',
     points: 10,
     applies_to: ['single', 'ep', 'album'],
-    action_label: 'Optimise with DistroAdvisor →',
-    action_tool: 'distroadvisor',
+    action_label: 'Complete in Metadata Studio →',
+    action_tool: undefined,
   },
   // Snippet-specific items
   {

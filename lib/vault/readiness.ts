@@ -1,12 +1,25 @@
 import type { ReadinessItem, VaultProjectType } from '@/types'
 import { READINESS_ITEMS } from '@/types'
+import { readComposers } from '@/lib/metadata/schema'
 
 type ReadinessInput = {
   type: VaultProjectType
-  tracks?: { isrc?: string | null }[]
+  tracks?: {
+    isrc?: string | null
+    iswc?: string | null
+    metadata?: Record<string, unknown> | null
+  }[]
   assets?: { type: string }[]
   documents?: { type: string; status: string }[]
   tool_outputs?: { tool_slug: string }[]
+}
+
+/** A track's composer splits are captured and total exactly 100%. */
+function composersComplete(metadata: Record<string, unknown> | null | undefined): boolean {
+  const comps = readComposers(metadata)
+  if (comps.length === 0) return false
+  const total = Math.round(comps.reduce((s, c) => s + (c.split || 0), 0) * 100) / 100
+  return total === 100
 }
 
 /**
@@ -53,20 +66,29 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         else status = 'missing'
         break
       }
-      case 'pro_registration':
-        status = outputs.some(o => o.tool_slug === 'royaltyaudit') ? 'complete' : 'missing'
+      case 'pro_registration': {
+        // Proxy: ISWC captured (the code your PRO/The MLC register the work
+        // under). Complete when every track has one, warning when some do.
+        const withIswc = tracks.filter(t => t.iswc).length
+        if (tracks.length > 0 && withIswc === tracks.length) status = 'complete'
+        else if (withIswc > 0) status = 'warning'
+        else status = 'missing'
         break
+      }
       case 'hire_right':
         status = signedOf('hire_right')
         break
       case 'epk':
         status = outputs.some(o => o.tool_slug === 'epkfyi') ? 'complete' : 'missing'
         break
-      case 'metadata':
-        status = outputs.some(o => ['presbit', 'distroadvisor'].includes(o.tool_slug))
-          ? 'complete'
-          : 'missing'
+      case 'metadata': {
+        // Captured in the Metadata Studio: composers + splits per track.
+        const withComposers = tracks.filter(t => composersComplete(t.metadata)).length
+        if (tracks.length > 0 && withComposers === tracks.length) status = 'complete'
+        else if (withComposers > 0) status = 'warning'
+        else status = 'missing'
         break
+      }
       case 'caption_copy':
         status = outputs.some(o => o.tool_slug === 'dropready') ? 'complete' : 'missing'
         break

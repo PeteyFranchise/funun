@@ -38,7 +38,7 @@ export default async function VaultPage() {
       .select(
         `
         *,
-        tracks (id, isrc),
+        tracks (id, isrc, iswc, metadata),
         vault_assets (id, type),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug)
