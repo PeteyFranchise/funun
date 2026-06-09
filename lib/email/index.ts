@@ -10,6 +10,8 @@ export async function sendEmail(args: {
   subject: string
   html: string
   text?: string
+  /** Where replies should go (e.g. the artist's own address on a pitch). */
+  replyTo?: string
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL
@@ -24,6 +26,7 @@ export async function sendEmail(args: {
       subject: args.subject,
       html: args.html,
       text: args.text,
+      ...(args.replyTo ? { replyTo: args.replyTo } : {}),
     })
     if (error) return { ok: false, error: error.message }
     return { ok: true }

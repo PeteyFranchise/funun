@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { getCurator, type CuratorType, type GeneratedPitch } from '@/lib/tools/pitchplug'
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -31,14 +33,50 @@ export function PitchCard({
   demo?: boolean
 }) {
   const curator = getCurator(curatorType)
+  const isSubmitHub = curatorType === 'submithub_blog'
+
   const [sent, setSent] = useState(false)
-  const [recording, setRecording] = useState(false)
-  const [contact, setContact] = useState('')
+  const [sentVia, setSentVia] = useState<'email' | 'manual' | null>(null)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showSend, setShowSend] = useState(false)
+
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [confirming, setConfirming] = useState(false)
+
+  const fullEmail = `Subject: ${pitch.subject}\n\n${pitch.body}`
+  const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(
+    pitch.subject
+  )}&body=${encodeURIComponent(pitch.body)}`
+
+  async function sendViaArtistOS() {
+    setBusy(true)
+    setError(null)
+    const res = await fetch('/api/tools/pitchplug/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        curatorType,
+        recipientEmail: email.trim(),
+        recipientName: name.trim(),
+        subject: pitch.subject,
+        body: pitch.body,
+      }),
+    })
+    setBusy(false)
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setError(json.error ?? 'Could not send')
+      return
+    }
+    setSent(true)
+    setSentVia('email')
+    setConfirming(false)
+  }
 
   async function markSent() {
-    setRecording(true)
+    setBusy(true)
     setError(null)
     const res = await fetch('/api/submissions', {
       method: 'POST',
@@ -46,18 +84,19 @@ export function PitchCard({
       body: JSON.stringify({
         projectId,
         type: curatorType,
-        destinationName: contact.trim() || (curator?.name ?? 'Curator'),
-        pitchText: `${pitch.subject}\n\n${pitch.body}`,
+        destinationName: name.trim() || (curator?.name ?? 'Curator'),
+        destinationContact: email.trim() || null,
+        pitchText: fullEmail,
       }),
     })
-    setRecording(false)
+    setBusy(false)
     if (!res.ok) {
       const json = await res.json().catch(() => ({}))
       setError(json.error ?? 'Could not record')
       return
     }
     setSent(true)
-    setShowSend(false)
+    setSentVia('manual')
   }
 
   return (
@@ -69,7 +108,7 @@ export function PitchCard({
         </div>
         {sent && (
           <span className="shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-300">
-            Sent
+            {sentVia === 'email' ? 'Emailed' : 'Logged'}
           </span>
         )}
       </div>
@@ -92,45 +131,100 @@ export function PitchCard({
         </p>
       </div>
 
-      <div className="mt-4">
-        <CopyButton text={`Subject: ${pitch.subject}\n\n${pitch.body}`} label="Copy full email" />
+      <div className="mt-4 flex flex-wrap gap-2">
+        <CopyButton text={fullEmail} label="Copy full email" />
+        {isSubmitHub && (
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(fullEmail)
+              window.open('https://www.submithub.com/', '_blank', 'noopener')
+            }}
+            className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white"
+          >
+            Copy &amp; open SubmitHub
+          </button>
+        )}
       </div>
 
-      {!sent && !demo && (
-        <div className="mt-4 border-t border-white/10 pt-4">
-          {!showSend ? (
-            <button
-              onClick={() => setShowSend(true)}
-              className="text-xs text-white/50 transition hover:text-white"
+      {!sent && (
+        <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Recipient / outlet name"
+              className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            />
+            <input
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              type="email"
+              placeholder="Recipient email"
+              className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            />
+          </div>
+
+          {error && <p className="text-xs text-rose-300">{error}</p>}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={mailto}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/70 transition hover:border-white/30 hover:text-white"
             >
-              Did you send this? Track it →
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <input
-                value={contact}
-                onChange={e => setContact(e.target.value)}
-                placeholder="Who did you send it to? (name / email)"
-                className="w-full rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-              />
-              {error && <p className="text-xs text-rose-300">{error}</p>}
-              <div className="flex gap-2">
+              Open in email app
+            </a>
+
+            {!confirming ? (
+              <button
+                onClick={() => {
+                  setError(null)
+                  if (demo) {
+                    setError('Sending is disabled in demo mode.')
+                    return
+                  }
+                  if (!EMAIL_RE.test(email.trim())) {
+                    setError('Enter a valid recipient email to send.')
+                    return
+                  }
+                  setConfirming(true)
+                }}
+                className="rounded-lg bg-[#818CF8] px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-[#9aa3fa]"
+              >
+                Send via ArtistOS
+              </button>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="text-xs text-white/60">Send to {email.trim()}?</span>
                 <button
-                  onClick={markSent}
-                  disabled={recording}
+                  onClick={sendViaArtistOS}
+                  disabled={busy}
                   className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
                 >
-                  {recording ? 'Saving…' : 'Mark as sent'}
+                  {busy ? 'Sending…' : 'Confirm send'}
                 </button>
                 <button
-                  onClick={() => setShowSend(false)}
-                  className="rounded-lg px-3 py-1.5 text-xs text-white/50 transition hover:text-white"
+                  onClick={() => setConfirming(false)}
+                  className="rounded-lg px-2 py-1.5 text-xs text-white/50 transition hover:text-white"
                 >
                   Cancel
                 </button>
-              </div>
-            </div>
-          )}
+              </span>
+            )}
+
+            {!demo && (
+              <button
+                onClick={markSent}
+                disabled={busy}
+                className="rounded-lg px-3 py-1.5 text-xs text-white/50 transition hover:text-white disabled:opacity-40"
+              >
+                I sent it elsewhere
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-white/30">
+            Sent from ArtistOS with replies routed to your contact email. Review before confirming —
+            we send exactly what&rsquo;s shown above.
+          </p>
         </div>
       )}
     </div>

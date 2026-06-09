@@ -30,8 +30,8 @@ export type CuratorDef = {
 export const CURATORS: CuratorDef[] = [
   {
     type: 'spotify_mood_curator',
-    name: 'Spotify / mood playlist curator',
-    blurb: 'Independent playlist curators on Spotify',
+    name: 'Spotify mood / indie curator',
+    blurb: 'Independent playlist curators (not Spotify editorial)',
     angle: 'why the track fits a specific mood/vibe and listener context',
   },
   {
