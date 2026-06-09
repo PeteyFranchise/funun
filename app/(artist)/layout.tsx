@@ -18,6 +18,12 @@ export default function ArtistLayout({ children }: { children: React.ReactNode }
             <Link href="/vault" className="transition hover:text-white">
               Sound Vault
             </Link>
+            <Link href="/antenna" className="transition hover:text-white">
+              The Antenna
+            </Link>
+            <Link href="/tools/pitchplug" className="transition hover:text-white">
+              PitchPlug
+            </Link>
             <Link href="/settings" className="transition hover:text-white">
               Settings
             </Link>

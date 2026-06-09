@@ -12,6 +12,9 @@ import { DocumentManager } from '@/components/vault/DocumentManager'
 import { ToolsPanel } from '@/components/tools/ToolsPanel'
 import { ProjectTabs } from '@/components/vault/ProjectTabs'
 import { TrackList, type PlayerTrack } from '@/components/vault/TrackList'
+import { SubmissionHistory } from '@/components/vault/SubmissionHistory'
+import { getProjectSubmissions } from '@/lib/submissions'
+import type { Submission } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -194,6 +197,13 @@ export default async function VaultProjectPage({
     audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
   }))
 
+  // Outreach history (PitchPlug sends + Antenna applications). Demo has no store.
+  let submissions: Submission[] = []
+  if (!DEMO) {
+    const supabase = createServerClient()
+    submissions = await getProjectSubmissions(supabase, project.id)
+  }
+
   const contentsCount = project.vault_assets.length + project.vault_documents.length
 
   const readinessPanel = (
@@ -366,6 +376,29 @@ export default async function VaultProjectPage({
               label: 'Tools',
               badge: project.tool_outputs.length,
               content: <ToolsPanel projectId={project.id} outputs={project.tool_outputs} />,
+            },
+            {
+              key: 'outreach',
+              label: 'Outreach',
+              badge: submissions.length,
+              content: (
+                <section>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-white/50">
+                      Pitches and Antenna applications for this project.
+                    </p>
+                    <Link
+                      href={`/vault/${project.id}/pitch`}
+                      className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-black transition hover:bg-white/90"
+                    >
+                      Pitch this project →
+                    </Link>
+                  </div>
+                  <div className="mt-4">
+                    <SubmissionHistory submissions={submissions} />
+                  </div>
+                </section>
+              ),
             },
           ]}
         />

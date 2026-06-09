@@ -368,18 +368,100 @@ export type Pitch = {
 }
 
 // ─── Opportunities (The Antenna) ─────────────────────────────────────
+export type OpportunityType =
+  | 'sync'
+  | 'playlist'
+  | 'label'
+  | 'venue'
+  | 'festival'
+  | 'press'
+  | 'brand'
+
+export type CompensationType = 'paid' | 'rev_share' | 'credit_only' | 'tbd'
+
 export type Opportunity = {
   id: string
   created_by: string
+  industry_profile_id: string | null
   title: string
   description: string
-  type: 'sync' | 'playlist' | 'label' | 'venue' | 'festival' | 'press' | 'brand'
+  type: OpportunityType
   genres: string[]
   mood_tags: string[]
+  bpm_min: number | null
+  bpm_max: number | null
   deadline: string | null
   active: boolean
   exclusive: boolean
   compensation: string | null
+  submission_requirements: string | null
+  // ── Antenna targeting (migration 009) ──
+  min_readiness_score: number | null
+  min_monthly_listeners: number | null
+  max_monthly_listeners: number | null
+  career_stages: number[]
+  location_preference: string | null
+  response_deadline: string | null
+  slots_available: number
+  slots_filled: number
+  platform: string | null
+  compensation_type: CompensationType | null
+  pete_exclusive: boolean
+  pete_note: string | null
+  created_at: string
+}
+
+export const OPPORTUNITY_TYPE_LABELS: Record<OpportunityType, string> = {
+  sync: 'Sync',
+  playlist: 'Playlist',
+  label: 'Label',
+  venue: 'Venue',
+  festival: 'Festival',
+  press: 'Press',
+  brand: 'Brand',
+}
+
+// ─── Antenna matching ─────────────────────────────────────────────────
+export type MatchFactor = {
+  key: 'genre' | 'readiness' | 'listeners' | 'mood' | 'career'
+  label: string
+  earned: number
+  max: number
+  detail: string
+}
+
+export type MatchBreakdown = {
+  total: number
+  factors: MatchFactor[]
+}
+
+export type OpportunityMatch = {
+  id: string
+  opportunity_id: string
+  project_id: string
+  user_id: string
+  match_score: number
+  breakdown: MatchBreakdown | null
+  status: 'matched' | 'notified' | 'applied' | 'accepted' | 'declined'
+  notified_at: string | null
+  applied: boolean
+  applied_at: string | null
+  // Optional joined rows for UI.
+  opportunity?: Opportunity
+  project?: VaultProject
+}
+
+// ─── Notifications ────────────────────────────────────────────────────
+export type Notification = {
+  id: string
+  user_id: string
+  type: string
+  title: string
+  body: string | null
+  link: string | null
+  data: Record<string, unknown>
+  emailed: boolean
+  read: boolean
   created_at: string
 }
 
