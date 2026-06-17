@@ -1,68 +1,77 @@
 import Link from 'next/link'
 import type { Opportunity } from '@/types'
 import { OPPORTUNITY_TYPE_LABELS } from '@/types'
-import { TYPE_COLORS, deadlineLabel } from '@/lib/antenna/display'
-import { MatchScoreBar } from './MatchScoreBreakdown'
+import { deadlineLabel } from '@/lib/antenna/display'
 
+// ─── Opportunity row (.opp) ──────────────────────────────────────────
+// Match-% ring + type eyebrow + title + tags + deadline + pitch CTA.
 export function OpportunityCard({
   opportunity,
-  score,
-  matchProjectTitle,
+  score = 0,
 }: {
   opportunity: Opportunity
   score?: number
   matchProjectTitle?: string
 }) {
-  const color = TYPE_COLORS[opportunity.type]
-  const pete = opportunity.pete_exclusive
-  const deadline = deadlineLabel(opportunity.response_deadline ?? opportunity.deadline)
+  const tags = [...opportunity.genres, ...opportunity.mood_tags].slice(0, 3)
+  const deadline = deadlineLabel(opportunity.response_deadline ?? opportunity.deadline) ?? 'Ongoing'
 
   return (
-    <Link
-      href={`/antenna/${opportunity.id}`}
-      className={`block rounded-xl border p-5 transition hover:border-white/30 ${
-        pete ? 'border-l-[3px] bg-[#0F0D00]' : 'border-[#1A1838] bg-[#0E0D1E]'
-      }`}
-      style={pete ? { borderColor: '#F59E0B', borderLeftColor: '#F59E0B' } : undefined}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-          style={{ color, backgroundColor: `${color}1A` }}
-        >
-          {OPPORTUNITY_TYPE_LABELS[opportunity.type]}
+    <div className="flex items-center gap-5 rounded-[16px] border border-hair bg-card px-[22px] py-5">
+      {/* match ring */}
+      <div
+        className="flex h-16 w-16 flex-none items-center justify-center rounded-full"
+        style={{
+          background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(199,203,247,.14) ${score}% 100%)`,
+        }}
+      >
+        <span className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#0c0b1a]">
+          <span className="gtext tnum text-[18px] font-extrabold">{score}</span>
         </span>
-        {pete && (
-          <span className="rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-2.5 py-0.5 text-xs font-medium text-[#F59E0B]">
-            Pete&rsquo;s Network
-          </span>
-        )}
       </div>
 
-      <h3 className="mt-3 text-base font-semibold text-white">{opportunity.title}</h3>
-      {opportunity.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-white/50">{opportunity.description}</p>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/40">
-        {opportunity.compensation && <span>{opportunity.compensation}</span>}
-        {deadline && <span>{deadline}</span>}
-        {opportunity.slots_available > 0 && (
-          <span>
-            {Math.max(0, opportunity.slots_available - opportunity.slots_filled)} slot
-            {opportunity.slots_available - opportunity.slots_filled === 1 ? '' : 's'} open
-          </span>
-        )}
-      </div>
-
-      {score != null && (
-        <div className="mt-4">
-          <MatchScoreBar score={score} showLabel />
-          {matchProjectTitle && (
-            <p className="mt-1 text-xs text-white/40">Best fit: {matchProjectTitle}</p>
-          )}
+      {/* info */}
+      <div className="min-w-0 flex-1">
+        <div className="text-[11.5px] font-bold uppercase tracking-[.12em] text-lavdim">
+          {OPPORTUNITY_TYPE_LABELS[opportunity.type]}
+          {opportunity.pete_exclusive ? ' · Exclusive' : ''}
         </div>
-      )}
-    </Link>
+        <div className="mt-1 text-[18.5px] font-bold tracking-[-.01em] text-white">
+          {opportunity.title}
+        </div>
+        {tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags.map(t => (
+              <span
+                key={t}
+                className="rounded-full border border-hair bg-card2 px-[11px] py-1 text-[12px] font-semibold text-lav"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* right: deadline + pitch */}
+      <div className="flex flex-col items-end gap-[14px]">
+        <div className="flex items-center gap-[7px] text-[12.5px] font-medium text-lavdim">
+          <svg viewBox="0 0 24 24" className="h-[14px] w-[14px]" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" strokeLinecap="round" />
+          </svg>
+          {deadline}
+        </div>
+        <Link
+          href={`/antenna/${opportunity.id}`}
+          className="inline-flex items-center gap-2 whitespace-nowrap rounded-[10px] bg-grad px-4 py-[11px] text-[13.5px] font-bold text-white shadow-[0_10px_24px_-10px_rgba(217,70,239,.5)]"
+        >
+          <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+          Pitch with PitchPlug
+        </Link>
+      </div>
+    </div>
   )
 }

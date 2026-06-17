@@ -1,116 +1,130 @@
 import Link from 'next/link'
-import type { VaultProject } from '@/types'
+import type { VaultProjectStatus, VaultProjectType } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
-import { readinessLabel, type ReadinessTone } from '@/lib/vault/readiness'
 
-const STATUS_LABELS: Record<VaultProject['status'], string> = {
-  in_progress: 'In progress',
-  vault_ready: 'Vault ready',
-  submitted: 'Submitted',
-  released: 'Released',
-  archived: 'Archived',
-  shelved: 'Shelved',
+// ─── Release card (.rcard) ───────────────────────────────────────────
+// Full-bleed cover (gloss scrim + status chip + readiness ring) over a
+// meta block. Ring/right-label banding matches the design: ≥80 green,
+// ≥50 amber, else rose.
+
+export type VaultCard = {
+  id: string
+  title: string
+  type: VaultProjectType
+  artist: string | null
+  status: VaultProjectStatus
+  score: number
+  completeItems: number
+  totalItems: number
+  trackCount: number
+  releaseDate: string | null
+  coverUrl: string | null
+  lane: 'live' | 'scheduled' | 'draft'
 }
 
-const TONE_CLASSES: Record<ReadinessTone, { ring: string; text: string }> = {
-  red: { ring: 'stroke-rose-500', text: 'text-rose-400' },
-  amber: { ring: 'stroke-amber-400', text: 'text-amber-300' },
-  green: { ring: 'stroke-emerald-400', text: 'text-emerald-300' },
+type Band = { arc: string; value: string }
+function band(score: number): Band {
+  if (score >= 80) return { arc: '#34D399', value: '#34D399' }
+  if (score >= 50) return { arc: '#F59E0B', value: '#F4C77B' }
+  return { arc: '#F43F5E', value: '#F43F5E' }
 }
 
-function ReadinessRing({ score, tone }: { score: number; tone: ReadinessTone }) {
-  const radius = 22
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference * (1 - score / 100)
-  return (
-    <div className="relative h-14 w-14 shrink-0">
-      <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90">
-        <circle cx="28" cy="28" r={radius} fill="none" strokeWidth="4" className="stroke-white/10" />
-        <circle
-          cx="28"
-          cy="28"
-          r={radius}
-          fill="none"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className={TONE_CLASSES[tone].ring}
-        />
-      </svg>
-      <span className={`absolute inset-0 flex items-center justify-center text-sm font-semibold ${TONE_CLASSES[tone].text}`}>
-        {score}
-      </span>
-    </div>
-  )
+const CHIP: Record<VaultProjectStatus, { cls: string; text: string }> = {
+  released: { cls: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30', text: 'Live' },
+  submitted: { cls: 'text-money2 bg-money/10 border-money/30', text: 'In review' },
+  vault_ready: { cls: 'text-brandindigo bg-brandindigo/10 border-brandindigo/30', text: 'Scheduled' },
+  in_progress: { cls: 'text-rose-400 bg-rose-500/10 border-rose-500/30', text: 'Draft' },
+  shelved: { cls: 'text-rose-400 bg-rose-500/10 border-rose-500/30', text: 'Shelved' },
+  archived: { cls: 'text-lavdim bg-white/5 border-hairstrong', text: 'Archived' },
 }
 
-type VaultProjectCardData = Pick<
-  VaultProject,
-  'id' | 'title' | 'type' | 'status' | 'genre' | 'cover_art_url' | 'vault_readiness_score' | 'release_date'
->
-
-function releaseLineFor(project: VaultProjectCardData): string | null {
-  if (!project.release_date) return null
-  const formatted = new Date(project.release_date).toLocaleDateString('en-US', {
+function dateLine(card: VaultCard): string {
+  if (!card.releaseDate) return 'No date set'
+  const d = new Date(card.releaseDate).toLocaleDateString('en-US', {
     month: 'short',
-    day: 'numeric',
     year: 'numeric',
     timeZone: 'UTC',
   })
-  return project.status === 'released' ? `Released ${formatted}` : `Releases ${formatted}`
+  return card.status === 'released' ? `Released ${d}` : `Drops ${d}`
 }
 
-type Props = {
-  project: VaultProjectCardData
-  completeItems: number
-  totalItems: number
+function rightLabel(card: VaultCard): { text: string; cls: string } {
+  const gatesLeft = Math.max(0, card.totalItems - card.completeItems)
+  if (card.score >= 80) return { text: 'Deal-ready', cls: 'gtext' }
+  if (card.score >= 50)
+    return {
+      text: gatesLeft > 0 ? `${gatesLeft} gate${gatesLeft === 1 ? '' : 's'} left` : 'Almost ready',
+      cls: 'text-money2',
+    }
+  return { text: 'Needs work', cls: 'text-rose-400' }
 }
 
-export function VaultProjectCard({ project, completeItems, totalItems }: Props) {
-  const score = project.vault_readiness_score
-  const { label, tone } = readinessLabel(score)
-  const releaseLine = releaseLineFor(project)
+export function VaultProjectCard({ card }: { card: VaultCard }) {
+  const b = band(card.score)
+  const chip = CHIP[card.status]
+  const right = rightLabel(card)
+  const typeLabel = VAULT_PROJECT_TYPE_LABELS[card.type]
 
   return (
     <Link
-      href={`/vault/${project.id}`}
-      className="group flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25 hover:bg-white/[0.06]"
+      href={`/vault/${card.id}`}
+      className="group block overflow-hidden rounded-card border border-hair bg-card transition hover:border-hairstrong"
     >
-      <div className="flex items-start gap-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-indigo-500/40 to-fuchsia-500/30">
-          {project.cover_art_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={project.cover_art_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-white/70">
-              {VAULT_PROJECT_TYPE_LABELS[project.type].charAt(0)}
-            </div>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-white">{project.title}</p>
-          <p className="mt-0.5 text-xs uppercase tracking-wide text-white/40">
-            {VAULT_PROJECT_TYPE_LABELS[project.type]}
-            {project.genre ? ` · ${project.genre}` : ''}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="inline-block rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-white/60">
-              {STATUS_LABELS[project.status]}
-            </span>
-            {releaseLine && <span className="text-[11px] text-white/40">{releaseLine}</span>}
+      {/* Cover */}
+      <div
+        className="relative flex h-[182px] items-end bg-gradient-to-br from-brandindigo/40 to-brandfuchsia/30 bg-cover bg-center"
+        style={card.coverUrl ? { backgroundImage: `url('${card.coverUrl}')` } : undefined}
+      >
+        {/* gloss scrim */}
+        <div
+          className="absolute inset-0 z-[1]"
+          style={{
+            background:
+              'linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 24%,rgba(0,0,0,0) 52%,rgba(0,0,0,.58) 100%)',
+          }}
+        />
+        {!card.coverUrl && (
+          <div className="absolute inset-0 z-[1] flex items-center justify-center text-3xl font-black text-white/70">
+            {typeLabel.charAt(0)}
           </div>
+        )}
+        {/* status chip */}
+        <span
+          className={`absolute left-[14px] top-[14px] z-[2] inline-flex items-center gap-[7px] rounded-full border px-[11px] py-[5px] text-[12.5px] font-bold ${chip.cls}`}
+        >
+          <span className="h-[7px] w-[7px] rounded-full bg-current" />
+          {chip.text}
+        </span>
+        {/* readiness ring */}
+        <div
+          className="absolute -bottom-[26px] right-[18px] z-[3] flex h-[66px] w-[66px] items-center justify-center rounded-full shadow-[0_8px_22px_rgba(0,0,0,.5)]"
+          style={{
+            background: `conic-gradient(${b.arc} 0 ${card.score}%,rgba(199,203,247,.14) ${card.score}% 100%)`,
+          }}
+        >
+          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#0c0b1a]">
+            <span className="tnum text-[21px] font-extrabold leading-none" style={{ color: b.value }}>
+              {card.score}
+            </span>
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-white/5 pt-3">
-        <ReadinessRing score={score} tone={tone} />
-        <div className="min-w-0">
-          <p className={`text-sm font-medium ${TONE_CLASSES[tone].text}`}>{label}</p>
-          <p className="text-xs text-white/40">
-            Vault Readiness · {completeItems}/{totalItems} items complete
-          </p>
+      {/* Meta */}
+      <div className="px-5 pb-[22px] pt-5">
+        <div className="text-[19px] font-bold tracking-[-.01em] text-white">{card.title}</div>
+        <div className="mt-1 text-[14px] font-medium text-lavdim">
+          {card.artist ? `${card.artist} · ` : ''}
+          {typeLabel}
+        </div>
+        <div className="mt-4 flex items-center gap-2 text-[13px] font-medium text-lavdim">
+          {card.trackCount} track{card.trackCount === 1 ? '' : 's'}
+          <span className="h-[3px] w-[3px] rounded-full bg-lavdim" />
+          {dateLine(card)}
+        </div>
+        <div className="mt-[18px] flex justify-between text-[12px] font-semibold text-lavdim">
+          <span>Release readiness</span>
+          <span className={`${right.cls} font-bold`}>{right.text}</span>
         </div>
       </div>
     </Link>

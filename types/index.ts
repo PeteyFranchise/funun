@@ -192,6 +192,100 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
 ]
 
 // ─── Artist Profile ───────────────────────────────────────────────────
+// A member's lead role on their public profile. Members pick from this
+// fixed list or supply a custom title (stored as a free string).
+export const PROFILE_ROLES = [
+  'artist',
+  'producer',
+  'songwriter',
+  'music_supervisor',
+  'anr',
+  'exec',
+] as const
+export type ProfileRoleSlug = (typeof PROFILE_ROLES)[number]
+
+export const PROFILE_ROLE_LABELS: Record<ProfileRoleSlug, string> = {
+  artist: 'Artist',
+  producer: 'Producer',
+  songwriter: 'Songwriter',
+  music_supervisor: 'Music Supervisor',
+  anr: 'A&R',
+  exec: 'Executive',
+}
+
+/** A role on a profile: a known slug, or a custom title the member typed. */
+export type ProfileRole =
+  | { kind: 'preset'; slug: ProfileRoleSlug }
+  | { kind: 'custom'; label: string }
+
+/** What a member is open to — used for discovery/matching on the profile. */
+export type OpenTo =
+  | 'collabs'
+  | 'sync'
+  | 'features'
+  | 'production'
+  | 'writing'
+  | 'management'
+  | 'booking'
+
+// ─── Social layer (migration 012) ────────────────────────────────────
+/** A lightweight author identity rendered on social items. */
+export type SocialAuthor = {
+  id: string
+  name: string
+  avatarUrl: string | null
+  roleLabel: string | null
+}
+
+export type Follow = { follower_id: string; followee_id: string; created_at: string }
+
+export type WallPost = {
+  id: string
+  profile_id: string
+  author_id: string
+  body: string
+  created_at: string
+  author?: SocialAuthor
+}
+
+export type Endorsement = {
+  id: string
+  profile_id: string
+  author_id: string
+  body: string
+  created_at: string
+  author?: SocialAuthor
+}
+
+export type ReleaseComment = {
+  id: string
+  project_id: string
+  author_id: string
+  parent_id: string | null
+  body: string
+  created_at: string
+  author?: SocialAuthor
+}
+
+export type ActivityKind = 'placement' | 'release' | 'readiness' | 'other'
+export type ActivityEvent = {
+  id: string
+  profile_id: string
+  kind: ActivityKind
+  body: string
+  data: Record<string, unknown>
+  created_at: string
+}
+
+export type DmThread = { id: string; a_id: string; b_id: string; created_at: string }
+export type DmMessage = {
+  id: string
+  thread_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
 export type ArtistProfile = {
   id: string
   artist_name: string | null
@@ -211,6 +305,17 @@ export type ArtistProfile = {
   isrc_country_code: string | null
   isrc_registrant_code: string | null
   isrc_year_counters: Record<string, number> | null
+  // Public showcase profile (migration 010). is_public is the app-level
+  // gate for whether /@handle renders; handle is the shareable slug.
+  handle: string | null
+  is_public: boolean
+  avatar_url: string | null
+  banner_url: string | null
+  pronouns: string | null
+  verified: boolean
+  roles: ProfileRole[]
+  open_to: OpenTo[]
+  featured_project_id: string | null
   created_at: string
   updated_at: string
 }
@@ -310,6 +415,15 @@ export type DocumentType =
   | 'sample_clearance'
   | 'distribution_agreement'
 
+export type VerificationState = 'pass' | 'fail' | 'pending'
+export type VerificationCheck = {
+  key: string
+  label: string
+  detail: string
+  state: VerificationState
+}
+export type VerificationStatus = 'unverified' | 'verifying' | 'verified' | 'failed'
+
 export type VaultDocument = {
   id: string
   project_id: string | null
@@ -319,6 +433,13 @@ export type VaultDocument = {
   status: 'pending' | 'signed' | 'verified'
   document_data: Record<string, unknown>
   signed_at: string | null
+  // Contract Locker upload + AI verification (migration 011).
+  source: 'generated' | 'uploaded'
+  file_url: string | null
+  verification_status: VerificationStatus
+  verification_checks: VerificationCheck[]
+  verification_summary: string | null
+  verified_at: string | null
   created_at: string
 }
 

@@ -9,20 +9,31 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
 export default async function PitchPlugPage() {
   let projects: PitchProjectOption[] = []
+  let artistHandle: string | null = null
 
   if (DEMO) {
-    projects = (await getDemoProjects()).map(p => ({ id: p.id, title: p.title, type: p.type }))
+    projects = (await getDemoProjects()).map(p => ({ id: p.id, title: p.title, type: p.type, isPublic: true }))
+    artistHandle = 'maya-reyes'
   } else {
     const supabase = createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    const { data } = await supabase
-      .from('vault_projects')
-      .select('id, title, type')
-      .eq('user_id', user?.id ?? '')
-      .order('created_at', { ascending: false })
-    projects = (data ?? []) as PitchProjectOption[]
+    const [{ data: profile }, { data }] = await Promise.all([
+      supabase.from('artist_profiles').select('handle, is_public').eq('id', user?.id ?? '').maybeSingle(),
+      supabase
+        .from('vault_projects')
+        .select('id, title, type, is_public')
+        .eq('user_id', user?.id ?? '')
+        .order('created_at', { ascending: false }),
+    ])
+    artistHandle = profile?.is_public ? (profile.handle ?? null) : null
+    projects = ((data ?? []) as { id: string; title: string; type: string; is_public: boolean }[]).map(p => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      isPublic: p.is_public,
+    }))
   }
 
   return (
@@ -51,7 +62,7 @@ export default async function PitchPlugPage() {
         </div>
       ) : (
         <div className="mt-8">
-          <PitchPlugForm projects={projects} demo={DEMO} />
+          <PitchPlugForm projects={projects} demo={DEMO} artistHandle={artistHandle} />
         </div>
       )}
     </div>

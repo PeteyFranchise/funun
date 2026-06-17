@@ -2,13 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Funun design tokens (raw CSS vars) ───────────────────────────────
+   Mirror the Tailwind theme so raw CSS (conic-gradient rings, gradient
+   text) and arbitrary values can reference the same palette. */
 :root {
   color-scheme: dark;
+  --bg: #0a0a0f;
+  --card: #0e0d1e;
+  --card-2: #1a1838;
+  --white: #ffffff;
+  --lav: #c7cbf7;
+  --lav-dim: #7c80b4;
+  --indigo: #818cf8;
+  --fuchsia: #d946ef;
+  --emerald: #34d399;
+  --amber: #f59e0b;
+  --amber-2: #f4c77b;
+  --rose: #f43f5e;
+  --grad: linear-gradient(105deg, #818cf8 0%, #d946ef 100%);
+  --grad-money: linear-gradient(105deg, #f4c77b 0%, #f59e0b 100%);
+  --border: rgba(199, 203, 247, 0.12);
+  --border-strong: rgba(199, 203, 247, 0.22);
 }
 
 body {
-  background-color: #0a0a0f;
-  color: #ffffff;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+  background-color: var(--bg);
+  color: var(--white);
+  font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /* Gradient text helpers (signature + money). */
+  .gtext {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .mtext {
+    background: var(--grad-money);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Tabular figures for scores, durations, times. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
 }
