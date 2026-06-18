@@ -2,6 +2,8 @@ import Link from 'next/link'
 import type { ProfileRole, OpenTo } from '@/types'
 import { PROFILE_ROLE_LABELS } from '@/types'
 import { FollowButton } from './FollowButton'
+import { Wall, type WallState } from './Wall'
+import { Endorsements, type EndorsementState } from './Endorsements'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -104,7 +106,19 @@ function Card({ title, children, eyebrow }: { title?: string; eyebrow?: string; 
   )
 }
 
-export function ProfileView({ data, mode, follow }: { data: ProfileData; mode: 'owner' | 'public'; follow?: FollowState }) {
+export function ProfileView({
+  data,
+  mode,
+  follow,
+  wall,
+  endorsements,
+}: {
+  data: ProfileData
+  mode: 'owner' | 'public'
+  follow?: FollowState
+  wall?: WallState
+  endorsements?: EndorsementState
+}) {
   return (
     <div className="min-h-screen bg-ink text-white">
       {/* Top bar */}
@@ -264,9 +278,12 @@ export function ProfileView({ data, mode, follow }: { data: ProfileData; mode: '
               )}
             </Card>
 
-            {/* Follow is live; the rest of the social layer is rolling out. */}
+            {endorsements && <Endorsements state={endorsements} />}
+            {wall && <Wall wall={wall} />}
+
+            {/* Follow, Wall & Endorsements are live; the rest is rolling out. */}
             <div className="rounded-[18px] border border-dashed border-hairstrong bg-card/40 p-5 text-[13px] text-lavdim">
-              More network features — wall, comments, endorsements, activity & messaging — are rolling out.
+              More network features — release comments, activity feed & messaging — are rolling out.
             </div>
           </div>
 

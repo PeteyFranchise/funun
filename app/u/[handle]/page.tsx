@@ -4,10 +4,18 @@ import type { ArtistProfile } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
 import { ProfileView, type FollowState } from '@/components/profile/ProfileView'
+import type { WallState } from '@/components/profile/Wall'
+import type { EndorsementState } from '@/components/profile/Endorsements'
+import { loadWall } from '@/lib/social/wall'
+import { loadEndorsements } from '@/lib/social/endorsements'
 
 export const dynamic = 'force-dynamic'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+
+function ago(hours: number): string {
+  return new Date(Date.now() - hours * 3600_000).toISOString()
+}
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params
@@ -16,6 +24,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let projects: ProfileProjectRow[] = []
   let followerCount: number | null = null
   let follow: FollowState | undefined
+  let wall: WallState | undefined
+  let endorsements: EndorsementState | undefined
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -31,6 +41,26 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }))
     followerCount = 12800
     follow = { profileUserId: profile.id, isFollowing: false, canFollow: true }
+    wall = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      canPost: true,
+      viewerInitials: 'YOU',
+      posts: [
+        { id: 'w1', body: 'Loved the new single. Are you taking meetings this month?', createdAt: ago(5), authorName: 'Adaeze Okafor', authorAvatarUrl: null, authorRole: 'A&R' },
+        { id: 'w2', body: 'That topline on “Paper” is unreal — would love to send a beat pack for the next project.', createdAt: ago(48), authorName: 'Diego Vega', authorAvatarUrl: null, authorRole: 'Producer' },
+      ],
+    }
+    endorsements = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      canEndorse: true,
+      viewerHasEndorsed: false,
+      endorsements: [
+        { id: 'e1', body: 'Delivers broadcast-ready stems and clean splits every time — the first call when I need emotive vocal-led cues on a deadline.', createdAt: ago(72), authorName: 'Rina Tan', authorAvatarUrl: null, authorRole: 'Music supervisor · Crescent Pictures' },
+        { id: 'e2', body: 'One of the most prepared independent artists I’ve worked with — every session ends with the paperwork and metadata already sorted.', createdAt: ago(200), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer · co-writer' },
+      ],
+    }
   } else {
     const supabase = createServerClient()
     const { data: prof } = await supabase
@@ -71,8 +101,25 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       isFollowing,
       canFollow: Boolean(viewerId) && viewerId !== profile.id,
     }
+
+    wall = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      canPost: Boolean(viewerId),
+      viewerInitials: '',
+      posts: await loadWall(supabase, profile.id),
+    }
+
+    const endo = await loadEndorsements(supabase, profile.id, viewerId)
+    endorsements = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      canEndorse: Boolean(viewerId) && viewerId !== profile.id,
+      viewerHasEndorsed: endo.viewerHasEndorsed,
+      endorsements: endo.items,
+    }
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount })
-  return <ProfileView data={data} mode="public" follow={follow} />
+  return <ProfileView data={data} mode="public" follow={follow} wall={wall} endorsements={endorsements} />
 }

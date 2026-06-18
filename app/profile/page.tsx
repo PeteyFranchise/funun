@@ -4,15 +4,25 @@ import type { ArtistProfile } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
 import { ProfileView } from '@/components/profile/ProfileView'
+import type { WallState } from '@/components/profile/Wall'
+import type { EndorsementState } from '@/components/profile/Endorsements'
+import { loadWall } from '@/lib/social/wall'
+import { loadEndorsements } from '@/lib/social/endorsements'
 
 export const dynamic = 'force-dynamic'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
+function initialsOf(name: string | null): string {
+  return (name ?? 'You').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
 export default async function OwnerProfilePage() {
   let profile: ArtistProfile | null = null
   let projects: ProfileProjectRow[] = []
   let followerCount: number | null = null
+  let wall: WallState | undefined
+  let endorsements: EndorsementState | undefined
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -26,6 +36,26 @@ export default async function OwnerProfilePage() {
       is_public: true,
     }))
     followerCount = 12800
+    wall = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'You',
+      canPost: true,
+      viewerInitials: initialsOf(profile.artist_name),
+      posts: [
+        { id: 'w1', body: 'Loved the new single. Are you taking meetings this month?', createdAt: new Date(Date.now() - 5 * 3600_000).toISOString(), authorName: 'Adaeze Okafor', authorAvatarUrl: null, authorRole: 'A&R' },
+        { id: 'w2', body: 'That topline on “Paper” is unreal — would love to send a beat pack.', createdAt: new Date(Date.now() - 48 * 3600_000).toISOString(), authorName: 'Diego Vega', authorAvatarUrl: null, authorRole: 'Producer' },
+      ],
+    }
+    endorsements = {
+      profileUserId: profile.id,
+      ownerName: profile.artist_name ?? 'You',
+      canEndorse: false,
+      viewerHasEndorsed: false,
+      endorsements: [
+        { id: 'e1', body: 'Delivers broadcast-ready stems and clean splits every time — the first call when I need emotive vocal-led cues on a deadline.', createdAt: new Date(Date.now() - 72 * 3600_000).toISOString(), authorName: 'Rina Tan', authorAvatarUrl: null, authorRole: 'Music supervisor · Crescent Pictures' },
+        { id: 'e2', body: 'One of the most prepared independent artists I’ve worked with — every session ends with the paperwork already sorted.', createdAt: new Date(Date.now() - 200 * 3600_000).toISOString(), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer · co-writer' },
+      ],
+    }
   } else {
     const supabase = createServerClient()
     const {
@@ -45,10 +75,25 @@ export default async function OwnerProfilePage() {
     profile = (prof as ArtistProfile) ?? null
     projects = (projs ?? []) as ProfileProjectRow[]
     followerCount = count ?? 0
+    wall = {
+      profileUserId: user.id,
+      ownerName: profile?.artist_name ?? 'You',
+      canPost: true,
+      viewerInitials: initialsOf(profile?.artist_name ?? null),
+      posts: await loadWall(supabase, user.id),
+    }
+    const endo = await loadEndorsements(supabase, user.id, user.id)
+    endorsements = {
+      profileUserId: user.id,
+      ownerName: profile?.artist_name ?? 'You',
+      canEndorse: false, // can't endorse yourself
+      viewerHasEndorsed: false,
+      endorsements: endo.items,
+    }
   }
 
   if (!profile) redirect('/settings')
 
   const data = buildProfileData(profile, projects, { publicOnly: false, followerCount })
-  return <ProfileView data={data} mode="owner" />
+  return <ProfileView data={data} mode="owner" wall={wall} endorsements={endorsements} />
 }
