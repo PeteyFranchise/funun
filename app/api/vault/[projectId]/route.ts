@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { emitActivity } from '@/lib/social/activity-emit'
 import { createApiClient } from '@/lib/supabase/server'
 import type { VaultProjectStatus, VaultProjectType } from '@/types'
 import { updateDemoProject, deleteDemoProject } from '@/lib/vault/demo-store'
@@ -140,6 +141,17 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+
+  // Auto-emit a 'release' activity when a project goes live.
+  if (result.status === 'released') {
+    await emitActivity(supabase, {
+      profileId: user.id,
+      kind: 'release',
+      body: `Released “${data.title}”.`,
+      data: { projectId },
+    })
+  }
+
   return NextResponse.json({ data })
 }
 

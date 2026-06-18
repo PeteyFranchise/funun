@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createSubmission } from '@/lib/submissions'
 import { createNotification } from '@/lib/notifications'
+import { emitActivity } from '@/lib/social/activity-emit'
 import type { Opportunity } from '@/types'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
@@ -95,6 +96,14 @@ export async function POST(
   } catch {
     // Non-fatal: the application already succeeded.
   }
+
+  // 4. Activity feed: record the pitch as a placement-track milestone.
+  await emitActivity(supabase, {
+    profileId: user.id,
+    kind: 'placement',
+    body: `Pitched “${project.title}” to ${opportunity.title}.`,
+    data: { opportunityId, projectId: b.projectId },
+  })
 
   return NextResponse.json({ data: { submission, applied: true } })
 }
