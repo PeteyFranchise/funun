@@ -5,6 +5,7 @@ import { FollowButton } from './FollowButton'
 import { Wall, type WallState } from './Wall'
 import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
+import { ActivityFeed, type ActivityState } from './ActivityFeed'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -114,6 +115,7 @@ export function ProfileView({
   wall,
   endorsements,
   comments,
+  activity,
 }: {
   data: ProfileData
   mode: 'owner' | 'public'
@@ -121,6 +123,7 @@ export function ProfileView({
   wall?: WallState
   endorsements?: EndorsementState
   comments?: ReleaseCommentsState
+  activity?: ActivityState
 }) {
   return (
     <div className="min-h-screen bg-ink text-white">
@@ -282,12 +285,13 @@ export function ProfileView({
               {comments && <ReleaseComments state={comments} />}
             </Card>
 
+            {activity && <ActivityFeed state={activity} />}
             {endorsements && <Endorsements state={endorsements} />}
             {wall && <Wall wall={wall} />}
 
-            {/* Follow, Wall, Endorsements & Comments are live; the rest is rolling out. */}
+            {/* Follow, Wall, Endorsements, Comments & Activity are live; DMs are next. */}
             <div className="rounded-[18px] border border-dashed border-hairstrong bg-card/40 p-5 text-[13px] text-lavdim">
-              More network features — activity feed & direct messaging — are rolling out.
+              Direct messaging is rolling out next.
             </div>
           </div>
 

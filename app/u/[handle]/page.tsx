@@ -7,9 +7,11 @@ import { ProfileView, type FollowState } from '@/components/profile/ProfileView'
 import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
+import type { ActivityState } from '@/components/profile/ActivityFeed'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
+import { loadActivity } from '@/lib/social/activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +31,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
+  let activity: ActivityState | undefined
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -79,6 +82,13 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           ],
         }
       }
+    }
+    activity = {
+      items: [
+        { id: 'a1', kind: 'placement', body: 'Landed a sync placement — “Slow Burn” featured in a national lifestyle-brand campaign.', createdAt: ago(72) },
+        { id: 'a2', kind: 'release', body: 'Released a new single — “Paper” is out now and cleared for sync.', createdAt: ago(6) },
+        { id: 'a3', kind: 'readiness', body: 'Hit readiness 92 on “Midnight Ride” — now deal-ready and visible to supervisors.', createdAt: ago(168) },
+      ],
     }
   } else {
     const supabase = createServerClient()
@@ -151,6 +161,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         items: await loadReleaseComments(supabase, featProj.id),
       }
     }
+
+    activity = { items: await loadActivity(supabase, profile.id) }
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount })
@@ -162,6 +174,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       wall={wall}
       endorsements={endorsements}
       comments={comments}
+      activity={activity}
     />
   )
 }

@@ -7,9 +7,11 @@ import { ProfileView } from '@/components/profile/ProfileView'
 import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
+import type { ActivityState } from '@/components/profile/ActivityFeed'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
+import { loadActivity } from '@/lib/social/activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +28,7 @@ export default async function OwnerProfilePage() {
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
+  let activity: ActivityState | undefined
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -74,6 +77,13 @@ export default async function OwnerProfilePage() {
         }
       }
     }
+    activity = {
+      items: [
+        { id: 'a1', kind: 'placement', body: 'Landed a sync placement — “Slow Burn” featured in a national lifestyle-brand campaign.', createdAt: new Date(Date.now() - 72 * 3600_000).toISOString() },
+        { id: 'a2', kind: 'release', body: 'Released a new single — “Paper” is out now and cleared for sync.', createdAt: new Date(Date.now() - 6 * 3600_000).toISOString() },
+        { id: 'a3', kind: 'readiness', body: 'Hit readiness 92 on “Midnight Ride” — now deal-ready and visible to supervisors.', createdAt: new Date(Date.now() - 168 * 3600_000).toISOString() },
+      ],
+    }
   } else {
     const supabase = createServerClient()
     const {
@@ -121,10 +131,21 @@ export default async function OwnerProfilePage() {
         items: await loadReleaseComments(supabase, featProj.id),
       }
     }
+
+    activity = { items: await loadActivity(supabase, user.id) }
   }
 
   if (!profile) redirect('/settings')
 
   const data = buildProfileData(profile, projects, { publicOnly: false, followerCount })
-  return <ProfileView data={data} mode="owner" wall={wall} endorsements={endorsements} comments={comments} />
+  return (
+    <ProfileView
+      data={data}
+      mode="owner"
+      wall={wall}
+      endorsements={endorsements}
+      comments={comments}
+      activity={activity}
+    />
+  )
 }
