@@ -4,6 +4,7 @@ import { PROFILE_ROLE_LABELS } from '@/types'
 import { FollowButton } from './FollowButton'
 import { Wall, type WallState } from './Wall'
 import { Endorsements, type EndorsementState } from './Endorsements'
+import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -112,12 +113,14 @@ export function ProfileView({
   follow,
   wall,
   endorsements,
+  comments,
 }: {
   data: ProfileData
   mode: 'owner' | 'public'
   follow?: FollowState
   wall?: WallState
   endorsements?: EndorsementState
+  comments?: ReleaseCommentsState
 }) {
   return (
     <div className="min-h-screen bg-ink text-white">
@@ -276,14 +279,15 @@ export function ProfileView({
                   {data.releases.map(r => <ReleaseCard key={r.id} r={r} />)}
                 </div>
               )}
+              {comments && <ReleaseComments state={comments} />}
             </Card>
 
             {endorsements && <Endorsements state={endorsements} />}
             {wall && <Wall wall={wall} />}
 
-            {/* Follow, Wall & Endorsements are live; the rest is rolling out. */}
+            {/* Follow, Wall, Endorsements & Comments are live; the rest is rolling out. */}
             <div className="rounded-[18px] border border-dashed border-hairstrong bg-card/40 p-5 text-[13px] text-lavdim">
-              More network features — release comments, activity feed & messaging — are rolling out.
+              More network features — activity feed & direct messaging — are rolling out.
             </div>
           </div>
 

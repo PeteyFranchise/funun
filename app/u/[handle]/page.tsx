@@ -6,8 +6,10 @@ import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/pr
 import { ProfileView, type FollowState } from '@/components/profile/ProfileView'
 import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
+import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
+import { loadReleaseComments } from '@/lib/social/comments'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +28,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let follow: FollowState | undefined
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
+  let comments: ReleaseCommentsState | undefined
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -60,6 +63,22 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         { id: 'e1', body: 'Delivers broadcast-ready stems and clean splits every time — the first call when I need emotive vocal-led cues on a deadline.', createdAt: ago(72), authorName: 'Rina Tan', authorAvatarUrl: null, authorRole: 'Music supervisor · Crescent Pictures' },
         { id: 'e2', body: 'One of the most prepared independent artists I’ve worked with — every session ends with the paperwork and metadata already sorted.', createdAt: ago(200), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer · co-writer' },
       ],
+    }
+    {
+      const feat = [...projects].sort((a, b) => b.vault_readiness_score - a.vault_readiness_score)[0]
+      if (feat) {
+        comments = {
+          projectId: feat.id,
+          releaseTitle: feat.title,
+          canComment: true,
+          viewerInitials: 'YOU',
+          items: [
+            { id: 'c1', parentId: null, body: 'The low-end on the title track is so clean — translates great on the car system 🔥', createdAt: ago(48), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer' },
+            { id: 'c2', parentId: 'c1', body: 'That means a lot coming from you — thank you for the master pass!', createdAt: ago(24), authorName: profile.artist_name ?? 'Artist', authorAvatarUrl: null, authorRole: 'Artist' },
+            { id: 'c3', parentId: null, body: 'Adding this to my shortlist for the indie drama we’re scoring. Will reach out via Funūn.', createdAt: ago(20), authorName: 'Rina Tan', authorAvatarUrl: null, authorRole: 'Music supervisor' },
+          ],
+        }
+      }
     }
   } else {
     const supabase = createServerClient()
@@ -118,8 +137,31 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       viewerHasEndorsed: endo.viewerHasEndorsed,
       endorsements: endo.items,
     }
+
+    const featuredId = profile.featured_project_id
+    const featProj =
+      projects.find(p => p.id === featuredId) ??
+      [...projects].sort((a, b) => b.vault_readiness_score - a.vault_readiness_score)[0]
+    if (featProj) {
+      comments = {
+        projectId: featProj.id,
+        releaseTitle: featProj.title,
+        canComment: Boolean(viewerId),
+        viewerInitials: '',
+        items: await loadReleaseComments(supabase, featProj.id),
+      }
+    }
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount })
-  return <ProfileView data={data} mode="public" follow={follow} wall={wall} endorsements={endorsements} />
+  return (
+    <ProfileView
+      data={data}
+      mode="public"
+      follow={follow}
+      wall={wall}
+      endorsements={endorsements}
+      comments={comments}
+    />
+  )
 }

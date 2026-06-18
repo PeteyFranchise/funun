@@ -6,8 +6,10 @@ import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/pr
 import { ProfileView } from '@/components/profile/ProfileView'
 import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
+import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
+import { loadReleaseComments } from '@/lib/social/comments'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +25,7 @@ export default async function OwnerProfilePage() {
   let followerCount: number | null = null
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
+  let comments: ReleaseCommentsState | undefined
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -55,6 +58,21 @@ export default async function OwnerProfilePage() {
         { id: 'e1', body: 'Delivers broadcast-ready stems and clean splits every time — the first call when I need emotive vocal-led cues on a deadline.', createdAt: new Date(Date.now() - 72 * 3600_000).toISOString(), authorName: 'Rina Tan', authorAvatarUrl: null, authorRole: 'Music supervisor · Crescent Pictures' },
         { id: 'e2', body: 'One of the most prepared independent artists I’ve worked with — every session ends with the paperwork already sorted.', createdAt: new Date(Date.now() - 200 * 3600_000).toISOString(), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer · co-writer' },
       ],
+    }
+    {
+      const feat = [...projects].sort((a, b) => b.vault_readiness_score - a.vault_readiness_score)[0]
+      if (feat) {
+        comments = {
+          projectId: feat.id,
+          releaseTitle: feat.title,
+          canComment: true,
+          viewerInitials: initialsOf(profile.artist_name),
+          items: [
+            { id: 'c1', parentId: null, body: 'The low-end on the title track is so clean — translates great on the car system 🔥', createdAt: new Date(Date.now() - 48 * 3600_000).toISOString(), authorName: 'Jonah Cole', authorAvatarUrl: null, authorRole: 'Producer' },
+            { id: 'c2', parentId: 'c1', body: 'That means a lot — thank you for the master pass!', createdAt: new Date(Date.now() - 24 * 3600_000).toISOString(), authorName: profile.artist_name ?? 'You', authorAvatarUrl: null, authorRole: 'Artist' },
+          ],
+        }
+      }
     }
   } else {
     const supabase = createServerClient()
@@ -90,10 +108,23 @@ export default async function OwnerProfilePage() {
       viewerHasEndorsed: false,
       endorsements: endo.items,
     }
+
+    const featProj =
+      projects.find(p => p.id === profile?.featured_project_id) ??
+      [...projects].sort((a, b) => b.vault_readiness_score - a.vault_readiness_score)[0]
+    if (featProj) {
+      comments = {
+        projectId: featProj.id,
+        releaseTitle: featProj.title,
+        canComment: true,
+        viewerInitials: initialsOf(profile?.artist_name ?? null),
+        items: await loadReleaseComments(supabase, featProj.id),
+      }
+    }
   }
 
   if (!profile) redirect('/settings')
 
   const data = buildProfileData(profile, projects, { publicOnly: false, followerCount })
-  return <ProfileView data={data} mode="owner" wall={wall} endorsements={endorsements} />
+  return <ProfileView data={data} mode="owner" wall={wall} endorsements={endorsements} comments={comments} />
 }
