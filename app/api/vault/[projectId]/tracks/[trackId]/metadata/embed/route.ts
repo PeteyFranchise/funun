@@ -115,6 +115,9 @@ export async function POST(
     language: f.language || undefined,
     bpm: f.bpm || undefined,
     comment: { language: 'eng', text: f.comment },
+    ...(f.lyrics
+      ? { unsynchronisedLyrics: { language: f.lyricsLanguage, text: f.lyrics } }
+      : {}),
     userDefinedText: [
       f.isrc && { description: 'ISRC', value: f.isrc },
       f.iswc && { description: 'ISWC', value: f.iswc },

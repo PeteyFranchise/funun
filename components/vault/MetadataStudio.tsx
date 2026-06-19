@@ -29,6 +29,8 @@ type StudioTrack = {
   language: string
   audio_file_url: string | null
   composers: Composer[]
+  lyrics: string
+  lyricsExplicit: boolean
 }
 
 type ReleaseState = {
@@ -165,7 +167,12 @@ export function MetadataStudio({
           isrc: t.isrc || null,
           iswc: t.iswc || null,
           language: t.language || null,
-          metadata: { composers: t.composers },
+          metadata: {
+            composers: t.composers,
+            lyrics: t.lyrics.trim()
+              ? { text: t.lyrics, language: t.language || undefined, explicit: t.lyricsExplicit }
+              : null,
+          },
         }),
       })
       router.refresh()
@@ -296,6 +303,30 @@ export function MetadataStudio({
                   composers={t.composers}
                   onChange={composers => setTrack(t.id, { composers })}
                 />
+              </div>
+
+              {/* Lyrics */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Lyrics</p>
+                  <label className="flex items-center gap-1.5 text-xs text-white/50">
+                    <input
+                      type="checkbox"
+                      checked={t.lyricsExplicit}
+                      onChange={e => setTrack(t.id, { lyricsExplicit: e.target.checked })}
+                      className="accent-fuchsia-500"
+                    />
+                    Explicit
+                  </label>
+                </div>
+                <textarea
+                  value={t.lyrics}
+                  onChange={e => setTrack(t.id, { lyrics: e.target.value.slice(0, 20000) })}
+                  rows={t.lyrics ? 8 : 3}
+                  placeholder={t.language === 'zxx' ? 'Instrumental — no lyrics.' : 'Paste the song lyrics… (embedded into the file as ID3 lyrics and the metadata sidecar)'}
+                  className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-[#0E0D1E] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                <p className="mt-1 text-right text-[11px] text-white/30">{t.lyrics.length.toLocaleString()} / 20,000</p>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">

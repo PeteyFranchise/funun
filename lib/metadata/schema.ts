@@ -69,9 +69,21 @@ export type Composer = {
   split: number
 }
 
+// Per-track lyrics, stored inside tracks.metadata JSONB. Plain text for v1
+// (time-synced/LRC is a later extension under the same object).
+export type TrackLyrics = {
+  text: string
+  language?: string
+  explicit?: boolean
+  updated_at?: string
+}
+
+export const LYRICS_MAX = 20000
+
 // Shape we read out of (and write into) tracks.metadata JSONB.
 export type TrackMetadata = {
   composers?: Composer[]
+  lyrics?: TrackLyrics
 }
 
 // Release-level rights & contact — shared across the project. Mirrors the
@@ -170,4 +182,25 @@ export function sanitizeComposers(input: unknown): Composer[] {
     out.push({ name, role, pro, ipi: ipi || undefined, split })
   }
   return out
+}
+
+/** Read typed lyrics out of a loose metadata JSONB blob (null if absent). */
+export function readLyrics(metadata: Record<string, unknown> | null | undefined): TrackLyrics | null {
+  const raw = metadata?.lyrics as Record<string, unknown> | undefined
+  if (!raw || typeof raw.text !== 'string' || !raw.text.trim()) return null
+  return {
+    text: raw.text,
+    language: typeof raw.language === 'string' && raw.language ? raw.language : undefined,
+    explicit: raw.explicit === true,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+  }
+}
+
+/** Validate + normalize lyrics input from the client (null clears them). */
+export function sanitizeLyrics(input: unknown): TrackLyrics | null {
+  const o = (input ?? {}) as Record<string, unknown>
+  const text = String(o.text ?? '').slice(0, LYRICS_MAX)
+  if (!text.trim()) return null
+  const language = typeof o.language === 'string' && o.language ? o.language : undefined
+  return { text, language, explicit: o.explicit === true, updated_at: new Date().toISOString() }
 }

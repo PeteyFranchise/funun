@@ -3,7 +3,7 @@
 // typed ReleaseBundle the exporters use and the ReleaseForCheck the
 // validator uses. One place so the page, export, and embed routes agree.
 
-import { readComposers, type ReleaseRights } from '@/lib/metadata/schema'
+import { readComposers, readLyrics, type ReleaseRights } from '@/lib/metadata/schema'
 import type { ReleaseBundle, TrackMeta } from '@/lib/metadata/export'
 import type { ReleaseForCheck, TrackForCheck } from '@/lib/metadata/validate'
 
@@ -77,6 +77,7 @@ export function buildBundle(
     language: t.language,
     featuring_artists: t.featuring_artists ?? [],
     composers: readComposers(t.metadata),
+    lyrics: readLyrics(t.metadata),
     audio_file_url: t.audio_file_url,
   }))
 

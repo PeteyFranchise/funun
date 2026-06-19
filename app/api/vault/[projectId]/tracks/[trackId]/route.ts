@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { sanitizeComposers } from '@/lib/metadata/schema'
+import { sanitizeComposers, sanitizeLyrics } from '@/lib/metadata/schema'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -60,6 +60,9 @@ function sanitize(body: Record<string, unknown>): TrackUpdate {
     const next: Record<string, unknown> = {}
     if ('composers' in incoming) {
       next.composers = sanitizeComposers(incoming.composers)
+    }
+    if ('lyrics' in incoming) {
+      next.lyrics = sanitizeLyrics(incoming.lyrics) // null clears them
     }
     if (Object.keys(next).length > 0) update.metadata = next
   }

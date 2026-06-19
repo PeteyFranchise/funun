@@ -13,7 +13,17 @@ import {
   PRO_LABELS,
   type Composer,
   type ReleaseRights,
+  type TrackLyrics,
 } from '@/lib/metadata/schema'
+
+// ISO 639-1 → 639-2/T for the ID3 USLT language field (3-letter).
+const ISO2TO3: Record<string, string> = {
+  en: 'eng', es: 'spa', fr: 'fra', pt: 'por', de: 'deu', it: 'ita',
+  ja: 'jpn', ko: 'kor', zh: 'zho', ar: 'ara', hi: 'hin',
+}
+function iso3(code: string | null | undefined): string {
+  return ISO2TO3[(code ?? '').toLowerCase()] ?? 'eng'
+}
 
 export type TrackMeta = {
   title: string
@@ -27,6 +37,7 @@ export type TrackMeta = {
   language: string | null
   featuring_artists: string[]
   composers: Composer[]
+  lyrics: TrackLyrics | null
   audio_file_url: string | null
 }
 
@@ -61,6 +72,8 @@ export type Id3Fields = {
   iswc: string
   upc: string
   comment: string
+  lyrics: string
+  lyricsLanguage: string
 }
 
 function rightsLines(r: ReleaseRights): string {
@@ -111,6 +124,8 @@ export function buildId3Fields(release: ReleaseBundle, track: TrackMeta): Id3Fie
     iswc: track.iswc ?? '',
     upc: release.upc ?? '',
     comment: buildContactComment(release, track),
+    lyrics: track.lyrics?.text ?? '',
+    lyricsLanguage: iso3(track.lyrics?.language ?? track.language),
   }
 }
 
@@ -145,6 +160,9 @@ export function buildSidecar(release: ReleaseBundle, track: TrackMeta): string {
     '',
     '─── RIGHTS & CONTACT ───',
     f.comment || '—',
+    ...(track.lyrics?.text
+      ? ['', `─── LYRICS${track.lyrics.explicit ? ' (explicit)' : ''} ───`, track.lyrics.text]
+      : []),
   ]
   return lines.join('\n')
 }
