@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import type { EligibilityResult, EligibilityGate } from '@/lib/eligibility/direct-overlay'
 
-export type CoachRelease = { projectId: string; title: string; result: EligibilityResult }
+export type CoachRelease = {
+  projectId: string
+  title: string
+  result: EligibilityResult
+  /** DDEX RDR-N neighbouring-rights readiness summary. */
+  rdr: { coreCount: number; recommendedCount: number; total: number }
+}
 
 const GATE_STATE = {
   pass: { tile: 'bg-emerald-400/12', stroke: '#34D399' },
@@ -92,6 +98,26 @@ export function RightsCoach({ releases }: { releases: CoachRelease[] }) {
           <div className="h-[9px] overflow-hidden rounded-[5px] bg-[rgba(199,203,247,.12)]">
             <div className="h-full rounded-[5px] bg-grad" style={{ width: `${pct}%` }} />
           </div>
+        </div>
+
+        {/* Neighbouring rights (DDEX RDR — master/SoundExchange side) */}
+        <div className="mb-5 flex items-center justify-between rounded-[14px] border border-hair bg-card px-[18px] py-[14px]">
+          <div>
+            <div className="text-[14px] font-bold text-white">Neighbouring rights (DDEX RDR)</div>
+            <div className="mt-[2px] text-[12.5px] text-lavdim">
+              {current.rdr.coreCount}/{current.rdr.total} register-ready · {current.rdr.recommendedCount} pay-out-ready
+              for SoundExchange / PPL
+            </div>
+          </div>
+          <span
+            className={`flex-none rounded-full border px-3 py-[5px] text-[12px] font-bold ${current.rdr.total > 0 && current.rdr.recommendedCount === current.rdr.total ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400' : current.rdr.coreCount > 0 ? 'border-money/30 bg-money/10 text-money2' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}`}
+          >
+            {current.rdr.total > 0 && current.rdr.recommendedCount === current.rdr.total
+              ? 'Recommended'
+              : current.rdr.coreCount > 0
+                ? 'Core'
+                : 'Add performers'}
+          </span>
         </div>
 
         <div className="mb-[18px] rounded-[16px] border border-brandindigo/30 bg-[linear-gradient(155deg,rgba(129,140,248,.14),rgba(217,70,239,.1))] p-[22px]">

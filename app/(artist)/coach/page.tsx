@@ -1,6 +1,8 @@
 import { createServerClient } from '@/lib/supabase/server'
 import type { Track, VaultDocument, VaultProject } from '@/types'
 import { buildEligibilityInput, evaluateDirectOverlayEligibility } from '@/lib/eligibility/direct-overlay'
+import { readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
+import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { Topbar } from '@/components/layout/Topbar'
 import { RightsCoach, type CoachRelease } from '@/components/coach/RightsCoach'
@@ -13,23 +15,29 @@ type LoadedProject = VaultProject & { tracks?: Track[]; vault_documents?: VaultD
 
 export default async function CoachPage() {
   let projects: LoadedProject[] = []
+  let artist: string | null = null
 
   if (DEMO) {
     projects = (await getDemoProjects()) as unknown as LoadedProject[]
+    artist = 'Maya Reyes'
   } else {
     const supabase = createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    const { data } = await supabase
-      .from('vault_projects')
-      .select(
-        `id, title,
-         tracks (id, title, has_sample, audio_file_url, language, metadata),
-         vault_documents (id, type, status, project_id, track_id, signed_at)`
-      )
-      .eq('user_id', user?.id ?? '')
-      .order('created_at', { ascending: false })
+    const [{ data: profile }, { data }] = await Promise.all([
+      supabase.from('artist_profiles').select('artist_name').eq('id', user?.id ?? '').maybeSingle(),
+      supabase
+        .from('vault_projects')
+        .select(
+          `id, title, p_line, label,
+           tracks (id, title, isrc, has_sample, audio_file_url, language, metadata),
+           vault_documents (id, type, status, project_id, track_id, signed_at)`
+        )
+        .eq('user_id', user?.id ?? '')
+        .order('created_at', { ascending: false }),
+    ])
+    artist = profile?.artist_name ?? null
     projects = (data ?? []) as unknown as LoadedProject[]
   }
 
@@ -39,7 +47,22 @@ export default async function CoachPage() {
       (p.tracks ?? []) as Track[],
       (p.vault_documents ?? []) as VaultDocument[]
     )
-    return { projectId: p.id, title: p.title, result: evaluateDirectOverlayEligibility(input) }
+    const rightsOwner = (p as { p_line?: string | null }).p_line || (p as { label?: string | null }).label || artist
+    const rdrInputs: RdrTrackInput[] = (p.tracks ?? []).map(t => ({
+      title: t.title ?? 'Untitled',
+      isrc: t.isrc ?? null,
+      mainArtist: artist,
+      rightsOwner,
+      performers: readPerformers(t.metadata),
+      recording: readRecordingInfo(t.metadata),
+    }))
+    const rdr = assessRdrReadiness(rdrInputs)
+    return {
+      projectId: p.id,
+      title: p.title,
+      result: evaluateDirectOverlayEligibility(input),
+      rdr: { coreCount: rdr.coreCount, recommendedCount: rdr.recommendedCount, total: rdr.tracks.length },
+    }
   })
 
   const tier1 = releases.filter(r => r.result.tier1Eligible).length

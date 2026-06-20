@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import type { ReadinessItem } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { readinessItemsForProject, readinessLabel } from '@/lib/vault/readiness'
+import { readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
+import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { Topbar } from '@/components/layout/Topbar'
@@ -88,7 +90,7 @@ async function loadProject(projectId: string): Promise<{ project: VaultProjectRo
     supabase
       .from('vault_projects')
       .select(
-        `*, tracks (id, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug)`
+        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug)`
       )
       .eq('id', projectId)
       .eq('user_id', user?.id ?? '')
@@ -116,6 +118,21 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
   const { label } = readinessLabel(score)
   const pct = total > 0 ? Math.round((complete / total) * 100) : 0
   const firstBlocker = items.find(i => i.status !== 'complete')
+
+  // Neighbouring-rights (DDEX RDR-N) readiness — recording/master side.
+  const rightsOwner = (project as { p_line?: string | null; label?: string | null }).p_line ||
+    (project as { label?: string | null }).label || artist
+  const rdrInputs: RdrTrackInput[] = (project.tracks ?? []).map(
+    (t: { title?: string | null; isrc?: string | null; metadata?: Record<string, unknown> | null }) => ({
+      title: t.title ?? 'Untitled',
+      isrc: t.isrc ?? null,
+      mainArtist: artist,
+      rightsOwner,
+      performers: readPerformers(t.metadata),
+      recording: readRecordingInfo(t.metadata),
+    })
+  )
+  const rdr = assessRdrReadiness(rdrInputs)
 
   return (
     <>
@@ -182,6 +199,51 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
           {items.map(item => (
             <GateRow key={item.key} item={item} projectId={projectId} />
           ))}
+
+          {/* Neighbouring rights (DDEX RDR — SoundExchange / PPL) */}
+          <div className="mb-[14px] mt-8 flex items-center justify-between">
+            <div className="text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">
+              Neighbouring rights (DDEX RDR)
+            </div>
+            <Link href={`/vault/${projectId}/metadata`} className="text-[12.5px] font-semibold text-brandindigo">
+              Add performers →
+            </Link>
+          </div>
+          <div className="rounded-[14px] border border-hair bg-card px-[18px] py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-bold text-white">
+                {rdr.coreCount}/{rdr.tracks.length} register-ready
+                <span className="ml-2 text-[13px] font-semibold text-lavdim">
+                  · {rdr.recommendedCount} pay-out-ready
+                </span>
+              </span>
+              <span
+                className={`rounded-full border px-3 py-[5px] text-[12px] font-bold ${rdr.recommendedCount === rdr.tracks.length && rdr.tracks.length > 0 ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-400' : rdr.hasCore ? 'border-money/30 bg-money/10 text-money2' : 'border-rose-500/30 bg-rose-500/10 text-rose-400'}`}
+              >
+                {rdr.recommendedCount === rdr.tracks.length && rdr.tracks.length > 0
+                  ? 'Recommended'
+                  : rdr.hasCore
+                    ? 'Core'
+                    : 'Not ready'}
+              </span>
+            </div>
+            <p className="mt-2 text-[13px] text-lavdim">
+              Register the master with SoundExchange/PPL for neighbouring-rights royalties.{' '}
+              {rdr.tracks.find(t => t.profile !== 'recommended') ? (
+                <>
+                  Next: add{' '}
+                  <span className="text-money2">
+                    {(rdr.tracks.find(t => t.coreMissing.length)?.coreMissing[0] ??
+                      rdr.tracks.find(t => t.recommendedMissing.length)?.recommendedMissing[0] ??
+                      'performer identifiers').toLowerCase()}
+                  </span>
+                  .
+                </>
+              ) : (
+                <>Every recording is pay-out-ready.</>
+              )}
+            </p>
+          </div>
         </div>
       </div>
     </>
