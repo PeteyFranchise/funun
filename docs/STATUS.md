@@ -91,6 +91,19 @@ human: drafting the Songtrust outreach email (#8) and ERN/RDR-N XSD validation
       https://supabase.com/dashboard/account/tokens (013 + 014/015 tokens).
 - [ ] Decide on the final brand **name** (working name "Funūn"; "Sound Vault"
       collides; see naming history) and run the rename if it changes.
+- [ ] **Rename everything ArtistOS → Funūn.** Three layers:
+      1. **GitHub repo** `ArtistOS-platform` → `funun-platform` (rename in repo
+         settings; update the local `git remote set-url origin …`).
+      2. **Local folders** `~/Desktop/ArtistOS-platform/artistos-platform` →
+         `funun-platform/...` (then re-open the project from the new path).
+      3. **In-code references** — ~41 occurrences of "ArtistOS"/"artistos" across
+         ~20 files (e.g. `package.json` name, `README.md`, nav/layout brand
+         strings, `app/status`, `app/(auth)`/`(industry)` layouts, several
+         `lib/*` + `docs/*` + migration comments). Find them with:
+         `grep -rniI artistos --include='*.ts' --include='*.tsx' --include='*.json' --include='*.md' --include='*.sql' . | grep -v node_modules`
+         Note: most user-facing brand strings already say **Funūn**; these are
+         the leftover internal/legacy ones. (Claude can do layer 3 in one pass;
+         layers 1–2 are manual since they touch GitHub + the local filesystem.)
 - [ ] Review + merge **PR #1** → `main` when ready.
 - [ ] Set `ANTHROPIC_API_KEY` (contract verification) and optionally `DDEX_DPID`
       in the deploy env.
