@@ -585,7 +585,13 @@ function ExportBar({ projectId, ready }: { projectId: string; ready: boolean }) 
         href={`/api/vault/${projectId}/metadata/export?format=ddex`}
         className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
       >
-        DDEX XML
+        DDEX ERN
+      </a>
+      <a
+        href={`/api/vault/${projectId}/metadata/export?format=rdr`}
+        className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+      >
+        RDR-N XML
       </a>
       {!ready && <span className="text-xs text-amber-300/80">exports include current data</span>}
     </div>

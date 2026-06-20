@@ -1,4 +1,5 @@
 import { Topbar } from '@/components/layout/Topbar'
+import { DsrImport } from '@/components/earnings/DsrImport'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,9 @@ export default function EarningsPage() {
         subtitle="Royalties collected across your partners — mechanical, performance, sync & library"
       />
       <div className="flex-1 px-9 py-[30px]">
+        {/* Real earnings via DSR import */}
+        <DsrImport />
+
         {/* Honest illustrative banner */}
         <div className="mb-7 flex items-center gap-[14px] rounded-[14px] border border-money/30 bg-money/10 px-5 py-4">
           <svg viewBox="0 0 24 24" className="h-[22px] w-[22px] flex-none" fill="none" stroke="#F59E0B" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
