@@ -6,6 +6,7 @@ import { Wall, type WallState } from './Wall'
 import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
 import { ActivityFeed, type ActivityState } from './ActivityFeed'
+import { DmWidget, type DmState } from './DmWidget'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -116,6 +117,7 @@ export function ProfileView({
   endorsements,
   comments,
   activity,
+  dm,
 }: {
   data: ProfileData
   mode: 'owner' | 'public'
@@ -124,6 +126,7 @@ export function ProfileView({
   endorsements?: EndorsementState
   comments?: ReleaseCommentsState
   activity?: ActivityState
+  dm?: DmState
 }) {
   return (
     <div className="min-h-screen bg-ink text-white">
@@ -228,9 +231,13 @@ export function ProfileView({
                     Follow
                   </button>
                 )}
-                <button className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white opacity-60" title="Messaging coming soon" disabled>
-                  Message
-                </button>
+                {dm ? (
+                  <DmWidget dm={dm} />
+                ) : (
+                  <button className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white opacity-60" title="Messaging coming soon" disabled>
+                    Message
+                  </button>
+                )}
               </>
             )}
           </div>

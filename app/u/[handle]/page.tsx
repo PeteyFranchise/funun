@@ -8,10 +8,12 @@ import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import type { ActivityState } from '@/components/profile/ActivityFeed'
+import type { DmState } from '@/components/profile/DmWidget'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
+import { loadConversation } from '@/lib/social/dm'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +34,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
   let activity: ActivityState | undefined
+  let dm: DmState | undefined
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -89,6 +92,13 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         { id: 'a2', kind: 'release', body: 'Released a new single — “Paper” is out now and cleared for sync.', createdAt: ago(6) },
         { id: 'a3', kind: 'readiness', body: 'Hit readiness 92 on “Midnight Ride” — now deal-ready and visible to supervisors.', createdAt: ago(168) },
       ],
+    }
+    dm = {
+      ownerId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      ownerAvatarUrl: profile.avatar_url,
+      canMessage: true,
+      initialMessages: [],
     }
   } else {
     const supabase = createServerClient()
@@ -163,6 +173,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }
 
     activity = { items: await loadActivity(supabase, profile.id) }
+
+    const canMessage = Boolean(viewerId) && viewerId !== profile.id
+    dm = {
+      ownerId: profile.id,
+      ownerName: profile.artist_name ?? 'this artist',
+      ownerAvatarUrl: profile.avatar_url,
+      canMessage,
+      initialMessages: canMessage && viewerId ? await loadConversation(supabase, viewerId, profile.id) : [],
+    }
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount })
@@ -175,6 +194,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       endorsements={endorsements}
       comments={comments}
       activity={activity}
+      dm={dm}
     />
   )
 }
