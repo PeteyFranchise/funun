@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { loadConversation } from '@/lib/social/dm'
+import { loadConversation, findThread } from '@/lib/social/dm'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -17,6 +17,9 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const messages = await loadConversation(supabase, user.id, otherId)
-  return NextResponse.json({ data: messages })
+  const [messages, threadId] = await Promise.all([
+    loadConversation(supabase, user.id, otherId),
+    findThread(supabase, user.id, otherId),
+  ])
+  return NextResponse.json({ data: messages, threadId })
 }

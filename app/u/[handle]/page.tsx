@@ -13,7 +13,7 @@ import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
-import { loadConversation } from '@/lib/social/dm'
+import { loadConversation, findThread } from '@/lib/social/dm'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +98,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       ownerName: profile.artist_name ?? 'this artist',
       ownerAvatarUrl: profile.avatar_url,
       canMessage: true,
+      viewerId: 'demo-viewer',
+      threadId: null,
       initialMessages: [],
     }
   } else {
@@ -175,12 +177,20 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     activity = { items: await loadActivity(supabase, profile.id) }
 
     const canMessage = Boolean(viewerId) && viewerId !== profile.id
+    const [dmMessages, dmThread] = canMessage && viewerId
+      ? await Promise.all([
+          loadConversation(supabase, viewerId, profile.id),
+          findThread(supabase, viewerId, profile.id),
+        ])
+      : [[], null]
     dm = {
       ownerId: profile.id,
       ownerName: profile.artist_name ?? 'this artist',
       ownerAvatarUrl: profile.avatar_url,
       canMessage,
-      initialMessages: canMessage && viewerId ? await loadConversation(supabase, viewerId, profile.id) : [],
+      viewerId: viewerId ?? '',
+      threadId: dmThread,
+      initialMessages: dmMessages,
     }
   }
 

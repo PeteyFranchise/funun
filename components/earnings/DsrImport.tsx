@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 type IsrcTotal = { isrc: string; title: string | null; units: number; revenue: number }
 type Summary = {
@@ -22,6 +23,7 @@ function money(n: number, cur: string | null): string {
 }
 
 export function DsrImport() {
+  const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +43,7 @@ export function DsrImport() {
     const json = await res.json().catch(() => ({}))
     if (!res.ok) return setError(json.error ?? 'Import failed')
     setResult(json.data as Summary)
+    router.refresh() // refresh the persisted history below
   }
 
   return (

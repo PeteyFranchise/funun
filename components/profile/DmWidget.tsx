@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { DmMessageView } from '@/lib/social/dm'
+import { createClient } from '@/lib/supabase/client'
 
 export type DmState = {
   ownerId: string
   ownerName: string
   ownerAvatarUrl: string | null
   canMessage: boolean
+  viewerId: string
+  threadId: string | null
   initialMessages: DmMessageView[]
 }
 
@@ -21,11 +24,36 @@ function clockTime(iso: string): string {
 export function DmWidget({ dm }: { dm: DmState }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<DmMessageView[]>(dm.initialMessages)
+  const [threadId, setThreadId] = useState<string | null>(dm.threadId)
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Light polling while open (stand-in for realtime).
+  // Realtime: subscribe to inserts on this thread (Supabase Realtime).
+  useEffect(() => {
+    if (!open || !dm.canMessage || !threadId) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`dm-${threadId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'dm_messages', filter: `thread_id=eq.${threadId}` },
+        payload => {
+          const n = payload.new as { id: string; body: string; created_at: string; sender_id: string }
+          setMessages(m =>
+            m.some(x => x.id === n.id)
+              ? m
+              : [...m, { id: n.id, body: n.body, createdAt: n.created_at, mine: n.sender_id === dm.viewerId }]
+          )
+        }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [open, dm.canMessage, threadId, dm.viewerId])
+
+  // Slow reconcile poll — covers the gap before a thread exists / realtime drops.
   useEffect(() => {
     if (!open || !dm.canMessage) return
     let alive = true
@@ -34,9 +62,10 @@ export function DmWidget({ dm }: { dm: DmState }) {
       if (!alive || !res.ok) return
       const json = await res.json().catch(() => ({}))
       if (Array.isArray(json.data)) setMessages(json.data as DmMessageView[])
+      if (typeof json.threadId === 'string') setThreadId(json.threadId)
     }
     tick()
-    const id = setInterval(tick, 6000)
+    const id = setInterval(tick, 20000)
     return () => {
       alive = false
       clearInterval(id)
@@ -51,8 +80,8 @@ export function DmWidget({ dm }: { dm: DmState }) {
     const text = body.trim()
     if (!text || busy) return
     setBusy(true)
-    const optimistic: DmMessageView = { id: `tmp-${Date.now()}`, body: text, createdAt: new Date().toISOString(), mine: true }
-    setMessages(m => [...m, optimistic])
+    const tmpId = `tmp-${Date.now()}`
+    setMessages(m => [...m, { id: tmpId, body: text, createdAt: new Date().toISOString(), mine: true }])
     setBody('')
     const res = await fetch('/api/dm/send', {
       method: 'POST',
@@ -60,7 +89,14 @@ export function DmWidget({ dm }: { dm: DmState }) {
       body: JSON.stringify({ toUserId: dm.ownerId, body: text }),
     })
     setBusy(false)
-    if (!res.ok) setMessages(m => m.filter(x => x.id !== optimistic.id)) // revert
+    if (!res.ok) {
+      setMessages(m => m.filter(x => x.id !== tmpId)) // revert
+      return
+    }
+    const json = await res.json().catch(() => ({}))
+    const real = json.data as (DmMessageView & { threadId?: string }) | undefined
+    if (real?.threadId) setThreadId(real.threadId)
+    if (real?.id) setMessages(m => m.map(x => (x.id === tmpId ? { id: real.id, body: real.body, createdAt: real.createdAt, mine: true } : x)))
   }
 
   if (!dm.canMessage) {

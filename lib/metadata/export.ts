@@ -269,8 +269,9 @@ function iso8601Duration(seconds: number | null): string {
   return `PT${m}M${s}S`
 }
 
-// Placeholder DDEX Party ID — replace with the sender's registered DPID.
+// Sender DDEX Party ID — set DDEX_DPID once registered, else a placeholder.
 const PLACEHOLDER_DPID = 'PADPIDA0000000000Z'
+const DPID = process.env.DDEX_DPID || PLACEHOLDER_DPID
 
 export function buildDdexErn(release: ReleaseBundle): string {
   const r = release.rights
@@ -325,7 +326,7 @@ ${[performers, writers].filter(Boolean).join('\n')}
     <MessageThreadId>${xmlEscape(release.releaseTitle)}</MessageThreadId>
     <MessageId>FUNUN-${Date.now()}</MessageId>
     <MessageSender>
-      <PartyId>${PLACEHOLDER_DPID}</PartyId>
+      <PartyId>${DPID}</PartyId>
       <PartyName><FullName>${xmlEscape(r.label ?? release.artistName)}</FullName></PartyName>
     </MessageSender>
     <MessageRecipient><PartyId>${PLACEHOLDER_DPID}</PartyId></MessageRecipient>
@@ -354,5 +355,19 @@ ${releaseResourceRefs}
       </ReleaseResourceReferenceList>
     </Release>
   </ReleaseList>
+  <DealList>
+    <ReleaseDeal>
+      <DealReleaseReference>R0</DealReleaseReference>
+      <Deal>
+        <DealTerms>
+          <CommercialModelType>SubscriptionModel</CommercialModelType>
+          <UseType>OnDemandStream</UseType>
+          <UseType>PermanentDownload</UseType>
+          <TerritoryCode>Worldwide</TerritoryCode>
+          <ValidityPeriod><StartDate>${xmlEscape(release.release_date ?? now.slice(0, 10))}</StartDate></ValidityPeriod>
+        </DealTerms>
+      </Deal>
+    </ReleaseDeal>
+  </DealList>
 </ern:NewReleaseMessage>`
 }

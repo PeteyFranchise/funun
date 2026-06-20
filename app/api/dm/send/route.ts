@@ -34,5 +34,7 @@ export async function POST(request: Request) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ data: { id: data.id, body: data.body, createdAt: data.created_at, mine: true } })
+  return NextResponse.json({
+    data: { id: data.id, body: data.body, createdAt: data.created_at, mine: true, threadId },
+  })
 }

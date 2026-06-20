@@ -1,7 +1,27 @@
+import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/Topbar'
 import { DsrImport } from '@/components/earnings/DsrImport'
 
 export const dynamic = 'force-dynamic'
+
+const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+
+type DsrImportRow = {
+  id: string
+  file_name: string | null
+  currency: string | null
+  total_revenue: number
+  total_units: number
+  created_at: string
+}
+
+function money(n: number, cur: string | null): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD' }).format(n)
+  } catch {
+    return `${n.toLocaleString()} ${cur ?? ''}`.trim()
+  }
+}
 
 // Earnings is a structural placeholder until partner royalty feeds exist
 // (Songtrust mechanical/performance, ReRight sync/library — see task #8).
@@ -29,7 +49,32 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-export default function EarningsPage() {
+async function loadImports(): Promise<DsrImportRow[]> {
+  if (DEMO) return []
+  try {
+    const supabase = createServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data } = await supabase
+      .from('dsr_imports')
+      .select('id, file_name, currency, total_revenue, total_units, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    return (data ?? []) as DsrImportRow[]
+  } catch {
+    return [] // table may not exist yet (migration 015 not applied)
+  }
+}
+
+export default async function EarningsPage() {
+  const imports = await loadImports()
+  const realRevenue = Math.round(imports.reduce((s, i) => s + Number(i.total_revenue || 0), 0) * 100) / 100
+  const realUnits = imports.reduce((s, i) => s + Number(i.total_units || 0), 0)
+  const realCurrency = imports[0]?.currency ?? 'USD'
+
   return (
     <>
       <Topbar
@@ -39,6 +84,44 @@ export default function EarningsPage() {
       <div className="flex-1 px-9 py-[30px]">
         {/* Real earnings via DSR import */}
         <DsrImport />
+
+        {/* Persisted real earnings (when DSR files have been imported) */}
+        {imports.length > 0 && (
+          <div className="mb-7">
+            <div className="grid gap-5 sm:grid-cols-3">
+              <div className="rounded-card border border-emerald-400/30 bg-emerald-400/[0.06] p-6">
+                <div className="text-[12px] font-bold uppercase tracking-[.14em] text-lavdim">Collected (imported)</div>
+                <div className="mtext tnum mt-2 text-[34px] font-black tracking-[-.02em]">{money(realRevenue, realCurrency)}</div>
+                <div className="mt-1 text-[12px] font-semibold text-emerald-400">From {imports.length} DSR import{imports.length === 1 ? '' : 's'}</div>
+              </div>
+              <div className="rounded-card border border-hair bg-card p-6">
+                <div className="text-[12px] font-bold uppercase tracking-[.14em] text-lavdim">Total units</div>
+                <div className="tnum mt-2 text-[34px] font-black tracking-[-.02em] text-white">{realUnits.toLocaleString()}</div>
+              </div>
+              <div className="rounded-card border border-hair bg-card p-6">
+                <div className="text-[12px] font-bold uppercase tracking-[.14em] text-lavdim">Last import</div>
+                <div className="mt-2 text-[18px] font-bold text-white">
+                  {new Date(imports[0].created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+                <div className="mt-1 truncate text-[12px] text-lavdim">{imports[0].file_name ?? 'DSR file'}</div>
+              </div>
+            </div>
+            <div className="mt-5 rounded-card border border-hair bg-card p-5">
+              <div className="mb-3 text-[12px] font-bold uppercase tracking-[.14em] text-lavdim">Recent imports</div>
+              <div className="space-y-1">
+                {imports.slice(0, 8).map(i => (
+                  <div key={i.id} className="flex items-center justify-between rounded-[10px] border border-hair bg-card2 px-4 py-2 text-[13.5px]">
+                    <span className="truncate text-white">{i.file_name ?? 'DSR file'}</span>
+                    <span className="flex-none text-lavdim">
+                      {new Date(i.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·{' '}
+                      <span className="mtext font-bold">{money(Number(i.total_revenue), i.currency)}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Honest illustrative banner */}
         <div className="mb-7 flex items-center gap-[14px] rounded-[14px] border border-money/30 bg-money/10 px-5 py-4">
