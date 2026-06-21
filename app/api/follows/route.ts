@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server'
+import { createApiClient } from '@/lib/supabase/server'
+
+const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+
+// POST   /api/follows  { followeeId }  → follow
+// DELETE /api/follows  { followeeId }  → unfollow
+async function mutate(request: Request, action: 'follow' | 'unfollow') {
+  if (DEMO) return NextResponse.json({ data: { ok: true } }) // no-op in demo
+
+  const { followeeId } = (await request.json().catch(() => ({}))) as { followeeId?: string }
+  if (!followeeId) return NextResponse.json({ error: 'Missing followeeId' }, { status: 400 })
+
+  const supabase = createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (user.id === followeeId) return NextResponse.json({ error: 'Cannot follow yourself' }, { status: 400 })
+
+  if (action === 'follow') {
+    const { error } = await supabase
+      .from('follows')
+      .upsert({ follower_id: user.id, followee_id: followeeId }, { onConflict: 'follower_id,followee_id' })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else {
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('follower_id', user.id)
+      .eq('followee_id', followeeId)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json({ data: { ok: true, following: action === 'follow' } })
+}
+
+export const POST = (request: Request) => mutate(request, 'follow')
+export const DELETE = (request: Request) => mutate(request, 'unfollow')

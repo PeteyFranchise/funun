@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
-import { readComposers } from '@/lib/metadata/schema'
+import { readComposers, readLyrics, readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
 import { MetadataStudio } from '@/components/vault/MetadataStudio'
 
 export const dynamic = 'force-dynamic'
@@ -112,6 +112,13 @@ export default async function MetadataPage({
       language: str(t.language),
       audio_file_url: t.audio_file_url ?? null,
       composers: readComposers(t.metadata),
+      lyrics: readLyrics(t.metadata)?.text ?? '',
+      lyricsExplicit: readLyrics(t.metadata)?.explicit ?? false,
+      performers: readPerformers(t.metadata),
+      recordingDate: readRecordingInfo(t.metadata)?.recordingDate ?? '',
+      recordingCountry: readRecordingInfo(t.metadata)?.recordingCountry ?? '',
+      originalPurpose: readRecordingInfo(t.metadata)?.originalPurpose ?? '',
+      commerciallyAvailable: readRecordingInfo(t.metadata)?.commerciallyAvailable ?? false,
     }))
 
   return (

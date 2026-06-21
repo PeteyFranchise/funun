@@ -89,7 +89,7 @@ export default async function DashboardPage() {
 
       {total === 0 ? (
         <div className="mt-16 flex flex-col items-center text-center">
-          <p className="text-lg font-medium text-white">Welcome to ArtistOS</p>
+          <p className="text-lg font-medium text-white">Welcome to Funūn</p>
           <p className="mt-1 max-w-sm text-sm text-white/50">
             Your Sound Vault is empty. Create your first project to start tracking its readiness.
           </p>
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
                   View all →
                 </Link>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 {recent.map(project => {
                   const items = readinessItemsForProject({
                     type: project.type,
@@ -144,9 +144,25 @@ export default async function DashboardPage() {
                   return (
                     <VaultProjectCard
                       key={project.id}
-                      project={project}
-                      completeItems={items.filter(i => i.status === 'complete').length}
-                      totalItems={items.length}
+                      card={{
+                        id: project.id,
+                        title: project.title,
+                        type: project.type,
+                        artist: null,
+                        status: project.status,
+                        score: project.vault_readiness_score,
+                        completeItems: items.filter(i => i.status === 'complete').length,
+                        totalItems: items.length,
+                        trackCount: project.tracks?.length ?? 0,
+                        releaseDate: project.release_date,
+                        coverUrl: project.cover_art_url,
+                        lane:
+                          project.status === 'released'
+                            ? 'live'
+                            : project.release_date
+                              ? 'scheduled'
+                              : 'draft',
+                      }}
                     />
                   )
                 })}

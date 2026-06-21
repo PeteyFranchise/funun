@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Link href="/" className="text-lg font-semibold tracking-tight text-white">
-            ArtistOS
+            Funūn
           </Link>
           <p className="mt-1 text-sm text-white/50">The operating system for your music career.</p>
         </div>

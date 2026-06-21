@@ -1,4 +1,4 @@
-# ArtistOS
+# Funūn
 
 The operating system for an independent music career — built around **Sound Vault**.
 
@@ -6,7 +6,7 @@ The operating system for an independent music career — built around **Sound Va
 
 ## The core idea
 
-Sound Vault is the heart of ArtistOS. It's the place where an artist's entire discography lives — every single, snippet, EP, album, and unreleased project they've ever made. Not just the releases that are out. Everything.
+Sound Vault is the heart of Funūn. It's the place where an artist's entire discography lives — every single, snippet, EP, album, and unreleased project they've ever made. Not just the releases that are out. Everything.
 
 Every tool, every community interaction, every pitch, and every opportunity flows through Sound Vault. It's the first platform that treats an artist's creative output as a permanent, structured archive — not a list of uploads.
 
@@ -66,7 +66,7 @@ Snippets have a simplified readiness checklist — visual asset, caption copy, a
 ## Platform architecture
 
 ```
-artistos-platform/
+funun/
 │
 ├── app/
 │   ├── (marketing)/              # Public pages
@@ -164,8 +164,8 @@ artistos-platform/
 ## Getting started
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/artistos-platform.git
-cd artistos-platform
+git clone https://github.com/YOUR_USERNAME/funun.git
+cd funun
 npm install
 cp .env.example .env.local
 npx supabase link --project-ref YOUR_REF

@@ -200,7 +200,7 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
         <div>
           <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
           <p className="mt-1 text-xs text-white/40">
-            If you hold your own ISRC registrant code, add it here and ArtistOS can mint
+            If you hold your own ISRC registrant code, add it here and Funūn can mint
             compliant ISRCs for your tracks automatically. Don’t have one? Your distributor
             assigns ISRCs for free — leave this blank. To self-register, apply once at your
             national ISRC agency (US: usisrc.org).

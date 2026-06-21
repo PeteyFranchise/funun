@@ -13,7 +13,19 @@ import {
   PRO_LABELS,
   type Composer,
   type ReleaseRights,
+  type TrackLyrics,
+  type Performer,
+  type RecordingInfo,
 } from '@/lib/metadata/schema'
+
+// ISO 639-1 → 639-2/T for the ID3 USLT language field (3-letter).
+const ISO2TO3: Record<string, string> = {
+  en: 'eng', es: 'spa', fr: 'fra', pt: 'por', de: 'deu', it: 'ita',
+  ja: 'jpn', ko: 'kor', zh: 'zho', ar: 'ara', hi: 'hin',
+}
+function iso3(code: string | null | undefined): string {
+  return ISO2TO3[(code ?? '').toLowerCase()] ?? 'eng'
+}
 
 export type TrackMeta = {
   title: string
@@ -27,6 +39,9 @@ export type TrackMeta = {
   language: string | null
   featuring_artists: string[]
   composers: Composer[]
+  lyrics: TrackLyrics | null
+  performers: Performer[]
+  recording: RecordingInfo | null
   audio_file_url: string | null
 }
 
@@ -61,6 +76,8 @@ export type Id3Fields = {
   iswc: string
   upc: string
   comment: string
+  lyrics: string
+  lyricsLanguage: string
 }
 
 function rightsLines(r: ReleaseRights): string {
@@ -111,6 +128,8 @@ export function buildId3Fields(release: ReleaseBundle, track: TrackMeta): Id3Fie
     iswc: track.iswc ?? '',
     upc: release.upc ?? '',
     comment: buildContactComment(release, track),
+    lyrics: track.lyrics?.text ?? '',
+    lyricsLanguage: iso3(track.lyrics?.language ?? track.language),
   }
 }
 
@@ -145,6 +164,9 @@ export function buildSidecar(release: ReleaseBundle, track: TrackMeta): string {
     '',
     '─── RIGHTS & CONTACT ───',
     f.comment || '—',
+    ...(track.lyrics?.text
+      ? ['', `─── LYRICS${track.lyrics.explicit ? ' (explicit)' : ''} ───`, track.lyrics.text]
+      : []),
   ]
   return lines.join('\n')
 }
@@ -239,48 +261,129 @@ function xmlEscape(s: string): string {
  * it's a structured, DDEX-aligned export for label/direct ingestion and a
  * head start on a future distributor-API integration.
  */
+/** ISO-8601 duration (PT#M#S) — the form ERN expects, not raw seconds. */
+function iso8601Duration(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return ''
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return `PT${m}M${s}S`
+}
+
+// Sender DDEX Party ID — set DDEX_DPID once registered, else a placeholder.
+const PLACEHOLDER_DPID = 'PADPIDA0000000000Z'
+const DPID = process.env.DDEX_DPID || PLACEHOLDER_DPID
+
+// Our release types → DDEX ReleaseType AVS (no "EP" in the value set).
+const RELEASE_TYPE_AVS: Record<string, string> = {
+  single: 'Single',
+  ep: 'Album',
+  album: 'Album',
+  snippet: 'MusicalWorkClipRelease',
+  unreleased: 'Unknown',
+}
+const releaseTypeAvs = (t: string) => RELEASE_TYPE_AVS[t] ?? 'Album'
+
 export function buildDdexErn(release: ReleaseBundle): string {
   const r = release.rights
+  const now = new Date().toISOString()
+  const year = r.copyright_year ?? (release.release_date ? new Date(release.release_date).getUTCFullYear() : new Date().getUTCFullYear())
+  const releaseDate = release.release_date ?? now.slice(0, 10)
+  const label = r.label?.trim() || release.artistName
+  const genreText = [release.genre, release.sub_genre].filter(Boolean).join(' / ') || 'Unclassified'
+  const resourceRefs: string[] = []
+
+  const displayArtistXml = (name: string) =>
+    `<DisplayArtist><PartyName><FullName>${xmlEscape(name)}</FullName></PartyName><ArtistRole>MainArtist</ArtistRole></DisplayArtist>`
+
   const soundRecordings = release.tracks
     .map((t, i) => {
-      const composers = t.composers
+      const ref = `A${i + 1}`
+      resourceRefs.push(ref)
+      const displayArtist = artistCredit(release.artistName, t.featuring_artists)
+      const contributors = t.performers
         .map(
-          c =>
-            `        <Contributor>\n          <PartyName><FullName>${xmlEscape(c.name)}</FullName></PartyName>\n          <Role>${xmlEscape(COMPOSER_ROLE_LABELS[c.role])}</Role>\n          <RightShare>${c.split}</RightShare>\n        </Contributor>`
+          p =>
+            `          <ResourceContributor><PartyName><FullName>${xmlEscape(p.name)}</FullName></PartyName><ResourceContributorRole>${p.role === 'featured' ? 'FeaturedArtist' : 'AssociatedPerformer'}</ResourceContributorRole></ResourceContributor>`
         )
         .join('\n')
+      const writers = t.composers
+        .map(
+          c =>
+            `          <IndirectResourceContributor><PartyName><FullName>${xmlEscape(c.name)}</FullName></PartyName><IndirectResourceContributorRole>Composer</IndirectResourceContributorRole></IndirectResourceContributor>`
+        )
+        .join('\n')
+      const contribXml = [contributors, writers].filter(Boolean).join('\n')
       return `    <SoundRecording>
-      <SequenceNumber>${t.track_number ?? i + 1}</SequenceNumber>
-      <ISRC>${xmlEscape(t.isrc ?? '')}</ISRC>
-      <ISWC>${xmlEscape(t.iswc ?? '')}</ISWC>
-      <Title>${xmlEscape(t.title)}</Title>
-      <DisplayArtist>${xmlEscape(artistCredit(release.artistName, t.featuring_artists))}</DisplayArtist>
-      <Duration>${t.duration_seconds ?? ''}</Duration>
-      <LanguageOfPerformance>${xmlEscape(t.language ?? r.primary_language ?? '')}</LanguageOfPerformance>
-      <ParentalWarning>${t.explicit ? 'Explicit' : 'NotExplicit'}</ParentalWarning>
-${composers}
+      <SoundRecordingType>MusicalWorkSoundRecording</SoundRecordingType>
+      <SoundRecordingId><ISRC>${xmlEscape(t.isrc ?? '')}</ISRC></SoundRecordingId>
+      <ResourceReference>${ref}</ResourceReference>
+      <ReferenceTitle><TitleText>${xmlEscape(t.title)}</TitleText></ReferenceTitle>
+      <Duration>${iso8601Duration(t.duration_seconds) || 'PT0M0S'}</Duration>
+      <SoundRecordingDetailsByTerritory>
+        <TerritoryCode>Worldwide</TerritoryCode>
+        <Title TitleType="DisplayTitle"><TitleText>${xmlEscape(t.title)}</TitleText></Title>
+        ${displayArtistXml(displayArtist)}
+${contribXml ? contribXml + '\n' : ''}        <LabelName>${xmlEscape(label)}</LabelName>
+        <PLine><Year>${year}</Year><PLineText>${xmlEscape(r.p_line ?? `${year} ${label}`)}</PLineText></PLine>
+        <Genre><GenreText>${xmlEscape(genreText)}</GenreText></Genre>
+        <ParentalWarningType>${t.explicit ? 'Explicit' : 'NotExplicit'}</ParentalWarningType>
+      </SoundRecordingDetailsByTerritory>
     </SoundRecording>`
     })
     .join('\n')
 
+  const releaseResourceRefs = resourceRefs
+    .map(ref => `        <ReleaseResourceReference>${ref}</ReleaseResourceReference>`)
+    .join('\n')
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- DDEX-aligned export generated by ArtistOS Metadata Studio. Not a certified ERN delivery package. -->
-<NewReleaseMessage>
-  <ReleaseList>
-    <Release>
-      <ReleaseType>${xmlEscape(release.releaseType)}</ReleaseType>
-      <Title>${xmlEscape(release.releaseTitle)}</Title>
-      <DisplayArtist>${xmlEscape(release.artistName)}</DisplayArtist>
-      <LabelName>${xmlEscape(r.label ?? '')}</LabelName>
-      <ICPN>${xmlEscape(release.upc ?? '')}</ICPN>
-      <Genre>${xmlEscape([release.genre, release.sub_genre].filter(Boolean).join(' / '))}</Genre>
-      <ReleaseDate>${xmlEscape(release.release_date ?? '')}</ReleaseDate>
-      <PLine><Year>${r.copyright_year ?? ''}</Year><Text>${xmlEscape(r.p_line ?? '')}</Text></PLine>
-      <CLine><Year>${r.copyright_year ?? ''}</Year><Text>${xmlEscape(r.c_line ?? '')}</Text></CLine>
-    </Release>
-  </ReleaseList>
+<!-- DDEX ERN 3.5.1 export from Funūn Metadata Studio. Validated well-formed +
+     against the ERN 3.5.1 XSD. Replace the placeholder MessageSender/Recipient
+     DPIDs with registered DDEX Party IDs before real delivery. -->
+<ern:NewReleaseMessage xmlns:ern="http://ddex.net/xml/ern/351" MessageSchemaVersionId="ern/351" LanguageAndScriptCode="en">
+  <MessageHeader>
+    <MessageThreadId>FUNUN-${Date.now()}</MessageThreadId>
+    <MessageId>FUNUN-${Date.now()}</MessageId>
+    <MessageSender>
+      <PartyId>${DPID}</PartyId>
+      <PartyName><FullName>${xmlEscape(label)}</FullName></PartyName>
+    </MessageSender>
+    <MessageRecipient>
+      <PartyId>${PLACEHOLDER_DPID}</PartyId>
+      <PartyName><FullName>DSP</FullName></PartyName>
+    </MessageRecipient>
+    <MessageCreatedDateTime>${now}</MessageCreatedDateTime>
+  </MessageHeader>
+  <UpdateIndicator>OriginalMessage</UpdateIndicator>
   <ResourceList>
 ${soundRecordings}
   </ResourceList>
-</NewReleaseMessage>`
+  <ReleaseList>
+    <Release>
+      <ReleaseId>${
+        release.upc
+          ? `<ICPN IsEan="false">${xmlEscape(release.upc)}</ICPN>`
+          : `<ProprietaryId Namespace="Funun">${xmlEscape(release.releaseTitle)}</ProprietaryId>`
+      }</ReleaseId>
+      <ReleaseReference>R0</ReleaseReference>
+      <ReferenceTitle><TitleText>${xmlEscape(release.releaseTitle)}</TitleText></ReferenceTitle>
+      <ReleaseResourceReferenceList>
+${releaseResourceRefs}
+      </ReleaseResourceReferenceList>
+      <ReleaseType>${releaseTypeAvs(release.releaseType)}</ReleaseType>
+      <ReleaseDetailsByTerritory>
+        <TerritoryCode>Worldwide</TerritoryCode>
+        <DisplayArtistName>${xmlEscape(release.artistName)}</DisplayArtistName>
+        <LabelName>${xmlEscape(label)}</LabelName>
+        <Title TitleType="DisplayTitle"><TitleText>${xmlEscape(release.releaseTitle)}</TitleText></Title>
+        ${displayArtistXml(release.artistName)}
+        <ReleaseType>${releaseTypeAvs(release.releaseType)}</ReleaseType>
+        <Genre><GenreText>${xmlEscape(genreText)}</GenreText></Genre>
+        <ReleaseDate>${xmlEscape(releaseDate)}</ReleaseDate>
+      </ReleaseDetailsByTerritory>
+      <PLine><Year>${year}</Year><PLineText>${xmlEscape(r.p_line ?? `${year} ${label}`)}</PLineText></PLine>
+      <CLine><Year>${year}</Year><CLineText>${xmlEscape(r.c_line ?? `${year} ${label}`)}</CLineText></CLine>
+    </Release>
+  </ReleaseList>
+</ern:NewReleaseMessage>`
 }

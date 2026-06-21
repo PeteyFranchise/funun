@@ -9,7 +9,12 @@ import {
   LANGUAGES,
   PRO_LABELS,
   PRO_VALUES,
+  PERFORMER_ROLES,
+  PERFORMER_ROLE_LABELS,
+  ORIGINAL_PURPOSES,
+  ORIGINAL_PURPOSE_LABELS,
   type Composer,
+  type Performer,
 } from '@/lib/metadata/schema'
 import { validateRelease, type ValidationReport } from '@/lib/metadata/validate'
 import { isValidIswc, isValidIswcShape } from '@/lib/metadata/identifiers'
@@ -29,6 +34,13 @@ type StudioTrack = {
   language: string
   audio_file_url: string | null
   composers: Composer[]
+  lyrics: string
+  lyricsExplicit: boolean
+  performers: Performer[]
+  recordingDate: string
+  recordingCountry: string
+  originalPurpose: string
+  commerciallyAvailable: boolean
 }
 
 type ReleaseState = {
@@ -165,7 +177,22 @@ export function MetadataStudio({
           isrc: t.isrc || null,
           iswc: t.iswc || null,
           language: t.language || null,
-          metadata: { composers: t.composers },
+          metadata: {
+            composers: t.composers,
+            lyrics: t.lyrics.trim()
+              ? { text: t.lyrics, language: t.language || undefined, explicit: t.lyricsExplicit }
+              : null,
+            performers: t.performers,
+            recording:
+              t.recordingDate || t.recordingCountry || t.originalPurpose
+                ? {
+                    recordingDate: t.recordingDate || undefined,
+                    recordingCountry: t.recordingCountry || undefined,
+                    originalPurpose: t.originalPurpose || undefined,
+                    commerciallyAvailable: t.commerciallyAvailable,
+                  }
+                : null,
+          },
         }),
       })
       router.refresh()
@@ -296,6 +323,80 @@ export function MetadataStudio({
                   composers={t.composers}
                   onChange={composers => setTrack(t.id, { composers })}
                 />
+              </div>
+
+              {/* Lyrics */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Lyrics</p>
+                  <label className="flex items-center gap-1.5 text-xs text-white/50">
+                    <input
+                      type="checkbox"
+                      checked={t.lyricsExplicit}
+                      onChange={e => setTrack(t.id, { lyricsExplicit: e.target.checked })}
+                      className="accent-fuchsia-500"
+                    />
+                    Explicit
+                  </label>
+                </div>
+                <textarea
+                  value={t.lyrics}
+                  onChange={e => setTrack(t.id, { lyrics: e.target.value.slice(0, 20000) })}
+                  rows={t.lyrics ? 8 : 3}
+                  placeholder={t.language === 'zxx' ? 'Instrumental — no lyrics.' : 'Paste the song lyrics… (embedded into the file as ID3 lyrics and the metadata sidecar)'}
+                  className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-[#0E0D1E] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                <p className="mt-1 text-right text-[11px] text-white/30">{t.lyrics.length.toLocaleString()} / 20,000</p>
+              </div>
+
+              {/* Performers & neighbouring rights (DDEX RDR-N / SoundExchange, PPL …) */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                    Performers &amp; neighbouring rights
+                  </p>
+                  <span className="text-[11px] text-white/30">for SoundExchange / PPL collection</span>
+                </div>
+                <PerformerEditor
+                  performers={t.performers}
+                  onChange={performers => setTrack(t.id, { performers })}
+                />
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <label className="block">
+                    <span className="text-xs text-white/40">Recording date</span>
+                    <input
+                      type="date"
+                      value={t.recordingDate}
+                      onChange={e => setTrack(t.id, { recordingDate: e.target.value })}
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-white/40">Country of recording</span>
+                    <input
+                      value={t.recordingCountry}
+                      onChange={e => setTrack(t.id, { recordingCountry: e.target.value.toUpperCase().slice(0, 2) })}
+                      placeholder="US"
+                      maxLength={2}
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm uppercase text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                    />
+                  </label>
+                  <SelectField
+                    label="Original purpose"
+                    value={t.originalPurpose}
+                    onChange={v => setTrack(t.id, { originalPurpose: v })}
+                    options={[{ value: '', label: '—' }, ...ORIGINAL_PURPOSES.map(p => ({ value: p, label: ORIGINAL_PURPOSE_LABELS[p] }))]}
+                  />
+                  <label className="flex items-end gap-2 pb-2">
+                    <input
+                      type="checkbox"
+                      checked={t.commerciallyAvailable}
+                      onChange={e => setTrack(t.id, { commerciallyAvailable: e.target.checked })}
+                      className="accent-fuchsia-500"
+                    />
+                    <span className="text-xs text-white/60">Commercially available</span>
+                  </label>
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -484,7 +585,13 @@ function ExportBar({ projectId, ready }: { projectId: string; ready: boolean }) 
         href={`/api/vault/${projectId}/metadata/export?format=ddex`}
         className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
       >
-        DDEX XML
+        DDEX ERN
+      </a>
+      <a
+        href={`/api/vault/${projectId}/metadata/export?format=rdr`}
+        className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+      >
+        RDR-N XML
       </a>
       {!ready && <span className="text-xs text-amber-300/80">exports include current data</span>}
     </div>
@@ -573,6 +680,78 @@ function ComposerEditor({
         className="w-full rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
       >
         + Add writer
+      </button>
+    </div>
+  )
+}
+
+// ─── Performer editor (neighbouring rights / DDEX RDR-N) ─────────────
+function PerformerEditor({
+  performers,
+  onChange,
+}: {
+  performers: Performer[]
+  onChange: (next: Performer[]) => void
+}) {
+  function set(i: number, patch: Partial<Performer>) {
+    onChange(performers.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
+  }
+  function add() {
+    onChange([...performers, { name: '', role: 'featured' }])
+  }
+  function remove(i: number) {
+    onChange(performers.filter((_, idx) => idx !== i))
+  }
+
+  return (
+    <div className="mt-2 space-y-2">
+      {performers.map((p, i) => (
+        <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2 sm:grid-cols-12">
+          <input
+            value={p.name}
+            onChange={e => set(i, { name: e.target.value })}
+            placeholder="Performer name"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-3"
+          />
+          <select
+            value={p.role}
+            onChange={e => set(i, { role: e.target.value as Performer['role'] })}
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-3"
+          >
+            {PERFORMER_ROLES.map(r => (
+              <option key={r} value={r} className="bg-[#0a0a0f]">{PERFORMER_ROLE_LABELS[r]}</option>
+            ))}
+          </select>
+          <input
+            value={p.contribution ?? ''}
+            onChange={e => set(i, { contribution: e.target.value })}
+            placeholder="Contribution (e.g. Lead vocals)"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-3"
+          />
+          <input
+            value={p.isni ?? ''}
+            onChange={e => set(i, { isni: e.target.value })}
+            placeholder="ISNI / IPN"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-2"
+          />
+          <div className="flex items-center justify-end sm:col-span-1">
+            <button
+              onClick={() => remove(i)}
+              className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
+              aria-label="Remove performer"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={add}
+        className="w-full rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
+      >
+        + Add performer
       </button>
     </div>
   )

@@ -115,7 +115,7 @@ export default async function CwrPage({
         submission, and neither is something we can issue: every writer needs an{' '}
         <span className="text-white/80">IPI</span> (you get one by joining a PRO), and the file
         needs a <span className="text-white/80">sender ID</span> the society has onboarded.
-        ArtistOS becoming that central sender is the next phase — for now this file is yours to
+        Funūn becoming that central sender is the next phase — for now this file is yours to
         validate and hold.
       </div>
 
@@ -162,7 +162,7 @@ export default async function CwrPage({
           <Step
             n="4"
             title="A sender ID is the real gate"
-            body="Societies only accept CWR from a submitter they've onboarded. Most indie writers don't have one — which is why ArtistOS is working toward becoming the central registered sender, so you won't need your own."
+            body="Societies only accept CWR from a submitter they've onboarded. Most indie writers don't have one — which is why Funūn is working toward becoming the central registered sender, so you won't need your own."
           />
         </div>
       </section>

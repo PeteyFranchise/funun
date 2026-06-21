@@ -1,6 +1,7 @@
 import { createApiClient } from '@/lib/supabase/server'
 import { buildBundle, type ProjectRow, type TrackRow } from '@/lib/metadata/bundle'
 import { buildCsv, buildDdexErn } from '@/lib/metadata/export'
+import { buildRdrN } from '@/lib/metadata/rdr-export'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -62,6 +63,15 @@ export async function GET(
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
         'Content-Disposition': `attachment; filename="${slug}-ddex.xml"`,
+      },
+    })
+  }
+
+  if (format === 'rdr') {
+    return new Response(buildRdrN(bundle), {
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${slug}-rdr-n.xml"`,
       },
     })
   }

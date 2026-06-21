@@ -69,9 +69,62 @@ export type Composer = {
   split: number
 }
 
+// Per-track lyrics, stored inside tracks.metadata JSONB. Plain text for v1
+// (time-synced/LRC is a later extension under the same object).
+export type TrackLyrics = {
+  text: string
+  language?: string
+  explicit?: boolean
+  updated_at?: string
+}
+
+export const LYRICS_MAX = 20000
+
+// ─── Neighbouring rights / DDEX RDR-N (recording side) ───────────────
+// Performers and recording context needed to register a sound recording
+// with music licensing companies (SoundExchange / PPL / GVL …) for
+// neighbouring-rights collection. See docs/ddex-rdr-compliance.md.
+export type PerformerRole = 'featured' | 'non_featured'
+export const PERFORMER_ROLES = ['featured', 'non_featured'] as const
+export const PERFORMER_ROLE_LABELS: Record<PerformerRole, string> = {
+  featured: 'Featured performer',
+  non_featured: 'Non-featured performer',
+}
+
+export type Performer = {
+  name: string
+  role: PerformerRole
+  /** Instrument / vocal / contribution detail, e.g. "Lead vocals", "Drums". */
+  contribution?: string
+  /** International Performer Number (IPN) and/or ISNI, when known. */
+  ipn?: string
+  isni?: string
+}
+
+export type OriginalPurpose = 'general' | 'library' | 'commissioned'
+export const ORIGINAL_PURPOSES = ['general', 'library', 'commissioned'] as const
+export const ORIGINAL_PURPOSE_LABELS: Record<OriginalPurpose, string> = {
+  general: 'General release',
+  library: 'Library / production music',
+  commissioned: 'Specially commissioned',
+}
+
+export type RecordingInfo = {
+  /** ISO date the recording was fixed, e.g. "2026-04-01". */
+  recordingDate?: string
+  /** ISO 3166-1 alpha-2 country of fixation, e.g. "US". */
+  recordingCountry?: string
+  originalPurpose?: OriginalPurpose
+  /** RDR-N v1.5 CommercialAvailability flag. */
+  commerciallyAvailable?: boolean
+}
+
 // Shape we read out of (and write into) tracks.metadata JSONB.
 export type TrackMetadata = {
   composers?: Composer[]
+  lyrics?: TrackLyrics
+  performers?: Performer[]
+  recording?: RecordingInfo
 }
 
 // Release-level rights & contact — shared across the project. Mirrors the
@@ -170,4 +223,105 @@ export function sanitizeComposers(input: unknown): Composer[] {
     out.push({ name, role, pro, ipi: ipi || undefined, split })
   }
   return out
+}
+
+/** Read typed lyrics out of a loose metadata JSONB blob (null if absent). */
+export function readLyrics(metadata: Record<string, unknown> | null | undefined): TrackLyrics | null {
+  const raw = metadata?.lyrics as Record<string, unknown> | undefined
+  if (!raw || typeof raw.text !== 'string' || !raw.text.trim()) return null
+  return {
+    text: raw.text,
+    language: typeof raw.language === 'string' && raw.language ? raw.language : undefined,
+    explicit: raw.explicit === true,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+  }
+}
+
+/** Validate + normalize lyrics input from the client (null clears them). */
+export function sanitizeLyrics(input: unknown): TrackLyrics | null {
+  const o = (input ?? {}) as Record<string, unknown>
+  const text = String(o.text ?? '').slice(0, LYRICS_MAX)
+  if (!text.trim()) return null
+  const language = typeof o.language === 'string' && o.language ? o.language : undefined
+  return { text, language, explicit: o.explicit === true, updated_at: new Date().toISOString() }
+}
+
+/** Read a typed performer array out of a loose metadata JSONB blob. */
+export function readPerformers(metadata: Record<string, unknown> | null | undefined): Performer[] {
+  const raw = metadata?.performers
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map(r => {
+      const o = (r ?? {}) as Record<string, unknown>
+      const role: PerformerRole = o.role === 'featured' ? 'featured' : 'non_featured'
+      return {
+        name: String(o.name ?? '').trim(),
+        role,
+        contribution: o.contribution ? String(o.contribution).trim() : undefined,
+        ipn: o.ipn ? String(o.ipn).trim() : undefined,
+        isni: o.isni ? String(o.isni).trim() : undefined,
+      }
+    })
+    .filter(p => p.name)
+}
+
+/** Validate + normalize performer input coming from the client. */
+export function sanitizePerformers(input: unknown): Performer[] {
+  if (!Array.isArray(input)) return []
+  const out: Performer[] = []
+  for (const r of input) {
+    const o = (r ?? {}) as Record<string, unknown>
+    const name = String(o.name ?? '').trim()
+    if (!name) continue
+    const role: PerformerRole = o.role === 'featured' ? 'featured' : 'non_featured'
+    out.push({
+      name,
+      role,
+      contribution: o.contribution ? String(o.contribution).trim() || undefined : undefined,
+      ipn: o.ipn ? String(o.ipn).trim() || undefined : undefined,
+      isni: o.isni ? String(o.isni).trim() || undefined : undefined,
+    })
+  }
+  return out
+}
+
+/** Read recording context (RDR-N) out of a loose metadata JSONB blob. */
+export function readRecordingInfo(
+  metadata: Record<string, unknown> | null | undefined
+): RecordingInfo | null {
+  const o = metadata?.recording as Record<string, unknown> | undefined
+  if (!o) return null
+  const purpose = ORIGINAL_PURPOSES.includes(o.originalPurpose as OriginalPurpose)
+    ? (o.originalPurpose as OriginalPurpose)
+    : undefined
+  const info: RecordingInfo = {
+    recordingDate: typeof o.recordingDate === 'string' && o.recordingDate ? o.recordingDate : undefined,
+    recordingCountry:
+      typeof o.recordingCountry === 'string' && o.recordingCountry
+        ? o.recordingCountry.toUpperCase().slice(0, 2)
+        : undefined,
+    originalPurpose: purpose,
+    commerciallyAvailable: typeof o.commerciallyAvailable === 'boolean' ? o.commerciallyAvailable : undefined,
+  }
+  const hasAny = Object.values(info).some(v => v !== undefined)
+  return hasAny ? info : null
+}
+
+/** Validate + normalize recording-info input (null clears it). */
+export function sanitizeRecordingInfo(input: unknown): RecordingInfo | null {
+  const o = (input ?? {}) as Record<string, unknown>
+  const purpose = ORIGINAL_PURPOSES.includes(o.originalPurpose as OriginalPurpose)
+    ? (o.originalPurpose as OriginalPurpose)
+    : undefined
+  const info: RecordingInfo = {
+    recordingDate: typeof o.recordingDate === 'string' && o.recordingDate.trim() ? o.recordingDate.trim() : undefined,
+    recordingCountry:
+      typeof o.recordingCountry === 'string' && o.recordingCountry.trim()
+        ? o.recordingCountry.trim().toUpperCase().slice(0, 2)
+        : undefined,
+    originalPurpose: purpose,
+    commerciallyAvailable: typeof o.commerciallyAvailable === 'boolean' ? o.commerciallyAvailable : undefined,
+  }
+  const hasAny = Object.values(info).some(v => v !== undefined)
+  return hasAny ? info : null
 }

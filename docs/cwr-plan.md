@@ -73,9 +73,9 @@ sender access they need to submit it themselves.
 
 ---
 
-## Path B — ArtistOS as the registered sender (the real product)
+## Path B — Funūn as the registered sender (the real product)
 
-**Goal:** ArtistOS becomes a registered CWR submitter and registers works
+**Goal:** Funūn becomes a registered CWR submitter and registers works
 centrally on artists' behalf — the Songtrust / CD Baby Pro model. The same
 generator powers it; the difference is the submission rail and the business
 relationships behind it.
@@ -87,7 +87,7 @@ relationships behind it.
    - *Full publishing administrator* — we collect and pass through royalties for
      a %. Much bigger: trust/escrow accounting, 1099s, possibly
      money-transmission considerations. Defer.
-2. **Get ArtistOS its own publisher IPI** (register a publishing entity).
+2. **Get Funūn its own publisher IPI** (register a publishing entity).
 3. **Onboard as a CWR sender with each society** — ASCAP, BMI, SESAC, The MLC —
    each with its own data agreement, test-file cycle, and possible fees.
    (SoundExchange is recording-side / ISRC-fed — *not* CWR; keep separate.)
@@ -95,7 +95,7 @@ relationships behind it.
    works, explicitly admin-only (we don't take their publishing).
 
 ### Engineering (once the rail exists)
-1. Reuse the Path A generator; swap sender identity to ArtistOS's onboarded ID
+1. Reuse the Path A generator; swap sender identity to Funūn's onboarded ID
    (sender type `AA`).
 2. Per-society submission queue (sequence numbers, transmission logs).
 3. **Acknowledgment (ACK) ingestion** — parse each society's EDI response files

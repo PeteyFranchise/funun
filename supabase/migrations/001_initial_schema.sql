@@ -1,5 +1,5 @@
 -- ============================================================
--- ArtistOS — Sound Vault Schema
+-- Funūn — Sound Vault Schema
 -- Sound Vault is the central entity — an artist's full discography
 -- Run via: supabase db push
 -- ============================================================

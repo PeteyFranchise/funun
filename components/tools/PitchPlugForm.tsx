@@ -4,21 +4,33 @@ import { useState } from 'react'
 import { CURATORS, type CuratorType, type PitchPlugOutput } from '@/lib/tools/pitchplug'
 import { PitchCard } from './PitchCard'
 
-export type PitchProjectOption = { id: string; title: string; type: string }
+export type PitchProjectOption = { id: string; title: string; type: string; isPublic?: boolean }
 
 export function PitchPlugForm({
   projects,
   initialProjectId,
   locked,
   demo,
+  artistHandle,
 }: {
   projects: PitchProjectOption[]
   initialProjectId?: string
   /** When true the project is fixed (vault-connected entry) and not selectable. */
   locked?: boolean
   demo?: boolean
+  /** The artist's public profile handle, when their profile is public. */
+  artistHandle?: string | null
 }) {
   const [projectId, setProjectId] = useState(initialProjectId ?? projects[0]?.id ?? '')
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const selectedProject = projects.find(p => p.id === projectId)
+  function copyLink(path: string) {
+    const url = typeof window !== 'undefined' ? window.location.origin + path : path
+    navigator.clipboard?.writeText(url)
+    setCopied(path)
+    setTimeout(() => setCopied(c => (c === path ? null : c)), 1500)
+  }
   const [selected, setSelected] = useState<Set<CuratorType>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,6 +91,34 @@ export function PitchPlugForm({
           </div>
         )}
 
+        {/* Shareable links to include in your pitch */}
+        {(artistHandle || selectedProject?.isPublic) && (
+          <div className="rounded-xl border border-white/10 bg-[#0E0D1E] p-4">
+            <p className="mb-3 text-sm font-medium text-white/70">Links to include in your pitch</p>
+            <div className="space-y-2">
+              {artistHandle && (
+                <LinkRow
+                  label="Your profile"
+                  path={`/u/${artistHandle}`}
+                  copied={copied === `/u/${artistHandle}`}
+                  onCopy={() => copyLink(`/u/${artistHandle}`)}
+                />
+              )}
+              {selectedProject?.isPublic && (
+                <LinkRow
+                  label={`Listen — ${selectedProject.title}`}
+                  path={`/r/${selectedProject.id}`}
+                  copied={copied === `/r/${selectedProject.id}`}
+                  onCopy={() => copyLink(`/r/${selectedProject.id}`)}
+                />
+              )}
+            </div>
+            <p className="mt-3 text-xs text-white/40">
+              Public links — paste them into your outreach so recipients can hear the track and see who you are.
+            </p>
+          </div>
+        )}
+
         <div>
           <p className="mb-2 text-sm font-medium text-white/70">Who are you pitching?</p>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -124,7 +164,7 @@ export function PitchPlugForm({
       </div>
 
       {pitches && (
-        <div className="space-y-4">
+        <div className="space-y-4" id="pitch-results">
           <h2 className="text-lg font-semibold text-white">Your pitches</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {(Object.keys(pitches) as CuratorType[]).map(type => {
@@ -143,6 +183,34 @@ export function PitchPlugForm({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function LinkRow({
+  label,
+  path,
+  copied,
+  onCopy,
+}: {
+  label: string
+  path: string
+  copied: boolean
+  onCopy: () => void
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#1A1838] px-3 py-2">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-white">{label}</span>
+        <span className="block truncate text-xs text-white/40">{path}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="shrink-0 rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
     </div>
   )
 }

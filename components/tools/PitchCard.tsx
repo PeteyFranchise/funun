@@ -49,7 +49,7 @@ export function PitchCard({
     pitch.subject
   )}&body=${encodeURIComponent(pitch.body)}`
 
-  async function sendViaArtistOS() {
+  async function sendViaFunun() {
     setBusy(true)
     setError(null)
     const res = await fetch('/api/tools/pitchplug/send', {
@@ -190,13 +190,13 @@ export function PitchCard({
                 }}
                 className="rounded-lg bg-[#818CF8] px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-[#9aa3fa]"
               >
-                Send via ArtistOS
+                Send via Funūn
               </button>
             ) : (
               <span className="flex items-center gap-2">
                 <span className="text-xs text-white/60">Send to {email.trim()}?</span>
                 <button
-                  onClick={sendViaArtistOS}
+                  onClick={sendViaFunun}
                   disabled={busy}
                   className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
                 >
@@ -222,7 +222,7 @@ export function PitchCard({
             )}
           </div>
           <p className="text-[11px] text-white/30">
-            Sent from ArtistOS with replies routed to your contact email. Review before confirming —
+            Sent from Funūn with replies routed to your contact email. Review before confirming —
             we send exactly what&rsquo;s shown above.
           </p>
         </div>

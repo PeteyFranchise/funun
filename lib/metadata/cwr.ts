@@ -108,7 +108,7 @@ function assessWork(title: string, writers: Composer[], hasThirdPartyPublisher: 
   if (hasThirdPartyPublisher) {
     errors.push(
       'A third-party publisher is named — CWR needs the writer/publisher share breakdown, ' +
-        'which ArtistOS doesn’t capture yet. Clear the publisher to register as writer-controlled.'
+        'which Funūn doesn’t capture yet. Clear the publisher to register as writer-controlled.'
     )
   }
 
@@ -200,7 +200,7 @@ const iswcField = (raw: string | null): string => {
  * Build a CWR 2.1 file (NWR transactions) for the writer-controlled works in
  * the bundle. Returns null when nothing is ready. `sender` identifies the
  * submitter; for Path A pass `defaultSelfSubmitSender(bundle)`, for Path B the
- * onboarded ArtistOS admin-agency sender.
+ * onboarded Funūn admin-agency sender.
  */
 export function buildCwrFile(
   bundle: ReleaseBundle,
