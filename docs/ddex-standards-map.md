@@ -52,14 +52,30 @@ in `tracks.metadata` and feed all three.
 - `DisplayArtist` structured with `PartyName` + `DisplayArtistRole`.
 - Performers as `ResourceContributor`; writers as `IndirectResourceContributor`.
 
-**Still TODO before a real delivery package:**
-- Replace placeholder `MessageSender`/`MessageRecipient` **DPIDs** with registered
-  DDEX Party IDs (needs PIE / DDEX registration).
-- `DealList` (commercial terms, territory, usage types) — required for delivery.
+### XSD validation — now possible (and run)
+The normative ERN 4.3 XSD is public at
+`http://service.ddex.net/xml/ern/43/release-notification.xsd` (it imports the
+allowed-value-sets schema at `…/allowed-value-sets/allowed-value-sets.xsd`).
+Validate locally with libxml's `xmllint`:
+```
+curl -sL -o /tmp/ern43.xsd http://service.ddex.net/xml/ern/43/release-notification.xsd
+xmllint --noout --schema /tmp/ern43.xsd your-ern.xml
+```
+(or use the JS **DDEX Workbench**.) Running it against our current `buildDdexErn`
+output surfaced the real gaps — **our exporter is one architecture generation
+behind ERN 4.x:**
+- ❌ root attr `MessageSchemaVersionId` **not allowed** in 4.3; ❌ `AvsVersionId`
+  **required** but missing.
+- ❌ **`PartyList` missing** — 4.3 orders the message `MessageHeader → PartyList →
+  ResourceList → ReleaseList → DealList` and **references parties by ID** (P1, P2…)
+  instead of inlining `PartyName` in each resource/release. This is the big one;
+  it's a structural rework of `buildDdexErn`, iterated against `xmllint` until green.
+
+**Still TODO before a real delivery package** (after the PartyList rework):
+- Replace placeholder DPIDs with registered DDEX Party IDs (PIE / registration).
 - `TechnicalDetails` / `SoundRecordingEdition` (file refs, codecs, hashes).
-- `ReleaseType` and `Role`/`Genre` values mapped to the DDEX **allowed value sets**.
-- **Validate against the normative ERN 4.3 XSD** (DDEX Workbench) — this deck/KB
-  is guidance, not the schema.
+- `ReleaseType` / `Role` / `Genre` / `UseType` values from the DDEX **AVS**.
+- Same XSD treatment for the RDR-N export (fetch its XSD, iterate to green).
 
 ## Related
 - `docs/ddex-rdr-compliance.md` — neighbouring-rights (RDR) deep dive.
