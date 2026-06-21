@@ -1,7 +1,7 @@
 # Funūn — build status & next steps
 
 > Last updated: 2026-06-20 · Branch: `funun-redesign` · PR: #1 (open, not merged)
-> Repo: https://github.com/PeteyFranchise/ArtistOS-platform
+> Repo: https://github.com/PeteyFranchise/funun
 
 A running handoff of where the redesign stands and what's left. Resume by
 checking out the branch (see "Continue on another machine" at the bottom).
@@ -111,7 +111,7 @@ human: drafting the Songtrust outreach email (#8) and ERN/RDR-N XSD validation
 
 ## Continue on another machine
 ```
-cd ArtistOS-platform/artistos-platform
+cd ~/Desktop/funun
 git fetch origin && git checkout funun-redesign
 npm install            # if needed
 NEXT_PUBLIC_VAULT_DEMO=true npm run dev   # demo mode, no auth
