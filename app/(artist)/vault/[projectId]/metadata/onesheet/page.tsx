@@ -165,7 +165,7 @@ export default async function OneSheetPage({
       </section>
 
       <footer className="mt-8 border-t border-neutral-200 pt-3 text-xs text-neutral-400">
-        Prepared with ArtistOS Metadata Studio
+        Prepared with Funūn Metadata Studio
       </footer>
     </main>
   )

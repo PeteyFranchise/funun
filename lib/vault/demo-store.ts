@@ -34,7 +34,7 @@ function recomputeScore(project: VaultProjectRow): number {
  * Server-only: this module uses Node fs and must not be imported by client code.
  */
 
-const STORE_PATH = path.join(os.tmpdir(), 'artistos-vault-demo.json')
+const STORE_PATH = path.join(os.tmpdir(), 'funun-vault-demo.json')
 const DEMO_USER = '00000000-0000-0000-0000-000000000000'
 
 async function readStore(): Promise<VaultProjectRow[]> {

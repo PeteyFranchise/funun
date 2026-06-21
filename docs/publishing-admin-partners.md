@@ -6,7 +6,7 @@ Last updated: 2026-06-10
 Companion to [`cwr-plan.md`](./cwr-plan.md). That doc covers generating registration
 artifacts ourselves (CWR + pre-filled portals — "self-submit"). This doc covers the
 **partner route**: handing registration + collection to a third party that already
-holds the society relationships, so ArtistOS artists get paid end-to-end without us
+holds the society relationships, so Funūn artists get paid end-to-end without us
 clearing memberships at 50+ societies.
 
 The short version: **the realistic API path is a publishing administrator's
@@ -55,7 +55,7 @@ one positioning as a partial PRO *replacement* (digital only, via rights withdra
 ## Per-partner notes
 
 ### Songtrust — primary integration target
-- Pure admin, **no distribution bundling** — fits ArtistOS (we're not their distributor).
+- Pure admin, **no distribution bundling** — fits Funūn (we're not their distributor).
 - Explicitly positions as "the technical partner to the publishing industry" and
   **white-labels its admin to other platforms** — it powered CD Baby Pro and powers
   Symphonic's publishing option. That proven B2B/partner pipe is exactly the
@@ -91,7 +91,7 @@ one positioning as a partial PRO *replacement* (digital only, via rights withdra
 - **US limitation:** ASCAP/BMI operate under DOJ consent decrees — a US writer can't
   pull only digital rights while keeping the PRO for broadcast (the Pandora-era
   partial-withdrawal rulings). The withdrawal model fits **UK/EU** writers, not the US
-  stack ArtistOS is built around. Revisit if our international user base grows.
+  stack Funūn is built around. Revisit if our international user base grows.
 
 ---
 
@@ -115,7 +115,7 @@ requires SoundExchange**. The score must track these lanes separately.
 
 ---
 
-## Recommendation for ArtistOS
+## Recommendation for Funūn
 
 1. **Primary:** pursue **Songtrust's white-label/partner program** — full scope, no
    distribution bundling, and a proven B2B pipe (already powers other platforms).
@@ -183,7 +183,7 @@ streaming" pitch — which is exactly the conflicting + US-incompatible part.
 
 ### What the pairing accomplishes
 1. **Full coverage, no gaps** — society baseline for everyone (incl. US) + direct/sync upside.
-2. **Moat: ArtistOS becomes the rights router** — owns orchestration of which right is
+2. **Moat: Funūn becomes the rights router** — owns orchestration of which right is
    assigned to whom per work/territory, *preventing* double-claims. Neither partner
    offers this alone.
 3. **Programmatic backbone** — Songtrust's white-label pipe is the API; ReRight bolts on
@@ -269,14 +269,14 @@ Tier 2 adds:
   ✓ explicit informed-consent step on the withdrawal tradeoff
 ```
 
-### Where ArtistOS shines: eligibility as a guided product, not a gate
+### Where Funūn shines: eligibility as a guided product, not a gate
 
 The strategic point: **most artists won't be eligible on day one — and that's our
 opening.** Every hard gate maps to a tool we already have (or should build), so we don't
 just *check* eligibility, we **walk the artist into it** and then **coach them on how to
 GET the deals**. Eligibility becomes a guided, improvable journey, not a pass/fail wall.
 
-| Gate that blocks them | How ArtistOS moves them past it |
+| Gate that blocks them | How Funūn moves them past it |
 |---|---|
 | Unresolved splits | **SplitSheet** — drive to a signed 100% split |
 | Uncleared samples | **SampleClear** — assess + draft clearance requests |
@@ -291,7 +291,7 @@ which catalog is most placeable, and what to fix first. We turn "you don't quali
 into "here are the 3 steps to qualify, and here's how to get picked once you do."
 
 **Net:** the partnerships supply the *pipes* (Songtrust collection + ReRight sync/direct
-deals); ArtistOS supplies the *guidance layer* that gets artists eligible and gets them
+deals); Funūn supplies the *guidance layer* that gets artists eligible and gets them
 chosen. That guidance layer — powered by our existing tools + AI — is the differentiated
 moat neither partner offers alone.
 

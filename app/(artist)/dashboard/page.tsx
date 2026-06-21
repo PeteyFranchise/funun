@@ -89,7 +89,7 @@ export default async function DashboardPage() {
 
       {total === 0 ? (
         <div className="mt-16 flex flex-col items-center text-center">
-          <p className="text-lg font-medium text-white">Welcome to ArtistOS</p>
+          <p className="text-lg font-medium text-white">Welcome to Funūn</p>
           <p className="mt-1 max-w-sm text-sm text-white/50">
             Your Sound Vault is empty. Create your first project to start tracking its readiness.
           </p>

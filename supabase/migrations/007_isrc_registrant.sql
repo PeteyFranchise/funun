@@ -1,6 +1,6 @@
 -- ─── Migration 007: ISRC self-assignment ────────────────────────────
 -- Lets an artist who holds their own ISRC registrant code mint compliant
--- ISRCs inside ArtistOS instead of depending on a distributor's code.
+-- ISRCs inside Funūn instead of depending on a distributor's code.
 --
 -- ISRC = CC (country) + XXX (registrant) + YY (year) + NNNNN (designation).
 -- The registrant code + country are issued once to the artist by their

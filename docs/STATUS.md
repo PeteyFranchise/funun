@@ -98,14 +98,11 @@ human: drafting the Songtrust outreach email (#8) and ERN/RDR-N XSD validation
       2. **Local folders** `~/Desktop/ArtistOS-platform/artistos-platform` →
          e.g. `~/Desktop/funun` (then re-open the project from the new path).
          Still manual — touches the local filesystem.
-      3. **In-code references** — ~41 occurrences of "ArtistOS"/"artistos" across
-         ~20 files (e.g. `package.json` name, `README.md`, nav/layout brand
-         strings, `app/status`, `app/(auth)`/`(industry)` layouts, several
-         `lib/*` + `docs/*` + migration comments). Find them with:
-         `grep -rniI artistos --include='*.ts' --include='*.tsx' --include='*.json' --include='*.md' --include='*.sql' . | grep -v node_modules`
-         Note: most user-facing brand strings already say **Funūn**; these are
-         the leftover internal/legacy ones. (Claude can do layer 3 in one pass;
-         layers 1–2 are manual since they touch GitHub + the local filesystem.)
+      3. ✅ **In-code references** cleaned — all ~41 "ArtistOS"/"artistos"
+         occurrences replaced (brand strings → **Funūn**, npm name → `funun`,
+         `sendViaArtistOS` → `sendViaFunun`, demo tmp path + README dir/clone →
+         `funun`). `tsc` + `next build` green. Only intentional mentions remain
+         (this STATUS doc + naming history).
 - [ ] Review + merge **PR #1** → `main` when ready.
 - [ ] Set `ANTHROPIC_API_KEY` (contract verification) and optionally `DDEX_DPID`
       in the deploy env.

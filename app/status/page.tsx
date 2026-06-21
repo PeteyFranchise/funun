@@ -4,7 +4,7 @@ import { TOOLS } from '@/lib/tools/registry'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Platform Status · ArtistOS',
+  title: 'Platform Status · Funūn',
 }
 
 // ─── Status model ─────────────────────────────────────────────────────

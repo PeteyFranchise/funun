@@ -25,7 +25,7 @@ export async function createNotification(
   if (args.sendEmailCopy && args.email) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
     const linkHtml = args.link
-      ? `<p><a href="${appUrl}${args.link}">Open in ArtistOS →</a></p>`
+      ? `<p><a href="${appUrl}${args.link}">Open in Funūn →</a></p>`
       : ''
     const res = await sendEmail({
       to: args.email,

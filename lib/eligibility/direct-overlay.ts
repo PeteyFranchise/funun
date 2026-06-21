@@ -7,7 +7,7 @@
 //     (US ASCAP/BMI writers are blocked by consent decrees).
 //
 // Design goal: this is the "guidance layer," not a pass/fail wall. Every gate
-// reports a status AND a remedy that maps to an ArtistOS tool, so the UI can
+// reports a status AND a remedy that maps to an Funūn tool, so the UI can
 // walk an artist *into* eligibility instead of just rejecting them.
 //
 // Pure + client-safe (no Node-only deps). Callers normalize DB rows via
@@ -38,7 +38,7 @@ export type EligibilityGate = {
   tier: 1 | 2
   /** Human-readable state. */
   detail: string
-  /** When not `pass`: the ArtistOS tool / action that resolves it. */
+  /** When not `pass`: the Funūn tool / action that resolves it. */
   remedy?: string
 }
 
