@@ -75,7 +75,22 @@ FeaturedArtist/AssociatedPerformer, `IndirectResourceContributorRole` Composer);
 - Replace placeholder DPIDs with registered DDEX Party IDs (PIE / registration).
 - `TechnicalDetails` (file refs, codecs, hashes) for actual audio delivery.
 - An ERN **4.x** variant (PartyList architecture) if a target DSP requires it.
-- Same XSD treatment for the **RDR-N** export (fetch its XSD, iterate to green).
+
+### RDR-N export — also XSD-valid ✅
+`buildRdrN` (lib/metadata/rdr-export.ts) now **validates against the normative
+MLC 1.31 XSD**. Key finding: RDR-N messages live in the DDEX **MLC schema**
+(namespace `http://ddex.net/xml/mlc/131`, file `music-licensing-companies.xsd`),
+not a standalone `rdrn` namespace. Root: `DeclarationOfSoundRecordingRightsClaimMessage`.
+Specifics handled: prefixed root (elementFormDefault is unqualified → children
+unqualified, like ERN); `RightsController` requires `RightsControllerType`
+(OriginalOwner) + `DelegatedUsageRights` (UseType + PeriodOfRightsDelegation +
+TerritoryOfRightsDelegation); performers as FeaturedArtist/NonFeaturedArtist.
+Validate with:
+```
+curl -sL -o /tmp/mlc.xsd http://service.ddex.net/xml/mlc/131/music-licensing-companies.xsd
+# (xmllint can't compile the imported xmldsig X509Data — patch/stub it, or use DDEX Workbench)
+xmllint --noout --schema /tmp/mlc.xsd your-rdr-n.xml
+```
 
 ## Related
 - `docs/ddex-rdr-compliance.md` — neighbouring-rights (RDR) deep dive.
