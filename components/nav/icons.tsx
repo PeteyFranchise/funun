@@ -76,3 +76,13 @@ export const EarningsIcon = (p: IconProps) => (
     <circle cx="16.5" cy="14.5" r="1.2" />
   </Svg>
 )
+
+// Benchmarks — bars with an upward trend
+export const BenchmarkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 21h18" />
+    <rect x="5" y="12" width="3.5" height="6" rx="1" />
+    <rect x="10.5" y="8" width="3.5" height="10" rx="1" />
+    <rect x="16" y="4" width="3.5" height="14" rx="1" />
+  </Svg>
+)
