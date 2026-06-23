@@ -1,6 +1,6 @@
 # Funūn — build status & next steps
 
-> Last updated: 2026-06-22 · Active branch: `benchmarks` · PR: **#2 (open)** · `main`: PR #1 merged
+> Last updated: 2026-06-23 · Active branch: `main` · Latest: **PR #2 merged** (Benchmarking + Antenna connection); PR #1 (redesign) merged
 > Repo: https://github.com/PeteyFranchise/funun
 
 A running handoff of where the build stands and what's next. Resume by opening a
@@ -9,11 +9,10 @@ Claude session **rooted in this repo** (see "Continue / resume" at the bottom).
 ---
 
 ## TL;DR
-The **Funūn redesign shipped** — PR #1 is merged into `main`. Current work is the
-**Breakthrough Benchmarking** feature: its own room at `/benchmarks` **plus a live
-connection to Antenna** (the "grow → unlock → pitch" loop). That's committed and
-pushed on the **`benchmarks` branch** as **PR #2 (open, not merged)** — review/merge
-is your call. The benchmarking **data source is deferred** (manual entry today; wire a
+The **Funūn redesign** (PR #1) and **Breakthrough Benchmarking** — its own room at
+`/benchmarks` **plus a live connection to Antenna** (the "grow → unlock → pitch" loop)
+— are both **merged into `main`** (PR #2, merge commit `2c8fe34`). The benchmarking
+**data source is deferred** (manual entry today; wire a
 real source next). DDEX **ERN 3.5.1 + RDR-N (MLC 1.31) now XSD-validate**. All Supabase
 Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully done**.
 
@@ -55,7 +54,9 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
 > waves — lives in **`docs/release-journey.md`**. That's the planning doc for what we
 > build next at the feature level.
 
-1. **Merge PR #2** (`benchmarks` → `main`) when you're happy with it.
+1. **Start Wave 1** of `docs/release-journey.md` — the quick native readiness wins
+   (master-WAV + MP3 slots, 3000² artwork check, lyrics `.txt`, distributor-selected
+   gate) so 100% truly means "upload-ready." *(PR #2 merged ✅.)*
 2. **Wire a real Benchmarking data source** (today it's manual entry). In order of
    speed: **artist CSV upload (fastest MVP)** → paid data partner (Chartmetric /
    Soundcharts / Songstats) → Spotify Web API OAuth (partial). Follow
@@ -109,7 +110,7 @@ cd ~/Desktop/funun && claude
 ```
 Then run / verify:
 ```
-git status                                    # confirm branch (expect: benchmarks)
+git status                                    # confirm branch (expect: main)
 npm install                                   # if needed
 NEXT_PUBLIC_VAULT_DEMO=true npm run dev        # demo mode, no auth
 node_modules/.bin/tsc --noEmit && npm run build
