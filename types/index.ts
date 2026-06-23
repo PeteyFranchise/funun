@@ -329,6 +329,19 @@ export type SoundIdentity = {
   similar_artists: string[]
   lyrical_themes: string[]
   last_analyzed: string
+  /**
+   * Latest Breakthrough Benchmarking metrics the artist saved. Shape mirrors
+   * BenchmarkInput; stored here (vs. a new table) so the Antenna room can read
+   * the same numbers that drive opportunity gates. Optional — absent until the
+   * artist saves from the Benchmarks room.
+   */
+  benchmarks?: {
+    monthlyListeners: number
+    savesToStreamsPct: number
+    followerGrowthPctMonthly: number
+    engagementRatePct: number
+    playlistAddsPerMonth: number
+  }
 }
 
 // ─── Industry Professional ─────────────────────────────────────────────

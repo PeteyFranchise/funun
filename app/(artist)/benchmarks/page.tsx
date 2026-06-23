@@ -19,12 +19,14 @@ export default async function BenchmarksPage() {
 
   if (DEMO) {
     genre = 'R&B'
-    // Emerging-stage scenario — the saves-ratio gap from the pitch.
+    // Emerging-stage scenario. Keeps the pitch's headline saves gap (3.1 vs 5.2
+    // → editorial Locked) while spanning the full range: engagement clears its
+    // bar (brand Qualifies) and follower growth is close (label Almost).
     initial = {
       monthlyListeners: 6200,
       savesToStreamsPct: 3.1,
-      followerGrowthPctMonthly: 5,
-      engagementRatePct: 2.8,
+      followerGrowthPctMonthly: 7,
+      engagementRatePct: 4.2,
       playlistAddsPerMonth: 7,
     }
   } else {
@@ -34,11 +36,15 @@ export default async function BenchmarksPage() {
     } = await supabase.auth.getUser()
     const { data: profile } = await supabase
       .from('artist_profiles')
-      .select('genre, monthly_listeners')
+      .select('genre, monthly_listeners, sound_identity')
       .eq('id', user?.id ?? '')
       .maybeSingle()
     genre = profile?.genre ?? null
-    initial = { ...initial, monthlyListeners: profile?.monthly_listeners ?? 0 }
+    // Prefill from the last saved snapshot if present, else from the profile.
+    const saved = (profile?.sound_identity as { benchmarks?: BenchmarkInput } | null)?.benchmarks
+    initial = saved
+      ? { ...saved }
+      : { ...initial, monthlyListeners: profile?.monthly_listeners ?? 0 }
   }
 
   return (
@@ -48,7 +54,7 @@ export default async function BenchmarksPage() {
         subtitle="How your growth compares to artists who broke through at your stage, in your genre"
       />
       <div className="flex-1 px-9 py-[30px]">
-        <BenchmarkView initial={initial} genre={genre} />
+        <BenchmarkView initial={initial} genre={genre} canSave={!DEMO} />
       </div>
     </>
   )

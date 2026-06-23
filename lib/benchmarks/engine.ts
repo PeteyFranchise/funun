@@ -48,6 +48,8 @@ export type BenchmarkStage = {
 export type BenchmarkResult = {
   stage: BenchmarkStage
   genre: string
+  /** Carried through so audience-gated mappings (sync, festival…) can read it. */
+  monthlyListeners: number
   metrics: BenchmarkMetric[]
   /** How many metrics are at/above the breakthrough benchmark. */
   onTrackCount: number
@@ -162,6 +164,7 @@ export function evaluateBenchmarks(input: BenchmarkInput, genre: string | null):
   return {
     stage,
     genre: genre?.trim() || 'your genre',
+    monthlyListeners: input.monthlyListeners,
     metrics,
     onTrackCount: metrics.filter(m => m.status !== 'behind').length,
   }
