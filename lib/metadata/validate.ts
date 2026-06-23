@@ -92,7 +92,8 @@ export type ReleaseForCheck = {
   tracks: TrackForCheck[]
 }
 
-const MIN_ART = 1600
+const MIN_ART = 1600 // absolute floor a few DSPs still accept
+const RECOMMENDED_ART = 3000 // the square spec every distributor/DSP wants
 
 // ── Main entry ───────────────────────────────────────────────────────
 export function validateRelease(release: ReleaseForCheck): ValidationReport {
@@ -117,18 +118,25 @@ export function validateRelease(release: ReleaseForCheck): ValidationReport {
     add('upc', 'UPC / EAN', 'warn', 'No barcode yet — your distributor usually assigns one.')
   }
 
-  // Cover art
+  // Cover art — distributors require a SQUARE image; 3000×3000 is the standard
+  // every DSP accepts (1600 is the bare floor only a few still take).
   if (!release.cover_art_url) {
     add('art', 'Cover art', 'error', 'No cover art uploaded.')
   } else if (release.cover_width && release.cover_height) {
-    const ok = release.cover_width >= MIN_ART && release.cover_height >= MIN_ART
-    const square = release.cover_width === release.cover_height
-    if (ok && square) add('art', 'Cover art', 'ok', `${release.cover_width}×${release.cover_height}px — meets spec.`)
-    else if (!ok)
-      add('art', 'Cover art', 'error', `Art is ${release.cover_width}×${release.cover_height}px — needs at least ${MIN_ART}×${MIN_ART}.`)
-    else add('art', 'Cover art', 'warn', `Art is ${release.cover_width}×${release.cover_height}px — should be square.`)
+    const w = release.cover_width
+    const h = release.cover_height
+    const dims = `${w}×${h}px`
+    const square = w === h
+    if (w < MIN_ART || h < MIN_ART)
+      add('art', 'Cover art', 'error', `Art is ${dims} — below the ${MIN_ART}×${MIN_ART} minimum DSPs accept. Use ${RECOMMENDED_ART}×${RECOMMENDED_ART}.`)
+    else if (!square)
+      add('art', 'Cover art', 'error', `Art is ${dims} — cover art must be square (${RECOMMENDED_ART}×${RECOMMENDED_ART}).`)
+    else if (w < RECOMMENDED_ART)
+      add('art', 'Cover art', 'warn', `Art is ${dims} — accepted, but ${RECOMMENDED_ART}×${RECOMMENDED_ART} is the distribution standard. Upsize before you submit.`)
+    else
+      add('art', 'Cover art', 'ok', `${dims} — meets the ${RECOMMENDED_ART}×${RECOMMENDED_ART} distribution standard.`)
   } else {
-    add('art', 'Cover art', 'warn', `Uploaded, but dimensions unverified — confirm it is at least ${MIN_ART}×${MIN_ART}px and square.`)
+    add('art', 'Cover art', 'warn', `Uploaded, but dimensions unverified — confirm it is ${RECOMMENDED_ART}×${RECOMMENDED_ART}px and square.`)
   }
 
   // Rights block

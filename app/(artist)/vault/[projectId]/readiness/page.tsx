@@ -9,6 +9,7 @@ import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { Topbar } from '@/components/layout/Topbar'
+import { DistributorPicker } from '@/components/vault/DistributorPicker'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,8 +106,10 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
   if (!loaded) notFound()
   const { project, artist } = loaded
 
+  const distributor = (project as { distributor?: string | null }).distributor ?? null
   const items = readinessItemsForProject({
     type: project.type,
+    distributor,
     tracks: project.tracks,
     assets: project.vault_assets,
     documents: project.vault_documents,
@@ -193,6 +196,9 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
 
         {/* Gates */}
         <div>
+          {['single', 'ep', 'album'].includes(project.type) && (
+            <DistributorPicker projectId={projectId} initial={distributor} />
+          )}
           <div className="mb-[18px] text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">
             What unlocks money &amp; opportunities
           </div>

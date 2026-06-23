@@ -153,6 +153,7 @@ export default async function VaultProjectPage({
 
   const items = readinessItemsForProject({
     type: project.type,
+    distributor: (project as { distributor?: string | null }).distributor ?? null,
     tracks: project.tracks,
     assets: project.vault_assets,
     documents: project.vault_documents,
