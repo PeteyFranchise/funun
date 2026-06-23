@@ -54,9 +54,11 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
 > waves — lives in **`docs/release-journey.md`**. That's the planning doc for what we
 > build next at the feature level.
 
-1. **Start Wave 1** of `docs/release-journey.md` — the quick native readiness wins
-   (master-WAV + MP3 slots, 3000² artwork check, lyrics `.txt`, distributor-selected
-   gate) so 100% truly means "upload-ready." *(PR #2 merged ✅.)*
+1. **Finish Wave 1** of `docs/release-journey.md`. Shipped (PR #3): **artwork → 3000²
+   standard**, **lyrics `.txt` export**, and the **distributor-selected gate**
+   (migrations 016–017, live & verified). Remaining: **master-WAV + MP3 slots** (no
+   migration — `tracks.metadata`) and making the **artwork check verify** real
+   dimensions (it only warns today). *(PRs #2 & #3 merged ✅.)*
 2. **Wire a real Benchmarking data source** (today it's manual entry). In order of
    speed: **artist CSV upload (fastest MVP)** → paid data partner (Chartmetric /
    Soundcharts / Songstats) → Spotify Web API OAuth (partial). Follow
@@ -95,8 +97,9 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
 - **ArtistOS → Funūn rename — complete**: GitHub repo (`PeteyFranchise/funun`), all
   in-code references (~41), and the local folder (now `~/Desktop/funun`).
 - **Supabase Management tokens — all deleted** by you (housekeeping done).
-- Migrations **010–015** applied to live DB (project ref `wgfjakfiyeewzfuxkgyo`). The
-  Benchmarking connection added **no** new migration (rides the `sound_identity` JSONB).
+- Migrations **010–017** applied to live DB (project ref `wgfjakfiyeewzfuxkgyo`). 016–017
+  are Wave 1's distributor gate (column + readiness-scoring trigger); the Benchmarking
+  connection added none (rides the `sound_identity` JSONB).
 
 ---
 
