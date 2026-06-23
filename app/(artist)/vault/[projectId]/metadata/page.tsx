@@ -123,9 +123,21 @@ export default async function MetadataPage({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <Link href={`/vault/${projectId}`} className="text-sm text-white/50 transition hover:text-white">
-        ← {project.title}
-      </Link>
+      <div className="flex items-center justify-between gap-4">
+        <Link href={`/vault/${projectId}`} className="text-sm text-white/50 transition hover:text-white">
+          ← {project.title}
+        </Link>
+        <a
+          href={`/api/vault/${projectId}/lyrics`}
+          className="inline-flex items-center gap-2 rounded-[9px] border border-hair bg-card px-3 py-2 text-[13px] font-semibold text-lav transition hover:text-white"
+          title="Download all lyrics as a plain-text file for collaborators, press, and promo"
+        >
+          <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />
+          </svg>
+          Lyrics (.txt)
+        </a>
+      </div>
       <div className="mt-6">
         <MetadataStudio
           projectId={projectId}
