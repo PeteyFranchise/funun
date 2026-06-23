@@ -1,122 +1,122 @@
 # Funūn — build status & next steps
 
-> Last updated: 2026-06-20 · Branch: `funun-redesign` · PR: #1 (open, not merged)
+> Last updated: 2026-06-22 · Active branch: `benchmarks` · PR: **#2 (open)** · `main`: PR #1 merged
 > Repo: https://github.com/PeteyFranchise/funun
 
-A running handoff of where the redesign stands and what's left. Resume by
-checking out the branch (see "Continue on another machine" at the bottom).
+A running handoff of where the build stands and what's next. Resume by opening a
+Claude session **rooted in this repo** (see "Continue / resume" at the bottom).
 
 ---
 
 ## TL;DR
-The **Funūn redesign** is feature-complete on the `funun-redesign` branch and
-open as **PR #1** (review/merge is your call — I did not merge into `main`).
-Migrations **010–015 are all applied** to the live DB. Two things still need a
-human: drafting the Songtrust outreach email (#8) and ERN/RDR-N XSD validation
-(needs the DDEX schema links).
+The **Funūn redesign shipped** — PR #1 is merged into `main`. Current work is the
+**Breakthrough Benchmarking** feature: its own room at `/benchmarks` **plus a live
+connection to Antenna** (the "grow → unlock → pitch" loop). That's committed and
+pushed on the **`benchmarks` branch** as **PR #2 (open, not merged)** — review/merge
+is your call. The benchmarking **data source is deferred** (manual entry today; wire a
+real source next). DDEX **ERN 3.5.1 + RDR-N (MLC 1.31) now XSD-validate**. All Supabase
+Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully done**.
 
 ---
 
-## Done ✅
+## Most recent work — Breakthrough Benchmarking + Antenna connection (PR #2)
 
-### App shell & design system
-- Funūn dark design system (Tailwind tokens, Inter, indigo→fuchsia gradient).
-- 252px gradient left-nav with six rooms: Sound Vault · Contract Locker ·
-  Antenna · PitchPlug · Rights Coach · Earnings.
+**The room** (`/benchmarks`)
+- `lib/benchmarks/engine.ts` — source-agnostic `BenchmarkInput` → `evaluateBenchmarks`.
+  Derives career **stage** from monthly listeners, applies seeded **stage targets**
+  ("Pete's framework") with **genre factors**, returns per-metric value/target/status
+  (ahead / close / behind) + the 3 actions that move each number.
+- `components/benchmarks/BenchmarkView.tsx` — manual metric entry → live comparison.
+- `app/(artist)/benchmarks/page.tsx` — prefills genre + listeners; demo scenario.
 
-### Screens (hi-fi, from the design handoff)
-- Sound Vault dashboard · Playback/release detail (waveform, mini-player) ·
-  Release Readiness · Antenna (filters + match rings).
-
-### Rooms
-- **Contract Locker** — aggregated documents + AI verification panel + external
-  PDF upload (Claude reads the PDF natively). Needs `ANTHROPIC_API_KEY`.
-- **Rights Coach** — wires the direct-overlay eligibility engine.
-- **Earnings** — DSR import (real, persisted) + illustrative partner preview.
-
-### Profiles + social layer (all live)
-- `/profile` (owner), `/u/[handle]` (public), `/r/[projectId]` Now Playing.
-- Follow · Wall · Endorsements · threaded Release Comments · Activity feed
-  (auto-emit on release/placement + readiness-milestone DB trigger) · 1:1 DMs
-  (Realtime + polling fallback).
-- PitchPlug embeds profile + release links.
-
-### Lyrics
-- Per-track lyrics in `tracks.metadata`; Metadata Studio input; embedded into
-  ID3 `USLT` + sidecar. See `docs/song-lyrics.md`.
-
-### Rights & DDEX
-- **Eligibility engine** (`lib/eligibility/direct-overlay.ts`) — Tier 1/2.
-- **CWR / registration** lane (publishing) — pre-existing, intact.
-- **ERN** export → ERN 4.3-aligned (MessageHeader, namespace, resource/release
-  refs, ISO-8601 duration, contributors, **DealList**, env `DDEX_DPID`). Verified
-  well-formed; NOT XSD-validated.
-- **RDR-N** (neighbouring rights): `Performer`/`RecordingInfo` model + Metadata
-  Studio editor + Core/Recommended **readiness** (surfaced in Release Readiness
-  + Rights Coach) + best-effort **RDR-N XML export** (`?format=rdr`).
-- **DSR ingest**: tolerant flat-file parser + `/api/earnings/import` + persisted
-  aggregates (`dsr_imports`) shown in the Earnings room.
-- Docs: `ddex-rdr-compliance.md`, `ddex-standards-map.md`, `song-lyrics.md`,
-  `publishing-admin-partners.md`, `cwr-plan.md`.
-
-### Migrations applied to live DB (project ref wgfjakfiyeewzfuxkgyo)
-- 010 public showcase profile fields · 011 contract verification + storage
-  bucket · 012 social layer (7 tables + RLS) · 013 readiness-milestone trigger ·
-  014 dm_messages realtime publication · 015 dsr_imports table.
+**The connection (Benchmarks ↔ Antenna — "the unlock loop")**
+- `lib/benchmarks/opportunity-map.ts` — pure gate engine. Maps each `OpportunityType`
+  to its gating metric (saves→editorial playlist, engagement→brand, growth→label/press)
+  or a listener threshold (sync / festival / venue), and reads a `BenchmarkResult` into
+  **qualifies / almost / locked** + a one-line reason.
+- `/benchmarks` shows a **"What this unlocks in Antenna"** card + **Save & sync**, which
+  persists metrics to `artist_profiles.sound_identity.benchmarks` (JSONB — **no migration**).
+- `/antenna` shows a **qualify/almost/locked badge** per opportunity with the gap + a
+  **"Fix in Benchmarks"** deep-link (`components/antenna/OpportunityCard.tsx`,
+  `AntennaBrowser.tsx`, `app/(artist)/antenna/page.tsx`).
+  `app/api/benchmarks/route.ts` is the persistence endpoint.
+- Verified: `tsc --noEmit` clean, `next build` green, and both routes server-render the
+  correct gates in demo mode (brand → Qualifies, editorial → Locked, sync → Locked).
+- Docs: `docs/breakthrough-benchmarking.md` (spec), `docs/build-ideas.md` (backlog,
+  seeded with this card), `docs/spotify-api-guidelines.md` (Spotify API rules for the
+  future data source).
 
 ---
 
-## To do ▢
+## Next up ▢ (priority order)
 
-### Needs a human
-- [ ] **#8 — Songtrust partnership outreach email.** Draft asking: API vs CWR
-      ingestion, field mapping, white-label terms, sync carve-out for ReRight.
-      (Self-contained spec in task #8 / `docs/publishing-admin-partners.md`.)
-- [ ] **ERN / RDR-N XSD validation.** Needs the normative ERN 4.3 + RDR-N XSD
-      links from the DDEX Knowledge Base (or the DDEX Workbench API). Today the
-      exports are only well-formed, not schema-validated.
+> **Feature roadmap:** the full artist release-journey map — every pre/post-release
+> task, its build status, which room it lives in, integration approach, and rollout
+> waves — lives in **`docs/release-journey.md`**. That's the planning doc for what we
+> build next at the feature level.
 
-### Code follow-ups (lower priority)
-- [ ] ERN: `TechnicalDetails` / `SoundRecordingEdition` (file refs, codecs),
-      allowed-value-set mapping for roles/genres/release-type, real DPIDs (PIE).
-- [ ] RDR-N: collection-mandate party + territory + `RightsStatementProfile`;
-      validate vs XSD; partner routing (RDx / aggregator) — not a direct node.
-- [ ] DSR: harden the parser against specific DSR profiles (currently tolerant/
-      heuristic); map ISRC→release titles in the Earnings breakdown.
-- [ ] DM: presence indicator + unread badges (Realtime is in; these are extra).
-- [ ] PIE / MEAD standards (party identity, rich metadata) — not started.
+1. **Merge PR #2** (`benchmarks` → `main`) when you're happy with it.
+2. **Wire a real Benchmarking data source** (today it's manual entry). In order of
+   speed: **artist CSV upload (fastest MVP)** → paid data partner (Chartmetric /
+   Soundcharts / Songstats) → Spotify Web API OAuth (partial). Follow
+   `docs/spotify-api-guidelines.md` — Spotify's ToS forbids training ML on their data,
+   so the moat must be built from artists' own exported/authorized metrics.
+3. **Start the aggregated dataset** (anonymised thresholds crossed) to move from seeded
+   targets to real cohort benchmarks — the network-effect moat (sharpens at 500+ users).
+4. **"Add to my plan"** action from the Antenna "see the moves" drill-down — mocked, not
+   built yet.
+5. Deepen Pete's framework: per-genre action libraries, threshold-specific playbooks.
 
-### Housekeeping
-- [ ] **Revoke Supabase Management tokens** at
-      https://supabase.com/dashboard/account/tokens (013 + 014/015 tokens).
-- [ ] Decide on the final brand **name** (working name "Funūn"; "Sound Vault"
-      collides; see naming history) and run the rename if it changes.
-- [ ] **Rename everything ArtistOS → Funūn.** Three layers:
-      1. ✅ **GitHub repo** renamed `ArtistOS-platform` → **`funun`**
-         (github.com/PeteyFranchise/funun); local `origin` remote updated; PR #1
-         carried over. (GitHub redirects the old URL.)
-      2. **Local folders** `~/Desktop/ArtistOS-platform/artistos-platform` →
-         e.g. `~/Desktop/funun` (then re-open the project from the new path).
-         Still manual — touches the local filesystem.
-      3. ✅ **In-code references** cleaned — all ~41 "ArtistOS"/"artistos"
-         occurrences replaced (brand strings → **Funūn**, npm name → `funun`,
-         `sendViaArtistOS` → `sendViaFunun`, demo tmp path + README dir/clone →
-         `funun`). `tsc` + `next build` green. Only intentional mentions remain
-         (this STATUS doc + naming history).
-- [ ] Review + merge **PR #1** → `main` when ready.
-- [ ] Set `ANTHROPIC_API_KEY` (contract verification) and optionally `DDEX_DPID`
-      in the deploy env.
+### Lower-priority code follow-ups
+- ERN: `TechnicalDetails` / `SoundRecordingEdition`, real DPIDs (PIE).
+- RDR-N: collection-mandate party + territory + partner routing (RDx / aggregator).
+- DSR: harden parser vs specific profiles; map ISRC→titles in the Earnings breakdown.
+- DMs: presence indicator + unread badges.
+- PIE / MEAD standards — not started.
+- Decide the final brand **name** (working name "Funūn").
 
 ---
 
-## Continue on another machine
+## Done ✅ (earlier; in `main` via PR #1 unless noted)
+- **App shell & design system** — Funūn dark theme; 252px gradient left-nav, now
+  **seven** rooms: Sound Vault · Contract Locker · Antenna · **Benchmarks** · PitchPlug ·
+  Rights Coach · Earnings.  *(Benchmarks added in PR #2.)*
+- **Screens** — Sound Vault dashboard · Playback / release detail · Release Readiness ·
+  Antenna (filters + match rings).
+- **Rooms** — Contract Locker (PDF upload + AI verification; needs `ANTHROPIC_API_KEY`)
+  · Rights Coach (eligibility engine) · Earnings (real DSR import + partner preview).
+- **Profiles + social layer (live)** — `/profile`, `/u/[handle]`, `/r/[projectId]`;
+  Follow · Wall · Endorsements · Release Comments · Activity feed · 1:1 DMs.
+- **Rights & DDEX** — eligibility engine (Tier 1/2); CWR lane; **ERN 3.5.1 export now
+  XSD-validates**; **RDR-N (MLC 1.31) export now XSD-validates** (`?format=ddex` /
+  `?format=rdr`); DSR ingest + persisted aggregates.
+- **Songtrust outreach email — drafted** (task #8); it's yours to send.
+- **ArtistOS → Funūn rename — complete**: GitHub repo (`PeteyFranchise/funun`), all
+  in-code references (~41), and the local folder (now `~/Desktop/funun`).
+- **Supabase Management tokens — all deleted** by you (housekeeping done).
+- Migrations **010–015** applied to live DB (project ref `wgfjakfiyeewzfuxkgyo`). The
+  Benchmarking connection added **no** new migration (rides the `sound_identity` JSONB).
+
+---
+
+## Continue / resume (this or another machine)
+Open a Claude Code session **rooted in this repo** so commands, git, and the in-app
+preview all target funun:
 ```
-cd ~/Desktop/funun
-git fetch origin && git checkout funun-redesign
-npm install            # if needed
-NEXT_PUBLIC_VAULT_DEMO=true npm run dev   # demo mode, no auth
+funun          # alias for: cd ~/Desktop/funun && claude
+# …or long form:
+cd ~/Desktop/funun && claude
 ```
-- Verify with `node_modules/.bin/tsc --noEmit` + `npm run build`.
-- `.env.local` is gitignored — set secrets per machine.
-- In-app browser preview is unavailable from the `lexclock` session root; verify
-  via build, not the preview server.
+Then run / verify:
+```
+git status                                    # confirm branch (expect: benchmarks)
+npm install                                   # if needed
+NEXT_PUBLIC_VAULT_DEMO=true npm run dev        # demo mode, no auth
+node_modules/.bin/tsc --noEmit && npm run build
+```
+- The in-app **browser preview works** from a funun-rooted session — it was only blocked
+  when running from the old `lexclock` session root.
+- `.env.local` is gitignored — set secrets per machine (`ANTHROPIC_API_KEY`, optional
+  `DDEX_DPID`).
+- This machine is **macOS 12** — computer-use screenshots / teach mode don't work here;
+  guide via text/terminal.

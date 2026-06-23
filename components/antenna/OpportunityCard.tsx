@@ -2,16 +2,27 @@ import Link from 'next/link'
 import type { Opportunity } from '@/types'
 import { OPPORTUNITY_TYPE_LABELS } from '@/types'
 import { deadlineLabel } from '@/lib/antenna/display'
+import type { GateState, OpportunityGate } from '@/lib/benchmarks/opportunity-map'
+
+// Benchmark-gate badge colours — mirrors the Benchmarks room.
+const GATE_CHIP: Record<GateState, string> = {
+  qualifies: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
+  almost: 'text-money2 bg-money/10 border-money/30',
+  locked: 'text-lavdim bg-white/[.04] border-hairstrong',
+}
 
 // ─── Opportunity row (.opp) ──────────────────────────────────────────
-// Match-% ring + type eyebrow + title + tags + deadline + pitch CTA.
+// Match-% ring + type eyebrow + title + benchmark gate + tags + deadline + CTA.
 export function OpportunityCard({
   opportunity,
   score = 0,
+  gate,
 }: {
   opportunity: Opportunity
   score?: number
   matchProjectTitle?: string
+  /** Benchmark readiness for this opportunity type, from the artist's metrics. */
+  gate?: OpportunityGate | null
 }) {
   const tags = [...opportunity.genres, ...opportunity.mood_tags].slice(0, 3)
   const deadline = deadlineLabel(opportunity.response_deadline ?? opportunity.deadline) ?? 'Ongoing'
@@ -39,6 +50,22 @@ export function OpportunityCard({
         <div className="mt-1 text-[18.5px] font-bold tracking-[-.01em] text-white">
           {opportunity.title}
         </div>
+        {gate && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-[10px] gap-y-1">
+            <span className={`flex-none rounded-full border px-[9px] py-[2px] text-[11px] font-bold ${GATE_CHIP[gate.state]}`}>
+              {gate.label}
+            </span>
+            <span className="text-[12.5px] text-lav">{gate.reason}</span>
+            {gate.state !== 'qualifies' && (
+              <Link
+                href="/benchmarks"
+                className="whitespace-nowrap text-[12.5px] font-semibold text-brandindigo"
+              >
+                Fix in Benchmarks →
+              </Link>
+            )}
+          </div>
+        )}
         {tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {tags.map(t => (

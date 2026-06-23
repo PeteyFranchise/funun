@@ -82,6 +82,18 @@ export const DEMO_OPPORTUNITIES: Opportunity[] = [
     compensation_type: 'rev_share',
     min_readiness_score: 75,
   }),
+  opp({
+    id: 'demo-opp-brand',
+    title: 'Lifestyle apparel — paid creator campaign',
+    type: 'brand',
+    description: 'DTC apparel brand booking R&B artists for an engagement-led paid social campaign.',
+    genres: ['R&B', 'Pop'],
+    mood_tags: ['late-night', 'smooth'],
+    compensation: '$2,000 + product',
+    compensation_type: 'paid',
+    response_deadline: '2026-07-01T00:00:00Z',
+    min_readiness_score: 60,
+  }),
 ]
 
 const DEMO_ARTIST: MatchableArtist = {

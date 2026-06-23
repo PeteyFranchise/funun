@@ -3,9 +3,10 @@
 import { useMemo, useState } from 'react'
 import type { Opportunity, OpportunityType } from '@/types'
 import { OPPORTUNITY_TYPE_LABELS } from '@/types'
+import type { OpportunityGate } from '@/lib/benchmarks/opportunity-map'
 import { OpportunityCard } from './OpportunityCard'
 
-export type AntennaRow = { opportunity: Opportunity; score: number }
+export type AntennaRow = { opportunity: Opportunity; score: number; gate?: OpportunityGate | null }
 
 export function AntennaBrowser({ rows }: { rows: AntennaRow[] }) {
   const types = useMemo(
@@ -48,7 +49,9 @@ export function AntennaBrowser({ rows }: { rows: AntennaRow[] }) {
         {shown.length === 0 ? (
           <p className="text-[14px] text-lavdim">No matches with these filters.</p>
         ) : (
-          shown.map(r => <OpportunityCard key={r.opportunity.id} opportunity={r.opportunity} score={r.score} />)
+          shown.map(r => (
+            <OpportunityCard key={r.opportunity.id} opportunity={r.opportunity} score={r.score} gate={r.gate} />
+          ))
         )}
       </div>
 
