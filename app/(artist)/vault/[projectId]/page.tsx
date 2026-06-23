@@ -12,6 +12,7 @@ import { DocumentManager } from '@/components/vault/DocumentManager'
 import { ToolsPanel } from '@/components/tools/ToolsPanel'
 import { ProjectTabs } from '@/components/vault/ProjectTabs'
 import { TrackList, type PlayerTrack } from '@/components/vault/TrackList'
+import { readMasterAudio } from '@/lib/metadata/schema'
 import { SubmissionHistory } from '@/components/vault/SubmissionHistory'
 import { getProjectSubmissions } from '@/lib/submissions'
 import type { Submission } from '@/types'
@@ -175,7 +176,10 @@ export default async function VaultProjectPage({
   const signedByPath: Record<string, string> = {}
   if (!DEMO) {
     const paths = tracks
-      .map(t => t.audio_file_url)
+      .flatMap(t => [
+        t.audio_file_url,
+        readMasterAudio((t as { metadata?: Record<string, unknown> | null }).metadata)?.path,
+      ])
       .filter((p): p is string => Boolean(p))
     if (paths.length > 0) {
       const service = createServiceClient()
@@ -188,15 +192,20 @@ export default async function VaultProjectPage({
     }
   }
 
-  const playerTracks: PlayerTrack[] = tracks.map(t => ({
-    id: t.id,
-    track_number: t.track_number,
-    title: t.title,
-    isrc: t.isrc,
-    duration_seconds: t.duration_seconds,
-    explicit: t.explicit,
-    audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
-  }))
+  const playerTracks: PlayerTrack[] = tracks.map(t => {
+    const master = readMasterAudio((t as { metadata?: Record<string, unknown> | null }).metadata)
+    return {
+      id: t.id,
+      track_number: t.track_number,
+      title: t.title,
+      isrc: t.isrc,
+      duration_seconds: t.duration_seconds,
+      explicit: t.explicit,
+      audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
+      masterUrl: master ? signedByPath[master.path] ?? null : null,
+      masterExt: master?.ext ?? null,
+    }
+  })
 
   // Outreach history (PitchPlug sends + Antenna applications). Demo has no store.
   let submissions: Submission[] = []

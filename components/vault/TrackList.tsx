@@ -11,7 +11,9 @@ export type PlayerTrack = {
   isrc: string | null
   duration_seconds?: number | null
   explicit?: boolean
-  audioUrl: string | null // short-lived signed URL, or null if no audio yet
+  audioUrl: string | null // signed URL for the share/MP3 — drives playback
+  masterUrl?: string | null // signed URL for the master WAV (download only)
+  masterExt?: string | null
 }
 
 function fmt(seconds?: number | null): string {
@@ -54,6 +56,45 @@ function PauseIcon() {
   )
 }
 
+// One audio slot (Master WAV or MP3) — upload / replace.
+function AudioSlot({
+  label,
+  present,
+  uploading,
+  accept,
+  onPick,
+}: {
+  label: string
+  present: boolean
+  uploading: boolean
+  accept: string
+  onPick: (file: File) => void
+}) {
+  return (
+    <label
+      title={present ? `Replace ${label}` : `Upload ${label}`}
+      className={`cursor-pointer rounded-md border px-2 py-1 text-xs transition ${
+        present
+          ? 'border-emerald-500/40 text-emerald-300 hover:border-emerald-400'
+          : 'border-white/10 text-white/60 hover:border-white/30 hover:text-white'
+      } ${uploading ? 'opacity-50' : ''}`}
+    >
+      {uploading ? '…' : present ? `${label} ✓` : `+ ${label}`}
+      <input
+        type="file"
+        accept={accept}
+        className="hidden"
+        disabled={uploading}
+        onChange={e => {
+          const f = e.target.files?.[0]
+          if (f) onPick(f)
+          e.target.value = ''
+        }}
+      />
+    </label>
+  )
+}
+
 export function TrackList({
   projectId,
   tracks,
@@ -69,7 +110,7 @@ export function TrackList({
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
   const [liveDuration, setLiveDuration] = useState(0)
-  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const current = tracks.find(t => t.id === currentId) ?? null
@@ -100,14 +141,17 @@ export function TrackList({
     setTime(value)
   }
 
-  async function upload(trackId: string, file: File) {
-    setUploadingId(trackId)
+  async function upload(trackId: string, file: File, role: 'master' | 'share') {
+    setUploadingKey(`${trackId}:${role}`)
     setError(null)
     try {
-      const duration = await readDuration(file)
       const fd = new FormData()
       fd.append('file', file)
-      if (duration != null) fd.append('duration', String(duration))
+      fd.append('role', role)
+      if (role === 'share') {
+        const duration = await readDuration(file)
+        if (duration != null) fd.append('duration', String(duration))
+      }
       const res = await fetch(`/api/vault/${projectId}/tracks/${trackId}/audio`, {
         method: 'POST',
         body: fd,
@@ -119,7 +163,7 @@ export function TrackList({
       }
       router.refresh()
     } finally {
-      setUploadingId(null)
+      setUploadingKey(null)
     }
   }
 
@@ -135,6 +179,12 @@ export function TrackList({
         </span>
       </div>
 
+      {canManage && (
+        <p className="mt-1 text-xs text-white/40">
+          Upload the <span className="text-white/70">master WAV</span> for distribution and an{' '}
+          <span className="text-white/70">MP3</span> for playback &amp; sharing to industry.
+        </p>
+      )}
       {error && <p className="mt-2 text-sm text-rose-300">{error}</p>}
 
       <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
@@ -145,7 +195,15 @@ export function TrackList({
             {tracks.map((t, i) => {
               const isCurrent = currentId === t.id
               const hasAudio = Boolean(t.audioUrl)
-              const isUploading = uploadingId === t.id
+              const hasMaster = Boolean(t.masterUrl)
+              const summary =
+                hasAudio && hasMaster
+                  ? 'WAV master + MP3'
+                  : hasMaster
+                    ? 'WAV master'
+                    : hasAudio
+                      ? 'MP3 uploaded'
+                      : 'No audio yet'
               return (
                 <li
                   key={t.id}
@@ -188,37 +246,45 @@ export function TrackList({
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-white/40">
-                      {t.isrc ? t.isrc : hasAudio ? 'Audio uploaded' : 'No audio yet'}
-                    </p>
+                    <p className="truncate text-xs text-white/40">{t.isrc ? t.isrc : summary}</p>
                   </div>
 
-                  {/* Right side: duration or upload */}
-                  <div className="flex shrink-0 items-center gap-3">
+                  {/* Right side: duration, master download, upload slots */}
+                  <div className="flex shrink-0 items-center gap-2">
                     {hasAudio && (
                       <span className="text-xs tabular-nums text-white/40">
                         {fmt(t.duration_seconds)}
                       </span>
                     )}
-                    {canManage && (
-                      <label
-                        className={`cursor-pointer rounded-md border border-white/10 px-2 py-1 text-xs transition hover:border-white/30 ${
-                          isUploading ? 'text-white/40' : 'text-white/60 hover:text-white'
-                        }`}
+                    {t.masterUrl && (
+                      <a
+                        href={t.masterUrl}
+                        download={`${(t.title ?? 'master').replace(/[^\w.-]+/g, '_')}.${t.masterExt ?? 'wav'}`}
+                        title="Download master WAV"
+                        className="text-white/40 transition hover:text-white"
                       >
-                        {isUploading ? 'Uploading…' : hasAudio ? 'Replace' : 'Upload audio'}
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          className="hidden"
-                          disabled={isUploading}
-                          onChange={e => {
-                            const f = e.target.files?.[0]
-                            if (f) void upload(t.id, f)
-                            e.target.value = ''
-                          }}
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />
+                        </svg>
+                      </a>
+                    )}
+                    {canManage && (
+                      <div className="flex items-center gap-1.5">
+                        <AudioSlot
+                          label="WAV"
+                          present={hasMaster}
+                          uploading={uploadingKey === `${t.id}:master`}
+                          accept=".wav,audio/wav,audio/x-wav"
+                          onPick={f => void upload(t.id, f, 'master')}
                         />
-                      </label>
+                        <AudioSlot
+                          label="MP3"
+                          present={hasAudio}
+                          uploading={uploadingKey === `${t.id}:share`}
+                          accept="audio/*"
+                          onPick={f => void upload(t.id, f, 'share')}
+                        />
+                      </div>
                     )}
                   </div>
                 </li>
