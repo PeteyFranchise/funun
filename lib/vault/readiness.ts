@@ -4,6 +4,7 @@ import { readComposers } from '@/lib/metadata/schema'
 
 type ReadinessInput = {
   type: VaultProjectType
+  distributor?: string | null
   tracks?: {
     isrc?: string | null
     iswc?: string | null
@@ -89,6 +90,9 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         else status = 'missing'
         break
       }
+      case 'distributor':
+        status = input.distributor ? 'complete' : 'missing'
+        break
       case 'caption_copy':
         status = outputs.some(o => o.tool_slug === 'dropready') ? 'complete' : 'missing'
         break

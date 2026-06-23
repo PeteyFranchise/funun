@@ -77,6 +77,7 @@ export async function addDemoProject(input: {
     genre: input.genre ?? null,
     sub_genre: null,
     cover_art_url: null,
+    distributor: null,
     upc: null,
     is_public: false,
     notes: null,

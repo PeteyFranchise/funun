@@ -57,6 +57,7 @@ export default async function VaultPage() {
   const cards: VaultCard[] = projects.map(project => {
     const items = readinessItemsForProject({
       type: project.type,
+      distributor: (project as { distributor?: string | null }).distributor ?? null,
       tracks: project.tracks,
       assets: project.vault_assets,
       documents: project.vault_documents,

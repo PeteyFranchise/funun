@@ -37,6 +37,7 @@ type ProjectUpdate = {
   contact_name?: string | null
   contact_email?: string | null
   contact_phone?: string | null
+  distributor?: string | null
 }
 
 function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: string } {
@@ -73,6 +74,7 @@ function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: strin
     'contact_name',
     'contact_email',
     'contact_phone',
+    'distributor',
   ] as const) {
     if (!(key in body)) continue
     const value = body[key]

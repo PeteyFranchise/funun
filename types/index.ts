@@ -57,6 +57,8 @@ export type VaultProject = {
   contact_name: string | null
   contact_email: string | null
   contact_phone: string | null
+  // Distribution (migration 016) — where this release will be distributed
+  distributor: string | null
   // Relations
   tracks?: Track[]
   assets?: VaultAsset[]
@@ -138,7 +140,7 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
     key: 'pro_registration',
     label: 'PRO registration ready',
     description: 'Every track has an ISWC for ASCAP/BMI/SESAC & The MLC',
-    points: 10,
+    points: 5,
     applies_to: ['single', 'ep', 'album'],
     action_label: 'Add ISWC in Metadata Studio →',
     action_tool: undefined,
@@ -156,7 +158,7 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
     key: 'epk',
     label: 'EPK complete',
     description: 'Electronic press kit is current',
-    points: 10,
+    points: 5,
     applies_to: ['ep', 'album'],
     action_label: 'Build with EPK.fyi →',
     action_tool: 'epkfyi',
@@ -168,6 +170,15 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
     points: 10,
     applies_to: ['single', 'ep', 'album'],
     action_label: 'Complete in Metadata Studio →',
+    action_tool: undefined,
+  },
+  {
+    key: 'distributor',
+    label: 'Distributor selected',
+    description: 'Chosen where this release will be uploaded for distribution',
+    points: 10,
+    applies_to: ['single', 'ep', 'album'],
+    action_label: 'Choose a distributor →',
     action_tool: undefined,
   },
   // Snippet-specific items
