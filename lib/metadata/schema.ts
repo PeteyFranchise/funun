@@ -246,6 +246,23 @@ export function sanitizeLyrics(input: unknown): TrackLyrics | null {
   return { text, language, explicit: o.explicit === true, updated_at: new Date().toISOString() }
 }
 
+// ── Master audio (the distribution-grade WAV; the shareable MP3 lives on the
+// track's audio_file_url column and drives playback). ──
+export type MasterAudio = { path: string; size: number; ext: string }
+
+/** Read the master-audio rendition out of a track's metadata JSONB (null if none). */
+export function readMasterAudio(
+  metadata: Record<string, unknown> | null | undefined
+): MasterAudio | null {
+  const raw = metadata?.master as Record<string, unknown> | undefined
+  if (!raw || typeof raw.path !== 'string' || !raw.path) return null
+  return {
+    path: raw.path,
+    size: typeof raw.size === 'number' ? raw.size : 0,
+    ext: typeof raw.ext === 'string' && raw.ext ? raw.ext : 'wav',
+  }
+}
+
 /** Read a typed performer array out of a loose metadata JSONB blob. */
 export function readPerformers(metadata: Record<string, unknown> | null | undefined): Performer[] {
   const raw = metadata?.performers

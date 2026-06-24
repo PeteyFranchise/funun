@@ -17,23 +17,27 @@ const EXT_BY_MIME: Record<string, string> = {
   'audio/webm': 'webm',
 }
 
+type Role = 'master' | 'share'
+const roleOf = (v: unknown): Role => (v === 'master' ? 'master' : 'share')
+
 type RouteCtx = { params: Promise<{ projectId: string; trackId: string }> }
 
-// POST — upload (or replace) the audio file for a track. multipart/form-data:
+// POST — upload (or replace) a track's audio. multipart/form-data:
 //   file: the audio file
-//   duration: optional number of seconds (read client-side from the file)
+//   role: 'share' (default) — the MP3 used for playback + sharing to industry,
+//         stored on tracks.audio_file_url; or 'master' — the distribution WAV,
+//         kept in tracks.metadata.master (no migration needed).
+//   duration: optional seconds (read client-side) — only applied to the share file
 export async function POST(request: Request, { params }: RouteCtx) {
   const { projectId, trackId } = await params
 
   if (DEMO) {
-    return NextResponse.json(
-      { error: 'Audio upload is not available in demo mode' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Audio upload is not available in demo mode' }, { status: 400 })
   }
 
   const form = await request.formData()
   const file = form.get('file')
+  const role = roleOf(form.get('role'))
   const durationRaw = form.get('duration')
 
   if (!(file instanceof File)) {
@@ -56,26 +60,27 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // Confirm the track belongs to this user (and project).
   const { data: track } = await supabase
     .from('tracks')
-    .select('id, audio_file_url')
+    .select('id, audio_file_url, metadata')
     .eq('id', trackId)
     .eq('project_id', projectId)
     .eq('user_id', user.id)
     .maybeSingle()
   if (!track) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
 
-  const duration =
-    durationRaw != null && !Number.isNaN(Number(durationRaw))
-      ? Math.round(Number(durationRaw))
-      : null
-
-  // Stable path so re-uploads overwrite rather than orphan. Private bucket,
-  // so we use the service client (RLS-bypassing) after the ownership check.
-  const path = `${user.id}/${projectId}/${trackId}.${ext}`
   const service = createServiceClient()
+  const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
+  const existingMaster = (metadata.master as { path?: string } | undefined)?.path ?? null
+
+  // Stable, role-specific path so re-uploads overwrite rather than orphan.
+  const path =
+    role === 'master'
+      ? `${user.id}/${projectId}/${trackId}.master.${ext}`
+      : `${user.id}/${projectId}/${trackId}.${ext}`
 
   // If the extension changed, drop the previous object so it doesn't linger.
-  if (track.audio_file_url && track.audio_file_url !== path) {
-    await service.storage.from(BUCKET).remove([track.audio_file_url])
+  const prev = role === 'master' ? existingMaster : track.audio_file_url
+  if (prev && prev !== path) {
+    await service.storage.from(BUCKET).remove([prev])
   }
 
   const { error: uploadError } = await service.storage
@@ -85,13 +90,24 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 })
   }
 
-  const { data: updated, error: updateError } = await supabase
-    .from('tracks')
-    .update({
+  let update: Record<string, unknown>
+  if (role === 'master') {
+    update = { metadata: { ...metadata, master: { path, size: file.size, ext } } }
+  } else {
+    const duration =
+      durationRaw != null && !Number.isNaN(Number(durationRaw))
+        ? Math.round(Number(durationRaw))
+        : null
+    update = {
       audio_file_url: path, // store the storage PATH; URLs are signed on read
       audio_file_size: file.size,
       ...(duration != null ? { duration_seconds: duration } : {}),
-    })
+    }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('tracks')
+    .update(update)
     .eq('id', trackId)
     .eq('user_id', user.id)
     .select()
@@ -104,16 +120,16 @@ export async function POST(request: Request, { params }: RouteCtx) {
   return NextResponse.json({ data: updated })
 }
 
-// DELETE — remove the audio file from a track.
-export async function DELETE(_request: Request, { params }: RouteCtx) {
+// DELETE — remove a track's audio. `?role=master` removes the master WAV;
+// default removes the share/MP3.
+export async function DELETE(request: Request, { params }: RouteCtx) {
   const { projectId, trackId } = await params
 
   if (DEMO) {
-    return NextResponse.json(
-      { error: 'Audio upload is not available in demo mode' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Audio upload is not available in demo mode' }, { status: 400 })
   }
+
+  const role: Role = new URL(request.url).searchParams.get('role') === 'master' ? 'master' : 'share'
 
   const supabase = createApiClient()
   const {
@@ -123,24 +139,36 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
 
   const { data: track } = await supabase
     .from('tracks')
-    .select('id, audio_file_url')
+    .select('id, audio_file_url, metadata')
     .eq('id', trackId)
     .eq('project_id', projectId)
     .eq('user_id', user.id)
     .maybeSingle()
   if (!track) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
 
-  if (track.audio_file_url) {
-    const service = createServiceClient()
-    await service.storage.from(BUCKET).remove([track.audio_file_url])
-  }
+  const service = createServiceClient()
+  const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
 
-  const { error } = await supabase
-    .from('tracks')
-    .update({ audio_file_url: null, audio_file_size: null })
-    .eq('id', trackId)
-    .eq('user_id', user.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (role === 'master') {
+    const masterPath = (metadata.master as { path?: string } | undefined)?.path ?? null
+    if (masterPath) await service.storage.from(BUCKET).remove([masterPath])
+    const nextMeta: Record<string, unknown> = { ...metadata }
+    delete nextMeta.master
+    const { error } = await supabase
+      .from('tracks')
+      .update({ metadata: nextMeta })
+      .eq('id', trackId)
+      .eq('user_id', user.id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else {
+    if (track.audio_file_url) await service.storage.from(BUCKET).remove([track.audio_file_url])
+    const { error } = await supabase
+      .from('tracks')
+      .update({ audio_file_url: null, audio_file_size: null })
+      .eq('id', trackId)
+      .eq('user_id', user.id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ data: { ok: true } })
 }
