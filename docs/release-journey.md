@@ -102,12 +102,12 @@ Readiness scoring** for the migration.)
 
 | Task | Status | Room | Rdy | Integration / approach | Tier |
 |---|---|---|---|---|---|
-| Upload **master WAV** | 🟡 | Sound Vault | 🎯 | Audio upload exists; add a dedicated master-WAV slot + format/quality check | 🧩 |
-| Upload **MP3** (industry share + Playback screen) | 🟡 | Sound Vault / Playback | 🎯 | Add MP3 rendition; eventually **auto-transcode** WAV→MP3 | 🧩→🤖 |
+| Upload **master WAV** | ✅ | Sound Vault | 🎯 | Dedicated master slot in TrackList; stored in `tracks.metadata.master` + download | 🧩 |
+| Upload **MP3** (industry share + Playback screen) | ✅ | Sound Vault / Playback | 🎯 | Shareable MP3 = `audio_file_url`, drives playback. Auto-transcode WAV→MP3 still TODO | 🧩→🤖 |
 | Upload **lyrics** to the lyrics tool | ✅ | Metadata Studio | ✨ | Built (stored in `tracks.metadata`, ID3 USLT + sidecar) | ✅ |
-| **Lyrics .txt** export (copy/paste for collabs/media) | ⬜ | Metadata Studio | ✨ | One-click `.txt` from stored lyrics — quick win | 🧩 |
+| **Lyrics .txt** export (copy/paste for collabs/media) | ✅ | Metadata Studio | ✨ | One-click all-tracks `.txt` via `/api/vault/[id]/lyrics` | 🧩 |
 | Upload **artwork** (cover / single) | ✅ | Sound Vault | 🎯 | Built (`visual_asset`) | ✅ |
-| **Artwork spec check** (3000×3000, sharp/striking) | 🟡 | Sound Vault upload | 🎯 | `lib/metadata/validate.ts` exists — confirm it enforces 3000² + flags low-res | 🧩 |
+| **Artwork spec check** (3000×3000, sharp/striking) | ✅ | Sound Vault upload | 🎯 | `validate.ts` enforces 3000² square; dims captured on upload + verified (not just warned) | 🧩 |
 | **Artwork budget guidance** (what to spend) | ⬜ | Coach / *Cost Advisor* | ✨ | Cost-range guidance per task (artwork, video, ads…) | 📖 |
 | **Physical specs** (vinyl / CD / tape art + sizing) | ⬜ | Sound Vault (physical add-on) | ✨ | Guidance + manufacturer partner | 📖 |
 | **Track listing + credits + metadata** correct | ✅ | Metadata Studio | 🎯 | Built (composers/splits = 100%); DistroAdvisor reviews | ✅ |
@@ -128,7 +128,7 @@ Readiness scoring** for the migration.)
 
 | Task | Status | Room | Rdy | Integration / approach | Tier |
 |---|---|---|---|---|---|
-| **Choose your distributor** | 🟡 | Sound Vault (new step) | 🎯 | DistroAdvisor guides; add a **chooser + "distributor selected" gate**; affiliate links (DistroKid/TuneCore/CD Baby) | 📖→🧩 |
+| **Choose your distributor** | ✅ | Sound Vault (readiness) | 🎯 | DistributorPicker + "distributor selected" gate (migrations 016–017, +10 score). Affiliate links still TODO | 📖→🧩 |
 | **ISRC / UPC** codes | ✅ | Metadata Studio | 🎯 | Built (BYO or assign) | ✅ |
 | **Time-synced lyrics** (LRC) for DSP playback | ⬜ | Metadata Studio / Playback | ✨ | Lyrics stored; add **LRC sync editor**; push to distributor portals later | 🧩→🤖 |
 | **Music video** upload to distributors/DSPs that support | ⬜ | Sound Vault (video) | ✨ | Video asset slot + distributor delivery | 📖 |
@@ -277,9 +277,10 @@ canonical data outward — *enter once, push everywhere* (see **Vision**). Four 
 
 ## Rollout waves
 
-- **Wave 1 — Tighten Release Readiness** *(native, quick, all 🎯).* Master-WAV + MP3
-  slots (+ auto-transcode), artwork 3000² validation, lyrics `.txt`, LRC sync editor,
-  **distributor-selected gate**. Outcome: 100% truly means "upload-ready."
+- **Wave 1 — Tighten Release Readiness ✅** *(merged, PRs #3–#5).* Master-WAV + MP3
+  slots, artwork 3000² validation + dimension capture, lyrics `.txt`, and the
+  **distributor-selected gate** (migrations 016–017). Deferred: auto-transcode WAV→MP3
+  and an LRC sync editor.
 - **Wave 2 — Rights & registration rails.** Native/integrated **e-sign** for split
   sheets & contracts; **guided filing** for copyright / PRO / SoundExchange with status
   tracking; pursue **Songtrust** integration.

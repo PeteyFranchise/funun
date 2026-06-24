@@ -1,6 +1,6 @@
 # Funūn — build status & next steps
 
-> Last updated: 2026-06-23 · Active branch: `main` · Latest: **PR #2 merged** (Benchmarking + Antenna connection); PR #1 (redesign) merged
+> Last updated: 2026-06-23 · Active branch: `main` · Latest: **Wave 1 complete** (PRs #3–#5 merged); Benchmarking + Antenna (PR #2) and redesign (PR #1) also merged
 > Repo: https://github.com/PeteyFranchise/funun
 
 A running handoff of where the build stands and what's next. Resume by opening a
@@ -54,11 +54,11 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
 > waves — lives in **`docs/release-journey.md`**. That's the planning doc for what we
 > build next at the feature level.
 
-1. **Finish Wave 1** of `docs/release-journey.md`. Shipped (PR #3): **artwork → 3000²
-   standard**, **lyrics `.txt` export**, and the **distributor-selected gate**
-   (migrations 016–017, live & verified). Remaining: **master-WAV + MP3 slots** (no
-   migration — `tracks.metadata`) and making the **artwork check verify** real
-   dimensions (it only warns today). *(PRs #2 & #3 merged ✅.)*
+1. **Wave 1 ✅ complete** (`docs/release-journey.md`): artwork → 3000² standard + real
+   dimension **verification**, lyrics `.txt` export, **distributor-selected gate**
+   (migrations 016–017), and **master-WAV + shareable-MP3 slots**. All merged to `main`
+   (PRs #3–#5). **Next build wave → Wave 2: rights & registration rails** — e-sign for
+   split sheets/contracts, guided copyright/PRO/SoundExchange filing, Songtrust.
 2. **Wire a real Benchmarking data source** (today it's manual entry). In order of
    speed: **artist CSV upload (fastest MVP)** → paid data partner (Chartmetric /
    Soundcharts / Songstats) → Spotify Web API OAuth (partial). Follow
