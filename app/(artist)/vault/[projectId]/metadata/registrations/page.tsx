@@ -95,6 +95,8 @@ export default async function RegistrationsPage({
 
   const bundle = buildBundle(projectRow, trackRows, artistName)
   const pkg = buildRegistrationPackages(bundle)
+  const worksReadyCount = pkg.works.filter(w => w.writers.length > 0 && w.shareOk).length
+  const recsReadyCount = pkg.recordings.filter(r => Boolean(r.isrc)).length
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -128,6 +130,25 @@ export default async function RegistrationsPage({
             Download .txt
           </a>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+        <span className="font-semibold text-white">Registration status</span>
+        <span className="text-white/60">
+          Works ready to file:{' '}
+          <span className={worksReadyCount === pkg.works.length && pkg.works.length > 0 ? 'text-emerald-300' : 'text-amber-300'}>
+            {worksReadyCount}/{pkg.works.length}
+          </span>
+        </span>
+        <span className="text-white/60">
+          Recordings ready:{' '}
+          <span className={recsReadyCount === pkg.recordings.length && pkg.recordings.length > 0 ? 'text-emerald-300' : 'text-amber-300'}>
+            {recsReadyCount}/{pkg.recordings.length}
+          </span>
+        </span>
+        <span className="text-xs text-white/40">
+          A work is ready when writers total 100%; a recording when it has an ISRC.
+        </span>
       </div>
 
       <div className="mt-4 rounded-xl border border-indigo-400/20 bg-indigo-400/[0.04] p-4 text-xs text-white/60">
@@ -272,7 +293,18 @@ function WorkCard({
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium text-white">{w.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-white">{w.title}</p>
+          {w.writers.length > 0 && w.shareOk ? (
+            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+              Ready
+            </span>
+          ) : (
+            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+              {w.writers.length === 0 ? 'Needs writers' : 'Splits ≠ 100%'}
+            </span>
+          )}
+        </div>
         <span className="text-xs text-white/40">ISWC {v(w.iswc)}</span>
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-white/60 sm:grid-cols-3">
@@ -304,7 +336,18 @@ function RecordingCard({ r }: { r: RegRecording }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium text-white">{r.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-white">{r.title}</p>
+          {r.isrc ? (
+            <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+              Ready
+            </span>
+          ) : (
+            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+              Needs ISRC
+            </span>
+          )}
+        </div>
         <span className="text-xs text-white/40">ISRC {v(r.isrc)}</span>
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-white/60 sm:grid-cols-3">
