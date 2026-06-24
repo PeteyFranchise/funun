@@ -3,6 +3,24 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+// Read an image's pixel dimensions in the browser before upload, so the
+// distributor-spec (3000×3000) check can actually verify instead of warn.
+function readImageSize(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null)
+    }
+    img.src = url
+  })
+}
+
 export function CoverArtUpload({
   projectId,
   coverUrl,
@@ -26,6 +44,11 @@ export function CoverArtUpload({
     const body = new FormData()
     body.append('file', file)
     body.append('type', 'cover_art')
+    const dims = await readImageSize(file)
+    if (dims) {
+      body.append('width', String(dims.width))
+      body.append('height', String(dims.height))
+    }
 
     const res = await fetch(`/api/vault/${projectId}/assets`, { method: 'POST', body })
     if (!res.ok) {

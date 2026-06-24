@@ -50,6 +50,8 @@ export default async function MetadataPage({
   const { projectId } = await params
   let project: MetaProject | null = null
   let artistName = ''
+  let coverWidth: number | null = null
+  let coverHeight: number | null = null
 
   if (DEMO) {
     project = (await getDemoProject(projectId)) as MetaProject | null
@@ -83,6 +85,18 @@ export default async function MetadataPage({
         .eq('id', user.id)
         .maybeSingle()
       artistName = profile?.artist_name ?? ''
+
+      // Cover-art dimensions (captured on upload) so the 3000² check can verify.
+      const { data: cover } = await supabase
+        .from('vault_assets')
+        .select('width, height')
+        .eq('project_id', projectId)
+        .eq('type', 'cover_art')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      coverWidth = (cover?.width as number | null) ?? null
+      coverHeight = (cover?.height as number | null) ?? null
     }
   }
 
@@ -146,8 +160,8 @@ export default async function MetadataPage({
           genre={project.genre}
           subGenre={project.sub_genre}
           coverArtUrl={project.cover_art_url}
-          coverWidth={null}
-          coverHeight={null}
+          coverWidth={coverWidth}
+          coverHeight={coverHeight}
           initialRelease={initialRelease}
           initialTracks={initialTracks}
         />

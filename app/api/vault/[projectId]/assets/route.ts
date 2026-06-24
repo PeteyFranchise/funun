@@ -32,6 +32,12 @@ export async function POST(
   const form = await request.formData()
   const file = form.get('file')
   const type = String(form.get('type') ?? '') as AssetType
+  const toDim = (v: FormDataEntryValue | null): number | null => {
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null
+  }
+  const width = toDim(form.get('width'))
+  const height = toDim(form.get('height'))
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -89,6 +95,8 @@ export async function POST(
       url: publicUrl,
       filename: file.name,
       size_bytes: file.size,
+      width,
+      height,
     })
     .select()
     .single()
