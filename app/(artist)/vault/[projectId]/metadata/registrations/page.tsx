@@ -8,6 +8,7 @@ import {
   type RegWork,
   type RegRecording,
 } from '@/lib/metadata/registration'
+import { CopyrightFiling } from '@/components/vault/CopyrightFiling'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,7 @@ export default async function RegistrationsPage({
   let projectRow: ProjectRow | null = null
   let trackRows: TrackRow[] = []
   let artistName = ''
+  let copyrightFiled = false
 
   if (DEMO) {
     const demo = (await getDemoProject(projectId)) as unknown as
@@ -78,6 +80,14 @@ export default async function RegistrationsPage({
           .maybeSingle()
         artistName = profile?.artist_name ?? ''
       }
+
+      const { count } = await supabase
+        .from('vault_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('project_id', projectId)
+        .eq('user_id', user?.id ?? '')
+        .eq('type', 'copyright_registration')
+      copyrightFiled = (count ?? 0) > 0
     }
   }
 
@@ -126,11 +136,30 @@ export default async function RegistrationsPage({
         with SoundExchange. A writer registers a work with the one PRO they belong to.
       </div>
 
+      {/* Copyright — distinct from the royalty bodies below */}
+      <section className="mt-8">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold text-white/40">©</span>
+          <h2 className="text-base font-semibold text-white">Copyright — US Copyright Office</h2>
+        </div>
+        <p className="mt-0.5 text-xs text-white/40">
+          Separate from the royalty bodies below — this registers ownership of the work itself.
+        </p>
+        <div className="mt-3">
+          <CopyrightFiling projectId={projectId} filed={copyrightFiled} />
+        </div>
+      </section>
+
       {/* 1 — Performance PROs */}
       <Body
         n="1"
         title="Performance — ASCAP / BMI / SESAC"
         sub="Register each work (composition)."
+        portals={[
+          { href: 'https://www.ascap.com/music-creators', label: 'ASCAP' },
+          { href: 'https://www.bmi.com/songwriters', label: 'BMI' },
+          { href: 'https://www.sesac.com', label: 'SESAC' },
+        ]}
       >
         {pkg.usProsPresent.length > 0 && (
           <p className="text-xs text-white/50">
@@ -155,7 +184,12 @@ export default async function RegistrationsPage({
       </Body>
 
       {/* 2 — The MLC */}
-      <Body n="2" title="Mechanical — The MLC" sub="Register each work, then link its recording.">
+      <Body
+        n="2"
+        title="Mechanical — The MLC"
+        sub="Register each work, then link its recording."
+        portals={[{ href: 'https://www.themlc.com', label: 'The MLC' }]}
+      >
         {pkg.works.length === 0 ? (
           <Empty>No works with writers captured yet.</Empty>
         ) : (
@@ -172,6 +206,7 @@ export default async function RegistrationsPage({
         n="3"
         title="Digital performance — SoundExchange"
         sub="Register each recording (the master)."
+        portals={[{ href: 'https://www.soundexchange.com', label: 'SoundExchange' }]}
       >
         <div className="mt-3 space-y-3">
           {pkg.recordings.map((r, i) => (
@@ -187,18 +222,37 @@ function Body({
   n,
   title,
   sub,
+  portals,
   children,
 }: {
   n: string
   title: string
   sub: string
+  portals?: { href: string; label: string }[]
   children: React.ReactNode
 }) {
   return (
     <section className="mt-8">
-      <div className="flex items-baseline gap-2">
-        <span className="text-sm font-semibold text-white/40">{n}.</span>
-        <h2 className="text-base font-semibold text-white">{title}</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold text-white/40">{n}.</span>
+          <h2 className="text-base font-semibold text-white">{title}</h2>
+        </div>
+        {portals && portals.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {portals.map(p => (
+              <a
+                key={p.href}
+                href={p.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+              >
+                {p.label} ↗
+              </a>
+            ))}
+          </div>
+        )}
       </div>
       <p className="mt-0.5 text-xs text-white/40">{sub}</p>
       <div className="mt-3">{children}</div>
