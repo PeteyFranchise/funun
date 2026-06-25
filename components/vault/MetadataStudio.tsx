@@ -288,6 +288,13 @@ export function MetadataStudio({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-white/50">
           Tracks · {tracks.length}
         </h2>
+        <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.04] p-3 text-xs leading-relaxed text-white/60">
+          <span className="font-semibold text-amber-200/90">Get writers paid:</span> enter each writer&rsquo;s{' '}
+          <span className="text-white/80">full legal name exactly as registered with their PRO</span> — the same
+          spelling on every release (middle name/initial, prefix, and suffix included) — plus their{' '}
+          <span className="text-white/80">IPI/CAE number</span>. Stage names, nicknames, or inconsistent spelling
+          stop royalty services from matching the money to them, and it can sit unclaimed for years.
+        </div>
         {tracks.map(t => {
           const splitTotal = Math.round(t.composers.reduce((s, c) => s + (c.split || 0), 0) * 100) / 100
           const es = embedState[t.id]
@@ -623,7 +630,7 @@ function ComposerEditor({
           <input
             value={c.name}
             onChange={e => set(i, { name: e.target.value })}
-            placeholder="Writer name"
+            placeholder="Full legal name (PRO-registered)"
             className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-3"
           />
           <select

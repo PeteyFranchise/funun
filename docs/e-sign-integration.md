@@ -137,6 +137,32 @@ demands the DocuSign brand or maximum defensibility, we add it later with **no r
 7. Env: `DROPBOX_SIGN_API_KEY` (+ client id for embedded).
 8. End-to-end in test mode → then go live.
 
+## Signer copy — legal-name consistency (paste-ready)
+Writers must use their **full legal name exactly as registered with their PRO**, spelled
+identically on every release, plus their **IPI/CAE** — otherwise royalties can't be
+matched (they go unclaimed / "black box" and are eventually redistributed to major
+publishers). Surfaced at four points. The Metadata Studio inline field helper + the
+"Get writers paid" callout are already wired; the rest land with the e-sign flow:
+
+**At e-signing (attestation checkbox):**
+> ☐ I confirm this is my full legal name, spelled exactly as registered with my PRO
+> (including any middle name/initial, prefix, or suffix), and I'll use this same
+> spelling on all releases.
+
+**Invitation email (before signing):**
+> Before you sign: the name on this split sheet must be your full legal name, spelled
+> exactly as it's registered with your PRO (ASCAP, BMI, etc.) — including any middle
+> name/initial, prefix (Dr.), or suffix (Jr./III) — plus your IPI/CAE number if you have
+> one. This is how royalty collectors route money to you; an inconsistent name can't be
+> matched and may be lost. Not sure of your exact registered name? Check your PRO
+> account or Songview.
+
+**Confirmation email (after signing):**
+> You're set. To protect your money going forward: use this exact name spelling + IPI on
+> every future release — yours and anyone you write with. Consistency is the whole game
+> for getting paid. If the name you signed with isn't your correct registered legal name,
+> reply and we'll fix it before this release is registered.
+
 ## Sources
 - Dropbox Sign API pricing — https://sign.dropbox.com/products/dropbox-sign-api/pricing
 - DocuSign embedded signing (no signer account) — https://developers.docusign.com/docs/esign-rest-api/esign101/concepts/embedding/embedded-signing/
