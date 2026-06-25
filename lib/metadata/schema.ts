@@ -66,6 +66,8 @@ export type Composer = {
   role: ComposerRole
   pro: PRO
   ipi?: string
+  /** Writer's email — used to send the split sheet for e-signature. */
+  email?: string
   split: number
 }
 
@@ -197,6 +199,7 @@ export function readComposers(metadata: Record<string, unknown> | null | undefin
         role,
         pro,
         ipi: o.ipi ? String(o.ipi).trim() : undefined,
+        email: o.email ? String(o.email).trim() : undefined,
         split: Number.isFinite(split) ? split : 0,
       }
     })
@@ -220,7 +223,8 @@ export function sanitizeComposers(input: unknown): Composer[] {
       ? Math.max(0, Math.min(100, Math.round(splitNum * 100) / 100))
       : 0
     const ipi = o.ipi ? String(o.ipi).trim() : undefined
-    out.push({ name, role, pro, ipi: ipi || undefined, split })
+    const email = o.email ? String(o.email).trim() : undefined
+    out.push({ name, role, pro, ipi: ipi || undefined, email: email || undefined, split })
   }
   return out
 }

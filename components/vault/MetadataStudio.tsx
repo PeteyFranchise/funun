@@ -673,6 +673,13 @@ function ComposerEditor({
               </svg>
             </button>
           </div>
+          <input
+            type="email"
+            value={c.email ?? ''}
+            onChange={e => set(i, { email: e.target.value })}
+            placeholder="Writer email — for split-sheet e-signature (optional)"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-12"
+          />
         </div>
       ))}
       <button
