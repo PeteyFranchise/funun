@@ -15,6 +15,8 @@ export type EsignSignerStatus = 'pending' | 'signed' | 'declined'
 export type EsignSigner = {
   name: string
   email: string
+  /** Optional mobile for SMS signature confirmation. */
+  phone?: string
   status: EsignSignerStatus
 }
 
@@ -35,7 +37,7 @@ export type EsignRequestInput = {
   title: string
   /** The document to sign (split sheet / contract), rendered to PDF. */
   pdf: { filename: string; bytes: Uint8Array }
-  signers: { name: string; email: string }[]
+  signers: { name: string; email: string; phone?: string }[]
   /** Embedded → signer signs in an iframe inside Funūn (no signer account). */
   embedded: boolean
 }
@@ -73,7 +75,12 @@ export function readEsignState(
         const o = (s ?? {}) as Record<string, unknown>
         const status: EsignSignerStatus =
           o.status === 'signed' ? 'signed' : o.status === 'declined' ? 'declined' : 'pending'
-        return { name: String(o.name ?? ''), email: String(o.email ?? ''), status }
+        return {
+          name: String(o.name ?? ''),
+          email: String(o.email ?? ''),
+          phone: o.phone ? String(o.phone) : undefined,
+          status,
+        }
       })
     : []
   return {

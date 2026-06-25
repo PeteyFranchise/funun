@@ -677,8 +677,15 @@ function ComposerEditor({
             type="email"
             value={c.email ?? ''}
             onChange={e => set(i, { email: e.target.value })}
-            placeholder="Writer email — for split-sheet e-signature (optional)"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-12"
+            placeholder="Writer email — for e-signature"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-6"
+          />
+          <input
+            type="tel"
+            value={c.phone ?? ''}
+            onChange={e => set(i, { phone: e.target.value })}
+            placeholder="Writer mobile — for SMS confirmation (optional)"
+            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-6"
           />
         </div>
       ))}
