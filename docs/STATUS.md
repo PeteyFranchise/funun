@@ -83,6 +83,22 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
 - PIE / MEAD standards — not started.
 - Decide the final brand **name** (working name "Funūn").
 
+### Before launch (to-do)
+- [ ] **Dropbox Sign account + API app** with embedded signing (free test mode to
+      build/verify; Standard API plan ~$300/mo for production). Required before e-sign
+      goes live — see `docs/e-sign-integration.md`. *(Account creation is on Pete —
+      Claude can't sign up or enter credentials.)*
+- [ ] **Collaborator profiles — capture once, reuse everywhere.** Persist per-collaborator
+      data so they don't re-enter it each release, and auto-fill it into split sheets,
+      contracts, and registration packages:
+  - email + **mobile phone** — SMS signature confirmation, plus opt-in marketing to
+    invite them to sign up for Funūn
+  - legal name + performing name, role(s)
+  - **PRO** affiliation + **IPI/CAE #**, publisher (+ publisher IPI), MLC / SoundExchange IDs
+  - mailing address / country (registration + payouts)
+  - Storage: a per-artist `collaborators` table (needs a migration) + auto-fill UI.
+- [ ] **Revoke the temp Supabase Management token** if still active (was used for migrations 016–017).
+
 ---
 
 ## Done ✅ (earlier; in `main` via PR #1 unless noted)

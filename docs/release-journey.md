@@ -118,6 +118,7 @@ Readiness scoring** for the migration.)
 |---|---|---|---|---|---|
 | **Split sheets** — disperse for e-sign / upload signed | 🟡 | Contract Locker | 🎯 | Signed-status tracked (`split_sheet` docs); add **e-sign dispersal** (native or Dropbox Sign / DocuSign) | 🧩→🤖 |
 | **Contracts/agreements** — e-sign / upload signed (producer declarations, distro, work-for-hire) | 🟡 | Contract Locker | 🎯 | `hire_right` tracked + AI verification; add e-sign flow | 🧩→🤖 |
+| **Collaborator profiles** (enter once, reuse) | ⬜ | Contract Locker / Profile | 🎯 | Persist each collaborator's contact + rights data (email, **mobile**, legal/performing name, role, PRO, **IPI/CAE**, publisher, MLC/SoundExchange IDs, address) and auto-fill into split sheets + registrations. Mobile also drives SMS sig-confirmation + marketing opt-in. Needs a `collaborators` table (migration). | 🧩→🤖 |
 | **Copyright** the work (registration) | 🟡 | Rights Coach / Locker | 🎯 | Presence of `copyright_registration` doc feeds score; add **guided filing** + deep-link to copyright.gov eCO | 📖→🧩 |
 | Register with a **PRO** | 🟡 | Rights Coach (RoyaltyAudit) | 🎯 | ISWC proxy feeds score; RoyaltyAudit guides; link to ASCAP/BMI/etc. | 📖 |
 | Register with **publishing admin** (Songtrust) | ⬜ | Rights Coach / Earnings | ✨ | Outreach drafted (task #8); pursue **Songtrust integration** (API/CWR) | 📖→🤖 |
