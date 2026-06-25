@@ -1,10 +1,15 @@
 # Funūn — build status & next steps
 
-> Last updated: 2026-06-23 · Active branch: `main` · Latest: **Wave 1 complete** (PRs #3–#5 merged); Benchmarking + Antenna (PR #2) and redesign (PR #1) also merged
+> Last updated: 2026-06-25 · Active branch: `main` · Latest: **Wave 1 complete** (PRs #3–#5 merged); Benchmarking + Antenna (PR #2) and redesign (PR #1) also merged
 > Repo: https://github.com/PeteyFranchise/funun
 
 A running handoff of where the build stands and what's next. Resume by opening a
 Claude session **rooted in this repo** (see "Continue / resume" at the bottom).
+
+> **👥 This repo will be shared with collaborators.** Write code and docs for
+> onboarding: match existing patterns, comment the non-obvious *why*, keep these
+> docs + `.env.example` current, never commit secrets, and keep commits and PRs
+> small, clear, and scoped. Assume a new contributor reads this file first.
 
 ---
 
