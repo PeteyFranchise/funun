@@ -32,3 +32,20 @@
 ---
 
 <!-- Add new ideas below using the card template. -->
+
+## SpotPitch — Spotify editorial pitch (v1 shipped; iteration roadmap)
+- **Effort:** low–med per iteration   ·   **Defensibility:** medium → high (with the performance loop)
+- **One-liner:** "Turn a release into a great, paste-ready Spotify editorial pitch — and make it smarter as Funūn learns what actually earns playlist adds."
+- **Built (PR #10):** drafts the ≤500-char Spotify-for-Artists pitch + genres/moods/instruments to tag + submission tips, from the project + profile; refuses to fabricate stats.
+- **Near-term iterations:**
+  - Personalize from real **Benchmarking metrics** (saves rate, follower growth, prior-single performance) — credible, not generic.
+  - **Playlist targeting** — recommend which editorial playlists/genres to aim for (ties to Antenna/Benchmarks).
+  - **Angle variants** (story vs. sound vs. cultural moment) to choose from.
+  - **Tags from the master audio** (BPM/key/energy/instruments) instead of guessing from text.
+  - **Timing discipline** — warn if <7 days to release; nudge the 4-week window; surface it in Launchpad.
+- **Bigger:**
+  - **Multi-DSP pitches** (Amazon Music, Apple Music, Deezer) — enter once, pitch everywhere.
+  - **Full editorial packet** — pitch + Canvas + cover + press one-liner generated together and consistent.
+  - **Performance loop (the moat)** — track which pitches/tags earned adds (DSR/streaming data) and feed it back to sharpen future pitches per genre ("what got R&B editorial consideration in the last 6 months").
+- **Ceiling/limit:** Spotify has **no public pitch API** → can't auto-submit; draft-and-paste until a partnership/API exists. Follow `docs/spotify-api-guidelines.md` — don't fabricate, don't train ML on Spotify data; the performance loop must use the artist's own authorized/exported data.
+- **Status:** v1 shipped (PR #10). Iterations: idea.

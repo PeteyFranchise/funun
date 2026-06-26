@@ -98,6 +98,16 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
   - mailing address / country (registration + payouts)
   - Storage: a per-artist `collaborators` table (needs a migration) + auto-fill UI.
 - [ ] **Revoke the temp Supabase Management token** if still active (was used for migrations 016–017).
+- [ ] **Domain — `funun.studio`** (purchased via Squarespace, 2026-06-26). Point DNS at the
+      app host (e.g. Vercel), stand up branded email (hello@ / support@ / privacy@funun.studio),
+      and use HTTPS `funun.studio` URLs for OAuth + e-sign redirect URIs. Effectively locks the
+      brand to **Funūn**.
+
+### Parked ideas (revisit later)
+- **SpotPitch iterations** (Spotify pitch tool — v1 shipped in PR #10): personalize from real
+  Benchmarking metrics, playlist targeting, angle variants, tags from the master audio, timing
+  nudges, multi-DSP pitches, and a "what earns adds" performance loop. Full card in
+  `docs/build-ideas.md`.
 
 ---
 
