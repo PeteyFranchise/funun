@@ -161,16 +161,66 @@ funun/
 
 ---
 
-## Getting started
+## Local setup
+
+**Prerequisites:** Node.js 18.18+ (Next.js 15), npm, and a Supabase account/project.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/funun.git
+# 1. Clone and install
+git clone https://github.com/PeteyFranchise/funun.git
 cd funun
 npm install
+
+# 2. Configure environment
 cp .env.example .env.local
-npx supabase link --project-ref YOUR_REF
-npx supabase db push
-npm run dev
+# Then open .env.local and fill in real values (see "Environment variables" below).
+# Never commit .env.local — it is gitignored.
+
+# 3. Sync the database schema (optional for UI work; required for backend)
+npx supabase link --project-ref YOUR_PROJECT_REF
+npm run db:push        # applies supabase/migrations
+npm run db:types       # regenerates types/supabase.ts
+
+# 4. Run the dev server
+npm run dev            # http://localhost:3000
+```
+
+### Environment variables
+
+All keys live in [`.env.example`](.env.example). Copy it to `.env.local` and fill in
+values from the respective dashboards. Secrets are **never** committed — ask Pete for
+them via a secure channel (password manager / encrypted message), not over GitHub.
+
+| Variable | Source |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API |
+| `ANTHROPIC_API_KEY` | Anthropic Console (server-side only) |
+| `STRIPE_*`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Resend Dashboard |
+| `DDEX_DPID` | DDEX Party ID (optional; placeholder used if unset) |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` locally · `https://funun.studio` in prod |
+| `NEXT_PUBLIC_VAULT_DEMO` | leave unset/`false`; `true` enables demo mode (no real backend) |
+
+### Common scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the local dev server |
+| `npm run build` | Production build |
+| `npm run lint` | Lint with ESLint |
+| `npm run db:push` | Apply Supabase migrations |
+| `npm run db:types` | Regenerate Supabase TypeScript types |
+
+### Contributing workflow
+
+Production auto-deploys from `main` via Vercel, so don't push directly to `main`.
+Branch, open a PR, and merge once it builds green:
+
+```bash
+git checkout -b feature/your-change
+# ...commit work...
+git push -u origin feature/your-change
+# open a PR against main
 ```
 
 ---
