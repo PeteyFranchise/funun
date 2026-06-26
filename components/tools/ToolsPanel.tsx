@@ -10,6 +10,7 @@ import {
   type SoundBaitOutput,
   type DistroAdvisorOutput,
   type RoyaltyAuditOutput,
+  type SpotifyPitchOutput,
 } from '@/lib/tools/registry'
 
 type Output = {
@@ -45,6 +46,12 @@ function isRoyaltyAudit(
   o: Record<string, unknown> | undefined
 ): o is RoyaltyAuditOutput & Record<string, unknown> {
   return !!o && typeof o.pro_recommendation === 'string' && Array.isArray(o.royalty_types)
+}
+
+function isSpotifyPitch(
+  o: Record<string, unknown> | undefined
+): o is SpotifyPitchOutput & Record<string, unknown> {
+  return !!o && typeof o.pitch === 'string' && Array.isArray(o.genres)
 }
 
 function EpkCard({ data }: { data: EpkOutput }) {
@@ -202,6 +209,30 @@ function RoyaltyAuditCard({ data }: { data: RoyaltyAuditOutput }) {
   )
 }
 
+function SpotifyPitchCard({ data }: { data: SpotifyPitchOutput }) {
+  const tags = (items?: string[]) => (
+    <div className="flex flex-wrap gap-1.5">
+      {items?.map((t, i) => (
+        <span key={i} className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/60">
+          {t}
+        </span>
+      ))}
+    </div>
+  )
+  return (
+    <div className="space-y-4 text-sm">
+      <CopyBlock label="Editorial pitch — paste into Spotify for Artists" text={data.pitch} />
+      <Field label="Hook">
+        <p className="italic text-white/80">{data.hook}</p>
+      </Field>
+      <Field label="Genres to tag">{tags(data.genres)}</Field>
+      <Field label="Moods">{tags(data.moods)}</Field>
+      <Field label="Instruments / sounds">{tags(data.instruments)}</Field>
+      <BulletList label="Submission tips" items={data.submission_tips} />
+    </div>
+  )
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
@@ -301,6 +332,8 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
                 <DistroAdvisorCard data={o.output} />
               ) : isRoyaltyAudit(o.output) ? (
                 <RoyaltyAuditCard data={o.output} />
+              ) : isSpotifyPitch(o.output) ? (
+                <SpotifyPitchCard data={o.output} />
               ) : (
                 <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-white/60">
                   {JSON.stringify(o.output, null, 2)}

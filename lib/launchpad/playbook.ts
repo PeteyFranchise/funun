@@ -35,7 +35,7 @@ export const PLAYBOOK: Record<LaunchPhaseKey, PlaybookTask[]> = {
     { key: 'sync', label: 'Submit to sync agents', why: 'TV / film / ad placements via opportunities.', status: 'partial', href: '/antenna', via: 'Antenna' },
     { key: 'press', label: 'Press / blog outreach', why: 'Reviews and features build credibility.', status: 'partial', href: '/tools/pitchplug', via: 'PitchPlug' },
     { key: 'presave', label: 'Pre-save campaign', why: 'Early saves train the algorithm before day one.', status: 'planned', href: null },
-    { key: 'spotify_pitch', label: 'Pitch Spotify editorial', why: 'Submit 4+ weeks ahead via Spotify for Artists.', status: 'planned', href: null },
+    { key: 'spotify_pitch', label: 'Pitch Spotify editorial', why: 'Draft a ready-to-paste pitch (SpotPitch tool); submit 4+ weeks ahead.', status: 'built', href: '/vault', via: 'Sound Vault' },
     { key: 'canvas', label: 'Spotify Canvas', why: 'A looping visual that lifts saves and shares.', status: 'planned', href: null },
   ],
   week: [
