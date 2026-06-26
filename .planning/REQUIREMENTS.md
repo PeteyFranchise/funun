@@ -56,8 +56,17 @@
 
 ## Traceability
 
-| Requirement | Phase |
-|---|---|
-| COLLAB-01, COLLAB-02, COLLAB-03, COLLAB-04 | Phase 1: Collaborator Profiles |
-| DOC-01, DOC-02, DOC-03 | Phase 2: Document Lifecycle |
-| RIGHTS-01, RIGHTS-02, RIGHTS-03, RIGHTS-04, SONGTRUST-01 | Phase 3: Rights Guidance |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| COLLAB-01 | Phase 1: Collaborator Profiles | Pending |
+| COLLAB-02 | Phase 1: Collaborator Profiles | Pending |
+| COLLAB-03 | Phase 1: Collaborator Profiles | Pending |
+| COLLAB-04 | Phase 1: Collaborator Profiles | Pending |
+| DOC-01 | Phase 2: Document Lifecycle | Pending |
+| DOC-02 | Phase 2: Document Lifecycle | Pending |
+| DOC-03 | Phase 2: Document Lifecycle | Pending |
+| RIGHTS-01 | Phase 3: Rights Guidance | Pending |
+| RIGHTS-02 | Phase 3: Rights Guidance | Pending |
+| RIGHTS-03 | Phase 3: Rights Guidance | Pending |
+| RIGHTS-04 | Phase 3: Rights Guidance | Pending |
+| SONGTRUST-01 | Phase 3: Rights Guidance | Pending |
