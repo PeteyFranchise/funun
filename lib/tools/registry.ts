@@ -6,6 +6,7 @@ export type ToolSlug =
   | 'dropready'
   | 'distroadvisor'
   | 'royaltyaudit'
+  | 'spotifypitch'
 
 export type ToolDef = {
   slug: ToolSlug
@@ -57,6 +58,14 @@ export const TOOLS: ToolDef[] = [
     tagline: 'PRO & royalty setup',
     description: 'Make sure your PRO registration and royalty splits are airtight.',
     readinessItem: 'pro_registration',
+    available: true,
+  },
+  {
+    slug: 'spotifypitch',
+    name: 'SpotPitch',
+    tagline: 'Spotify editorial pitch',
+    description: 'A ready-to-paste pitch for Spotify’s playlist editors, plus the genres/moods to tag and timing tips.',
+    readinessItem: 'spotify_pitch',
     available: true,
   },
 ]
@@ -317,6 +326,52 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 }`
 }
 
+// ─── SpotPitch (Spotify editorial pitch) ─────────────────────────────
+export type SpotifyPitchOutput = {
+  pitch: string
+  hook: string
+  genres: string[]
+  moods: string[]
+  instruments: string[]
+  submission_tips: string[]
+}
+
+export function buildSpotifyPitchPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext
+): string {
+  const artist = profile.artist_name || 'this artist'
+
+  return `You are a music marketer writing a Spotify editorial pitch — the note an artist submits to Spotify's playlist editors through Spotify for Artists — for an independent artist's upcoming release.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+${profile.monthly_listeners != null ? `Monthly listeners: ${profile.monthly_listeners}` : ''}
+
+RELEASE (the song to pitch)
+Title: ${project.title}
+Type: ${project.type}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.sub_genre ? `Sub-genre: ${project.sub_genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.trackTitles.length ? `Tracks: ${project.trackTitles.join(', ')}` : ''}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+Write the pitch. The pitch field in Spotify for Artists is capped at ~500 characters, so "pitch" MUST be 500 characters or fewer. Describe the song's sound, mood, and story, and why it fits editorial playlists — specific and grounded in the details above. Do NOT invent streaming numbers, press quotes, chart positions, awards, or collaborators that were not provided.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "pitch": "the editorial pitch, 500 characters or fewer, ready to paste into Spotify for Artists",
+  "hook": "one punchy sentence on why this song stands out",
+  "genres": ["up to 3 genres to tag"],
+  "moods": ["up to 3 moods that describe the song"],
+  "instruments": ["2-4 notable instruments or sounds in the track"],
+  "submission_tips": ["4-5 concrete tips for submitting via Spotify for Artists (pitch one song per release, submit at least a week — ideally a month — ahead, etc.)"]
+}`
+}
+
 // ─── Prompt dispatcher ────────────────────────────────────────────────
 export function buildToolPrompt(
   slug: ToolSlug,
@@ -334,6 +389,8 @@ export function buildToolPrompt(
       return buildDistroAdvisorPrompt(profile, project)
     case 'royaltyaudit':
       return buildRoyaltyAuditPrompt(profile, project)
+    case 'spotifypitch':
+      return buildSpotifyPitchPrompt(profile, project)
     default:
       return null
   }
