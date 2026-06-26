@@ -10,6 +10,7 @@ import {
   CoachIcon,
   EarningsIcon,
   BenchmarkIcon,
+  LaunchpadIcon,
 } from './icons'
 
 type Item = {
@@ -25,6 +26,7 @@ const ITEMS: Item[] = [
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
   { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon },
   { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon },
+  { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon },
   { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon },
   { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },
 ]
