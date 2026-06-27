@@ -11,6 +11,7 @@ import {
   EarningsIcon,
   BenchmarkIcon,
   LaunchpadIcon,
+  CollaboratorsIcon,
 } from './icons'
 
 type Item = {
@@ -23,6 +24,7 @@ type Item = {
 const ITEMS: Item[] = [
   { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon },
   { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon },
+  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon },
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
   { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon },
   { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon },

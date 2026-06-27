@@ -17,7 +17,11 @@ export async function middleware(req: NextRequest) {
   const isProtected =
     pathname.startsWith('/vault') ||
     pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/settings')
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/collaborators') ||
+    pathname.startsWith('/split-sheets')
+  // Note: /approve and /join are intentionally public — collaborators access
+  // approval and invite pages without a Funūn account (D-15, D-08).
 
   if (isProtected && !session) {
     const url = new URL('/signin', req.url)

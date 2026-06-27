@@ -96,3 +96,13 @@ export const LaunchpadIcon = (p: IconProps) => (
     <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
   </Svg>
 )
+
+// Collaborators — two people / group (global roster)
+export const CollaboratorsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3z" />
+    <path d="M8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z" />
+    <path d="M8 13c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    <path d="M16 13c-.29 0-.62.02-.97.05C16.19 13.89 17 15.1 17 17v2h7v-2c0-2.66-5.33-4-8-4z" />
+  </Svg>
+)
