@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-A global collaborator roster per artist. Artists enter a collaborator once (name, email, phone, PRO, IPI/CAE, publisher, MLC/SoundExchange IDs, mailing address) and that data auto-fills into composer rows in MetadataStudio, split sheets, and contracts across all vault projects. Includes a collaborator invite flow (missing-IPI triggers an invite + notification email), a view-only post-signup collaborator profile page, and an in-app split approval flow for split sheets.
+A global collaborator roster per Funūn user (artists and non-artist professionals alike). Any user enters collaborators once and that data auto-fills into composer rows, split sheets, and contracts. Split sheets are a standalone entity — not tied to a vault project — so producers, session musicians, songwriters, and other industry professionals can initiate and share them independent of a release. A split sheet can live in the contract locker of multiple parties simultaneously (shared document model). Includes a collaborator invite flow, a view-only post-signup collaborator profile page, and an in-app split approval flow.
 
 </domain>
 
@@ -39,6 +39,11 @@ A global collaborator roster per artist. Artists enter a collaborator once (name
 
 ### Split % on Collaborator Profile
 - **D-17:** No default split % stored on the collaborator profile. Split is always song-specific — set per split sheet, pre-filled to even split across collaborators.
+
+### Split Sheet as a Shared, Standalone Document
+- **D-18:** Split sheets are decoupled from vault projects. Any Funūn user — artist, producer, session musician, songwriter, industry professional — can initiate a split sheet. This means the split sheet data model must not require a `vault_project_id`; the project link is optional (present when an artist attaches it to a release, absent when a producer initiates it independently).
+- **D-19:** A split sheet can live in the contract locker of multiple parties. When a split sheet is created and shared, every named party gets a copy visible in their own contract locker (or equivalent document view for non-artist accounts). All copies reflect the same underlying record — one source of truth, multiple viewers. Edits (counter-proposals, final approval) propagate to all parties.
+- **D-20:** Non-artist Funūn users (producers, session musicians, songwriters, industry profiles) can access split sheet creation. The entry point for non-artists is their industry profile or a dedicated `/split-sheets` route accessible from their account — not the vault, which is artist-only. The planner should determine the exact route placement given the existing `app/(industry)/` route group.
 
 ### Claude's Discretion
 - Exact UI treatment of the "Save to profile?" sync nudge (inline tooltip, small icon, dismissible banner — whichever fits cleanest in MetadataStudio's composer row layout)
@@ -77,7 +82,7 @@ A global collaborator roster per artist. Artists enter a collaborator once (name
 - EditProjectForm modal pattern: The edit-collaborator modal should follow the same structure as `components/vault/EditProjectForm.tsx` — client component, modal overlay, form state in useState.
 
 ### Established Patterns
-- Global tables keyed by `artist_id` with RLS: Follow the `artist_profiles` pattern — `collaborators` table has `artist_id` FK, RLS allows the owning artist to read/write, collaborators can read their own record via invite token or auth.
+- Global tables keyed by `user_id` (not `artist_id`): The `collaborators` table must be keyed by `user_id` so non-artist users can also maintain a roster. RLS allows the owning user to read/write their own collaborators.
 - JSONB metadata pattern: Collaborator data in MetadataStudio continues to live in track metadata JSONB (the `Composer` shape). The collaborator profile is the source for auto-fill, not a replacement for JSONB storage.
 - API route pattern: `app/api/collaborators/route.ts` (POST = create, GET = list) and `app/api/collaborators/[id]/route.ts` (PATCH = update, DELETE = delete). Follow `app/api/profile/route.ts` for input sanitization with an explicit EDITABLE_FIELDS allowlist.
 - `router.refresh()` after mutations: Standard pattern for revalidating server data after client-side writes.
@@ -85,7 +90,8 @@ A global collaborator roster per artist. Artists enter a collaborator once (name
 ### Integration Points
 - Artist layout sidebar (`app/(artist)/layout.tsx`): Add `/collaborators` nav link alongside existing items.
 - Vault project readiness checklist (`lib/vault/readiness.ts` + `types/index.ts` READINESS_ITEMS): Add a readiness item or sub-check for "collaborators with missing IPI" so the warning surfaces on the project readiness score.
-- Supabase migrations: New `collaborators` table and a `collaborator_invites` table (for tokenized approval/invite links) need migrations.
+- Supabase migrations: New `collaborators` table (keyed by `user_id`, not `artist_id`), `split_sheets` table (standalone — `vault_project_id` nullable), `split_sheet_parties` table (links a split sheet to each named party's account for shared contract locker visibility), and a `collaborator_invites` table (for tokenized approval/invite links).
+- Industry route group (`app/(industry)/`): Non-artist split sheet initiation needs an entry point here. Researcher should assess what already exists in this route group and where `/split-sheets` fits best.
 
 </code_context>
 
