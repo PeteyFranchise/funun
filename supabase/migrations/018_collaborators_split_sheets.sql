@@ -51,14 +51,8 @@ ALTER TABLE split_sheets ENABLE ROW LEVEL SECURITY;
 -- Initiator manages their own split sheets
 CREATE POLICY "Initiator manages split sheet" ON split_sheets
   USING (auth.uid() = initiator_user_id) WITH CHECK (auth.uid() = initiator_user_id);
--- Party members can view split sheets they are named on (D-19)
-CREATE POLICY "Parties can view split sheets" ON split_sheets
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM split_sheet_parties
-      WHERE split_sheet_id = split_sheets.id AND user_id = auth.uid()
-    )
-  );
+-- NOTE: "Parties can view split sheets" policy is added AFTER split_sheet_parties
+-- is created (below), because it references that table in its subquery.
 
 -- ─── Split Sheet Parties ──────────────────────────────────────
 -- One row per named party. Denormalized snapshot of contact/rights data
@@ -96,6 +90,15 @@ CREATE POLICY "Party sees own row" ON split_sheet_parties
   FOR SELECT USING (auth.uid() = user_id);
 CREATE INDEX idx_split_sheet_parties_sheet_id ON split_sheet_parties (split_sheet_id);
 CREATE INDEX idx_split_sheet_parties_token    ON split_sheet_parties (approval_token);
+-- Deferred: party members can view split sheets they are named on (D-19).
+-- Must come after split_sheet_parties exists so the subquery validates.
+CREATE POLICY "Parties can view split sheets" ON split_sheets
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM split_sheet_parties
+      WHERE split_sheet_id = split_sheets.id AND user_id = auth.uid()
+    )
+  );
 
 -- ─── Collaborator Invites ─────────────────────────────────────
 -- Tracks invite emails sent to collaborators who are missing IPI (D-08).
