@@ -24,6 +24,27 @@ function composersComplete(metadata: Record<string, unknown> | null | undefined)
 }
 
 /**
+ * Returns true when any roster-picked composer on the track is missing an IPI.
+ *
+ * Primary signal: the `composer_ipi_missing` boolean written by MetadataStudio
+ * into the track metadata JSONB at save time (option-b approach from RESEARCH.md).
+ *
+ * Fallback heuristic: when the primary flag is absent, any composer row that
+ * has an email set but no IPI is treated as a roster-picked row with a missing
+ * IPI — the email field is only populated via the picker auto-fill (D-03).
+ */
+function composersHaveMissingIpi(metadata: Record<string, unknown> | null | undefined): boolean {
+  if (!metadata) return false
+  // Primary signal written by MetadataStudio on save
+  if (typeof metadata.composer_ipi_missing === 'boolean') {
+    return metadata.composer_ipi_missing
+  }
+  // Fallback heuristic: email present but IPI absent implies a roster-picked row
+  const comps = readComposers(metadata)
+  return comps.some(c => (c.email || c.phone) && !c.ipi)
+}
+
+/**
  * Per-item readiness for a single project, filtered to the items that
  * actually gate this project type. The headline 0–100 score still comes
  * from the DB column (vault_readiness_score) — this drives the breakdown.
@@ -85,9 +106,17 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
       case 'metadata': {
         // Captured in the Metadata Studio: composers + splits per track.
         const withComposers = tracks.filter(t => composersComplete(t.metadata)).length
-        if (tracks.length > 0 && withComposers === tracks.length) status = 'complete'
-        else if (withComposers > 0) status = 'warning'
-        else status = 'missing'
+        if (tracks.length > 0 && withComposers === tracks.length) {
+          // All tracks have complete splits — check for missing-IPI warning (D-05).
+          // A roster-picked composer without an IPI downgrades from 'complete' to
+          // 'warning' so the readiness checklist surfaces the D-05 flag.
+          const hasMissingIpi = tracks.some(t => composersHaveMissingIpi(t.metadata))
+          status = hasMissingIpi ? 'warning' : 'complete'
+        } else if (withComposers > 0) {
+          status = 'warning'
+        } else {
+          status = 'missing'
+        }
         break
       }
       case 'distributor':
