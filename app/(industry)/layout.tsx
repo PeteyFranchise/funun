@@ -15,6 +15,9 @@ export default function IndustryLayout({ children }: { children: React.ReactNode
             <Link href="/opportunities" className="transition hover:text-white">
               Opportunities
             </Link>
+            <Link href="/split-sheets" className="transition hover:text-white">
+              Split Sheets
+            </Link>
             <Link href="/opportunities/new" className="transition hover:text-white">
               Post
             </Link>
