@@ -47,7 +47,7 @@ export async function POST(
     .select('id')
     .eq('collaborator_id', id)
     .eq('inviting_user_id', user.id)
-    .gte('created_at', since)
+    .gte('sent_at', since)
     .maybeSingle()
 
   if (recentInvite) {
