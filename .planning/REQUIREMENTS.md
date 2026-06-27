@@ -10,10 +10,10 @@
 
 ### Collaborator Profiles
 
-- [ ] **COLLAB-01**: Artist can create a collaborator profile with name, email, phone, PRO affiliation, IPI/CAE number, publisher, MLC/SoundExchange IDs, and mailing address
-- [ ] **COLLAB-02**: Artist can edit and delete collaborator profiles from a global collaborators list
-- [ ] **COLLAB-03**: When creating a split sheet or contract, artist can select collaborators from their saved list (auto-fills contact + rights data)
-- [ ] **COLLAB-04**: Collaborators are stored globally per artist (reusable across all vault projects)
+- [x] **COLLAB-01**: Artist can create a collaborator profile with name, email, phone, PRO affiliation, IPI/CAE number, publisher, MLC/SoundExchange IDs, and mailing address
+- [x] **COLLAB-02**: Artist can edit and delete collaborator profiles from a global collaborators list
+- [x] **COLLAB-03**: When creating a split sheet or contract, artist can select collaborators from their saved list (auto-fills contact + rights data)
+- [x] **COLLAB-04**: Collaborators are stored globally per artist (reusable across all vault projects)
 
 ### Document Lifecycle
 
@@ -58,10 +58,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COLLAB-01 | Phase 1: Collaborator Profiles | Pending |
-| COLLAB-02 | Phase 1: Collaborator Profiles | Pending |
-| COLLAB-03 | Phase 1: Collaborator Profiles | Pending |
-| COLLAB-04 | Phase 1: Collaborator Profiles | Pending |
+| COLLAB-01 | Phase 1: Collaborator Profiles | Complete |
+| COLLAB-02 | Phase 1: Collaborator Profiles | Complete |
+| COLLAB-03 | Phase 1: Collaborator Profiles | Complete |
+| COLLAB-04 | Phase 1: Collaborator Profiles | Complete |
 | DOC-01 | Phase 2: Document Lifecycle | Pending |
 | DOC-02 | Phase 2: Document Lifecycle | Pending |
 | DOC-03 | Phase 2: Document Lifecycle | Pending |
