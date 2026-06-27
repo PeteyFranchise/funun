@@ -6,7 +6,7 @@ current_phase: 01
 current_phase_name: Collaborator Profiles
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-27T03:01:29.599Z"
+last_updated: "2026-06-27T03:19:06.738Z"
 last_activity: 2026-06-27
 last_activity_desc: Phase 01 execution started
 progress:
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 01 (Collaborator Profiles) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-27 — Phase 01 execution started
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 45m | 3 tasks | 12 files |
+| Phase 01 P01 | 45m | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - Wave 2 init: Collaborators table keyed by `artist_id`, global across projects
 - Wave 2 init: Songtrust as guide card + CWR export hook only (BD conversation pending)
 - Wave 2 init: Rights guidance is guided filing + deep-links, not automation (no open APIs)
+- [Phase ?]: params typed as Promise<{ id: string }> in dynamic routes — required by Next.js 15
+- [Phase ?]: mailing_address stored as { raw: string } JSONB in Phase 1 — structured sub-fields deferred to future phase
 
 ### Pending Todos
 
@@ -87,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T03:01:29.586Z
+Last session: 2026-06-27T03:19:06.727Z
 Stopped at: Phase 1 UI-SPEC approved
 Resume file: .planning/phases/01-collaborator-profiles/01-UI-SPEC.md
