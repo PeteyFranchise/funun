@@ -1,8 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import type { CollaboratorProfile } from '@/lib/collaborators'
+import { CollaboratorPicker } from '@/components/collaborators/CollaboratorPicker'
 import {
   COMPOSER_ROLE_LABELS,
   COMPOSER_ROLE_VALUES,
@@ -92,6 +94,19 @@ export function MetadataStudio({
   const [savingTrack, setSavingTrack] = useState<string | null>(null)
   const [embedState, setEmbedState] = useState<Record<string, { busy: boolean; url?: string; msg?: string }>>({})
   const [isrcState, setIsrcState] = useState<Record<string, { busy: boolean; msg?: string; needsSetup?: boolean }>>({})
+  const [collaborators, setCollaborators] = useState<CollaboratorProfile[]>([])
+
+  // Fetch the global collaborator roster on mount so ComposerEditor can offer a picker
+  useEffect(() => {
+    fetch('/api/collaborators')
+      .then(r => r.json())
+      .then(json => {
+        if (Array.isArray(json.data)) setCollaborators(json.data)
+      })
+      .catch(() => {
+        // non-blocking — picker degrades to empty state
+      })
+  }, [])
 
   const report: ValidationReport = useMemo(
     () =>
@@ -179,6 +194,11 @@ export function MetadataStudio({
           language: t.language || null,
           metadata: {
             composers: t.composers,
+            // composer_ipi_missing signals that at least one roster-picked composer
+            // lacks an IPI — consumed by readinessItemsForProject without a DB client
+            composer_ipi_missing: t.composers.some(
+              c => (c.email || c.phone) && !c.ipi
+            ) || false,
             lyrics: t.lyrics.trim()
               ? { text: t.lyrics, language: t.language || undefined, explicit: t.lyricsExplicit }
               : null,
@@ -329,6 +349,7 @@ export function MetadataStudio({
                 <ComposerEditor
                   composers={t.composers}
                   onChange={composers => setTrack(t.id, { composers })}
+                  collaborators={collaborators}
                 />
               </div>
 
@@ -606,96 +627,246 @@ function ExportBar({ projectId, ready }: { projectId: string; ready: boolean }) 
 }
 
 // ─── Composer editor ─────────────────────────────────────────────────
+
+// Per-row state for roster-pick tracking (kept in component state only —
+// not persisted to the Composer JSONB shape per the plan's D-02 constraint).
+type PickedRow = {
+  collaboratorId: string
+  collaboratorName: string
+  missingIpi: boolean
+}
+
 function ComposerEditor({
   composers,
   onChange,
+  collaborators,
 }: {
   composers: Composer[]
   onChange: (next: Composer[]) => void
+  collaborators: CollaboratorProfile[]
 }) {
+  // Track which rows were populated from the roster and whether their IPI was absent at pick time
+  const [pickedRows, setPickedRows] = useState<Record<number, PickedRow>>({})
+  // Track "saved" confirmation per row per field
+  const [savedState, setSavedState] = useState<Record<string, boolean>>({})
+  // Track nudge timeout refs to clear them
+  const nudgeTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
   function set(i: number, patch: Partial<Composer>) {
     onChange(composers.map((c, idx) => (idx === i ? { ...c, ...patch } : c)))
   }
+
   function add() {
     onChange([...composers, { name: '', role: 'composer_lyricist', pro: 'none', split: 0 }])
   }
+
   function remove(i: number) {
     onChange(composers.filter((_, idx) => idx !== i))
+    // Clean up picker state for removed row
+    setPickedRows(prev => {
+      const next = { ...prev }
+      delete next[i]
+      // Shift indices above i down by 1
+      const shifted: Record<number, PickedRow> = {}
+      for (const [k, v] of Object.entries(next)) {
+        const idx = Number(k)
+        shifted[idx > i ? idx - 1 : idx] = v
+      }
+      return shifted
+    })
+  }
+
+  function handlePick(i: number, collab: CollaboratorProfile) {
+    // Auto-fill name/PRO/IPI/email/phone only — never role or split (D-02)
+    set(i, {
+      name: collab.name,
+      pro: (collab.pro as Composer['pro']) ?? 'none',
+      ipi: collab.ipi ?? undefined,
+      email: collab.email ?? undefined,
+      phone: collab.phone ?? undefined,
+    })
+    setPickedRows(prev => ({
+      ...prev,
+      [i]: {
+        collaboratorId: collab.id,
+        collaboratorName: collab.name,
+        missingIpi: !collab.ipi,
+      },
+    }))
+  }
+
+  // When a rights-identity field is edited on a picked row, the IPI chip
+  // should clear if the user has typed in an IPI
+  function handleFieldChange(i: number, field: keyof Composer, value: string) {
+    set(i, { [field]: value } as Partial<Composer>)
+    // If IPI is being typed, update missingIpi signal on the picked row
+    if (field === 'ipi' && pickedRows[i]) {
+      setPickedRows(prev => ({
+        ...prev,
+        [i]: { ...prev[i], missingIpi: !value },
+      }))
+    }
+  }
+
+  // Save a rights-identity field back to the collaborator's profile (D-07)
+  async function saveFieldToProfile(i: number, field: 'ipi' | 'pro' | 'publisher' | 'email' | 'phone', value: string) {
+    const picked = pickedRows[i]
+    if (!picked) return
+    const key = `${i}-${field}`
+    try {
+      await fetch(`/api/collaborators/${picked.collaboratorId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value || null }),
+      })
+      setSavedState(prev => ({ ...prev, [key]: true }))
+      // Clear "Saved" after 2s
+      if (nudgeTimers.current[key]) clearTimeout(nudgeTimers.current[key])
+      nudgeTimers.current[key] = setTimeout(() => {
+        setSavedState(prev => ({ ...prev, [key]: false }))
+      }, 2000)
+    } catch {
+      // non-blocking — silently ignore save failure
+    }
   }
 
   return (
     <div className="mt-2 space-y-2">
-      {composers.map((c, i) => (
-        <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2 sm:grid-cols-12">
-          <input
-            value={c.name}
-            onChange={e => set(i, { name: e.target.value })}
-            placeholder="Full legal name (PRO-registered)"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-3"
-          />
-          <select
-            value={c.role}
-            onChange={e => set(i, { role: e.target.value as Composer['role'] })}
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-3"
-          >
-            {COMPOSER_ROLE_VALUES.map(r => (
-              <option key={r} value={r} className="bg-[#0a0a0f]">{COMPOSER_ROLE_LABELS[r]}</option>
-            ))}
-          </select>
-          <select
-            value={c.pro}
-            onChange={e => set(i, { pro: e.target.value as Composer['pro'] })}
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-2"
-          >
-            {PRO_VALUES.map(p => (
-              <option key={p} value={p} className="bg-[#0a0a0f]">{PRO_LABELS[p]}</option>
-            ))}
-          </select>
-          <input
-            value={c.ipi ?? ''}
-            onChange={e => set(i, { ipi: e.target.value })}
-            placeholder="IPI #"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-2"
-          />
-          <div className="flex items-center gap-1 sm:col-span-2">
-            <div className="relative flex-1">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={c.split || ''}
-                onChange={e => set(i, { split: Number(e.target.value) || 0 })}
-                placeholder="0"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 pr-6 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-              />
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/40">%</span>
+      {composers.map((c, i) => {
+        const picked = pickedRows[i]
+        const showMissingIpi = picked?.missingIpi && !c.ipi
+
+        return (
+          <div key={i}>
+            <div className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2 sm:grid-cols-12">
+              {/* Name input + picker trigger */}
+              <div className="flex items-center gap-1.5 sm:col-span-3">
+                <input
+                  value={c.name}
+                  onChange={e => set(i, { name: e.target.value })}
+                  placeholder="Full legal name (PRO-registered)"
+                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                <CollaboratorPicker onSelect={collab => handlePick(i, collab)} />
+              </div>
+              <select
+                value={c.role}
+                onChange={e => set(i, { role: e.target.value as Composer['role'] })}
+                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-3"
+              >
+                {COMPOSER_ROLE_VALUES.map(r => (
+                  <option key={r} value={r} className="bg-[#0a0a0f]">{COMPOSER_ROLE_LABELS[r]}</option>
+                ))}
+              </select>
+              <select
+                value={c.pro}
+                onChange={e => {
+                  set(i, { pro: e.target.value as Composer['pro'] })
+                  if (picked) saveFieldToProfile(i, 'pro', e.target.value)
+                }}
+                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-2"
+              >
+                {PRO_VALUES.map(p => (
+                  <option key={p} value={p} className="bg-[#0a0a0f]">{PRO_LABELS[p]}</option>
+                ))}
+              </select>
+              {/* IPI field with save-to-profile nudge */}
+              <div className="relative sm:col-span-2">
+                <input
+                  value={c.ipi ?? ''}
+                  onChange={e => handleFieldChange(i, 'ipi', e.target.value)}
+                  placeholder="IPI #"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                {picked && (
+                  <NudgeButton
+                    name={picked.collaboratorName}
+                    field="ipi"
+                    rowIndex={i}
+                    savedKey={`${i}-ipi`}
+                    savedState={savedState}
+                    onSave={() => saveFieldToProfile(i, 'ipi', c.ipi ?? '')}
+                  />
+                )}
+              </div>
+              <div className="flex items-center gap-1 sm:col-span-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={c.split || ''}
+                    onChange={e => set(i, { split: Number(e.target.value) || 0 })}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 pr-6 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                  />
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/40">%</span>
+                </div>
+                <button
+                  onClick={() => remove(i)}
+                  className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
+                  aria-label="Remove writer"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+              {/* Email with save-to-profile nudge */}
+              <div className="relative sm:col-span-6">
+                <input
+                  type="email"
+                  value={c.email ?? ''}
+                  onChange={e => handleFieldChange(i, 'email', e.target.value)}
+                  placeholder="Writer email — for e-signature"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                {picked && (
+                  <NudgeButton
+                    name={picked.collaboratorName}
+                    field="email"
+                    rowIndex={i}
+                    savedKey={`${i}-email`}
+                    savedState={savedState}
+                    onSave={() => saveFieldToProfile(i, 'email', c.email ?? '')}
+                  />
+                )}
+              </div>
+              {/* Phone with save-to-profile nudge */}
+              <div className="relative sm:col-span-6">
+                <input
+                  type="tel"
+                  value={c.phone ?? ''}
+                  onChange={e => handleFieldChange(i, 'phone', e.target.value)}
+                  placeholder="Writer mobile — for SMS confirmation (optional)"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                />
+                {picked && (
+                  <NudgeButton
+                    name={picked.collaboratorName}
+                    field="phone"
+                    rowIndex={i}
+                    savedKey={`${i}-phone`}
+                    savedState={savedState}
+                    onSave={() => saveFieldToProfile(i, 'phone', c.phone ?? '')}
+                  />
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => remove(i)}
-              className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
-              aria-label="Remove writer"
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
-            </button>
+            {/* Missing-IPI chip (D-03) — appears when roster-picked row has no IPI */}
+            {showMissingIpi && (
+              <div className="mt-1 flex">
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  IPI missing — complete before export
+                </span>
+              </div>
+            )}
           </div>
-          <input
-            type="email"
-            value={c.email ?? ''}
-            onChange={e => set(i, { email: e.target.value })}
-            placeholder="Writer email — for e-signature"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-6"
-          />
-          <input
-            type="tel"
-            value={c.phone ?? ''}
-            onChange={e => set(i, { phone: e.target.value })}
-            placeholder="Writer mobile — for SMS confirmation (optional)"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-6"
-          />
-        </div>
-      ))}
+        )
+      })}
       <button
         onClick={add}
         className="w-full rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
@@ -703,6 +874,48 @@ function ComposerEditor({
         + Add writer
       </button>
     </div>
+  )
+}
+
+// ─── Save-to-profile nudge button ────────────────────────────────────
+// Appears on rights-identity fields (IPI, PRO, email, phone) when a
+// row has been populated from the collaborator roster (D-07). Never
+// shown on the split field.
+function NudgeButton({
+  name,
+  field,
+  rowIndex: _rowIndex,
+  savedKey,
+  savedState,
+  onSave,
+}: {
+  name: string
+  field: string
+  rowIndex: number
+  savedKey: string
+  savedState: Record<string, boolean>
+  onSave: () => void
+}) {
+  if (savedState[savedKey]) {
+    return (
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-emerald-300">
+        Saved
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onSave}
+      title={`Save to ${name}'s profile?`}
+      aria-label={`Save ${field} to ${name}'s profile`}
+      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/30 transition hover:text-white/70"
+    >
+      {/* Cloud-upload icon — 14×14 */}
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6h.1a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
   )
 }
 
