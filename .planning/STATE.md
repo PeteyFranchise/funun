@@ -6,15 +6,15 @@ current_phase: 01
 current_phase_name: Collaborator Profiles
 status: executing
 stopped_at: 01-03 Task 4 checkpoint — awaiting human verification
-last_updated: "2026-06-27T23:05:10.528Z"
+last_updated: "2026-06-27T23:33:16.905Z"
 last_activity: 2026-06-27
 last_activity_desc: 01-03 Tasks 1-3 committed; paused at checkpoint
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 33
 ---
 
 # Project State
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 45m | 4 tasks | 12 files |
 | Phase 01 P02 | 3m | 2 tasks | 2 files |
 | Phase 01 P03 | 45m | 3 tasks | 6 files |
+| Phase 01 P04 | ~50m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase ?]: mailing_address stored as { raw: string } JSONB in Phase 1 — structured sub-fields deferred to future phase
 - [Phase ?]: composer_ipi_missing stored as boolean in track metadata JSONB at save time — readiness helper reads it without a DB client
 - [Phase ?]: PickedRow tracking state kept in component state only — not added to persisted Composer JSONB shape (D-02 per-song specificity)
+- [Phase ?]: Service client only used AFTER ownership verified via .eq('initiator_user_id') — ownership-then-service-client pattern (T-01-12)
+- [Phase ?]: Only acting party status changes on counter/approve — sibling approved parties not reset (D-16 Open Question 3)
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-27T23:05:10.517Z
+Last session: 2026-06-27T23:33:04.707Z
 Stopped at: 01-03 Task 4 — human verification checkpoint
 Resume file: .planning/phases/01-collaborator-profiles/01-03-PLAN.md

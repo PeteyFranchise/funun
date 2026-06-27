@@ -11,7 +11,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Collaborator Profiles** - Global collaborator roster with auto-fill into split sheets and contracts
+- [x] **Phase 1: Collaborator Profiles** - Global collaborator roster with auto-fill into split sheets and contracts (completed 2026-06-27)
 - [ ] **Phase 2: Document Lifecycle** - Signed-PDF upload flow, signer status tracking, and readiness gate fix
 - [ ] **Phase 3: Rights Guidance** - Guided registration checklists (copyright, PRO, SoundExchange, Songtrust) with per-project status
 
@@ -30,7 +30,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   3. When creating a split sheet or contract, artist can pick from their saved collaborators and all contact + rights fields auto-populate
   4. The same collaborator roster is available across all vault projects with no per-project re-entry
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 - [x] 01-03-PLAN.md
 
@@ -45,7 +45,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Token split-approval loop (approve/counter) + collaborator invite + public approve/join pages (COLLAB-03, COLLAB-04)
+- [x] 01-04-PLAN.md — Token split-approval loop (approve/counter) + collaborator invite + public approve/join pages (COLLAB-03, COLLAB-04)
 
 **UI hint**: yes
 
@@ -85,6 +85,6 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Collaborator Profiles | 3/4 | In Progress|  |
+| 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 0/TBD | Not started | - |
 | 3. Rights Guidance | 0/TBD | Not started | - |
