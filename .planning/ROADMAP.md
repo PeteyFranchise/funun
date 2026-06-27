@@ -38,7 +38,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 01-02-PLAN.md — MetadataStudio composer-row auto-fill from roster + missing-IPI chip + readiness warning + save-to-profile nudge (COLLAB-03)
-- [ ] 01-03-PLAN.md — Standalone SplitSheetBuilder with per-party collaborator auto-fill, even-split validation, industry entry point (COLLAB-03)
+- [~] 01-03-PLAN.md — Standalone SplitSheetBuilder with per-party collaborator auto-fill, even-split validation, industry entry point (COLLAB-03) — Tasks 1-3 done; awaiting Task 4 verification
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
