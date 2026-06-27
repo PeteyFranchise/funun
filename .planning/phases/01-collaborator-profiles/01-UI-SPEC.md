@@ -87,14 +87,28 @@ Exceptions:
 
 ## Typography
 
-All sizes match existing codebase usage. Do not introduce new sizes.
+All sizes are drawn from existing codebase usage. The 4-weight system and 7-size inventory reflect the project's established design language — stripping sizes or weights would require changing existing components outside this phase's scope. Each entry is justified below.
 
-| Role | Size | Weight | Line Height | Example Usage |
-|------|------|--------|-------------|---------------|
-| Body / input text | 14px (`text-sm`) | 400 (normal) | 1.5 | Form inputs, card body, picker list items |
-| Label / meta | 12px (`text-xs`) | 700 (bold) | 1.4 | Section labels (uppercase tracking), badge text, PRO/IPI captions |
-| Card heading | 14.5px (`text-[14.5px]`) | 700 (bold) | 1.25 | Collaborator name on card; matches `ContractLocker` row name size |
-| Section heading | 15.5px (`text-[15.5px]`) | 600 (semibold) | 1.25 | Nav items (existing pattern — do not change) |
+| Role | Size | Weight | Line Height | Justification / Example Usage |
+|------|------|--------|-------------|-------------------------------|
+| IPI-missing chip text | 13px (`text-[13px]`) | 700 (bold) | 1.4 | Inline warning chip below composer rows; mid-point between `text-xs` and `text-sm` matches existing chip sizing in codebase |
+| Body / input text | 14px (`text-sm`) | 400 (regular) | 1.5 | Form inputs, card body copy, picker search input — standard prose size |
+| Card heading | 14.5px (`text-[14.5px]`) | 700 (bold) | 1.25 | Collaborator name on `CollaboratorCard`; matches `ContractLocker` row name size exactly |
+| Nav item | 15.5px (`text-[15.5px]`) | 600 (semibold) | 1.25 | `ArtistNav` existing pattern — do not change |
+| Content heading (song title) | 18px (`text-lg`) | 800 (extrabold) | 1.2 | Song name in `SplitApprovalView` content card — must read at a glance on a shared link page |
+| Page heading | 22px (`text-[22px]`) | 800 (extrabold) | 1.2 | `/collaborators` page heading "Collaborators" — matches vault page heading scale |
+| Label / meta | 12px (`text-xs`) | 700 (bold) | 1.4 | Section labels (uppercase tracking), badge text, PRO/IPI captions, edit button, picker bottom action |
+
+**Weight justification (4 weights):**
+
+| Weight | Tailwind | Used For |
+|--------|----------|----------|
+| 400 (regular) | `font-normal` | Body text, input values, card sub-text |
+| 600 (semibold) | `font-semibold` | Nav items, primary CTA labels, picker "Add new" trigger |
+| 700 (bold) | `font-bold` | Card headings, badge text, form labels (uppercase), chip text |
+| 800 (extrabold) | `font-extrabold` | Page headings, song name in approval view — matches existing vault heading weight |
+
+These 4 weights are already used in the existing codebase (see `MetadataStudio.tsx`, `ContractLocker.tsx`, `ArtistNav.tsx`). Restricting to 2 weights would require changing existing components outside this phase's scope and is not appropriate here.
 
 Label casing: ALL CAPS with `tracking-wide` (`tracking-[.12em]` to `tracking-[.18em]`) — matches every existing form label in the codebase.
 
@@ -187,7 +201,7 @@ Trigger: small button rendered to the right of the name input in a composer row:
 Dropdown panel (absolute positioned below trigger):
 - Surface: `bg-card border border-hairstrong rounded-xl shadow-xl`
 - Width: min 240px, max 320px
-- List items: `px-4 py-2.5 text-sm text-white hover:bg-white/5 cursor-pointer`; show name + PRO label in smaller `text-lavdim` below
+- List items: `px-4 py-2 text-sm text-white hover:bg-white/5 cursor-pointer`; show name + PRO label in smaller `text-lavdim` below
 - Search input at top of panel: same input class, `placeholder="Search collaborators…"`
 - Bottom of list: divider `border-t border-hair` then "Add new collaborator" item in `text-brandindigo text-sm font-medium`
 - Keyboard: arrow keys navigate list, Enter selects, Escape closes
