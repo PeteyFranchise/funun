@@ -30,7 +30,10 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   3. When creating a split sheet or contract, artist can pick from their saved collaborators and all contact + rights fields auto-populate
   4. The same collaborator roster is available across all vault projects with no per-project re-entry
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
+
+- [x] 01-03-PLAN.md
+
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Collaborator roster walking skeleton: migration 018 + CRUD API + /collaborators page + components + nav + middleware (COLLAB-01, COLLAB-02, COLLAB-04)
@@ -82,6 +85,6 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Collaborator Profiles | 2/4 | In Progress|  |
+| 1. Collaborator Profiles | 3/4 | In Progress|  |
 | 2. Document Lifecycle | 0/TBD | Not started | - |
 | 3. Rights Guidance | 0/TBD | Not started | - |
