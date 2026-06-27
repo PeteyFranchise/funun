@@ -59,7 +59,7 @@ decisions:
 metrics:
   duration: "~45 minutes"
   completed: "2026-06-27"
-  tasks_completed: 3
+  tasks_completed: 4
   tasks_total: 4
   files_created: 9
   files_modified: 3
@@ -177,6 +177,9 @@ No new security surfaces beyond the plan's threat model.
 - 8ae3f5d: feat(01-01): migration 018
 - 36a8deb: feat(01-01): collaborator type, sanitizer, and CRUD API routes
 - 4d31ffe: feat(01-01): roster page, components, nav icon, and middleware protection
+- 122f69c: fix(01): defer split_sheets party-view policy ordering fix
+
+**Task 4 checkpoint:** Approved by developer on 2026-06-26.
 
 **Build:** green (no TypeScript errors, no ESLint errors)
 **Acceptance checks:** all 12 grep/file-existence checks passed
