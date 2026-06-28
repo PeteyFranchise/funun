@@ -72,7 +72,7 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="text-3xl font-semibold text-white">Settings</h1>
-      <p className="mt-1 text-sm text-white/50">Manage your legal and artist settings.</p>
+      <p className="mt-1 text-sm text-white/50">Manage your legal and artist profile and links.</p>
 
       <div className="mt-8">
         {profile ? (
