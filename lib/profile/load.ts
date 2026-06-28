@@ -44,6 +44,11 @@ export const DEMO_PROFILE: ArtistProfile = {
   ],
   open_to: ['sync', 'collabs', 'features'],
   featured_project_id: null,
+  pro: null,
+  ipi: null,
+  publisher: null,
+  mlc_id: null,
+  soundexchange_id: null,
   created_at: '2024-03-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }

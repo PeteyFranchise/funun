@@ -316,6 +316,12 @@ export type ArtistProfile = {
   isrc_country_code: string | null
   isrc_registrant_code: string | null
   isrc_year_counters: Record<string, number> | null
+  // Rights registry fields (migration 020) — artist's own PRO/IPI/publisher data.
+  pro: string | null
+  ipi: string | null
+  publisher: string | null
+  mlc_id: string | null
+  soundexchange_id: string | null
   // Public showcase profile (migration 010). is_public is the app-level
   // gate for whether /@handle renders; handle is the shareable slug.
   handle: string | null

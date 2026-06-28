@@ -16,6 +16,11 @@ const EDITABLE_FIELDS = [
   'monthly_listeners',
   'isrc_country_code',
   'isrc_registrant_code',
+  'pro',
+  'ipi',
+  'publisher',
+  'mlc_id',
+  'soundexchange_id',
 ] as const
 
 function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {

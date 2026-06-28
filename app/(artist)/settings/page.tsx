@@ -32,6 +32,11 @@ const DEMO_PROFILE: ArtistProfile = {
   roles: [{ kind: 'preset', slug: 'artist' }],
   open_to: ['collabs', 'sync'],
   featured_project_id: null,
+  pro: null,
+  ipi: null,
+  publisher: null,
+  mlc_id: null,
+  soundexchange_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }

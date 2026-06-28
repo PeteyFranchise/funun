@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ArtistProfile } from '@/types'
+import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -28,6 +29,11 @@ type FormState = {
   monthly_listeners: string
   isrc_country_code: string
   isrc_registrant_code: string
+  pro: string
+  ipi: string
+  publisher: string
+  mlc_id: string
+  soundexchange_id: string
 }
 
 function toForm(p: ArtistProfile): FormState {
@@ -44,6 +50,11 @@ function toForm(p: ArtistProfile): FormState {
     monthly_listeners: p.monthly_listeners != null ? String(p.monthly_listeners) : '',
     isrc_country_code: p.isrc_country_code ?? '',
     isrc_registrant_code: p.isrc_registrant_code ?? '',
+    pro: p.pro ?? '',
+    ipi: p.ipi ?? '',
+    publisher: p.publisher ?? '',
+    mlc_id: p.mlc_id ?? '',
+    soundexchange_id: p.soundexchange_id ?? '',
   }
 }
 
@@ -196,12 +207,96 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
         </div>
       </section>
 
+      {/* ── Rights & Royalties ──────────────────────────────────── */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white">Rights &amp; Royalties</h2>
+          <p className="mt-1 text-xs text-white/40">
+            Your rights registry information. Funūn does not collect or pay royalties —
+            we organize this data in one place so it flows automatically into your split
+            sheets, metadata, and registration checklists, making it easy to communicate
+            with the entities that actually collect your royalties: your PRO, The MLC,
+            SoundExchange, and others.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-xs text-white/60 space-y-1">
+          <p className="font-semibold text-white/80">Use your legal name for all registry accounts</p>
+          <p>
+            Your name must appear <span className="text-white/90 font-medium">identically</span> on
+            every composition, split sheet, and rights registry. Even minor inconsistencies
+            can freeze payments or cause royalties to be sent to the wrong person.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>PRO affiliation</label>
+            <select
+              value={form.pro}
+              onChange={e => set('pro', e.target.value)}
+              className={`mt-1 ${inputClass}`}
+            >
+              <option value="" className="bg-neutral-900">Select PRO (optional)</option>
+              {PRO_VALUES.map(v => (
+                <option key={v} value={v} className="bg-neutral-900">
+                  {PRO_LABELS[v]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>IPI / CAE number</label>
+            <input
+              value={form.ipi}
+              onChange={e => set('ipi', e.target.value)}
+              placeholder="00000000000"
+              className={`mt-1 ${inputClass}`}
+            />
+            <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
+          </div>
+
+          <div>
+            <label className={labelClass}>Publisher</label>
+            <input
+              value={form.publisher}
+              onChange={e => set('publisher', e.target.value)}
+              placeholder="Publisher name"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>MLC member ID</label>
+            <input
+              value={form.mlc_id}
+              onChange={e => set('mlc_id', e.target.value)}
+              placeholder="MLC-XXXXXXXX"
+              className={`mt-1 ${inputClass}`}
+            />
+            <p className="mt-1 text-xs text-white/30">The MLC collects digital mechanical royalties (US).</p>
+          </div>
+
+          <div>
+            <label className={labelClass}>SoundExchange ID</label>
+            <input
+              value={form.soundexchange_id}
+              onChange={e => set('soundexchange_id', e.target.value)}
+              placeholder="SE-XXXXXXXX"
+              className={`mt-1 ${inputClass}`}
+            />
+            <p className="mt-1 text-xs text-white/30">SoundExchange collects digital performance royalties for recordings.</p>
+          </div>
+        </div>
+      </section>
+
       <section className="space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
           <p className="mt-1 text-xs text-white/40">
             If you hold your own ISRC registrant code, add it here and Funūn can mint
-            compliant ISRCs for your tracks automatically. Don’t have one? Your distributor
+            compliant ISRCs for your tracks automatically. Don't have one? Your distributor
             assigns ISRCs for free — leave this blank. To self-register, apply once at your
             national ISRC agency (US: usisrc.org).
           </p>
