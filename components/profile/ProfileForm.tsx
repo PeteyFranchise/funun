@@ -141,8 +141,9 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
           <p>
             Your legal name must appear <span className="text-white/90 font-medium">identically</span> on
             every composition, split sheet, PRO registration, and copyright filing.
-            Inconsistencies — even minor ones — can freeze payments or cause royalties
-            to be misdirected.
+            For example, if you don&apos;t use your middle name when you register your work,
+            leave that field blank here, too. Inconsistencies — even minor ones — can
+            freeze payments or cause royalties to be misdirected.
           </p>
           <p className="text-white/40 pt-0.5">
             Funūn does not collect or pay royalties. We organize this data so you can
