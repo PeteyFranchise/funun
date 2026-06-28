@@ -110,8 +110,27 @@ function bestStatus(docs: DocLike[]): BestStatusResult {
       documentId = d.id
       file_url = d.file_url ?? null
       signed_at = d.signed_at ?? null
-      const esign = readEsignState(d.document_data ?? null)
-      signers = esign?.signers?.map(s => ({ name: s.name, email: s.email, status: s.status }))
+      const esignState = readEsignState(d.document_data ?? null)
+      if (esignState?.signers && esignState.signers.length > 0) {
+        signers = esignState.signers.map(s => ({ name: s.name, email: s.email, status: s.status }))
+      } else {
+        const contribs = Array.isArray((d.document_data as Record<string, unknown> | null)?.contributors)
+          ? ((d.document_data as Record<string, unknown>).contributors as Array<Record<string, unknown>>)
+          : []
+        if (contribs.length > 0) {
+          const signerStatus: 'pending' | 'signed' | 'declined' =
+            d.status === 'signed' || d.status === 'verified' ? 'signed' : 'pending'
+          signers = contribs
+            .filter(c => typeof c.name === 'string' && (c.name as string).trim())
+            .map(c => ({
+              name: String(c.name).trim(),
+              email: typeof c.email === 'string' && (c.email as string).trim() ? String(c.email).trim() : '',
+              status: signerStatus,
+            }))
+        } else {
+          signers = undefined
+        }
+      }
     }
   }
   return { status, documentId, file_url, signed_at, signers }

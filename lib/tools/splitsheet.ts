@@ -9,6 +9,7 @@ export type SplitContributor = {
   name: string
   role: SplitRole
   percentage: number
+  email?: string
 }
 
 export type SplitSheetData = {
@@ -60,7 +61,8 @@ export function buildSplitSheet(input: {
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
       return { ok: false, error: `Invalid percentage for ${name}` }
     }
-    contributors.push({ name, role, percentage: Math.round(pct * 100) / 100 })
+    const email = (c as { email?: unknown }).email ? String((c as { email?: unknown }).email).trim() : undefined
+    contributors.push({ name, role, percentage: Math.round(pct * 100) / 100, ...(email ? { email } : {}) })
   }
 
   const total = Math.round(contributors.reduce((s, c) => s + c.percentage, 0) * 100) / 100

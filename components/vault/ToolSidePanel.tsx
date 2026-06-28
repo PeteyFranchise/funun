@@ -14,7 +14,7 @@ import {
 // (live % total, submit gated at 100%); the AI tools render a Generate
 // button and then their JSON output.
 
-type DraftContributor = { name: string; role: SplitRole; percentage: string }
+type DraftContributor = { name: string; email: string; role: SplitRole; percentage: string }
 
 const ROLE_OPTIONS = Object.entries(SPLIT_ROLE_LABELS) as [SplitRole, string][]
 
@@ -43,8 +43,8 @@ export function ToolSidePanel({
       const names = (req.prefill.collaborators as string[] | undefined) ?? []
       const seed: DraftContributor[] =
         names.length > 0
-          ? names.map(n => ({ name: n, role: 'other' as SplitRole, percentage: '' }))
-          : [{ name: '', role: 'other', percentage: '' }]
+          ? names.map(n => ({ name: n, email: '', role: 'other' as SplitRole, percentage: '' }))
+          : [{ name: '', email: '', role: 'other', percentage: '' }]
       setContributors(seed)
     } else {
       setContributors([])
@@ -72,7 +72,7 @@ export function ToolSidePanel({
     setContributors(prev => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)))
   }
   function addContributor() {
-    setContributors(prev => [...prev, { name: '', role: 'other', percentage: '' }])
+    setContributors(prev => [...prev, { name: '', email: '', role: 'other', percentage: '' }])
   }
   function removeContributor(i: number) {
     setContributors(prev => prev.filter((_, idx) => idx !== i))
@@ -107,6 +107,7 @@ export function ToolSidePanel({
       song_name: (req!.prefill.song_name as string) ?? req!.trackTitle ?? '',
       contributors: contributors.map(c => ({
         name: c.name,
+        email: c.email || undefined,
         role: c.role,
         percentage: Number(c.percentage) || 0,
       })),
@@ -285,6 +286,13 @@ function SplitSheetForm({
               </button>
             )}
           </div>
+          <input
+            value={c.email}
+            onChange={e => onSet(i, { email: e.target.value })}
+            placeholder="Email (optional)"
+            type="email"
+            className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+          />
           <div className="mt-2 flex items-center gap-2">
             <select
               value={c.role}
