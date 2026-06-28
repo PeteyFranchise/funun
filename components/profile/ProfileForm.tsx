@@ -27,7 +27,6 @@ type FormState = {
   tiktok_handle: string
   spotify_url: string
   career_stage: 1 | 2 | 3 | 4
-  monthly_listeners: string
   isrc_country_code: string
   isrc_registrant_code: string
   pro: string
@@ -55,7 +54,6 @@ function toForm(p: ArtistProfile): FormState {
     tiktok_handle: p.tiktok_handle ?? '',
     spotify_url: p.spotify_url ?? '',
     career_stage: p.career_stage ?? 1,
-    monthly_listeners: p.monthly_listeners != null ? String(p.monthly_listeners) : '',
     isrc_country_code: p.isrc_country_code ?? '',
     isrc_registrant_code: p.isrc_registrant_code ?? '',
     pro: p.pro ?? '',
@@ -106,7 +104,6 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
-        monthly_listeners: form.monthly_listeners === '' ? null : form.monthly_listeners,
         mailing_address: form.mailing_address.trim() ? { raw: form.mailing_address.trim() } : null,
       }),
     })
@@ -265,17 +262,6 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className={labelClass}>Monthly listeners</label>
-            <input
-              type="number"
-              min={0}
-              value={form.monthly_listeners}
-              onChange={e => set('monthly_listeners', e.target.value)}
-              placeholder="0"
-              className={`mt-1 ${inputClass}`}
-            />
           </div>
         </div>
       </section>
