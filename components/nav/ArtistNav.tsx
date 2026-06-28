@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   VaultIcon,
   LockerIcon,
@@ -36,7 +36,12 @@ const ITEMS: Item[] = [
   { href: '/settings', label: 'Settings', match: '/settings', Icon: SettingsIcon },
 ]
 
-const STORAGE_KEY = 'funun-nav-collapsed'
+const COLLAPSED_WIDTH = 68
+const DEFAULT_WIDTH = 252
+const MIN_WIDTH = 180
+const MAX_WIDTH = 400
+const STORAGE_KEY_WIDTH = 'funun-nav-width'
+const STORAGE_KEY_COLLAPSED = 'funun-nav-collapsed'
 
 type NavUser = { name?: string; plan?: string; initials?: string }
 
@@ -53,27 +58,78 @@ export function ArtistNav({ user }: { user?: NavUser }) {
       .join('')
       .toUpperCase()
 
+  const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [collapsed, setCollapsed] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(DEFAULT_WIDTH)
 
-  // Persist collapse preference across page loads
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'true') setCollapsed(true)
+    const storedCollapsed = localStorage.getItem(STORAGE_KEY_COLLAPSED)
+    const storedWidth = localStorage.getItem(STORAGE_KEY_WIDTH)
+    if (storedCollapsed === 'true') setCollapsed(true)
+    if (storedWidth) {
+      const w = Number(storedWidth)
+      if (w >= MIN_WIDTH && w <= MAX_WIDTH) setWidth(w)
+    }
   }, [])
 
   function toggle() {
     setCollapsed(prev => {
       const next = !prev
-      localStorage.setItem(STORAGE_KEY, String(next))
+      localStorage.setItem(STORAGE_KEY_COLLAPSED, String(next))
       return next
     })
   }
 
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragStartX.current = e.clientX
+    dragStartWidth.current = width
+    setDragging(true)
+  }, [width])
+
+  useEffect(() => {
+    if (!dragging) return
+
+    function onMouseMove(e: MouseEvent) {
+      const delta = e.clientX - dragStartX.current
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta))
+      setWidth(next)
+      // Snap to collapsed if dragged below threshold
+      if (next <= MIN_WIDTH - 20) {
+        setCollapsed(true)
+        localStorage.setItem(STORAGE_KEY_COLLAPSED, 'true')
+      } else {
+        setCollapsed(false)
+        localStorage.setItem(STORAGE_KEY_COLLAPSED, 'false')
+      }
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      setDragging(false)
+      const delta = e.clientX - dragStartX.current
+      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragStartWidth.current + delta))
+      localStorage.setItem(STORAGE_KEY_WIDTH, String(next))
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [dragging])
+
+  const navWidth = collapsed ? COLLAPSED_WIDTH : width
+
   return (
     <nav
+      style={{ width: navWidth, minWidth: navWidth }}
       className={[
-        'relative flex min-h-screen flex-none flex-col border-r border-hair bg-nav-rail pb-6 pt-[30px] transition-all duration-200',
-        collapsed ? 'w-[68px] px-[10px]' : 'w-[252px] px-[18px]',
+        'relative flex min-h-screen flex-none flex-col border-r border-hair bg-nav-rail pb-6 pt-[30px]',
+        collapsed ? 'px-[10px]' : 'px-[18px]',
+        dragging ? '' : 'transition-[width] duration-150',
       ].join(' ')}
     >
       {/* Shared gradient for active icon strokes */}
@@ -85,6 +141,22 @@ export function ArtistNav({ user }: { user?: NavUser }) {
           </linearGradient>
         </defs>
       </svg>
+
+      {/* Drag handle — right edge */}
+      <div
+        onMouseDown={onDragStart}
+        className={[
+          'absolute right-0 top-0 h-full w-[5px] cursor-col-resize z-10 group',
+          dragging ? 'bg-lav/20' : 'hover:bg-lav/20',
+        ].join(' ')}
+        title="Drag to resize"
+      >
+        {/* Visible line that brightens on hover/drag */}
+        <div className={[
+          'absolute right-0 top-0 h-full w-px transition-colors',
+          dragging ? 'bg-lav/60' : 'bg-transparent group-hover:bg-lav/40',
+        ].join(' ')} />
+      </div>
 
       {/* Brand */}
       <Link href="/vault" className={['mb-[42px] block', collapsed ? 'px-1' : 'px-3'].join(' ')}>
@@ -156,7 +228,6 @@ export function ArtistNav({ user }: { user?: NavUser }) {
           collapsed ? 'justify-center px-[10px]' : 'gap-[10px] px-[14px]',
         ].join(' ')}
       >
-        {/* Chevron icon — flips direction based on state */}
         <svg
           width="18"
           height="18"
