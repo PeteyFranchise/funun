@@ -3,6 +3,7 @@ import { createApiClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
+import { ALL_GENRE_SLUGS } from '@/lib/genres'
 
 const EDITABLE_FIELDS = [
   'artist_name',
@@ -29,6 +30,7 @@ const EDITABLE_FIELDS = [
   'contact_phone',
   'mailing_address',
   'industry_roles',
+  'genres',
 ] as const
 
 function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
@@ -71,9 +73,15 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
     }
     if (key === 'industry_roles') {
       if (Array.isArray(value)) {
-        // Only accept known slugs — reject unknown values
         update[key] = (value as unknown[])
           .filter((s): s is string => typeof s === 'string' && ALL_INDUSTRY_ROLE_SLUGS.includes(s))
+      }
+      continue
+    }
+    if (key === 'genres') {
+      if (Array.isArray(value)) {
+        update[key] = (value as unknown[])
+          .filter((s): s is string => typeof s === 'string' && ALL_GENRE_SLUGS.includes(s))
       }
       continue
     }

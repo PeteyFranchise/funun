@@ -326,6 +326,8 @@ export type ArtistProfile = {
   mailing_address: Record<string, string> | null
   // Industry roles — master list of hats this person wears (migration 021).
   industry_roles: string[]
+  // Genre tags — all genres that apply (migration 022).
+  genres: string[]
   // Rights registry fields (migration 020) — artist's own PRO/IPI/publisher data.
   pro: string | null
   ipi: string | null

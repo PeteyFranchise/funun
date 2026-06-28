@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ArtistProfile } from '@/types'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
+import { GENRES } from '@/lib/genres'
+import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -27,6 +29,7 @@ type FormState = {
   tiktok_handle: string
   spotify_url: string
   career_stage: 1 | 2 | 3 | 4
+  genres: string[]
   isrc_country_code: string
   isrc_registrant_code: string
   pro: string
@@ -40,6 +43,7 @@ type FormState = {
   legal_name_suffix: string
   contact_phone: string
   mailing_address: string
+  mailing_address_structured: Record<string, string> | null
   industry_roles: string[]
 }
 
@@ -54,6 +58,7 @@ function toForm(p: ArtistProfile): FormState {
     tiktok_handle: p.tiktok_handle ?? '',
     spotify_url: p.spotify_url ?? '',
     career_stage: p.career_stage ?? 1,
+    genres: Array.isArray(p.genres) ? p.genres : [],
     isrc_country_code: p.isrc_country_code ?? '',
     isrc_registrant_code: p.isrc_registrant_code ?? '',
     pro: p.pro ?? '',
@@ -67,6 +72,7 @@ function toForm(p: ArtistProfile): FormState {
     legal_name_suffix: p.legal_name_suffix ?? '',
     contact_phone: p.contact_phone ?? '',
     mailing_address: (p.mailing_address as { raw?: string } | null)?.raw ?? '',
+    mailing_address_structured: (p.mailing_address as Record<string, string> | null) ?? null,
     industry_roles: Array.isArray(p.industry_roles) ? p.industry_roles : [],
   }
 }
@@ -83,6 +89,25 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
     setForm(f => ({ ...f, [key]: value }))
     setSaved(false)
   }
+
+  function toggleGenre(slug: string) {
+    setForm(f => {
+      const genres = f.genres.includes(slug)
+        ? f.genres.filter(g => g !== slug)
+        : [...f.genres, slug]
+      return { ...f, genres }
+    })
+    setSaved(false)
+  }
+
+  const handleAddressChange = useCallback((display: string, structured: Record<string, string> | null) => {
+    setForm(f => ({
+      ...f,
+      mailing_address: display,
+      mailing_address_structured: structured ?? f.mailing_address_structured,
+    }))
+    setSaved(false)
+  }, [])
 
   function toggleRole(slug: string) {
     setForm(f => {
@@ -104,7 +129,9 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
-        mailing_address: form.mailing_address.trim() ? { raw: form.mailing_address.trim() } : null,
+        mailing_address: form.mailing_address.trim()
+          ? (form.mailing_address_structured ?? { raw: form.mailing_address.trim() })
+          : null,
       }),
     })
     const json = await res.json()
@@ -221,14 +248,33 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
               className={`mt-1 ${inputClass}`}
             />
           </div>
-          <div>
-            <label className={labelClass}>Genre</label>
-            <input
-              value={form.genre}
-              onChange={e => set('genre', e.target.value)}
-              placeholder="e.g. R&B"
-              className={`mt-1 ${inputClass}`}
-            />
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Genre <span className="normal-case font-normal">(select all that apply)</span></label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GENRES.map(genre => {
+                const selected = form.genres.includes(genre.slug)
+                return (
+                  <button
+                    key={genre.slug}
+                    type="button"
+                    onClick={() => toggleGenre(genre.slug)}
+                    className={[
+                      'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                      selected
+                        ? 'border-lav/50 bg-lav/20 text-white'
+                        : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+                    ].join(' ')}
+                  >
+                    {genre.label}
+                  </button>
+                )
+              })}
+            </div>
+            {form.genres.length > 0 && (
+              <p className="mt-2 text-xs text-white/30">
+                {form.genres.length} genre{form.genres.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Location</label>
@@ -336,13 +382,16 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
           </div>
           <div className="sm:col-span-2">
             <label className={labelClass}>Mailing address</label>
-            <textarea
+            <AddressAutocomplete
               value={form.mailing_address}
-              onChange={e => set('mailing_address', e.target.value)}
-              rows={2}
-              placeholder="123 Main St, City, State 00000, Country"
-              className={`mt-1 resize-none ${inputClass}`}
+              onChange={handleAddressChange}
+              inputClass={`mt-1 ${inputClass}`}
             />
+            {form.mailing_address_structured && (
+              <p className="mt-1 text-xs text-white/30">
+                Address verified via Google
+              </p>
+            )}
           </div>
         </div>
       </section>
