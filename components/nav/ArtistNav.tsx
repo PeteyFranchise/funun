@@ -158,17 +158,44 @@ export function ArtistNav({ user }: { user?: NavUser }) {
         ].join(' ')} />
       </div>
 
-      {/* Brand */}
-      <Link href="/vault" className={['mb-[42px] block', collapsed ? 'px-1' : 'px-3'].join(' ')}>
-        {collapsed ? (
-          <div className="gtext text-[18px] font-black tracking-[.04em]">F</div>
-        ) : (
-          <>
-            <div className="gtext text-[25px] font-black tracking-[.04em]">FUNŪN</div>
-            <div className="mt-[3px] text-[10px] font-bold tracking-[.32em] text-lavdim">THE ARTS</div>
-          </>
-        )}
-      </Link>
+      {/* Brand + top collapse button */}
+      <div className={['group/header relative mb-[42px] flex items-start', collapsed ? 'justify-center px-1' : 'px-3'].join(' ')}>
+        <Link href="/vault" className="flex-1">
+          {collapsed ? (
+            <div className="gtext text-[18px] font-black tracking-[.04em]">F</div>
+          ) : (
+            <>
+              <div className="gtext text-[25px] font-black tracking-[.04em]">FUNŪN</div>
+              <div className="mt-[3px] text-[10px] font-bold tracking-[.32em] text-lavdim">THE ARTS</div>
+            </>
+          )}
+        </Link>
+
+        {/* Top collapse button — appears on hover like Notion */}
+        <button
+          type="button"
+          onClick={toggle}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={[
+            'flex h-6 w-6 flex-none items-center justify-center rounded-md text-white/0 transition-all hover:bg-white/10 hover:text-white/70 group-hover/header:text-white/40',
+            collapsed ? 'mt-0.5' : 'mt-1',
+          ].join(' ')}
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={['transition-transform duration-200', collapsed ? 'rotate-180' : ''].join(' ')}
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+      </div>
 
       {/* Scrollable items area — keeps footer pinned at bottom */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
