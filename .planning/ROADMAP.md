@@ -62,7 +62,20 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   2. Split sheet and contract document cards display each signer's name, email, and pending/signed status
   3. Project vault readiness score reflects "signed" status — a split sheet or contract in "uploaded but not signed" state does not count as complete
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Migration 023 (file_url + signed_by columns) + lib/vault/documents.ts + upload API route (DOC-01, DOC-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — DocumentCard upload button + signed state display + signer list UI + stage3 type threading (DOC-01, DOC-02)
+
+**Wave 3** *(blocked on Wave 2 checkpoint)*
+
+- [ ] 02-03-PLAN.md — SplitContributor email field + ToolSidePanel email input + stage3 contributors-based signer fallback (DOC-02)
+
 **UI hint**: yes
 
 ### Phase 3: Rights Guidance
@@ -111,6 +124,6 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
-| 2. Document Lifecycle | 0/TBD | Not started | - |
+| 2. Document Lifecycle | 0/3 | Not started | - |
 | 3. Rights Guidance | 0/TBD | Not started | - |
 | 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |
