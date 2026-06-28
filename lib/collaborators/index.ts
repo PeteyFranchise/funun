@@ -5,6 +5,10 @@
 
 export const COLLABORATOR_EDITABLE_FIELDS = [
   'name',
+  'first_name',
+  'middle_name',
+  'last_name',
+  'name_suffix',
   'email',
   'phone',
   'pro',
@@ -19,6 +23,10 @@ export type CollaboratorProfile = {
   id: string
   user_id: string
   name: string
+  first_name?: string | null
+  middle_name?: string | null
+  last_name?: string | null
+  name_suffix?: string | null
   email?: string | null
   phone?: string | null
   pro?: string | null
@@ -29,6 +37,15 @@ export type CollaboratorProfile = {
   mailing_address?: Record<string, string> | null
   created_at: string
   updated_at: string
+}
+
+// Assembles a display name from structured parts, falling back to the
+// legacy `name` field for existing roster entries that predate 019.
+export function assembleDisplayName(c: Partial<CollaboratorProfile>): string {
+  const parts = [c.first_name, c.middle_name, c.last_name].filter(Boolean)
+  if (parts.length === 0) return c.name ?? ''
+  const base = parts.join(' ')
+  return c.name_suffix ? `${base}, ${c.name_suffix}` : base
 }
 
 // Mass-assignment defense (ASVS V5): only copies keys present in the

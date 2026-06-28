@@ -1,4 +1,5 @@
 import type { CollaboratorProfile } from '@/lib/collaborators'
+import { assembleDisplayName } from '@/lib/collaborators'
 import { PRO_LABELS } from '@/lib/metadata/schema'
 
 // ─── CollaboratorCard ─────────────────────────────────────────
@@ -11,7 +12,8 @@ type Props = {
 }
 
 export function CollaboratorCard({ collaborator, onEdit }: Props) {
-  const { name, pro, ipi } = collaborator
+  const { pro, ipi } = collaborator
+  const name = assembleDisplayName(collaborator)
   const proLabel = pro && pro !== 'none' ? PRO_LABELS[pro as keyof typeof PRO_LABELS] ?? pro : null
   const hasIpi = Boolean(ipi && ipi.trim())
 

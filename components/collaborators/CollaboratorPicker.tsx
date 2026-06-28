@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { CollaboratorProfile } from '@/lib/collaborators'
+import { assembleDisplayName } from '@/lib/collaborators'
 import { CollaboratorForm } from '@/components/collaborators/CollaboratorForm'
 import { PRO_LABELS } from '@/lib/metadata/schema'
 
@@ -48,7 +49,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
   }, [open])
 
   const filtered = roster.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    assembleDisplayName(c).toLowerCase().includes(search.toLowerCase())
   )
 
   function handleSelect(collab: CollaboratorProfile) {
@@ -59,7 +60,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
   }
 
   function handleNewSaved(collab: CollaboratorProfile) {
-    setRoster(prev => [...prev, collab].sort((a, b) => a.name.localeCompare(b.name)))
+    setRoster(prev => [...prev, collab].sort((a, b) => assembleDisplayName(a).localeCompare(assembleDisplayName(b))))
     handleSelect(collab)
   }
 
@@ -132,7 +133,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
                           onClick={() => handleSelect(collab)}
                           className="w-full px-4 py-2 text-left hover:bg-white/5"
                         >
-                          <span className="block text-sm text-white">{collab.name}</span>
+                          <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
                           <span className="block text-xs text-lavdim">{proLabel}</span>
                         </button>
                       </li>

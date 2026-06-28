@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CollaboratorProfile } from '@/lib/collaborators'
+import { assembleDisplayName } from '@/lib/collaborators'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 
 // ─── Form style constants (matches EditProjectForm pattern) ───
@@ -27,7 +28,11 @@ export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
   const router = useRouter()
   const isEditing = Boolean(initial?.id)
 
-  const [name, setName] = useState(initial?.name ?? '')
+  const [firstName, setFirstName] = useState(initial?.first_name ?? '')
+  const [middleName, setMiddleName] = useState(initial?.middle_name ?? '')
+  const [lastName, setLastName] = useState(initial?.last_name ?? '')
+  const [nameSuffix, setNameSuffix] = useState(initial?.name_suffix ?? '')
+  const [showSuffix, setShowSuffix] = useState(Boolean(initial?.name_suffix))
   const [email, setEmail] = useState(initial?.email ?? '')
   const [phone, setPhone] = useState(initial?.phone ?? '')
   const [pro, setPro] = useState(initial?.pro ?? '')
@@ -48,8 +53,21 @@ export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
     setSubmitting(true)
     setError(null)
 
+    const assembled = assembleDisplayName({
+      first_name: firstName.trim() || null,
+      middle_name: middleName.trim() || null,
+      last_name: lastName.trim() || null,
+      name_suffix: nameSuffix.trim() || null,
+      // fall back to existing name for legacy edit with no structured parts
+      name: initial?.name ?? '',
+    })
+
     const payload = {
-      name: name.trim(),
+      name: assembled,
+      first_name: firstName.trim() || null,
+      middle_name: middleName.trim() || null,
+      last_name: lastName.trim() || null,
+      name_suffix: nameSuffix.trim() || null,
       email: email.trim() || null,
       phone: phone.trim() || null,
       pro: pro || null,
@@ -103,52 +121,136 @@ export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
       onSubmit={handleSubmit}
       className="w-full space-y-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Full legal name — required, full width */}
+      {/* ── Legal name guidance callout ─────────────────────────── */}
+      <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-sm text-white/70 space-y-1">
+        <p className="font-semibold text-white/90">Use the exact legal name</p>
+        <p>
+          This name must appear <span className="text-white font-medium">identically</span> on
+          every composition, split sheet, and rights registry. Inconsistencies — even minor
+          ones — can freeze payments or cause royalties to be sent to the wrong person.
+        </p>
+        <p className="text-white/50 text-xs pt-1">
+          Funūn does not pay writers or artists. We organize your data in one place so you can
+          communicate easily with the entities that actually collect your royalties — your PRO,
+          The MLC, SoundExchange, and others.
+        </p>
+      </div>
+
+      {/* ── Name fields ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+        {/* First name — required */}
         <div className="sm:col-span-2">
-          <label htmlFor="collab-name" className={labelClass}>
-            Full legal name *
+          <label htmlFor="collab-first-name" className={labelClass}>
+            First name *
           </label>
           <input
-            id="collab-name"
-            value={name}
-            onChange={e => setName(e.target.value)}
+            id="collab-first-name"
+            value={firstName}
+            onChange={e => setFirstName(e.target.value)}
             required
-            placeholder="Jane Smith"
+            placeholder="Jane"
             className={`mt-1 ${inputClass}`}
           />
         </div>
 
-        {/* Email */}
+        {/* Middle name / initial — optional */}
+        <div className="sm:col-span-2">
+          <label htmlFor="collab-middle-name" className={labelClass}>
+            Middle name / initial
+          </label>
+          <input
+            id="collab-middle-name"
+            value={middleName}
+            onChange={e => setMiddleName(e.target.value)}
+            placeholder="A."
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+
+        {/* Last name — required */}
+        <div className="sm:col-span-2">
+          <label htmlFor="collab-last-name" className={labelClass}>
+            Last name *
+          </label>
+          <input
+            id="collab-last-name"
+            value={lastName}
+            onChange={e => setLastName(e.target.value)}
+            required
+            placeholder="Smith"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+
+        {/* Suffix — revealed on demand */}
+        {showSuffix && (
+          <div className="sm:col-span-2">
+            <label htmlFor="collab-suffix" className={labelClass}>
+              Suffix
+            </label>
+            <input
+              id="collab-suffix"
+              value={nameSuffix}
+              onChange={e => setNameSuffix(e.target.value)}
+              placeholder="Jr., Sr., II, III…"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+        )}
+
+        {/* Add name field toggle */}
+        {!showSuffix && (
+          <div className="sm:col-span-6 flex">
+            <button
+              type="button"
+              onClick={() => setShowSuffix(true)}
+              className="text-xs text-white/40 hover:text-white/70 transition"
+            >
+              + Add name field (suffix)
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Contact — required to get started ──────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="collab-email" className={labelClass}>
-            Email
+            Email *
           </label>
           <input
             id="collab-email"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            required
             placeholder="jane@example.com"
             className={`mt-1 ${inputClass}`}
           />
         </div>
 
-        {/* Phone */}
         <div>
           <label htmlFor="collab-phone" className={labelClass}>
-            Phone
+            Phone *
           </label>
           <input
             id="collab-phone"
             type="tel"
             value={phone}
             onChange={e => setPhone(e.target.value)}
+            required
             placeholder="+1 555 000 0000"
             className={`mt-1 ${inputClass}`}
           />
         </div>
+      </div>
 
+      {/* ── Rights registry info — optional now, required to get paid ── */}
+      <p className="text-[11px] text-white/30 uppercase tracking-wide font-medium pt-1">
+        Rights registry — required to receive royalties (can be added later)
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* PRO affiliation */}
         <div>
           <label htmlFor="collab-pro" className={labelClass}>
@@ -278,7 +380,7 @@ export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
             {confirmDelete ? (
               <>
                 <span className="text-sm text-white/60">
-                  Delete {initial?.name ?? 'this collaborator'}? This can&apos;t be undone.
+                  Delete {assembleDisplayName(initial ?? {})}? This can&apos;t be undone.
                 </span>
                 <button
                   type="button"
