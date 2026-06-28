@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
+import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 
 const EDITABLE_FIELDS = [
   'artist_name',
@@ -21,6 +22,13 @@ const EDITABLE_FIELDS = [
   'publisher',
   'mlc_id',
   'soundexchange_id',
+  'legal_first_name',
+  'legal_middle_name',
+  'legal_last_name',
+  'legal_name_suffix',
+  'contact_phone',
+  'mailing_address',
+  'industry_roles',
 ] as const
 
 function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
@@ -51,6 +59,22 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
     if (key === 'isrc_registrant_code') {
       const reg = normalizeRegistrant(typeof value === 'string' ? value : '')
       update[key] = reg || null
+      continue
+    }
+    if (key === 'mailing_address') {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        update[key] = value
+      } else if (value === null) {
+        update[key] = null
+      }
+      continue
+    }
+    if (key === 'industry_roles') {
+      if (Array.isArray(value)) {
+        // Only accept known slugs — reject unknown values
+        update[key] = (value as unknown[])
+          .filter((s): s is string => typeof s === 'string' && ALL_INDUSTRY_ROLE_SLUGS.includes(s))
+      }
       continue
     }
     if (typeof value === 'string') {

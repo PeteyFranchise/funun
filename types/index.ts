@@ -316,6 +316,16 @@ export type ArtistProfile = {
   isrc_country_code: string | null
   isrc_registrant_code: string | null
   isrc_year_counters: Record<string, number> | null
+  // Legal identity (migration 021) — separate from artist/stage name.
+  legal_first_name: string | null
+  legal_middle_name: string | null
+  legal_last_name: string | null
+  legal_name_suffix: string | null
+  // Contact for contracts and split sheets (migration 021).
+  contact_phone: string | null
+  mailing_address: Record<string, string> | null
+  // Industry roles — master list of hats this person wears (migration 021).
+  industry_roles: string[]
   // Rights registry fields (migration 020) — artist's own PRO/IPI/publisher data.
   pro: string | null
   ipi: string | null
