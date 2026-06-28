@@ -13,6 +13,7 @@ import {
   BenchmarkIcon,
   LaunchpadIcon,
   CollaboratorsIcon,
+  SettingsIcon,
 } from './icons'
 
 type Item = {
@@ -32,6 +33,7 @@ const ITEMS: Item[] = [
   { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon },
   { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon },
   { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },
+  { href: '/settings', label: 'Settings', match: '/settings', Icon: SettingsIcon },
 ]
 
 const STORAGE_KEY = 'funun-nav-collapsed'
