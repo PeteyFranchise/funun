@@ -1,3 +1,5 @@
+import { readEsignState } from '@/lib/esign/provider'
+
 // ─── Stage 3 — Complete the Documentation ────────────────────────────
 // The legal gate between uploading files (Stage 2) and generating assets
 // (Stage 4). This module runs the five documentation checks and produces
@@ -40,6 +42,12 @@ export type DocRequirement = {
   collaboratorRole?: string
   /** Existing document id, if one has been generated. */
   documentId?: string
+  /** Public storage URL of the uploaded signed PDF. */
+  file_url?: string | null
+  /** ISO timestamp of when the document was signed. */
+  signed_at?: string | null
+  /** Per-signer status from document_data.esign.signers. */
+  signers?: { name: string; email: string; status: 'pending' | 'signed' | 'declined' }[]
   /** Data passed into the tool side panel to pre-fill the form. */
   prefill: Record<string, unknown>
 }
@@ -62,6 +70,8 @@ type DocLike = {
   status: string
   track_id?: string | null
   document_data?: Record<string, unknown> | null
+  file_url?: string | null
+  signed_at?: string | null
 }
 
 type ProjectLike = {
@@ -78,18 +88,33 @@ function docStatusToReq(s: string): DocStatus {
   return s === 'signed' || s === 'verified' ? 'signed' : 'pending'
 }
 
+type BestStatusResult = {
+  status: DocStatus
+  documentId?: string
+  file_url?: string | null
+  signed_at?: string | null
+  signers?: { name: string; email: string; status: 'pending' | 'signed' | 'declined' }[]
+}
+
 /** Best (most complete) status across a set of matching documents. */
-function bestStatus(docs: DocLike[]): { status: DocStatus; documentId?: string } {
+function bestStatus(docs: DocLike[]): BestStatusResult {
   let status: DocStatus = 'missing'
   let documentId: string | undefined
+  let file_url: string | null | undefined
+  let signed_at: string | null | undefined
+  let signers: BestStatusResult['signers']
   for (const d of docs) {
     const s = docStatusToReq(d.status)
     if (STATUS_RANK[s] >= STATUS_RANK[status]) {
       status = s
       documentId = d.id
+      file_url = d.file_url ?? null
+      signed_at = d.signed_at ?? null
+      const esign = readEsignState(d.document_data ?? null)
+      signers = esign?.signers?.map(s => ({ name: s.name, email: s.email, status: s.status }))
     }
   }
-  return { status, documentId }
+  return { status, documentId, file_url, signed_at, signers }
 }
 
 export type Stage3Result = {
@@ -119,7 +144,7 @@ export function computeStage3(
   // 1 ── CopyrightKit (project level, required) ────────────────────────
   {
     const docs = byType('copyright_registration')
-    const { status, documentId } = bestStatus(docs)
+    const { status, documentId, file_url, signed_at, signers } = bestStatus(docs)
     const allWriters = Array.from(
       new Set(tracks.flatMap(t => t.writers ?? []).filter(Boolean))
     )
@@ -133,6 +158,9 @@ export function computeStage3(
       severity: 'required',
       status,
       documentId,
+      file_url,
+      signed_at,
+      signers,
       prefill: {
         project_title: project.title,
         writers: allWriters,
@@ -147,7 +175,7 @@ export function computeStage3(
     const writers = (t.writers ?? []).filter(Boolean)
     if (writers.length <= 1) continue
     const docs = byType('split_sheet').filter(d => d.track_id === t.id)
-    const { status, documentId } = bestStatus(docs)
+    const { status, documentId, file_url, signed_at, signers } = bestStatus(docs)
     reqs.push({
       key: `splitsheet:${t.id}`,
       tool: 'splitsheet',
@@ -157,6 +185,9 @@ export function computeStage3(
       severity: 'required',
       status,
       documentId,
+      file_url,
+      signed_at,
+      signers,
       trackId: t.id,
       trackTitle: t.title ?? 'Untitled track',
       prefill: { song_name: t.title ?? '', collaborators: writers },
@@ -187,7 +218,7 @@ export function computeStage3(
     const docs = byType('hire_right').filter(
       d => String(d.document_data?.collaborator ?? '').trim() === name
     )
-    const { status, documentId } = bestStatus(docs)
+    const { status, documentId, file_url, signed_at, signers } = bestStatus(docs)
     reqs.push({
       key: `hireright:${name}`,
       tool: 'hireright',
@@ -197,6 +228,9 @@ export function computeStage3(
       severity: 'required',
       status,
       documentId,
+      file_url,
+      signed_at,
+      signers,
       collaborator: name,
       collaboratorRole: info.role,
       trackId: info.trackIds[0],
@@ -213,7 +247,7 @@ export function computeStage3(
   for (const t of tracks) {
     if (!t.has_sample) continue
     const docs = byType('sample_clearance').filter(d => d.track_id === t.id)
-    const { status, documentId } = bestStatus(docs)
+    const { status, documentId, file_url, signed_at, signers } = bestStatus(docs)
     reqs.push({
       key: `sampleclear:${t.id}`,
       tool: 'sampleclear',
@@ -224,6 +258,9 @@ export function computeStage3(
       severity: 'required',
       status,
       documentId,
+      file_url,
+      signed_at,
+      signers,
       trackId: t.id,
       trackTitle: t.title ?? 'Untitled track',
       prefill: { song_name: t.title ?? '', sample_details: t.sample_details ?? '' },

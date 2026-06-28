@@ -39,21 +39,6 @@ export function DocumentStage({
   const { required, recommended, complete, requiredComplete, requiredTotal, canContinue, sampleBlock } =
     stage3
 
-  async function markSigned(req: DocRequirement) {
-    if (!req.documentId) return
-    setBusyKey(req.key)
-    try {
-      await fetch(`/api/vault/${projectId}/documents/${req.documentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'signed' }),
-      })
-      router.refresh()
-    } finally {
-      setBusyKey(null)
-    }
-  }
-
   async function patchProject(body: Record<string, unknown>, key: string) {
     setBusyKey(key)
     try {
@@ -146,7 +131,7 @@ export function DocumentStage({
                 req={req}
                 busy={busyKey === req.key}
                 onOpen={setActive}
-                onMarkSigned={markSigned}
+                projectId={projectId}
               />
             ))}
           </div>
@@ -162,7 +147,7 @@ export function DocumentStage({
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {recommended.map(req => (
               <div key={req.key} className="space-y-2">
-                <DocumentCard req={req} busy={busyKey === req.key} onOpen={setActive} onMarkSigned={markSigned} />
+                <DocumentCard req={req} busy={busyKey === req.key} onOpen={setActive} projectId={projectId} />
                 {req.tool === 'contentid' && (
                   <div className="flex gap-2">
                     <button
@@ -234,7 +219,7 @@ export function DocumentStage({
                   req={req}
                   busy={busyKey === req.key}
                   onOpen={setActive}
-                  onMarkSigned={markSigned}
+                  projectId={projectId}
                 />
               ))}
             </div>
