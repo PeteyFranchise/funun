@@ -51,6 +51,7 @@ export const DEMO_PROFILE: ArtistProfile = {
   contact_phone: null,
   mailing_address: null,
   industry_roles: [],
+  genres: [],
   pro: null,
   ipi: null,
   publisher: null,
