@@ -170,6 +170,8 @@ export function ArtistNav({ user }: { user?: NavUser }) {
         )}
       </Link>
 
+      {/* Scrollable items area — keeps footer pinned at bottom */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {/* Workspace label */}
       {!collapsed && (
         <div className="mb-3 mt-[6px] px-[14px] text-[11px] font-bold uppercase tracking-[.18em] text-lavdim">
@@ -215,8 +217,7 @@ export function ArtistNav({ user }: { user?: NavUser }) {
           </Link>
         )
       })}
-
-      <div className="flex-1" />
+      </div>
 
       {/* Collapse toggle button */}
       <button
