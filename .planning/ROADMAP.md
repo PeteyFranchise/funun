@@ -14,6 +14,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - [x] **Phase 1: Collaborator Profiles** - Global collaborator roster with auto-fill into split sheets and contracts (completed 2026-06-27)
 - [ ] **Phase 2: Document Lifecycle** - Signed-PDF upload flow, signer status tracking, and readiness gate fix
 - [ ] **Phase 3: Rights Guidance** - Guided registration checklists (copyright, PRO, SoundExchange, Songtrust) with per-project status
+- [ ] **Phase 4: Collaborator Identity Reconciliation** - Email-based claim system linking pre-signup collaborator records to new Funūn accounts
 
 ## Phase Details
 
@@ -81,6 +82,30 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 4: Collaborator Identity Reconciliation
+
+**Goal**: When a non-Funūn collaborator who was added to a split sheet later creates a Funūn account, their existing contributions are automatically linked to their new profile — no data re-entry, no orphaned records
+**Mode:** mvp
+**Depends on**: Phase 1
+**Requirements**: COLLAB-05
+**Success Criteria** (what must be TRUE):
+
+  1. `collaborators` table has a nullable `claimed_by` column (`uuid` → `auth.users.id`) with an index on `email`
+  2. On signup and on first post-signup login, a server-side claim job runs: any `collaborators` rows whose `email` matches the new user's auth email get `claimed_by` set to their user ID
+  3. A newly joined user sees a "Collaborations" section in their dashboard listing all projects they were credited on before joining, pulled via `claimed_by`
+  4. The inviting artist's collaborator card visually upgrades from "pending / external" to "Funūn member" once `claimed_by` is set
+  5. Rights and contact data from the new user's Settings (PRO, IPI, publisher, phone, address) automatically back-fills any gaps in their claimed collaborator records so split sheets reflect complete data without the inviting artist doing anything
+
+**Design notes**:
+- Claim job must be idempotent — safe to run on every login, only writes when `claimed_by IS NULL`
+- If multiple artists have the same email in their collaborator roster, all matching rows get claimed — one user can appear in many rosters
+- Email matching is case-insensitive (`LOWER(email) = LOWER(auth.email)`)
+- Claimed collaborator records should never be deleted by the inviting artist while `claimed_by IS NOT NULL` — soft-delete or archive only
+- Settings back-fill is additive only: never overwrite data the inviting artist manually entered, only fill `NULL` fields
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -88,3 +113,4 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 0/TBD | Not started | - |
 | 3. Rights Guidance | 0/TBD | Not started | - |
+| 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |

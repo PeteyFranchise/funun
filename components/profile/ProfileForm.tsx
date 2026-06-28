@@ -77,6 +77,60 @@ function toForm(p: ArtistProfile): FormState {
   }
 }
 
+function IsrcLearnMore() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="text-xs font-semibold text-white/60">Learn more about ISRC codes</span>
+        <svg
+          className={`h-4 w-4 text-white/30 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="space-y-4 border-t border-white/10 px-4 pb-4 pt-3">
+          <div className="space-y-2 text-xs text-white/50 leading-relaxed">
+            <p>
+              An <span className="text-white/80 font-medium">ISRC (International Standard Recording Code)</span> is
+              a unique 12-character identifier permanently attached to a specific recording — not a song, but that
+              exact recorded performance. Every version (album mix, radio edit, TikTok snippet) gets its own ISRC.
+            </p>
+            <p>
+              <span className="text-white/70 font-medium">Should you mint your own?</span> Most independent artists
+              don't need to. Your distributor (DistroKid, TuneCore, CD Baby, etc.) assigns ISRCs for free when you
+              upload a release. Those ISRCs work everywhere — streaming, sync licensing, SoundExchange royalty tracking.
+            </p>
+            <p>
+              <span className="text-white/70 font-medium">When it makes sense to hold your own registrant code:</span> If
+              you're releasing frequently, running a label, or want full control over your catalog's identifiers, you
+              can apply for a registrant code through your country's ISRC agency (RIAA in the US). This lets Funūn
+              generate ISRCs for you directly here.
+            </p>
+            <p>
+              <span className="text-white/70 font-medium">TikTok & short-form clips:</span> TikTok uses ISRCs to
+              route digital performance royalties through SoundExchange. If you upload your full master via a
+              distributor, use the same ISRC — don't create a separate one for the clip. Register that ISRC with
+              SoundExchange to collect those royalties.
+            </p>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2.5">
+            <p className="text-xs text-white/30 italic">
+              Video walkthrough coming soon — how to apply for an ISRC registrant code and when it's worth it.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ProfileForm({ profile }: { profile: ArtistProfile }) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(toForm(profile))
@@ -538,6 +592,9 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
             <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
           </div>
         </div>
+
+        {/* ── ISRC learn more ─────────────────────────────────────── */}
+        <IsrcLearnMore />
       </section>
 
       {error && <p className="text-sm text-rose-300">{error}</p>}
