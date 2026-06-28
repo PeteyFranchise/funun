@@ -67,6 +67,7 @@ export function ToolSidePanel({
     Math.round(
       contributors.reduce((s, c) => s + (Number(c.percentage) || 0), 0) * 100
     ) / 100
+  const splitEmailsComplete = contributors.every(c => c.email.trim() !== '')
 
   function setContributor(i: number, patch: Partial<DraftContributor>) {
     setContributors(prev => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)))
@@ -107,7 +108,7 @@ export function ToolSidePanel({
       song_name: (req!.prefill.song_name as string) ?? req!.trackTitle ?? '',
       contributors: contributors.map(c => ({
         name: c.name,
-        email: c.email || undefined,
+        email: c.email,
         role: c.role,
         percentage: Number(c.percentage) || 0,
       })),
@@ -206,7 +207,7 @@ export function ToolSidePanel({
                 </div>
                 <button
                   onClick={submitSplitSheet}
-                  disabled={busy || splitTotal !== 100}
+                  disabled={busy || splitTotal !== 100 || !splitEmailsComplete}
                   className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
                 >
                   {busy ? 'Saving…' : 'Save split sheet'}
@@ -214,6 +215,11 @@ export function ToolSidePanel({
                 {splitTotal !== 100 && (
                   <p className="mt-2 text-center text-xs text-white/40">
                     Shares must total exactly 100% to save.
+                  </p>
+                )}
+                {splitTotal === 100 && !splitEmailsComplete && (
+                  <p className="mt-2 text-center text-xs text-white/40">
+                    All collaborators need an email address.
                   </p>
                 )}
               </>
@@ -289,7 +295,7 @@ function SplitSheetForm({
           <input
             value={c.email}
             onChange={e => onSet(i, { email: e.target.value })}
-            placeholder="Email (optional)"
+            placeholder="Email address"
             type="email"
             className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
           />
