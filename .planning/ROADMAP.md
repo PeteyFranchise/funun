@@ -124,6 +124,6 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
-| 2. Document Lifecycle | 0/3 | Not started | - |
+| 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
 | 3. Rights Guidance | 0/TBD | Not started | - |
 | 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |
