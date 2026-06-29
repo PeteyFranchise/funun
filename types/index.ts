@@ -100,9 +100,13 @@ export type ReadinessItem = {
 // into one item — they have different requirements, different deadlines, and
 // different consequences for missing them. Current registries and their items:
 //   US Copyright Office   → 'copyright'
-//   PRO (ASCAP/BMI/SESAC/SOCAN) → 'pro_registration'  ← Phase 4: split per-PRO
-//   The MLC               → 'mlc_registration'
-//   SoundExchange         → Phase 4 (per-party, recording-side)
+//   PRO (one of: ASCAP, BMI, SESAC, SOCAN) → 'pro_registration'
+//     ↳ IMPORTANT: a songwriter can only belong to ONE PRO at a time, not all.
+//       Phase 4: replace this single item with one item keyed to the artist's
+//       actual PRO (read from artist_profiles.pro) so the action link and
+//       description are specific to their society, not generic across all four.
+//   The MLC               → 'mlc_registration'  (separate from PRO — always)
+//   SoundExchange         → Phase 4 (per-party, recording-side, not composition)
 //   Harry Fox / DistroKid → Phase 4 if mechanical licensing path is added
 // When adding a new registry in any future phase, always create a new key.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,7 +159,7 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
   {
     key: 'pro_registration',
     label: 'PRO registration ready',
-    description: 'Every track has an ISWC — required for ASCAP, BMI, SESAC, and SOCAN to register your performance royalties',
+    description: 'Every track has an ISWC — required by your PRO (ASCAP, BMI, SESAC, or SOCAN) to register your performance royalties. You belong to one PRO only.',
     points: 5,
     applies_to: ['single', 'ep', 'album'],
     action_label: 'Add ISWC in Metadata Studio →',
