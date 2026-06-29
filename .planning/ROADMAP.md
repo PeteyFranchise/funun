@@ -130,7 +130,17 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - Claimed collaborator records should never be deleted by the inviting artist while `claimed_by IS NOT NULL` — soft-delete or archive only
 - Settings back-fill is additive only: never overwrite data the inviting artist manually entered, only fill `NULL` fields
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Migration 026 (full phase schema: user_profiles table, collaborators claim/archive/favorite columns, artist_profiles.claimed_at, LOWER(email) index, RLS, claim + back-fill SECURITY DEFINER functions) + claim API route + middleware claim hook + CollaboratorProfile type extension + My Credits section on /collaborators (COLLAB-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md — user_profiles GET+PATCH API with allowlist + fire-and-forget back-fill + Rights Identity section on Settings page wired to /api/user-profiles (COLLAB-05)
+- [ ] 04-03-PLAN.md — Claim-aware DELETE guard + claimed-state CollaboratorCard (Funūn-member badge, Archive, favorite star) + Favorites/Most Recent picker grouping + dashboard My Credits preview (COLLAB-05)
+
 **UI hint**: yes
 
 ## Progress
@@ -140,4 +150,4 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
 | 3. Rights Guidance | 3/3 | Complete | 2026-06-29 |
-| 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |
+| 4. Collaborator Identity Reconciliation | 0/3 | Not started | - |
