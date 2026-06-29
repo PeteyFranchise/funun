@@ -92,6 +92,10 @@ export async function addDemoProject(input: {
     contact_name: null,
     contact_email: null,
     contact_phone: null,
+    // Rights registration status (migration 024)
+    copyright_status: null,
+    pro_registration_status: null,
+    soundexchange_registered: null,
     created_at: now,
     updated_at: now,
     tracks: [],

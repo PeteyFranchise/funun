@@ -59,6 +59,10 @@ export type VaultProject = {
   contact_phone: string | null
   // Distribution (migration 016) — where this release will be distributed
   distributor: string | null
+  // Rights registration status (migration 024)
+  copyright_status: 'not_filed' | 'filed' | 'registered' | null
+  pro_registration_status: 'not_registered' | 'registered' | null
+  soundexchange_registered: boolean | null
   // Relations
   tracks?: Track[]
   assets?: VaultAsset[]
