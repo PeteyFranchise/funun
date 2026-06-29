@@ -11,6 +11,13 @@ import { PRO_LABELS } from '@/lib/metadata/schema'
 // Used inside ComposerEditor (MetadataStudio) and SplitSheetBuilder rows.
 // When roster is empty the trigger reads "Add collaborator" and opens
 // the form directly (D-06).
+//
+// With no search active the list is grouped:
+//   FAVORITES — starred collaborators (is_favorite = true)
+//   RECENTLY ADDED — top 5 non-favorites by created_at DESC
+//   ALL COLLABORATORS — remaining non-favorites
+// Archived collaborators (archived_at set) are excluded from all groups (D-12).
+// When search is active groups collapse to a single flat results list.
 
 type Props = {
   onSelect: (collaborator: CollaboratorProfile) => void
@@ -48,9 +55,29 @@ export function CollaboratorPicker({ onSelect }: Props) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
 
-  const filtered = roster.filter(c =>
-    assembleDisplayName(c).toLowerCase().includes(search.toLowerCase())
+  // Filter out archived rows — never appear in picker
+  const active = roster.filter(c => !c.archived_at)
+
+  // Build grouped lists (no search) or flat filtered list (search active)
+  const searchQuery = search.toLowerCase()
+  const matchesSearch = (c: CollaboratorProfile) =>
+    assembleDisplayName(c).toLowerCase().includes(searchQuery)
+
+  // Sort active non-favorites by created_at DESC for Most Recent group
+  const activeSortedByRecent = [...active].sort(
+    (a, b) => (b.created_at > a.created_at ? 1 : -1)
   )
+
+  const favoritesAll = active.filter(c => c.is_favorite)
+  const nonFavoritesRecent = activeSortedByRecent.filter(c => !c.is_favorite)
+
+  // Grouped sections (shown when no search query)
+  const favorites = favoritesAll.filter(matchesSearch)
+  const mostRecent = nonFavoritesRecent.slice(0, 5).filter(matchesSearch)
+  const allRest = nonFavoritesRecent.slice(5).filter(matchesSearch)
+
+  // Flat list for search mode
+  const flatFiltered = active.filter(matchesSearch)
 
   function handleSelect(collab: CollaboratorProfile) {
     onSelect(collab)
@@ -117,28 +144,57 @@ export function CollaboratorPicker({ onSelect }: Props) {
                 />
               </div>
 
-              {/* List */}
+              {/* List — grouped (no search) or flat (search active) */}
               <ul className="max-h-56 overflow-y-auto py-1">
-                {filtered.length === 0 ? (
-                  <li className="px-4 py-2 text-sm text-white/30">No results</li>
+                {searchQuery ? (
+                  /* Flat search results */
+                  flatFiltered.length === 0 ? (
+                    <li className="px-4 py-2 text-sm text-white/30">No results</li>
+                  ) : (
+                    flatFiltered.map(collab => (
+                      <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                    ))
+                  )
                 ) : (
-                  filtered.map(collab => {
-                    const proLabel = collab.pro && collab.pro !== 'none'
-                      ? (PRO_LABELS[collab.pro as keyof typeof PRO_LABELS] ?? collab.pro)
-                      : 'No PRO'
-                    return (
-                      <li key={collab.id} role="option" aria-selected={false}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelect(collab)}
-                          className="w-full px-4 py-2 text-left hover:bg-white/5"
-                        >
-                          <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
-                          <span className="block text-xs text-lavdim">{proLabel}</span>
-                        </button>
-                      </li>
-                    )
-                  })
+                  /* Grouped roster */
+                  <>
+                    {favorites.length === 0 && mostRecent.length === 0 && allRest.length === 0 && (
+                      <li className="px-4 py-2 text-sm text-white/30">No results</li>
+                    )}
+
+                    {favorites.length > 0 && (
+                      <>
+                        <li className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-lavdim">
+                          FAVORITES
+                        </li>
+                        {favorites.map(collab => (
+                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                        ))}
+                      </>
+                    )}
+
+                    {mostRecent.length > 0 && (
+                      <>
+                        <li className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-lavdim">
+                          RECENTLY ADDED
+                        </li>
+                        {mostRecent.map(collab => (
+                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                        ))}
+                      </>
+                    )}
+
+                    {allRest.length > 0 && (
+                      <>
+                        <li className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-lavdim">
+                          ALL COLLABORATORS
+                        </li>
+                        {allRest.map(collab => (
+                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </ul>
 
@@ -157,5 +213,32 @@ export function CollaboratorPicker({ onSelect }: Props) {
         </div>
       )}
     </div>
+  )
+}
+
+// ─── PickerItem ───────────────────────────────────────────────
+// Individual row inside the picker dropdown list.
+function PickerItem({
+  collab,
+  onSelect,
+}: {
+  collab: CollaboratorProfile
+  onSelect: (c: CollaboratorProfile) => void
+}) {
+  const proLabel =
+    collab.pro && collab.pro !== 'none'
+      ? (PRO_LABELS[collab.pro as keyof typeof PRO_LABELS] ?? collab.pro)
+      : 'No PRO'
+  return (
+    <li role="option" aria-selected={false}>
+      <button
+        type="button"
+        onClick={() => onSelect(collab)}
+        className="w-full px-4 py-2 text-left hover:bg-white/5"
+      >
+        <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
+        <span className="block text-xs text-lavdim">{proLabel}</span>
+      </button>
+    </li>
   )
 }
