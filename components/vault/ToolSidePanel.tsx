@@ -274,6 +274,9 @@ function SplitSheetForm({
       <div className="rounded-lg border border-indigo-400/20 bg-indigo-400/[0.06] px-3 py-2.5 text-xs text-indigo-200/80 leading-relaxed">
         Ask each collaborator to use the same email they sign up with on Funūn — we use it to automatically link their contributions to their profile so their work shows up as credited to them.
       </div>
+      <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2.5 text-xs text-amber-200/80 leading-relaxed">
+        Once the split sheet is complete, each co-writer should register their share with their own PRO and the MLC (themlc.com) to collect performance and mechanical royalties.
+      </div>
       {contributors.map((c, i) => (
         <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex items-center gap-2">

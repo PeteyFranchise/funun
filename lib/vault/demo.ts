@@ -53,10 +53,11 @@ function row(
     contact_email: null,
     contact_phone: null,
     distributor: null,
-    // Rights registration status (migration 024)
+    // Rights registration status (migrations 024–025)
     copyright_status: null,
     pro_registration_status: null,
     soundexchange_registered: null,
+    mlc_registered: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     tracks: [],

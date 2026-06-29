@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 
-const ALLOWED_FIELDS = ['copyright_status', 'pro_registration_status', 'soundexchange_registered']
+const ALLOWED_FIELDS = ['copyright_status', 'pro_registration_status', 'soundexchange_registered', 'mlc_registered']
 
 const COPYRIGHT_STATUS_VALUES = ['not_filed', 'filed', 'registered'] as const
 const PRO_STATUS_VALUES = ['not_registered', 'registered'] as const

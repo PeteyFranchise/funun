@@ -13,7 +13,7 @@ export function RightsStatusPatch({
   disabled,
 }: {
   projectId: string
-  field: 'copyright_status' | 'pro_registration_status' | 'soundexchange_registered'
+  field: 'copyright_status' | 'pro_registration_status' | 'soundexchange_registered' | 'mlc_registered'
   value: string | boolean
   label: string
   disabled?: boolean
