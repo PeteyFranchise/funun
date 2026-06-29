@@ -1,0 +1,363 @@
+import { notFound, redirect } from 'next/navigation'
+import { createServerClient } from '@/lib/supabase/server'
+import { readPerformers } from '@/lib/metadata/schema'
+import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
+import { CopyrightFiling } from '@/components/vault/CopyrightFiling'
+import { RightsStatusPatch } from '@/components/vault/RightsStatusPatch'
+import { SongtrustGuideCard } from '@/components/vault/SongtrustGuideCard'
+
+export const dynamic = 'force-dynamic'
+
+const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+
+// ─── Badge helpers ────────────────────────────────────────────────────────────
+
+function StatusBadge({
+  variant,
+  label,
+}: {
+  variant: 'green' | 'amber' | 'gray'
+  label: string
+}) {
+  const styles = {
+    green: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    amber: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+    gray: 'border-white/15 bg-white/5 text-white/50',
+  }
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${styles[variant]}`}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+export default async function RightsPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>
+}) {
+  const { projectId } = await params
+
+  // Demo mode does not support rights registration tracking
+  if (DEMO) redirect('/vault')
+
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/signin')
+
+  // 1. Fetch project — only the columns rights page needs
+  const { data: project } = await supabase
+    .from('vault_projects')
+    .select(
+      'id, title, type, copyright_status, pro_registration_status, soundexchange_registered, p_line, label, publisher'
+    )
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!project) notFound()
+
+  // 2. Tracks
+  const { data: trackRows } = await supabase
+    .from('tracks')
+    .select('id, title, isrc, iswc, metadata, duration_seconds')
+    .eq('project_id', projectId)
+    .order('track_number')
+
+  const tracks = trackRows ?? []
+
+  // 3. Artist profile
+  const { data: profile } = await supabase
+    .from('artist_profiles')
+    .select('id, artist_name, pro, ipi, soundexchange_id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  // 4. Derive RDR readiness for SoundExchange status
+  const rdrInput: RdrTrackInput[] = tracks.map(t => ({
+    id: t.id,
+    title: t.title ?? '',
+    isrc: t.isrc ?? null,
+    mainArtist: profile?.artist_name ?? '',
+    rightsOwner:
+      (project as { p_line?: string | null }).p_line ??
+      (project as { label?: string | null }).label ??
+      profile?.artist_name ??
+      '',
+    performers: readPerformers(
+      (t as { metadata?: Record<string, unknown> | null }).metadata
+    ),
+    recording: null,
+  }))
+  const rdr = assessRdrReadiness(rdrInput)
+
+  const seReady = rdr.coreCount === rdr.tracks.length && rdr.tracks.length > 0
+  const seStatus = project.soundexchange_registered
+    ? 'registered'
+    : seReady
+      ? 'ready'
+      : 'not_ready'
+
+  // Tracks missing ISRC or performer credits for the "incomplete" note
+  const tracksNotCoreReady = rdr.tracks.filter(t => t.profile === 'none')
+  const tracksLackingIsrc = tracksNotCoreReady.filter(t =>
+    t.coreMissing.includes('ISRC')
+  ).length
+  const tracksLackingPerformers = tracksNotCoreReady.filter(t =>
+    t.coreMissing.some(m => m.toLowerCase().includes('performer'))
+  ).length
+
+  // ISWC count for PRO section
+  const tracksWithIswc = tracks.filter(
+    t => (t as { iswc?: string | null }).iswc
+  ).length
+
+  // copyright_registration doc check for the existing CopyrightFiling "filed" prop
+  const { count: copyrightDocCount } = await supabase
+    .from('vault_documents')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .eq('type', 'copyright_registration')
+
+  const copyrightDocFiled = (copyrightDocCount ?? 0) > 0
+
+  // ── Derived badge values ──────────────────────────────────────────────────
+  const copyrightStatus = project.copyright_status ?? 'not_filed'
+  const proStatus = project.pro_registration_status ?? 'not_registered'
+
+  const copyrightBadge =
+    copyrightStatus === 'registered'
+      ? { variant: 'green' as const, label: 'Registered' }
+      : copyrightStatus === 'filed'
+        ? { variant: 'amber' as const, label: 'Filed' }
+        : { variant: 'gray' as const, label: 'Not filed' }
+
+  const proBadge =
+    proStatus === 'registered'
+      ? { variant: 'green' as const, label: 'Registered' }
+      : { variant: 'gray' as const, label: 'Not registered' }
+
+  const seBadge =
+    seStatus === 'registered'
+      ? { variant: 'green' as const, label: 'Registered' }
+      : seStatus === 'ready'
+        ? { variant: 'amber' as const, label: 'Ready to register' }
+        : { variant: 'gray' as const, label: 'Data incomplete' }
+
+  return (
+    <div className="mx-auto max-w-4xl px-6 py-10">
+      {/* Page heading */}
+      <div>
+        <p className="text-xs uppercase tracking-wide text-white/40">
+          {project.title}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold text-white">
+          Rights &amp; Registrations
+        </h1>
+        <p className="mt-1 text-sm text-white/50">
+          Track registration status across copyright, PRO, SoundExchange, and publishing
+          administration.
+        </p>
+      </div>
+
+      {/* ── 1. Copyright ─────────────────────────────────────────────────── */}
+      <section className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-white">Copyright Registration</h2>
+            <StatusBadge {...copyrightBadge} />
+          </div>
+          <a
+            href="https://eco.copyright.gov"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+          >
+            File at eCO ↗
+          </a>
+        </div>
+        <p className="mt-1 text-xs text-white/50">
+          File with the US Copyright Office eCO system to protect your composition and sound
+          recording. One registration can cover the entire release.
+        </p>
+        <div className="mt-3">
+          <CopyrightFiling
+            projectId={projectId}
+            filed={copyrightDocFiled}
+            copyrightStatus={copyrightStatus as 'not_filed' | 'filed' | 'registered'}
+          />
+        </div>
+      </section>
+
+      {/* ── 2. PRO Registration ──────────────────────────────────────────── */}
+      <section className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-white">PRO Registration</h2>
+            <StatusBadge {...proBadge} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="https://www.ascap.com/music-creators"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+            >
+              ASCAP ↗
+            </a>
+            <a
+              href="https://www.bmi.com/songwriters"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+            >
+              BMI ↗
+            </a>
+            <a
+              href="https://www.sesac.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+            >
+              SESAC ↗
+            </a>
+            {/* TODO: verify SOCAN URL — https://www.socan.com/music-creators/ is [ASSUMED] from research; checkpoint in 03-03 will confirm */}
+            <a
+              href="https://www.socan.com/music-creators/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+            >
+              SOCAN ↗
+            </a>
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-white/50">
+          Register your compositions with a Performing Rights Organization (PRO) to collect
+          public performance royalties when your music is played publicly.
+        </p>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          {profile?.pro && profile.pro !== 'none' && (
+            <p className="text-xs text-white/70">
+              Your PRO:{' '}
+              <span className="font-semibold text-white">{profile.pro}</span>
+              {profile.ipi && (
+                <span className="ml-2 text-white/40">IPI {profile.ipi}</span>
+              )}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-white/50">
+            ISWC codes on this project:{' '}
+            <span className={tracksWithIswc > 0 ? 'text-white/80' : 'text-amber-300'}>
+              {tracksWithIswc}/{tracks.length}
+            </span>
+            {tracksWithIswc === 0 && tracks.length > 0 && (
+              <span className="ml-1 text-white/40">
+                — add ISWC codes in Metadata Studio
+              </span>
+            )}
+          </p>
+          <div className="mt-3">
+            <RightsStatusPatch
+              projectId={projectId}
+              field="pro_registration_status"
+              value="registered"
+              label="Mark as registered"
+              disabled={proStatus === 'registered'}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. SoundExchange ─────────────────────────────────────────────── */}
+      <section className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-white">SoundExchange</h2>
+            <StatusBadge {...seBadge} />
+          </div>
+          <a
+            href="https://www.soundexchange.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:border-white/30 hover:text-white"
+          >
+            SoundExchange ↗
+          </a>
+        </div>
+        <p className="mt-1 text-xs text-white/50">
+          SoundExchange collects digital performance royalties for sound recordings played on
+          satellite radio, internet radio, and non-interactive streaming services.
+        </p>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          {seStatus === 'not_ready' && tracks.length > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] p-3">
+              <p className="text-xs font-semibold text-amber-300">
+                Missing data on {tracksNotCoreReady.length} track
+                {tracksNotCoreReady.length !== 1 ? 's' : ''}:
+              </p>
+              <ul className="mt-1 space-y-0.5 text-xs text-white/50">
+                {tracksLackingIsrc > 0 && (
+                  <li>
+                    {tracksLackingIsrc} track{tracksLackingIsrc !== 1 ? 's' : ''} missing
+                    ISRC code
+                  </li>
+                )}
+                {tracksLackingPerformers > 0 && (
+                  <li>
+                    {tracksLackingPerformers} track
+                    {tracksLackingPerformers !== 1 ? 's' : ''} missing performer credits
+                  </li>
+                )}
+              </ul>
+              <p className="mt-1 text-xs text-white/40">
+                Add missing data in Metadata Studio to become register-ready.
+              </p>
+            </div>
+          )}
+          {tracks.length === 0 && (
+            <p className="mb-3 text-xs text-white/40">
+              Add tracks to this project to assess SoundExchange readiness.
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-white/50">
+              Core-ready tracks:{' '}
+              <span className={seReady ? 'text-emerald-300' : 'text-white/80'}>
+                {rdr.coreCount}/{rdr.tracks.length}
+              </span>
+            </p>
+          </div>
+          <div className="mt-3">
+            <RightsStatusPatch
+              projectId={projectId}
+              field="soundexchange_registered"
+              value={true}
+              label="Mark as registered"
+              disabled={!!project.soundexchange_registered}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── 4. Songtrust ─────────────────────────────────────────────────── */}
+      <section className="mt-8">
+        <h2 className="text-base font-semibold text-white">Songtrust</h2>
+        <p className="mt-1 text-xs text-white/50">
+          Global publishing administration — collect royalties in territories where you
+          haven&apos;t registered directly.
+        </p>
+        <div className="mt-3">
+          <SongtrustGuideCard cwrHref={`/vault/${projectId}/metadata/cwr`} />
+        </div>
+      </section>
+    </div>
+  )
+}

@@ -238,6 +238,13 @@ export default async function VaultProjectPage({
         <span>Prepare release metadata</span>
         <span aria-hidden>→</span>
       </Link>
+      <Link
+        href={`/vault/${project.id}/rights`}
+        className="mt-2 flex items-center justify-between rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-3 py-2 text-sm text-indigo-200 transition hover:bg-indigo-400/15"
+      >
+        <span>Rights &amp; Registrations</span>
+        <span aria-hidden>→</span>
+      </Link>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
         <div
           className={`h-full rounded-full ${TONE_CLASSES[tone].bar} transition-all`}
