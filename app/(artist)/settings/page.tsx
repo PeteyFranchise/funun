@@ -10,6 +10,7 @@ const DEMO_PROFILE: ArtistProfile = {
   id: '00000000-0000-0000-0000-000000000000',
   artist_name: 'Demo Artist',
   genre: 'R&B',
+  genres: ['r&b'],
   location: 'Los Angeles, USA',
   bio: 'Demo profile — sign in with a real account to edit your own.',
   career_stage: 2,
@@ -48,8 +49,23 @@ const DEMO_PROFILE: ArtistProfile = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
+// Shape of user_profiles row returned from GET /api/user-profiles
+export type UserProfile = {
+  id: string
+  pro: string | null
+  ipi: string | null
+  publisher: string | null
+  phone: string | null
+  mailing_address: Record<string, unknown> | null
+  display_name: string | null
+  bio: string | null
+  created_at: string
+  updated_at: string
+}
+
 export default async function SettingsPage() {
   let profile: ArtistProfile | null = null
+  let userProfile: UserProfile | null = null
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -66,6 +82,14 @@ export default async function SettingsPage() {
         .eq('id', user.id)
         .maybeSingle()
       profile = (data as ArtistProfile | null) ?? null
+
+      // Also fetch the user_profiles row for Rights Identity fields
+      const { data: userProfileData } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
+      userProfile = (userProfileData as UserProfile | null) ?? null
     }
   }
 
@@ -76,10 +100,10 @@ export default async function SettingsPage() {
 
       <div className="mt-8">
         {profile ? (
-          <ProfileForm profile={profile} />
+          <ProfileForm profile={profile} userProfile={userProfile} />
         ) : (
           <p className="text-sm text-white/50">
-            We couldn’t load your profile. Try signing out and back in.
+            We couldn't load your profile. Try signing out and back in.
           </p>
         )}
       </div>

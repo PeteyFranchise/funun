@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/app/(artist)/settings/page'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { GENRES } from '@/lib/genres'
@@ -47,6 +48,16 @@ type FormState = {
   industry_roles: string[]
 }
 
+// State for the Rights Identity section — saved to /api/user-profiles
+type RightsIdentityState = {
+  pro: string
+  ipi: string
+  publisher: string
+  phone: string
+  mailing_address: string
+  mailing_address_structured: Record<string, string> | null
+}
+
 function toForm(p: ArtistProfile): FormState {
   return {
     artist_name: p.artist_name ?? '',
@@ -74,6 +85,28 @@ function toForm(p: ArtistProfile): FormState {
     mailing_address: (p.mailing_address as { raw?: string } | null)?.raw ?? '',
     mailing_address_structured: (p.mailing_address as Record<string, string> | null) ?? null,
     industry_roles: Array.isArray(p.industry_roles) ? p.industry_roles : [],
+  }
+}
+
+// Seed Rights Identity state from userProfile, falling back to artist_profile values
+function toRightsIdentity(
+  userProfile: UserProfile | null,
+  artistProfile: ArtistProfile
+): RightsIdentityState {
+  const address = (userProfile?.mailing_address as { raw?: string } | null)?.raw
+    ?? (artistProfile.mailing_address as { raw?: string } | null)?.raw
+    ?? ''
+  const addressStructured =
+    (userProfile?.mailing_address as Record<string, string> | null)
+    ?? (artistProfile.mailing_address as Record<string, string> | null)
+    ?? null
+  return {
+    pro: userProfile?.pro ?? artistProfile.pro ?? '',
+    ipi: userProfile?.ipi ?? artistProfile.ipi ?? '',
+    publisher: userProfile?.publisher ?? artistProfile.publisher ?? '',
+    phone: userProfile?.phone ?? artistProfile.contact_phone ?? '',
+    mailing_address: address,
+    mailing_address_structured: addressStructured,
   }
 }
 
@@ -131,7 +164,12 @@ function IsrcLearnMore() {
   )
 }
 
-export function ProfileForm({ profile }: { profile: ArtistProfile }) {
+type ProfileFormProps = {
+  profile: ArtistProfile
+  userProfile?: UserProfile | null
+}
+
+export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(toForm(profile))
   const [showSuffix, setShowSuffix] = useState(Boolean(profile.legal_name_suffix))
@@ -139,9 +177,22 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  // Rights Identity section state — saved to /api/user-profiles
+  const [rightsForm, setRightsForm] = useState<RightsIdentityState>(
+    toRightsIdentity(userProfile, profile)
+  )
+  const [rightsSubmitting, setRightsSubmitting] = useState(false)
+  const [rightsError, setRightsError] = useState<string | null>(null)
+  const [rightsSaved, setRightsSaved] = useState(false)
+
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }))
     setSaved(false)
+  }
+
+  function setRights<K extends keyof RightsIdentityState>(key: K, value: RightsIdentityState[K]) {
+    setRightsForm(f => ({ ...f, [key]: value }))
+    setRightsSaved(false)
   }
 
   function toggleGenre(slug: string) {
@@ -163,6 +214,15 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
     setSaved(false)
   }, [])
 
+  const handleRightsAddressChange = useCallback((display: string, structured: Record<string, string> | null) => {
+    setRightsForm(f => ({
+      ...f,
+      mailing_address: display,
+      mailing_address_structured: structured ?? f.mailing_address_structured,
+    }))
+    setRightsSaved(false)
+  }, [])
+
   function toggleRole(slug: string) {
     setForm(f => {
       const roles = f.industry_roles.includes(slug)
@@ -173,6 +233,7 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
     setSaved(false)
   }
 
+  // Main profile save — non-rights fields to /api/profile
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
@@ -200,197 +261,152 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
     router.refresh()
   }
 
+  // Rights Identity save — to /api/user-profiles; triggers back-fill of claimed rows
+  async function handleRightsSave(e: React.FormEvent) {
+    e.preventDefault()
+    setRightsSubmitting(true)
+    setRightsError(null)
+
+    const mailingAddress = rightsForm.mailing_address.trim()
+      ? (rightsForm.mailing_address_structured ?? { raw: rightsForm.mailing_address.trim() })
+      : null
+
+    const res = await fetch('/api/user-profiles', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pro: rightsForm.pro || null,
+        ipi: rightsForm.ipi || null,
+        publisher: rightsForm.publisher || null,
+        phone: rightsForm.phone || null,
+        mailing_address: mailingAddress,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setRightsError(json.error ?? 'Could not save rights identity')
+      setRightsSubmitting(false)
+      return
+    }
+
+    setRightsSubmitting(false)
+    setRightsSaved(true)
+    router.refresh()
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <div className="space-y-12">
+      <form onSubmit={handleSubmit} className="space-y-8">
 
-      {/* ── Legal Identity ──────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Legal Identity</h2>
-          <p className="mt-1 text-xs text-white/40">
-            Your legal name for contracts, split sheets, and rights registrations.
-            This is separate from your artist name — someone who only works behind
-            the scenes can leave Artist Name blank.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-xs text-white/60 space-y-1">
-          <p className="font-semibold text-white/80">Use the exact same name everywhere</p>
-          <p>
-            Your legal name must appear <span className="text-white/90 font-medium">identically</span> on
-            every composition, split sheet, PRO registration, and copyright filing.
-            For example, if you don&apos;t use your middle name when you register your work,
-            leave that field blank here, too. Inconsistencies — even minor ones — can
-            freeze payments or cause royalties to be misdirected.
-          </p>
-          <p className="text-white/40 pt-0.5">
-            Funūn does not collect or pay royalties. We organize this data so you can
-            communicate easily with the entities that do — your PRO, The MLC, SoundExchange, and others.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>First name</label>
-            <input
-              value={form.legal_first_name}
-              onChange={e => set('legal_first_name', e.target.value)}
-              placeholder="Jane"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Middle name / initial</label>
-            <input
-              value={form.legal_middle_name}
-              onChange={e => set('legal_middle_name', e.target.value)}
-              placeholder="A."
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Last name</label>
-            <input
-              value={form.legal_last_name}
-              onChange={e => set('legal_last_name', e.target.value)}
-              placeholder="Smith"
-              className={`mt-1 ${inputClass}`}
-            />
+        {/* ── Legal Identity ──────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Legal Identity</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Your legal name for contracts, split sheets, and rights registrations.
+              This is separate from your artist name — someone who only works behind
+              the scenes can leave Artist Name blank.
+            </p>
           </div>
 
-          {showSuffix && (
+          <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-xs text-white/60 space-y-1">
+            <p className="font-semibold text-white/80">Use the exact same name everywhere</p>
+            <p>
+              Your legal name must appear <span className="text-white/90 font-medium">identically</span> on
+              every composition, split sheet, PRO registration, and copyright filing.
+              For example, if you don&apos;t use your middle name when you register your work,
+              leave that field blank here, too. Inconsistencies — even minor ones — can
+              freeze payments or cause royalties to be misdirected.
+            </p>
+            <p className="text-white/40 pt-0.5">
+              Funūn does not collect or pay royalties. We organize this data so you can
+              communicate easily with the entities that do — your PRO, The MLC, SoundExchange, and others.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
             <div className="sm:col-span-2">
-              <label className={labelClass}>Suffix</label>
+              <label className={labelClass}>First name</label>
               <input
-                value={form.legal_name_suffix}
-                onChange={e => set('legal_name_suffix', e.target.value)}
-                placeholder="Jr., Sr., II…"
+                value={form.legal_first_name}
+                onChange={e => set('legal_first_name', e.target.value)}
+                placeholder="Jane"
                 className={`mt-1 ${inputClass}`}
               />
             </div>
-          )}
-          {!showSuffix && (
-            <div className="sm:col-span-6">
-              <button
-                type="button"
-                onClick={() => setShowSuffix(true)}
-                className="text-xs text-white/40 hover:text-white/70 transition"
-              >
-                + Add suffix (Jr., Sr., II…)
-              </button>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Middle name / initial</label>
+              <input
+                value={form.legal_middle_name}
+                onChange={e => set('legal_middle_name', e.target.value)}
+                placeholder="A."
+                className={`mt-1 ${inputClass}`}
+              />
             </div>
-          )}
-        </div>
-      </section>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Last name</label>
+              <input
+                value={form.legal_last_name}
+                onChange={e => set('legal_last_name', e.target.value)}
+                placeholder="Smith"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
 
-      {/* ── Public Profile ─────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Public Profile</h2>
-          <p className="mt-1 text-xs text-white/40">
-            Your artist / stage name and public-facing info. Leave Artist Name blank
-            if you work exclusively behind the scenes.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Artist name <span className="normal-case font-normal">(stage name — optional)</span></label>
-            <input
-              value={form.artist_name}
-              onChange={e => set('artist_name', e.target.value)}
-              placeholder="Your stage name"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Genre <span className="normal-case font-normal">(select all that apply)</span></label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {GENRES.map(genre => {
-                const selected = form.genres.includes(genre.slug)
-                return (
-                  <button
-                    key={genre.slug}
-                    type="button"
-                    onClick={() => toggleGenre(genre.slug)}
-                    className={[
-                      'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
-                      selected
-                        ? 'border-lav/50 bg-lav/20 text-white'
-                        : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
-                    ].join(' ')}
-                  >
-                    {genre.label}
-                  </button>
-                )
-              })}
-            </div>
-            {form.genres.length > 0 && (
-              <p className="mt-2 text-xs text-white/30">
-                {form.genres.length} genre{form.genres.length !== 1 ? 's' : ''} selected
-              </p>
+            {showSuffix && (
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Suffix</label>
+                <input
+                  value={form.legal_name_suffix}
+                  onChange={e => set('legal_name_suffix', e.target.value)}
+                  placeholder="Jr., Sr., II…"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+            )}
+            {!showSuffix && (
+              <div className="sm:col-span-6">
+                <button
+                  type="button"
+                  onClick={() => setShowSuffix(true)}
+                  className="text-xs text-white/40 hover:text-white/70 transition"
+                >
+                  + Add suffix (Jr., Sr., II…)
+                </button>
+              </div>
             )}
           </div>
-          <div>
-            <label className={labelClass}>Location</label>
-            <input
-              value={form.location}
-              onChange={e => set('location', e.target.value)}
-              placeholder="City, Country"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Bio</label>
-            <textarea
-              value={form.bio}
-              onChange={e => set('bio', e.target.value)}
-              rows={4}
-              placeholder="Tell your story"
-              className={`mt-1 ${inputClass} resize-none`}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Career stage</label>
-            <select
-              value={form.career_stage}
-              onChange={e => set('career_stage', Number(e.target.value) as 1 | 2 | 3 | 4)}
-              className={`mt-1 ${inputClass}`}
-            >
-              {CAREER_STAGES.map(s => (
-                <option key={s.value} value={s.value} className="bg-neutral-900">
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Industry Roles ─────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Industry Roles</h2>
-          <p className="mt-1 text-xs text-white/40">
-            Select every hat you wear in the industry. When you appear on a split sheet
-            or contract, you'll choose which roles apply to that specific collaboration
-            from this list — no re-entry needed.
-          </p>
-        </div>
-
-        <div className="space-y-5">
-          {INDUSTRY_ROLE_GROUPS.map(group => (
-            <div key={group.group}>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-lavdim">
-                {group.group}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {group.roles.map(role => {
-                  const selected = form.industry_roles.includes(role.slug)
+        {/* ── Public Profile ─────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Public Profile</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Your artist / stage name and public-facing info. Leave Artist Name blank
+              if you work exclusively behind the scenes.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Artist name <span className="normal-case font-normal">(stage name — optional)</span></label>
+              <input
+                value={form.artist_name}
+                onChange={e => set('artist_name', e.target.value)}
+                placeholder="Your stage name"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Genre <span className="normal-case font-normal">(select all that apply)</span></label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {GENRES.map(genre => {
+                  const selected = form.genres.includes(genre.slug)
                   return (
                     <button
-                      key={role.slug}
+                      key={genre.slug}
                       type="button"
-                      onClick={() => toggleRole(role.slug)}
+                      onClick={() => toggleGenre(genre.slug)}
                       className={[
                         'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
                         selected
@@ -398,116 +414,315 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
                           : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
                       ].join(' ')}
                     >
-                      {role.label}
+                      {genre.label}
                     </button>
                   )
                 })}
               </div>
+              {form.genres.length > 0 && (
+                <p className="mt-2 text-xs text-white/30">
+                  {form.genres.length} genre{form.genres.length !== 1 ? 's' : ''} selected
+                </p>
+              )}
             </div>
-          ))}
+            <div>
+              <label className={labelClass}>Location</label>
+              <input
+                value={form.location}
+                onChange={e => set('location', e.target.value)}
+                placeholder="City, Country"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Bio</label>
+              <textarea
+                value={form.bio}
+                onChange={e => set('bio', e.target.value)}
+                rows={4}
+                placeholder="Tell your story"
+                className={`mt-1 ${inputClass} resize-none`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Career stage</label>
+              <select
+                value={form.career_stage}
+                onChange={e => set('career_stage', Number(e.target.value) as 1 | 2 | 3 | 4)}
+                className={`mt-1 ${inputClass}`}
+              >
+                {CAREER_STAGES.map(s => (
+                  <option key={s.value} value={s.value} className="bg-neutral-900">
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Industry Roles ─────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Industry Roles</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Select every hat you wear in the industry. When you appear on a split sheet
+              or contract, you'll choose which roles apply to that specific collaboration
+              from this list — no re-entry needed.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {INDUSTRY_ROLE_GROUPS.map(group => (
+              <div key={group.group}>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-lavdim">
+                  {group.group}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {group.roles.map(role => {
+                    const selected = form.industry_roles.includes(role.slug)
+                    return (
+                      <button
+                        key={role.slug}
+                        type="button"
+                        onClick={() => toggleRole(role.slug)}
+                        className={[
+                          'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                          selected
+                            ? 'border-lav/50 bg-lav/20 text-white'
+                            : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+                        ].join(' ')}
+                      >
+                        {role.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {form.industry_roles.length > 0 && (
+            <p className="text-xs text-white/30">
+              {form.industry_roles.length} role{form.industry_roles.length !== 1 ? 's' : ''} selected
+            </p>
+          )}
+        </section>
+
+        {/* ── Contact ────────────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Contact</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Used on contracts and split sheets. Your login email is managed through
+              your account settings.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input
+                type="tel"
+                value={form.contact_phone}
+                onChange={e => set('contact_phone', e.target.value)}
+                placeholder="+1 555 000 0000"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Mailing address</label>
+              <AddressAutocomplete
+                value={form.mailing_address}
+                onChange={handleAddressChange}
+                inputClass={`mt-1 ${inputClass}`}
+              />
+              {form.mailing_address_structured && (
+                <p className="mt-1 text-xs text-white/30">
+                  Address verified via Google
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Links ──────────────────────────────────────────────── */}
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold text-white">Links</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Instagram</label>
+              <input
+                value={form.instagram_handle}
+                onChange={e => set('instagram_handle', e.target.value)}
+                placeholder="@handle"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Threads</label>
+              <input
+                value={form.threads_handle}
+                onChange={e => set('threads_handle', e.target.value)}
+                placeholder="@handle"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>TikTok</label>
+              <input
+                value={form.tiktok_handle}
+                onChange={e => set('tiktok_handle', e.target.value)}
+                placeholder="@handle"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Spotify URL</label>
+              <input
+                value={form.spotify_url}
+                onChange={e => set('spotify_url', e.target.value)}
+                placeholder="https://open.spotify.com/artist/…"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Rights & Royalties ─────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Rights &amp; Royalties</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Your rights registry information. Flows automatically into split sheets,
+              metadata, and registration checklists.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>PRO affiliation</label>
+              <select
+                value={form.pro}
+                onChange={e => set('pro', e.target.value)}
+                className={`mt-1 ${inputClass}`}
+              >
+                <option value="" className="bg-neutral-900">Select PRO (optional)</option>
+                {PRO_VALUES.map(v => (
+                  <option key={v} value={v} className="bg-neutral-900">
+                    {PRO_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>IPI / CAE number</label>
+              <input
+                value={form.ipi}
+                onChange={e => set('ipi', e.target.value)}
+                placeholder="00000000000"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Publisher</label>
+              <input
+                value={form.publisher}
+                onChange={e => set('publisher', e.target.value)}
+                placeholder="Publisher name"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>MLC member ID</label>
+              <input
+                value={form.mlc_id}
+                onChange={e => set('mlc_id', e.target.value)}
+                placeholder="MLC-XXXXXXXX"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>SoundExchange ID</label>
+              <input
+                value={form.soundexchange_id}
+                onChange={e => set('soundexchange_id', e.target.value)}
+                placeholder="SE-XXXXXXXX"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── ISRC registrant ────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
+            <p className="mt-1 text-xs text-white/40">
+              If you hold your own ISRC registrant code, add it here and Funūn can mint
+              compliant ISRCs for your tracks automatically. Don't have one? Your distributor
+              assigns ISRCs for free — leave this blank.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Country code</label>
+              <input
+                value={form.isrc_country_code}
+                onChange={e => set('isrc_country_code', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
+                placeholder="US"
+                maxLength={2}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">2 letters — country of the registrant.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Registrant code</label>
+              <input
+                value={form.isrc_registrant_code}
+                onChange={e => set('isrc_registrant_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))}
+                placeholder="S1Z"
+                maxLength={3}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
+            </div>
+          </div>
+
+          {/* ── ISRC learn more ─────────────────────────────────────── */}
+          <IsrcLearnMore />
+        </section>
+
+        {error && <p className="text-sm text-rose-300">{error}</p>}
+
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+          >
+            {submitting ? 'Saving…' : 'Save changes'}
+          </button>
+          {saved && <span className="text-sm text-emerald-300">Saved</span>}
+        </div>
+      </form>
+
+      {/* ── Rights Identity ─────────────────────────────────────────
+          Separate section — saves to /api/user-profiles and fires an additive
+          back-fill of every collaborator row this user has claimed (D-08).
+          Seeded from user_profiles, falling back to artist_profile values.
+      ────────────────────────────────────────────────────────────── */}
+      <form onSubmit={handleRightsSave} className="space-y-6">
+        <div className="border-t border-white/10 mt-8 pt-8">
+          <h2 className="text-lg font-semibold text-white">Rights Identity</h2>
+          <p className="text-sm text-lavdim mt-1">Saved here, auto-filled into every split sheet and contract.</p>
         </div>
 
-        {form.industry_roles.length > 0 && (
-          <p className="text-xs text-white/30">
-            {form.industry_roles.length} role{form.industry_roles.length !== 1 ? 's' : ''} selected
-          </p>
-        )}
-      </section>
-
-      {/* ── Contact ────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Contact</h2>
-          <p className="mt-1 text-xs text-white/40">
-            Used on contracts and split sheets. Your login email is managed through
-            your account settings.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Phone</label>
-            <input
-              type="tel"
-              value={form.contact_phone}
-              onChange={e => set('contact_phone', e.target.value)}
-              placeholder="+1 555 000 0000"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Mailing address</label>
-            <AddressAutocomplete
-              value={form.mailing_address}
-              onChange={handleAddressChange}
-              inputClass={`mt-1 ${inputClass}`}
-            />
-            {form.mailing_address_structured && (
-              <p className="mt-1 text-xs text-white/30">
-                Address verified via Google
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Links ──────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-white">Links</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Instagram</label>
-            <input
-              value={form.instagram_handle}
-              onChange={e => set('instagram_handle', e.target.value)}
-              placeholder="@handle"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Threads</label>
-            <input
-              value={form.threads_handle}
-              onChange={e => set('threads_handle', e.target.value)}
-              placeholder="@handle"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>TikTok</label>
-            <input
-              value={form.tiktok_handle}
-              onChange={e => set('tiktok_handle', e.target.value)}
-              placeholder="@handle"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Spotify URL</label>
-            <input
-              value={form.spotify_url}
-              onChange={e => set('spotify_url', e.target.value)}
-              placeholder="https://open.spotify.com/artist/…"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Rights & Royalties ─────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Rights &amp; Royalties</h2>
-          <p className="mt-1 text-xs text-white/40">
-            Your rights registry information. Flows automatically into split sheets,
-            metadata, and registration checklists.
-          </p>
-        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>PRO affiliation</label>
             <select
-              value={form.pro}
-              onChange={e => set('pro', e.target.value)}
+              value={rightsForm.pro}
+              onChange={e => setRights('pro', e.target.value)}
               className={`mt-1 ${inputClass}`}
             >
               <option value="" className="bg-neutral-900">Select PRO (optional)</option>
@@ -521,8 +736,8 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
           <div>
             <label className={labelClass}>IPI / CAE number</label>
             <input
-              value={form.ipi}
-              onChange={e => set('ipi', e.target.value)}
+              value={rightsForm.ipi}
+              onChange={e => setRights('ipi', e.target.value)}
               placeholder="00000000000"
               className={`mt-1 ${inputClass}`}
             />
@@ -531,84 +746,50 @@ export function ProfileForm({ profile }: { profile: ArtistProfile }) {
           <div>
             <label className={labelClass}>Publisher</label>
             <input
-              value={form.publisher}
-              onChange={e => set('publisher', e.target.value)}
+              value={rightsForm.publisher}
+              onChange={e => setRights('publisher', e.target.value)}
               placeholder="Publisher name"
               className={`mt-1 ${inputClass}`}
             />
           </div>
           <div>
-            <label className={labelClass}>MLC member ID</label>
+            <label className={labelClass}>Phone</label>
             <input
-              value={form.mlc_id}
-              onChange={e => set('mlc_id', e.target.value)}
-              placeholder="MLC-XXXXXXXX"
+              type="tel"
+              value={rightsForm.phone}
+              onChange={e => setRights('phone', e.target.value)}
+              placeholder="+1 555 000 0000"
               className={`mt-1 ${inputClass}`}
             />
           </div>
-          <div>
-            <label className={labelClass}>SoundExchange ID</label>
-            <input
-              value={form.soundexchange_id}
-              onChange={e => set('soundexchange_id', e.target.value)}
-              placeholder="SE-XXXXXXXX"
-              className={`mt-1 ${inputClass}`}
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Mailing address</label>
+            <AddressAutocomplete
+              value={rightsForm.mailing_address}
+              onChange={handleRightsAddressChange}
+              inputClass={`mt-1 ${inputClass}`}
             />
-          </div>
-        </div>
-      </section>
-
-      {/* ── ISRC registrant ────────────────────────────────────── */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
-          <p className="mt-1 text-xs text-white/40">
-            If you hold your own ISRC registrant code, add it here and Funūn can mint
-            compliant ISRCs for your tracks automatically. Don't have one? Your distributor
-            assigns ISRCs for free — leave this blank.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Country code</label>
-            <input
-              value={form.isrc_country_code}
-              onChange={e => set('isrc_country_code', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
-              placeholder="US"
-              maxLength={2}
-              className={`mt-1 ${inputClass} uppercase`}
-            />
-            <p className="mt-1 text-xs text-white/30">2 letters — country of the registrant.</p>
-          </div>
-          <div>
-            <label className={labelClass}>Registrant code</label>
-            <input
-              value={form.isrc_registrant_code}
-              onChange={e => set('isrc_registrant_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))}
-              placeholder="S1Z"
-              maxLength={3}
-              className={`mt-1 ${inputClass} uppercase`}
-            />
-            <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
+            {rightsForm.mailing_address_structured && (
+              <p className="mt-1 text-xs text-white/30">
+                Address verified via Google
+              </p>
+            )}
           </div>
         </div>
 
-        {/* ── ISRC learn more ─────────────────────────────────────── */}
-        <IsrcLearnMore />
-      </section>
+        {rightsError && <p className="text-sm text-rose-300">{rightsError}</p>}
 
-      {error && <p className="text-sm text-rose-300">{error}</p>}
-
-      <div className="flex items-center gap-4">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
-          {submitting ? 'Saving…' : 'Save changes'}
-        </button>
-        {saved && <span className="text-sm text-emerald-300">Saved</span>}
-      </div>
-    </form>
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={rightsSubmitting}
+            className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta disabled:opacity-40"
+          >
+            {rightsSubmitting ? 'Saving…' : 'Save rights identity'}
+          </button>
+          {rightsSaved && <span className="text-sm text-emerald-300">Saved</span>}
+        </div>
+      </form>
+    </div>
   )
 }
