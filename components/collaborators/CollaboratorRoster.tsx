@@ -57,6 +57,46 @@ export function CollaboratorRoster({
     setEditingId(null)
   }
 
+  // Archive a claimed collaborator — send a non-null marker; server forces the
+  // actual timestamp (Task 4 / CR-03). On success, mark the row archived in list
+  // state so it leaves the active roster without a round-trip refresh.
+  async function handleArchive(id: string) {
+    const res = await fetch('/api/collaborators/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived_at: new Date().toISOString() }),
+    })
+    if (res.ok) {
+      setList(prev =>
+        prev.map(c => c.id === id ? { ...c, archived_at: new Date().toISOString() } : c)
+      )
+    }
+  }
+
+  // Delete an unclaimed collaborator. On 409 (row was claimed concurrently)
+  // do NOT remove the row — card renders Archive for claimed rows.
+  async function handleDelete(id: string) {
+    const res = await fetch('/api/collaborators/' + id, { method: 'DELETE' })
+    if (res.ok) {
+      setList(prev => prev.filter(c => c.id !== id))
+    }
+    // 409 = claimed — leave the row in place, no action
+  }
+
+  // Toggle the favorite star optimistically, then sync with the server.
+  async function handleFavoriteToggle(collab: CollaboratorProfile) {
+    const res = await fetch('/api/collaborators/' + collab.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_favorite: !collab.is_favorite }),
+    })
+    if (res.ok) {
+      setList(prev =>
+        prev.map(c => c.id === collab.id ? { ...c, is_favorite: !c.is_favorite } : c)
+      )
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page header */}
@@ -177,6 +217,9 @@ export function CollaboratorRoster({
                     setEditingId(collab.id)
                     setCreating(false)
                   }}
+                  onArchive={() => handleArchive(collab.id)}
+                  onDelete={() => handleDelete(collab.id)}
+                  onFavoriteToggle={() => handleFavoriteToggle(collab)}
                 />
               )
             )}
