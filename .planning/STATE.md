@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: not yet started
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-06-29T04:57:24.499Z"
+stopped_at: Phase 4 UI-SPEC approved
+last_updated: "2026-06-29T05:27:53.754Z"
 last_activity: 2026-06-29
 last_activity_desc: Phase 03 Rights Guidance complete
 progress:
@@ -100,8 +100,8 @@ None yet.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/04-collaborator-identity-reconciliation/04-CONTEXT.md
+**Resume file:** .planning/phases/04-collaborator-identity-reconciliation/04-UI-SPEC.md
 
-Last session: 2026-06-29T04:57:24.489Z
-Stopped at: Phase 4 context gathered
+Last session: 2026-06-29T05:27:53.744Z
+Stopped at: Phase 4 UI-SPEC approved
 Resume: Run /gsd-plan-phase to create Phase 04 (Collaborator Identity Reconciliation) plans
