@@ -92,7 +92,20 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   4. All three checklists appear on the per-project Rights / Registrations page with visual completion indicators so an artist can see outstanding registration tasks at a glance
   5. A Songtrust guide card explains publishing admin value and offers the existing CWR export as the "send your data" action
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Migration 024 (3 rights status columns on vault_projects) + VaultProject type extension + PATCH /api/vault/[projectId]/rights route (RIGHTS-01, RIGHTS-02, RIGHTS-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Rights page server component + RightsStatusPatch client component + SongtrastGuideCard + CopyrightFiling 3-state extension + project page nav link (RIGHTS-01, RIGHTS-02, RIGHTS-03, RIGHTS-04, SONGTRUST-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-03-PLAN.md — Checkpoint: verify SOCAN + Songtrust deep-link URLs + smoke test rights page end-to-end (RIGHTS-02, SONGTRUST-01)
+
 **UI hint**: yes
 
 ### Phase 4: Collaborator Identity Reconciliation
