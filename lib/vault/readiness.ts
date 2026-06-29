@@ -89,11 +89,20 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         break
       }
       case 'pro_registration': {
-        // Proxy: ISWC captured (the code your PRO/The MLC register the work
-        // under). Complete when every track has one, warning when some do.
+        // Proxy: ISWC captured — the code PROs use to register performance royalties.
         const withIswc = tracks.filter(t => t.iswc).length
         if (tracks.length > 0 && withIswc === tracks.length) status = 'complete'
         else if (withIswc > 0) status = 'warning'
+        else status = 'missing'
+        break
+      }
+      case 'mlc_registration': {
+        // Proxy: ISWC captured — The MLC uses the same code to register mechanical
+        // royalties from streaming/downloads. Phase 4 will upgrade this to per-party
+        // tracking once collaborator identity reconciliation is in place.
+        const withIswcMlc = tracks.filter(t => t.iswc).length
+        if (tracks.length > 0 && withIswcMlc === tracks.length) status = 'complete'
+        else if (withIswcMlc > 0) status = 'warning'
         else status = 'missing'
         break
       }

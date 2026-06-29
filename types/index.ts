@@ -144,7 +144,18 @@ export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
   {
     key: 'pro_registration',
     label: 'PRO registration ready',
-    description: 'Every track has an ISWC for ASCAP/BMI/SESAC & The MLC',
+    description: 'Every track has an ISWC — required for ASCAP, BMI, SESAC, and SOCAN to register your performance royalties',
+    points: 5,
+    applies_to: ['single', 'ep', 'album'],
+    action_label: 'Add ISWC in Metadata Studio →',
+    action_tool: undefined,
+  },
+  {
+    // Phase 4: upgrade to per-party MLC registration tracking once collaborator
+    // identity reconciliation is in place — each co-writer registers their own share.
+    key: 'mlc_registration',
+    label: 'MLC registration ready',
+    description: 'Every track has an ISWC — required for The MLC to register your mechanical royalties from streaming and downloads',
     points: 5,
     applies_to: ['single', 'ep', 'album'],
     action_label: 'Add ISWC in Metadata Studio →',
