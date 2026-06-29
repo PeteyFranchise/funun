@@ -24,9 +24,9 @@
 
 ### Rights Guidance
 
-- [ ] **RIGHTS-01**: Artist sees a step-by-step copyright registration guide with deep-link to copyright.gov eCO; per-project status tracked (not filed / filed / registered)
-- [ ] **RIGHTS-02**: Artist sees a step-by-step PRO registration guide (ASCAP / BMI / SESAC / SOCAN options) with deep-links; per-project ISWC proxy status tracked
-- [ ] **RIGHTS-03**: Artist sees a SoundExchange registration guide with deep-link; status shows "ready" when project has RDR-N data (ISRC + performer credits)
+- [x] **RIGHTS-01**: Artist sees a step-by-step copyright registration guide with deep-link to copyright.gov eCO; per-project status tracked (not filed / filed / registered)
+- [x] **RIGHTS-02**: Artist sees a step-by-step PRO registration guide (ASCAP / BMI / SESAC / SOCAN options) with deep-links; per-project ISWC proxy status tracked
+- [x] **RIGHTS-03**: Artist sees a SoundExchange registration guide with deep-link; status shows "ready" when project has RDR-N data (ISRC + performer credits)
 - [ ] **RIGHTS-04**: All three checklists are surfaced on the per-project Rights/Registrations page with visual completion indicators
 
 ### Songtrust
@@ -67,8 +67,8 @@
 | DOC-01 | Phase 2: Document Lifecycle | Pending |
 | DOC-02 | Phase 2: Document Lifecycle | Pending |
 | DOC-03 | Phase 2: Document Lifecycle | Pending |
-| RIGHTS-01 | Phase 3: Rights Guidance | Pending |
-| RIGHTS-02 | Phase 3: Rights Guidance | Pending |
-| RIGHTS-03 | Phase 3: Rights Guidance | Pending |
+| RIGHTS-01 | Phase 3: Rights Guidance | Complete |
+| RIGHTS-02 | Phase 3: Rights Guidance | Complete |
+| RIGHTS-03 | Phase 3: Rights Guidance | Complete |
 | RIGHTS-04 | Phase 3: Rights Guidance | Pending |
 | SONGTRUST-01 | Phase 3: Rights Guidance | Pending |

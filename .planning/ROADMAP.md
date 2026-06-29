@@ -92,11 +92,11 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   4. All three checklists appear on the per-project Rights / Registrations page with visual completion indicators so an artist can see outstanding registration tasks at a glance
   5. A Songtrust guide card explains publishing admin value and offers the existing CWR export as the "send your data" action
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Migration 024 (3 rights status columns on vault_projects) + VaultProject type extension + PATCH /api/vault/[projectId]/rights route (RIGHTS-01, RIGHTS-02, RIGHTS-03)
+- [x] 03-01-PLAN.md — Migration 024 (3 rights status columns on vault_projects) + VaultProject type extension + PATCH /api/vault/[projectId]/rights route (RIGHTS-01, RIGHTS-02, RIGHTS-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -123,6 +123,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
   5. Rights and contact data from the new user's Settings (PRO, IPI, publisher, phone, address) automatically back-fills any gaps in their claimed collaborator records so split sheets reflect complete data without the inviting artist doing anything
 
 **Design notes**:
+
 - Claim job must be idempotent — safe to run on every login, only writes when `claimed_by IS NULL`
 - If multiple artists have the same email in their collaborator roster, all matching rows get claimed — one user can appear in many rosters
 - Email matching is case-insensitive (`LOWER(email) = LOWER(auth.email)`)
@@ -138,5 +139,5 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 |-------|----------------|--------|-----------|
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
-| 3. Rights Guidance | 0/TBD | Not started | - |
+| 3. Rights Guidance | 1/3 | In Progress|  |
 | 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |
