@@ -11,6 +11,19 @@ export const dynamic = 'force-dynamic'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
+// ─── Credits preview row shape ────────────────────────────────
+// Partial select from collaborators joined to split_sheet_parties → split_sheets.
+type CreditPreviewRow = {
+  id: string
+  name: string
+  split_sheet_parties: Array<{
+    role: string | null
+    split_sheets: {
+      song_name: string | null
+    } | null
+  }>
+}
+
 const TYPE_ORDER: VaultProjectType[] = ['single', 'snippet', 'ep', 'album', 'unreleased']
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -25,9 +38,11 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 export default async function DashboardPage() {
   let projects: VaultProjectRow[] = []
+  let creditsPreview: CreditPreviewRow[] = []
 
   if (DEMO) {
     projects = await getDemoProjects()
+    // DEMO branch renders no credits preview (D-05)
   } else {
     const supabase = createServerClient()
     const {
@@ -49,7 +64,21 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
 
     projects = (data ?? []) as VaultProjectRow[]
+
+    // Credits preview: rows where this user is the claimed collaborator.
+    // Authorized by the "Claimed users see own credits" RLS policy (plan 01, T-04-11).
+    const { data: creditsData } = await supabase
+      .from('collaborators')
+      .select('id, name, split_sheet_parties(role, split_sheets(song_name))')
+      .eq('claimed_by', user?.id ?? '')
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+      .limit(3)
+
+    creditsPreview = (creditsData ?? []) as unknown as CreditPreviewRow[]
   }
+
+  const creditsCount = creditsPreview.length
 
   const total = projects.length
   const avgScore =
@@ -122,6 +151,47 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
+
+          {/* My Credits preview — only when the user has claimed credits (D-05) */}
+          {creditsCount > 0 && (
+            <section className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">
+                  My Credits
+                </h2>
+                <Link
+                  href="/collaborators?tab=credits"
+                  className="text-sm text-white/50 transition hover:text-white"
+                >
+                  View all credits →
+                </Link>
+              </div>
+              <ul className="space-y-2">
+                {creditsPreview.map(credit => {
+                  // First split sheet party entry for preview display
+                  const party = credit.split_sheet_parties?.[0]
+                  const songName = party?.split_sheets?.song_name ?? null
+                  const role = party?.role ?? null
+                  return (
+                    <li
+                      key={credit.id}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm text-white">{songName ?? '—'}</p>
+                        <p className="text-xs text-lavdim">{credit.name}</p>
+                      </div>
+                      {role && (
+                        <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/70">
+                          {role}
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
 
           <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Recent projects */}
