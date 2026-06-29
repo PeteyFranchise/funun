@@ -14,7 +14,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - [x] **Phase 1: Collaborator Profiles** - Global collaborator roster with auto-fill into split sheets and contracts (completed 2026-06-27)
 - [x] **Phase 2: Document Lifecycle** - Signed-PDF upload flow, signer status tracking, and readiness gate fix (completed 2026-06-28)
 - [x] **Phase 3: Rights Guidance** - Guided registration checklists (copyright, PRO, MLC, SoundExchange, Songtrust) with per-project status (completed 2026-06-29)
-- [ ] **Phase 4: Collaborator Identity Reconciliation** - Email-based claim system linking pre-signup collaborator records to new Funūn accounts
+- [x] **Phase 4: Collaborator Identity Reconciliation** - Email-based claim system linking pre-signup collaborator records to new Funūn accounts (completed 2026-06-29)
 
 ## Phase Details
 
@@ -130,7 +130,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - Claimed collaborator records should never be deleted by the inviting artist while `claimed_by IS NOT NULL` — soft-delete or archive only
 - Settings back-fill is additive only: never overwrite data the inviting artist manually entered, only fill `NULL` fields
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -139,7 +139,7 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 04-02-PLAN.md — user_profiles GET+PATCH API with allowlist + fire-and-forget back-fill + Rights Identity section on Settings page wired to /api/user-profiles (COLLAB-05)
-- [ ] 04-03-PLAN.md — Claim-aware DELETE guard + claimed-state CollaboratorCard (Funūn-member badge, Archive, favorite star) + Favorites/Most Recent picker grouping + dashboard My Credits preview (COLLAB-05)
+- [x] 04-03-PLAN.md — Claim-aware DELETE guard + claimed-state CollaboratorCard (Funūn-member badge, Archive, favorite star) + Favorites/Most Recent picker grouping + dashboard My Credits preview (COLLAB-05)
 
 **UI hint**: yes
 
@@ -150,4 +150,4 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
 | 3. Rights Guidance | 3/3 | Complete | 2026-06-29 |
-| 4. Collaborator Identity Reconciliation | 2/3 | In Progress|  |
+| 4. Collaborator Identity Reconciliation | 3/3 | Complete   | 2026-06-29 |
