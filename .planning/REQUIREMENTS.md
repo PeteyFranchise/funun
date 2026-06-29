@@ -27,11 +27,11 @@
 - [x] **RIGHTS-01**: Artist sees a step-by-step copyright registration guide with deep-link to copyright.gov eCO; per-project status tracked (not filed / filed / registered)
 - [x] **RIGHTS-02**: Artist sees a step-by-step PRO registration guide (ASCAP / BMI / SESAC / SOCAN options) with deep-links; per-project ISWC proxy status tracked
 - [x] **RIGHTS-03**: Artist sees a SoundExchange registration guide with deep-link; status shows "ready" when project has RDR-N data (ISRC + performer credits)
-- [ ] **RIGHTS-04**: All three checklists are surfaced on the per-project Rights/Registrations page with visual completion indicators
+- [x] **RIGHTS-04**: All three checklists are surfaced on the per-project Rights/Registrations page with visual completion indicators
 
 ### Songtrust
 
-- [ ] **SONGTRUST-01**: Rights Coach includes a Songtrust guide card explaining publishing admin value, with a CWR export action as the "send your data" step
+- [x] **SONGTRUST-01**: Rights Coach includes a Songtrust guide card explaining publishing admin value, with a CWR export action as the "send your data" step
 
 ---
 
@@ -70,5 +70,5 @@
 | RIGHTS-01 | Phase 3: Rights Guidance | Complete |
 | RIGHTS-02 | Phase 3: Rights Guidance | Complete |
 | RIGHTS-03 | Phase 3: Rights Guidance | Complete |
-| RIGHTS-04 | Phase 3: Rights Guidance | Pending |
-| SONGTRUST-01 | Phase 3: Rights Guidance | Pending |
+| RIGHTS-04 | Phase 3: Rights Guidance | Complete |
+| SONGTRUST-01 | Phase 3: Rights Guidance | Complete |
