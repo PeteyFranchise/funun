@@ -12,8 +12,8 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Collaborator Profiles** - Global collaborator roster with auto-fill into split sheets and contracts (completed 2026-06-27)
-- [ ] **Phase 2: Document Lifecycle** - Signed-PDF upload flow, signer status tracking, and readiness gate fix
-- [ ] **Phase 3: Rights Guidance** - Guided registration checklists (copyright, PRO, SoundExchange, Songtrust) with per-project status
+- [x] **Phase 2: Document Lifecycle** - Signed-PDF upload flow, signer status tracking, and readiness gate fix (completed 2026-06-28)
+- [x] **Phase 3: Rights Guidance** - Guided registration checklists (copyright, PRO, MLC, SoundExchange, Songtrust) with per-project status (completed 2026-06-29)
 - [ ] **Phase 4: Collaborator Identity Reconciliation** - Email-based claim system linking pre-signup collaborator records to new Funūn accounts
 
 ## Phase Details
@@ -139,5 +139,5 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 |-------|----------------|--------|-----------|
 | 1. Collaborator Profiles | 4/4 | Complete   | 2026-06-27 |
 | 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
-| 3. Rights Guidance | 2/3 | In Progress|  |
+| 3. Rights Guidance | 3/3 | Complete | 2026-06-29 |
 | 4. Collaborator Identity Reconciliation | 0/TBD | Not started | - |
