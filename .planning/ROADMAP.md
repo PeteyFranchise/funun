@@ -141,6 +141,10 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 - [x] 04-02-PLAN.md — user_profiles GET+PATCH API with allowlist + fire-and-forget back-fill + Rights Identity section on Settings page wired to /api/user-profiles (COLLAB-05)
 - [x] 04-03-PLAN.md — Claim-aware DELETE guard + claimed-state CollaboratorCard (Funūn-member badge, Archive, favorite star) + Favorites/Most Recent picker grouping + dashboard My Credits preview (COLLAB-05)
 
+**Gap closure** *(addresses 04-VERIFICATION.md blockers + code-review concerns)*
+
+- [ ] 04-04-PLAN.md — Wire CollaboratorRoster Archive/Delete/Favorite callbacks (WR-03/04) + migration 027 exception-isolating handle_new_user() and explicit user_profiles RLS (CR-04, CR-02) + atomic claim-guarded DELETE (CR-01) + server-forced archived_at (CR-03) (COLLAB-05)
+
 **UI hint**: yes
 
 ## Progress
