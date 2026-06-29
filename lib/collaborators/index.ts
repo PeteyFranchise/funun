@@ -81,10 +81,12 @@ export function sanitizeCollaborator(
       continue
     }
     if (key === 'archived_at') {
-      // Accept ISO string (archive) or null (unarchive) — ignore other types
-      if (typeof value === 'string') {
-        const trimmed = value.trim()
-        update[key] = trimmed === '' ? null : trimmed
+      // Server-forced archive timestamp (CR-03): the client's signal is "archive now"
+      // but the server owns the actual instant. A non-empty string triggers archive
+      // with server now(); null triggers unarchive. Any client-supplied future date
+      // (or arbitrary ISO string) is discarded — the timestamp is never trusted.
+      if (typeof value === 'string' && value.trim() !== '') {
+        update[key] = new Date().toISOString()
       } else if (value === null) {
         update[key] = null
       }
