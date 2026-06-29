@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 04
-current_phase_name: not yet started
-status: planning
+current_phase_name: collaborator-identity-reconciliation
+status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-06-29T05:27:53.754Z"
+last_updated: "2026-06-29T21:58:09.831Z"
 last_activity: 2026-06-29
-last_activity_desc: Phase 03 Rights Guidance complete
+last_activity_desc: Phase 04 execution resumed (wave continue)
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 75
+  total_plans: 13
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -24,16 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** Artist completes a release knowing their rights are documented, collaborators are on record, and registrations are tracked — all from Funūn, with no data re-entry
-**Current focus:** Phase 04 — Collaborator Identity Reconciliation
+**Current focus:** Phase 04 — collaborator-identity-reconciliation
 
 ## Current Position
 
-Phase: 04 — PLANNING (not yet started)
-Plan: 0 of TBD
-Status: Awaiting phase plan creation
-Last activity: 2026-06-29 — Phase 03 Rights Guidance complete
+Phase: 04 (collaborator-identity-reconciliation) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-06-29 — Phase 04 execution resumed (wave continue)
 
-Progress: [███████░░░] 75% (3 of 4 phases complete)
+Progress: [█████████░] 85% (11 of 13 plans complete)
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [███████░░░] 75% (3 of 4 phases complete)
 | Phase 02 P01 | — | 2 tasks | 3 files | commits: 0880245 |
 | Phase 02 P02 | — | 2 tasks | 3 files | commits: fd22eeb |
 | Phase 02 P03 | — | 3 tasks | 3 files | commits: 9cffc9e, a2e54f5, 2b135cf |
+| Phase 04 P01 | 3m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase ?]: PickedRow tracking state kept in component state only — not added to persisted Composer JSONB shape (D-02 per-song specificity)
 - [Phase ?]: Service client only used AFTER ownership verified via .eq('initiator_user_id') — ownership-then-service-client pattern (T-01-12)
 - [Phase ?]: Only acting party status changes on counter/approve — sibling approved parties not reset (D-16 Open Question 3)
+- [Phase 04-01]: Middleware uses artist_profiles.claimed_at DB lookup as claim gate (not user_metadata) — per-request cost acceptable at current scale per A2 assumption
+- [Phase 04-01]: claimed_by excluded from COLLABORATOR_EDITABLE_FIELDS — written only inside SECURITY DEFINER functions (T-04-02)
+- [Phase 04-01]: Credits query cast through unknown due to partial column select shape mismatch with CollaboratorProfile required fields
 
 ### Pending Todos
 
@@ -100,8 +104,8 @@ None yet.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/04-collaborator-identity-reconciliation/04-UI-SPEC.md
+**Resume file:** .planning/phases/04-collaborator-identity-reconciliation/04-02-PLAN.md
 
-Last session: 2026-06-29T05:27:53.744Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume: Run /gsd-plan-phase to create Phase 04 (Collaborator Identity Reconciliation) plans
+Last session: 2026-06-29T21:58:09.831Z
+Stopped at: Completed 04-01-PLAN.md — claim slice end-to-end
+Resume: Execute 04-02-PLAN.md
