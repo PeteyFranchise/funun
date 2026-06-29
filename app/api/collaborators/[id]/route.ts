@@ -51,27 +51,39 @@ export async function DELETE(
 
   const { id } = await params
 
-  // Check claimed_by before deleting — scoped to the authenticated owner (T-04-09)
-  const { data: existing } = await supabase
-    .from('collaborators')
-    .select('claimed_by')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (existing?.claimed_by) {
-    return NextResponse.json(
-      { error: 'Cannot delete a claimed collaborator — use archive instead' },
-      { status: 409 }
-    )
-  }
-
-  const { error } = await supabase
+  // Atomic claim-guarded DELETE (CR-01): the claimed_by IS NULL predicate is part
+  // of the DELETE statement itself, closing the TOCTOU window where a concurrent
+  // claim_collaborators() could set claimed_by between a SELECT and a separate DELETE.
+  const { data: deleted, error } = await supabase
     .from('collaborators')
     .delete()
     .eq('id', id)
     .eq('user_id', user.id)
+    .is('claimed_by', null)
+    .select()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // If zero rows were deleted, the row either doesn't exist, isn't owned by this
+  // user, or was claimed concurrently. Re-query only to distinguish the 409 case.
+  if (!deleted || deleted.length === 0) {
+    const { data: existing } = await supabase
+      .from('collaborators')
+      .select('claimed_by')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (existing?.claimed_by) {
+      return NextResponse.json(
+        { error: 'Cannot delete a claimed collaborator — use archive instead' },
+        { status: 409 }
+      )
+    }
+
+    // Row not found or not owned — treat as success (idempotent delete)
+    return NextResponse.json({ ok: true })
+  }
+
   return NextResponse.json({ ok: true })
 }
