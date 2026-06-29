@@ -95,6 +95,17 @@ export type ReadinessItem = {
 }
 
 // Full checklist — applies_to controls which types each item gates
+// ─── Readiness item design rule ──────────────────────────────────────────────
+// Each distinct registration body gets its own item. Never lump two registries
+// into one item — they have different requirements, different deadlines, and
+// different consequences for missing them. Current registries and their items:
+//   US Copyright Office   → 'copyright'
+//   PRO (ASCAP/BMI/SESAC/SOCAN) → 'pro_registration'  ← Phase 4: split per-PRO
+//   The MLC               → 'mlc_registration'
+//   SoundExchange         → Phase 4 (per-party, recording-side)
+//   Harry Fox / DistroKid → Phase 4 if mechanical licensing path is added
+// When adding a new registry in any future phase, always create a new key.
+// ─────────────────────────────────────────────────────────────────────────────
 export const READINESS_ITEMS: Omit<ReadinessItem, 'status'>[] = [
   {
     key: 'audio_files',
