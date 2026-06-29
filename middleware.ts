@@ -33,6 +33,29 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/vault', req.url))
   }
 
+  // Phase 4: fire the claim completion for users whose collaborator rows
+  // have not yet been linked. Short-circuits via the claimed_at sentinel
+  // once claim has been confirmed — avoids repeated DB work on hot path (D-02).
+  if (session && !isAuthRoute) {
+    const { data: ap } = await supabase
+      .from('artist_profiles')
+      .select('claimed_at')
+      .eq('id', session.user.id)
+      .maybeSingle()
+
+    if (ap && ap.claimed_at === null) {
+      // Fire-and-forget — non-blocking; retries on next navigation if it fails.
+      // Cookie header is forwarded so the API route can re-validate the session
+      // server-side. User id is never passed in a custom header (T-04-01).
+      fetch(`${req.nextUrl.origin}/api/claim-collaborators`, {
+        method: 'POST',
+        headers: { cookie: req.headers.get('cookie') ?? '' },
+      }).catch(() => {
+        // Non-blocking — will retry on next navigation
+      })
+    }
+  }
+
   return res
 }
 

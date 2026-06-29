@@ -17,6 +17,9 @@ export const COLLABORATOR_EDITABLE_FIELDS = [
   'mlc_id',
   'soundexchange_id',
   'mailing_address',
+  'is_favorite',  // star toggle (D-12)
+  'archived_at',  // soft-delete timestamp; set to ISO string or null (D-11)
+  // Note: claimed_by is intentionally excluded — never client-settable (T-04-02)
 ] as const
 
 export type CollaboratorProfile = {
@@ -35,6 +38,10 @@ export type CollaboratorProfile = {
   mlc_id?: string | null
   soundexchange_id?: string | null
   mailing_address?: Record<string, string> | null
+  // Phase 4 claim + roster management fields
+  claimed_by?: string | null   // auth.users.id of the Funūn member who claimed this row
+  archived_at?: string | null  // soft-delete timestamp; null = active in roster (D-11)
+  is_favorite?: boolean        // pinned in picker Favorites group (D-12)
   created_at: string
   updated_at: string
 }
@@ -66,6 +73,23 @@ export function sanitizeCollaborator(
       }
       continue
     }
+    if (key === 'is_favorite') {
+      // Accept boolean only — ignore other types to prevent mass-assignment
+      if (typeof value === 'boolean') {
+        update[key] = value
+      }
+      continue
+    }
+    if (key === 'archived_at') {
+      // Accept ISO string (archive) or null (unarchive) — ignore other types
+      if (typeof value === 'string') {
+        const trimmed = value.trim()
+        update[key] = trimmed === '' ? null : trimmed
+      } else if (value === null) {
+        update[key] = null
+      }
+      continue
+    }
     if (typeof value === 'string') {
       const trimmed = value.trim()
       update[key] = trimmed === '' ? null : trimmed
@@ -74,4 +98,10 @@ export function sanitizeCollaborator(
     }
   }
   return update
+}
+
+// Predicate: true when this collaborator row has been claimed by a Funūn member.
+// Claimed rows must not be hard-deleted — use archive instead (D-10, T-04-02).
+export function isClaimedCollaborator(c: CollaboratorProfile): boolean {
+  return Boolean(c.claimed_by)
 }
