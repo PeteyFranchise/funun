@@ -37,6 +37,8 @@ export async function PATCH(
 // ─── DELETE /api/collaborators/[id] ──────────────────────────
 // Deletes a collaborator the authenticated user owns.
 // Ownership enforced both by RLS and the explicit .eq('user_id') chain (T-01-03).
+// Claimed rows (claimed_by IS NOT NULL) are blocked — archive is the only removal
+// path to preserve credit records (T-04-09, D-10).
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -48,6 +50,22 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+
+  // Check claimed_by before deleting — scoped to the authenticated owner (T-04-09)
+  const { data: existing } = await supabase
+    .from('collaborators')
+    .select('claimed_by')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (existing?.claimed_by) {
+    return NextResponse.json(
+      { error: 'Cannot delete a claimed collaborator — use archive instead' },
+      { status: 409 }
+    )
+  }
+
   const { error } = await supabase
     .from('collaborators')
     .delete()
