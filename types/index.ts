@@ -718,3 +718,42 @@ export type ToolInput = {
 export type ApiResponse<T> =
   | { data: T; error: null }
   | { data: null; error: string }
+
+// ─── Launchpad Checklist (migration 028) ─────────────────────────────
+// Admin-managed checklist item definition. tip_draft and author are
+// admin-only fields and are intentionally excluded from this type —
+// they never surface to artist-facing components or API responses.
+export type ChecklistItem = {
+  id: string
+  key: string
+  label: string
+  section: 'before_release' | 'week_1' | 'week_2' | 'weeks_3_4'
+  suggested_week: number | null
+  sort_order: number
+  action_type: 'internal_tool' | 'external_url'
+  action_href: string | null
+  action_label: string | null
+  tip_body: string | null
+  tip_approved: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Per-user per-project checklist item completion state.
+// RLS on launchpad_progress restricts rows to auth.uid() = user_id.
+export type LaunchpadProgress = {
+  id: string
+  user_id: string
+  project_id: string
+  item_key: string
+  completed: boolean
+  completed_at: string | null
+  created_at: string
+}
+
+// Merged type used by artist-facing components — checklist item definition
+// with the user's completion state for the current project merged in.
+export type MergedChecklistItem = ChecklistItem & {
+  completed: boolean
+  completed_at: string | null
+}
