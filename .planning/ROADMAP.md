@@ -155,3 +155,84 @@ Wave 2 builds the legal and registration layer of Funūn's Sound Vault. Phase 1 
 | 2. Document Lifecycle | 3/3 | Complete | 2026-06-28 |
 | 3. Rights Guidance | 3/3 | Complete | 2026-06-29 |
 | 4. Collaborator Identity Reconciliation | 4/4 | Complete   | 2026-06-29 |
+
+---
+
+# Roadmap: Funūn Wave 3 — Launchpad
+
+## Overview
+
+Wave 3 builds the **Launchpad room** — the post-release environment where an artist turns a released song into traction. Phase 5 establishes the per-project Launchpad checklist: the guided post-release playbook and the shared `/launchpad/[projectId]` route container that Phases 6 and 7 live inside. Phase 6 adds playlist curator pitching: a filterable curator directory, personalized pitch emails over a dedicated sending domain, pitch history, curator claim, and bounce/drift handling. Phase 7 adds the social campaign planner: an AI-generated 4–6 week content calendar tailored to the release and the artist's platforms, with DropReady/SoundBait actions and a Buffer-compatible CSV export.
+
+## Phases
+
+**Phase Numbering:**
+
+- Integer phases (5, 6, 7): Planned milestone work (continuing from Wave 2, which ended at Phase 4)
+- Decimal phases (6.1, 6.2): Urgent insertions (marked with INSERTED)
+
+- [ ] **Phase 5: Launchpad Checklist** - Per-project Launchpad room with a guided, week-sequenced post-release checklist; DB-backed admin-approved tips; completion persistence (foundation route for Phases 6 & 7)
+- [ ] **Phase 6: Playlist Curator Pitching** - Filterable curator directory, personalized pitch emails via dedicated sending domain, pitch history, curator claim flow, and bounce/drift handling
+- [ ] **Phase 7: Social Campaign Planner** - AI-generated 4–6 week content calendar from release data with platform nudges, DropReady/SoundBait actions, completion tracking, and Buffer CSV export
+
+## Phase Details
+
+### Phase 5: Launchpad Checklist
+
+**Goal**: Artists open a per-project Launchpad room that tells them exactly what to do after release day — each item is actionable (in-Funūn tool or external action), sequenced by post-release week to match the Spotify algorithmic window, backed by contextual tips, and their progress is saved
+**Depends on**: Nothing (first Wave 3 phase; establishes shared `/launchpad/[projectId]` route)
+**Requirements**: LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04
+**Success Criteria** (what must be TRUE):
+
+  1. Artist opens a Launchpad room for a specific project and sees a guided post-release checklist of distinct items
+  2. Each checklist item either launches an in-Funūn tool or opens an external action with step-by-step instructions, and items are grouped/ordered by `suggested_week` (weeks 1–4) to align with the post-release algorithmic window
+  3. Each item surfaces a contextual tip drawn from the database; tips are AI-drafted on a monthly cadence and only appear to artists after admin approval (unapproved drafts never show)
+  4. Artist can check an item complete and the completion state persists per project across sessions and page reloads
+
+**New tables**: `launchpad_checklist_items` (admin-managed tip definitions, includes `suggested_week`), `launchpad_progress` (per-user per-project completion). RLS enabled immediately after each CREATE TABLE.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 6: Playlist Curator Pitching
+
+**Goal**: Artists pitch a selected track to relevant playlist curators by email and track the outcomes, while curators can claim their own profiles, bounced addresses are retired automatically, and an admin can curate the directory
+**Depends on**: Phase 5 (lives under the shared `/launchpad/[projectId]` route)
+**Requirements**: PITCH-01, PITCH-02, PITCH-03, PITCH-04, PITCH-05, PITCH-06, PITCH-07, PITCH-08
+**Success Criteria** (what must be TRUE):
+
+  1. Artist can browse a curator directory and filter it by genre and platform, with each curator showing genre focus and a response rate (last 90 days)
+  2. Artist selects a track and sends a pitch email to one or more curators via Resend from the dedicated `pitch.funun.studio` sending domain; the composer enforces a 150-word limit and requires a playlist-specific note before Send activates, and every email includes the `/r/[projectId]` player link and an unsubscribe path
+  3. Pitch history is tracked per project (curator, sent date, response status: pending / opened / accepted / declined) and prevents duplicate sends to the same curator for the same track
+  4. A curator can claim their directory profile via a one-time, time-limited token link in the pitch email footer (explicit click only, not auto-claimed on signup); a hard bounce marks the curator email invalid and a significant genre-focus shift raises a genre drift alert
+  5. An admin can add, edit, flag inactive, and review claimed curator profiles from an admin view, and "Playlist Curator" appears as an industry occupation option in Settings
+
+**New tables**: `curators` (directory + `email_valid`), `pitch_history` (per-project pitch log). RLS enabled immediately after each CREATE TABLE.
+**Infrastructure prerequisite**: `pitch.funun.studio` subdomain with DKIM/SPF/DMARC and ~2-week warmup must be live before any pitch email sends (keeps cold outreach off the transactional `funun.studio` domain).
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 7: Social Campaign Planner
+
+**Goal**: Artists generate and work a 4–6 week social content calendar tailored to their release and the platforms they are active on, take inline content-generation actions, track which posts went live, and export the plan to their scheduler
+**Depends on**: Phase 5 (lives under the shared `/launchpad/[projectId]` route); no hard dependency on Phase 6
+**Requirements**: SOCIAL-01, SOCIAL-02, SOCIAL-03, SOCIAL-04, SOCIAL-05, SOCIAL-06, SOCIAL-07
+**Success Criteria** (what must be TRUE):
+
+  1. Artist selects which platforms they are active on per project (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) and sees best-practice nudges toward the highest-impact platform combinations for their genre, driven by a static genre→platform lookup table (no ML)
+  2. Artist generates a 4–6 week content calendar with one action; the AI receives the release metadata (title, genre, release date, story) and collaborators-table data, and returns a calendar structured by week and platform
+  3. Each calendar slot shows a draft caption or hook, a content-type tag (short-form video / static image / lyric graphic / text / stories), and its suggested week
+  4. DropReady and SoundBait are usable both as inline calendar-slot actions ("Generate caption", "Generate hook") and as standalone quick tools in the Launchpad tools view, with standalone runs not mutating calendar slots unless explicitly saved
+  5. Artist can check off calendar posts as they go live (completion tracked per project) and export the calendar as a Buffer-compatible CSV (columns: `Text`, `Image URL`, `Tags`, `Posting Time`)
+
+**New tables**: `social_campaigns` (calendar metadata + posts JSONB). RLS enabled immediately after CREATE TABLE.
+**Notes**: AI calendar is a batch (non-streaming) Claude call using the existing JSON-prompt pattern; user-supplied release data isolated in a `<release_data>` block; platform constraints hard-coded in the system prompt. CSV is Buffer-only — Later has no CSV import.
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 5. Launchpad Checklist | 0/0 | Not started | - |
+| 6. Playlist Curator Pitching | 0/0 | Not started | - |
+| 7. Social Campaign Planner | 0/0 | Not started | - |

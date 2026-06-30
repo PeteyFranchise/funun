@@ -82,24 +82,26 @@
 
 ## Traceability
 
-| Requirement | Phase | Notes |
-|-------------|-------|-------|
-| LAUNCH-01 | Phase 5 | Launchpad room foundation |
-| LAUNCH-02 | Phase 5 | In-Funūn tool links and external action CTAs |
-| LAUNCH-03 | Phase 5 | DB-backed tips with admin approval pipeline |
-| LAUNCH-04 | Phase 5 | Per-project completion persistence |
-| PITCH-01 | Phase 6 | Curator directory browse + filter |
-| PITCH-02 | Phase 6 | Pitch email send via Resend (requires pitch.funun.studio subdomain) |
-| PITCH-03 | Phase 6 | Pitch history tracking |
-| PITCH-04 | Phase 6 | Response rate per curator |
-| PITCH-05 | Phase 6 | Curator claim flow (mirrors Wave 2 collaborator claim) |
-| PITCH-06 | Phase 6 | Bounce detection + genre drift alerts |
-| PITCH-07 | Phase 6 | Admin curator directory view |
-| PITCH-08 | Phase 6 | lib/industry-roles.ts addition |
-| SOCIAL-01 | Phase 7 | Platform selector per project |
-| SOCIAL-02 | Phase 7 | Genre → platform nudge (static lookup table) |
-| SOCIAL-03 | Phase 7 | AI calendar generation (batch, JSON-prompt pattern) |
-| SOCIAL-04 | Phase 7 | Calendar slot structure with content type tags |
-| SOCIAL-05 | Phase 7 | DropReady + SoundBait inline + standalone quick tools |
-| SOCIAL-06 | Phase 7 | Calendar post completion tracking |
-| SOCIAL-07 | Phase 7 | Buffer-compatible CSV export |
+Phase assignments confirmed against ROADMAP.md (Wave 3) success criteria on 2026-06-30. Every Wave 3 requirement maps to exactly one phase. Coverage: 19/19.
+
+| Requirement | Phase | Status | Notes |
+|-------------|-------|--------|-------|
+| LAUNCH-01 | Phase 5 | Confirmed | Launchpad room foundation (SC-1) |
+| LAUNCH-02 | Phase 5 | Confirmed | In-Funūn tool links + external action CTAs, week-sequenced (SC-2) |
+| LAUNCH-03 | Phase 5 | Confirmed | DB-backed tips with monthly AI draft + admin approval (SC-3) |
+| LAUNCH-04 | Phase 5 | Confirmed | Per-project completion persistence (SC-4) |
+| PITCH-01 | Phase 6 | Confirmed | Curator directory browse + genre/platform filter (SC-1) |
+| PITCH-02 | Phase 6 | Confirmed | Pitch send via Resend; requires pitch.funun.studio subdomain; 150-word + playlist-specific gate; player link + unsubscribe (SC-2) |
+| PITCH-03 | Phase 6 | Confirmed | Pitch history + duplicate-send protection (SC-3) |
+| PITCH-04 | Phase 6 | Confirmed | Response rate per curator, last 90 days (SC-1) |
+| PITCH-05 | Phase 6 | Confirmed | Curator claim flow, explicit link-click only (SC-4) |
+| PITCH-06 | Phase 6 | Confirmed | Hard-bounce invalidation + genre drift alerts (SC-4) |
+| PITCH-07 | Phase 6 | Confirmed | Admin curator directory view (SC-5) |
+| PITCH-08 | Phase 6 | Confirmed | "Playlist Curator" in lib/industry-roles.ts (SC-5) |
+| SOCIAL-01 | Phase 7 | Confirmed | Platform selector per project (SC-1) |
+| SOCIAL-02 | Phase 7 | Confirmed | Genre → platform nudge, static lookup table (SC-1) |
+| SOCIAL-03 | Phase 7 | Confirmed | AI calendar generation, batch JSON-prompt; receives release + collaborators data (SC-2) |
+| SOCIAL-04 | Phase 7 | Confirmed | Calendar slot structure: caption/hook + content-type tag + suggested week (SC-3) |
+| SOCIAL-05 | Phase 7 | Confirmed | DropReady + SoundBait inline + standalone quick tools (SC-4) |
+| SOCIAL-06 | Phase 7 | Confirmed | Calendar post completion tracking (SC-5) |
+| SOCIAL-07 | Phase 7 | Confirmed | Buffer-compatible CSV export (SC-5) |
