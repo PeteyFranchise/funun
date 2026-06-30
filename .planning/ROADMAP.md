@@ -191,7 +191,23 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
   5. Admin can add, edit, reorder, and delete checklist items from `/admin/checklist` without touching Supabase Studio directly
 
 **New tables**: `launchpad_checklist_items` (admin-managed tip definitions, includes `suggested_week`), `launchpad_progress` (per-user per-project completion). RLS enabled immediately after each CREATE TABLE.
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(foundation)*
+
+- [ ] 05-01-PLAN.md — Migration 028 (launchpad_checklist_items + launchpad_progress tables, RLS, cascade FK, 20 seed items) + TypeScript types (LAUNCH-01 through LAUNCH-05)
+- [ ] 05-02-PLAN.md — Middleware /launchpad + /admin guard + @dnd-kit install + (admin) route group with is_admin layout gate + per-project page scaffold (LAUNCH-01, LAUNCH-05)
+
+**Wave 2** *(blocked on Wave 1 DB)*
+
+- [ ] 05-03-PLAN.md — Artist API: GET checklist (items + progress merged, tips gated) + PATCH progress (upsert completion) (LAUNCH-02, LAUNCH-03, LAUNCH-04)
+- [ ] 05-05-PLAN.md — Admin API: checklist CRUD + atomic reorder + hard delete + tip approve/reject, all behind is_admin gate (LAUNCH-03, LAUNCH-05)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-04-PLAN.md — Artist UI: TipPanel + ChecklistItem + ChecklistSection + LaunchpadRoom + wired per-project page + global page project cards (LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04)
+- [ ] 05-06-PLAN.md — Admin UI: ChecklistAdmin (dnd-kit reorder + inline CRUD) + TipsAdmin (approve/reject) + wired admin pages (LAUNCH-03, LAUNCH-05)
+
 **UI hint**: yes
 
 ### Phase 6: Playlist Curator Pitching
@@ -234,6 +250,6 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Launchpad Checklist | 0/0 | Not started | - |
+| 5. Launchpad Checklist | 0/6 | Planned | - |
 | 6. Playlist Curator Pitching | 0/0 | Not started | - |
 | 7. Social Campaign Planner | 0/0 | Not started | - |
