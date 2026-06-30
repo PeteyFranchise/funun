@@ -181,13 +181,14 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **Goal**: Artists open a per-project Launchpad room that tells them exactly what to do after release day — each item is actionable (in-Funūn tool or external action), sequenced by post-release week to match the Spotify algorithmic window, backed by contextual tips, and their progress is saved
 **Depends on**: Nothing (first Wave 3 phase; establishes shared `/launchpad/[projectId]` route)
-**Requirements**: LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04
+**Requirements**: LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05
 **Success Criteria** (what must be TRUE):
 
   1. Artist opens a Launchpad room for a specific project and sees a guided post-release checklist of distinct items
   2. Each checklist item either launches an in-Funūn tool or opens an external action with step-by-step instructions, and items are grouped/ordered by `suggested_week` (weeks 1–4) to align with the post-release algorithmic window
   3. Each item surfaces a contextual tip drawn from the database; tips are AI-drafted on a monthly cadence and only appear to artists after admin approval (unapproved drafts never show)
   4. Artist can check an item complete and the completion state persists per project across sessions and page reloads
+  5. Admin can add, edit, reorder, and delete checklist items from `/admin/checklist` without touching Supabase Studio directly
 
 **New tables**: `launchpad_checklist_items` (admin-managed tip definitions, includes `suggested_week`), `launchpad_progress` (per-user per-project completion). RLS enabled immediately after each CREATE TABLE.
 **Plans**: TBD

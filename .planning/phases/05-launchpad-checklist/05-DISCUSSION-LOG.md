@@ -1,8 +1,8 @@
 # Phase 5 — Launchpad Checklist: Discussion Log
 
 **Phase:** 5 — Launchpad Checklist
-**Session date:** 2026-06-30
-**Gray areas covered:** 4 of 4
+**Session date:** 2026-06-30 (updated 2026-06-30 with LAUNCH-05)
+**Gray areas covered:** 5 of 5
 
 ---
 
@@ -68,6 +68,31 @@
 **Schema note:** `author` and `contribution_type` fields should be included in `launchpad_checklist_items` from the start so the row can distinguish AI drafts from future industry expert contributions without a schema migration.
 
 **Future direction:** Wave 4 goal is for industry experts on Funūn to contribute tips alongside AI drafts. The admin UI should be designed with this expansion in mind — not just "approve AI output" but "manage a knowledge pipeline."
+
+---
+
+---
+
+## Area 5: Admin Checklist Item CRUD (LAUNCH-05)
+
+**Question:** What fields should an admin be able to set on a checklist item?
+**Decision:** All four — Label (required), Section (dropdown), Action CTA (type + href + label), Sort order.
+
+**Question:** How should item reordering work?
+**Decision:** `@dnd-kit/core` drag-and-drop on desktop; up/down arrow buttons on mobile as fallback. No drag library existed in the codebase — user opted to add `@dnd-kit/core` for the better desktop UX.
+
+**Question:** What happens when an admin deletes an item?
+**Decision:** Hard delete. Progress rows cascade. No soft delete or tombstone. Admin data doesn't warrant the query complexity of soft deletion.
+
+**Question:** Should `/admin/checklist` and `/admin/tips` share a layout?
+**Decision:** Yes — shared `app/(admin)/layout.tsx` with nav between Checklist Items and Tips. `is_admin` gate applied at layout level. Designed to grow.
+
+**Admin layout:**
+```
+/admin             → redirect to /admin/checklist
+/admin/checklist   → item CRUD
+/admin/tips        → tip approval
+```
 
 ---
 

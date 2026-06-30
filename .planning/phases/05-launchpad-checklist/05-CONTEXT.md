@@ -1,15 +1,15 @@
 # Phase 5 — Launchpad Checklist: Design Context
 
 **Phase:** 5 — Launchpad Checklist
-**Requirements:** LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04
-**Discussed:** 2026-06-30
+**Requirements:** LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05
+**Discussed:** 2026-06-30 (updated 2026-06-30 with LAUNCH-05)
 **Status:** Decisions locked — ready for planning
 
 ---
 
 ## What This Phase Builds
 
-A per-project Launchpad room (`/launchpad/[projectId]`) that gives artists a guided, week-sequenced post-release checklist. Each item is actionable (in-Funūn tool or external step), has a contextual tip in a side panel, and tracks completion per project. Tips are admin-approved before surfacing to artists. An admin route (`/admin/tips`) manages tip drafts.
+A per-project Launchpad room (`/launchpad/[projectId]`) that gives artists a guided, week-sequenced post-release checklist. Each item is actionable (in-Funūn tool or external step), has a contextual tip in a side panel, and tracks completion per project. Tips are admin-approved before surfacing to artists. A shared `/admin` layout houses two admin pages: `/admin/tips` (tip approval) and `/admin/checklist` (item CRUD).
 
 ---
 
@@ -74,6 +74,26 @@ Weeks 3–4               ← sustain and bridge
 - **Designed to expand:** Wave 4 goal is industry expert contributions alongside AI drafts. The schema and UI should make `author` and `contribution_type` first-class fields even in V1 so expansion doesn't require a migration.
 
 **Why in-app route (not Supabase Studio):** The admin tip flow will eventually include industry expert contributions where subject-matter experts draft and submit tips through the app. Building the admin UI now creates the foundation for that workflow. Supabase Studio is fine for solo review but doesn't scale to multi-contributor knowledge pipelines.
+
+### 5. Admin Checklist Item CRUD (LAUNCH-05)
+
+- **Route:** `/admin/checklist` — lives in the shared `/admin` layout alongside `/admin/tips`.
+- **Admin layout:** A shared `app/(admin)/layout.tsx` with sidebar/tab nav linking "Checklist Items" and "Tips". Single `is_admin` gate applied at the layout level. Designed to grow as more admin pages are added.
+- **Fields editable per item:** Label (required), Section (dropdown: Before release / Week 1 / Week 2 / Weeks 3–4), Action CTA (type: internal tool or external URL; href; button label), Sort order.
+- **Reorder:** Drag-and-drop rows on desktop using `@dnd-kit/core` (new dependency); up/down arrow buttons on mobile as fallback. Both persist to the `sort_order` column.
+- **Delete:** Hard delete. The `launchpad_progress` rows for that `item_key` are removed via `ON DELETE CASCADE` (set on a FK or handled in the API). No soft delete or tombstone rows.
+- **New dependency:** `@dnd-kit/core` — drag-and-drop primitives for the admin reorder UI.
+
+**Admin layout routes:**
+```
+/admin             → redirect to /admin/checklist
+/admin/checklist   → checklist item list + add/edit/delete/reorder
+/admin/tips        → tip draft list + edit/approve/reject
+```
+
+**Why shared /admin layout:** Cleaner as the admin surface grows. Both pages share the same `is_admin` auth gate and visual framing. Nav between them is a single component change, not duplicated page structure.
+
+**Why hard delete:** Checklist items are admin-managed seed data. Soft delete adds query complexity (`WHERE archived_at IS NULL`) across the artist-facing checklist and the admin UI. If an item is deleted, it was a mistake or is genuinely retired; progress rows orphaned by a key that no longer exists are noise, not data to preserve.
 
 ---
 
@@ -148,6 +168,10 @@ CREATE POLICY "Users manage own progress"
 | PATCH | `/api/launchpad/[projectId]/progress` | Toggle item completion |
 | GET | `/api/admin/tips` | List draft tips (admin only) |
 | PATCH | `/api/admin/tips/[itemKey]` | Approve or reject a tip draft (admin only) |
+| GET | `/api/admin/checklist` | List all checklist items (admin only) |
+| POST | `/api/admin/checklist` | Create a new checklist item (admin only) |
+| PATCH | `/api/admin/checklist/[itemKey]` | Edit label, section, CTA, or sort order (admin only) |
+| DELETE | `/api/admin/checklist/[itemKey]` | Hard delete item + cascades (admin only) |
 
 ---
 
@@ -160,6 +184,17 @@ CREATE POLICY "Users manage own progress"
 | `ChecklistItem` | `components/launchpad/ChecklistItem.tsx` | Single item row: checkbox + label + row click → opens side panel |
 | `TipPanel` | `components/launchpad/TipPanel.tsx` | Right side panel: tip body + steps + action CTA |
 | `ProjectCards` | (inline on `/launchpad` page) | Cards at top of global page linking to per-project rooms |
+| `AdminLayout` | `app/(admin)/layout.tsx` | Shared admin shell: `is_admin` gate + nav between Checklist and Tips |
+| `ChecklistAdmin` | `components/admin/ChecklistAdmin.tsx` | Item list with add/edit form, drag-and-drop reorder, delete confirm |
+| `TipsAdmin` | `components/admin/TipsAdmin.tsx` | Tip draft list with edit field, Approve/Reject buttons |
+
+---
+
+## New Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| `@dnd-kit/core` | latest | Drag-and-drop primitives for admin checklist item reordering |
 
 ---
 
