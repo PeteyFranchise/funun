@@ -41,13 +41,18 @@ Declared values (multiples of 4):
 | 2xl | 48px | Major section breaks |
 | 3xl | 64px | Page-level spacing |
 
-Exceptions:
+### Approved Spacing Exceptions
 
-- Checklist item rows: `px-[18px] py-4` (matches existing playbook row on `/launchpad`) — 18px horizontal is a project-established exception for card rows
-- Topbar: `px-9 pb-[22px] pt-[26px]` — project standard, apply unchanged to `/launchpad/[projectId]`
-- TipPanel width: `max-w-md` (448px) — matches `ToolSidePanel` exactly; do not change
-- Checkbox touch target: 44px minimum — the checkbox element must be at least 44×44px tappable; pad the hit area with `p-2.5` if the visual is smaller
-- Admin drag handle: 44px row height minimum for dnd-kit drag targets on touch
+The following values are intentional deviations from the 4-point grid. Each is locked to an existing project pattern that cannot be changed without causing visual regression across the app.
+
+| Value | Location | Business Justification |
+|-------|----------|------------------------|
+| 18px (`px-[18px]`) | Checklist item rows | Matches the existing `LaunchpadPage` card row pattern in `app/(artist)/launchpad/page.tsx`. Changing this value would visually misalign the new per-project checklist rows against every existing playbook row on the global `/launchpad` page. |
+| 9px (`px-9` = 36px) | Topbar horizontal padding | Project-standard topbar padding established in `Topbar.tsx`. Applies unchanged to the `/launchpad/[projectId]` page. Changing this would break topbar visual consistency across the entire app. |
+| 22px (`pb-[22px]`) | Topbar bottom padding | Project-standard topbar padding established in `Topbar.tsx`. Same justification as above. |
+| 26px (`pt-[26px]`) | Topbar top padding | Project-standard topbar padding established in `Topbar.tsx`. Same justification as above. |
+
+These exceptions are **locked** — do not "fix" them to the nearest multiple of 4 during implementation.
 
 Source: spacing values derived from existing `launchpad/page.tsx` and `ToolSidePanel.tsx` patterns.
 
@@ -60,14 +65,17 @@ Source: spacing values derived from existing `launchpad/page.tsx` and `ToolSideP
 | Body | 14px (`text-[14px]`) | 400 (regular) | 1.5 |
 | Label | 13px (`text-[13px]`) | 400 (regular) | 1.45 |
 | Heading (section) | 12px (`text-[12px]`) uppercase tracking-[.16em] | 700 (bold) | 1.2 |
-| Page title | 27px (`text-[27px]`) | 800 (extrabold) | 1.1 |
+| Page title | 27px (`text-[27px]`) | 700 (bold) | 1.1 |
+
+Permitted weights: **400 (regular)** and **700 (bold)** only. No other weights are permitted in this phase.
 
 Notes:
 - Section headers (`Before release`, `Week 1`, etc.) use the same pattern as existing `LaunchpadPage` phase headers: `text-[12px] font-bold uppercase tracking-[.16em] text-lavdim`
-- Item labels: `text-[15.5px] font-bold text-white` — matches playbook task label style
+- Item labels: `text-[14px] font-bold text-white` — uses body size token with bold weight (aligns with playbook task label style; formerly declared as 15.5px which exceeded the 4-size maximum)
 - Sub-labels ("Algorithm window opens", etc.): `text-[13px] text-lavdim` — matches playbook blurb style
 - Tip body text in TipPanel: `text-[14px] text-white/70 leading-[1.5]`
-- Admin form labels: `text-[13px] font-semibold text-white/70`
+- Admin form labels: `text-[13px] font-bold text-white/70`
+- Page title treatment: `text-[27px] font-bold` — weight-800 (extrabold) is not used; weight-700 (bold) is the maximum
 
 Source: extracted from `app/(artist)/launchpad/page.tsx` and `Topbar.tsx`.
 
@@ -125,10 +133,10 @@ Source: color values from `tailwind.config.ts`, `globals.css`, and existing comp
 - Full-height fixed panel: `fixed inset-y-0 right-0 z-50 w-full max-w-md`
 - Backdrop: `fixed inset-0 bg-black/60 backdrop-blur-sm` — click closes
 - Escape key closes
-- Header: item label (bold, 18px) + section badge + close button (matches ToolSidePanel header pattern exactly)
+- Header: item label (bold, 14px body size) + section badge + close button (matches ToolSidePanel header pattern exactly)
 - Body sections in order: tip body text (if tip_approved), step-by-step list, action CTA button
 - No-tip state: show only step-by-step + CTA; no empty tip placeholder visible
-- CTA button: internal tool link → `bg-white text-black font-semibold`; external URL → same style with external arrow icon appended
+- CTA button: internal tool link → `bg-white text-black font-bold`; external URL → same style with external arrow icon appended
 - Footer pinned at bottom: `border-t border-white/10 p-5`
 
 ### Admin ChecklistAdmin (dnd-kit drag rows)
@@ -155,7 +163,7 @@ Source: color values from `tailwind.config.ts`, `globals.css`, and existing comp
 - Card grid: `grid grid-cols-2 gap-3` on ≥640px, single column below
 - Each card: `rounded-[14px] border border-hair bg-card px-[18px] py-4 flex items-center justify-between` — matches existing playbook task row width/radius
 - Card content: project title (`font-bold text-white`) + completion fraction badge (`text-[12px] text-lavdim`)
-- CTA: "Open Launchpad →" link (`text-[13.5px] font-bold text-white bg-card2 rounded-[10px] px-4 py-[10px]`)
+- CTA: "Open Launchpad →" link (`text-[13px] font-bold text-white bg-card2 rounded-[10px] px-4 py-[10px]`)
 
 ---
 
@@ -247,7 +255,7 @@ No third-party shadcn registries declared. Registry vetting gate: not triggered.
 | Dark color palette (ink, card, card2, lav, lavdim, grad, hair) | `tailwind.config.ts` — detected, pre-populated |
 | Typography sizes and weights | `app/(artist)/launchpad/page.tsx` + `Topbar.tsx` — extracted from existing patterns |
 | TipPanel dimensions and interaction model | `components/vault/ToolSidePanel.tsx` — reuse confirmed in CONTEXT.md |
-| Spacing scale exceptions (18px card padding) | `app/(artist)/launchpad/page.tsx` — measured from existing rows |
+| Spacing scale exceptions (18px card padding, topbar values) | `app/(artist)/launchpad/page.tsx` + `Topbar.tsx` — measured from existing patterns; documented in Approved Spacing Exceptions section |
 | Checkbox independence from panel | `05-CONTEXT.md` § Tips UX — locked decision |
 | Before release collapse behavior | `05-CONTEXT.md` § Checklist Structure — locked decision |
 | Admin drag-and-drop dependency | `05-CONTEXT.md` § LAUNCH-05 — `@dnd-kit/core` named explicitly |
