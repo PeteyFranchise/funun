@@ -191,7 +191,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
   5. Admin can add, edit, reorder, and delete checklist items from `/admin/checklist` without touching Supabase Studio directly
 
 **New tables**: `launchpad_checklist_items` (admin-managed tip definitions, includes `suggested_week`), `launchpad_progress` (per-user per-project completion). RLS enabled immediately after each CREATE TABLE.
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 
 **Wave 1** *(foundation)*
 
@@ -201,7 +201,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 **Wave 2** *(blocked on Wave 1 DB)*
 
 - [x] 05-03-PLAN.md — Artist API: GET checklist (items + progress merged, tips gated) + PATCH progress (upsert completion) (LAUNCH-02, LAUNCH-03, LAUNCH-04)
-- [ ] 05-05-PLAN.md — Admin API: checklist CRUD + atomic reorder + hard delete + tip approve/reject, all behind is_admin gate (LAUNCH-03, LAUNCH-05)
+- [x] 05-05-PLAN.md — Admin API: checklist CRUD + atomic reorder + hard delete + tip approve/reject, all behind is_admin gate (LAUNCH-03, LAUNCH-05)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -250,6 +250,6 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Launchpad Checklist | 3/6 | In Progress|  |
+| 5. Launchpad Checklist | 4/6 | In Progress|  |
 | 6. Playlist Curator Pitching | 0/0 | Not started | - |
 | 7. Social Campaign Planner | 0/0 | Not started | - |
