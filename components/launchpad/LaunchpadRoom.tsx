@@ -69,22 +69,54 @@ export function LaunchpadRoom({
       })
 
       if (!res.ok) {
-        // Roll back to prior value
+        // Re-fetch authoritative state on failure so that concurrent in-flight
+        // toggles don't roll back to a stale optimistic snapshot (WR-02).
+        const refetch = await fetch(`/api/launchpad/${project.id}/checklist`)
+        if (refetch.ok) {
+          const { data } = await refetch.json()
+          setItems(data)
+          if (activeItem?.key === key) {
+            const refreshed = (data as typeof items).find(i => i.key === key)
+            if (refreshed) setActiveItem(refreshed)
+          }
+        } else {
+          // Fallback: roll back to captured prior if re-fetch also fails
+          setItems(prev =>
+            prev.map(i => (i.key === key ? { ...i, completed: prior.completed } : i))
+          )
+          if (activeItem?.key === key) {
+            setActiveItem(prev => (prev ? { ...prev, completed: prior.completed } : null))
+          }
+        }
+        setSaveError("Couldn't save your progress — please try again.")
+      }
+    } catch {
+      // Network error — re-fetch to get authoritative state
+      try {
+        const refetch = await fetch(`/api/launchpad/${project.id}/checklist`)
+        if (refetch.ok) {
+          const { data } = await refetch.json()
+          setItems(data)
+          if (activeItem?.key === key) {
+            const refreshed = (data as typeof items).find(i => i.key === key)
+            if (refreshed) setActiveItem(refreshed)
+          }
+        } else {
+          setItems(prev =>
+            prev.map(i => (i.key === key ? { ...i, completed: prior.completed } : i))
+          )
+          if (activeItem?.key === key) {
+            setActiveItem(prev => (prev ? { ...prev, completed: prior.completed } : null))
+          }
+        }
+      } catch {
+        // All fetches failed — fall back to captured prior
         setItems(prev =>
           prev.map(i => (i.key === key ? { ...i, completed: prior.completed } : i))
         )
         if (activeItem?.key === key) {
           setActiveItem(prev => (prev ? { ...prev, completed: prior.completed } : null))
         }
-        setSaveError("Couldn't save your progress — please try again.")
-      }
-    } catch {
-      // Network error — roll back
-      setItems(prev =>
-        prev.map(i => (i.key === key ? { ...i, completed: prior.completed } : i))
-      )
-      if (activeItem?.key === key) {
-        setActiveItem(prev => (prev ? { ...prev, completed: prior.completed } : null))
       }
       setSaveError("Couldn't save your progress — please try again.")
     }
