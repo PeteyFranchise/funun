@@ -171,7 +171,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 - Integer phases (5, 6, 7): Planned milestone work (continuing from Wave 2, which ended at Phase 4)
 - Decimal phases (6.1, 6.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 5: Launchpad Checklist** - Per-project Launchpad room with a guided, week-sequenced post-release checklist; DB-backed admin-approved tips; completion persistence (foundation route for Phases 6 & 7)
+- [x] **Phase 5: Launchpad Checklist** - Per-project Launchpad room with a guided, week-sequenced post-release checklist; DB-backed admin-approved tips; completion persistence (foundation route for Phases 6 & 7) (completed 2026-07-01)
 - [ ] **Phase 6: Playlist Curator Pitching** - Filterable curator directory, personalized pitch emails via dedicated sending domain, pitch history, curator claim flow, and bounce/drift handling
 - [ ] **Phase 7: Social Campaign Planner** - AI-generated 4–6 week content calendar from release data with platform nudges, DropReady/SoundBait actions, completion tracking, and Buffer CSV export
 
@@ -191,7 +191,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
   5. Admin can add, edit, reorder, and delete checklist items from `/admin/checklist` without touching Supabase Studio directly
 
 **New tables**: `launchpad_checklist_items` (admin-managed tip definitions, includes `suggested_week`), `launchpad_progress` (per-user per-project completion). RLS enabled immediately after each CREATE TABLE.
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Wave 1** *(foundation)*
 
@@ -206,7 +206,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 05-04-PLAN.md — Artist UI: TipPanel + ChecklistItem + ChecklistSection + LaunchpadRoom + wired per-project page + global page project cards (LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04)
-- [ ] 05-06-PLAN.md — Admin UI: ChecklistAdmin (dnd-kit reorder + inline CRUD) + TipsAdmin (approve/reject) + wired admin pages (LAUNCH-03, LAUNCH-05)
+- [x] 05-06-PLAN.md — Admin UI: ChecklistAdmin (dnd-kit reorder + inline CRUD) + TipsAdmin (approve/reject) + wired admin pages (LAUNCH-03, LAUNCH-05)
 
 **UI hint**: yes
 
@@ -250,6 +250,6 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Launchpad Checklist | 5/6 | In Progress|  |
+| 5. Launchpad Checklist | 6/6 | Complete   | 2026-07-01 |
 | 6. Playlist Curator Pitching | 0/0 | Not started | - |
 | 7. Social Campaign Planner | 0/0 | Not started | - |

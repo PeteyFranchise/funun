@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Launchpad
 current_phase: 05
 current_phase_name: launchpad-checklist
-status: executing
+status: verifying
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-07-01T00:09:50.071Z"
+last_updated: "2026-07-01T00:21:05.886Z"
 last_activity: 2026-06-30
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 19
-  percent: 57
+  completed_plans: 20
+  percent: 71
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-06-30)
 
 Phase: 05 (launchpad-checklist) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-30 — Phase 05 execution started
 
 ## Performance Metrics
@@ -57,6 +57,7 @@ Last activity: 2026-06-30 — Phase 05 execution started
 | Phase 05 P02 | 12 | 3 tasks | 8 files |
 | Phase 05 P03 | 3 | 2 tasks | 2 files |
 | Phase 05 P05 | 8m | 3 tasks | 5 files |
+| Phase 05 P06 | 15 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - Wave 3 research: curator claim is explicit link-click only (do NOT wire into `handle_new_user()`), unlike Wave 2 collaborator auto-claim; 32-byte token, 72-hour expiry, one-time use
 - Wave 3 research: AI calendar is a batch (non-streaming) Claude call; release data isolated in `<release_data>` block; platform limits hard-coded in system prompt
 - [Phase ?]: admin gate helper centralized
+- [Phase ?]: Admin pages query Supabase directly via createServiceClient() (not self-fetching API routes)
 
 ### Pending Todos
 
@@ -100,6 +102,6 @@ None yet.
 
 **Resume file:** .planning/phases/05-launchpad-checklist/05-UI-SPEC.md
 
-Last session: 2026-07-01T00:09:50.057Z
+Last session: 2026-07-01T00:20:34.108Z
 Stopped at: Phase 5 UI-SPEC approved
 Resume: Plan Phase 5 (Launchpad Checklist) via /gsd-plan-phase 5
