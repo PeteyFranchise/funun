@@ -69,7 +69,16 @@ export async function POST(request: Request) {
   // Build insert object from required fields + allowlisted optional fields
   const insert: Record<string, unknown> = { key, label, section, action_type }
 
-  if ('action_href' in body) insert.action_href = body.action_href ?? null
+  if ('action_href' in body) {
+    const href = body.action_href != null ? String(body.action_href).trim() : null
+    if (href && !href.startsWith('https://') && !href.startsWith('http://') && !href.startsWith('/')) {
+      return NextResponse.json(
+        { error: 'action_href must be a valid URL (https:// or http://) or an internal path (/)' },
+        { status: 400 }
+      )
+    }
+    insert.action_href = href || null
+  }
   if ('action_label' in body) insert.action_label = body.action_label ?? null
   if ('sort_order' in body && typeof body.sort_order === 'number') {
     if (!Number.isInteger(body.sort_order)) {

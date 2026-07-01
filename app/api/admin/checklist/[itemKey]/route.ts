@@ -73,7 +73,19 @@ export async function PATCH(
       continue
     }
 
-    // action_href, action_label — nullable string fields
+    if (field === 'action_href') {
+      const href = body.action_href != null ? String(body.action_href).trim() : null
+      if (href && !href.startsWith('https://') && !href.startsWith('http://') && !href.startsWith('/')) {
+        return NextResponse.json(
+          { error: 'action_href must be a valid URL (https:// or http://) or an internal path (/)' },
+          { status: 400 }
+        )
+      }
+      update.action_href = href || null
+      continue
+    }
+
+    // action_label — nullable string field
     update[field] = body[field] ?? null
   }
 
