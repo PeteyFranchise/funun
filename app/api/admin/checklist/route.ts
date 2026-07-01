@@ -72,6 +72,9 @@ export async function POST(request: Request) {
   if ('action_href' in body) insert.action_href = body.action_href ?? null
   if ('action_label' in body) insert.action_label = body.action_label ?? null
   if ('sort_order' in body && typeof body.sort_order === 'number') {
+    if (!Number.isInteger(body.sort_order)) {
+      return NextResponse.json({ error: 'sort_order must be an integer' }, { status: 400 })
+    }
     insert.sort_order = body.sort_order
   }
   if ('suggested_week' in body) {

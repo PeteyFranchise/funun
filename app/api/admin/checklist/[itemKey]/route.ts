@@ -59,8 +59,8 @@ export async function PATCH(
     }
 
     if (field === 'sort_order') {
-      if (typeof body.sort_order !== 'number') {
-        return NextResponse.json({ error: 'sort_order must be a number' }, { status: 400 })
+      if (typeof body.sort_order !== 'number' || !Number.isInteger(body.sort_order)) {
+        return NextResponse.json({ error: 'sort_order must be an integer' }, { status: 400 })
       }
       update.sort_order = body.sort_order
       continue
