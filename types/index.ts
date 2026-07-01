@@ -757,3 +757,45 @@ export type MergedChecklistItem = ChecklistItem & {
   completed: boolean
   completed_at: string | null
 }
+
+// ─── Curators (migration 030) ──────────────────────────────────────────
+export type CuratorPlatform = 'spotify' | 'apple_music' | 'youtube_music' | 'soundcloud' | 'blog_other'
+
+export type Curator = {
+  id: string
+  name: string
+  email: string
+  playlist_name: string | null
+  playlist_url: string | null
+  platform: CuratorPlatform
+  genre_focus: string[]
+  baseline_genre_focus: string[]
+  submission_notes: string | null
+  reach_signal: number | null
+  reach_fetched_at: string | null
+  email_valid: boolean
+  do_not_pitch: boolean
+  drift_flagged: boolean
+  flagged_inactive: boolean
+  claimed_by: string | null
+  claim_token: string | null
+  claim_token_expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type PitchStatus = 'pending' | 'accepted' | 'declined'
+
+export type PitchHistory = {
+  id: string
+  project_id: string
+  track_id: string
+  curator_id: string
+  artist_id: string
+  note: string
+  status: PitchStatus
+  response_token: string
+  decline_reason: string | null
+  sent_at: string
+  responded_at: string | null
+}
