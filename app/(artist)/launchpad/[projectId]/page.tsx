@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/Topbar'
 import { LaunchpadRoom } from '@/components/launchpad/LaunchpadRoom'
 import type { MergedChecklistItem } from '@/types'
@@ -31,9 +31,15 @@ export default async function LaunchpadProjectPage({
 
   if (!project) notFound()
 
-  // Parallel fetch: checklist item definitions + this user's progress for this project
+  // Parallel fetch: checklist item definitions + this user's progress for this project.
+  // Items are read via the service client because launchpad_checklist_items RLS is now
+  // USING(false) (migration 029, CR-03) — direct user-scoped reads return nothing. This
+  // read is safe here: project ownership is already verified above, and tip gating +
+  // admin-column stripping happen in the merge below. Progress stays on the user-scoped
+  // client (RLS: auth.uid() = user_id).
+  const service = createServiceClient()
   const [{ data: items }, { data: progress }] = await Promise.all([
-    supabase
+    service
       .from('launchpad_checklist_items')
       .select('*')
       .order('sort_order'),
