@@ -29,13 +29,7 @@ export function ChecklistItem({
       }}
     >
       {/* Checkbox — independent from row click via stopPropagation */}
-      <div
-        className="shrink-0 p-2.5"
-        onClick={e => {
-          e.stopPropagation()
-          onToggle(item.key, !item.completed)
-        }}
-      >
+      <div className="shrink-0 p-2.5">
         <button
           role="checkbox"
           aria-checked={item.completed}
