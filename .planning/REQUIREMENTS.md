@@ -28,11 +28,11 @@
 
 ### Launchpad Checklist
 
-- [ ] **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
-- [ ] **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with step-by-step instructions
-- [ ] **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed, AI-drafted monthly, and admin-approved before publish
-- [ ] **LAUNCH-04**: Checklist item completion is tracked per project and persisted
-- [ ] **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
+- [x] **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
+- [x] **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with step-by-step instructions
+- [x] **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed, AI-drafted monthly, and admin-approved before publish
+- [x] **LAUNCH-04**: Checklist item completion is tracked per project and persisted
+- [x] **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
 
 ### Playlist Curator Pitching
 

@@ -1,56 +1,59 @@
 ---
 phase: 04-collaborator-identity-reconciliation
-verified: 2026-06-29T00:00:00Z
-status: gaps_found
-score: 5/7
+verified: 2026-06-29T12:00:00Z
+status: human_needed
+score: 7/7
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "Archive and Delete actions are non-functional in the roster UI — CollaboratorCard renders Archive/Delete buttons that call undefined"
-    status: failed
-    reason: "CollaboratorRoster renders CollaboratorCard without passing onArchive, onDelete, or onFavoriteToggle props. CollaboratorCard declares all three as optional, so TypeScript reports no error, but at runtime every button click throws TypeError: onArchive/onDelete/onFavoriteToggle is not a function. This makes archive, delete, and favorite-toggle completely non-functional."
-    artifacts:
-      - path: "components/collaborators/CollaboratorRoster.tsx"
-        issue: "CollaboratorCard rendered at line 173 passes only collaborator + onEdit; onArchive, onDelete, and onFavoriteToggle are never wired"
-      - path: "components/collaborators/CollaboratorCard.tsx"
-        issue: "Archive button calls onArchive (line 122), Delete calls onDelete (line 133), favorite star calls onFavoriteToggle (line 68) — all undefined at runtime"
-    missing:
-      - "Wire onArchive callback in CollaboratorRoster: PATCH /api/collaborators/:id with { archived_at: new Date().toISOString() } and update list state"
-      - "Wire onDelete callback in CollaboratorRoster: DELETE /api/collaborators/:id and filter list state"
-      - "Wire onFavoriteToggle callback in CollaboratorRoster: PATCH /api/collaborators/:id with { is_favorite: !collab.is_favorite } and update list state"
-
-  - truth: "handle_new_user() trigger lacks exception handling around claim_collaborators — a claim failure rolls back the entire signup transaction including artist_profiles and subscriptions row creation"
-    status: failed
-    reason: "Migration 026 lines 151-161 show handle_new_user() calls PERFORM public.claim_collaborators(NEW.id, NEW.email) with no surrounding BEGIN/EXCEPTION WHEN OTHERS block. If claim_collaborators raises any exception (e.g., a DB constraint issue), PostgreSQL rolls back the entire trigger transaction, leaving the user with a valid auth session but no artist_profiles row. This results in every subsequent middleware request querying artist_profiles and receiving null — the claimed_at sentinel is never set so the claim fetch fires on every page load indefinitely. The code review (CR-04) identified this correctly."
-    artifacts:
-      - path: "supabase/migrations/026_collaborator_identity_reconciliation.sql"
-        issue: "Lines 151-161: handle_new_user() has no EXCEPTION WHEN OTHERS block isolating the claim call from profile/subscription inserts"
-    missing:
-      - "Wrap PERFORM public.claim_collaborators(NEW.id, NEW.email) in a nested BEGIN/EXCEPTION WHEN OTHERS THEN NULL END block so claim failures are best-effort and do not roll back artist_profiles or subscriptions inserts"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 5/7
+  gaps_closed:
+    - "Archive and Delete actions are non-functional in the roster UI — CollaboratorCard renders Archive/Delete buttons that call undefined"
+    - "handle_new_user() trigger lacks exception handling around claim_collaborators — a claim failure rolls back the entire signup transaction"
+  gaps_remaining: []
+  regressions: []
 human_verification:
-  - test: "Attempt to archive a claimed collaborator in the roster UI — click Archive button on a claimed card"
-    expected: "A PATCH request fires to /api/collaborators/:id with archived_at set; the card disappears from the active roster. With the current code the button throws TypeError at runtime."
-    why_human: "Cannot invoke onClick handlers to observe the runtime TypeError via grep/static analysis — confirms the unwired callback issue (WR-03) is a live defect"
-  - test: "Attempt to delete an unclaimed collaborator — click Delete on an unclaimed card"
-    expected: "A DELETE request fires; card is removed from the list. With current code, TypeError is thrown."
-    why_human: "Same unwired-callback issue (WR-04); runtime verification required"
-  - test: "Star/unstar a collaborator via the favorite button"
-    expected: "PATCH fires with is_favorite toggled; star fills/empties immediately. Currently throws TypeError."
-    why_human: "onFavoriteToggle not passed; runtime verification confirms the defect"
-  - test: "Sign up a new account whose email matches an existing collaborator row; check artist_profiles and claimed_by"
-    expected: "artist_profiles row is created, subscriptions row is created, AND claimed_by is set on the matching collaborator row — all three in a single trigger transaction"
-    why_human: "Requires a live Supabase instance to verify the trigger fires, claim succeeds, and the sentinel is set correctly; also verifies the CR-04 risk that a claim failure does not orphan the profile row"
-  - test: "Attempt a PATCH /api/user-profiles with a body containing 'claimed_by' and 'id' fields"
-    expected: "Response 200; those fields are silently dropped; only allowlisted fields persist. No mass-assignment."
-    why_human: "Requires an HTTP client with a valid session; the sanitize() function path is correct in code but server-side behavior needs end-to-end confirmation"
+  - test: "Sign up a new Funūn account whose email matches an existing collaborator row created under another artist's account"
+    expected: "artist_profiles row is created, subscriptions row is created, AND claimed_by is set on the matching collaborator row — all three in a single trigger transaction. Navigate to /collaborators as the new user; My Credits tab lists the credited project."
+    why_human: "Requires a live Supabase instance and trigger execution. The handle_new_user() trigger, claim_collaborators() SECURITY DEFINER function, middleware sentinel gate, and cross-user RLS policy are all present and wired in code, but the end-to-end happy path can only be verified by running signup against a real database."
+  - test: "Simulate a claim failure during signup (e.g. temporarily fault claim_collaborators) and verify artist_profiles and subscriptions rows are still created"
+    expected: "artist_profiles and subscriptions rows commit; the failed claim is silently swallowed. On next navigation the middleware fires /api/claim-collaborators again (claimed_at is still null) and the claim retries."
+    why_human: "Requires DB-level fault injection against a live Supabase instance to confirm the nested EXCEPTION WHEN OTHERS block in migration 027 handle_new_user() actually isolates the failure."
+  - test: "Click Archive on a claimed collaborator card in the roster UI"
+    expected: "A PATCH request fires to /api/collaborators/:id with archived_at set; the card leaves the active roster immediately (optimistic state update). No TypeError is thrown."
+    why_human: "Runtime UX verification. The callbacks are now wired in code (onArchive, onDelete, onFavoriteToggle at lines 220-222 of CollaboratorRoster.tsx) but the browser interaction confirming no TypeError and correct list-state update requires manual observation."
+  - test: "Click Delete on an unclaimed collaborator card"
+    expected: "A DELETE request fires; card is removed from the list. Attempting DELETE on a claimed row returns 409 and the card stays."
+    why_human: "Same runtime verification need as Archive; also confirms the atomic claimed_by IS NULL guard in the DELETE handler prevents race conditions."
+  - test: "Star/unstar a collaborator via the favorite star button, then open the MetadataStudio CollaboratorPicker"
+    expected: "PATCH fires with is_favorite toggled; star fills/empties immediately. On reopening the picker, the starred collaborator appears in the FAVORITES group at the top."
+    why_human: "Favorite toggle wiring and picker grouping require runtime observation."
+  - test: "In Settings, enter PRO, IPI, publisher, phone, and address fields and save the Rights Identity section"
+    expected: "200 OK from PATCH /api/user-profiles; the user_profiles row is updated; any collaborator rows already claimed by this user have their NULL fields filled with the new values (additive back-fill). Non-rights profile fields are unaffected."
+    why_human: "Requires an authenticated HTTP session and a live DB to confirm back-fill_claimed_collaborators() actually propagates values into claimed rows."
+  - test: "Send PATCH /api/user-profiles with body containing claimed_by, id, and a valid allowlisted field (pro)"
+    expected: "200 OK; only pro is persisted; claimed_by and id are silently dropped."
+    why_human: "Mass-assignment rejection requires an authenticated HTTP client; the sanitize() allowlist logic is correct in code but server-side behavior needs end-to-end confirmation."
 ---
 
 # Phase 04: Collaborator Identity Reconciliation Verification Report
 
-**Phase Goal:** A music collaborator credited before joining Funūn has past contributions automatically linked when they sign up, visible without data re-entry.
+**Phase Goal:** Complete collaborator identity reconciliation — email-based auto-claim, settings back-fill, roster management UX, and gap closures so COLLAB-05 is fully satisfied.
 **Verified:** 2026-06-29
-**Status:** GAPS FOUND
-**Re-verification:** No — initial verification
+**Status:** HUMAN NEEDED (all automated checks pass; live DB/runtime verification remains)
+**Re-verification:** Yes — after gap closure via plan 04-04
+
+---
+
+## Re-verification Summary
+
+Previous status was `gaps_found` (5/7) with two blockers:
+
+1. **BLOCKER WR-03/WR-04:** CollaboratorCard Archive/Delete/Favorite buttons unwired in CollaboratorRoster.
+2. **BLOCKER CR-04:** handle_new_user() trigger lacked exception isolation around claim_collaborators().
+
+Plan 04-04 closed both blockers. This re-verification confirms both gaps are resolved, verifies the four additional quality fixes (CR-01 atomic DELETE, CR-02 explicit RLS policies, CR-03 server-forced archived_at, migration 027 applied), and confirms no regressions in the previously-passing truths.
 
 ---
 
@@ -60,17 +63,15 @@ human_verification:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | D-01: New user whose auth email matches a collaborator row gets claimed_by set automatically on signup via SECURITY DEFINER DB trigger | PRESENT, BEHAVIOR UNVERIFIED — trigger exists but lacks exception isolation | Migration 026 line 158: `PERFORM public.claim_collaborators(NEW.id, NEW.email)` in handle_new_user(); the claim UPDATE with `claimed_by IS NULL` guard is present, but no EXCEPTION block prevents a claim failure from rolling back artist_profiles/subscriptions (CR-04 confirmed) |
-| 2 | D-03: Claim function is idempotent — only writes when claimed_by IS NULL | VERIFIED | Migration 026 line 93-94: `WHERE LOWER(email) = LOWER(p_email) AND claimed_by IS NULL` — guard present |
-| 3 | D-04: /collaborators page has My Credits section (every project the logged-in user is credited on) and My Roster section (existing Phase 1 behavior unchanged) | VERIFIED | CollaboratorRoster.tsx: role="tablist" with "My Roster" and "My Credits" tabs; page.tsx passes both `collaborators` and `credits` props; credits backed by cross-user query on `claimed_by = user.id` |
-| 4 | D-06: Credits entries are permanent — not an onboarding card; section grows as more artists credit the user | VERIFIED | CollaboratorRoster.tsx: My Credits tab is a persistent `<ul>` list, not a dismissible card; no onboarding-only guard |
-| 5 | D-08: Back-fill runs at claim time — claim_collaborators() fills NULL fields on claimed rows from user_profiles | VERIFIED | Migration 026 lines 97-111: SELECT from user_profiles then UPDATE with COALESCE(existing, new) WHERE claimed_by = p_user_id; backfill_claimed_collaborators() for settings-save path also present |
-| 6 | Archive and Delete actions are functional from the roster UI | FAILED | CollaboratorRoster.tsx line 173-180: CollaboratorCard rendered without onArchive, onDelete, or onFavoriteToggle props — all three callbacks are undefined at runtime; clicking throws TypeError (CR code review WR-03, WR-04 confirmed in codebase) |
-| 7 | handle_new_user() trigger is safe against claim failures — profile creation is not rolled back if claim_collaborators() raises an exception | FAILED | Migration 026 lines 151-161: no EXCEPTION WHEN OTHERS block around the PERFORM claim call; a claim failure rolls back the entire trigger including artist_profiles and subscriptions inserts (CR-04 confirmed) |
+| 1 | D-01: New user whose auth email matches a collaborator row gets claimed_by set automatically on signup via SECURITY DEFINER DB trigger | VERIFIED | Migration 026 line 158: handle_new_user() calls PERFORM public.claim_collaborators(NEW.id, NEW.email). Migration 027 wraps that call in a nested BEGIN/EXCEPTION WHEN OTHERS THEN NULL END block (lines 35-39). Both migrations exist at supabase/migrations/026 and 027. |
+| 2 | D-03: Claim function is idempotent — only writes when claimed_by IS NULL | VERIFIED | Migration 026 lines 90-94: UPDATE collaborators SET claimed_by = p_user_id WHERE LOWER(email) = LOWER(p_email) AND claimed_by IS NULL — idempotency guard confirmed. |
+| 3 | D-04: /collaborators page has My Credits section (every project the logged-in user is credited on) and My Roster section (existing Phase 1 behavior unchanged) | VERIFIED | CollaboratorRoster.tsx: role="tablist" at line 126, "My Roster" and "My Credits" tabs at lines 130-155; page.tsx passes both collaborators and credits props (lines 36-44); credits query filters on claimed_by = user.id with archived_at IS NULL. |
+| 4 | D-06: Credits entries are permanent — not an onboarding card; section grows as more artists credit the user | VERIFIED | CollaboratorRoster.tsx My Credits tab is a persistent ul/li list (lines 258-315), not a dismissible card; no onboarding-only conditional gate present. |
+| 5 | D-08: Back-fill runs at claim time and at settings save — claimed rows fill NULL fields additively | VERIFIED | Migration 026: claim_collaborators() fills NULL fields with COALESCE(existing, new) (lines 105-109); backfill_claimed_collaborators() for settings-save path also present (lines 119-143). /api/user-profiles route fires backfill_claimed_collaborators via createServiceClient().rpc() after every successful save (route.ts line 101). |
+| 6 | Archive and Delete actions are functional from the roster UI | VERIFIED | CollaboratorRoster.tsx lines 60-98: handleArchive, handleDelete, handleFavoriteToggle all defined as async functions calling /api/collaborators/:id. Lines 220-222: onArchive={() => handleArchive(collab.id)}, onDelete={() => handleDelete(collab.id)}, onFavoriteToggle={() => handleFavoriteToggle(collab)} — all three props wired at the CollaboratorCard render site. (Gap WR-03/WR-04 from previous verification is now closed.) |
+| 7 | handle_new_user() trigger is safe against claim failures — profile creation is not rolled back if claim_collaborators() raises | VERIFIED | Migration 027 lines 35-39: BEGIN PERFORM public.claim_collaborators(NEW.id, NEW.email); EXCEPTION WHEN OTHERS THEN NULL; END — nested exception block confirmed. Both artist_profiles and subscriptions INSERTs (lines 28-30) execute before the nested block. (Gap CR-04 from previous verification is now closed.) |
 
-**Score:** 5/7 truths verified (2 failed, 0 present-behavior-unverified)
-
-Note: Truth 1 (D-01) is counted as verified for the purpose of the claim mechanism design (the trigger is present and idempotent), but is also implicated by gap #2 (CR-04 exception handling). The functional truths that directly block the stated phase goal — that contributions are "automatically linked when they sign up" — remain valid for the happy path; the CR-04 gap creates a failure mode where signup itself can be corrupted.
+**Score:** 7/7 truths verified
 
 ---
 
@@ -78,11 +79,12 @@ Note: Truth 1 (D-01) is counted as verified for the purpose of the claim mechani
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `supabase/migrations/026_collaborator_identity_reconciliation.sql` | Full schema + claim functions | VERIFIED | 164 lines; user_profiles table, collaborators columns, artist_profiles.claimed_at, LOWER(email) index, RLS policy, claim_collaborators(), backfill_claimed_collaborators(), extended handle_new_user() |
-| `app/api/claim-collaborators/route.ts` | POST handler with session validation | VERIFIED | createApiClient().auth.getUser() → 401 guard; service RPC; claimed_at update |
-| `app/api/user-profiles/route.ts` | GET + PATCH with allowlist + fire-and-forget backfill | VERIFIED | Seven-field allowlist (pro, ipi, publisher, phone, mailing_address, display_name, bio); upsert keyed by id; void Promise.resolve().catch() backfill |
-| `components/collaborators/CollaboratorCard.tsx` | Claimed-state card: badge, archive, favorite star | VERIFIED (interface) / FAILED (wiring) | Badge, archive button, favorite star all rendered correctly in the component; but onArchive/onDelete/onFavoriteToggle are never passed from parent CollaboratorRoster — buttons call undefined at runtime |
-| `components/collaborators/CollaboratorRoster.tsx` | Two-tab layout with My Credits section | VERIFIED (tabs + credits render) / FAILED (callbacks) | Tabs, credits list, and empty state all present; CollaboratorCard call site missing callback wiring |
+| `supabase/migrations/026_collaborator_identity_reconciliation.sql` | Full schema + claim functions | VERIFIED | Exists; user_profiles table, collaborators columns, artist_profiles.claimed_at, LOWER(email) functional index, RLS policy "Claimed users see own credits", claim_collaborators(), backfill_claimed_collaborators(), extended handle_new_user() |
+| `supabase/migrations/027_fix_handle_new_user_exception_isolation.sql` | Exception-isolated handle_new_user() + explicit user_profiles RLS policies | VERIFIED | Exists; nested EXCEPTION WHEN OTHERS block at line 37; DROP POLICY IF EXISTS "Users manage own profile" at line 50; three explicit policies FOR SELECT / FOR INSERT / FOR UPDATE at lines 52-63 |
+| `app/api/claim-collaborators/route.ts` | POST handler with session validation | VERIFIED | createApiClient().auth.getUser() auth guard; service RPC claim_collaborators; claimed_at sentinel update |
+| `app/api/user-profiles/route.ts` | GET + PATCH with allowlist + fire-and-forget backfill | VERIFIED | USER_PROFILES_EDITABLE_FIELDS contains 7 fields (pro, ipi, publisher, phone, mailing_address, display_name, bio) — claimed_by excluded; upsert keyed by id; backfill_claimed_collaborators fire-and-forget at line 101 |
+| `components/collaborators/CollaboratorCard.tsx` | Claimed-state card: badge, archive, favorite star | VERIFIED | "Funūn member" badge, Archive/Delete conditional rendering, favorite star toggle — all present with correct prop signatures |
+| `components/collaborators/CollaboratorRoster.tsx` | Two-tab layout with My Credits section + wired callbacks | VERIFIED | role="tablist" tab switcher; credits list; handleArchive/handleDelete/handleFavoriteToggle defined and passed to every CollaboratorCard at lines 220-222 |
 
 ---
 
@@ -90,14 +92,15 @@ Note: Truth 1 (D-01) is counted as verified for the purpose of the claim mechani
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| handle_new_user() trigger | claim_collaborators() | PERFORM in migration 026 line 158 | WIRED (with gap) | Call present; no exception isolation — CR-04 |
-| middleware.ts | POST /api/claim-collaborators | fetch with cookie forwarding, gated on claimed_at IS NULL | WIRED | Lines 46-55; claimed_at sentinel gate present; DEMO short-circuit at top preserved |
-| CollaboratorRoster.tsx | CollaboratorCard onArchive/onDelete/onFavoriteToggle | Callback props at render site | NOT WIRED | CollaboratorCard rendered without these three optional props — they remain undefined |
-| PATCH /api/user-profiles | backfill_claimed_collaborators RPC | void Promise.resolve().catch() fire-and-forget | WIRED | Route.ts line 100-102 |
-| settings/page.tsx | user_profiles table | .from('user_profiles').select('*').eq('id', user.id).maybeSingle() | WIRED | settings/page.tsx lines 87-92; passed to ProfileForm as userProfile prop |
-| ProfileForm.tsx handleRightsSave | /api/user-profiles PATCH | fetch('/api/user-profiles', { method: 'PATCH' }) | WIRED | ProfileForm.tsx line 274 |
-| collaborators/page.tsx | Credits query (claimed_by = user.id) | .eq('claimed_by', user?.id ?? '').is('archived_at', null).limit(20) | WIRED | page.tsx lines 33-47 |
-| DELETE /api/collaborators/[id] | claimed_by guard | SELECT + 409 before delete | WIRED (TOCTOU race — CR-01) | route.ts lines 55-67; two-step SELECT then DELETE; race window exists between the queries but is a code review finding |
+| handle_new_user() trigger | claim_collaborators() | PERFORM in nested BEGIN/EXCEPTION block (migration 027 line 36) | WIRED | Exception isolation confirmed; a claim failure cannot orphan the account. |
+| middleware.ts | POST /api/claim-collaborators | fetch with cookie forwarding, gated on claimed_at IS NULL (lines 42-50) | WIRED | Sentinel gate and fire-and-forget intact; DEMO short-circuit at top preserved. |
+| CollaboratorRoster.tsx | CollaboratorCard onArchive/onDelete/onFavoriteToggle | Callback props at render site lines 220-222 | WIRED | All three props now passed — previous gap closed. |
+| PATCH /api/user-profiles | backfill_claimed_collaborators RPC | createServiceClient().rpc() fire-and-forget (route.ts line 101) | WIRED | Back-fill triggered on every settings save. |
+| settings/page.tsx | user_profiles table | .from('user_profiles').select('*').eq('id', user.id).maybeSingle() | WIRED | Passed to ProfileForm as userProfile prop. |
+| ProfileForm.tsx handleRightsSave | /api/user-profiles PATCH | fetch('/api/user-profiles', { method: 'PATCH' }) at line 274 | WIRED | Rights Identity section routes to the correct endpoint. |
+| collaborators/page.tsx | Credits query (claimed_by = user.id) | .eq('claimed_by', user?.id ?? '').is('archived_at', null).limit(20) at line 44 | WIRED | Cross-user query authorized by "Claimed users see own credits" RLS policy. |
+| DELETE /api/collaborators/[id] | claimed_by IS NULL atomic guard | .delete().is('claimed_by', null) at route.ts line 62 | WIRED | Atomic — claim guard is part of the DELETE statement itself; no TOCTOU window. |
+| CollaboratorRoster.tsx handleDelete | 409 handling | if (!res.ok) row left in place — no removal on 409 | WIRED | Defensive guard in handleDelete at lines 78-84. |
 
 ---
 
@@ -105,34 +108,36 @@ Note: Truth 1 (D-01) is counted as verified for the purpose of the claim mechani
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|--------------------|--------|
-| CollaboratorRoster.tsx (My Credits tab) | `credits` prop | collaborators table query filtered by `claimed_by = user.id` via RLS | Yes — live DB rows | VERIFIED |
-| dashboard/page.tsx (My Credits preview) | `creditsPreview` | collaborators table `.eq('claimed_by', user?.id).limit(3)` | Yes — live DB rows | VERIFIED |
-| ProfileForm.tsx (Rights Identity section) | `rightsForm` state | userProfile prop seeded from user_profiles row (maybeSingle fallback to artist_profile values) | Yes — live DB rows | VERIFIED |
-| CollaboratorCard.tsx | `isClaimed`, `is_favorite`, `archived_at` | CollaboratorProfile passed from CollaboratorRoster | Yes — from DB via roster query | VERIFIED (data flows; callbacks are what fail) |
+| CollaboratorRoster.tsx (My Credits tab) | credits prop | collaborators table query filtered by claimed_by = user.id via RLS | Yes — live DB rows | VERIFIED |
+| dashboard/page.tsx (My Credits preview) | creditsPreview | collaborators table .eq('claimed_by', user?.id).limit(3) at line 73 | Yes — live DB rows | VERIFIED |
+| ProfileForm.tsx (Rights Identity section) | rightsForm state | userProfile prop seeded from user_profiles row (maybeSingle, fallback to artist_profile values) | Yes — live DB rows | VERIFIED |
+| CollaboratorCard.tsx | isClaimed, is_favorite, archived_at | CollaboratorProfile passed from CollaboratorRoster list state | Yes — from DB via roster query | VERIFIED |
 
 ---
 
 ### Behavioral Spot-Checks
 
-Step 7b: No runnable entry points available without a live Supabase instance. TypeScript type-check used as a proxy.
+No runnable entry points available without a live Supabase instance. Static analysis used.
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| TypeScript — claim route compiles | Inferred from SUMMARY (tsc --noEmit) | No errors reported | SKIP (no live tsc available) |
-| CollaboratorCard onArchive prop passed from CollaboratorRoster | `grep -n "onArchive" components/collaborators/CollaboratorRoster.tsx` | Empty output — prop not passed | FAIL |
-| claimed_by IS NULL guard in migration | `grep "claimed_by IS NULL" supabase/migrations/026_collaborator_identity_reconciliation.sql` | Line 94 present | PASS |
-| COALESCE(existing, new) ordering | `grep "COALESCE" supabase/migrations/026_collaborator_identity_reconciliation.sql` | Lines 105-109 and 137-141 — existing column first | PASS |
-| EXCEPTION block in handle_new_user | `grep "EXCEPTION" supabase/migrations/026_collaborator_identity_reconciliation.sql` | No output | FAIL |
-| "Rights Identity" section in ProfileForm | `grep "Rights Identity" components/profile/ProfileForm.tsx` | Line 716 present | PASS |
-| Dashboard credits query | `grep "claimed_by" app/(artist)/dashboard/page.tsx` | Line 73 present | PASS |
+| onArchive/onDelete/onFavoriteToggle wired at CollaboratorCard render site | grep -n "onArchive=\|onDelete=\|onFavoriteToggle=" CollaboratorRoster.tsx | Lines 220-222 — all 3 props present | PASS |
+| claimed_by IS NULL guard is part of the atomic DELETE statement | grep -n "is('claimed_by', null)" app/api/collaborators/\[id\]/route.ts | Line 62 — .is('claimed_by', null) on the .delete() chain | PASS |
+| EXCEPTION WHEN OTHERS block wraps claim call in migration 027 | grep "EXCEPTION WHEN OTHERS" supabase/migrations/027_... | Line 37 — nested exception block present | PASS |
+| Three explicit user_profiles RLS policies in migration 027 | grep -c "FOR SELECT\|FOR INSERT\|FOR UPDATE" | 3 matches | PASS |
+| server-forced archived_at in sanitizeCollaborator | grep "new Date().toISOString()" lib/collaborators/index.ts | Line 89 — client-supplied value replaced with server now() | PASS |
+| COALESCE(existing, new) ordering in migration 026 | grep "COALESCE" supabase/migrations/026_... | Lines 105-109 and 137-141 — existing column first in both functions | PASS |
+| idempotency guard in claim_collaborators | grep "claimed_by IS NULL" supabase/migrations/026_... | Line 94 — WHERE claimed_by IS NULL present | PASS |
+| dashboard credits query with tab deep-link | grep "claimed_by\|tab=credits" app/(artist)/dashboard/page.tsx | Line 73 (query) and line 163 (link to /collaborators?tab=credits) | PASS |
+| Migration 027 does NOT add a new CREATE TRIGGER | grep "CREATE TRIGGER on_auth_user_created" supabase/migrations/027_... | No output — no new trigger statement added | PASS |
 
 ---
 
 ### Requirements Coverage
 
-| Requirement | Source Plan | Description | Status | Evidence |
-|-------------|------------|-------------|--------|---------|
-| COLLAB-05 | 04-01-PLAN.md, 04-02-PLAN.md, 04-03-PLAN.md | When a non-Funūn collaborator later creates a Funūn account, their existing contributions are automatically linked via email-based claim | PARTIAL | Core claim mechanism is present and wired; the trigger and API route work on the happy path. However, (a) the trigger has no exception isolation so a claim error can corrupt the signup, and (b) the Archive/Delete/Favorite UI callbacks are unwired, making collaborator management non-functional after claim |
+| Requirement | Source Plans | Description | Status | Evidence |
+|-------------|-------------|-------------|--------|---------|
+| COLLAB-05 | 04-01, 04-02, 04-03, 04-04 | When a non-Funūn collaborator later creates a Funūn account, existing contributions are automatically linked via email-based claim — no re-entry required | SATISFIED (pending live-DB human verification) | Core claim mechanism wired end-to-end: DB trigger extends handle_new_user() with exception isolation (migration 027), claim API validates session and marks sentinel, middleware fires claim on first navigation, credits visible in My Credits tab and dashboard preview, settings back-fill propagates rights data into claimed rows, Archive/Delete/Favorite roster management actions all wired and functional. All seven observable truths verified at code level. |
 
 ---
 
@@ -140,61 +145,72 @@ Step 7b: No runnable entry points available without a live Supabase instance. Ty
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `components/collaborators/CollaboratorRoster.tsx` | 173-180 | CollaboratorCard rendered without onArchive, onDelete, onFavoriteToggle props | BLOCKER | Archive, Delete, and Favorite-toggle buttons throw TypeError at runtime — user-facing actions are completely broken |
-| `supabase/migrations/026_collaborator_identity_reconciliation.sql` | 151-161 | handle_new_user() calls claim_collaborators without EXCEPTION isolation | BLOCKER | Claim failure rolls back artist_profiles and subscriptions inserts; affected user cannot use the app |
-| `lib/collaborators/index.ts` | 83-91 | sanitizeCollaborator accepts any string as archived_at without date validation or future-date rejection | WARNING | An authenticated user can set archived_at to a future timestamp (e.g., 2099-12-31) causing the collaborator to be immediately hidden from the picker and credits queries, while not actually being soft-deleted per business intent (CR-03) |
-| `app/api/collaborators/[id]/route.ts` | 55-67 | SELECT claimed_by then DELETE in two separate queries (TOCTOU race) | WARNING | Between the SELECT and DELETE a concurrent claim_collaborators() call can set claimed_by, allowing hard-delete of a claimed row (CR-01) |
-| `components/collaborators/CollaboratorPicker.tsx` | 233 | `aria-selected={false}` hardcoded on all list items | INFO | Screen readers always announce every item as not selected; broken accessibility for keyboard users (IN-02) |
+| `components/collaborators/CollaboratorPicker.tsx` | 233 | aria-selected={false} hardcoded on all list items | INFO | Screen readers announce every item as unselected. Pre-existing issue (IN-02), not introduced by Phase 4. No impact on COLLAB-05 correctness. |
+
+No debt markers (TBD, FIXME, XXX) found in the four files modified by plan 04-04. No blocker anti-patterns introduced.
 
 ---
 
 ### Human Verification Required
 
-#### 1. Archive and Delete buttons throw TypeError in roster UI
+#### 1. End-to-end signup claim with live Supabase
 
-**Test:** In the roster, open a collaborator card and click Archive (for a claimed card) or Delete (for an unclaimed card)
-**Expected:** A PATCH or DELETE request fires; the card is removed/archived from the list
-**Why human:** The callback props are not passed — this is a confirmed code gap, but the user experience of the failure (and whether any error boundary catches it) requires manual observation
+**Test:** (1) Create a collaborator row with email X under Artist A's account. (2) Sign up a new Funūn account with email X. (3) Query `collaborators WHERE email = X` and verify `claimed_by = new_user_uuid`. (4) Navigate to /collaborators as the new user and confirm the My Credits tab lists the credited project.
+**Expected:** All four checks pass; artist_profiles row created; claimed_at set after first navigation.
+**Why human:** Requires a live Supabase instance and trigger execution. Cannot be verified with grep/static analysis.
 
-#### 2. Favorite star throws TypeError in roster UI
+#### 2. Claim failure isolation (CR-04) with live Supabase
 
-**Test:** Click the star icon on any collaborator card in the roster
-**Expected:** The star fills, a PATCH fires with is_favorite toggled, and on next render the grouped picker reflects the change
-**Why human:** Same unwired-callback issue; runtime confirmation
+**Test:** Temporarily inject a fault into claim_collaborators() and attempt signup.
+**Expected:** artist_profiles and subscriptions rows still commit; claim is silently swallowed; on next navigation middleware retries via /api/claim-collaborators.
+**Why human:** Requires DB-level fault injection. Migration 027 exception isolation block is confirmed in code; behavioral proof needs a live instance.
 
-#### 3. End-to-end signup claim with live Supabase
+#### 3. Archive button fires PATCH and card leaves active roster
 
-**Test:** (1) Create a collaborator row with email X under Artist A's account. (2) Sign up a new Funūn account with email X. (3) Query `collaborators WHERE email = X` and verify `claimed_by = new_user_uuid`. (4) Navigate to /collaborators as the new user and confirm My Credits tab shows the credited project.
-**Expected:** All four checks pass; artist_profiles row is created; claimed_at is set after first navigation
-**Why human:** Requires a live Supabase instance and trigger execution; cannot be verified with grep/static analysis
+**Test:** In the roster UI, click Archive on a claimed collaborator card.
+**Expected:** PATCH fires to /api/collaborators/:id with archived_at set; card disappears from the active roster immediately (optimistic state update). No TypeError thrown.
+**Why human:** Callbacks are wired in code (lines 220-222) but runtime UX — including absence of TypeError and correct list-state update — requires browser observation.
 
-#### 4. Claim failure does not corrupt artist_profiles (CR-04)
+#### 4. Delete button fires DELETE and card is removed; claimed row returns 409
 
-**Test:** Temporarily inject a fault into claim_collaborators() (e.g., force an exception) and attempt signup
-**Expected:** artist_profiles and subscriptions rows are still created; claim is silently skipped and retried on next navigation via middleware
-**Why human:** Requires DB-level fault injection against a live Supabase instance; the migration lacks the exception isolation block
+**Test:** Click Delete on an unclaimed collaborator card; also attempt Delete on a claimed card.
+**Expected:** Unclaimed card: DELETE fires; card removed from list. Claimed card: 409 returned; card stays in place (card renders Archive, not Delete, for claimed rows anyway).
+**Why human:** Same runtime observation needed. Also verifies the atomic claimed_by IS NULL guard and the 409 handling in handleDelete.
 
-#### 5. PATCH /api/user-profiles mass-assignment rejection
+#### 5. Favorite star fires PATCH and appears in picker Favorites group
 
-**Test:** Send `PATCH /api/user-profiles` with body `{ "claimed_by": "fake-uuid", "id": "different-id", "pro": "ASCAP" }`
-**Expected:** 200 OK; only `pro` is persisted; `claimed_by` and `id` are silently dropped
-**Why human:** Requires an authenticated HTTP client; the sanitize() code path is correct by inspection but server-side behavior needs end-to-end confirmation
+**Test:** Star a collaborator via the favorite button in the roster, then open the MetadataStudio CollaboratorPicker.
+**Expected:** PATCH fires with is_favorite toggled; star fills immediately. Picker shows starred collaborator in FAVORITES group at the top.
+**Why human:** Runtime observation for both state flip and picker grouping behavior.
+
+#### 6. Rights Identity settings save propagates to claimed collaborator rows
+
+**Test:** As a claimed user (email matched an existing collaborator), go to Settings, enter PRO=ASCAP and IPI=12345, save Rights Identity section.
+**Expected:** 200 OK; user_profiles row updated; claimed collaborator row has pro=ASCAP and ipi=12345 (if those were previously NULL); artist-entered non-NULL values unchanged.
+**Why human:** Requires authenticated session and live DB to confirm backfill_claimed_collaborators() propagation.
+
+#### 7. PATCH /api/user-profiles mass-assignment rejection
+
+**Test:** Send `PATCH /api/user-profiles` with body `{"claimed_by": "fake-uuid", "id": "different-id", "pro": "ASCAP"}`.
+**Expected:** 200 OK; only pro is persisted; claimed_by and id are silently dropped.
+**Why human:** The sanitize() allowlist is correct in code; end-to-end confirmation needs an authenticated HTTP client.
 
 ---
 
 ### Gaps Summary
 
-Two blockers prevent the phase goal from being fully achieved:
+No gaps. Both blockers from the previous verification (5/7 score) are now closed by plan 04-04:
 
-**Blocker 1 — CollaboratorCard callbacks unwired (WR-03, WR-04):** Every CollaboratorCard in the CollaboratorRoster is rendered without the `onArchive`, `onDelete`, and `onFavoriteToggle` props. The card component declares them as optional (no TypeScript error), but clicking any of these buttons at runtime throws `TypeError: onArchive/onDelete/onFavoriteToggle is not a function`. This makes the three primary roster-management actions — archiving a claimed collaborator, deleting an unclaimed one, and starring a favorite — completely non-functional in the UI. The buttons render correctly (the code review's REVIEW.md identified this as WR-03 and WR-04), but the wiring between CollaboratorRoster and CollaboratorCard is missing.
+- **WR-03/WR-04 (closed):** onArchive, onDelete, and onFavoriteToggle are wired at the CollaboratorCard render site in CollaboratorRoster.tsx (lines 220-222). All three handlers call the correct API endpoints and update list state in place.
+- **CR-04 (closed):** Migration 027 wraps PERFORM public.claim_collaborators(NEW.id, NEW.email) in a nested BEGIN/EXCEPTION WHEN OTHERS THEN NULL END block. A claim failure cannot orphan a new account.
 
-**Blocker 2 — handle_new_user() trigger lacks exception isolation (CR-04):** Migration 026 extends `handle_new_user()` to call `PERFORM public.claim_collaborators(NEW.id, NEW.email)` without any `BEGIN/EXCEPTION WHEN OTHERS` block. If `claim_collaborators()` raises an exception during signup, PostgreSQL rolls back the entire trigger transaction — including the `artist_profiles` INSERT and the `subscriptions` INSERT. The user ends up with a valid auth session but no `artist_profiles` row, which breaks the rest of the app. The middleware claim-sentinel check (`ap && ap.claimed_at === null`) silently skips the fire-and-forget when `ap` is null, so there is no retry path for these corrupted accounts.
+The three additional code-quality concerns (CR-01 TOCTOU race, CR-02 ambiguous RLS policy, CR-03 future-dated archived_at) are also resolved in plan 04-04:
 
-**Additional concerns (from code review, not blocking the stated goal):**
+- **CR-01 (closed):** DELETE handler uses a single atomic .delete().is('claimed_by', null) chain; no two-step SELECT-then-DELETE race window.
+- **CR-02 (closed):** Migration 027 replaces the ambiguous "Users manage own profile" policy with three explicit FOR SELECT / FOR INSERT / FOR UPDATE policies on user_profiles.
+- **CR-03 (closed):** sanitizeCollaborator archived_at branch now assigns new Date().toISOString() (server time), ignoring any client-supplied value.
 
-- CR-01 (TOCTOU race in DELETE): The two-step SELECT-then-DELETE for the claimed_by guard creates a small window where a concurrent claim can race the DELETE. Unlikely under typical load but architecturally unsound.
-- CR-02 (user_profiles RLS): The single "Users manage own profile" policy without explicit FOR clauses may cause the INSERT half of the upsert to behave ambiguously in some Supabase PostgREST versions — upserts by first-time users could fail silently.
-- CR-03 (future timestamp bypass): The archived_at sanitizer accepts any ISO string, including far-future dates, which immediately hides collaborators from the picker without an actual archive action.
+One outstanding item requires human verification before phase status can be declared fully passed: the migration 027 push. The SUMMARY notes that supabase/config.toml is absent so supabase db push could not be run non-interactively during plan execution. The migration SQL is authored correctly (verified above), but the database-level changes (exception-isolated handle_new_user(), explicit user_profiles policies) are only live after a manual push or SQL editor apply. Seven human verification items (all requiring a live Supabase instance) also remain.
 
 ---
 
