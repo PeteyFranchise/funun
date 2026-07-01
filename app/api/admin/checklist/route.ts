@@ -127,6 +127,11 @@ export async function PATCH(request: Request) {
         { status: 400 }
       )
     }
+    // T-05-08: validate each key in the reorder array, consistent with single-item
+    // PATCH/DELETE handlers that validate itemKey before using it in a WHERE clause.
+    if (!KEY_REGEX.test((entry as { key: string }).key)) {
+      return NextResponse.json({ error: 'Invalid item key in order array' }, { status: 400 })
+    }
   }
 
   const orderEntries = body.order as Array<{ key: string; sort_order: number }>
