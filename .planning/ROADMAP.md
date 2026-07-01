@@ -225,7 +225,26 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `curators` (directory + `email_valid`), `pitch_history` (per-project pitch log). RLS enabled immediately after each CREATE TABLE.
 **Infrastructure prerequisite**: `pitch.funun.studio` subdomain with DKIM/SPF/DMARC and ~2-week warmup must be live before any pitch email sends (keeps cold outreach off the transactional `funun.studio` domain).
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(foundation)*
+
+- [ ] 06-01-PLAN.md — Migration 030 (curators + pitch_history tables, RLS, uniq_curator_track_pitch, handle_new_user curator branch) + Curator/PitchHistory types + Playlist Curator role + svix install (PITCH-01 through PITCH-08 foundation)
+
+**Wave 2** *(blocked on Wave 1 DB)*
+
+- [ ] 06-02-PLAN.md — Admin curator CRUD (/admin/curators) + reach fetchers + drift utility + weekly Vercel cron + curator schema/allowlists (PITCH-04, PITCH-06, PITCH-07)
+
+**Wave 3** *(blocked on Wave 1)*
+
+- [ ] 06-03-PLAN.md — Artist-facing /curators directory (genre + platform filter) + response-rate helper + CuratorCard/CuratorDirectory (PITCH-01, PITCH-04)
+- [ ] 06-04-PLAN.md — Pitch composer in launchpad + AI 150-word draft + send route (3-gate server re-validation + duplicate 409) + pitch history + tokens + email from-override (PITCH-02, PITCH-03)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 06-05-PLAN.md — Curator claim flow (72h token → curator-role magic-link account) + curator self-serve portal (allowlist PATCH, own layout gate) (PITCH-05)
+- [ ] 06-06-PLAN.md — Resend bounce webhook (svix-verified, email_valid=false) + token accept/decline/unsubscribe routes + public pages + artist notifications (PITCH-06)
+
 **UI hint**: yes
 
 ### Phase 7: Social Campaign Planner
@@ -251,5 +270,5 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
-| 6. Playlist Curator Pitching | 0/0 | Not started | - |
+| 6. Playlist Curator Pitching | 0/6 | Planned | - |
 | 7. Social Campaign Planner | 0/0 | Not started | - |
