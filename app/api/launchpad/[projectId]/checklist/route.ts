@@ -1,17 +1,25 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 
 // GET /api/launchpad/[projectId]/checklist
 // Returns all checklist items ordered by sort_order, merged with the
 // authenticated user's per-project completion state. Tips are gated:
 // tip_body is null unless tip_approved is true (LAUNCH-03). tip_draft,
 // tip_drafted_at, and author are never included in artist-facing responses.
+//
+// LAUNCH-03 / CR-03: launchpad_checklist_items RLS is set to USING(false)
+// so authenticated users cannot SELECT the base table directly (including
+// tip_draft and unapproved tip_body). The API reads items via the service-role
+// client (which bypasses RLS) after completing its own auth + ownership check,
+// then gates tip fields in code before returning the response.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
 
+  // Auth check via user-scoped client — confirms the caller is authenticated
+  // and owns the requested project before we issue any service-client reads.
   const supabase = createApiClient()
   const {
     data: { user },
@@ -27,9 +35,14 @@ export async function GET(
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Use the service-role client for checklist items so that the RLS policy
+  // USING(false) on launchpad_checklist_items does not block the read.
+  // Auth and ownership were already verified above.
+  const service = createServiceClient()
+
   // Parallel fetch: all items in sort order + this user's progress for this project
   const [{ data: items }, { data: progress }] = await Promise.all([
-    supabase.from('launchpad_checklist_items').select('*').order('sort_order'),
+    service.from('launchpad_checklist_items').select('*').order('sort_order'),
     supabase
       .from('launchpad_progress')
       .select('item_key, completed, completed_at')
