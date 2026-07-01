@@ -55,6 +55,7 @@ export const INDUSTRY_ROLE_GROUPS: IndustryRoleGroup[] = [
       { slug: 'publisher',         label: 'Publisher' },
       { slug: 'tour_manager',      label: 'Tour Manager' },
       { slug: 'music_supervisor',  label: 'Music Supervisor' },
+      { slug: 'playlist_curator',  label: 'Playlist Curator' },
     ],
   },
 ]
