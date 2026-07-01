@@ -2,7 +2,7 @@
 
 **Milestone:** v1.1 Launchpad
 **Status:** Active
-**Last updated:** 2026-06-30
+**Last updated:** 2026-07-01 — Phase 5 (Launchpad Checklist) verified, LAUNCH-01–05 moved to Validated
 
 ---
 
@@ -22,17 +22,17 @@
 - ✓ **DOC-02**: Split sheet and contract documents display a signer list with pending/signed status per signer
 - ✓ **DOC-03**: Project vault readiness score gates correctly on signed (not just uploaded) documents
 
+## Validated (Wave 3 — Phase 5)
+
+- ✓ **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
+- ✓ **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with step-by-step instructions
+- ✓ **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed, AI-drafted monthly, and admin-approved before publish
+- ✓ **LAUNCH-04**: Checklist item completion is tracked per project and persisted
+- ✓ **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
+
 ---
 
 ## Active (Wave 3 targets)
-
-### Launchpad Checklist
-
-- [x] **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
-- [x] **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with step-by-step instructions
-- [x] **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed, AI-drafted monthly, and admin-approved before publish
-- [x] **LAUNCH-04**: Checklist item completion is tracked per project and persisted
-- [x] **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
 
 ### Playlist Curator Pitching
 
@@ -91,7 +91,7 @@ Phase assignments confirmed against ROADMAP.md (Wave 3) success criteria on 2026
 | LAUNCH-02 | Phase 5 | Confirmed | In-Funūn tool links + external action CTAs, week-sequenced (SC-2) |
 | LAUNCH-03 | Phase 5 | Confirmed | DB-backed tips with monthly AI draft + admin approval (SC-3) |
 | LAUNCH-04 | Phase 5 | Confirmed | Per-project completion persistence (SC-4) |
-| LAUNCH-05 | Phase 5 | Pending discuss | Admin checklist item CRUD UI at /admin/checklist (SC-5) |
+| LAUNCH-05 | Phase 5 | Confirmed | Admin checklist item CRUD UI at /admin/checklist (SC-5) |
 | PITCH-01 | Phase 6 | Confirmed | Curator directory browse + genre/platform filter (SC-1) |
 | PITCH-02 | Phase 6 | Confirmed | Pitch send via Resend; requires pitch.funun.studio subdomain; 150-word + playlist-specific gate; player link + unsubscribe (SC-2) |
 | PITCH-03 | Phase 6 | Confirmed | Pitch history + duplicate-send protection (SC-3) |

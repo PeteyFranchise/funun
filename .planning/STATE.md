@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Launchpad
-current_phase: 05
-current_phase_name: launchpad-checklist
-status: verifying
-stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-07-01T00:21:05.886Z"
-last_activity: 2026-06-30
-last_activity_desc: Phase 05 execution started
+current_phase: 6
+current_phase_name: Playlist Curator Pitching
+status: planning
+stopped_at: Phase 5 complete, ready to plan Phase 6
+last_updated: "2026-07-01T04:12:03.319Z"
+last_activity: 2026-07-01
+last_activity_desc: Phase 05 complete, transitioned to Phase 6
 progress:
   total_phases: 7
   completed_phases: 5
@@ -21,23 +21,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-30)
+See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** An artist finishes a release and immediately knows their next moves — who to pitch, what to post, and when — without leaving Funūn. The Launchpad turns release day into a 6-week playbook.
-**Current focus:** Phase 05 — launchpad-checklist
+**Current focus:** Phase 06 — playlist-curator-pitching
 
 ## Current Position
 
-Phase: 05 (launchpad-checklist) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-06-30 — Phase 05 execution started
+Phase: 6 — Playlist Curator Pitching
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-01 — Phase 05 complete, transitioned to Phase 6
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0 (Wave 3)
+- Total plans completed: 6 (Wave 3)
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -45,7 +45,7 @@ Last activity: 2026-06-30 — Phase 05 execution started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 05 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -76,8 +76,8 @@ Recent decisions affecting current work:
 - Wave 3 research: checklist items carry a `suggested_week` field to sequence the post-release Spotify algorithmic window (weeks 1–4)
 - Wave 3 research: curator claim is explicit link-click only (do NOT wire into `handle_new_user()`), unlike Wave 2 collaborator auto-claim; 32-byte token, 72-hour expiry, one-time use
 - Wave 3 research: AI calendar is a batch (non-streaming) Claude call; release data isolated in `<release_data>` block; platform limits hard-coded in system prompt
-- [Phase ?]: admin gate helper centralized
-- [Phase ?]: Admin pages query Supabase directly via createServiceClient() (not self-fetching API routes)
+- [Phase 5]: admin gate helper centralized in `lib/admin/gate.ts` — every `/api/admin/*` route re-verifies independently, not just the `(admin)` layout redirect
+- [Phase 5]: Admin pages query Supabase directly via createServiceClient() (not self-fetching API routes)
 
 ### Pending Todos
 
@@ -85,7 +85,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Open product decisions before Phase 6 planning: curator directory seeding strategy, admin access model (hardcoded email list vs `is_admin` metadata)
+- Open product decisions before Phase 6 planning: curator directory seeding strategy
 
 ## Deferred Items
 
@@ -100,8 +100,8 @@ None yet.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/05-launchpad-checklist/05-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-07-01T00:20:34.108Z
-Stopped at: Phase 5 UI-SPEC approved
-Resume: Plan Phase 5 (Launchpad Checklist) via /gsd-plan-phase 5
+Last session: 2026-07-01T04:12:03.319Z
+Stopped at: Phase 5 complete, ready to plan Phase 6
+Resume: Plan Phase 6 (Playlist Curator Pitching) via /gsd-plan-phase 6

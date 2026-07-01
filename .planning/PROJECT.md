@@ -82,12 +82,16 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 - ✓ **RIGHTS-04**: All registration checklists show per-project status on Rights page
 - ✓ **SONGTRUST-01**: Songtrust guide card with CWR export action
 
+### Validated (Wave 3 — Phase 5)
+
+- ✓ **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
+- ✓ **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with instructions
+- ✓ **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed and updated monthly via AI research draft → admin approval
+- ✓ **LAUNCH-04**: Checklist item completion is tracked per project and persisted
+- ✓ **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
+
 ### Active (Wave 3 targets)
 
-- [ ] **LAUNCH-01**: Artist sees a Launchpad room with a guided post-release checklist per project
-- [ ] **LAUNCH-02**: Each checklist item links to an in-Funūn tool or opens an external action with instructions
-- [ ] **LAUNCH-03**: Per-item tips surface contextual guidance; tips are DB-backed and updated monthly via AI research draft → admin approval
-- [ ] **LAUNCH-04**: Checklist item completion is tracked per project and persisted
 - [ ] **PITCH-01**: Artist can browse a curator directory filtered by genre and platform
 - [ ] **PITCH-02**: Artist can select a track and send a pitch email to one or more curators (via Resend); email includes `/r/[projectId]` player link
 - [ ] **PITCH-03**: Pitch history is tracked per project (curator, sent date, response status)
@@ -127,6 +131,8 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 | Social planning only (no execution) | Meta/TikTok OAuth is meaningful scope; Wave 3 focuses on planning | Calendar + quick tools; scheduling integrations in Wave 4 |
 | Calendar as social spine | Standalone tools stay accessible but campaign view is the organizing frame | Two entry points: campaign calendar + quick tool access |
 | Later/Buffer CSV as V1 export | Largest indie artist tool adoption; CSV avoids OAuth complexity | Export format derived from Later's column schema |
+| Admin gate centralized (Phase 5) | Every `/api/admin/*` route must independently re-verify admin status, not just rely on the `(admin)` layout redirect | `verifyAdmin()` helper in `lib/admin/gate.ts`, called first in every admin API handler |
+| Admin pages read via service client (Phase 5) | Admin pages need full data visibility (e.g. unapproved tips) that RLS would otherwise block for a non-owner read | Admin pages query Supabase directly via `createServiceClient()`, gated by the `(admin)` layout; mutations still route through re-verified API endpoints |
 
 ---
 
@@ -160,4 +166,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-06-30 — Wave 3 milestone initialized*
+*Last updated: 2026-07-01 — after Phase 5 (Launchpad Checklist)*

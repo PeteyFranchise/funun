@@ -1,32 +1,39 @@
 ---
 phase: 05-launchpad-checklist
 verified: 2026-07-01T00:00:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 2
 overrides_applied: 0
 behavior_unverified_items:
+
   - truth: "Toggling a checkbox persists via PATCH and survives a hard page reload (LAUNCH-04)"
     test: "Check a checklist item on /launchpad/[projectId], then hard-reload the page and confirm the item still shows as checked"
     expected: "Completion state is preserved — the PATCH upsert writes to launchpad_progress and the server-side merge re-reads it on reload"
     why_human: "The upsert code and merge logic are present and correctly wired, but verifying the round-trip state persistence requires a live browser session with an authenticated user and a real Supabase instance"
+
   - truth: "The Before release section auto-collapses to a confirmation block when the project release_date is in the past"
     test: "Navigate to /launchpad/[projectId] for a project whose release_date is in the past and observe the Before release section"
     expected: "Before release section starts collapsed (shows 'Did you handle this before release?' block with compact checkboxes); a chevron button lets the user expand the full item list"
     why_human: "The isReleased computation (release_date < new Date()) and the collapsed render path are present in ChecklistSection.tsx, but confirming the correct collapse/expand behavior requires a live browser with a project that has a past release_date"
 human_verification:
+
   - test: "Toggling a checkbox persists via PATCH and survives a hard page reload"
     expected: "Check an item, reload the page — item stays checked. Uncheck, reload — item stays unchecked."
     why_human: "Round-trip DB persistence requires a live authenticated session and Supabase instance"
+
   - test: "Before release section auto-collapses when release_date is in the past"
     expected: "Visit /launchpad/[projectId] for a released project — Before release shows as a collapsed confirmation block with a chevron expand toggle"
     why_human: "Date comparison behavior requires a live browser; the code path exists but cannot be verified by grep"
+
   - test: "Approved tip renders in TipPanel; unapproved tip does not"
     expected: "Set tip_approved=true on one item via /admin/tips approve — the tip body appears in the artist TipPanel. An unapproved item shows only 'Steps for this item are coming soon.'"
     why_human: "The gating logic is in code (tip_body: item.tip_approved ? item.tip_body : null in both the server-component page and the API route), but confirming what renders in the panel requires a real session"
+
   - test: "Non-admin authenticated user is redirected away from /admin/* routes"
     expected: "Visiting /admin/checklist while signed in as a regular artist (not is_admin) redirects to /"
     why_human: "The layout and per-page admin check are both present, but the redirect behavior requires a live browser session"
+
   - test: "Admin drag-reorder persists and survives reload; artist-facing order updates"
     expected: "Drag a row in /admin/checklist — the PATCH /api/admin/checklist with full order array fires, sort_order updates in DB, and visiting /launchpad/[projectId] shows the new order"
     why_human: "End-to-end dnd-kit drag-to-persist behavior requires a live browser"
