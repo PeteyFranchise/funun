@@ -354,12 +354,16 @@ export function ChecklistAdmin({ initialItems }: { initialItems: AdminItem[] }) 
       const newIndex = items.findIndex(it => it.key === over.id)
       if (oldIndex === -1 || newIndex === -1) return
 
+      // Capture the pre-drag snapshot before the optimistic update so that
+      // the rollback uses the correct pre-drag state even if multiple drags
+      // fire before the previous API call completes (WR-05).
+      const snapshot = items
       const reordered = arrayMove(items, oldIndex, newIndex)
       setItems(reordered)
       try {
         await persistOrder(reordered)
       } catch {
-        setItems(items)
+        setItems(snapshot)
         setError('Couldn\'t save — please try again.')
       }
     },
@@ -373,12 +377,15 @@ export function ChecklistAdmin({ initialItems }: { initialItems: AdminItem[] }) 
       if (idx === -1) return
       const targetIdx = dir === 'up' ? idx - 1 : idx + 1
       if (targetIdx < 0 || targetIdx >= items.length) return
+
+      // Capture pre-move snapshot before the optimistic update (WR-05).
+      const snapshot = items
       const reordered = arrayMove(items, idx, targetIdx)
       setItems(reordered)
       try {
         await persistOrder(reordered)
       } catch {
-        setItems(items)
+        setItems(snapshot)
         setError('Couldn\'t save — please try again.')
       }
     },
