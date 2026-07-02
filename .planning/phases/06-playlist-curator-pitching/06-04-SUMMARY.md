@@ -161,3 +161,17 @@ None beyond the route-collision deviation above. `npm run build` compiled cleanl
 ---
 *Phase: 06-playlist-curator-pitching*
 *Completed: 2026-07-01*
+
+## Self-Check: PASSED
+
+- FOUND: lib/curators/tokens.ts
+- FOUND: lib/curators/pitch-copy.ts
+- FOUND: app/api/pitches/draft/route.ts
+- FOUND: app/api/pitches/route.ts
+- FOUND: components/curators/PitchComposer.tsx
+- FOUND: components/curators/PitchHistoryList.tsx
+- FOUND: app/(artist)/launchpad/[projectId]/page.tsx
+- FOUND: lib/email/index.ts
+- FOUND: commit 187ca5e (feat(06-04): add token generator, email from-override, AI pitch-note drafter)
+- FOUND: commit 4037494 (feat(06-04): add curator pitch send route with server-side 3-gate + duplicate guard)
+- FOUND: commit 7e51796 (feat(06-04): add PitchComposer and PitchHistoryList wired into launchpad room)
