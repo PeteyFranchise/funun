@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Launchpad
-current_phase: 06
-current_phase_name: playlist-curator-pitching
-status: verifying
-stopped_at: Phase 06-06 complete -- bounce webhook + accept/decline/unsubscribe response links shipped, all 6 plans of Phase 6 done
-last_updated: "2026-07-02T02:38:42.875Z"
-last_activity: 2026-07-01
-last_activity_desc: Phase 06 execution started
+current_phase: 7
+current_phase_name: Social Campaign Planner
+status: Ready to plan
+stopped_at: Phase 6 (Playlist Curator Pitching) complete -- verified, UAT passed, security threat-secure, transitioned to Phase 7
+last_updated: "2026-07-02T04:17:03.862Z"
+last_activity: 2026-07-02
+last_activity_desc: Phase 06 complete, transitioned to Phase 7
 progress:
   total_phases: 7
   completed_phases: 6
@@ -21,23 +21,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-01)
+See: .planning/PROJECT.md (updated 2026-07-02)
 
 **Core value:** An artist finishes a release and immediately knows their next moves — who to pitch, what to post, and when — without leaving Funūn. The Launchpad turns release day into a 6-week playbook.
-**Current focus:** Phase 06 — playlist-curator-pitching
+**Current focus:** Phase 07 — social-campaign-planner
 
 ## Current Position
 
-Phase: 06 (playlist-curator-pitching) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-07-01 — Phase 06 execution started
+Phase: 7 — Social Campaign Planner
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-02 — Phase 06 complete, transitioned to Phase 7
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 6 (Wave 3)
+- Total plans completed: 12 (Wave 3)
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -46,6 +46,7 @@ Last activity: 2026-07-01 — Phase 06 execution started
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 05 | 6 | - | - |
+| 06 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06 P05]: Curator claim account creation sets app_metadata.role at admin.createUser() time (never a post-insert UPDATE) so handle_new_user() curator branch fires -- avoids creating an artist_profiles row for curators
 - [Phase ?]: [Phase 06 P05]: On an admin.createUser() email conflict, the claim route reuses the existing auth.users id for claimed_by via generateLink() rather than failing, without touching that account's existing role/profile
 - [Phase ?]: [Phase 06 P06]: Public accept/decline/unsubscribe pages are single-file 'use client' components using next/navigation's useParams() instead of a server-page + client-island split -- React is pinned to 18.3 in this project, which lacks the use() hook needed to unwrap an async params Promise in a Client Component
+- [Phase 06]: Code review found 3 critical findings (HTML injection in pitch emails; RLS row policies on curators/pitch_history didn't restrict columns, exposing claim_token/response_token via direct PostgREST) -- fixed via escapeHtml() and additive migrations 031 (column REVOKE/GRANT) + 032 (claim_token UNIQUE index), both pushed to live DB by the user and confirmed during UAT
+- [Phase 06]: Security review closed 22 threats (20 authored at plan time + 2 added post-hoc from code review) with zero open -- see 06-SECURITY.md
 
 ### Pending Todos
 
@@ -101,7 +104,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Open product decisions before Phase 6 planning: curator directory seeding strategy
+None currently.
 
 ## Deferred Items
 
@@ -118,6 +121,6 @@ None yet.
 
 **Resume file:** None
 
-Last session: 2026-07-02T02:38:42.862Z
-Stopped at: Phase 06-06 complete -- bounce webhook + accept/decline/unsubscribe response links shipped, all 6 plans of Phase 6 done
-Resume: Plan Phase 6 (Playlist Curator Pitching) via /gsd-plan-phase 6
+Last session: 2026-07-02
+Stopped at: Phase 6 complete, ready to plan Phase 7
+Resume file: None
