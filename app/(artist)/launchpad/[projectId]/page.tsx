@@ -2,9 +2,34 @@ import { notFound, redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/Topbar'
 import { LaunchpadRoom } from '@/components/launchpad/LaunchpadRoom'
-import type { MergedChecklistItem } from '@/types'
+import { PitchComposer } from '@/components/curators/PitchComposer'
+import { PitchHistoryList, type PitchHistoryRow } from '@/components/curators/PitchHistoryList'
+import { computeResponseRates } from '@/lib/curators/response-rate'
+import type { DirectoryCurator } from '@/lib/curators/response-rate'
+import type { Curator, MergedChecklistItem, PitchStatus } from '@/types'
 
 export const dynamic = 'force-dynamic'
+
+// Same directory-safe column projection as app/api/curators/route.ts — never
+// select('*'), never email/claim_token/raw claimed_by (T-06-08).
+const DIRECTORY_COLUMNS =
+  'id, name, playlist_name, playlist_url, platform, genre_focus, reach_signal, reach_fetched_at, drift_flagged, do_not_pitch, email_valid, claimed_by'
+
+type DirectoryRow = Pick<
+  Curator,
+  | 'id'
+  | 'name'
+  | 'playlist_name'
+  | 'playlist_url'
+  | 'platform'
+  | 'genre_focus'
+  | 'reach_signal'
+  | 'reach_fetched_at'
+  | 'drift_flagged'
+  | 'do_not_pitch'
+  | 'email_valid'
+  | 'claimed_by'
+>
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -21,15 +46,22 @@ export default async function LaunchpadProjectPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
 
-  // Fetch project — owner-scoped; includes release_date for before-release collapse logic
+  // Fetch project — owner-scoped; includes release_date for before-release
+  // collapse logic and every track in the project (D-09 — no lead-track
+  // restriction on the pitch composer's track selector).
   const { data: project } = await supabase
     .from('vault_projects')
-    .select('id, title, release_date')
+    .select('id, title, release_date, tracks (id, title)')
     .eq('id', projectId)
     .eq('user_id', user.id)
     .single()
 
   if (!project) notFound()
+
+  const tracks = ((project.tracks ?? []) as { id: string; title: string }[]).map(t => ({
+    id: t.id,
+    title: t.title,
+  }))
 
   // Parallel fetch: checklist item definitions + this user's progress for this project.
   // Items are read via the service client because launchpad_checklist_items RLS is now
@@ -38,17 +70,28 @@ export default async function LaunchpadProjectPage({
   // admin-column stripping happen in the merge below. Progress stays on the user-scoped
   // client (RLS: auth.uid() = user_id).
   const service = createServiceClient()
-  const [{ data: items }, { data: progress }] = await Promise.all([
-    service
-      .from('launchpad_checklist_items')
-      .select('*')
-      .order('sort_order'),
-    supabase
-      .from('launchpad_progress')
-      .select('item_key, completed, completed_at')
-      .eq('project_id', projectId)
-      .eq('user_id', user.id),
-  ])
+  const [{ data: items }, { data: progress }, { data: curatorRows }, { data: pitchRows }] =
+    await Promise.all([
+      service
+        .from('launchpad_checklist_items')
+        .select('*')
+        .order('sort_order'),
+      supabase
+        .from('launchpad_progress')
+        .select('item_key, completed, completed_at')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id),
+      // curators RLS SELECT policy is USING(true) — the artist-scoped client
+      // can read the directory directly, same as app/api/curators/route.ts.
+      supabase.from('curators').select(DIRECTORY_COLUMNS),
+      // Artists read own pitch history only (RLS: auth.uid() = artist_id).
+      supabase
+        .from('pitch_history')
+        .select('id, curator_id, track_id, status, sent_at, decline_reason')
+        .eq('project_id', projectId)
+        .eq('artist_id', user.id)
+        .order('sent_at', { ascending: false }),
+    ])
 
   // Build progress lookup map for O(1) merge
   const progressMap = new Map(
@@ -77,6 +120,43 @@ export default async function LaunchpadProjectPage({
     }
   })
 
+  // ── Curator directory (project-scoped composer, no filters) ────────────
+  const curatorDirectoryRows = (curatorRows ?? []) as unknown as DirectoryRow[]
+  const rates = await computeResponseRates(
+    service,
+    curatorDirectoryRows.map(r => r.id)
+  )
+  const curators: DirectoryCurator[] = curatorDirectoryRows.map(row => {
+    const { claimed_by, ...rest } = row
+    return {
+      ...rest,
+      claimed: claimed_by !== null,
+      response_rate: rates.get(row.id) ?? null,
+    }
+  })
+
+  // ── Pitch history + already-pitched lookup (curator name / track title ──
+  // resolved from the maps already fetched above — avoids embedded-join
+  // shape ambiguity for a to-one FK relationship) ─────────────────────────
+  const curatorNameById = new Map(curators.map(c => [c.id, c.name]))
+  const trackTitleById = new Map(tracks.map(t => [t.id, t.title]))
+
+  const alreadyPitchedByTrack: Record<string, Record<string, PitchStatus>> = {}
+  const pitches: PitchHistoryRow[] = (pitchRows ?? []).map(row => {
+    const byCurator = alreadyPitchedByTrack[row.track_id] ?? {}
+    byCurator[row.curator_id] = row.status as PitchStatus
+    alreadyPitchedByTrack[row.track_id] = byCurator
+
+    return {
+      id: row.id,
+      curatorName: curatorNameById.get(row.curator_id) ?? 'Curator',
+      trackTitle: trackTitleById.get(row.track_id) ?? 'Track',
+      status: row.status as PitchStatus,
+      sent_at: row.sent_at,
+      decline_reason: row.decline_reason,
+    }
+  })
+
   return (
     <>
       <Topbar
@@ -85,6 +165,20 @@ export default async function LaunchpadProjectPage({
       />
       <div className="flex-1 px-9 py-[30px]">
         <LaunchpadRoom project={project} items={merged} />
+
+        <div className="mt-9 space-y-9">
+          <PitchComposer
+            project={{ id: project.id, title: project.title }}
+            tracks={tracks}
+            curators={curators}
+            alreadyPitchedByTrack={alreadyPitchedByTrack}
+          />
+
+          <div>
+            <h2 className="mb-4 text-[15px] font-bold text-white">Pitch history</h2>
+            <PitchHistoryList pitches={pitches} />
+          </div>
+        </div>
       </div>
     </>
   )
