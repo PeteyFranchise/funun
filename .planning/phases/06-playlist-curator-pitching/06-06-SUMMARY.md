@@ -138,3 +138,17 @@ None. `npm run build` compiled cleanly after every task, and all three new dynam
 ---
 *Phase: 06-playlist-curator-pitching*
 *Completed: 2026-07-02*
+
+## Self-Check: PASSED
+
+- FOUND: lib/webhooks/resend-verify.ts
+- FOUND: app/api/webhooks/resend/route.ts
+- FOUND: app/api/pitch/accept/[token]/route.ts
+- FOUND: app/api/pitch/decline/[token]/route.ts
+- FOUND: app/api/pitch/unsubscribe/[token]/route.ts
+- FOUND: app/pitch/accept/[token]/page.tsx
+- FOUND: app/pitch/decline/[token]/page.tsx
+- FOUND: app/pitch/unsubscribe/[token]/page.tsx
+- FOUND: commit e5feda8 (feat(06-06): add svix verify wrapper + Resend bounce webhook route)
+- FOUND: commit b6dc159 (feat(06-06): add accept/decline/unsubscribe token response routes)
+- FOUND: commit b0791de (feat(06-06): add public accept/decline/unsubscribe token pages)
