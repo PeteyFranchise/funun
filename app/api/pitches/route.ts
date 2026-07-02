@@ -199,6 +199,12 @@ export async function POST(request: Request) {
     const result = await sendEmail({
       to: curator.email,
       from: process.env.PITCH_FROM_EMAIL,
+      // A curator replying with a question (rather than using the
+      // Accept/Decline links) should reach the artist, not
+      // PITCH_FROM_EMAIL's own unmonitored cold-outreach mailbox (WR-03).
+      // user.email comes straight off the already-loaded auth session, no
+      // extra lookup needed.
+      replyTo: user.email,
       subject: `A track for ${curator.name} — "${track.title}"`,
       html: `
         <p>Hi ${escapeHtml(curator.name)},</p>
