@@ -12,9 +12,17 @@ export async function sendEmail(args: {
   text?: string
   /** Where replies should go (e.g. the artist's own address on a pitch). */
   replyTo?: string
+  /**
+   * Optional sender override (e.g. PITCH_FROM_EMAIL for the dedicated
+   * cold-outreach subdomain, D-22). When provided, the effective from
+   * address is this value instead of RESEND_FROM_EMAIL; the no-op-when-
+   * unconfigured gate checks THIS value, not RESEND_FROM_EMAIL, so a send
+   * fails gracefully until the override's domain is live.
+   */
+  from?: string
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.RESEND_FROM_EMAIL
+  const from = args.from ?? process.env.RESEND_FROM_EMAIL
   if (!apiKey || !from) {
     return { ok: false, error: 'Email not configured' }
   }
