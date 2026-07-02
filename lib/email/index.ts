@@ -22,8 +22,18 @@ export async function sendEmail(args: {
   from?: string
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
+  // Gate on args.from specifically when the caller explicitly passed a
+  // `from` key (even if its value is undefined, e.g. an unset env var
+  // spread in as `from: process.env.PITCH_FROM_EMAIL`) — that signals a
+  // hard override is intended and the send must no-op until THAT value is
+  // configured, not silently fall back to RESEND_FROM_EMAIL (which would
+  // defeat a dedicated cold-outreach subdomain like PITCH_FROM_EMAIL, D-22).
+  // Callers that never mention `from` at all keep falling back to
+  // RESEND_FROM_EMAIL as before.
+  const usesFromOverride = 'from' in args
   const from = args.from ?? process.env.RESEND_FROM_EMAIL
-  if (!apiKey || !from) {
+  const configured = usesFromOverride ? !!args.from : !!process.env.RESEND_FROM_EMAIL
+  if (!apiKey || !configured) {
     return { ok: false, error: 'Email not configured' }
   }
   try {
