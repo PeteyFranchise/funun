@@ -20,13 +20,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           Admin
         </p>
         <Link
-          href="/admin/checklist"
+          href="/checklist"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
           Checklist Items
         </Link>
         <Link
-          href="/admin/tips"
+          href="/tips"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
           Tips
