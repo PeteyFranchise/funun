@@ -32,14 +32,28 @@ const STATUS_META: Record<PitchStatus, { label: string; badge: string; dot: stri
   },
 }
 
-export function PitchHistoryList({ pitches }: { pitches: PitchHistoryRow[] }) {
+// Optional empty-state copy override — the curator-portal read-only view
+// (06-05) needs different copy ("No pitches yet" / "When artists pitch
+// your playlist, you'll see them here.") than the artist-facing launchpad
+// history. Defaults preserve the original artist-facing copy exactly.
+export type PitchHistoryEmptyState = { heading: string; body: string }
+
+export function PitchHistoryList({
+  pitches,
+  emptyState,
+}: {
+  pitches: PitchHistoryRow[]
+  emptyState?: PitchHistoryEmptyState
+}) {
   if (pitches.length === 0) {
+    const heading = emptyState?.heading ?? 'No pitches sent yet'
+    const body =
+      emptyState?.body ??
+      'Select curators from the directory to send your first pitch for this project.'
     return (
       <div className="rounded-xl border border-white/10 p-6 text-center">
-        <p className="text-[15px] font-bold text-white">No pitches sent yet</p>
-        <p className="mt-1.5 text-[13px] text-white/40">
-          Select curators from the directory to send your first pitch for this project.
-        </p>
+        <p className="text-[15px] font-bold text-white">{heading}</p>
+        <p className="mt-1.5 text-[13px] text-white/40">{body}</p>
       </div>
     )
   }
