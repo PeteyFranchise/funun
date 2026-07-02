@@ -181,3 +181,14 @@ None blocking for this plan. `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET`/`YOUTUB
 ---
 *Phase: 06-playlist-curator-pitching*
 *Completed: 2026-07-02*
+
+## Self-Check: PASSED
+
+- FOUND: lib/curators/schema.ts, lib/curators/reach.ts, lib/curators/drift.ts
+- FOUND: app/api/admin/curators/route.ts, app/api/admin/curators/[id]/route.ts
+- FOUND: app/api/cron/curator-reach/route.ts, vercel.json
+- FOUND: components/admin/CuratorAdmin.tsx, app/(admin)/curators/page.tsx, app/(admin)/layout.tsx
+- FOUND: .planning/phases/06-playlist-curator-pitching/deferred-items.md
+- FOUND: commit a5543d8 (feat(06-02): add curator validation schema, reach fetchers, drift utility)
+- FOUND: commit b1a20b4 (feat(06-02): add admin curator CRUD API, weekly reach cron, vercel.json)
+- FOUND: commit fcc3eeb (feat(06-02): add CuratorAdmin component, admin curators page, nav link)
