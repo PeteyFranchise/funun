@@ -5,15 +5,15 @@ milestone_name: Launchpad
 current_phase: 06
 current_phase_name: playlist-curator-pitching
 status: executing
-stopped_at: Phase 06-01 blocked at Task 5 (supabase db push) -- CLI unauthenticated, Tasks 1-4 complete
-last_updated: "2026-07-01T17:45:13.322Z"
+stopped_at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
+last_updated: "2026-07-02T01:29:32.948Z"
 last_activity: 2026-07-01
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 20
+  completed_plans: 21
   percent: 71
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 ## Current Position
 
 Phase: 06 (playlist-curator-pitching) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 06
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-07-01 — Phase 06 execution started
 
 ## Performance Metrics
@@ -58,6 +58,7 @@ Last activity: 2026-07-01 — Phase 06 execution started
 | Phase 05 P03 | 3 | 2 tasks | 2 files |
 | Phase 05 P05 | 8m | 3 tasks | 5 files |
 | Phase 05 P06 | 15 | 3 tasks | 4 files |
+| Phase 06 P01 | 5min | 5 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - Wave 3 research: AI calendar is a batch (non-streaming) Claude call; release data isolated in `<release_data>` block; platform limits hard-coded in system prompt
 - [Phase 5]: admin gate helper centralized in `lib/admin/gate.ts` — every `/api/admin/*` route re-verifies independently, not just the `(admin)` layout redirect
 - [Phase 5]: Admin pages query Supabase directly via createServiceClient() (not self-fetching API routes)
+- [Phase 06]: svix approved for install despite [SUS] heuristic flag -- 5-year-old official svix/svix-webhooks package, ~4.88M weekly downloads; flag fired on release recency not package age — Task 1 checkpoint:human-verify review of RESEARCH.md Package Legitimacy Audit evidence
+- [Phase 06]: Migration 030 applied to the live Supabase DB by the user directly (own authenticated supabase db push / Dashboard SQL Editor), not by the executor sandbox which has no Supabase CLI credentials — Sandbox has no linked project/access token and .env.local is intentionally not readable here; user's explicit confirmation treated as authoritative per checkpoint resolution instructions
 
 ### Pending Todos
 
@@ -86,7 +89,6 @@ None yet.
 ### Blockers/Concerns
 
 - Open product decisions before Phase 6 planning: curator directory seeding strategy
-- Migration 030 (curators + pitch_history) written and verified locally but NOT pushed to the live Supabase DB -- supabase CLI is unauthenticated in this environment and no interactive login is possible. Plan 06-01 is blocked at Task 5 pending manual 'supabase db push' or a supplied SUPABASE_ACCESS_TOKEN.
 
 ## Deferred Items
 
@@ -101,8 +103,8 @@ None yet.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/06-playlist-curator-pitching/06-01-PLAN.md
+**Resume file:** .planning/phases/06-playlist-curator-pitching/06-02-PLAN.md
 
-Last session: 2026-07-01T17:45:13.310Z
-Stopped at: Phase 06-01 blocked at Task 5 (supabase db push) -- CLI unauthenticated, Tasks 1-4 complete
+Last session: 2026-07-02T01:29:32.933Z
+Stopped at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
 Resume: Plan Phase 6 (Playlist Curator Pitching) via /gsd-plan-phase 6

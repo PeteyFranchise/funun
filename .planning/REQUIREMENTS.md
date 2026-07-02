@@ -43,7 +43,7 @@
 - [ ] **PITCH-05**: Curators can claim their directory profile via a link in pitch emails (lightweight onboarding)
 - [ ] **PITCH-06**: Bounce detection marks curator email addresses invalid after a hard bounce; genre drift alerts flag curators whose genre focus shifts significantly
 - [ ] **PITCH-07**: Admin view for managing the curator directory (add, edit, flag inactive, review claimed profiles)
-- [ ] **PITCH-08**: "Playlist Curator" is added to industry occupation options in Settings
+- [x] **PITCH-08**: "Playlist Curator" is added to industry occupation options in Settings
 
 ### Social Campaign Planner
 
