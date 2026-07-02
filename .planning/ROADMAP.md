@@ -225,7 +225,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `curators` (directory + `email_valid`), `pitch_history` (per-project pitch log). RLS enabled immediately after each CREATE TABLE.
 **Infrastructure prerequisite**: `pitch.funun.studio` subdomain with DKIM/SPF/DMARC and ~2-week warmup must be live before any pitch email sends (keeps cold outreach off the transactional `funun.studio` domain).
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 **Wave 1** *(foundation)*
 
@@ -237,7 +237,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **Wave 3** *(blocked on Wave 1)*
 
-- [ ] 06-03-PLAN.md — Artist-facing /curators directory (genre + platform filter) + response-rate helper + CuratorCard/CuratorDirectory (PITCH-01, PITCH-04)
+- [x] 06-03-PLAN.md — Artist-facing /curators directory (genre + platform filter) + response-rate helper + CuratorCard/CuratorDirectory (PITCH-01, PITCH-04)
 - [ ] 06-04-PLAN.md — Pitch composer in launchpad + AI 150-word draft + send route (3-gate server re-validation + duplicate 409) + pitch history + tokens + email from-override (PITCH-02, PITCH-03)
 
 **Wave 4** *(blocked on Wave 3)*
@@ -270,5 +270,5 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
-| 6. Playlist Curator Pitching | 2/6 | In Progress|  |
+| 6. Playlist Curator Pitching | 3/6 | In Progress|  |
 | 7. Social Campaign Planner | 0/0 | Not started | - |
