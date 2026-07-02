@@ -76,9 +76,20 @@ export function PitchComposer({ project, tracks, curators, alreadyPitchedByTrack
   }
 
   async function draftNote() {
-    const firstCuratorId = Array.from(selected)[0]
+    const selectedIds = Array.from(selected)
+    const firstCuratorId = selectedIds[0]
     if (!trackId || !firstCuratorId) {
       setError('Select a curator first to draft a note for them.')
+      return
+    }
+    // AI drafting personalizes the note to ONE curator's playlist name/genre
+    // focus (buildPitchNotePrompt), but sendPitch sends the same note
+    // string to every selected curator — drafting with more than one
+    // curator selected would silently reference the wrong playlist for
+    // everyone but the first (WR-04). Block it here rather than producing
+    // an obviously-wrong note.
+    if (selectedIds.length > 1) {
+      setError('AI drafting is playlist-specific — select only one curator to draft a note.')
       return
     }
     setDrafting(true)
@@ -221,7 +232,12 @@ export function PitchComposer({ project, tracks, curators, alreadyPitchedByTrack
               <button
                 type="button"
                 onClick={draftNote}
-                disabled={drafting || selected.size === 0}
+                disabled={drafting || selected.size === 0 || selected.size > 1}
+                title={
+                  selected.size > 1
+                    ? 'AI drafting is playlist-specific — select only one curator to draft a note.'
+                    : undefined
+                }
                 className="rounded-md border border-white/15 px-3 py-1.5 text-xs text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-40"
               >
                 {drafting ? 'Drafting…' : hasDrafted ? 'Regenerate note' : 'Draft a pitch note'}
