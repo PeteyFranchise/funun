@@ -6,14 +6,14 @@ current_phase: 06
 current_phase_name: playlist-curator-pitching
 status: executing
 stopped_at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
-last_updated: "2026-07-02T01:29:32.948Z"
+last_updated: "2026-07-02T01:43:39.106Z"
 last_activity: 2026-07-01
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 21
+  completed_plans: 22
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 ## Current Position
 
 Phase: 06 (playlist-curator-pitching) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-01 — Phase 06 execution started
 
@@ -59,6 +59,7 @@ Last activity: 2026-07-01 — Phase 06 execution started
 | Phase 05 P05 | 8m | 3 tasks | 5 files |
 | Phase 05 P06 | 15 | 3 tasks | 4 files |
 | Phase 06 P01 | 5min | 5 tasks | 6 files |
+| Phase 06 P02 | 35min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 5]: Admin pages query Supabase directly via createServiceClient() (not self-fetching API routes)
 - [Phase 06]: svix approved for install despite [SUS] heuristic flag -- 5-year-old official svix/svix-webhooks package, ~4.88M weekly downloads; flag fired on release recency not package age — Task 1 checkpoint:human-verify review of RESEARCH.md Package Legitimacy Audit evidence
 - [Phase 06]: Migration 030 applied to the live Supabase DB by the user directly (own authenticated supabase db push / Dashboard SQL Editor), not by the executor sandbox which has no Supabase CLI credentials — Sandbox has no linked project/access token and .env.local is intentionally not readable here; user's explicit confirmation treated as authoritative per checkpoint resolution instructions
+- [Phase ?]: [Phase 06 P02]: Reach re-fetch on PATCH only triggers when platform or playlist_url changes, not on every field edit -- avoids wasting Spotify/YouTube API quota
+- [Phase ?]: [Phase 06 P02]: resetBaseline is a distinct PATCH action, not an implicit side effect of a genre_focus edit -- lets admin clear drift flag independently
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None yet.
 
 **Resume file:** .planning/phases/06-playlist-curator-pitching/06-02-PLAN.md
 
-Last session: 2026-07-02T01:29:32.933Z
+Last session: 2026-07-02T01:42:49.639Z
 Stopped at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
 Resume: Plan Phase 6 (Playlist Curator Pitching) via /gsd-plan-phase 6
