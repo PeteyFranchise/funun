@@ -1,19 +1,22 @@
 ---
 phase: 06-playlist-curator-pitching
 verified: 2026-07-01T00:00:00Z
-status: human_needed
+status: passed
 score: 26/26 must-haves verified (code-level); 2 items require live-DB/infra human verification (expected, not gaps)
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Claim a curator profile end-to-end via the live /curators/claim/[token] flow and inspect the Supabase auth.users / artist_profiles tables"
     expected: "A new auth.users row is created with app_metadata.role='curator', and NO corresponding artist_profiles or subscriptions row is created for that user id (handle_new_user()'s curator branch fires correctly against the live trigger)"
     why_human: "This is a live-database runtime behavior (a DB trigger firing on auth.users INSERT). The code-level guarantee is verified (app_metadata.role is set at admin.createUser() time, and migration 030's handle_new_user() has the early-return branch as the first statement in BEGIN, before the artist_profiles INSERT), but this sandbox has no Supabase CLI credentials to exercise the live trigger and confirm the row is actually absent."
+
   - test: "Confirm migrations 031 and 032 (column-level privilege lockdown + claim_token UNIQUE index) were applied successfully to the live database, and spot-check a direct PostgREST call"
     expected: "An authenticated (non-service) JWT calling GET /rest/v1/curators?select=claim_token,email or GET /rest/v1/pitch_history?select=response_token returns a column-does-not-exist/permission error, not the secret values; CREATE UNIQUE INDEX on claim_token did not fail on a pre-existing duplicate"
     why_human: "Per the task's additional_context, the user confirmed these migrations were pushed to the live DB outside this sandbox. This sandbox cannot query the live schema/grants to confirm the REVOKE/GRANT statements took effect as written. The SQL content itself was reviewed here and matches the REVIEW.md CR-02/CR-03/WR-06 findings exactly (see below)."
 gaps: []
 deferred:
+
   - truth: "Admin sidebar links for Checklist Items and Tips resolve to /checklist and /tips instead of /admin/checklist and /admin/tips"
     addressed_in: "Not phase-blocking — pre-existing bug from Phase 5, logged in deferred-items.md; the Curators admin link was corrected as part of this phase (now correctly at /admin/curators) since it collided with the artist-facing /curators route"
     evidence: "deferred-items.md: 'Status: Partially resolved in 06-03... Checklist Items and Tips still resolve to their bare paths... those two are unchanged and remain deferred for the dedicated follow-up fix'"
