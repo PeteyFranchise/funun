@@ -11,7 +11,10 @@ import type { CuratorPlatform } from '@/types'
 // vector reachable by anyone on the public internet).
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Fail closed when CRON_SECRET isn't configured — otherwise the
+  // comparison becomes `authHeader !== 'Bearer undefined'`, and any caller
+  // who literally sends `Authorization: Bearer undefined` passes (WR-05).
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
