@@ -55,3 +55,22 @@ REVOKE UPDATE ON curators FROM authenticated;
 GRANT UPDATE (genre_focus, platform, playlist_url, playlist_name,
               submission_notes, drift_flagged)
   ON curators TO authenticated;
+
+-- ─── pitch_history (CR-03) ───────────────────────────────────────────
+-- SELECT: exclude response_token. Without this, an artist could read
+-- their own sent pitches' response_token directly via PostgREST
+-- (bypassing the app's explicit column projection in app/(artist)/
+-- launchpad/[projectId]/page.tsx) and then call the public,
+-- token-authenticated accept/decline endpoints themselves —
+-- impersonating the curator's response and corrupting the response-rate
+-- signal computeResponseRates() shows to every artist in the directory.
+-- No anon grant: pitch_history has no anon-readable use case (artist-only
+-- RLS, curator portal reads via service client).
+REVOKE SELECT ON pitch_history FROM authenticated, anon;
+GRANT SELECT (id, project_id, track_id, curator_id, artist_id, note, status,
+              decline_reason, sent_at, responded_at)
+  ON pitch_history TO authenticated;
+
+-- No UPDATE/INSERT/DELETE grants for pitch_history — all writes remain
+-- server-side via the service-role client (migration 030 design), matching
+-- the existing "no INSERT/UPDATE policy for users" RLS comment there.
