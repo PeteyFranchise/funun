@@ -33,7 +33,13 @@ export async function POST(request: Request) {
       const recipient = event.data.to?.[0] ?? event.data.email
       if (recipient) {
         const service = createServiceClient()
-        await service.from('curators').update({ email_valid: false }).eq('email', recipient)
+        // Curator emails are normalized to lowercase everywhere they're
+        // written; match the same normalization here so casing differences
+        // in what Resend reports don't silently match zero rows (WR-09).
+        await service
+          .from('curators')
+          .update({ email_valid: false })
+          .eq('email', recipient.trim().toLowerCase())
       }
     }
   }
