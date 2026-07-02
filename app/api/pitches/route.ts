@@ -13,6 +13,22 @@ type SendBody = {
 
 type BlockedCurator = { curatorId: string; reason: string }
 
+// Hard character cap on the note, independent of the word-count gate below —
+// a single unbroken "word" would otherwise pass the 150-word check while
+// still carrying an arbitrarily large payload (CR-01).
+const PITCH_NOTE_MAX_CHARS = 2000
+
+// HTML-escape artist-controlled text before interpolating into the outbound
+// pitch email (CR-01) — trimmedNote and track.title are both fully
+// artist-controlled free text with no markup sanitization upstream.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 // POST /api/pitches — send route. Ownership + 3-gate server re-validation
 // (curator selected / note non-empty / word count <= 150 — T-06-11) +
 // duplicate-send guard (pre-check + uniq_curator_track_pitch 23505 backstop,
@@ -55,6 +71,15 @@ export async function POST(request: Request) {
   if (wordCount > PITCH_NOTE_MAX_WORDS) {
     return NextResponse.json(
       { error: `Note must be ${PITCH_NOTE_MAX_WORDS} words or fewer (currently ${wordCount}).` },
+      { status: 400 }
+    )
+  }
+
+  // ── Gate 4: character cap — backstop against a single unbroken "word" ──
+  // carrying an arbitrarily large payload past the word-count gate above.
+  if (trimmedNote.length > PITCH_NOTE_MAX_CHARS) {
+    return NextResponse.json(
+      { error: `Note must be ${PITCH_NOTE_MAX_CHARS} characters or fewer.` },
       { status: 400 }
     )
   }
@@ -176,9 +201,9 @@ export async function POST(request: Request) {
       from: process.env.PITCH_FROM_EMAIL,
       subject: `A track for ${curator.name} — "${track.title}"`,
       html: `
-        <p>Hi ${curator.name},</p>
-        <p>${trimmedNote.replace(/\n/g, '<br />')}</p>
-        <p><a href="${playerUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Listen to "${track.title}"</a></p>
+        <p>Hi ${escapeHtml(curator.name)},</p>
+        <p>${escapeHtml(trimmedNote).replace(/\n/g, '<br />')}</p>
+        <p><a href="${playerUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Listen to "${escapeHtml(track.title)}"</a></p>
         <hr style="margin:24px 0;border:none;border-top:1px solid #eee" />
         <p style="color:#888;font-size:12px">
           <a href="${acceptUrl}">Accept this pitch</a> ·
