@@ -37,8 +37,8 @@
 ### Playlist Curator Pitching
 
 - [x] **PITCH-01**: Artist can browse a curator directory filtered by genre and platform
-- [ ] **PITCH-02**: Artist can select a track and send a pitch email to one or more curators via Resend; email includes `/r/[projectId]` player link and an unsubscribe path
-- [ ] **PITCH-03**: Pitch history is tracked per project (curator, sent date, response status: pending / opened / accepted / declined)
+- [x] **PITCH-02**: Artist can select a track and send a pitch email to one or more curators via Resend; email includes `/r/[projectId]` player link and an unsubscribe path
+- [x] **PITCH-03**: Pitch history is tracked per project (curator, sent date, response status: pending / opened / accepted / declined)
 - [x] **PITCH-04**: Curator directory shows response rate per curator (last 90 days)
 - [ ] **PITCH-05**: Curators can claim their directory profile via a link in pitch emails (lightweight onboarding)
 - [x] **PITCH-06**: Bounce detection marks curator email addresses invalid after a hard bounce; genre drift alerts flag curators whose genre focus shifts significantly

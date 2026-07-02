@@ -6,14 +6,14 @@ current_phase: 06
 current_phase_name: playlist-curator-pitching
 status: executing
 stopped_at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
-last_updated: "2026-07-02T01:58:16.805Z"
+last_updated: "2026-07-02T02:13:07.370Z"
 last_activity: 2026-07-01
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 ## Current Position
 
 Phase: 06 (playlist-curator-pitching) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-01 — Phase 06 execution started
 
@@ -61,6 +61,7 @@ Last activity: 2026-07-01 — Phase 06 execution started
 | Phase 06 P01 | 5min | 5 tasks | 6 files |
 | Phase 06 P02 | 35min | 3 tasks | 11 files |
 | Phase 06 P03 | 20min | 3 tasks tasks | 7 files files |
+| Phase 06 P04 | ~40min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06 P02]: Reach re-fetch on PATCH only triggers when platform or playlist_url changes, not on every field edit -- avoids wasting Spotify/YouTube API quota
 - [Phase ?]: [Phase 06 P02]: resetBaseline is a distinct PATCH action, not an implicit side effect of a genre_focus edit -- lets admin clear drift flag independently
 - [Phase ?]: [Phase 06 P03]: Moved app/(admin)/curators/page.tsx to app/(admin)/admin/curators/page.tsx to resolve a route collision with the locked /curators artist artifact -- also fixes one of three pre-existing broken admin sidebar links
+- [Phase ?]: [Phase 06 P04]: app/api/pitches/route.ts pre-existed as a dead industry-pitch-credits route with zero UI callers -- replaced after confirming no references outside that one file, since this plans locked artifact requires the identical path
+- [Phase ?]: [Phase 06 P04]: Duplicate/blocked curator detection rejects the entire send request with 409 rather than partially sending to eligible curators -- keeps atomic bulk-insert semantics simple
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ None yet.
 
 **Resume file:** .planning/phases/06-playlist-curator-pitching/06-02-PLAN.md
 
-Last session: 2026-07-02T01:57:57.377Z
+Last session: 2026-07-02T02:10:29.809Z
 Stopped at: Phase 06-01 complete -- migration 030 applied to live DB, all 5 tasks done
 Resume: Plan Phase 6 (Playlist Curator Pitching) via /gsd-plan-phase 6
