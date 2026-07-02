@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!existing) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
 
   const curator = existing as Curator
-  const body = (await request.json()) as Record<string, unknown>
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 
   // Reset-baseline action — distinct from a regular field edit.
   if (body.resetBaseline === true) {

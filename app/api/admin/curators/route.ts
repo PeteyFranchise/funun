@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const body = (await request.json()) as Record<string, unknown>
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })

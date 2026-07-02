@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const isCurator = (user.app_metadata as { role?: string })?.role === 'curator'
   if (!isCurator) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const body = (await request.json()) as Record<string, unknown>
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const update: Record<string, unknown> = {}
 
   for (const field of CURATOR_SELF_EDITABLE_FIELDS) {
