@@ -4,6 +4,7 @@ import { verifyAdmin } from '@/lib/admin/gate'
 import { ADMIN_EDITABLE_FIELDS, PLATFORM_VALUES } from '@/lib/curators/schema'
 import { fetchReachSignal } from '@/lib/curators/reach'
 import { hasSignificantDrift } from '@/lib/curators/drift'
+import { generateClaimToken, CLAIM_TOKEN_EXPIRY_HOURS } from '@/lib/curators/tokens'
 import type { Curator, CuratorPlatform } from '@/types'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -47,6 +48,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
+  }
+
+  // Claim-invite issuance action — distinct from a regular field edit and
+  // from resetBaseline (06-05, PITCH-05). Sets a fresh 72h-expiry claim
+  // token WITHOUT touching claimed_by — claiming itself only happens via
+  // POST /api/curators/claim/[token]. Does not disturb any other 06-02
+  // PATCH behavior (ADMIN_EDITABLE_FIELDS update, drift recompute, reach
+  // refetch) below, since it returns early.
+  if (body.action === 'issue_claim') {
+    const token = generateClaimToken()
+    const expiresAt = new Date(Date.now() + CLAIM_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000).toISOString()
+    const { data, error } = await service
+      .from('curators')
+      .update({ claim_token: token, claim_token_expires_at: expiresAt })
+      .eq('id', id)
+      .select()
+      .maybeSingle()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
+    return NextResponse.json({ data, claimUrl: `/curators/claim/${token}` })
   }
 
   // Build update strictly from ADMIN_EDITABLE_FIELDS (mass-assignment protection)
