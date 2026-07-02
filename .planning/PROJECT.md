@@ -90,16 +90,19 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 - ✓ **LAUNCH-04**: Checklist item completion is tracked per project and persisted
 - ✓ **LAUNCH-05**: Admin can add, edit, reorder, and delete checklist items from an in-app UI without touching the database directly
 
+### Validated (Wave 3 — Phase 6)
+
+- ✓ **PITCH-01**: Artist can browse a curator directory filtered by genre and platform
+- ✓ **PITCH-02**: Artist can select a track and send a pitch email to one or more curators (via Resend); email includes `/r/[projectId]` player link
+- ✓ **PITCH-03**: Pitch history is tracked per project (curator, sent date, response status)
+- ✓ **PITCH-04**: Curator directory shows response rate and genre focus per curator
+- ✓ **PITCH-05**: Curators can claim their directory profile via a link in pitch emails (lightweight onboarding)
+- ✓ **PITCH-06**: Bounce detection marks curator emails invalid after hard bounce; genre drift alerts flag when a curator's genre focus shifts
+- ✓ **PITCH-07**: Admin view for managing curator directory (add, edit, flag, review claimed profiles)
+- ✓ **PITCH-08**: "Playlist Curator" is added to industry occupation options in Settings
+
 ### Active (Wave 3 targets)
 
-- [ ] **PITCH-01**: Artist can browse a curator directory filtered by genre and platform
-- [ ] **PITCH-02**: Artist can select a track and send a pitch email to one or more curators (via Resend); email includes `/r/[projectId]` player link
-- [ ] **PITCH-03**: Pitch history is tracked per project (curator, sent date, response status)
-- [ ] **PITCH-04**: Curator directory shows response rate and genre focus per curator
-- [ ] **PITCH-05**: Curators can claim their directory profile via a link in pitch emails (lightweight onboarding)
-- [ ] **PITCH-06**: Bounce detection marks curator emails invalid after hard bounce; genre drift alerts flag when a curator's genre focus shifts
-- [ ] **PITCH-07**: Admin view for managing curator directory (add, edit, flag, review claimed profiles)
-- [ ] **PITCH-08**: "Playlist Curator" is added to industry occupation options in Settings
 - [ ] **SOCIAL-01**: Artist selects which platforms they are active on (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) per project
 - [ ] **SOCIAL-02**: Funūn surfaces best-practice nudges toward highest-impact platform combinations for the artist's genre
 - [ ] **SOCIAL-03**: AI generates a 4–6 week content calendar from release data (title, genre, collaborators, release date, story)
@@ -133,6 +136,9 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 | Later/Buffer CSV as V1 export | Largest indie artist tool adoption; CSV avoids OAuth complexity | Export format derived from Later's column schema |
 | Admin gate centralized (Phase 5) | Every `/api/admin/*` route must independently re-verify admin status, not just rely on the `(admin)` layout redirect | `verifyAdmin()` helper in `lib/admin/gate.ts`, called first in every admin API handler |
 | Admin pages read via service client (Phase 5) | Admin pages need full data visibility (e.g. unapproved tips) that RLS would otherwise block for a non-owner read | Admin pages query Supabase directly via `createServiceClient()`, gated by the `(admin)` layout; mutations still route through re-verified API endpoints |
+| `svix` added as a direct dependency (Phase 6) | Resend signs webhooks via Svix under the hood; the pinned `resend@^4.0.0` predates Resend's own `webhooks.verify()` helper, and a 4→6 major upgrade was judged higher-risk than adding the dependency directly | `svix` installed after a blocking human-verify checkpoint reviewing package legitimacy (5yr-old official-org package, ~4.88M weekly downloads) |
+| RLS row policies alone are not enough (Phase 6) | Migration 030's row-level RLS policies restricted rows but not columns — any authenticated client could bypass app-layer column allowlists via direct PostgREST access, exposing `claim_token`/`response_token` | Migration `031_curators_column_privileges.sql` adds explicit `REVOKE`/`GRANT` column-level privileges on top of RLS; found and fixed via `/gsd-code-review`, not caught by planning |
+| Curator accounts isolated from artist auth model (Phase 6) | Curators need a lightweight magic-link account without becoming `artist_profiles` rows or being subject to `middleware.ts`'s artist route protection | `app_metadata.role='curator'` set at `admin.createUser()` time (not a post-insert UPDATE) so `handle_new_user()` early-returns; `(curator-portal)` routes deliberately excluded from `middleware.ts`'s protected-path list, with the portal's own layout as sole auth authority |
 
 ---
 
@@ -166,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-01 — after Phase 5 (Launchpad Checklist)*
+*Last updated: 2026-07-02 — after Phase 6 (Playlist Curator Pitching)*
