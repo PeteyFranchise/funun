@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { generateResponseToken } from '@/lib/curators/tokens'
+import { PITCH_NOTE_MAX_WORDS } from '@/lib/curators/pitch-copy'
+import { sendEmail } from '@/lib/email'
 
-// POST /api/pitches — send a pitch from a vault project to an industry professional
+type SendBody = {
+  projectId?: string
+  trackId?: string
+  curatorIds?: string[]
+  note?: string
+}
+
+type BlockedCurator = { curatorId: string; reason: string }
+
+// POST /api/pitches — send route. Ownership + 3-gate server re-validation
+// (curator selected / note non-empty / word count <= 150 — T-06-11) +
+// duplicate-send guard (pre-check + uniq_curator_track_pitch 23505 backstop,
+// T-06-13) + pitch_history row creation with a per-row response_token +
+// email delivery from PITCH_FROM_EMAIL (D-22, graceful no-op when unset).
+// This is the ONLY route that creates pitch_history rows and the ONLY
+// place response_token is generated (06-06 reads, never generates).
 export async function POST(request: Request) {
   const supabase = createApiClient()
   const {
@@ -9,134 +27,183 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Check pitch credits
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('tier, pitch_credits_remaining')
-    .eq('user_id', user.id)
-    .single()
+  const body = (await request.json().catch(() => ({}))) as SendBody
+  const { projectId, trackId } = body
+  const curatorIds = Array.isArray(body.curatorIds) ? body.curatorIds : []
+  const note = typeof body.note === 'string' ? body.note : ''
 
-  if (!sub || sub.pitch_credits_remaining <= 0) {
+  if (!projectId || !trackId) {
+    return NextResponse.json({ error: 'projectId and trackId are required' }, { status: 400 })
+  }
+
+  // ── Gate 1: at least one curator selected ──────────────────────────────
+  if (curatorIds.length === 0) {
+    return NextResponse.json({ error: 'Select at least one curator' }, { status: 400 })
+  }
+
+  // ── Gate 2: note non-empty ──────────────────────────────────────────────
+  const trimmedNote = note.trim()
+  if (trimmedNote.length === 0) {
     return NextResponse.json(
-      { error: 'No pitch credits remaining. Upgrade to Pro for 20 pitches per month.' },
-      { status: 403 }
-    )
-  }
-
-  const { project_id, recipient_id, message } = await request.json()
-
-  if (!project_id || !recipient_id) {
-    return NextResponse.json({ error: 'project_id and recipient_id are required' }, { status: 400 })
-  }
-
-  // Verify project belongs to this artist and has sufficient readiness
-  const { data: project } = await supabase
-    .from('vault_projects')
-    .select('vault_readiness_score, title')
-    .eq('id', project_id)
-    .eq('user_id', user.id)
-    .single()
-
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  }
-
-  if (project.vault_readiness_score < 60) {
-    return NextResponse.json(
-      {
-        error: `Your project needs a Vault Readiness Score of at least 60 to pitch. Current score: ${project.vault_readiness_score}`,
-      },
+      { error: 'Add a playlist-specific note (up to 150 words) to send.' },
       { status: 400 }
     )
   }
 
-  // Verify recipient is a verified industry professional
-  const { data: recipient } = await supabase
-    .from('industry_profiles')
-    .select('id, verified, currently_accepting, display_name')
-    .eq('user_id', recipient_id)
-    .single()
-
-  if (!recipient?.verified) {
-    return NextResponse.json({ error: 'Recipient is not a verified industry professional' }, { status: 400 })
-  }
-
-  if (!recipient.currently_accepting) {
-    return NextResponse.json({ error: `${recipient.display_name} is not currently accepting pitches` }, { status: 400 })
-  }
-
-  // Check for duplicate pitch
-  const { data: existing } = await supabase
-    .from('pitches')
-    .select('id')
-    .eq('project_id', project_id)
-    .eq('recipient_id', recipient_id)
-    .single()
-
-  if (existing) {
-    return NextResponse.json({ error: 'You have already pitched this project to this person' }, { status: 409 })
-  }
-
-  // Create the pitch
-  const { data: pitch, error } = await supabase
-    .from('pitches')
-    .insert({
-      project_id,
-      artist_id: user.id,
-      recipient_id,
-      message: message || null,
-      status: 'sent',
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Deduct pitch credit
-  await supabase
-    .from('subscriptions')
-    .update({ pitch_credits_remaining: sub.pitch_credits_remaining - 1 })
-    .eq('user_id', user.id)
-
-  // Record as a submission for tracking
-  await supabase.from('submissions').insert({
-    project_id,
-    user_id: user.id,
-    destination_type: 'industry_pitch',
-    destination_name: recipient.display_name,
-    status: 'sent',
-    submitted_at: new Date().toISOString(),
-  })
-
-  return NextResponse.json({ data: pitch })
-}
-
-// GET /api/pitches — list pitches sent by this artist
-export async function GET(request: Request) {
-  const supabase = createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { searchParams } = new URL(request.url)
-  const projectId = searchParams.get('project_id')
-
-  let query = supabase
-    .from('pitches')
-    .select(
-      `
-      *,
-      vault_projects (id, title, type, cover_art_url),
-      industry_profiles!recipient_id (display_name, role, company, verified)
-    `
+  // ── Gate 3: word count <= 150 — server-side, never trust client state ──
+  const wordCount = trimmedNote.split(/\s+/).filter(Boolean).length
+  if (wordCount > PITCH_NOTE_MAX_WORDS) {
+    return NextResponse.json(
+      { error: `Note must be ${PITCH_NOTE_MAX_WORDS} words or fewer (currently ${wordCount}).` },
+      { status: 400 }
     )
-    .eq('artist_id', user.id)
-    .order('sent_at', { ascending: false })
+  }
 
-  if (projectId) query = query.eq('project_id', projectId)
+  // ── Ownership: project + track must belong to the caller ───────────────
+  const { data: project } = await supabase
+    .from('vault_projects')
+    .select('id, title, tracks (id, title)')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  const track = ((project.tracks ?? []) as { id: string; title: string }[]).find(
+    t => t.id === trackId
+  )
+  if (!track) return NextResponse.json({ error: 'Track not found in project' }, { status: 404 })
+
+  // ── Load selected curators (service client — need email/claim_token) ───
+  const service = createServiceClient()
+  const { data: curators } = await service
+    .from('curators')
+    .select('id, name, email, email_valid, do_not_pitch, claim_token')
+    .in('id', curatorIds)
+
+  const curatorsById = new Map((curators ?? []).map(c => [c.id, c]))
+
+  // ── Pre-check duplicates: existing pitch_history for this track ────────
+  const { data: existingPitches } = await service
+    .from('pitch_history')
+    .select('curator_id')
+    .eq('track_id', trackId)
+    .in('curator_id', curatorIds)
+  const alreadyPitchedIds = new Set((existingPitches ?? []).map(p => p.curator_id as string))
+
+  // ── Block: not-found / do_not_pitch / bounced / already-pitched ────────
+  const blocked: BlockedCurator[] = []
+  const eligible: { id: string; name: string; email: string; claim_token: string | null }[] = []
+
+  for (const curatorId of curatorIds) {
+    const curator = curatorsById.get(curatorId)
+    if (!curator) {
+      blocked.push({ curatorId, reason: 'Curator not found' })
+      continue
+    }
+    if (alreadyPitchedIds.has(curatorId)) {
+      blocked.push({ curatorId, reason: 'Already pitched for this track' })
+      continue
+    }
+    if (curator.do_not_pitch) {
+      blocked.push({ curatorId, reason: 'Unsubscribed' })
+      continue
+    }
+    if (!curator.email_valid) {
+      blocked.push({ curatorId, reason: 'Email bounced' })
+      continue
+    }
+    eligible.push({
+      id: curator.id,
+      name: curator.name,
+      email: curator.email,
+      claim_token: curator.claim_token,
+    })
+  }
+
+  if (blocked.length > 0) {
+    const dupeCount = blocked.filter(b => b.reason === 'Already pitched for this track').length
+    const message =
+      dupeCount > 0
+        ? `${dupeCount} of these curators were already pitched for this track.`
+        : 'One or more selected curators cannot be pitched right now.'
+    return NextResponse.json({ error: message, blocked }, { status: 409 })
+  }
+
+  // ── Build + insert pitch_history rows in ONE bulk insert (atomic — a ────
+  // uniq_curator_track_pitch (23505) race backstop fails the whole batch,
+  // never a partial insert) ────────────────────────────────────────────────
+  const rows = eligible.map(curator => ({
+    project_id: projectId,
+    track_id: trackId,
+    curator_id: curator.id,
+    artist_id: user.id,
+    note: trimmedNote,
+    response_token: generateResponseToken(),
+  }))
+
+  const { data: inserted, error: insertError } = await service
+    .from('pitch_history')
+    .insert(rows)
+    .select('id, curator_id, response_token')
+
+  if (insertError) {
+    if ((insertError as { code?: string }).code === '23505') {
+      return NextResponse.json(
+        { error: 'One or more of these curators were already pitched for this track.' },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // ── Send emails — best-effort; a send failure does not roll back the ───
+  // pitch_history row (D-22: PITCH_FROM_EMAIL may be unconfigured) ────────
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const playerUrl = `${appUrl}/r/${projectId}`
+
+  let sent = 0
+  for (const row of inserted ?? []) {
+    const curator = eligible.find(c => c.id === row.curator_id)
+    if (!curator) continue
+
+    const claimUrl = curator.claim_token ? `${appUrl}/curators/claim/${curator.claim_token}` : null
+    const acceptUrl = `${appUrl}/pitch/accept/${row.response_token}`
+    const declineUrl = `${appUrl}/pitch/decline/${row.response_token}`
+    const unsubscribeUrl = `${appUrl}/pitch/unsubscribe/${row.response_token}`
+
+    const result = await sendEmail({
+      to: curator.email,
+      from: process.env.PITCH_FROM_EMAIL,
+      subject: `A track for ${curator.name} — "${track.title}"`,
+      html: `
+        <p>Hi ${curator.name},</p>
+        <p>${trimmedNote.replace(/\n/g, '<br />')}</p>
+        <p><a href="${playerUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Listen to "${track.title}"</a></p>
+        <hr style="margin:24px 0;border:none;border-top:1px solid #eee" />
+        <p style="color:#888;font-size:12px">
+          <a href="${acceptUrl}">Accept this pitch</a> ·
+          <a href="${declineUrl}">Decline</a>
+          ${claimUrl ? ` · <a href="${claimUrl}">Claim your curator profile</a>` : ''}
+          · <a href="${unsubscribeUrl}">Unsubscribe from future pitches</a>
+        </p>
+      `,
+      text: [
+        `Hi ${curator.name},`,
+        '',
+        trimmedNote,
+        '',
+        `Listen: ${playerUrl}`,
+        '',
+        `Accept: ${acceptUrl}`,
+        `Decline: ${declineUrl}`,
+        claimUrl ? `Claim your curator profile: ${claimUrl}` : '',
+        `Unsubscribe: ${unsubscribeUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    })
+    if (result.ok) sent += 1
+  }
+
+  return NextResponse.json({ data: { sent, blocked: 0 } })
 }
