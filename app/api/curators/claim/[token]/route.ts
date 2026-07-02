@@ -59,10 +59,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
       )
     }
 
-    await service
+    const { error: claimError } = await service
       .from('curators')
       .update({ claimed_by: existing.user.id, claim_token: null })
       .eq('id', curator.id)
+    if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
 
     await sendEmail({
       ...emailPayload,
@@ -72,10 +73,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     return NextResponse.json({ ok: true })
   }
 
-  await service
+  const { error: claimError } = await service
     .from('curators')
     .update({ claimed_by: created.user.id, claim_token: null })
     .eq('id', curator.id)
+  if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
 
   // Send the actual magic link via Resend (lib/email), not Supabase's
   // built-in email templates — matches how this app already owns all its
