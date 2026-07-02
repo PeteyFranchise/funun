@@ -21,5 +21,15 @@ caused by the current task are auto-fixed; this is a systemic, pre-existing issu
 admin pages and is better addressed as a dedicated fix (either add an `/admin` route segment
 wrapping the pages, or change all three sidebar links to their bare paths) in a follow-up task.
 
-**Status:** Deferred — not fixed. New `Curators` link added in 06-02 mirrors the same (broken)
-`/admin/curators` href for consistency with the two existing links, per plan instruction.
+**Status:** Partially resolved in 06-03 (Task 3). The `/curators` bare path was required as a
+LOCKED artifact for this plan's artist-facing directory (`app/(artist)/curators/page.tsx`,
+PITCH-01), which collided directly with the admin curators page silently occupying that same
+bare path — a real Next.js duplicate-route build failure, not a cosmetic issue. Fixed via
+`git mv "app/(admin)/curators/page.tsx" "app/(admin)/admin/curators/page.tsx"`: the page now
+lives at a literal `admin/` segment nested inside the `(admin)` route group, so it resolves to
+`/admin/curators` (matching the sidebar `href` exactly, and still inheriting
+`app/(admin)/layout.tsx`'s shared sidebar/auth-gate wrapper unchanged) while `/curators` is
+freed for the artist-facing page. `Checklist Items` and `Tips` still resolve to their bare
+paths (`/checklist`, `/tips`) — those two are unchanged and remain deferred for the dedicated
+follow-up fix described above (moving all three under a real `/admin` segment, or changing all
+three sidebar hrefs to bare paths, in one pass).
