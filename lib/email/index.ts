@@ -33,7 +33,7 @@ export async function sendEmail(args: {
   const usesFromOverride = 'from' in args
   const from = args.from ?? process.env.RESEND_FROM_EMAIL
   const configured = usesFromOverride ? !!args.from : !!process.env.RESEND_FROM_EMAIL
-  if (!apiKey || !configured) {
+  if (!apiKey || !configured || !from) {
     return { ok: false, error: 'Email not configured' }
   }
   try {
