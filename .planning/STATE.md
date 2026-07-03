@@ -6,14 +6,14 @@ current_phase: 07
 current_phase_name: social-campaign-planner
 status: executing
 stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-07-03T05:57:53.976Z"
+last_updated: "2026-07-03T06:30:34.286Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-02)
 ## Current Position
 
 Phase: 07 (social-campaign-planner) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-03 — Phase 07 execution started
 
@@ -103,6 +103,9 @@ Recent decisions affecting current work:
 - [Phase 07]: [Phase 07 P01]: getPlatformNudges()/getPlatformNudgeRationale() share one internal resolveNudge() helper for the profile-slug-preferred, free-text-alias-fallback, empty-on-no-match resolution logic
 - [Phase ?]: [Phase 07 P02]: computeDefaultPostingTime parses YYYY-MM-DD release dates via a manual regex-based parseLocalDate() helper instead of new Date(releaseDate), to avoid the UTC-parse/local-timezone day-shift bug
 - [Phase ?]: [Phase 07 P02]: buildSlotHookPrompt shares buildSlotCaptionPrompt's exact signature and { caption } output shape -- only the creative framing (hook vs caption) differs
+- [Phase 07]: const MODEL = 'claude-sonnet-4-6' inline in campaigns/route.ts — no @/lib/anthropic import (RESEARCH.md Pitfall 4 avoidance) — The tools route already established this constant; importing from lib/anthropic would risk a stale model value
+- [Phase 07]: No NEXT_PUBLIC_VAULT_DEMO branch in launchpad campaign routes — launchpad-route precedent, not tools-route (Open Question 2 resolved) — No existing app/api/launchpad/* route has a demo branch; the tools route precedent does not apply
+- [Phase 07]: Collaborators fetched as global roster by user_id with no project join (RESEARCH.md Pitfall 1 — collaborators table has no project_id FK)
 
 ### Pending Todos
 
@@ -127,6 +130,6 @@ None currently.
 
 **Resume file:** None
 
-Last session: 2026-07-03T05:57:53.965Z
+Last session: 2026-07-03T06:29:55.585Z
 Stopped at: Completed 07-02-PLAN.md
 Resume file: None

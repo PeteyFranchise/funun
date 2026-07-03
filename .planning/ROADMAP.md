@@ -262,7 +262,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `social_campaigns` (calendar metadata + posts JSONB). RLS enabled immediately after CREATE TABLE.
 **Notes**: AI calendar is a batch (non-streaming) Claude call using the existing JSON-prompt pattern; user-supplied release data isolated in a `<release_data>` block; platform constraints hard-coded in the system prompt. CSV is Buffer-only — Later has no CSV import.
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 **Wave 1** *(data foundation)*
 
@@ -274,7 +274,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **Wave 3** *(blocked on Waves 1-2; 07-03 and 07-04 run in parallel — zero file overlap)*
 
-- [ ] 07-03-PLAN.md — Campaign lifecycle route (POST generate / GET list / PATCH set-active / DELETE inactive, one-active invariant) + slot PATCH route (IDOR guard + sanitizeSlotEdit allowlist) (SOCIAL-01, SOCIAL-03, SOCIAL-06)
+- [x] 07-03-PLAN.md — Campaign lifecycle route (POST generate / GET list / PATCH set-active / DELETE inactive, one-active invariant) + slot PATCH route (IDOR guard + sanitizeSlotEdit allowlist) (SOCIAL-01, SOCIAL-03, SOCIAL-06)
 - [ ] 07-04-PLAN.md — Slot-scoped generate route (D-10 preview-only, no DB write) + Buffer CSV export route (D-15/16/17/18 subset) (SOCIAL-05, SOCIAL-07)
 
 **Wave 4** *(blocked on Wave 3 API surface)*
@@ -293,4 +293,4 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
 | 6. Playlist Curator Pitching | 6/6 | Complete    | 2026-07-02 |
-| 7. Social Campaign Planner | 2/6 | In Progress|  |
+| 7. Social Campaign Planner | 3/6 | In Progress|  |
