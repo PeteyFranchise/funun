@@ -61,7 +61,7 @@
 
 - Direct social post scheduling / publishing via Meta/TikTok OAuth — Wave 4
 - Later API integration for direct calendar push — Wave 4 (Later has no CSV import as of 2026)
-- Buffer API integration for direct calendar push — Wave 4
+- **SOCIAL-08 (research spike)**: Buffer API integration — social media posting layer. Funūn's social campaign planner currently hands off to Buffer via CSV export (SOCIAL-07). Explore whether a direct Buffer API integration is worth building: can our planner work *in conjunction* with Buffer's scheduling/publishing layer for a synergistic effect (e.g. push a generated calendar straight into Buffer's queue, sync posting status back, avoid the manual CSV round-trip)? Scope a research spike to assess feasibility, integration effort, auth model, and whether the value justifies the API work in our case before committing. Docs: https://developers.buffer.com/index.html — Wave 4
 - Curator directory seeding via automated scraping or API — Wave 4 (manual + claimed onboarding for Wave 3)
 - Dropbox Sign live implementation — needs paid account; abstraction is in place from Wave 2
 - Songtrust API integration — BD conversation pending
