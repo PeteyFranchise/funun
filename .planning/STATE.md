@@ -5,16 +5,16 @@ milestone_name: Launchpad
 current_phase: 07
 current_phase_name: social-campaign-planner
 status: executing
-stopped_at: Phase 07 planned (6 plans, 5 waves)
-last_updated: "2026-07-03T05:50:19.954Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-07-03T05:57:53.976Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 32
-  completed_plans: 27
-  percent: 84
+  completed_plans: 28
+  percent: 86
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-02)
 ## Current Position
 
 Phase: 07 (social-campaign-planner) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-03 — Phase 07 execution started
 
@@ -66,6 +66,7 @@ Last activity: 2026-07-03 — Phase 07 execution started
 | Phase 06 P05 | ~35min | 3 tasks | 10 files |
 | Phase 06 P06 | 20min | 3 tasks | 8 files |
 | Phase 07 P01 | ~15min | 3 tasks | 3 files |
+| Phase 07 P02 | ~10min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Security review closed 22 threats (20 authored at plan time + 2 added post-hoc from code review) with zero open -- see 06-SECURITY.md
 - [Phase 07]: [Phase 07 P01]: Corrected RESEARCH.md's 'TikTik' typo to 'tiktok' in hip_hop_rap's platform ranking in lib/launchpad/platform-nudges.ts, per plan instruction
 - [Phase 07]: [Phase 07 P01]: getPlatformNudges()/getPlatformNudgeRationale() share one internal resolveNudge() helper for the profile-slug-preferred, free-text-alias-fallback, empty-on-no-match resolution logic
+- [Phase ?]: [Phase 07 P02]: computeDefaultPostingTime parses YYYY-MM-DD release dates via a manual regex-based parseLocalDate() helper instead of new Date(releaseDate), to avoid the UTC-parse/local-timezone day-shift bug
+- [Phase ?]: [Phase 07 P02]: buildSlotHookPrompt shares buildSlotCaptionPrompt's exact signature and { caption } output shape -- only the creative framing (hook vs caption) differs
 
 ### Pending Todos
 
@@ -122,8 +125,8 @@ None currently.
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/07-social-campaign-planner/07-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-07-03T05:49:43.769Z
-Stopped at: Phase 07 UI-SPEC approved
+Last session: 2026-07-03T05:57:53.965Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
