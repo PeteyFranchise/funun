@@ -173,7 +173,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 - [x] **Phase 5: Launchpad Checklist** - Per-project Launchpad room with a guided, week-sequenced post-release checklist; DB-backed admin-approved tips; completion persistence (foundation route for Phases 6 & 7) (completed 2026-07-01)
 - [x] **Phase 6: Playlist Curator Pitching** - Filterable curator directory, personalized pitch emails via dedicated sending domain, pitch history, curator claim flow, and bounce/drift handling (completed 2026-07-02)
-- [ ] **Phase 7: Social Campaign Planner** - AI-generated 4–6 week content calendar from release data with platform nudges, DropReady/SoundBait actions, completion tracking, and Buffer CSV export
+- [x] **Phase 7: Social Campaign Planner** - AI-generated 4–6 week content calendar from release data with platform nudges, DropReady/SoundBait actions, completion tracking, and Buffer CSV export (completed 2026-07-03)
 
 ## Phase Details
 
@@ -262,7 +262,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `social_campaigns` (calendar metadata + posts JSONB). RLS enabled immediately after CREATE TABLE.
 **Notes**: AI calendar is a batch (non-streaming) Claude call using the existing JSON-prompt pattern; user-supplied release data isolated in a `<release_data>` block; platform constraints hard-coded in the system prompt. CSV is Buffer-only — Later has no CSV import.
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 **Wave 1** *(data foundation)*
 
@@ -283,7 +283,7 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 07-06-PLAN.md — SlotGeneratePanel + SaveToCalendarPicker (preview-then-accept) + CampaignHistoryList (switch-active / inline-confirm hard-delete) + Launchpad page wiring (SOCIAL-03, SOCIAL-04, SOCIAL-05, SOCIAL-06)
+- [x] 07-06-PLAN.md — SlotGeneratePanel + SaveToCalendarPicker (preview-then-accept) + CampaignHistoryList (switch-active / inline-confirm hard-delete) + Launchpad page wiring (SOCIAL-03, SOCIAL-04, SOCIAL-05, SOCIAL-06)
 
 **UI hint**: yes
 
@@ -293,4 +293,4 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
 | 6. Playlist Curator Pitching | 6/6 | Complete    | 2026-07-02 |
-| 7. Social Campaign Planner | 5/6 | In Progress|  |
+| 7. Social Campaign Planner | 6/6 | Complete   | 2026-07-03 |
