@@ -140,3 +140,7 @@ None beyond the already-completed Task 1 checkpoint — migration 033 is confirm
 ---
 *Phase: 07-social-campaign-planner*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (supabase/migrations/033_social_campaigns.sql, lib/launchpad/campaigns.ts, lib/launchpad/platform-nudges.ts, this SUMMARY.md). All task commits (268589e, 7edba17, 086f3eb) and the summary commit (8cff16a) verified present in git log.
