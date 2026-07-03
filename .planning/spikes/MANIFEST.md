@@ -11,6 +11,11 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 - **BYOK (bring-your-own-key) is the only viable auth model.** Buffer's third-party OAuth is closed to new developers in 2026 (old REST app registration shut; new GraphQL third-party OAuth documented but not enabled). Users must generate a *personal API key* at `publish.buffer.com/settings/api` and paste it into Funūn. No seamless "connect your Buffer" OAuth onboarding is possible today.
 - **Media must be pre-hosted at a public URL.** Buffer's API has no image/video upload. Funūn already hosts `cover_art_url` publicly, so the calendar's Image URL maps directly.
 - **API requires the user to be on a paid Buffer plan** ($6+/channel, bundled — no separate API tier).
+- **A per-user platform→Buffer-channel map is required** (built from the channels query). Funūn's `x` must translate to Buffer's service name `twitter`. (Spike 002)
+- **Media pushes as `assets:[{image:{url}}]`** from Funūn's existing public `cover_art_url`, only for `static_image`/`lyric_graphic` slots — same rule as the CSV export's Image URL column (D-16). (Spike 002)
+- **Platform coverage gaps must be a calm nudge, not an error.** When a user has no Buffer channel for a Funūn platform, skip those slots and offer to connect the channel. (Spike 003)
+- **Status sync-back (Buffer Scheduled→Sent → Funūn completion) is the feature that makes this synergistic** — without it the integration is "CSV export with extra steps." (Spike 003)
+- **BYOK onboarding must be framed honestly** ("Buffer has no one-click connect for new apps — paste a personal key"); hiding it makes the paste-key step feel broken. (Spike 003)
 
 ## Spikes
 
@@ -18,7 +23,7 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 |---|------|------|-----------|---------|------|
 | 001 | buffer-auth-publish | standard | Given a Buffer personal API key, when Funūn calls the GraphQL API, then it lists channels and creates a scheduled post | PARTIAL — endpoint/auth/query-shape validated live; publish pending user key | buffer, auth, graphql, byok |
 | 002 | calendar-to-buffer-mapping | standard | Given a Funūn SocialPost[], when mapped to Buffer createPost inputs, then platform/time/media line up with no data loss | VALIDATED ✓ | buffer, data-mapping, calendar |
-| 003 | connect-and-push-ux | standard | Given BYOK constraint, when a user connects Buffer and pushes a calendar, then connect→map→push→status flow feels coherent | PENDING | buffer, ui, ux, byok |
+| 003 | connect-and-push-ux | standard | Given BYOK constraint, when a user connects Buffer and pushes a calendar, then connect→map→push→status flow feels coherent | VALIDATED ✓ (UX judgment is user's) | buffer, ui, ux, byok |
 
 ## Reference
 
