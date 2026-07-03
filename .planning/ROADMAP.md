@@ -262,11 +262,11 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `social_campaigns` (calendar metadata + posts JSONB). RLS enabled immediately after CREATE TABLE.
 **Notes**: AI calendar is a batch (non-streaming) Claude call using the existing JSON-prompt pattern; user-supplied release data isolated in a `<release_data>` block; platform constraints hard-coded in the system prompt. CSV is Buffer-only — Later has no CSV import.
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 **Wave 1** *(data foundation)*
 
-- [ ] 07-01-PLAN.md — Migration 033 (social_campaigns table, RLS, one-active-per-project partial unique index, updated_at trigger) + lib/launchpad/campaigns.ts (types, readPosts, sanitizeSlotEdit) + lib/launchpad/platform-nudges.ts (D-08 hardcoded genre→platform map) (SOCIAL-01, SOCIAL-02, SOCIAL-04, SOCIAL-06)
+- [x] 07-01-PLAN.md — Migration 033 (social_campaigns table, RLS, one-active-per-project partial unique index, updated_at trigger) + lib/launchpad/campaigns.ts (types, readPosts, sanitizeSlotEdit) + lib/launchpad/platform-nudges.ts (D-08 hardcoded genre→platform map) (SOCIAL-01, SOCIAL-02, SOCIAL-04, SOCIAL-06)
 
 **Wave 2** *(blocked on Wave 1 types)*
 
@@ -293,4 +293,4 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
 | 6. Playlist Curator Pitching | 6/6 | Complete    | 2026-07-02 |
-| 7. Social Campaign Planner | 0/6 | Planned | - |
+| 7. Social Campaign Planner | 1/6 | In Progress|  |

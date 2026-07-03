@@ -47,12 +47,12 @@
 
 ### Social Campaign Planner
 
-- [ ] **SOCIAL-01**: Artist selects which platforms they are active on (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) per project
-- [ ] **SOCIAL-02**: Funūn surfaces best-practice nudges toward highest-impact platform combinations based on the artist's genre
+- [x] **SOCIAL-01**: Artist selects which platforms they are active on (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) per project
+- [x] **SOCIAL-02**: Funūn surfaces best-practice nudges toward highest-impact platform combinations based on the artist's genre
 - [ ] **SOCIAL-03**: AI generates a 4–6 week content calendar from release data (title, genre, collaborators, release date, story); calendar is structured by week and platform
-- [ ] **SOCIAL-04**: Each calendar slot shows a draft caption or hook, a content type tag (short-form video, static image, lyric graphic, text, stories), and the suggested week
+- [x] **SOCIAL-04**: Each calendar slot shows a draft caption or hook, a content type tag (short-form video, static image, lyric graphic, text, stories), and the suggested week
 - [ ] **SOCIAL-05**: DropReady and SoundBait are accessible as inline calendar slot actions ("Generate caption", "Generate hook") and as standalone quick tools in the Launchpad tools view
-- [ ] **SOCIAL-06**: Artist can check off calendar posts as they go live; completion is tracked per project
+- [x] **SOCIAL-06**: Artist can check off calendar posts as they go live; completion is tracked per project
 - [ ] **SOCIAL-07**: Artist can export the campaign calendar as a Buffer-compatible CSV (columns: Text, Image URL, Tags, Posting Time)
 
 ---
