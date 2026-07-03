@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   TOOLS,
@@ -12,6 +12,8 @@ import {
   type RoyaltyAuditOutput,
   type SpotifyPitchOutput,
 } from '@/lib/tools/registry'
+import { SaveToCalendarPicker } from '@/components/launchpad/SaveToCalendarPicker'
+import type { SocialCampaign } from '@/lib/launchpad/campaigns'
 
 type Output = {
   id: string
@@ -52,6 +54,15 @@ function isSpotifyPitch(
   o: Record<string, unknown> | undefined
 ): o is SpotifyPitchOutput & Record<string, unknown> {
   return !!o && typeof o.pitch === 'string' && Array.isArray(o.genres)
+}
+
+// Standalone DropReady / SoundBait outputs can be saved into a campaign slot
+// (D-11). Pick the single most caption-like string as the default to save —
+// DropReady's Instagram caption, or SoundBait's first hook.
+function saveableCaption(o: Record<string, unknown> | undefined): string | null {
+  if (isDropReady(o)) return o.instagram_caption
+  if (isSoundBait(o)) return o.hooks?.[0] ?? null
+  return null
 }
 
 function EpkCard({ data }: { data: EpkOutput }) {
@@ -247,6 +258,47 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
   const [running, setRunning] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Active campaign for the "Save to calendar" affordance (D-11). Fetched
+  // client-side so this standalone tools surface needs no server-page changes;
+  // stays null (affordance hidden) when the project has no active campaign.
+  const [activeCampaign, setActiveCampaign] = useState<SocialCampaign | null>(null)
+  const [pickerCaption, setPickerCaption] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadActiveCampaign() {
+      try {
+        const res = await fetch(`/api/launchpad/${projectId}/campaigns`)
+        if (!res.ok) return
+        const json = await res.json().catch(() => ({}))
+        const campaigns: SocialCampaign[] = (json.data as SocialCampaign[]) ?? []
+        if (!cancelled) setActiveCampaign(campaigns.find(c => c.is_active) ?? null)
+      } catch {
+        // No campaign context — the Save-to-calendar button stays hidden.
+      }
+    }
+    void loadActiveCampaign()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
+  // Persist a standalone tool output into a chosen slot's caption via the same
+  // slot-PATCH path the calendar uses. Never touches tool_outputs history (D-11).
+  async function saveToSlot(slotId: string, caption: string) {
+    if (!activeCampaign) return
+    await fetch(
+      `/api/launchpad/${projectId}/campaigns/${activeCampaign.id}/slots/${slotId}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caption }),
+      }
+    )
+  }
+
+  const canSaveToCalendar = Boolean(activeCampaign && activeCampaign.posts.length > 0)
+
   const outputBySlug = new Map(outputs.map(o => [o.tool_slug, o]))
 
   async function run(slug: ToolSlug) {
@@ -319,30 +371,53 @@ export function ToolsPanel({ projectId, outputs }: { projectId: string; outputs:
 
       {outputs.length > 0 && (
         <div className="mt-6 space-y-4">
-          {outputs.map(o => (
-            <div key={o.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="mb-3 text-sm font-semibold text-white">{o.title ?? o.tool_slug}</p>
-              {isEpk(o.output) ? (
-                <EpkCard data={o.output} />
-              ) : isDropReady(o.output) ? (
-                <DropReadyCard data={o.output} />
-              ) : isSoundBait(o.output) ? (
-                <SoundBaitCard data={o.output} />
-              ) : isDistroAdvisor(o.output) ? (
-                <DistroAdvisorCard data={o.output} />
-              ) : isRoyaltyAudit(o.output) ? (
-                <RoyaltyAuditCard data={o.output} />
-              ) : isSpotifyPitch(o.output) ? (
-                <SpotifyPitchCard data={o.output} />
-              ) : (
-                <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-white/60">
-                  {JSON.stringify(o.output, null, 2)}
-                </pre>
-              )}
-            </div>
-          ))}
+          {outputs.map(o => {
+            const saveCaption = saveableCaption(o.output)
+            return (
+              <div key={o.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">{o.title ?? o.tool_slug}</p>
+                  {canSaveToCalendar && saveCaption && (
+                    <button
+                      type="button"
+                      onClick={() => setPickerCaption(saveCaption)}
+                      className="shrink-0 rounded-lg border border-brandindigo/40 bg-brandindigo/10 px-3 py-1.5 text-xs font-semibold text-brandindigo transition hover:bg-brandindigo/20"
+                    >
+                      Save to calendar
+                    </button>
+                  )}
+                </div>
+                {isEpk(o.output) ? (
+                  <EpkCard data={o.output} />
+                ) : isDropReady(o.output) ? (
+                  <DropReadyCard data={o.output} />
+                ) : isSoundBait(o.output) ? (
+                  <SoundBaitCard data={o.output} />
+                ) : isDistroAdvisor(o.output) ? (
+                  <DistroAdvisorCard data={o.output} />
+                ) : isRoyaltyAudit(o.output) ? (
+                  <RoyaltyAuditCard data={o.output} />
+                ) : isSpotifyPitch(o.output) ? (
+                  <SpotifyPitchCard data={o.output} />
+                ) : (
+                  <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-white/60">
+                    {JSON.stringify(o.output, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
+
+      {/* D-11 standalone save — writes a tool output into a chosen campaign slot */}
+      <SaveToCalendarPicker
+        open={pickerCaption !== null}
+        toolOutput={pickerCaption ?? ''}
+        posts={activeCampaign?.posts ?? []}
+        onClose={() => setPickerCaption(null)}
+        onSave={saveToSlot}
+      />
     </section>
   )
 }

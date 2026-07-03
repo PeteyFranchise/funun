@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PlatformSelector } from './PlatformSelector'
 import { CampaignSlot } from './CampaignSlot'
+import { SlotGeneratePanel } from './SlotGeneratePanel'
 import type { SocialCampaign, SocialPost, Platform } from '@/lib/launchpad/campaigns'
 import { PLATFORM_VALUES, PLATFORM_LABELS } from '@/lib/launchpad/campaigns'
 
@@ -15,10 +16,10 @@ import { PLATFORM_VALUES, PLATFORM_LABELS } from '@/lib/launchpad/campaigns'
 // slot callbacks (caption edit, posting-time override, completion toggle), and
 // the Buffer CSV export sub-block (D-18, SOCIAL-07).
 //
-// SlotGeneratePanel seam: onOpenGenerate is exposed as a callback prop so that
-// 07-06 can wire in SlotGeneratePanel without touching this file. If no prop is
-// provided, a local state placeholder records the post — the panel itself is
-// connected in 07-06.
+// SlotGeneratePanel seam: onOpenGenerate is exposed as a callback prop so a
+// parent can override where the generate action routes. When no prop is
+// provided (the default on the Launchpad page), the locally mounted
+// SlotGeneratePanel opens for the chosen slot.
 
 const WEEK_LABELS: Record<1 | 2 | 3 | 4, { header: string; subLabel: string }> = {
   1: { header: 'Week 1', subLabel: 'Release week' },
@@ -51,16 +52,15 @@ export function CampaignCalendar({
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  // ── Local generate panel seam (07-06 connects SlotGeneratePanel here) ───────
-  // If the parent provides onOpenGenerate, use it; otherwise track locally.
-  // 07-06: replace the local state seam below with a real panel component.
-  const [_generatePost, setGeneratePost] = useState<SocialPost | null>(null)
+  // ── Generate panel state ────────────────────────────────────────────────────
+  // Which slot (if any) the SlotGeneratePanel is open for. A parent may override
+  // routing via onOpenGenerate; otherwise the locally mounted panel opens.
+  const [generatePost, setGeneratePost] = useState<SocialPost | null>(null)
 
   function handleOpenGenerate(post: SocialPost) {
     if (onOpenGenerateProp) {
       onOpenGenerateProp(post)
     } else {
-      // Local placeholder — 07-06 will remove this branch and wire the panel
       setGeneratePost(post)
     }
   }
@@ -81,10 +81,11 @@ export function CampaignCalendar({
         setGenerateError("Couldn't generate your calendar — please try again.")
         return
       }
-      const generated = json.data?.campaign ?? json.campaign ?? null
+      // Route returns { data: <campaignRow> } (see campaigns/route.ts POST).
+      const generated = (json.data as SocialCampaign) ?? null
       if (generated) {
-        setCampaign(generated as SocialCampaign)
-        setSelectedPlatforms((generated as SocialCampaign).platforms ?? selectedPlatforms)
+        setCampaign(generated)
+        setSelectedPlatforms(generated.platforms ?? selectedPlatforms)
       }
     } catch {
       setGenerateError("Couldn't generate your calendar — please try again.")
@@ -99,7 +100,8 @@ export function CampaignCalendar({
       const res = await fetch(`/api/launchpad/${projectId}/campaigns`)
       if (!res.ok) return
       const json = await res.json().catch(() => ({}))
-      const campaigns: SocialCampaign[] = json.data?.campaigns ?? json.campaigns ?? []
+      // Route returns { data: <campaignRow[]> } (see campaigns/route.ts GET).
+      const campaigns: SocialCampaign[] = (json.data as SocialCampaign[]) ?? []
       const active = campaigns.find(c => c.is_active) ?? campaigns[0] ?? null
       setCampaign(active)
     } catch {
@@ -412,6 +414,18 @@ export function CampaignCalendar({
             </p>
           </div>
         </>
+      )}
+
+      {/* Inline slot generate panel (D-10 preview-then-accept). Renders null
+          until a slot is chosen; onAccept persists via the same PATCH flow. */}
+      {campaign && (
+        <SlotGeneratePanel
+          projectId={projectId}
+          campaignId={campaign.id}
+          slot={generatePost}
+          onClose={() => setGeneratePost(null)}
+          onAccept={onEditCaption}
+        />
       )}
     </div>
   )
