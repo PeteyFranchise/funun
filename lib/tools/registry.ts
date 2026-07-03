@@ -372,6 +372,122 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 }`
 }
 
+// ─── Social campaign calendar (D-12/D-15) ──────────────────────────────
+// NOTE: buildCalendarPrompt/buildSlotCaptionPrompt/buildSlotHookPrompt are
+// deliberately NOT registered as ToolSlug entries / dispatched through
+// getTool()/buildToolPrompt() above (D-12, RESEARCH.md Anti-Patterns). They
+// have a different output shape (one caption per slot, not a multi-field
+// standalone tool JSON) and a different save target (a calendar slot in
+// social_campaigns.posts, not tool_outputs) — the wave-3 routes (07-03,
+// 07-04) call these functions directly.
+
+export const PLATFORM_CONSTRAINTS = `PLATFORM CONSTRAINTS (fixed — do not deviate)
+- Instagram: caption up to ~2,200 characters; content types: static image, Stories, Reels (short-form video)
+- TikTok: caption under 150 characters; content type: short-form video only
+- X: post under 280 characters; content types: text, static image
+- YouTube Shorts: title under 100 characters; content type: short-form video only
+- Facebook: caption up to ~500 characters recommended; content types: static image, short-form video, text
+- Threads: post under 500 characters; content types: text, static image`
+
+export function buildCalendarPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext,
+  collaboratorNames: string[],
+  activePlatforms: string[]
+): string {
+  const artist = profile.artist_name || 'this artist'
+
+  return `You are a social media strategist building a 4-week release campaign calendar for an independent artist.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+${profile.location ? `Based in: ${profile.location}` : ''}
+
+${PLATFORM_CONSTRAINTS}
+
+<release_data>
+Title: ${project.title}
+Genre: ${project.genre ?? 'unspecified'}
+Release date: ${project.release_date ?? 'TBA'}
+Artist notes (the "story"): ${project.notes ?? 'none provided'}
+Collaborators: ${collaboratorNames.length ? collaboratorNames.join(', ') : 'none'}
+Active platforms: ${activePlatforms.join(', ')}
+</release_data>
+
+Build a 4-week content calendar covering weeks 1-4 only, using ONLY the active platforms listed above. Decide the pacing per platform yourself — high-frequency platforms (e.g. TikTok) can have multiple posts in a single week, while others may have fewer; do not force a fixed one-post-per-platform-per-week grid. For every slot, assign a content_type from the 5 allowed types (short_form_video, static_image, lyric_graphic, text, stories) that matches what that platform actually supports per the constraints above. Write a platform-native draft caption for every slot. Do not invent release facts (streaming numbers, press quotes, chart positions, collaborators) that were not provided in <release_data>.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{
+  "posts": [
+    { "platform": "one of the active platforms", "week": 1, "content_type": "one of the 5 allowed types", "caption": "platform-native draft caption for this slot" }
+  ]
+}`
+}
+
+// ─── Slot-scoped generation (D-12) ──────────────────────────────────────
+export type SlotCaptionOutput = { caption: string }
+
+export function buildSlotCaptionPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext,
+  slot: { platform: string; week: number; content_type: string; existingCaption: string }
+): string {
+  const artist = profile.artist_name || 'this artist'
+  return `You are a social media strategist writing ONE piece of release-day content for a specific calendar slot.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+
+RELEASE
+Title: ${project.title}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+SLOT
+Platform: ${slot.platform}
+Week: ${slot.week} of 4
+Content type: ${slot.content_type}
+Current draft (may be empty): ${slot.existingCaption || '(none yet)'}
+
+Write ONE tailored caption for this exact slot — platform-native, matching the content type. Do not invent facts not provided above.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{ "caption": "the single caption for this slot" }`
+}
+
+export function buildSlotHookPrompt(
+  profile: ArtistProfile,
+  project: ToolProjectContext,
+  slot: { platform: string; week: number; content_type: string; existingCaption: string }
+): string {
+  const artist = profile.artist_name || 'this artist'
+  return `You are a short-form video strategist writing ONE scroll-stopping hook for a specific calendar slot.
+
+ARTIST
+Name: ${artist}
+${profile.genre ? `Genre: ${profile.genre}` : ''}
+
+RELEASE
+Title: ${project.title}
+${project.genre ? `Genre: ${project.genre}` : ''}
+${project.release_date ? `Release date: ${project.release_date}` : 'Release date: TBA'}
+${project.notes ? `Artist notes: ${project.notes}` : ''}
+
+SLOT
+Platform: ${slot.platform}
+Week: ${slot.week} of 4
+Content type: ${slot.content_type}
+Current draft (may be empty): ${slot.existingCaption || '(none yet)'}
+
+Write ONE tailored hook for this exact slot — a scroll-stopping opening line or on-screen text hook, sayable on camera, that fits the content type and platform. Do not invent facts not provided above.
+
+Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this shape:
+{ "caption": "the single hook for this slot" }`
+}
+
 // ─── Prompt dispatcher ────────────────────────────────────────────────
 export function buildToolPrompt(
   slug: ToolSlug,
