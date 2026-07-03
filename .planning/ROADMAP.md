@@ -262,7 +262,29 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 
 **New tables**: `social_campaigns` (calendar metadata + posts JSONB). RLS enabled immediately after CREATE TABLE.
 **Notes**: AI calendar is a batch (non-streaming) Claude call using the existing JSON-prompt pattern; user-supplied release data isolated in a `<release_data>` block; platform constraints hard-coded in the system prompt. CSV is Buffer-only — Later has no CSV import.
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(data foundation)*
+
+- [ ] 07-01-PLAN.md — Migration 033 (social_campaigns table, RLS, one-active-per-project partial unique index, updated_at trigger) + lib/launchpad/campaigns.ts (types, readPosts, sanitizeSlotEdit) + lib/launchpad/platform-nudges.ts (D-08 hardcoded genre→platform map) (SOCIAL-01, SOCIAL-02, SOCIAL-04, SOCIAL-06)
+
+**Wave 2** *(blocked on Wave 1 types)*
+
+- [ ] 07-02-PLAN.md — Prompt builders (buildCalendarPrompt + buildSlotCaptionPrompt/buildSlotHookPrompt in registry.ts, not a 7th ToolSlug) + per-platform posting-time defaults + readCalendarPosts in campaigns.ts (SOCIAL-03, SOCIAL-05, SOCIAL-07)
+
+**Wave 3** *(blocked on Waves 1-2; 07-03 and 07-04 run in parallel — zero file overlap)*
+
+- [ ] 07-03-PLAN.md — Campaign lifecycle route (POST generate / GET list / PATCH set-active / DELETE inactive, one-active invariant) + slot PATCH route (IDOR guard + sanitizeSlotEdit allowlist) (SOCIAL-01, SOCIAL-03, SOCIAL-06)
+- [ ] 07-04-PLAN.md — Slot-scoped generate route (D-10 preview-only, no DB write) + Buffer CSV export route (D-15/16/17/18 subset) (SOCIAL-05, SOCIAL-07)
+
+**Wave 4** *(blocked on Wave 3 API surface)*
+
+- [ ] 07-05-PLAN.md — PlatformSelector (nudge badges, nothing pre-checked) + CampaignCalendar (week-grouped, optimistic PATCH, export sub-block) + CampaignSlot (chips, independent checkbox, inline-edit) (SOCIAL-01 through SOCIAL-07)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 07-06-PLAN.md — SlotGeneratePanel + SaveToCalendarPicker (preview-then-accept) + CampaignHistoryList (switch-active / inline-confirm hard-delete) + Launchpad page wiring (SOCIAL-03, SOCIAL-04, SOCIAL-05, SOCIAL-06)
+
 **UI hint**: yes
 
 ## Progress
@@ -270,5 +292,5 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
-| 6. Playlist Curator Pitching | 6/6 | Complete   | 2026-07-02 |
-| 7. Social Campaign Planner | 0/0 | Not started | - |
+| 6. Playlist Curator Pitching | 6/6 | Complete    | 2026-07-02 |
+| 7. Social Campaign Planner | 0/6 | Planned | - |
