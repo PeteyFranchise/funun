@@ -16,6 +16,7 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 - **Platform coverage gaps must be a calm nudge, not an error.** When a user has no Buffer channel for a Funūn platform, skip those slots and offer to connect the channel. (Spike 003)
 - **Status sync-back (Buffer Scheduled→Sent → Funūn completion) is the feature that makes this synergistic** — without it the integration is "CSV export with extra steps." (Spike 003)
 - **BYOK onboarding must be framed honestly** ("Buffer has no one-click connect for new apps — paste a personal key"); hiding it makes the paste-key step feel broken. (Spike 003)
+- **The connect screen must include a plain-language "What is Buffer?" explainer** — Funūn artists may not know what Buffer is. State what it is (a social scheduling tool), what connecting does (pushes the calendar into Buffer's queue so posts publish automatically), and link out to buffer.com. (Spike 003)
 
 ## Spikes
 
