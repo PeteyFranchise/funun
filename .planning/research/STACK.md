@@ -1,373 +1,416 @@
-# Stack Research: Wave 3 Launchpad
+# Stack Research: Wave 4 — The Green Room
 
-**Project:** Funūn Wave 3 — Launchpad
-**Researched:** 2026-06-30
-**Overall confidence:** MEDIUM (Resend/Svix webhook payload confirmed via official docs; CSV column format confirmed via Buffer help center; Anthropic structured outputs verified against installed SDK; Supabase RLS confirmed against existing migration patterns)
+**Project:** Funūn Wave 4 — The Green Room (v1.2)
+**Researched:** 2026-07-03
+**Confidence:** MEDIUM (Supabase Presence/Storage/postgres_changes verified against official docs; pg_trgm recommendation cross-checked across multiple Postgres community sources; date-fns version verified via npm; lucide-react confirmed in-use from design handoff)
+
+---
+
+## Inherited Stack (do not re-research)
+
+Next.js 15 App Router · TypeScript 5.5 (strict) · React 18.3 · Supabase (PostgreSQL + RLS + Storage + Realtime) · Tailwind 3.4 · Anthropic SDK 0.52+ · Resend 4 · svix 1.96 · Zod 3.23
+
+All Wave 3 dependencies (`svix`, `csv-stringify`, `validator`) are already installed. This document covers only what Wave 4 adds or changes.
 
 ---
 
 ## New Dependencies Needed
 
-| Package | Version | Purpose | Why not existing |
-|---------|---------|---------|-----------------|
-| `svix` | `^1.96.1` | Verify Resend webhook signatures in `/api/webhooks/resend` route | Resend webhooks are signed by Svix infrastructure. Verification requires HMAC-SHA256 against three headers (`svix-id`, `svix-timestamp`, `svix-signature`). The Resend SDK's `resend.webhooks.verify()` wraps Svix internally — either use that wrapper or import Svix directly. Direct Svix import is more explicit and testable. |
-| `validator` | `^13.15.35` | Validate curator email address format before calling `resend.emails.send()` | Prevents sending to obviously malformed addresses before Resend even sees them. `@types/validator` v13.15.10 provides TypeScript types. The `email-validator` package (last published 8 years ago) is abandoned. Format-only — deliverability is handled by bounce detection. |
-| `csv-stringify` | `^6.8.0` | Generate Buffer-compatible CSV export of the social campaign calendar | Already have the `csv` umbrella package? No — it is not in `package.json`. `csv-stringify` is the stringify-only sub-package (940KB unpacked), actively maintained, streams-compatible, spec-compliant for quoted fields with commas/newlines in captions. `json2csv` v6 is still in alpha (`6.0.0-alpha.2`) — risky. `papaparse` is browser-first. `csv-stringify` is the correct server-side choice for a Next.js API route. |
-| `@types/validator` | `^13.15.10` | TypeScript types for `validator` package | dev-only; `validator` ships without bundled types |
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `date-fns` | `^4.x` (latest) | Relative timestamps ("3 minutes ago", "2 days ago") in activity feed, notifications, wall posts, DM widget | Single named import `{ formatDistanceToNow }` — tree-shaken to ~2–3KB. Pure functions, safe in both server and client components. v4 is ESM-first with full CJS dual exports. No browser APIs, no locale config needed for English. |
+| `lucide-react` | `^0.513.0` (latest ~0.513) | Lucide-style icons throughout the new social screens (profile, discover, notifications, DM widget) | The design handoff (`docs/design/wave-4-social-layer/`) explicitly uses Lucide-style inline SVG. `lucide-react` provides exact icon parity, tree-shakes per import, works in both server and client components, no special config for Next.js App Router. |
 
-No other new runtime dependencies are needed. Resend, Anthropic SDK, Supabase, and Zod already cover all other Wave 3 requirements.
+**That is the complete new-dependency list for Wave 4.** Everything else is native Supabase + Postgres. No new infrastructure service, no new auth provider, no external search engine.
 
 ---
 
-## Supabase Schema Additions
+## Supabase Capabilities Used (native — no new infra)
 
-### Table: `launchpad_checklist_items` (definition table — admin-managed)
+### 1. Realtime Presence — "Active now" status
 
-Defines the canonical checklist items and their per-item tips. Content is AI-drafted monthly and admin-approved before publish. This is read by all authenticated users; only admins write to it (via service role in an admin API route, not via RLS).
+**Provider:** `@supabase/supabase-js` (already installed at ^2.45.0)
 
-```sql
-CREATE TABLE launchpad_checklist_items (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  slug          TEXT NOT NULL UNIQUE,          -- e.g. 'pitch_spotify', 'update_bio'
-  category      TEXT NOT NULL,                 -- e.g. 'pitching', 'social', 'admin'
-  title         TEXT NOT NULL,
-  description   TEXT NOT NULL,
-  tip           TEXT,                          -- AI-drafted, admin-approved guidance
-  tip_updated_at TIMESTAMPTZ,
-  tool_slug     TEXT,                          -- links to lib/tools/registry.ts slugs (nullable)
-  external_url  TEXT,                          -- deep-link for external action items (nullable)
-  sort_order    INT NOT NULL DEFAULT 0,
-  active        BOOLEAN NOT NULL DEFAULT true,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
+**How it works:** Each browser tab tracks a presence payload on a named channel. The server merges all payloads keyed by presence key (user ID). All subscribers receive `sync`, `join`, and `leave` events within milliseconds.
 
-ALTER TABLE launchpad_checklist_items ENABLE ROW LEVEL SECURITY;
--- All authenticated users can read active items
-CREATE POLICY "Authenticated users read active checklist items"
-  ON launchpad_checklist_items FOR SELECT TO authenticated
-  USING (active = true);
--- Admin writes bypass RLS via service role key in admin API routes
--- No INSERT/UPDATE/DELETE policy needed for non-service-role callers
-```
-
-**RLS pattern:** Public read for authenticated users (`TO authenticated`), admin writes via `createServiceClient()` in a protected admin API route (service role bypasses RLS entirely — consistent with how `lib/supabase/server.ts` already works). Do NOT store admin flag in `raw_user_meta_data` (user-editable); store in `raw_app_meta_data` or use a separate `admin_users` table if an admin UI is needed.
-
----
-
-### Table: `launchpad_progress` (per-artist, per-project completion tracking)
-
-```sql
-CREATE TABLE launchpad_progress (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id       UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  project_id    UUID REFERENCES vault_projects ON DELETE CASCADE NOT NULL,
-  item_slug     TEXT NOT NULL,                 -- FK to launchpad_checklist_items.slug
-  completed     BOOLEAN NOT NULL DEFAULT false,
-  completed_at  TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (user_id, project_id, item_slug)
-);
-
-ALTER TABLE launchpad_progress ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own launchpad progress"
-  ON launchpad_progress
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE INDEX idx_launchpad_progress_project ON launchpad_progress (project_id, user_id);
-```
-
----
-
-### Table: `curators` (the curator directory — admin-seeded, curator-claimable)
-
-```sql
-CREATE TABLE curators (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name              TEXT NOT NULL,
-  email             TEXT NOT NULL UNIQUE,
-  playlist_name     TEXT,
-  platform          TEXT NOT NULL DEFAULT 'spotify',  -- 'spotify' | 'apple' | 'youtube' | 'tidal'
-  genres            TEXT[] NOT NULL DEFAULT '{}',
-  playlist_url      TEXT,
-  follower_count    INT,
-  submission_notes  TEXT,                             -- curator-provided pitch guidance
-  claimed_by        UUID REFERENCES auth.users ON DELETE SET NULL,
-  claimed_at        TIMESTAMPTZ,
-  email_valid       BOOLEAN NOT NULL DEFAULT true,    -- set false on hard bounce
-  email_bounced_at  TIMESTAMPTZ,
-  response_rate     NUMERIC(5,2),                     -- 0.00–100.00, computed periodically
-  total_pitches     INT NOT NULL DEFAULT 0,
-  total_responses   INT NOT NULL DEFAULT 0,
-  active            BOOLEAN NOT NULL DEFAULT true,
-  created_at        TIMESTAMPTZ DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE curators ENABLE ROW LEVEL SECURITY;
--- All authenticated users can browse active, email-valid curators
-CREATE POLICY "Authenticated users read active curators"
-  ON curators FOR SELECT TO authenticated
-  USING (active = true AND email_valid = true);
--- Curators can update their own claimed profile (name, submission_notes, genres, playlist_url)
-CREATE POLICY "Curators update own profile"
-  ON curators FOR UPDATE TO authenticated
-  USING (auth.uid() = claimed_by)
-  WITH CHECK (auth.uid() = claimed_by);
--- Admin writes (add, flag, edit all fields) via service role
-```
-
-**Genre drift alert:** Computed in application layer — compare `curators.genres` against the distribution of pitches that got responses. Trigger an alert when cosine similarity between current genre tags and recent-response genres drops below a threshold. No additional table needed; alert logic lives in a periodic job or on-read in the admin view.
-
----
-
-### Table: `pitch_history` (per-project pitch log)
-
-```sql
-CREATE TABLE pitch_history (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id         UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  project_id      UUID REFERENCES vault_projects ON DELETE CASCADE NOT NULL,
-  curator_id      UUID REFERENCES curators ON DELETE SET NULL,
-  curator_email   TEXT NOT NULL,               -- snapshot at send time (curator row may change)
-  curator_name    TEXT NOT NULL,               -- snapshot
-  resend_email_id TEXT,                        -- returned by resend.emails.send() as data.id
-  sent_at         TIMESTAMPTZ DEFAULT NOW(),
-  status          TEXT NOT NULL DEFAULT 'sent'
-                  CHECK (status IN ('sent', 'bounced', 'responded', 'passed')),
-  responded_at    TIMESTAMPTZ,
-  notes           TEXT,                        -- artist's own notes on this pitch
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE pitch_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own pitch history"
-  ON pitch_history
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE INDEX idx_pitch_history_project ON pitch_history (project_id, user_id);
-CREATE INDEX idx_pitch_history_resend ON pitch_history (resend_email_id) WHERE resend_email_id IS NOT NULL;
-```
-
-The `resend_email_id` index enables O(1) lookup when a Resend bounce webhook arrives with `data.email_id`.
-
----
-
-### Table: `social_campaigns` (per-project AI-generated calendar)
-
-```sql
-CREATE TABLE social_campaigns (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id         UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  project_id      UUID REFERENCES vault_projects ON DELETE CASCADE NOT NULL UNIQUE,
-  platforms       TEXT[] NOT NULL DEFAULT '{}',  -- ['instagram','tiktok','x','youtube_shorts','facebook','threads']
-  weeks           INT NOT NULL DEFAULT 4,
-  generated_at    TIMESTAMPTZ,
-  posts           JSONB NOT NULL DEFAULT '[]',   -- array of SocialPost objects (see below)
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
--- SocialPost shape stored in posts JSONB:
--- {
---   id: string,            -- client-generated UUID
---   week: number,          -- 1-6
---   day_of_week: number,   -- 0=Sun..6=Sat (suggested)
---   platform: string,
---   content_type: string,  -- 'reel' | 'story' | 'post' | 'short' | 'thread'
---   caption: string,
---   hook: string | null,
---   completed: boolean,
---   completed_at: string | null
--- }
-
-ALTER TABLE social_campaigns ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users manage own social campaigns"
-  ON social_campaigns
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-CREATE INDEX idx_social_campaigns_project ON social_campaigns (project_id);
-```
-
-Storing posts as JSONB avoids a many-row `campaign_posts` table for what is essentially a document. Each campaign has fewer than 50 posts; JSONB is appropriate at this scale. Individual post `completed` status is toggled via a PATCH to the parent row (replace the JSONB array). If post-level querying becomes necessary in Wave 4, extract to a child table then.
-
----
-
-## API / Webhook Integrations
-
-### Resend Bounce Webhook (`POST /api/webhooks/resend`)
-
-**Infrastructure:** Resend delivers webhooks via Svix. Every request carries three headers: `svix-id`, `svix-timestamp`, `svix-signature`.
-
-**Verification pattern (Next.js 15 App Router):**
+**Integration pattern:**
 
 ```typescript
-import { Webhook } from 'svix'
-
-export async function POST(req: Request) {
-  // CRITICAL: read raw text BEFORE any JSON parsing
-  // Signature check is byte-sensitive; JSON.parse + re-serialize breaks HMAC
-  const rawBody = await req.text()
-
-  const wh = new Webhook(process.env.RESEND_WEBHOOK_SECRET!)
-  let event: ResendWebhookEvent
-
-  try {
-    event = wh.verify(rawBody, {
-      'svix-id': req.headers.get('svix-id')!,
-      'svix-timestamp': req.headers.get('svix-timestamp')!,
-      'svix-signature': req.headers.get('svix-signature')!,
-    }) as ResendWebhookEvent
-  } catch {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
-  }
-
-  if (event.type === 'email.bounced') {
-    const emailId = event.data.email_id
-    const bounceType = event.data.bounce?.type  // 'Permanent' | 'Transient'
-    if (bounceType === 'Permanent') {
-      // 1. Find pitch_history row by resend_email_id = emailId
-      // 2. Set pitch_history.status = 'bounced'
-      // 3. Find curator by pitch_history.curator_id
-      // 4. Set curators.email_valid = false, email_bounced_at = NOW()
-    }
-  }
-
-  return NextResponse.json({ received: true })
-}
-```
-
-**Bounce event payload shape (confirmed from Resend changelog + Svix docs):**
-
-```json
-{
-  "type": "email.bounced",
-  "created_at": "2026-06-30T12:00:00.000Z",
-  "data": {
-    "email_id": "<resend-email-id>",
-    "from": "pitch@funun.studio",
-    "to": ["curator@example.com"],
-    "subject": "...",
-    "bounce": {
-      "type": "Permanent",
-      "subType": "General",
-      "message": "..."
-    }
-  }
-}
-```
-
-`type: "Permanent"` = hard bounce (mark curator email invalid permanently).
-`type: "Transient"` (on `email.delivery_delayed`) = soft bounce (log but do not invalidate).
-
-**Idempotency:** Use `svix-id` header as deduplication key. Store processed webhook IDs if Resend retries are a concern.
-
-**Environment variable needed:** `RESEND_WEBHOOK_SECRET` — obtained from Resend dashboard when registering the webhook endpoint.
-
----
-
-### Claude API — Social Campaign Calendar Generation
-
-**Current SDK version installed:** `@anthropic-ai/sdk` `0.107.0` (package.json says `^0.52.0` but npm resolved to 0.107.0).
-
-**Structured outputs availability:** The installed 0.107.0 does NOT expose `messages.parse()` or `zodOutputFormat` in its TypeScript types. These are part of a later release. Do not depend on them for Wave 3.
-
-**Correct approach — follow the existing pattern in `lib/tools/registry.ts`:** Prompt Claude to return a JSON object directly, then `JSON.parse()` the response text. This pattern is already used for every tool in the codebase (EPK, DropReady, SoundBait, etc.) and is reliable with the current model generation.
-
-**Calendar prompt contract:**
-
-```typescript
-// Response shape Claude is prompted to return:
-type CalendarOutput = {
-  weeks: number  // 4-6
-  posts: Array<{
-    week: number
-    day_of_week: number   // 0=Sunday
-    platform: 'instagram' | 'tiktok' | 'x' | 'youtube_shorts' | 'facebook' | 'threads'
-    content_type: 'reel' | 'story' | 'post' | 'short' | 'thread' | 'tweet'
-    caption: string
-    hook: string | null   // null for non-short-form platforms
-    rationale: string     // brief "why this week, this platform" — surfaced as tooltip
-  }>
-  platform_nudge: string  // best-practice recommendation for this genre
-}
-```
-
-Inject into prompt: release title, genre, sub-genre, release date, collaborator names, selected platforms, artist notes. Cap `max_tokens` at 4096; a 6-week calendar across 4 platforms is roughly 24–36 posts at ~100 tokens each plus overhead.
-
-**Model:** Use `claude-sonnet-4-6` (the model running this research agent). It is the same model as `claude-sonnet-4-5` for SDK purposes — check the model string against the existing tool routes in `app/api/tools/`.
-
----
-
-### CSV Export — Buffer-Compatible Format
-
-**Columns (Buffer bulk upload schema):**
-
-| Column | Required | Notes |
-|--------|---------|-------|
-| `Text` | Conditional | Caption text. Required if no Image URL. Wrap in quotes for commas/newlines. |
-| `Image URL` | Conditional | Direct URL to media (.jpg/.png). Required if no Text. |
-| `Tags` | Optional | Case-sensitive; must be existing Buffer tags. Leave blank. |
-| `Posting Time` | Optional | `YYYY-MM-DD HH:mm` (24h). Leave blank = next queue slot. |
-
-**Funūn export mapping:**
-
-```
-Text         ← post.caption (+ hook if short-form, appended with newline)
-Image URL    ← (blank — artist adds their own media)
-Tags         ← release title (so artist can filter in Buffer)
-Posting Time ← release_date + week offset + day_of_week + suggested time by platform
-```
-
-**Later:** Later does NOT support CSV bulk import as of 2026 — it is an open feature request on their community forum. Do not claim Later compatibility. Label the export "Buffer CSV" and note that Later users should use Buffer's re-export or manual scheduling.
-
-**Implementation:** Use `csv-stringify` in synchronous mode:
-
-```typescript
-import { stringify } from 'csv-stringify/sync'
-
-const csv = stringify(rows, {
-  header: true,
-  columns: ['Text', 'Image URL', 'Tags', 'Posting Time'],
-  quoted_string: true,
-  cast: { string: (value) => value ?? '' },
+// In a client component (e.g. the DM widget or profile header)
+const channel = supabase.channel('presence:global', {
+  config: { presence: { key: userId } },
 })
-// Return as NextResponse with Content-Type: text/csv
+
+channel
+  .on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState<{ user_id: string; online_at: string }>()
+    // state is a Record<presenceKey, presence[]> — derive online set from keys
+  })
+  .on('presence', { event: 'join' }, ({ key, newPresences }) => { /* ... */ })
+  .on('presence', { event: 'leave' }, ({ key, leftPresences }) => { /* ... */ })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ user_id: userId, online_at: new Date().toISOString() })
+    }
+  })
+
+// Cleanup on unmount
+return () => { channel.unsubscribe() }
 ```
+
+**Idle / "active now" timeout:** Presence is heartbeat-driven (default 25s interval). A user is "active now" while their channel is subscribed. For the DM widget "active now" dot: show it when the conversation partner's presence key appears in presenceState(). The key disappears within ~30s of tab close or navigation away — no manual idle timer needed. Do NOT call `track()` on user interactions (typing, mouse move) — only on mount. The DM widget showing presence is a Presence channel scoped to the DM conversation (`presence:dm-{conversationId}` or a global `presence:global`) — one pattern works for both.
+
+**Performance note:** Do NOT use Presence for high-frequency state. Do NOT call `track()` in response to scroll/mouse events. Presence is correct for online/offline binary status only.
+
+**Supabase Realtime limits (Hosted Pro):** 200 concurrent connections per project. For a small network this is more than sufficient — scale up via project settings if needed.
+
+---
+
+### 2. Postgres Changes (Realtime) — Notifications delivery
+
+**Provider:** `@supabase/supabase-js` (already installed)
+
+**Pattern:** A `notifications` table with `recipient_id` column. Supabase Realtime delivers INSERT events to the recipient's browser channel. Unread count is computed client-side by counting rows where `read_at IS NULL`.
+
+**Schema (migration):**
+
+```sql
+CREATE TABLE notifications (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipient_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
+  kind         TEXT NOT NULL,  -- 'follow' | 'message' | 'endorsement' | 'wall_post' | 'connect'
+  actor_id     UUID REFERENCES auth.users ON DELETE SET NULL,
+  entity_id    UUID,           -- the follow/message/endorsement ID (nullable)
+  read_at      TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users read own notifications"
+  ON notifications FOR SELECT TO authenticated
+  USING (auth.uid() = recipient_id);
+CREATE POLICY "Users mark own notifications read"
+  ON notifications FOR UPDATE TO authenticated
+  USING (auth.uid() = recipient_id)
+  WITH CHECK (auth.uid() = recipient_id);
+
+CREATE INDEX idx_notifications_recipient ON notifications (recipient_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications (recipient_id) WHERE read_at IS NULL;
+
+-- Enable realtime delivery
+ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+```
+
+**Subscription pattern (client component):**
+
+```typescript
+useEffect(() => {
+  const channel = supabase
+    .channel(`notifs:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `recipient_id=eq.${userId}` },
+      (payload) => {
+        setUnreadCount((n) => n + 1)
+        // append payload.new to notifications list
+      }
+    )
+    .subscribe()
+  return () => { supabase.removeChannel(channel) }
+}, [userId])
+```
+
+**Unread count on mount:** `SELECT count(*) FROM notifications WHERE recipient_id = $uid AND read_at IS NULL`. Increment client-side on each realtime INSERT; decrement on read.
+
+**RLS requirement:** RLS must be enabled + SELECT policy must be set before adding to supabase_realtime publication, otherwise any authenticated user can subscribe to all rows. The migration above handles this correctly.
+
+**Notification creation:** Notifications are created server-side by API route handlers (follow, connect, DM send, endorsement, wall post). The API handler calls `createServiceClient()` and inserts into `notifications` — bypasses RLS for the write, which is correct because the inserting party (the API) is trusted.
+
+---
+
+### 3. Postgres Full-Text Search + pg_trgm — People search
+
+**Provider:** Native PostgreSQL (Supabase project, no new service)
+
+**Recommendation: pg_trgm for name typeahead + tsvector for bio/role keyword search, combined in a single RPC function.**
+
+Why this over external search (Algolia, Typesense, Meilisearch):
+- The member dataset at Wave 4 scale is small (hundreds to low thousands of profiles). PostgreSQL is entirely sufficient.
+- pg_trgm is already available in Supabase without any package installation — it's a bundled extension.
+- No external API key, no sync job, no cost, no latency from external network hop.
+- The existing codebase uses zero external search services.
+
+**pg_trgm for display_name (partial + typo-tolerant):**
+
+```sql
+-- Enable extension (once, in a migration)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- GIN trigram index on searchable name column
+CREATE INDEX idx_profiles_name_trgm
+  ON artist_profiles USING GIN (display_name gin_trgm_ops);
+
+-- Query: partial match + similarity ordering
+SELECT id, handle, display_name, avatar_url, industry_roles
+FROM artist_profiles
+WHERE display_name ILIKE '%' || $1 || '%'
+ORDER BY similarity(display_name, $1) DESC
+LIMIT 20;
+```
+
+**tsvector for bio + role keywords (whole-word, language-aware):**
+
+```sql
+-- Generated tsvector column for bio + roles combined
+ALTER TABLE artist_profiles
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (
+  setweight(to_tsvector('english', coalesce(display_name, '')), 'A') ||
+  setweight(to_tsvector('english', coalesce(bio, '')), 'B') ||
+  setweight(to_tsvector('english', coalesce(array_to_string(industry_roles, ' '), '')), 'B')
+) STORED;
+
+CREATE INDEX idx_profiles_search_vector ON artist_profiles USING GIN (search_vector);
+```
+
+**Combined RPC for global people search (spans artist_profiles and any future industry_members table):**
+
+```sql
+CREATE OR REPLACE FUNCTION search_members(query TEXT, result_limit INT DEFAULT 20)
+RETURNS TABLE (
+  id UUID, handle TEXT, display_name TEXT, avatar_url TEXT,
+  industry_roles TEXT[], member_type TEXT, rank REAL
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  RETURN QUERY
+    SELECT ap.id, ap.handle, ap.display_name, ap.avatar_url,
+           ap.industry_roles, 'artist'::TEXT,
+           ts_rank(ap.search_vector, websearch_to_tsquery('english', query)) AS rank
+    FROM artist_profiles ap
+    WHERE ap.search_vector @@ websearch_to_tsquery('english', query)
+       OR ap.display_name ILIKE '%' || query || '%'
+    ORDER BY rank DESC, similarity(ap.display_name, query) DESC
+    LIMIT result_limit;
+END;
+$$;
+```
+
+**`websearch_to_tsquery` vs `plainto_tsquery`:** Use `websearch_to_tsquery` — it tolerates raw user input (partial words, operators) gracefully without throwing syntax errors on arbitrary strings.
+
+**Why not Algolia/Typesense/Meilisearch:** External search requires a sync pipeline (Supabase → external index), adds cost, adds latency, and adds a new infrastructure dependency. pg_trgm GIN indexes are 98.7% faster than unindexed ILIKE and are sufficient for a professional network at this scale. Add external search only if search latency becomes measurable at 10K+ members.
+
+---
+
+### 4. Supabase Storage — Avatar and Banner image handling
+
+**Provider:** `@supabase/supabase-js` (already installed); Supabase Storage (already configured for `vault-assets` and `track-audio` buckets)
+
+**New bucket:** `profile-images` — public bucket for avatar and banner images.
+
+**Upload pattern (signed URL, service-role stays on server):**
+
+```typescript
+// Server-side API route: generate a signed upload URL
+const { data, error } = await serviceClient.storage
+  .from('profile-images')
+  .createSignedUploadUrl(`avatars/${userId}/${Date.now()}.jpg`)
+// Return data.signedUrl to browser
+
+// Browser client: upload directly to Supabase Storage
+const { error } = await supabase.storage
+  .from('profile-images')
+  .uploadToSignedUrl(path, token, file, {
+    contentType: file.type,
+    upsert: true,
+    cacheControl: '3600',
+  })
+```
+
+**Image transforms on delivery (no new library):**
+
+```typescript
+// Avatar: 200×200 circle crop
+const { data } = supabase.storage
+  .from('profile-images')
+  .getPublicUrl(`avatars/${userId}/photo.jpg`, {
+    transform: { width: 200, height: 200, resize: 'cover' },
+  })
+
+// Banner: 1200×300 letterbox crop
+const { data } = supabase.storage
+  .from('profile-images')
+  .getPublicUrl(`banners/${userId}/banner.jpg`, {
+    transform: { width: 1200, height: 300, resize: 'cover' },
+  })
+```
+
+Supabase Storage automatically serves WebP to supporting clients — no `format` param needed for that. Use `format: 'origin'` only when the original format must be preserved (e.g., PNG with transparency).
+
+**Constraints:** Max 25MB source file. Max 2500px in either dimension for transforms. Store only the original upload path in the database; always derive served URLs via `getPublicUrl(..., { transform })` at render time — do NOT store the transformed URL.
+
+**RLS on `profile-images` bucket:**
+
+```sql
+-- Anyone can read public images
+CREATE POLICY "Public read profile images"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'profile-images');
+
+-- Users can only upload to their own folder
+CREATE POLICY "Users upload own profile images"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'profile-images' AND
+    (storage.foldername(name))[1] IN ('avatars', 'banners') AND
+    auth.uid()::text = (storage.foldername(name))[2]
+  );
+
+-- Users can update (upsert) their own images
+CREATE POLICY "Users update own profile images"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'profile-images' AND
+    auth.uid()::text = (storage.foldername(name))[2]
+  );
+```
+
+---
+
+## Schema Additions Summary
+
+These are the new tables Wave 4 adds to the database. Migrations follow the existing pattern (`supabase/migrations/034_...sql`).
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `notifications` | Realtime notification delivery + unread count | `recipient_id`, `kind`, `actor_id`, `read_at` |
+| `connections` | Explicit "Connect" relationship (bidirectional vs follow's directed) | `requester_id`, `addressee_id`, `status` (pending/accepted/declined) |
+| `member_presence` | Optional: DB-backed presence snapshot for users who do not have a live Supabase Realtime connection (server-side polling fallback) | `user_id`, `last_seen_at` |
+
+`artist_profiles` table gets new columns (migration extends existing table — no new table):
+- `banner_url TEXT` — path in `profile-images/banners/`
+- `avatar_url TEXT` — path in `profile-images/avatars/` (may already exist; confirm)
+- `pronouns TEXT`
+- `location TEXT`
+- `member_since TIMESTAMPTZ DEFAULT NOW()`
+- `open_to TEXT[]` — e.g. `['sync', 'co_writes', 'features', 'brand_deals']`
+- `bio TEXT`
+- `featured_project_id UUID REFERENCES vault_projects ON DELETE SET NULL`
+- `search_vector tsvector GENERATED ALWAYS AS (...) STORED` — computed from name + bio + roles
+- `is_open_to_network BOOLEAN DEFAULT false` — controls Discover visibility
+
+---
+
+## Supporting Libraries — Version Details
+
+### `date-fns` ^4.x
+
+The current npm latest as of mid-2025 is date-fns v4. v4 vs v3 breaking changes relevant to Funūn:
+- v4 is ESM-first (CJS still supported via dual package exports — no breaking change for Next.js)
+- `constants` no longer exported from the main entrypoint — import from `date-fns/constants` if needed (Funūn does not use constants)
+- `formatDistanceToNow` signature is unchanged
+- No dependency on browser APIs; safe in server components and API routes
+
+**Usage in Funūn:**
+
+```typescript
+import { formatDistanceToNow } from 'date-fns'
+
+// In an activity feed item, notification row, or DM timestamp:
+const label = formatDistanceToNow(new Date(created_at), { addSuffix: true })
+// → "3 minutes ago", "about 2 hours ago", "5 days ago"
+```
+
+Single import. Tree-shaken. ~2–3KB minzipped in the final bundle.
+
+### `lucide-react` ^0.513.0
+
+Lucide-react is used in the design handoff as the icon system. The project currently uses inline SVGs; `lucide-react` makes that systematic and maintainable.
+
+```typescript
+import { Bell, MessageCircle, Users, Search, UserPlus } from 'lucide-react'
+// Each is a ~1KB tree-shaken SVG component
+```
+
+Works in server components (pure SVG, no browser APIs). Works in client components. No special Next.js config.
+
+---
+
+## Alternatives Considered
+
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| People search | pg_trgm + tsvector (native Postgres) | Algolia, Typesense, Meilisearch | External service adds sync pipeline, cost, latency, and operational complexity. Postgres GIN is sufficient for <10K members and already in the stack. |
+| Presence | Supabase Realtime Presence | Custom `user_status` DB table + polling | Presence is designed exactly for this. A DB table with `last_seen_at` requires either polling (polling interval = perceived staleness) or Realtime anyway. Use Presence for live status; use `last_seen_at` column only as a server-side fallback for users without active sockets. |
+| Relative timestamps | `date-fns` | `dayjs`, `timeago.js`, `Intl.RelativeTimeFormat` | `dayjs` is smaller (~2KB) but requires manual plugin installation for relative time. `timeago.js` hasn't had a meaningful release since 2021, no TypeScript-first. `Intl.RelativeTimeFormat` is native but verbose (requires computing the diff manually). `date-fns` formatDistanceToNow is one line, TypeScript-native. |
+| Notifications delivery | Supabase Realtime postgres_changes | Pusher, Ably, Firebase Realtime DB | All require new external accounts, billing, and SDK. Supabase Realtime is already in the stack and used for DMs. |
+| Image upload | Supabase Storage (existing buckets) | Cloudinary, Imgix, AWS S3 | Cloudinary/Imgix add external dependency and per-transformation cost. Supabase Storage built-in transforms cover avatar/banner use cases completely. AWS S3 requires a separate bucket setup, IAM, and no built-in transforms. |
+| Icon system | `lucide-react` | `react-icons`, `heroicons`, inline SVG | `react-icons` bundles multiple icon sets together — larger if not tree-shaken properly. `heroicons` is Tailwind's preferred set but diverges from the design handoff which explicitly uses Lucide style. Inline SVG (current approach) is unmaintainable at scale. |
 
 ---
 
 ## What NOT to Add
 
-| Thing | Why not |
-|-------|---------|
-| `nodemailer` / any SMTP library | Resend is already configured and handles all transactional email. No SMTP needed. |
-| `mjml` or `react-email` | Pitch emails are plain-text with an HTML fallback. No template engine needed; Resend handles basic HTML in the `html` field of `resend.emails.send()`. |
-| `next-auth` / auth overhaul | Supabase auth is the SSoT. Curator claim flow uses a signed token in the pitch email URL, not a new auth system. |
-| `zod` upgrade | Already at v3.23.0 and the existing pattern (Zod for API validation, plain JSON for AI output) covers all Wave 3 needs. |
-| `react-query` / `swr` | The codebase is server-component-first with direct Supabase fetches. No client-side caching layer is needed for Launchpad. |
-| `node-cron` / job queue | Genre drift alerts and monthly tip regeneration are low-frequency admin actions. Implement as admin-triggered API routes in Wave 3; a job queue (e.g. Inngest) can be added in Wave 4 if needed. |
-| `Later API` | Later has no public CSV import. Do not implement. Export to Buffer format only. |
-| `socialpilot` / `hootsuite` SDK | Out of scope — Wave 3 is planning-only, no scheduling execution. |
-| `deep-email-validator` | Does MX + SMTP checks via DNS — adds latency and complexity. Bounce detection via Resend webhooks is the correct production-grade signal; format validation via `validator.isEmail()` is sufficient at send time. |
-| Upgrade `@anthropic-ai/sdk` | Already at 0.107.0 (npm resolved past the 0.52 semver floor). `messages.parse()` / `zodOutputFormat` are not in this version; the existing JSON-prompt pattern is correct and proven across 6 tools. |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Algolia / Typesense / Meilisearch | External search service is not needed at Wave 4 member scale; adds sync pipeline, cost, and new infra dependency | pg_trgm + tsvector via Supabase (native Postgres) |
+| Pusher / Ably / Firebase | New external real-time services when Supabase Realtime already handles DMs and can handle notifications and presence | Supabase Realtime Presence + postgres_changes |
+| `socket.io` | Not compatible with Vercel edge; Supabase Realtime handles websocket connections already | Supabase Realtime (already in stack) |
+| Cloudinary / Imgix | Adds external media CDN when Supabase Storage transforms cover avatar/banner sizing entirely | Supabase Storage `getPublicUrl` with `{ transform }` options |
+| `react-query` / `swr` | Codebase is server-component-first; no client-side data cache needed. DM and notification state is local React state + Realtime events | React `useState` + Supabase Realtime subscriptions |
+| Redis / Upstash | Not needed for Wave 4. Presence state lives in Supabase Realtime channel; notification unread count lives in React state + DB count query | Native Supabase features |
+| `sharp` (Node.js image processing) | Runs server-side and requires native binaries — problematic on Vercel. Supabase Storage handles transforms at CDN level | Supabase Storage transform params in `getPublicUrl()` |
+| `next-auth` / auth changes | Supabase Auth is the SSoT and is already working. Extending profiles to industry members requires adding a `member_type` column to `artist_profiles`, NOT a new auth system | Extend `artist_profiles` table + `lib/industry-roles.ts` |
+| `moment.js` | Deprecated; 232KB bundle. Not tree-shakeable | `date-fns` |
+| `emoji-mart` or emoji picker | Emoji in DMs is not in the locked design scope for Wave 4 | Text-only DM composer per design |
+| `react-virtuoso` / virtual scroll | Member count at Wave 4 scale does not require virtualization. Add if Discover page loads 500+ members | Plain `<ul>` with pagination or cursor-based infinite scroll |
+| `react-beautiful-dnd` / drag-and-drop | Not needed in social profile screens | N/A — not a feature in scope |
+| Push notifications (FCM / APNs) | Requires service workers, separate infrastructure, and platform approvals. In-app notification badge (bell icon) is the Wave 4 scope | Supabase Realtime postgres_changes for in-app badge |
+
+---
+
+## Installation
+
+```bash
+# New runtime dependencies only (Wave 4)
+npm install date-fns lucide-react
+
+# No new dev dependencies needed
+```
+
+Current versions at install time: `date-fns@^4.x`, `lucide-react@^0.513.0` (or latest; pin exact only if react peer-dep issue found).
+
+---
+
+## Version Compatibility
+
+| Package | Compatible With | Notes |
+|---------|----------------|-------|
+| `date-fns@4.x` | React 18.3, Next.js 15, TypeScript 5.5 | Pure functions, no React peer dep. ESM-first + CJS dual exports are both handled by Next.js bundler. |
+| `lucide-react@0.5x` | React 18.3, Next.js 15, TypeScript 5.5 | Peer dep `react@^16 \|\| ^17 \|\| ^18` — satisfied by React 18.3. Server-component safe. |
+| `@supabase/supabase-js@2.45` | Realtime Presence, postgres_changes, Storage transforms | All Wave 4 Supabase features (Presence, notifications, image transforms, pg_trgm) are available in the already-installed version. No upgrade needed. |
+| `pg_trgm` Postgres extension | Supabase hosted projects | Bundled by default on all Supabase projects. Enable with `CREATE EXTENSION IF NOT EXISTS pg_trgm` in a migration. |
 
 ---
 
 ## Sources
 
-- Resend webhook event types: https://resend.com/docs/webhooks/event-types
-- Resend bounce details changelog: https://resend.com/changelog/email-bounce-details
-- Svix webhook verification (Next.js): https://www.svix.com/guides/receiving/receive-webhooks-with-javascript-nextjs/
-- Svix TypeScript guide: https://www.svix.com/guides/receiving/receive-webhooks-with-typescript/
-- Svix docs — verifying payloads: https://docs.svix.com/receiving/verifying-payloads/how
-- Buffer CSV bulk upload: https://support.buffer.com/article/926-how-to-upload-posts-in-bulk-to-buffer
-- Later CSV bulk upload (feature request, not shipped): https://ideas.later.com/ideas/LATER-I-1306
-- Anthropic structured outputs (GA): https://platform.claude.com/docs/en/build-with-claude/structured-outputs
-- csv-stringify vs json2csv vs fast-csv comparison: https://npm-compare.com/csv-stringify,fast-csv,json2csv,papaparse
-- validator npm package: https://www.npmjs.com/package/validator
-- Abstract API email validation comparison 2026: https://www.abstractapi.com/guides/email-validation/open-source-email-validation
-- Supabase RLS best practices: https://makerkit.dev/blog/tutorials/supabase-rls-best-practices
-- Supabase RLS — app_metadata for authorization: https://github.com/orgs/supabase/discussions/13091
+- Supabase Realtime Presence docs (track/untrack/presenceState API): https://supabase.com/docs/guides/realtime/presence
+- Supabase Realtime Presence heartbeat and Web Worker config: https://github.com/orgs/supabase/discussions/30058
+- Supabase postgres_changes subscription filter syntax: https://supabase.com/docs/guides/realtime/postgres-changes
+- Supabase Storage image transformations (transform params, resize modes, format): https://supabase.com/docs/guides/storage/image-transformations
+- Supabase Full Text Search (tsvector, websearch_to_tsquery, GIN, multi-column weighted vectors): https://supabase.com/docs/guides/database/full-text-search
+- pg_trgm vs tsvector comparison for short string/name matching: https://medium.com/@daniel.tooke/performant-text-searching-and-indexes-in-psql-trigrams-like-and-full-text-search-784c000efaa6
+- Instagram-like profile search with pg_trgm on Supabase: https://medium.com/@nik14gos/instgram-like-profile-search-with-a-postgresql-function-w-supabase-c56efb40cdc8
+- Supabase RLS + postgres_changes security requirement: https://supabase.com/docs/guides/realtime/postgres-changes
+- date-fns v4 release notes and breaking changes: https://blog.date-fns.org/v40-with-time-zone-support/
+- date-fns npm page: https://www.npmjs.com/package/date-fns
+- lucide-react npm page: https://www.npmjs.com/package/lucide-react
+- lucide-react Next.js App Router compatibility: https://lucide.dev/guide/react/getting-started
+- Supabase Realtime with Next.js guide: https://supabase.com/docs/guides/realtime/realtime-with-nextjs
+- Real-time notification system with Supabase + Next.js: https://makerkit.dev/blog/tutorials/real-time-notifications-supabase-nextjs
+
+---
+
+*Stack research for: Funūn Wave 4 — The Green Room social/network layer*
+*Researched: 2026-07-03*
