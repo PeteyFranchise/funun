@@ -90,40 +90,42 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROFILE-01 | — | Pending |
-| PROFILE-02 | — | Pending |
-| PROFILE-03 | — | Pending |
-| PROFILE-04 | — | Pending |
-| PROFILE-05 | — | Pending |
-| PROFILE-06 | — | Pending |
-| PROFILE-07 | — | Pending |
-| PROFILE-08 | — | Pending |
-| PROFILE-09 | — | Pending |
-| DISCOVER-01 | — | Pending |
-| DISCOVER-02 | — | Pending |
-| DISCOVER-03 | — | Pending |
-| DISCOVER-04 | — | Pending |
-| CONNECT-01 | — | Pending |
-| CONNECT-02 | — | Pending |
-| CONNECT-03 | — | Pending |
-| CONNECT-04 | — | Pending |
-| CONNECT-05 | — | Pending |
-| NOTIF-01 | — | Pending |
-| NOTIF-02 | — | Pending |
-| NOTIF-03 | — | Pending |
-| PRESENCE-01 | — | Pending |
-| PRESENCE-02 | — | Pending |
-| PRESENCE-03 | — | Pending |
-| SAFETY-01 | — | Pending |
-| SAFETY-02 | — | Pending |
-| SAFETY-03 | — | Pending |
-| SAFETY-04 | — | Pending |
+| PROFILE-01 | Phase 9 | Pending |
+| PROFILE-02 | Phase 9 | Pending |
+| PROFILE-03 | Phase 9 | Pending |
+| PROFILE-04 | Phase 9 | Pending |
+| PROFILE-05 | Phase 9 | Pending |
+| PROFILE-06 | Phase 9 | Pending |
+| PROFILE-07 | Phase 9 | Pending |
+| PROFILE-08 | Phase 9 | Pending |
+| PROFILE-09 | Phase 9 | Pending |
+| DISCOVER-01 | Phase 12 | Pending |
+| DISCOVER-02 | Phase 12 | Pending |
+| DISCOVER-03 | Phase 12 | Pending |
+| DISCOVER-04 | Phase 13 | Pending |
+| CONNECT-01 | Phase 10 | Pending |
+| CONNECT-02 | Phase 10 | Pending |
+| CONNECT-03 | Phase 11 | Pending |
+| CONNECT-04 | Phase 11 | Pending |
+| CONNECT-05 | Phase 11 | Pending |
+| NOTIF-01 | Phase 10 | Pending |
+| NOTIF-02 | Phase 10 | Pending |
+| NOTIF-03 | Phase 10 | Pending |
+| PRESENCE-01 | Phase 11 | Pending |
+| PRESENCE-02 | Phase 11 | Pending |
+| PRESENCE-03 | Phase 11 | Pending |
+| SAFETY-01 | Phase 13 | Pending |
+| SAFETY-02 | Phase 13 | Pending |
+| SAFETY-03 | Phase 13 | Pending |
+| SAFETY-04 | Phase 13 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0 (filled by roadmapper)
-- Unmapped: 28 ⚠️ (expected — roadmap not yet created)
+- Mapped to phases: 28 ✓
+- Unmapped: 0 ✓
+
+**Phase note:** Phase 8 (Identity & Schema Foundation) carries no user-facing requirement by design — it is the schema/migration root every Phase 9–13 requirement depends on (column-privilege lockdown, block enforcement, identity-race avoidance). Its success is verified structurally, not by a mapped requirement.
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-03 after initial definition*
+*Last updated: 2026-07-04 — traceability filled during roadmap creation (all 28 v1 requirements mapped to Phases 9–13)*
