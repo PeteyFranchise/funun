@@ -54,7 +54,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. The `notifications` table is extended with actor-snapshot columns and added to the realtime publication; a `dm_thread_reads` table exists for DM unread counts
   4. A column-level REVOKE/GRANT migration ships in the same migration that adds any private column, so no authenticated user can read private fields via direct PostgREST
   5. Industry-member identity is created without a `handle_new_user()` phantom-row race (role set at `admin.createUser()` time, early-return branch added)
-**Plans**: TBD
+**Plans**: 6 plans across 3 waves — Wave 1: 08-01 (identity columns), 08-02 (connections/blocks/reserved_handles), 08-03 (notifications/dm_thread_reads); Wave 2 *(blocked on Wave 1)*: 08-04 (block enforcement + industry trigger branch), 08-05 (column-privilege lockdown + D-19 companion fix + [BLOCKING] schema push); Wave 3 *(blocked on Wave 2)*: 08-06 (createIndustryMember + /admin/members)
 
 ### Phase 9: Rich Member Profile
 **Goal**: A member's `/u/[handle]` profile renders the locked hi-fi hero screen and behaves differently for the owner versus a visitor — proving the unified-identity model end-to-end in the browser.
