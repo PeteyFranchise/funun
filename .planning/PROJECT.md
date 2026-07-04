@@ -1,56 +1,77 @@
-# Funūn — Wave 3: Launchpad
+# Funūn — Wave 4: The Green Room
 
-**Project type:** Brownfield milestone (Wave 3 of an existing platform)
-**Milestone:** Launchpad
+**Project type:** Brownfield milestone (Wave 4 of an existing platform)
+**Milestone:** The Green Room (v1.2)
 **Owner:** Pete (peter.zora@gmail.com)
-**Started:** 2026-06-30
+**Started:** 2026-07-03
 **Platform:** funun.studio — the operating system for an independent music career
 
 ---
 
 ## What This Is
 
-Wave 3 builds the **Launchpad room** — a structured post-release environment where artists take the actions that turn a released song into traction. Wave 1 tightened asset readiness. Wave 2 locked in rights and registration. Wave 3 closes the loop on what happens after release day.
+Wave 4 builds **The Green Room** — Funūn's professional network layer, a "LinkedIn for the music industry." Waves 1–3 made an artist release-ready (assets), rights-secured (registration), and launch-ready (post-release playbook). Wave 4 makes them **connected**: rich member profiles, discovery, and networking that turn real industry access into the moat tools alone can't copy.
+
+A thin social layer already ships (follow · wall · endorsements · release comments · activity feed · 1:1 DMs · `/u/[handle]` public profiles). Wave 4 elevates it into a full professional network and opens membership to industry roles — producers, songwriters, music supervisors, A&R, execs — not just artists.
 
 Three pillars:
 
-1. **Launchpad checklist** — a guided checklist (mirroring release readiness) where each item links to an in-Funūn tool or an external action. Per-item tips are DB-backed, AI-drafted monthly, and admin-approved before publish.
-2. **Playlist pitching** — a lean curator directory. Artists select tracks and pitch curators by email (Resend). Pitch emails include a link to the in-app track player (`/r/[projectId]`) as a growth loop for curator onboarding. Curator emails collected via lightweight onboarding form. Bounce detection, response-rate tracking, curator-claimed profiles, genre drift alerts, and admin view all ship in this wave.
-3. **Social campaign planner** — AI-generates a 4–6 week content calendar from release data. Platform selector (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) with best-practice nudges toward highest-impact platforms. DropReady and SoundBait are embedded in the calendar as inline actions and also accessible as standalone quick tools. Export path: V0 = Funūn calendar view, V1 = CSV (Later/Buffer-compatible), V2 = direct API push (user connects account).
+1. **Rich member profiles & identity** — a hi-fi public profile (banner, avatar, pronouns, location, tenure, verified check) with multi-role badges (Artist, Producer, Songwriter, Music Supervisor, A&R, Exec, or custom title — one "lead" highlighted), "Open to" status chips (sync, co-writes, features, brand deals), a Featured spotlight, a stats sidebar (followers, monthly listeners, placements, avg. readiness), endorsements, wall, and "Worked with" collaborators. Owner-vs-public view switching (Follow/Message ↔ Edit profile / Share / View analytics).
+2. **Discovery & networking shell** — a top-level Discover / Opportunities / Network experience with global people search across artists and industry pros, follow + message + connect, and notification/message surfacing with unread badges.
+3. **Presence & real-time messaging** — a floating DM widget with live presence ("Active now") and unread badges — closing the social backlog and making the network feel alive.
+
+Design is locked: a hi-fi handoff (`docs/design/wave-4-social-layer/`, hero screen `user-profile.html`) defines final colors, typography, spacing, and every profile section. This is a UI-forward milestone, recreated pixel-faithfully in Next.js/Tailwind against the existing `app.css` design tokens.
 
 ---
 
 ## Core Value
 
-An artist finishes a release and immediately knows their next moves — who to pitch, what to post, and when — without leaving Funūn. The Launchpad turns release day into a 6-week playbook.
+Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — are what keep them on the platform.
+
+---
+
+## Current Milestone: v1.2 The Green Room
+
+**Goal:** Turn Funūn's thin social layer into a full professional network for the music industry — rich member profiles, discovery, and real-time connection — recreated pixel-faithfully from the locked hi-fi design handoff.
+
+**Target features:**
+- Rich hi-fi member profile: banner + avatar (owner-editable), pronouns, location, tenure, verified check, multi-role badges, "Open to" chips, Featured spotlight, stats sidebar, "Worked with"
+- Industry members as first-class: role identity beyond artist (Producer, Songwriter, Music Supervisor, A&R, Exec, custom title)
+- Owner-vs-public profile view switching (Edit profile / Share / View analytics)
+- Discovery & networking shell: Discover / Opportunities / Network nav + global people search
+- Follow / Message / Connect actions across member types
+- Notifications & messages surfacing with unread badges
+- Presence + real-time DM widget ("Active now")
+
+**Design reference:** `docs/design/wave-4-social-layer/` (hero: `user-profile.html`; tokens: `app.css`; rendered: `screens-reference.pdf`)
 
 ---
 
 ## Context
 
-### Existing codebase (brownfield — what Wave 3 builds on)
+### Existing codebase (brownfield — what Wave 4 builds on)
 
 | Layer | What exists |
 |---|---|
-| Track player | `/r/[projectId]` — public shareable player page. Used in Wave 3 as curator pitch email link. |
-| DropReady | `components/tools/DropReady.tsx` — caption generator (partial). Promoted to Launchpad social tool. |
-| SoundBait | `components/tools/SoundBait.tsx` — short-form video hook writer (partial). Promoted to Launchpad social tool. |
-| Tools registry | `lib/tools/registry.ts` — plugin registry for tool runs. Launchpad tools will register here. |
-| Collaborators | `collaborators` table with `claimed_by`, `claimed_at`, identity reconciliation complete (Wave 2). |
-| Rights Coach | Per-project registration checklists with status tracking (Wave 2). |
-| Resend | Email delivery configured — used for notifications and pitches. |
-| Industry roles | `lib/industry-roles.ts` — 23 roles across 4 groups. Needs "Playlist Curator" added. |
-| Artist profiles | `artist_profiles` table with genre, links, PRO affiliation. |
+| Public profile | `/u/[handle]` public artist profile + `/profile` self-view. Elevated to the hi-fi networked profile in Wave 4. |
+| Social graph | `app/api/follows/`, `app/api/wall/`, `app/api/endorsements/` — follow, wall posts, endorsements already live. |
+| Comments & activity | Threaded release comments + auto-emitting activity feed (`lib/social/activity-emit.ts`). |
+| Direct messages | 1:1 artist↔industry DMs, realtime + polling fallback. Wave 4 adds presence + unread badges. |
+| Track player | `/r/[projectId]` — public shareable player, embedded in Featured spotlight / release cards on profiles. |
+| Collaborators | `collaborators` table with `claimed_by`/`claimed_at`; powers "Worked with" on profiles. |
+| Industry roles | `lib/industry-roles.ts` — role taxonomy; Wave 4 surfaces multi-role badges (Artist/Producer/Songwriter/Supervisor/A&R/Exec + custom). |
+| Profiles table | `artist_profiles` (genre, links, PRO). Wave 4 extends identity: banner, pronouns, location, "Open to", stats. |
+| Design tokens | `docs/design/wave-4-social-layer/app.css` — locked dark theme, indigo→fuchsia gradient, Inter type scale. |
 
 ### Tech stack (inherited)
-Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · Tailwind · Anthropic SDK · Resend
+Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage + Realtime) · Tailwind · Anthropic SDK · Resend
 
-### What Wave 3 does NOT include
+### What Wave 4 does NOT include
+- Social media post execution / scheduling (OAuth to Meta/TikTok — later wave)
+- Deep external integrations (Songstats, SoundCloud, Bandsintown, YouTube, Buffer API — later wave)
+- Industry Round Table live panels (💡 in notes; candidate for a follow-on social milestone)
 - Dropbox Sign live implementation (deferred from Wave 2 — account needed)
-- Social media post execution / scheduling (OAuth to Meta/TikTok — Wave 4)
 - Songtrust API integration (pending BD conversation)
-- Sync licensing marketplace (Wave 4)
-- SoundCloud / Bandsintown / YouTube integrations (Wave 4)
 
 ---
 
@@ -146,20 +167,19 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 
 ## Current State
 
-**Shipped:** v1.1 Launchpad (2026-07-04) — Phases 5–7, 18 plans, 19/19 Wave 3 requirements validated.
+**In progress:** v1.2 The Green Room (started 2026-07-03) — scoping requirements → roadmap via `/gsd-new-milestone`.
 
-Artists now have a structured post-release room: a week-sequenced Launchpad checklist with admin-approved tips, playlist curator pitching (directory, AI-drafted emails, claim flow, bounce/drift handling), and an AI-generated 4–6 week social campaign planner with Buffer CSV export. All three pillars ship with RLS + column-level privilege hardening and AI output validated as untrusted input.
+**Shipped:** v1.1 Launchpad — Phases 5–7, 18 plans, 19/19 Wave 3 requirements validated. Artists have a structured post-release room: a week-sequenced Launchpad checklist with admin-approved tips, playlist curator pitching (directory, AI-drafted emails, claim flow, bounce/drift handling), and an AI-generated 4–6 week social campaign planner with Buffer CSV export.
 
-Cumulative platform state: v1.0 (Rights & Registration Rails, Phases 1–4) + v1.1 (Launchpad, Phases 5–7). Next.js 15 · TypeScript · Supabase (PostgreSQL + RLS + Storage) · Tailwind · Anthropic SDK · Resend · svix.
+Cumulative platform state: v1.0 (Rights & Registration Rails, Phases 1–4) + v1.1 (Launchpad, Phases 5–7). Next.js 15 · TypeScript · Supabase (PostgreSQL + RLS + Storage + Realtime) · Tailwind · Anthropic SDK · Resend · svix.
 
-## Next Milestone: v1.2 — Wave 4 (not yet scoped)
+## After This Milestone (candidates)
 
-**Candidate goals** (carried from deferred items — to be confirmed via `/gsd-new-milestone`):
+Deferred to a later wave (see `.planning/STATE.md` Deferred Items):
+- Industry Round Table — live panels / replays / Q&A (💡 the "real industry access" differentiator; natural follow-on to The Green Room)
+- Deep external integrations — Songstats, SoundCloud, Bandsintown, YouTube, Buffer API push (SOCIAL-08 spike)
 - Direct social post scheduling / publishing via Meta/TikTok OAuth
-- Buffer API integration (SOCIAL-08 research spike) — direct calendar push + status sync
-- Curator directory seeding via scraping/API
-- Dropbox Sign live e-sign (needs paid account; abstraction already in place)
-- Songtrust API integration (pending BD conversation)
+- Dropbox Sign live e-sign · Songtrust API integration (both blocked on external prerequisites)
 
 ---
 
@@ -182,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-04 — after v1.1 Launchpad milestone completion*
+*Last updated: 2026-07-03 — v1.2 The Green Room milestone started*
