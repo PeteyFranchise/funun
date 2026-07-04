@@ -366,7 +366,7 @@ Three pillars:
 
 ## Project Skills
 
-No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, `.github/skills/`, or `.codex/skills/` with a `SKILL.md` index file.
+- **Spike findings for funun** (Buffer integration — BYOK auth, calendar→post mapping, connect/push UX; implementation patterns, constraints, gotchas) → `Skill("spike-findings-funun")`
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
