@@ -17,6 +17,10 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 - **Status sync-back (Buffer Scheduled→Sent → Funūn completion) is the feature that makes this synergistic** — without it the integration is "CSV export with extra steps." (Spike 003)
 - **BYOK onboarding must be framed honestly** ("Buffer has no one-click connect for new apps — paste a personal key"); hiding it makes the paste-key step feel broken. (Spike 003)
 - **The connect screen must include a plain-language "What is Buffer?" explainer** — Funūn artists may not know what Buffer is. State what it is (a social scheduling tool), what connecting does (pushes the calendar into Buffer's queue so posts publish automatically), and link out to buffer.com. (Spike 003)
+- **Persist `{ buffer_post_id, contentSig, last_status }` per slot** at push time — the join key for both status sync (004) and re-push diffing (005). (Spikes 004, 005)
+- **Status sync-back is a POLL, not a webhook** (no webhooks documented): periodically run the `posts` query filtered by `channelIds` + `status:[scheduled,sent,error]`, reconcile by `buffer_post_id`, map `sent`→complete (using `sentAt`). The reconcile MUST be idempotent. (Spike 004)
+- **Re-push is a DIFF, never a blind re-create:** compare current content signatures to stored ones → `createPost` (new) / `editPost` (changed) / `deletePost` (removed). (Spike 005)
+- **Never edit or delete a `sent` post** — it already went live and can't be un-sent; surface the conflict instead. (Spikes 004, 005)
 
 ## Spikes
 
@@ -26,7 +30,7 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 | 002 | calendar-to-buffer-mapping | standard | Given a Funūn SocialPost[], when mapped to Buffer createPost inputs, then platform/time/media line up with no data loss | VALIDATED ✓ | buffer, data-mapping, calendar |
 | 003 | connect-and-push-ux | standard | Given BYOK constraint, when a user connects Buffer and pushes a calendar, then connect→map→push→status flow feels coherent | VALIDATED ✓ (UX judgment is user's) | buffer, ui, ux, byok |
 | 004 | buffer-status-sync-back | standard | Given posts scheduled via createPost, when Funūn polls the Buffer `posts` query, then it reconciles Scheduled→Sent back into slot completion | VALIDATED ✓ | buffer, status, sync, graphql |
-| 005 | buffer-update-delete-repush | standard | Given an already-pushed calendar, when the user edits/re-pushes, then a create/edit/delete diff avoids duplicate Buffer posts | PENDING | buffer, idempotency, lifecycle |
+| 005 | buffer-update-delete-repush | standard | Given an already-pushed calendar, when the user edits/re-pushes, then a create/edit/delete diff avoids duplicate Buffer posts | VALIDATED ✓ | buffer, idempotency, lifecycle |
 
 ## Reference
 
