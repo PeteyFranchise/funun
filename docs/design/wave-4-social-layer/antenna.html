@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Funūn — Antenna</title>
+<link rel="stylesheet" href="app.css" />
+<style>
+.body{display:grid;grid-template-columns:1fr 290px;gap:28px;}
+.list{display:flex;flex-direction:column;gap:14px;overflow:hidden;}
+.banner{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:14px;background:linear-gradient(150deg,rgba(129,140,248,.14),rgba(217,70,239,.08));border:1px solid rgba(129,140,248,.28);margin-bottom:4px;}
+.banner svg{width:22px;height:22px;stroke:var(--indigo);stroke-width:1.8;fill:none;flex:none;}
+.banner .t{font-size:14.5px;font-weight:600;color:#fff;}
+.banner b{color:var(--indigo);}
+.opp{display:flex;align-items:center;gap:20px;padding:20px 22px;border-radius:16px;border:1px solid var(--border);background:var(--card);}
+.mring{width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;}
+.mring .in{width:50px;height:50px;border-radius:50%;background:#0c0b1a;display:flex;align-items:center;justify-content:center;}
+.mring .v{font-size:18px;font-weight:800;}
+.opp .info{flex:1;}
+.opp .ty{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--lav-dim);}
+.opp .t{font-size:18.5px;font-weight:700;margin-top:4px;letter-spacing:-.01em;}
+.tags{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.tg{font-size:12px;font-weight:600;color:var(--lav);padding:4px 11px;border-radius:999px;background:var(--card-2);border:1px solid var(--border);white-space:nowrap;}
+.opp .meta{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--lav-dim);margin-top:12px;font-weight:500;}
+.opp .meta svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;}
+.pbtn{display:inline-flex;align-items:center;gap:8px;background:var(--grad);color:#fff;font-weight:700;font-size:13.5px;padding:11px 16px;border-radius:10px;border:none;white-space:nowrap;box-shadow:0 10px 24px -10px rgba(217,70,239,.5);}
+.pbtn svg{width:15px;height:15px;stroke:#fff;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+
+.filter{background:#0b0a16;border:1px solid var(--border);border-radius:16px;padding:22px;height:fit-content;}
+.filter .fh{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--lav-dim);margin-bottom:18px;}
+.fgroup{margin-bottom:22px;}
+.fgroup .gl{font-size:13.5px;font-weight:700;margin-bottom:12px;}
+.fopt{display:flex;align-items:center;gap:11px;font-size:14px;color:var(--lav);font-weight:500;margin-bottom:11px;}
+.cb{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--border-strong);flex:none;display:flex;align-items:center;justify-content:center;}
+.cb.on{background:var(--grad);border:none;}
+.cb.on svg{width:12px;height:12px;stroke:#fff;stroke-width:3;fill:none;}
+.fopt .n{margin-left:auto;font-size:12.5px;color:var(--lav-dim);}
+.slider{height:6px;border-radius:3px;background:rgba(199,203,247,.14);position:relative;margin:18px 4px 8px;}
+.slider .f{position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:3px;background:var(--grad);}
+.slider .k{position:absolute;left:62%;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(217,70,239,.35);}
+.srow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--lav-dim);font-weight:600;}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="ng" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818CF8"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs></svg>
+
+<nav class="nav">
+  <div class="brand"><div><div class="logo gtext">FUNŪN</div><div class="tag">THE ARTS</div></div></div>
+  <div class="nav-group">Workspace</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z"/><rect x="9" y="10" width="6" height="6" rx="1"/></svg>Sound Vault</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>Contract Locker</div>
+  <div class="nav-item active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>Antenna</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>PitchPlug</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>Rights Coach</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 6-7"/><path d="M3 21h18"/></svg>Earnings</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-user"><div class="av" style="background-image:url('art/maya.png');background-size:cover;background-position:center 30%"></div><div><div class="nm">Maya Reyes</div><div class="pl">Free · build your vault</div></div></div>
+</nav>
+
+<main class="main">
+  <div class="topbar">
+    <div class="h"><h1>Your Antenna</h1><div class="sub">6 new matches · ranked by fit to your sound, audience &amp; readiness</div></div>
+    <div class="chip info" style="font-size:13px;padding:7px 13px;white-space:nowrap;"><span class="d"></span>Matching on “Midnight Ride”</div>
+  </div>
+  <div class="body">
+
+    <div class="list">
+      <div class="banner"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg><div class="t">Your readiness is high enough to see premium sync matches. <b>Raise it to 90+</b> to unlock direct-deal opportunities.</div></div>
+
+      <div class="opp">
+        <div class="mring" style="background:conic-gradient(#818CF8 0%,#D946EF 94%,rgba(199,203,247,.14) 94% 100%);"><div class="in"><div class="v gtext">94</div></div></div>
+        <div class="info"><div class="ty">Sync · Indie film</div><div class="t">Moody electronic for a festival drama</div>
+          <div class="tags"><span class="tg">Electronic</span><span class="tg">Cinematic</span><span class="tg">Moody</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;"><div class="opp meta" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Closes in 5 days</div><button class="pbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Pitch with PitchPlug</button></div>
+      </div>
+
+      <div class="opp">
+        <div class="mring" style="background:conic-gradient(#818CF8 0%,#D946EF 88%,rgba(199,203,247,.14) 88% 100%);"><div class="in"><div class="v gtext">88</div></div></div>
+        <div class="info"><div class="ty">Playlist · Editorial</div><div class="t">Late-night R&amp;B · 240k followers</div>
+          <div class="tags"><span class="tg">R&amp;B</span><span class="tg">Chill</span><span class="tg">Late night</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;"><div class="opp meta" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Rolling submissions</div><button class="pbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Pitch with PitchPlug</button></div>
+      </div>
+
+      <div class="opp">
+        <div class="mring" style="background:conic-gradient(#818CF8 0%,#D946EF 81%,rgba(199,203,247,.14) 81% 100%);"><div class="in"><div class="v gtext">81</div></div></div>
+        <div class="info"><div class="ty">Brand · Campaign</div><div class="t">Lifestyle apparel — spring social spot</div>
+          <div class="tags"><span class="tg">Pop</span><span class="tg">Upbeat</span><span class="tg">Feel-good</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;"><div class="opp meta" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Closes in 2 weeks</div><button class="pbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Pitch with PitchPlug</button></div>
+      </div>
+
+      <div class="opp">
+        <div class="mring" style="background:conic-gradient(#818CF8 0%,#D946EF 79%,rgba(199,203,247,.14) 79% 100%);"><div class="in"><div class="v gtext">79</div></div></div>
+        <div class="info"><div class="ty">Sync · Streaming series</div><div class="t">Tension cue for a thriller episode</div>
+          <div class="tags"><span class="tg">Ambient</span><span class="tg">Tense</span><span class="tg">Dark</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;"><div class="opp meta" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Closes in 9 days</div><button class="pbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Pitch with PitchPlug</button></div>
+      </div>
+
+      <div class="opp">
+        <div class="mring" style="background:conic-gradient(#818CF8 0%,#D946EF 74%,rgba(199,203,247,.14) 74% 100%);"><div class="in"><div class="v gtext">74</div></div></div>
+        <div class="info"><div class="ty">Library · Commercial</div><div class="t">Travel &amp; documentary placements</div>
+          <div class="tags"><span class="tg">Cinematic</span><span class="tg">Acoustic</span><span class="tg">Warm</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;"><div class="opp meta" style="margin:0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Ongoing</div><button class="pbtn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Pitch with PitchPlug</button></div>
+      </div>
+
+    </div>
+
+    <div class="filter">
+      <div class="fh">Filters</div>
+      <div class="fgroup">
+        <div class="gl">Opportunity type</div>
+        <div class="fopt"><div class="cb on"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div>Sync<span class="n">3</span></div>
+        <div class="fopt"><div class="cb on"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div>Playlist<span class="n">1</span></div>
+        <div class="fopt"><div class="cb on"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div>Brand<span class="n">1</span></div>
+        <div class="fopt"><div class="cb on"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div>Library<span class="n">1</span></div>
+      </div>
+      <div class="fgroup">
+        <div class="gl">Minimum match</div>
+        <div class="slider"><div class="f"></div><div class="k"></div></div>
+        <div class="srow"><span>70%</span><span>any</span></div>
+      </div>
+      <div class="fgroup" style="margin-bottom:0">
+        <div class="gl">Sound &amp; mood</div>
+        <div class="tags"><span class="tg">Electronic</span><span class="tg">R&amp;B</span><span class="tg">Cinematic</span><span class="tg">Moody</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Funūn — Contract Locker</title>
+<link rel="stylesheet" href="app.css" />
+<style>
+.body{display:grid;grid-template-columns:1fr 360px;gap:28px;}
+.list-col{display:flex;flex-direction:column;overflow:hidden;}
+.tbl-head{display:grid;grid-template-columns:1fr 150px 132px;gap:16px;padding:0 20px 14px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--lav-dim);font-weight:700;}
+.crow{display:grid;grid-template-columns:1fr 150px 132px;gap:16px;align-items:center;padding:16px 20px;border-radius:14px;border:1px solid var(--border);background:var(--card);margin-bottom:11px;}
+.crow.sel{border-color:rgba(129,140,248,.45);background:linear-gradient(150deg,rgba(129,140,248,.1),rgba(217,70,239,.05));}
+.cdoc{display:flex;align-items:center;gap:14px;min-width:0;}
+.cdoc .fi{width:40px;height:40px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--card-2);border:1px solid var(--border);}
+.cdoc .fi svg{width:20px;height:20px;stroke:var(--lav);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.cdoc .nm{font-size:15.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cdoc .sub{font-size:12.5px;color:var(--lav-dim);margin-top:3px;}
+.src{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--lav);}
+.src svg{width:15px;height:15px;stroke:var(--lav-dim);stroke-width:1.8;fill:none;}
+.st{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap;}
+.st .d{width:7px;height:7px;border-radius:50%;background:currentColor;}
+.st.ver{color:var(--emerald);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.28);}
+.st.sign{color:var(--indigo);background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.28);}
+.st.pend{color:var(--amber-2);background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.28);}
+.st.bad{color:var(--rose);background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.28);}
+
+/* right AI verification panel */
+.verify{background:#0b0a16;border:1px solid var(--border);border-radius:18px;padding:24px;height:fit-content;}
+.vh{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--indigo);margin-bottom:18px;}
+.vh svg{width:18px;height:18px;stroke:var(--indigo);stroke-width:1.8;fill:none;}
+.vtitle{font-size:18px;font-weight:800;}
+.vsub{font-size:13px;color:var(--lav-dim);margin-top:5px;}
+.vbadge{display:inline-flex;align-items:center;gap:9px;margin-top:16px;padding:10px 16px;border-radius:11px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:var(--emerald);font-size:14.5px;font-weight:800;}
+.vbadge svg{width:18px;height:18px;stroke:var(--emerald);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.vcheck{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);}
+.vcheck .ci{width:24px;height:24px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(52,211,153,.14);}
+.vcheck .ci svg{width:14px;height:14px;stroke:var(--emerald);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.vcheck .ct{font-size:14.5px;font-weight:600;}
+.vcheck .cs{font-size:12.5px;color:var(--lav-dim);margin-top:3px;}
+.vmeta{margin-top:18px;font-size:12.5px;color:var(--lav-dim);line-height:1.5;}
+.vmeta b{color:var(--lav);}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="ng" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818CF8"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs></svg>
+
+<nav class="nav">
+  <div class="brand"><div><div class="logo gtext">FUNŪN</div><div class="tag">THE ARTS</div></div></div>
+  <div class="nav-group">Workspace</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z"/><rect x="9" y="10" width="6" height="6" rx="1"/></svg>Sound Vault</div>
+  <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>Contract Locker</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>Antenna</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>PitchPlug</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>Rights Coach</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 6-7"/><path d="M3 21h18"/></svg>Earnings</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-user"><div class="av" style="background-image:url('art/maya.png');background-size:cover;background-position:center 30%"></div><div><div class="nm">Maya Reyes</div><div class="pl">Free · build your vault</div></div></div>
+</nav>
+
+<main class="main">
+  <div class="topbar">
+    <div class="h"><h1>Contract Locker</h1><div class="sub">The paperwork behind your money — generated, verified, and status-tracked</div></div>
+    <button class="btn ghost"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 18v2h16v-2"/></svg>Upload</button>
+    <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Generate</button>
+  </div>
+  <div class="body">
+
+    <div class="list-col">
+      <div class="tbl-head"><div>Document</div><div>Source</div><div>Status</div></div>
+
+      <div class="crow sel">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div><div class="nm">Distribution Agreement</div><div class="sub">Moonlight · uploaded from outside</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 18v2h16v-2"/></svg>Uploaded</span></div>
+        <div><span class="st ver"><span class="d"></span>Verified</span></div>
+      </div>
+
+      <div class="crow">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div><div><div class="nm">Split Sheet</div><div class="sub">Midnight Ride · 3 writers · 100%</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Generated</span></div>
+        <div><span class="st ver"><span class="d"></span>Verified</span></div>
+      </div>
+
+      <div class="crow">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div><div class="nm">Sample Clearance</div><div class="sub">Moonlight · intro vocal license</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 18v2h16v-2"/></svg>Uploaded</span></div>
+        <div><span class="st sign"><span class="d"></span>Verifying</span></div>
+      </div>
+
+      <div class="crow">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div><div class="nm">Copyright Registration</div><div class="sub">Golden Hour · filed with the USCO</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Generated</span></div>
+        <div><span class="st ver"><span class="d"></span>Verified</span></div>
+      </div>
+
+      <div class="crow">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div><div class="nm">Work-for-Hire — Producer</div><div class="sub">Paper · awaiting signature</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>Generated</span></div>
+        <div><span class="st pend"><span class="d"></span>Pending</span></div>
+      </div>
+
+      <div class="crow">
+        <div class="cdoc"><div class="fi"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></div><div><div class="nm">Split Sheet</div><div class="sub">Static Heart · splits total 90%</div></div></div>
+        <div><span class="src"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 18v2h16v-2"/></svg>Uploaded</span></div>
+        <div><span class="st bad"><span class="d"></span>Needs fixing</span></div>
+      </div>
+    </div>
+
+    <div class="verify">
+      <div class="vh"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>AI verification</div>
+      <div class="vtitle">Distribution Agreement</div>
+      <div class="vsub">Moonlight · uploaded PDF · read by Funūn AI</div>
+      <div class="vbadge"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg>Verified — airtight</div>
+
+      <div style="margin-top:20px;">
+        <div class="vcheck"><div class="ci"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div><div class="ct">Splits total 100%</div><div class="cs">Payout percentages add up exactly</div></div></div>
+        <div class="vcheck"><div class="ci"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div><div class="ct">All parties present</div><div class="cs">3 of 3 named & accounted for</div></div></div>
+        <div class="vcheck"><div class="ci"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div><div class="ct">Signatures present</div><div class="cs">Every signature block completed</div></div></div>
+        <div class="vcheck" style="border:none;"><div class="ci"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div><div class="ct">Terms match release</div><div class="cs">Title, ISRC & dates align with Vault</div></div></div>
+      </div>
+
+      <div class="vmeta"><b>Signed</b> May 28, 2026 · <b>Verified</b> May 28, 2026<br/>Feeds Release Readiness · clears this release for pitching.</div>
+    </div>
+
+  </div>
+</main>
+</body>
+</html>

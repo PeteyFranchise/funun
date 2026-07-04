@@ -1,0 +1,11 @@
+# Large placeholder album-art covers (~36MB) — sample assets only, "replace with
+# real release artwork" per README. Kept on local disk so the HTML references render,
+# but excluded from git. The rendered screens-reference.pdf is the canonical visual.
+# Small avatar photos (maya.png, jonah.png) ARE tracked — they're referenced across
+# the profile/comment/endorsement mockups.
+art/midnight-ride.png
+art/moonlight.png
+art/static-heart.png
+art/golden-hour.png
+art/paper.png
+art/lantern.png

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Funūn — Release Readiness</title>
+<link rel="stylesheet" href="app.css" />
+<style>
+.body{display:grid;grid-template-columns:392px 1fr;gap:30px;}
+.score-col{display:flex;flex-direction:column;}
+.bigring{width:300px;height:300px;border-radius:50%;align-self:center;margin-top:8px;display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(#818CF8 0%,#a855f7 40%,#D946EF 78%,rgba(199,203,247,.12) 78% 100%);}
+.bigring .in{width:244px;height:244px;border-radius:50%;background:#0c0b1a;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.bigring .num{font-size:92px;font-weight:900;line-height:.9;letter-spacing:-.04em;}
+.bigring .den{font-size:20px;color:var(--lav-dim);font-weight:600;margin-top:6px;}
+.bigring .lab{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-top:12px;white-space:nowrap;}
+.prog{margin-top:26px;}
+.prog .pl{display:flex;justify-content:space-between;font-size:14px;font-weight:600;color:var(--lav);margin-bottom:10px;}
+.prog .bar{height:9px;border-radius:5px;background:rgba(199,203,247,.12);overflow:hidden;}
+.prog .bar .f{height:100%;width:70%;border-radius:5px;background:var(--grad);}
+.coach{margin-top:26px;border-radius:16px;padding:22px;background:linear-gradient(155deg,rgba(129,140,248,.14),rgba(217,70,239,.1));border:1px solid rgba(129,140,248,.3);}
+.coach .ch{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--indigo);margin-bottom:12px;text-transform:uppercase;}
+.coach .ch svg{width:18px;height:18px;stroke:var(--indigo);stroke-width:1.8;fill:none;}
+.coach p{font-size:16px;line-height:1.45;color:#fff;font-weight:600;}
+.coach b{color:var(--amber-2);}
+
+.gates .sech{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--lav-dim);font-weight:700;margin-bottom:18px;}
+.gate{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:14px;border:1px solid var(--border);background:var(--card);margin-bottom:12px;}
+.gate .gi{width:40px;height:40px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;}
+.gate .gi svg{width:21px;height:21px;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.gate .gt{flex:1;}
+.gate .gt .t{font-size:16px;font-weight:700;}
+.gate .gt .s{font-size:13px;color:var(--lav-dim);margin-top:3px;}
+.gate.ok .gi{background:rgba(52,211,153,.12);} .gate.ok .gi svg{stroke:#34D399;}
+.gate.warn .gi{background:rgba(245,158,11,.12);} .gate.warn .gi svg{stroke:#F59E0B;}
+.gate.bad .gi{background:rgba(244,63,94,.12);} .gate.bad .gi svg{stroke:#F43F5E;}
+.fix{font-size:13.5px;font-weight:700;color:#fff;padding:9px 16px;border-radius:9px;background:var(--card-2);border:1px solid var(--border-strong);}
+.fix.hot{background:var(--grad);border:none;box-shadow:0 8px 20px -8px rgba(217,70,239,.5);}
+.gstat{font-size:13px;font-weight:700;}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="ng" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818CF8"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs></svg>
+
+<nav class="nav">
+  <div class="brand"><div><div class="logo gtext">FUNŪN</div><div class="tag">THE ARTS</div></div></div>
+  <div class="nav-group">Workspace</div>
+  <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z"/><rect x="9" y="10" width="6" height="6" rx="1"/></svg>Sound Vault</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>Contract Locker</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>Antenna</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>PitchPlug</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>Rights Coach</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 6-7"/><path d="M3 21h18"/></svg>Earnings</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-user"><div class="av" style="background-image:url('art/maya.png');background-size:cover;background-position:center 30%"></div><div><div class="nm">Maya Reyes</div><div class="pl">Free · build your vault</div></div></div>
+</nav>
+
+<main class="main">
+  <div class="topbar">
+    <div class="h"><h1>Release readiness</h1><div class="sub">Neon Tide · Maya Reyes · Single — raise your score to unlock opportunities</div></div>
+    <button class="btn ghost"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>Ask your coach</button>
+  </div>
+  <div class="body">
+
+    <div class="score-col">
+      <div class="bigring"><div class="in"><div class="num gtext">78</div><div class="den">/ 100</div><div class="lab gtext">Almost ready</div></div></div>
+      <div class="prog">
+        <div class="pl"><span>Readiness gates</span><span>7 of 10 complete</span></div>
+        <div class="bar"><div class="f"></div></div>
+      </div>
+      <div class="coach">
+        <div class="ch"><svg viewBox="0 0 24 24"><path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z"/></svg>AI Rights Coach</div>
+        <p>Complete your metadata and file with The MLC to reach <b>88</b> — that unlocks <b>3 new Antenna opportunities</b> for this release.</p>
+      </div>
+    </div>
+
+    <div class="gates">
+      <div class="sech">What unlocks money &amp; opportunities</div>
+
+      <div class="gate ok"><div class="gi"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div class="gt"><div class="t">Splits resolved</div><div class="s">3 writers accounted for · totals 100%</div></div><span class="gstat" style="color:#34D399">Passed</span></div>
+
+      <div class="gate ok"><div class="gi"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div class="gt"><div class="t">Samples cleared</div><div class="s">1 sample · license on file</div></div><span class="gstat" style="color:#34D399">Passed</span></div>
+
+      <div class="gate ok"><div class="gi"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div class="gt"><div class="t">Master audio uploaded</div><div class="s">WAV · 24-bit / 48kHz</div></div><span class="gstat" style="color:#34D399">Passed</span></div>
+
+      <div class="gate ok"><div class="gi"><svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></svg></div><div class="gt"><div class="t">Cover art &amp; assets</div><div class="s">Artwork + press photos added</div></div><span class="gstat" style="color:#34D399">Passed</span></div>
+
+      <div class="gate bad"><div class="gi"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></div><div class="gt"><div class="t">Metadata complete</div><div class="s">Missing producer credit &amp; ISWC</div></div><button class="fix hot">Fix it →</button></div>
+
+      <div class="gate warn"><div class="gi"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg></div><div class="gt"><div class="t">Registrations filed</div><div class="s">ASCAP done · The MLC pending</div></div><button class="fix">Continue</button></div>
+
+      <div class="gate bad"><div class="gi"><svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg></div><div class="gt"><div class="t">Distribution agreement</div><div class="s">Not uploaded yet</div></div><button class="fix hot">Fix it →</button></div>
+
+    </div>
+  </div>
+</main>
+</body>
+</html>

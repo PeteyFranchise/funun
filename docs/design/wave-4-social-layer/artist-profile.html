@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Funūn — Artist Profile</title>
+<link rel="stylesheet" href="app.css" />
+<style>
+html,body{margin:0;}
+html{width:100%;height:100%;}
+body{
+  width:100vw;min-height:100vh;overflow-x:hidden;
+  display:flex;flex-direction:column;background:#08070d;position:relative;
+}
+.icn{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ---- top app bar ---- */
+.appbar{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;align-items:center;justify-content:space-between;padding:26px 30px;color:#fff;}
+.appbar .side{display:flex;align-items:center;gap:14px;}
+.appbar .rnd{width:42px;height:42px;border-radius:50%;background:rgba(10,9,16,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;}
+.appbar .rnd svg{width:20px;height:20px;color:#fff;}
+.appbar .ttl{font-size:14px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.85);}
+
+/* ---- artwork ---- */
+.art{position:relative;width:100%;height:560px;flex:none;}
+.art img{width:100%;height:100%;object-fit:cover;object-position:center 32%;display:block;}
+.art .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,7,13,.45) 0%,rgba(8,7,13,0) 26%,rgba(8,7,13,0) 50%,rgba(8,7,13,.6) 82%,#08070d 100%);}
+.art .meta{position:absolute;left:34px;right:34px;bottom:26px;z-index:3;}
+.chip-funun{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;flex-wrap:nowrap;padding:7px 14px;border-radius:999px;background:rgba(10,9,16,.55);backdrop-filter:blur(8px);border:1px solid rgba(199,203,247,.22);font-size:14px;font-weight:700;letter-spacing:.04em;color:#fff;margin-bottom:18px;}
+.chip-funun .logo{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;letter-spacing:.06em;}
+.eyebrow-s{font-size:14px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--lav);opacity:.9;}
+.title-s{font-size:58px;font-weight:900;letter-spacing:-.02em;line-height:1;margin-top:8px;color:#fff;}
+.artist-s{display:flex;align-items:center;gap:9px;margin-top:14px;}
+.artist-s .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#818CF8,#D946EF);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;}
+.artist-s .nm{font-size:19px;font-weight:600;color:#fff;}
+.artist-s .vf{width:19px;height:19px;color:var(--indigo);}
+.artist-s .ml{font-size:15px;color:var(--lav-dim);margin-left:4px;}
+
+/* ---- player ---- */
+.player{padding:6px 34px 0;}
+.scrub{margin-top:4px;}
+.bar{height:6px;border-radius:3px;background:rgba(199,203,247,.16);position:relative;}
+.bar .f{position:absolute;left:0;top:0;bottom:0;width:38%;border-radius:3px;background:var(--grad);}
+.bar .f::after{content:"";position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);}
+.times{display:flex;justify-content:space-between;margin-top:11px;font-size:14px;color:var(--lav-dim);font-variant-numeric:tabular-nums;}
+.controls{display:flex;align-items:center;justify-content:center;gap:42px;margin-top:18px;color:#fff;}
+.controls .c{width:30px;height:30px;color:var(--lav);}
+.controls .play{width:78px;height:78px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 18px 44px -12px rgba(217,70,239,.65);}
+.controls .play svg{width:30px;height:30px;fill:#fff;}
+.controls .play.sm svg{margin-left:0;}
+
+/* up next */
+.next{padding:26px 34px 0;}
+.nhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.nhd .l{font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--lav-dim);}
+.nhd .r{font-size:14px;font-weight:600;color:var(--indigo);}
+.trk{display:flex;align-items:center;gap:15px;padding:10px 0;}
+.trk .tn{width:48px;height:48px;border-radius:10px;flex:none;background-size:cover;background-position:center;border:1px solid var(--border);}
+.trk .info{flex:1;}
+.trk .t{font-size:17px;font-weight:600;color:#fff;}
+.trk .s{font-size:14px;color:var(--lav-dim);margin-top:2px;}
+.trk .du{font-size:14px;color:var(--lav-dim);font-variant-numeric:tabular-nums;}
+.trk.on .t{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+</style>
+</head>
+<body>
+<div class="appbar">
+  <div class="side">
+    <div class="rnd"><svg class="icn" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+  </div>
+  <div class="ttl">Now playing</div>
+  <div class="side">
+    <div class="rnd"><svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></div>
+  </div>
+</div>
+
+<div class="art">
+  <img src="art/paper.png" alt="Paper cover art" />
+  <div class="scrim"></div>
+  <div class="meta">
+    <div class="chip-funun"><span class="logo">FUNŪN</span><span style="opacity:.5">·</span><span style="font-weight:600;color:var(--lav)">Artist profile</span></div>
+    <div class="eyebrow-s">Single</div>
+    <div class="title-s">Paper</div>
+    <div class="artist-s">
+      <div class="av" style="background-image:url('art/maya.png');background-size:cover;background-position:center 30%"></div>
+      <div class="nm">Maya Reyes</div>
+      <svg class="vf icn" viewBox="0 0 24 24" style="fill:none"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+      <div class="ml">· 248,109 monthly listeners</div>
+    </div>
+  </div>
+</div>
+
+<div class="player">
+  <div class="scrub">
+    <div class="bar"><div class="f"></div></div>
+    <div class="times"><span>1:18</span><span>3:24</span></div>
+  </div>
+  <div class="controls">
+    <svg class="c icn" viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+    <svg class="c icn" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M19 5v14l-11-7zM6 5h2v14H6z"/></svg>
+    <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z"/></svg></div>
+    <svg class="c icn" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M5 5v14l11-7zM16 5h2v14h-2z"/></svg>
+    <svg class="c icn" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+  </div>
+</div>
+
+<div class="next">
+  <div class="nhd"><div class="l">More from Maya Reyes</div><div class="r">See all</div></div>
+  <div class="trk on"><div class="tn" style="background-image:url('art/paper.png')"></div><div class="info"><div class="t">Paper</div><div class="s">Single · 2026</div></div><svg class="icn" viewBox="0 0 24 24" style="width:20px;height:20px;color:var(--indigo)"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+  <div class="trk"><div class="tn" style="background-image:url('art/midnight-ride.png')"></div><div class="info"><div class="t">Midnight Ride</div><div class="s">EP · 5 tracks</div></div><div class="du">3:42</div></div>
+  <div class="trk"><div class="tn" style="background-image:url('art/golden-hour.png')"></div><div class="info"><div class="t">Golden Hour</div><div class="s">EP · 4 tracks</div></div><div class="du">4:11</div></div>
+  <div class="trk"><div class="tn" style="background-image:url('art/moonlight.png')"></div><div class="info"><div class="t">Moonlight</div><div class="s">Single · 2026</div></div><div class="du">3:05</div></div>
+</div>
+</body>
+</html>

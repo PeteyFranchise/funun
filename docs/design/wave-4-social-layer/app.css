@@ -1,0 +1,97 @@
+/* FUNUN — app mockup shell (desktop web, 1440×900) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root{
+  --bg:#0a0a0f;
+  --card:#0E0D1E;
+  --card-2:#1A1838;
+  --white:#FFFFFF;
+  --lav:#C7CBF7;
+  --lav-dim:#7c80b4;
+  --indigo:#818CF8;
+  --fuchsia:#D946EF;
+  --emerald:#34D399;
+  --amber:#F59E0B;
+  --amber-2:#F4C77B;
+  --rose:#F43F5E;
+  --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+  --grad-money:linear-gradient(105deg,#F4C77B 0%,#F59E0B 100%);
+  --border:rgba(199,203,247,.12);
+  --border-strong:rgba(199,203,247,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{width:100%;height:100%;}
+body{
+  width:100%;min-height:100vh;
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);color:var(--white);
+  -webkit-font-smoothing:antialiased;
+  display:flex;
+  position:relative;
+}
+.gtext{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.mtext{background:var(--grad-money);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+/* ---------------- left nav rail ---------------- */
+.nav{
+  width:252px;flex:none;min-height:100vh;
+  background:linear-gradient(180deg,#0d0c1c 0%,#09080f 100%);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:30px 18px 24px;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:0 12px 0;margin-bottom:42px;}
+.brand .logo{font-size:25px;font-weight:900;letter-spacing:.04em;}
+.brand .tag{font-size:10px;letter-spacing:.32em;color:var(--lav-dim);font-weight:700;margin-top:3px;}
+.nav-group{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--lav-dim);font-weight:700;padding:0 14px;margin:6px 0 12px;}
+.nav-item{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 14px;border-radius:11px;
+  color:var(--lav);font-size:15.5px;font-weight:600;
+  margin-bottom:5px;position:relative;
+}
+.nav-item svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.nav-item.active{background:var(--card-2);color:var(--white);border:1px solid var(--border-strong);}
+.nav-item.active::before{content:"";position:absolute;left:-18px;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:var(--grad);}
+.nav-item.active svg{stroke:url(#ng);}
+.nav-spacer{flex:1;}
+.nav-user{display:flex;align-items:center;gap:12px;padding:12px 12px;border-top:1px solid var(--border);margin-top:8px;}
+.nav-user .av{width:38px;height:38px;border-radius:50%;flex:none;background:linear-gradient(135deg,#818CF8,#D946EF);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
+.nav-user .nm{font-size:14.5px;font-weight:700;}
+.nav-user .pl{font-size:12px;color:var(--lav-dim);}
+
+/* ---------------- main ---------------- */
+.main{flex:1;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+.topbar{
+  display:flex;align-items:center;gap:20px;
+  padding:26px 36px 22px;border-bottom:1px solid var(--border);flex:none;
+}
+.topbar .h{flex:1;}
+.topbar h1{font-size:27px;font-weight:800;letter-spacing:-.01em;}
+.topbar .sub{font-size:14px;color:var(--lav-dim);margin-top:5px;font-weight:500;}
+.search{
+  display:flex;align-items:center;gap:10px;width:280px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:11px 14px;color:var(--lav-dim);font-size:14px;
+}
+.search svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--grad);color:#fff;font-weight:700;font-size:15px;
+  padding:12px 20px;border-radius:10px;border:none;
+  box-shadow:0 12px 30px -10px rgba(217,70,239,.5);white-space:nowrap;
+}
+.btn svg{width:18px;height:18px;stroke:#fff;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.btn.ghost{background:var(--card-2);border:1px solid var(--border-strong);box-shadow:none;color:var(--white);}
+.body{flex:1;padding:30px 36px;}
+
+/* status chips */
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:999px;letter-spacing:.01em;}
+.chip.ok{color:var(--emerald);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.28);}
+.chip.warn{color:var(--amber-2);background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.28);}
+.chip.bad{color:var(--rose);background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.28);}
+.chip.info{color:var(--indigo);background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.28);}
+.chip .d{width:7px;height:7px;border-radius:50%;background:currentColor;}
+
+/* generic card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;}
