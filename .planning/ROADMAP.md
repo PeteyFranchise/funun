@@ -293,4 +293,4 @@ Wave 3 builds the **Launchpad room** — the post-release environment where an a
 |-------|----------------|--------|-----------|
 | 5. Launchpad Checklist | 6/6 | Complete    | 2026-07-01 |
 | 6. Playlist Curator Pitching | 6/6 | Complete    | 2026-07-02 |
-| 7. Social Campaign Planner | 6/6 | Complete   | 2026-07-03 |
+| 7. Social Campaign Planner | 6/6 | Complete    | 2026-07-03 |

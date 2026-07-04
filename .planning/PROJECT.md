@@ -101,15 +101,15 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 - ✓ **PITCH-07**: Admin view for managing curator directory (add, edit, flag, review claimed profiles)
 - ✓ **PITCH-08**: "Playlist Curator" is added to industry occupation options in Settings
 
-### Active (Wave 3 targets)
+### Validated (Wave 3 — Phase 7)
 
-- [ ] **SOCIAL-01**: Artist selects which platforms they are active on (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) per project
-- [ ] **SOCIAL-02**: Funūn surfaces best-practice nudges toward highest-impact platform combinations for the artist's genre
-- [ ] **SOCIAL-03**: AI generates a 4–6 week content calendar from release data (title, genre, collaborators, release date, story)
-- [ ] **SOCIAL-04**: Calendar shows posts by week and platform, each with a draft caption/hook and content type tag
-- [ ] **SOCIAL-05**: DropReady and SoundBait are accessible as inline calendar actions ("Generate caption", "Generate hook") and as standalone quick tools in the Launchpad tools view
-- [ ] **SOCIAL-06**: Artist can check off calendar posts as they go live; completion tracked per project
-- [ ] **SOCIAL-07**: Artist can export the campaign calendar as a CSV compatible with Later and Buffer (V1)
+- ✓ **SOCIAL-01**: Artist selects which platforms they are active on (Instagram, TikTok, X, YouTube Shorts, Facebook, Threads) per project
+- ✓ **SOCIAL-02**: Funūn surfaces best-practice nudges toward highest-impact platform combinations for the artist's genre
+- ✓ **SOCIAL-03**: AI generates a 4–6 week content calendar from release data (title, genre, collaborators, release date, story)
+- ✓ **SOCIAL-04**: Calendar shows posts by week and platform, each with a draft caption/hook and content type tag
+- ✓ **SOCIAL-05**: DropReady and SoundBait are accessible as inline calendar actions ("Generate caption", "Generate hook") and as standalone quick tools in the Launchpad tools view
+- ✓ **SOCIAL-06**: Artist can check off calendar posts as they go live; completion tracked per project
+- ✓ **SOCIAL-07**: Artist can export the campaign calendar as a CSV compatible with Later and Buffer (V1)
 
 ### Out of Scope (this wave)
 
@@ -139,6 +139,8 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 | `svix` added as a direct dependency (Phase 6) | Resend signs webhooks via Svix under the hood; the pinned `resend@^4.0.0` predates Resend's own `webhooks.verify()` helper, and a 4→6 major upgrade was judged higher-risk than adding the dependency directly | `svix` installed after a blocking human-verify checkpoint reviewing package legitimacy (5yr-old official-org package, ~4.88M weekly downloads) |
 | RLS row policies alone are not enough (Phase 6) | Migration 030's row-level RLS policies restricted rows but not columns — any authenticated client could bypass app-layer column allowlists via direct PostgREST access, exposing `claim_token`/`response_token` | Migration `031_curators_column_privileges.sql` adds explicit `REVOKE`/`GRANT` column-level privileges on top of RLS; found and fixed via `/gsd-code-review`, not caught by planning |
 | Curator accounts isolated from artist auth model (Phase 6) | Curators need a lightweight magic-link account without becoming `artist_profiles` rows or being subject to `middleware.ts`'s artist route protection | `app_metadata.role='curator'` set at `admin.createUser()` time (not a post-insert UPDATE) so `handle_new_user()` early-returns; `(curator-portal)` routes deliberately excluded from `middleware.ts`'s protected-path list, with the portal's own layout as sole auth authority |
+| AI calendar output treated as untrusted input (Phase 7) | The model's JSON could hallucinate out-of-range platforms/content-types/weeks that would corrupt stored slots or the CSV export | Every AI-generated slot is routed through `readCalendarPosts()`→`readPosts()` enum/range validation before it can be persisted or rendered; user release data isolated in a `<release_data>` prompt block so a malicious note can't restructure platform rules |
+| One active campaign per project enforced at the DB (Phase 7) | Two concurrent "set active" requests could both flip `is_active` on without a DB backstop | Partial unique index `ON social_campaigns (project_id) WHERE is_active` in migration 033, layered on an app-level flip-old-off-then-set-new inside one request |
 
 ---
 
@@ -172,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-02 — after Phase 6 (Playlist Curator Pitching)*
+*Last updated: 2026-07-04 — after Phase 7 (Social Campaign Planner) — milestone v1.1 Launchpad complete*
