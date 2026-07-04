@@ -144,14 +144,22 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage) · 
 
 ---
 
-## Current Milestone: v1.1 Launchpad
+## Current State
 
-**Goal:** Give artists a structured post-release room where they can pitch playlists, plan social campaigns, and track the actions that turn a release into traction — all from Funūn.
+**Shipped:** v1.1 Launchpad (2026-07-04) — Phases 5–7, 18 plans, 19/19 Wave 3 requirements validated.
 
-**Target features:**
-- Launchpad checklist with per-item tips
-- Playlist pitching via curator directory
-- Social campaign planner with AI-generated calendar
+Artists now have a structured post-release room: a week-sequenced Launchpad checklist with admin-approved tips, playlist curator pitching (directory, AI-drafted emails, claim flow, bounce/drift handling), and an AI-generated 4–6 week social campaign planner with Buffer CSV export. All three pillars ship with RLS + column-level privilege hardening and AI output validated as untrusted input.
+
+Cumulative platform state: v1.0 (Rights & Registration Rails, Phases 1–4) + v1.1 (Launchpad, Phases 5–7). Next.js 15 · TypeScript · Supabase (PostgreSQL + RLS + Storage) · Tailwind · Anthropic SDK · Resend · svix.
+
+## Next Milestone: v1.2 — Wave 4 (not yet scoped)
+
+**Candidate goals** (carried from deferred items — to be confirmed via `/gsd-new-milestone`):
+- Direct social post scheduling / publishing via Meta/TikTok OAuth
+- Buffer API integration (SOCIAL-08 research spike) — direct calendar push + status sync
+- Curator directory seeding via scraping/API
+- Dropbox Sign live e-sign (needs paid account; abstraction already in place)
+- Songtrust API integration (pending BD conversation)
 
 ---
 
@@ -174,4 +182,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-04 — after Phase 7 (Social Campaign Planner) — milestone v1.1 Launchpad complete*
+*Last updated: 2026-07-04 — after v1.1 Launchpad milestone completion*
