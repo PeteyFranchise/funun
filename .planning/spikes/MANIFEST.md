@@ -25,6 +25,8 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 | 001 | buffer-auth-publish | standard | Given a Buffer personal API key, when Funūn calls the GraphQL API, then it lists channels and creates a scheduled post | PARTIAL — endpoint/auth/query-shape validated live; publish pending user key | buffer, auth, graphql, byok |
 | 002 | calendar-to-buffer-mapping | standard | Given a Funūn SocialPost[], when mapped to Buffer createPost inputs, then platform/time/media line up with no data loss | VALIDATED ✓ | buffer, data-mapping, calendar |
 | 003 | connect-and-push-ux | standard | Given BYOK constraint, when a user connects Buffer and pushes a calendar, then connect→map→push→status flow feels coherent | VALIDATED ✓ (UX judgment is user's) | buffer, ui, ux, byok |
+| 004 | buffer-status-sync-back | standard | Given posts scheduled via createPost, when Funūn polls the Buffer `posts` query, then it reconciles Scheduled→Sent back into slot completion | VALIDATED ✓ | buffer, status, sync, graphql |
+| 005 | buffer-update-delete-repush | standard | Given an already-pushed calendar, when the user edits/re-pushes, then a create/edit/delete diff avoids duplicate Buffer posts | PENDING | buffer, idempotency, lifecycle |
 
 ## Reference
 
