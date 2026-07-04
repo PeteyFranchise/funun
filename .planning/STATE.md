@@ -1,10 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.2
-milestone_name: The Green Room
+milestone_name: "— Wave 4: The Green Room"
+current_phase: 8
 status: planning
-last_updated: "2026-07-04T02:10:00.000Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-07-04T06:25:00.721Z"
 last_activity: 2026-07-04
+last_activity_desc: ROADMAP.md created, 28/28 v1 requirements mapped
 progress:
   total_phases: 6
   completed_phases: 0
@@ -119,10 +122,10 @@ None currently.
 
 ## Session Continuity
 
-**Resume file:** None
+**Resume file:** .planning/phases/08-identity-schema-foundation/08-CONTEXT.md
 
-Last session: 2026-07-04
-Stopped at: v1.2 roadmap created — Phases 8–13, 28/28 v1 requirements mapped
+Last session: 2026-07-04T06:25:00.701Z
+Stopped at: Phase 8 context gathered
 Resume file: None
 
 ## Operator Next Steps
