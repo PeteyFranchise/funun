@@ -23,6 +23,9 @@ Non-negotiable design decisions that emerged during spiking. Every feature area 
 - **Platform coverage gaps must be a calm nudge, not an error.** Skip slots with no matching channel and offer to connect it.
 - **Status sync-back (Buffer Scheduled→Sent → Funūn completion) is what makes this synergistic** — without it the integration is "CSV export with extra steps."
 - **BYOK onboarding must be framed honestly**, and the connect screen must include a plain-language "What is Buffer?" explainer (artists may not know Buffer).
+- **Persist `{ buffer_post_id, contentSig, last_status }` per slot** at push time — the join key for status sync (004) and re-push diffing (005).
+- **Status sync is a POLL, not a webhook** (none documented): run the `posts` query filtered by `channelIds`+`status`, reconcile by id, map `sent`→complete via `sentAt`; reconcile must be idempotent.
+- **Re-push is a DIFF (create/edit/delete), never a blind re-create**, and **never edit/delete a `sent` post** (can't un-send — surface the conflict).
 </requirements>
 
 <findings_index>
@@ -32,6 +35,7 @@ Non-negotiable design decisions that emerged during spiking. Every feature area 
 |------|-----------|-------------|
 | Buffer integration (auth + mapping) | references/buffer-integration.md | BYOK personal-key + GraphQL `createPost`; `SocialPost → createPost` is a thin transform; endpoint/auth/query-shape confirmed live |
 | Buffer connect & push UX | references/buffer-connect-ux.md | Honest BYOK connect → channel map → push → status-sync flow is coherent; coverage gap as nudge; explainer required |
+| Buffer sync & lifecycle | references/buffer-sync-lifecycle.md | Poll `posts` query for status→completion (idempotent); re-push is a create/edit/delete diff that avoids duplicates and never touches `sent` posts |
 
 ## Source Files
 
@@ -44,4 +48,6 @@ Original spike source is preserved in `sources/` — runnable harness (`001/serv
 - 001-buffer-auth-publish
 - 002-calendar-to-buffer-mapping
 - 003-connect-and-push-ux
+- 004-buffer-status-sync-back
+- 005-buffer-update-delete-repush
 </metadata>
