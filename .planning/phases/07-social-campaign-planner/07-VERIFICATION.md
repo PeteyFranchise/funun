@@ -1,7 +1,7 @@
 ---
 phase: 07-social-campaign-planner
 verified: 2026-07-03T14:00:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,6 +9,7 @@ re_verification:
   previous_status: gaps_found
   previous_score: 4/5
   gaps_closed:
+
     - "CampaignCalendar.handleGenerate() now parses (json.data as SocialCampaign) — matches POST route's { data: <campaignRow> } shape"
     - "CampaignCalendar.refetchCampaign() now parses (json.data as SocialCampaign[]) — matches GET route's { data: <row[]> } shape"
     - "SlotGeneratePanel imported and mounted inside CampaignCalendar; handleOpenGenerate() local branch no longer a dead placeholder — sets generatePost state which opens the panel"
@@ -17,15 +18,19 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "Confirm that clicking 'Generate caption' or 'Generate hook' on a calendar slot opens the SlotGeneratePanel slide-in with a real AI-generated suggestion"
     expected: "Panel slides in from the right, shows 'Generating...' text, then shows the current caption alongside an AI suggestion. 'Use this' writes to the slot via the slot PATCH route. 'Discard' closes without writing."
     why_human: "Visual panel behavior and AI response content cannot be verified by code reading alone; requires a running Supabase instance with migration 033 applied and a real Anthropic API key"
+
   - test: "Confirm that after clicking 'Generate calendar', calendar slots appear immediately in the UI without requiring a page reload"
     expected: "Calendar slots appear in week sections directly after the POST response completes; no manual refresh needed"
     why_human: "Requires a live running app with real Anthropic API key and applied DB migration"
+
   - test: "Confirm that a DropReady or SoundBait standalone tool run surfaces a 'Save to calendar' action, and clicking it opens SaveToCalendarPicker"
     expected: "After a DropReady run, artist can click 'Save to calendar', a centered modal opens with Platform/Week/Slot selects, and confirming writes the caption to the chosen slot via PATCH — without recording anything to tool_outputs"
     why_human: "Requires a live running app with an active campaign containing slots"
+
   - test: "Confirm Buffer CSV export downloads a valid CSV with the correct four columns (Text, Image URL, Tags, Posting Time) and that Posting Time is formatted as YYYY-MM-DD HH:mm (not ISO 8601)"
     expected: "Downloaded file opens in a spreadsheet with four columns; Text contains slot captions; Posting Time values look like '2026-07-15 12:00'"
     why_human: "Requires a live running app, an active campaign with completed generation, and opening the CSV in a spreadsheet"
