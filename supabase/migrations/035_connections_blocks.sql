@@ -39,6 +39,8 @@ ALTER TABLE connections ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "connections_select_participant" ON connections;
 DROP POLICY IF EXISTS "connections_insert_own" ON connections;
 DROP POLICY IF EXISTS "connections_update_participant" ON connections;
+DROP POLICY IF EXISTS "connections_update_addressee" ON connections;
+DROP POLICY IF EXISTS "connections_update_requester_withdraw" ON connections;
 
 -- Visible to either participant.
 CREATE POLICY "connections_select_participant" ON connections FOR SELECT
@@ -48,10 +50,26 @@ CREATE POLICY "connections_select_participant" ON connections FOR SELECT
 CREATE POLICY "connections_insert_own" ON connections FOR INSERT TO authenticated
   WITH CHECK (requester_id = auth.uid());
 
--- Accept/decline/withdraw state transitions happen through the API layer
--- in Phase 10; this plan only defines the schema + RLS surface.
-CREATE POLICY "connections_update_participant" ON connections FOR UPDATE TO authenticated
-  USING (requester_id = auth.uid() OR addressee_id = auth.uid());
+-- State transitions use two targeted policies so a requester cannot
+-- self-accept their own request and neither participant can rewrite
+-- requester_id/addressee_id via direct PostgREST (CR-04 security fix).
+--
+-- Addressee: can accept or decline a pending request addressed to them.
+CREATE POLICY "connections_update_addressee" ON connections FOR UPDATE TO authenticated
+  USING (addressee_id = auth.uid() AND status = 'pending')
+  WITH CHECK (addressee_id = auth.uid() AND status IN ('accepted', 'declined'));
+
+-- Requester: can withdraw their own pending outbound request.
+CREATE POLICY "connections_update_requester_withdraw" ON connections FOR UPDATE TO authenticated
+  USING (requester_id = auth.uid() AND status = 'pending')
+  WITH CHECK (requester_id = auth.uid() AND status = 'withdrawn');
+
+-- Column-level UPDATE grant: restrict writes to status only so neither
+-- party can rewrite requester_id/addressee_id even with an open USING
+-- clause. Phase 10 API layer routes drive state via the service client
+-- and are unaffected (service_role bypasses column grants).
+REVOKE UPDATE ON connections FROM authenticated;
+GRANT UPDATE (status) ON connections TO authenticated;
 
 -- Reuse update_updated_at() trigger function defined in migration 001.
 CREATE TRIGGER connections_updated_at
