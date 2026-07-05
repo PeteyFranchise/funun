@@ -104,9 +104,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }
   } else {
     const supabase = createServerClient()
+    // Explicit PUBLIC column list (D-11) — must stay identical to migration
+    // 040's GRANT SELECT list so the app-layer projection and the DB-layer
+    // grant never drift. Includes `genre` and `sound_identity` (legacy
+    // fields, not in the original D-11 draft) because buildProfileData()
+    // reads both to build the profile's `tags` display (see 08-05-SUMMARY.md).
     const { data: prof } = await supabase
       .from('artist_profiles')
-      .select('*')
+      .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, search_vector, avatar_url, verified, roles, is_public, created_at, updated_at')
       .eq('handle', handle)
       .maybeSingle()
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
@@ -108,7 +108,15 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  // Ownership already verified above via the session-bound client's
+  // auth.getUser(). The write + read-back run on the service-role client
+  // (bypasses RLS + migration 040's column grants entirely) so a PATCH
+  // touching a PRIVATE column (e.g. legal name, contact info) doesn't
+  // 42501 on its own `.select()` read-back — D-19 companion fix.
+  // EDITABLE_FIELDS above remains the mass-assignment allowlist; only the
+  // client used to execute the already-sanitized update changes.
+  const service = createServiceClient()
+  const { data, error } = await service
     .from('artist_profiles')
     .update(update)
     .eq('id', user.id)

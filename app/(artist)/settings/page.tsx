@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { ProfileForm } from '@/components/profile/ProfileForm'
 
@@ -78,14 +78,24 @@ export default async function SettingsPage() {
     } = await supabase.auth.getUser()
 
     if (user) {
-      const { data } = await supabase
+      // Ownership is established above via the session-bound client's
+      // auth.getUser(); the actual read runs on the service-role client
+      // (bypasses RLS + migration 040's column grants entirely) filtered
+      // by the verified user.id, never client input — mirrors the
+      // project's "admin routes independently re-verify is_admin
+      // server-side" pattern, applied here to self-service ownership (D-19).
+      const service = createServiceClient()
+      const { data } = await service
         .from('artist_profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
       profile = (data as ArtistProfile | null) ?? null
 
-      // Also fetch the user_profiles row for Rights Identity fields
+      // user_profiles is a separate table (migration 026) — not touched by
+      // migration 040's column-privilege lockdown, so this session-bound
+      // select is unaffected by D-19. Its RLS policy already scopes reads
+      // to auth.uid() = id, so no service-client swap is required here.
       const { data: userProfileData } = await supabase
         .from('user_profiles')
         .select('*')

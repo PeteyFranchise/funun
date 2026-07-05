@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
@@ -91,8 +91,13 @@ export default async function OwnerProfilePage() {
     } = await supabase.auth.getUser()
     if (!user) redirect('/signin')
 
+    // Ownership established above via the session-bound client's
+    // auth.getUser(); the artist_profiles read runs on the service-role
+    // client (bypasses RLS + migration 040's column grants entirely)
+    // filtered by the verified user.id (D-19 companion fix).
+    const service = createServiceClient()
     const [{ data: prof }, { data: projs }, { count }] = await Promise.all([
-      supabase.from('artist_profiles').select('*').eq('id', user.id).maybeSingle(),
+      service.from('artist_profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase
         .from('vault_projects')
         .select('id, title, type, cover_art_url, vault_readiness_score, release_date, is_public')
