@@ -6,14 +6,14 @@ current_phase: 08
 current_phase_name: identity-schema-foundation
 status: executing
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-07-05T03:37:49.030Z"
+last_updated: "2026-07-05T03:42:49.607Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 08 (identity-schema-foundation) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-05 — Phase 08 execution started
 
@@ -72,6 +72,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 
 *Updated after each plan completion*
 | Phase 08 P01 | 12min | 2 tasks | 4 files |
+| Phase 08 P02 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Wave 4 research: notifications are 1:1 events only (no fan-out on write); compute unread via COUNT, never a cached counter that can drift
 - [Phase 08]: Migration 034 confirms `vault_projects.is_public` as the publish-status column used by the D-16 featured-spotlight integrity triggers
 - [Phase 08]: Migration 034's `search_vector` wraps each `array_to_string()` call in `coalesce(..., '')` to guard against NULL `genres`/`industry_roles` arrays silently nulling the entire generated column (Rule 1 fix on the RESEARCH skeleton)
+- [Phase ?]: [Phase 08 P02]: connections uses a single-row-per-pair state machine with a partial unique index (WHERE status IN ('pending','accepted')) instead of a plain UNIQUE, allowing re-request after a terminal decline/withdrawal
+- [Phase ?]: [Phase 08 P02]: no_block() SECURITY DEFINER helper has EXECUTE revoked from PUBLIC/anon and granted only to authenticated, intended for RLS policy bodies not client RPC (RESEARCH Assumption A2)
 
 ### Pending Todos
 
@@ -128,7 +131,7 @@ None currently.
 
 **Resume file:** .planning/phases/08-identity-schema-foundation/08-UI-SPEC.md
 
-Last session: 2026-07-05T03:37:03.563Z
+Last session: 2026-07-05T03:42:06.436Z
 Stopped at: Phase 8 UI-SPEC approved
 Resume file: None
 
