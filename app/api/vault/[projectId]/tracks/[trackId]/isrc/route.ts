@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   currentIsrcYear,
   formatIsrc,
@@ -50,7 +50,12 @@ export async function POST(
     )
   }
 
-  const { data: profile } = await supabase
+  // isrc_country_code, isrc_registrant_code, isrc_year_counters are PRIVATE
+  // columns (no authenticated SELECT grant under migration 040). Ownership
+  // is established above (track scoped to user.id), so the read runs via
+  // the service-role client (D-19 pattern).
+  const service = createServiceClient()
+  const { data: profile } = await service
     .from('artist_profiles')
     .select('isrc_country_code, isrc_registrant_code, isrc_year_counters')
     .eq('id', user.id)
@@ -85,7 +90,9 @@ export async function POST(
   // don't roll back the counter — a skipped number is harmless (codes need
   // only be unique, not contiguous).
   const nextCounters = { ...counters, [year]: designation }
-  const { error: counterErr } = await supabase
+  // isrc_year_counters has no authenticated UPDATE grant (migration 040);
+  // the service client write is safe because ownership is already confirmed.
+  const { error: counterErr } = await service
     .from('artist_profiles')
     .update({ isrc_year_counters: nextCounters })
     .eq('id', user.id)

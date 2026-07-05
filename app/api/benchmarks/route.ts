@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 
 // Persists the artist's latest Breakthrough Benchmarking metrics so the Antenna
 // room can gate opportunities against the same numbers. Stored in the existing
@@ -34,8 +34,15 @@ export async function POST(request: Request) {
     number
   >
 
+  // sound_identity has no authenticated UPDATE grant (migration 040 comment
+  // incorrectly stated it was write-only via profile/route.ts — this route
+  // writes it directly). Ownership is confirmed via auth.getUser() above,
+  // so both the merge-read and the update run via the service-role client
+  // (D-19 pattern; see CR-02 fix).
+  const service = createServiceClient()
+
   // Merge into the existing sound_identity so other fields are preserved.
-  const { data: profile } = await supabase
+  const { data: profile } = await service
     .from('artist_profiles')
     .select('sound_identity')
     .eq('id', user.id)
@@ -46,7 +53,7 @@ export async function POST(request: Request) {
     benchmarks: metrics,
   }
 
-  const { error } = await supabase
+  const { error } = await service
     .from('artist_profiles')
     .update({ sound_identity, monthly_listeners: Math.round(metrics.monthlyListeners) })
     .eq('id', user.id)

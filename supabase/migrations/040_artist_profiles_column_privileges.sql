@@ -32,14 +32,24 @@
 -- an `authenticated`/`anon` JWT is now column-restricted.
 --
 -- IMPORTANT — deploy ordering (D-19): this migration MUST ship in the
--- same release as the Task 2 code fix (app/u/[handle]/page.tsx,
--- app/(artist)/settings/page.tsx, app/profile/page.tsx,
--- app/api/profile/route.ts). Postgres fails the WHOLE query on a
--- `SELECT *` against a column-restricted table, not just the restricted
--- columns — so every remaining `.select('*')`/bare `.select()` against
--- artist_profiles using the session-bound (authenticated-role) client
--- would 500 the instant this migration lands, until the companion fix
--- also deploys.
+-- same release as the full companion code fix. Postgres fails the WHOLE
+-- query on a `SELECT *` against a column-restricted table, not just the
+-- restricted columns — so every remaining `.select('*')`/bare `.select()`
+-- against artist_profiles using the session-bound (authenticated-role)
+-- client would 500 the instant this migration lands. The full companion
+-- fix set (CR-01/CR-02 Phase 8 code review fixes) covers:
+--   app/u/[handle]/page.tsx
+--   app/(artist)/settings/page.tsx
+--   app/profile/page.tsx
+--   app/api/profile/route.ts
+--   app/api/tools/pitchplug/route.ts
+--   app/api/tools/[slug]/route.ts
+--   app/api/vault/[projectId]/documents/generate/route.ts
+--   app/api/launchpad/[projectId]/campaigns/route.ts
+--   app/api/launchpad/[projectId]/campaigns/[campaignId]/slots/[slotId]/generate/route.ts
+--   app/(artist)/vault/[projectId]/rights/page.tsx
+--   app/api/vault/[projectId]/tracks/[trackId]/isrc/route.ts
+--   app/api/benchmarks/route.ts
 
 -- ─── SELECT ──────────────────────────────────────────────────────────
 -- PUBLIC set (D-11): the 6 pre-existing "showcase" columns (migration
@@ -74,10 +84,12 @@ GRANT SELECT (
 -- GENERATED ALWAYS column and cannot be granted UPDATE at all. is_public
 -- toggling continues to work exactly as it does today (it was already
 -- in the app's own update paths, and remains grantable here). `genre`
--- and `sound_identity` are legacy/read-mostly display fields not present
--- in EDITABLE_FIELDS (app/api/profile/route.ts) or ProfileForm's write
--- path today, so they are intentionally left out of the UPDATE grant —
--- only the SELECT grant needs them for public rendering.
+-- is a legacy read-only display field not present in EDITABLE_FIELDS so
+-- it is intentionally left out of the UPDATE grant.
+-- NOTE: `sound_identity` IS written by app/api/benchmarks/route.ts but
+-- that route uses createServiceClient() (bypasses column grants entirely),
+-- so no authenticated UPDATE grant is needed — service_role always has
+-- full access. Only the SELECT grant for sound_identity is required here.
 REVOKE UPDATE ON artist_profiles FROM authenticated;
 GRANT UPDATE (
   artist_name, genres, location, bio, career_stage,
@@ -95,9 +107,8 @@ GRANT UPDATE (
 -- after an explicit auth.uid() === id ownership check performed first
 -- with the session-bound client — never by another authenticated user or
 -- anon caller via direct PostgREST (see this plan's Task 2 companion
--- fix). isrc_country_code, isrc_registrant_code, and isrc_year_counters
--- are likewise left with no authenticated/anon grant: they are not
--- consumed by the public profile or any owner self-service page in this
--- plan's scope, and the owner PATCH route (app/api/profile/route.ts)
--- already writes them via the service-role client after this plan's
--- Task 2 fix, so no grant is needed for them to keep working.
+-- fix and CR-01/CR-02 code review fixes). isrc_country_code,
+-- isrc_registrant_code, and isrc_year_counters are likewise left with no
+-- authenticated/anon grant: they are read and written exclusively by
+-- app/api/vault/[projectId]/tracks/[trackId]/isrc/route.ts via the
+-- service-role client (CR-02 fix), so no grant is needed for them.
