@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 08
 current_phase_name: identity-schema-foundation
-status: executing
+status: verifying
 stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-07-05T04:02:31.498Z"
+last_updated: "2026-07-05T04:13:30.211Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 0
+  completed_plans: 6
+  percent: 17
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 08 (identity-schema-foundation) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-05 — Phase 08 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
@@ -76,6 +76,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 08 P03 | 6min | 1 tasks | 1 files |
 | Phase 08 P04 | 9min | 2 tasks | 2 files |
 | Phase 08 P05 | 20min | 2 tasks | 5 files |
+| Phase 08 P06 | 30min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 08 P04]: handle_new_user() industry branch keeps slug->ProfileRole preset mapping in TypeScript (plan 08-06), reading only two pre-built raw_user_meta_data keys (role_badges, profile_roles) rather than embedding the mapping in PL/pgSQL
 - [Phase ?]: [Phase 08 P05]: Added genre + sound_identity to migration 040's GRANT SELECT list and app/u/[handle]/page.tsx's explicit column list -- buildProfileData() reads both legacy fields for the public tags display, undetected by the plan's drafted D-11 PUBLIC set
 - [Phase ?]: [Phase 08 P05]: settings/page.tsx's user_profiles select('*') left on the session-bound client (separate table from artist_profiles, unaffected by migration 040) rather than swapped to createServiceClient()
+- [Phase ?]: .planning/phases/08-identity-schema-foundation/08-06-SUMMARY.md
 
 ### Pending Todos
 
@@ -141,7 +143,7 @@ currently.
 
 **Resume file:** None
 
-Last session: 2026-07-05T04:01:20.100Z
+Last session: 2026-07-05T04:13:30.198Z
 Stopped at: Completed 08-04-PLAN.md
 Resume file: None
 

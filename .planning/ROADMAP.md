@@ -35,7 +35,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Milestone Goal:** Turn Funūn's thin social layer into a full professional network for the music industry — rich member profiles, discovery, connections, notifications, and real-time presence — recreated pixel-faithfully from the locked hi-fi design handoff.
 
-- [ ] **Phase 8: Identity & Schema Foundation** - Extend the member-identity table and stand up the connection/block/notification/presence schema with column-privilege and block-enforcement guarantees baked in
+- [x] **Phase 8: Identity & Schema Foundation** - Extend the member-identity table and stand up the connection/block/notification/presence schema with column-privilege and block-enforcement guarantees baked in (completed 2026-07-05)
 - [ ] **Phase 9: Rich Member Profile** - Ship the hi-fi hero profile (banner, avatar, role badges, "Open to" chips, stats, releases grid, Featured spotlight) with owner-vs-public view switching and image upload
 - [ ] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel
 - [ ] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected
@@ -57,14 +57,14 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   4. A column-level REVOKE/GRANT migration ships in the same migration that adds any private column, so no authenticated user can read private fields via direct PostgREST
   5. Industry-member identity is created without a `handle_new_user()` phantom-row race (role set at `admin.createUser()` time, early-return branch added)
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 - [x] 08-01-PLAN.md
 - [x] 08-02-PLAN.md
 - [x] 08-03-PLAN.md
 - [x] 08-04-PLAN.md
 - [x] 08-05-PLAN.md
-- [ ] 08-06-PLAN.md
+- [x] 08-06-PLAN.md
 
 ### Phase 9: Rich Member Profile
 
@@ -152,7 +152,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 5. Launchpad Checklist | v1.1 | 6/6 | Complete | 2026-07-01 |
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
-| 8. Identity & Schema Foundation | v1.2 | 5/6 | In Progress|  |
+| 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
 | 9. Rich Member Profile | v1.2 | 0/TBD | Not started | - |
 | 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
