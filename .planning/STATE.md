@@ -6,14 +6,14 @@ current_phase: 08
 current_phase_name: identity-schema-foundation
 status: executing
 stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-07-05T03:54:03.305Z"
+last_updated: "2026-07-05T04:02:31.498Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 08 (identity-schema-foundation) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-05 — Phase 08 execution started
 
@@ -75,6 +75,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 08 P02 | 8min | 2 tasks | 2 files |
 | Phase 08 P03 | 6min | 1 tasks | 1 files |
 | Phase 08 P04 | 9min | 2 tasks | 2 files |
+| Phase 08 P05 | 20min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: No GRANT/REVOKE touched on notifications — only ADD COLUMN and the idempotent realtime publication guard (RESEARCH Pitfall 6)
 - [Phase ?]: [Phase 08 P04]: no_block() enforcement extended to dm_messages (via its parent dm_threads row) rather than the plan's minimum of 4 tables, closing a gap where a block placed after a thread exists wouldn't cover further messages in it
 - [Phase ?]: [Phase 08 P04]: handle_new_user() industry branch keeps slug->ProfileRole preset mapping in TypeScript (plan 08-06), reading only two pre-built raw_user_meta_data keys (role_badges, profile_roles) rather than embedding the mapping in PL/pgSQL
+- [Phase ?]: [Phase 08 P05]: Added genre + sound_identity to migration 040's GRANT SELECT list and app/u/[handle]/page.tsx's explicit column list -- buildProfileData() reads both legacy fields for the public tags display, undetected by the plan's drafted D-11 PUBLIC set
+- [Phase ?]: [Phase 08 P05]: settings/page.tsx's user_profiles select('*') left on the session-bound client (separate table from artist_profiles, unaffected by migration 040) rather than swapped to createServiceClient()
 
 ### Pending Todos
 
@@ -111,7 +114,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 ### Blockers/Concerns
 
-None currently.
+currently.
+
+- [Phase 08] Task 3 (schema push, migrations 034-040) could not run in this sandbox: no supabase/config.toml, no linked Supabase project, SUPABASE_ACCESS_TOKEN unset. Manual-intervention gap -- see 08-05-SUMMARY.md for exact commands a human must run before Phase 8 is verified.
 
 ## Deferred Items
 
@@ -136,7 +141,7 @@ None currently.
 
 **Resume file:** None
 
-Last session: 2026-07-05T03:54:03.292Z
+Last session: 2026-07-05T04:01:20.100Z
 Stopped at: Completed 08-04-PLAN.md
 Resume file: None
 
