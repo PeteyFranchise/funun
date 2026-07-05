@@ -2,17 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 8
-status: planning
+current_phase: 08
+current_phase_name: identity-schema-foundation
+status: executing
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-07-04T07:19:25.258Z"
-last_activity: 2026-07-04
-last_activity_desc: ROADMAP.md created, 28/28 v1 requirements mapped
+last_updated: "2026-07-05T03:37:49.030Z"
+last_activity: 2026-07-05
+last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 6
+  completed_plans: 1
   percent: 0
 ---
 
@@ -23,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Milestone v1.2 The Green Room — Phase 8 (Identity & Schema Foundation) planned and verified; ready to execute via `/gsd-execute-phase 8`
+**Current focus:** Phase 08 — identity-schema-foundation
 
 ## Current Position
 
-Phase: 8 — Identity & Schema Foundation (planned — 6 plans, 3 waves)
-Plan: —
+Phase: 08 (identity-schema-foundation) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-04 — Phase 8 planning complete: 6 plans across 3 waves, plan-checker passed, 19/19 CONTEXT.md decisions covered
+Last activity: 2026-07-05 — Phase 08 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -70,6 +71,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 - Trend: n/a
 
 *Updated after each plan completion*
+| Phase 08 P01 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -89,6 +91,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Wave 4 research (Phase 11 flag): Realtime Presence needs explicit `unsubscribe()` on unmount, `visibilitychange`-driven re-track, and a user-scoped (not tab-scoped) presence key to avoid channel leakage / ghost users / multi-tab dupes
 - Wave 4 research (Phase 12 flag): keep people search server-side-only (never direct PostgREST) so `is_public` + block exclusion cannot be bypassed; validate pg_trgm/tsvector with EXPLAIN ANALYZE at scale during Phase 12 planning
 - Wave 4 research: notifications are 1:1 events only (no fan-out on write); compute unread via COUNT, never a cached counter that can drift
+- [Phase 08]: Migration 034 confirms `vault_projects.is_public` as the publish-status column used by the D-16 featured-spotlight integrity triggers
+- [Phase 08]: Migration 034's `search_vector` wraps each `array_to_string()` call in `coalesce(..., '')` to guard against NULL `genres`/`industry_roles` arrays silently nulling the entire generated column (Rule 1 fix on the RESEARCH skeleton)
 
 ### Pending Todos
 
@@ -124,7 +128,7 @@ None currently.
 
 **Resume file:** .planning/phases/08-identity-schema-foundation/08-UI-SPEC.md
 
-Last session: 2026-07-04T07:19:25.247Z
+Last session: 2026-07-05T03:37:03.563Z
 Stopped at: Phase 8 UI-SPEC approved
 Resume file: None
 
