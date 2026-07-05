@@ -48,6 +48,8 @@ export function MembersAdmin({ initialMembers }: { initialMembers: IndustryMembe
   const [addForm, setAddForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  // WR-04: surface email delivery failure — account was created but invite email was not sent.
+  const [emailWarning, setEmailWarning] = useState<string | null>(null)
 
   const toggleRole = (slug: string) => {
     setAddForm(prev => ({
@@ -74,6 +76,7 @@ export function MembersAdmin({ initialMembers }: { initialMembers: IndustryMembe
 
     setSaving(true)
     setAddError(null)
+    setEmailWarning(null)
     try {
       const res = await fetch('/api/admin/members', {
         method: 'POST',
@@ -88,10 +91,17 @@ export function MembersAdmin({ initialMembers }: { initialMembers: IndustryMembe
         const json = await res.json().catch(() => ({}))
         throw new Error((json as { error?: string }).error ?? 'Something went wrong — please try again.')
       }
-      const json = (await res.json()) as { data: IndustryMember }
+      const json = (await res.json()) as { data: IndustryMember; emailSent: boolean }
       setMembers(prev => [json.data, ...prev])
       setAddForm(EMPTY_FORM)
       setShowAddForm(false)
+      // WR-04: account created successfully but invite email was not delivered.
+      // Display a persistent warning so the admin knows to follow up.
+      if (!json.emailSent) {
+        setEmailWarning(
+          `Account created for ${json.data.email} but the invite email could not be delivered. They can still sign in at /signin using their email address.`
+        )
+      }
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Something went wrong — please try again.')
     } finally {
@@ -101,6 +111,17 @@ export function MembersAdmin({ initialMembers }: { initialMembers: IndustryMembe
 
   return (
     <div className="mt-6">
+      {emailWarning && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-300">
+          {emailWarning}
+          <button
+            className="ml-3 text-xs underline opacity-60 hover:opacity-100"
+            onClick={() => setEmailWarning(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {!showAddForm && (
         <button
           onClick={() => {

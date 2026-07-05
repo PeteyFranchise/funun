@@ -23,7 +23,7 @@ export async function createIndustryMember(input: {
   displayName: string
   roleSlugs: string[]
   invitedBy?: string
-}): Promise<{ userId: string }> {
+}): Promise<{ userId: string; emailSent: boolean }> {
   const { email, displayName, roleSlugs, invitedBy } = input
   const service = createServiceClient()
   const profileRoles = mapSlugsToProfileRoles(roleSlugs)
@@ -41,13 +41,18 @@ export async function createIndustryMember(input: {
   })
 
   if (createError || !created?.user) {
-    // Edge case (mirrors the curator route's "email already exists" branch):
-    // do NOT clobber an existing account's role/profile by linking it here —
-    // surface a clear duplicate error instead so the caller can return 409
-    // (T-08-20). Unlike the curator flow, industry invites are not silently
-    // re-linked to a pre-existing account.
-    throw new DuplicateIndustryMemberError(
-      createError?.message ?? 'This email has already been invited.'
+    // WR-03: distinguish "email already exists" (true duplicate) from any
+    // other createUser failure (network error, bad key, Supabase outage).
+    // Throwing DuplicateIndustryMemberError for ALL errors caused the route
+    // to return 409 "already invited" on transient failures, with no path
+    // for the admin to discover the truth.
+    if (createError?.code === 'email_exists' || createError?.status === 422) {
+      throw new DuplicateIndustryMemberError(
+        createError?.message ?? 'This email has already been invited.'
+      )
+    }
+    throw new Error(
+      `Failed to create industry member: ${createError?.message ?? 'unknown error'}`
     )
   }
 
@@ -62,12 +67,14 @@ export async function createIndustryMember(input: {
   }
 
   // Custom Resend invite email (resolved D-03) — NOT Supabase's built-in
-  // invite template. sendEmail() no-ops safely if Resend isn't configured.
+  // invite template. sendEmail() no-ops safely if Resend isn't configured
+  // (returns { ok: false }). WR-04: surface delivery failure to the caller
+  // instead of silently discarding it so the route can warn the admin.
   const { subject, html } = industryInviteEmail({
     displayName,
     actionLink: link.properties.action_link,
   })
-  await sendEmail({ to: email, subject, html })
+  const { ok: emailSent } = await sendEmail({ to: email, subject, html })
 
-  return { userId: created.user.id }
+  return { userId: created.user.id, emailSent }
 }

@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { userId } = await createIndustryMember({
+    const { userId, emailSent } = await createIndustryMember({
       email,
       displayName,
       roleSlugs,
@@ -94,7 +94,12 @@ export async function POST(request: Request) {
           email,
         }
 
-    return NextResponse.json({ data }, { status: 201 })
+    // WR-04: surface email delivery failure to the caller. The account was
+    // created successfully; emailSent=false means the invite link was never
+    // delivered. The admin UI should display a warning when emailSent is false
+    // so they know to follow up manually (the invited member can still use
+    // the magic-link flow at /signin with their email address).
+    return NextResponse.json({ data, emailSent }, { status: 201 })
   } catch (err) {
     if (err instanceof DuplicateIndustryMemberError) {
       return NextResponse.json({ error: 'This email has already been invited.' }, { status: 409 })
