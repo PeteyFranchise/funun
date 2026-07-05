@@ -57,12 +57,12 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   4. A column-level REVOKE/GRANT migration ships in the same migration that adds any private column, so no authenticated user can read private fields via direct PostgREST
   5. Industry-member identity is created without a `handle_new_user()` phantom-row race (role set at `admin.createUser()` time, early-return branch added)
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 
 - [x] 08-01-PLAN.md
 - [x] 08-02-PLAN.md
 - [x] 08-03-PLAN.md
-- [ ] 08-04-PLAN.md
+- [x] 08-04-PLAN.md
 - [ ] 08-05-PLAN.md
 - [ ] 08-06-PLAN.md
 
@@ -152,7 +152,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 5. Launchpad Checklist | v1.1 | 6/6 | Complete | 2026-07-01 |
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
-| 8. Identity & Schema Foundation | v1.2 | 3/6 | In Progress|  |
+| 8. Identity & Schema Foundation | v1.2 | 4/6 | In Progress|  |
 | 9. Rich Member Profile | v1.2 | 0/TBD | Not started | - |
 | 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
