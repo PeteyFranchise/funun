@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { readPerformers } from '@/lib/metadata/schema'
 import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
 import { CopyrightFiling } from '@/components/vault/CopyrightFiling'
@@ -73,8 +73,14 @@ export default async function RightsPage({
 
   const tracks = trackRows ?? []
 
-  // 3. Artist profile
-  const { data: profile } = await supabase
+  // 3. Artist profile. pro / ipi / soundexchange_id are PRIVATE columns
+  // under migration 040 (no authenticated SELECT grant) — a session-bound
+  // read would fail the whole query with 42501 and silently blank the
+  // registration data. Ownership is established via auth.getUser() above,
+  // so the read runs on the service-role client scoped to the verified
+  // user.id (D-19 companion pattern).
+  const service = createServiceClient()
+  const { data: profile } = await service
     .from('artist_profiles')
     .select('id, artist_name, pro, ipi, soundexchange_id')
     .eq('id', user.id)

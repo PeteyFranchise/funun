@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { buildCalendarPrompt, type ToolProjectContext } from '@/lib/tools/registry'
 import {
@@ -77,8 +77,12 @@ export async function POST(
     .map(c => String(c.name ?? '').trim())
     .filter(Boolean)
 
-  // Fetch artist profile
-  const { data: profileRow } = await supabase
+  // Fetch artist profile. Ownership established via auth.getUser() above.
+  // artist_profiles is column-privilege-locked (migration 040) — a
+  // session-bound SELECT * would 42501 — so the read runs on the
+  // service-role client scoped to the verified user.id (D-19 pattern).
+  const service = createServiceClient()
+  const { data: profileRow } = await service
     .from('artist_profiles')
     .select('*')
     .eq('id', user.id)

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import {
   buildSlotCaptionPrompt,
@@ -62,7 +62,12 @@ export async function POST(
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
-  const { data: profile } = await supabase
+  // Ownership established above (campaign + project scoped to user.id).
+  // artist_profiles is column-privilege-locked (migration 040) — a
+  // session-bound SELECT * would 42501 — so the read runs on the
+  // service-role client scoped to the verified user.id (D-19 pattern).
+  const service = createServiceClient()
+  const { data: profile } = await service
     .from('artist_profiles')
     .select('*')
     .eq('id', user.id)

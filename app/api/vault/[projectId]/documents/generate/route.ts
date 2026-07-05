@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import type { Stage3ToolSlug } from '@/lib/vault/stage3'
 import { TOOL_DOC_TYPE, TOOL_NAME, buildDocPrompt } from '@/lib/tools/documents'
@@ -97,7 +97,13 @@ export async function POST(
   }
 
   // ── AI tools: build prompt, generate JSON. ───────────────────────────
-  const { data: profile } = await supabase
+  // Ownership established above (project scoped to user.id). artist_profiles
+  // is column-privilege-locked (migration 040) — a session-bound SELECT *
+  // would 42501, and this route exists to consume the artist's legal-name
+  // and contact fields — so the read runs on the service-role client scoped
+  // to the verified user.id (D-19 companion pattern).
+  const service = createServiceClient()
+  const { data: profile } = await service
     .from('artist_profiles')
     .select('*')
     .eq('id', user.id)
