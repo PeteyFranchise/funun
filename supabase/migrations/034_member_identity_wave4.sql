@@ -1,0 +1,93 @@
+-- ============================================================
+-- Funūn — Wave 4: Identity & Schema Foundation
+-- Migration 034: member_type + search_vector + featured-spotlight integrity
+-- Run via: supabase db push
+-- ============================================================
+
+-- ─── Identity columns on artist_profiles ────────────────────────────
+-- member_type is the single most important architectural bet of Wave 4:
+-- one unified member-identity table (artist_profiles), discriminated by
+-- member_type, rather than a parallel industry_profiles table. The
+-- pre-existing industry_profiles table (migration 001) is left
+-- completely untouched (D-06) — it has zero writers anywhere in the app.
+--
+-- banner_url, pronouns, open_to, and featured_project_id already shipped
+-- in migration 010 and carry live data. They are re-asserted here with
+-- ADD COLUMN IF NOT EXISTS no-ops purely to document the full Phase 8
+-- identity column set in one place — do NOT drop or retype them.
+ALTER TABLE artist_profiles
+  ADD COLUMN IF NOT EXISTS member_type TEXT NOT NULL DEFAULT 'artist'
+    CHECK (member_type IN ('artist', 'industry')),
+  ADD COLUMN IF NOT EXISTS banner_url          TEXT,
+  ADD COLUMN IF NOT EXISTS pronouns            TEXT,
+  ADD COLUMN IF NOT EXISTS open_to             JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS featured_project_id UUID;
+
+-- ─── search_vector (people search, Phase 12) ────────────────────────
+-- Uses the two-argument to_tsvector('english', ...) form — the
+-- single-arg form depends on the session's search_path/config and is
+-- NOT IMMUTABLE, which a GENERATED ALWAYS AS ... STORED column requires
+-- (RESEARCH Pitfall 5). genres and industry_roles are TEXT[] columns
+-- that are nullable in practice (DEFAULT '{}' but no NOT NULL
+-- constraint), and array_to_string() returns NULL — not '' — when its
+-- array argument is NULL, which would otherwise NULL out the entire
+-- concatenation via the || operator. Each array_to_string() call is
+-- wrapped in coalesce(..., '') to guard against that.
+ALTER TABLE artist_profiles ADD COLUMN IF NOT EXISTS search_vector tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector('english',
+      coalesce(artist_name, '') || ' ' ||
+      coalesce(array_to_string(genres, ' '), '') || ' ' ||
+      coalesce(location, '') || ' ' ||
+      coalesce(array_to_string(industry_roles, ' '), '') || ' ' ||
+      coalesce(handle, '') || ' ' ||
+      coalesce(bio, '')
+    )
+  ) STORED;
+
+-- Built-in tsvector_ops GIN index (NOT gin_trgm_ops — a tsvector column
+-- takes a plain GIN index; trigram indexes are for raw text similarity,
+-- a different strategy the ROADMAP's "GIN trigram" phrasing conflated).
+CREATE INDEX IF NOT EXISTS idx_artist_profiles_search_vector
+  ON artist_profiles USING GIN (search_vector);
+
+-- ─── D-16: featured-spotlight integrity ─────────────────────────────
+-- A member can pin a project id as their Featured spotlight. Without
+-- these triggers a private-draft vault_project id could leak through
+-- the public profile spotlight (T-08-01, information disclosure).
+CREATE OR REPLACE FUNCTION check_featured_project_is_public()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.featured_project_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM vault_projects
+      WHERE id = NEW.featured_project_id AND is_public = true
+    ) THEN
+      RAISE EXCEPTION 'featured_project_id must reference a public vault_project';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER artist_profiles_featured_project_check
+  BEFORE INSERT OR UPDATE OF featured_project_id ON artist_profiles
+  FOR EACH ROW EXECUTE FUNCTION check_featured_project_is_public();
+
+-- Self-null when a featured project is later unpublished
+-- (is_public flips true -> false) so the dangling reference can never
+-- resolve to a private draft after the fact.
+CREATE OR REPLACE FUNCTION clear_featured_if_unpublished()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.is_public = false AND OLD.is_public = true THEN
+    UPDATE artist_profiles SET featured_project_id = NULL
+    WHERE featured_project_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER vault_projects_clear_featured_on_unpublish
+  AFTER UPDATE OF is_public ON vault_projects
+  FOR EACH ROW EXECUTE FUNCTION clear_featured_if_unpublished();
