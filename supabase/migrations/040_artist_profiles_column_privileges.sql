@@ -74,7 +74,12 @@ GRANT SELECT (
   monthly_listeners, total_streams, industry_roles, handle,
   member_type, pronouns, banner_url, open_to, featured_project_id,
   search_vector, avatar_url, verified, roles, is_public,
-  created_at, updated_at
+  created_at, updated_at,
+  -- claimed_at is a non-PII timestamp sentinel used by middleware.ts to
+  -- short-circuit the collaborator-claim flow (Phase 4 D-02). Without this
+  -- grant the middleware's SELECT on claimed_at returns 42501, ap is null,
+  -- and /api/claim-collaborators is never fired for new signups (CR-03 fix).
+  claimed_at
 ) ON artist_profiles TO authenticated, anon;
 
 -- ─── UPDATE ──────────────────────────────────────────────────────────
