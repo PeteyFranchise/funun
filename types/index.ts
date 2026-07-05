@@ -376,6 +376,9 @@ export type ArtistProfile = {
   roles: ProfileRole[]
   open_to: OpenTo[]
   featured_project_id: string | null
+  // Wave 4 identity (migration 034)
+  member_type: 'artist' | 'industry'
+  search_vector: string | null
   created_at: string
   updated_at: string
 }

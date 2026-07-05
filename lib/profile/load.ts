@@ -44,6 +44,8 @@ export const DEMO_PROFILE: ArtistProfile = {
   ],
   open_to: ['sync', 'collabs', 'features'],
   featured_project_id: null,
+  member_type: 'artist',
+  search_vector: null,
   legal_first_name: null,
   legal_middle_name: null,
   legal_last_name: null,
