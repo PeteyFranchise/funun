@@ -77,11 +77,22 @@ CREATE TRIGGER artist_profiles_featured_project_check
 -- Self-null when a featured project is later unpublished
 -- (is_public flips true -> false) so the dangling reference can never
 -- resolve to a private draft after the fact.
+--
+-- SECURITY DEFINER is required (WR-01 fix): without it the function runs
+-- as the invoking user (the project owner B who is unpublishing). The
+-- "Artists manage own profile" RLS policy (auth.uid() = id) filters the
+-- UPDATE to only B's own artist_profiles row — it silently updates zero
+-- rows for user A who featured B's project. A's featured_project_id then
+-- dangles at a private-draft UUID that is in the public SELECT grant,
+-- leaking the project id (T-08-01). SECURITY DEFINER + SET search_path
+-- lets the trigger run as its owner (bypassing RLS) so it can null out
+-- any profile that references the newly-private project.
+-- All table references are schema-qualified to prevent search_path hijack.
 CREATE OR REPLACE FUNCTION clear_featured_if_unpublished()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
   IF NEW.is_public = false AND OLD.is_public = true THEN
-    UPDATE artist_profiles SET featured_project_id = NULL
+    UPDATE public.artist_profiles SET featured_project_id = NULL
     WHERE featured_project_id = NEW.id;
   END IF;
   RETURN NEW;
