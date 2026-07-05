@@ -22,6 +22,35 @@ DROP POLICY IF EXISTS "reserved_handles_select_all" ON reserved_handles;
 -- the list grows via service-role INSERT only.
 CREATE POLICY "reserved_handles_select_all" ON reserved_handles FOR SELECT USING (true);
 
+-- ─── Enforcement trigger (WR-02) ────────────────────────────────────
+-- Migration 040 grants UPDATE(handle) to authenticated, which means any
+-- user can bypass the app layer and set handle='admin', 'funun', etc.
+-- via direct PostgREST on their own row (the "Artists manage own profile"
+-- RLS policy permits it; only the unique index constrained it before).
+-- Without this trigger the reserved_handles table is decorative only.
+--
+-- SECURITY DEFINER + SET search_path = '' are required so the trigger
+-- can SELECT from public.reserved_handles regardless of the invoking
+-- user's search_path (mirrors no_block() hardening pattern).
+CREATE OR REPLACE FUNCTION check_handle_not_reserved()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NEW.handle IS NOT NULL AND lower(NEW.handle) IS DISTINCT FROM lower(OLD.handle) THEN
+    IF EXISTS (
+      SELECT 1 FROM public.reserved_handles WHERE handle = lower(NEW.handle)
+    ) THEN
+      RAISE EXCEPTION 'handle is reserved';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS artist_profiles_handle_not_reserved ON public.artist_profiles;
+CREATE TRIGGER artist_profiles_handle_not_reserved
+  BEFORE UPDATE OF handle ON public.artist_profiles
+  FOR EACH ROW EXECUTE FUNCTION check_handle_not_reserved();
+
 -- Seed: system/brand words (D-14) plus a broad set of well-known
 -- music-platform/brand names to prevent impersonation-style squatting.
 -- ON CONFLICT DO NOTHING keeps re-running this migration idempotent.
