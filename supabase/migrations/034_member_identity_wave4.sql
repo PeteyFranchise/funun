@@ -28,18 +28,26 @@ ALTER TABLE artist_profiles
 -- STABLE (not IMMUTABLE) in Postgres's own catalog — a GENERATED ALWAYS
 -- AS ... STORED column requires an IMMUTABLE expression, so calling
 -- to_tsvector directly is rejected with "generation expression is not
--- immutable" (SQLSTATE 42P17). The standard, widely-used workaround is
--- an explicit IMMUTABLE SQL wrapper: Postgres trusts the label rather
--- than re-deriving volatility, and 'english' text search config is not
--- expected to change underneath this app. genres and industry_roles are
--- TEXT[] columns that are nullable in practice (DEFAULT '{}' but no
--- NOT NULL constraint), and array_to_string() returns NULL — not '' —
--- when its array argument is NULL, which would otherwise NULL out the
--- entire concatenation via the || operator. Each array_to_string() call
--- is wrapped in coalesce(..., '') to guard against that.
+-- immutable" (SQLSTATE 42P17). The standard workaround is an explicit
+-- IMMUTABLE wrapper — but it must be LANGUAGE plpgsql, not LANGUAGE
+-- sql: Postgres inlines simple single-statement SQL functions during
+-- parse analysis, which would substitute the raw to_tsvector(...) call
+-- back into the generated expression and re-trigger the same error
+-- regardless of the wrapper's own IMMUTABLE label. plpgsql function
+-- bodies are opaque to the planner (never inlined), so the declared
+-- IMMUTABLE label is trusted as-is. 'english' text search config is
+-- not expected to change underneath this app. genres and
+-- industry_roles are TEXT[] columns that are nullable in practice
+-- (DEFAULT '{}' but no NOT NULL constraint), and array_to_string()
+-- returns NULL — not '' — when its array argument is NULL, which
+-- would otherwise NULL out the entire concatenation via the ||
+-- operator. Each array_to_string() call is wrapped in coalesce(..., '')
+-- to guard against that.
 CREATE OR REPLACE FUNCTION immutable_english_tsvector(text_content TEXT)
-RETURNS tsvector LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
-  SELECT to_tsvector('english', text_content)
+RETURNS tsvector LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
+BEGIN
+  RETURN to_tsvector('english', text_content);
+END;
 $$;
 
 ALTER TABLE artist_profiles ADD COLUMN IF NOT EXISTS search_vector tsvector
