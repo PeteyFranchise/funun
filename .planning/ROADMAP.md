@@ -167,10 +167,10 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. A readiness-score widget appears in the topbar and inline, linking to the management page (D-02)
   4. Export Pack bundles every available artifact (master, MP3, stems, instrumental) + credits/splits PDF + metadata PDF, delivered as an immediate download or a 7-day expiring shareable link (D-10..D-12)
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 **Wave 1**
 
-- [ ] 14-01-PLAN.md — Storage config (250MB + ZIP MIME) + schema readers + packages (archiver/@react-pdf/renderer/tus-js-client)
+- [x] 14-01-PLAN.md — Storage config (250MB + ZIP MIME) + schema readers + packages (archiver/@react-pdf/renderer/tus-js-client)
 - [ ] 14-02-PLAN.md — D-01 navigation: project card → playback room; management page → playback room link
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -206,4 +206,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
-| 14. Playback Room Refinement | v1.2 (Sound Vault) | 0/6 | Planned | - |
+| 14. Playback Room Refinement | v1.2 (Sound Vault) | 1/6 | In Progress|  |
