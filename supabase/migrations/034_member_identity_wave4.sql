@@ -15,13 +15,23 @@
 -- in migration 010 and carry live data. They are re-asserted here with
 -- ADD COLUMN IF NOT EXISTS no-ops purely to document the full Phase 8
 -- identity column set in one place — do NOT drop or retype them.
+--
+-- claimed_at is ALSO re-asserted here defensively: migration 026 was
+-- supposed to have added it, but pushing this milestone against the
+-- live database surfaced that 026's artist_profiles ALTER never
+-- actually landed there (the live schema's migration history has real
+-- gaps beyond what the CLI's bookkeeping table reflects, discovered
+-- when migration 040's GRANT SELECT (..., claimed_at) failed with
+-- "column does not exist"). ADD COLUMN IF NOT EXISTS makes this safe
+-- to run regardless of whether 026 partially or fully applied anywhere.
 ALTER TABLE artist_profiles
   ADD COLUMN IF NOT EXISTS member_type TEXT NOT NULL DEFAULT 'artist'
     CHECK (member_type IN ('artist', 'industry')),
   ADD COLUMN IF NOT EXISTS banner_url          TEXT,
   ADD COLUMN IF NOT EXISTS pronouns            TEXT,
   ADD COLUMN IF NOT EXISTS open_to             JSONB NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS featured_project_id UUID;
+  ADD COLUMN IF NOT EXISTS featured_project_id UUID,
+  ADD COLUMN IF NOT EXISTS claimed_at          TIMESTAMPTZ;
 
 -- ─── search_vector (people search, Phase 12) ────────────────────────
 -- Even a custom wrapper function explicitly marked IMMUTABLE around
