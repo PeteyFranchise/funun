@@ -162,9 +162,19 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Requirements**: TBD — pending `/gsd-discuss-phase 14`
 **Success Criteria** (what must be TRUE):
 
-  1. TBD — pending discussion
+  1. Clicking a Sound Vault project card lands on the playback room; the management page is reachable from it (D-01)
+  2. Real stems (250MB ZIP) + instrumental support: Master/Instrumental toggle swaps the audio source, "Download stems" is a separate button, both upload direct-to-storage (D-03..D-08)
+  3. A readiness-score widget appears in the topbar and inline, linking to the management page (D-02)
+  4. Export Pack bundles every available artifact (master, MP3, stems, instrumental) + credits/splits PDF + metadata PDF, delivered as an immediate download or a 7-day expiring shareable link (D-10..D-12)
 
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 14-01-PLAN.md — Storage config (250MB + ZIP MIME) + schema readers + packages (archiver/@react-pdf/renderer/tus-js-client)
+- [ ] 14-02-PLAN.md — D-01 navigation: project card → playback room; management page → playback room link
+- [ ] 14-03-PLAN.md — Stems + instrumental JSON-only metadata routes (direct-to-storage, no byte proxy)
+- [ ] 14-04-PLAN.md — Export Pack manifest builder + credits/metadata PDF templates
+- [ ] 14-05-PLAN.md — Playback room rework: Master/Instrumental toggle, uploads, Download-stems, readiness widgets, signed-URL playback fix
+- [ ] 14-06-PLAN.md — Export Pack route (assemble→upload→signed URL, Hobby-safe) + delivery-choice panel
+
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/playback.html` (primary target), `sound-vault.html` (D-01 project-card link target), `release-readiness.html` (D-02 widget link target — this phase adds a link to it, does not rebuild it), `artist-profile.html` (contrast only — Phase 9's public player, NOT this phase's scope). Full detail already gathered in `14-CONTEXT.md` / `14-RESEARCH.md`.
 
@@ -185,4 +195,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
-| 14. Playback Room Refinement | v1.2 (Sound Vault) | 0/TBD | Not started | - |
+| 14. Playback Room Refinement | v1.2 (Sound Vault) | 0/6 | Planned | - |
