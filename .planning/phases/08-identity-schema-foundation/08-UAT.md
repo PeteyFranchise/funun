@@ -8,17 +8,17 @@ updated: 2026-07-05T20:10:00Z
 
 ## Current Test
 
-number: 1
-name: Push migrations 034-040 to the linked Supabase project
+number: 2
+name: As the authenticated role via direct PostgREST, run SELECT legal_first_name FROM artist_profiles LIMIT 1
 expected: |
-  All migrations apply without error; supabase db push exits 0
+  42501 permission denied for column legal_first_name
 awaiting: user response
 
 ## Tests
 
 ### 1. Push migrations 034-040 to the linked Supabase project and confirm all seven apply cleanly
 expected: All migrations apply without error; supabase db push exits 0
-result: [pending]
+result: passed — required 3 follow-up migration fixes discovered during the live push (see Gaps section)
 
 ### 2. As the authenticated role via direct PostgREST, run SELECT legal_first_name FROM artist_profiles LIMIT 1
 expected: 42501 permission denied for column legal_first_name
@@ -43,10 +43,14 @@ result: [pending]
 ## Summary
 
 total: 6
-passed: 0
+passed: 1
 issues: 0
-pending: 6
+pending: 5
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- Migration 034's `search_vector` used `GENERATED ALWAYS AS (to_tsvector(...)) STORED`, which Postgres rejected as non-immutable (SQLSTATE 42P17) — even after two wrapper-function attempts (LANGUAGE sql, then LANGUAGE plpgsql). Fixed by switching to a plain column maintained by a `BEFORE INSERT/UPDATE` trigger instead (commit 9910cbb). No live impact — caught before any partial apply.
+- Discovered migration 026 (Wave 2, already recorded as applied in the CLI's remote history) never actually added `artist_profiles.claimed_at` on this live database — a real gap in migration history predating Phase 8, not just a bookkeeping gap. Fixed defensively inside migration 040 (commit 8e8b42f). **Follow-up needed**: audit whether migration 026's other pieces (`user_profiles` table, `collaborators.claimed_by`/`archived_at`/`is_favorite`, `claim_collaborators()`/`backfill_claimed_collaborators()` functions, the claim-on-signup branch of `handle_new_user()`) are also missing live — if so, the collaborator-claim feature may be non-functional in production.
+- All 40 migrations now show LOCAL = REMOTE in `supabase migration list` — fully in sync as of this push.
