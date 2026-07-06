@@ -8,10 +8,10 @@ updated: 2026-07-05T20:10:00Z
 
 ## Current Test
 
-number: 2
-name: As the authenticated role via direct PostgREST, run SELECT legal_first_name FROM artist_profiles LIMIT 1
+number: 3
+name: Log in as a seeded artist account with private fields populated, visit /settings and /profile, verify legal name / contact / PRO fields render and save without 500 or 42501
 expected: |
-  42501 permission denied for column legal_first_name
+  Pages load; private fields display and save correctly via service-client path
 awaiting: user response
 
 ## Tests
@@ -22,7 +22,7 @@ result: passed — required 3 follow-up migration fixes discovered during the li
 
 ### 2. As the authenticated role via direct PostgREST, run SELECT legal_first_name FROM artist_profiles LIMIT 1
 expected: 42501 permission denied for column legal_first_name
-result: [pending]
+result: passed — HTTP 401, {"code":"42501","message":"permission denied for table artist_profiles"} (Postgres reports table-level phrasing for column-grant denials; SQLSTATE and behavior match exactly)
 
 ### 3. Log in as a seeded artist account with private fields populated, visit /settings and /profile, verify legal name / contact / PRO fields render and save without 500 or 42501
 expected: Pages load; private fields display and save correctly via service-client path
@@ -43,9 +43,9 @@ result: [pending]
 ## Summary
 
 total: 6
-passed: 1
+passed: 2
 issues: 0
-pending: 5
+pending: 4
 skipped: 0
 blocked: 0
 
