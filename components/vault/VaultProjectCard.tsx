@@ -67,7 +67,7 @@ export function VaultProjectCard({ card }: { card: VaultCard }) {
 
   return (
     <Link
-      href={`/vault/${card.id}`}
+      href={`/vault/${card.id}/play`}
       className="group block overflow-hidden rounded-card border border-hair bg-card transition hover:border-hairstrong"
     >
       {/* Cover */}
