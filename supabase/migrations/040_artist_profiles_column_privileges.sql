@@ -85,8 +85,10 @@ GRANT SELECT (
 -- ─── UPDATE ──────────────────────────────────────────────────────────
 -- Owner-editable public columns only. member_type and verified are NOT
 -- owner-updatable (member_type is set once at account creation; verified
--- is admin-manual per D-09/Phase 13 deferral). search_vector is a
--- GENERATED ALWAYS column and cannot be granted UPDATE at all. is_public
+-- is admin-manual per D-09/Phase 13 deferral). search_vector is
+-- maintained exclusively by a BEFORE INSERT/UPDATE trigger (034) and is
+-- deliberately left out of the UPDATE grant so no client can overwrite
+-- it directly via PostgREST. is_public
 -- toggling continues to work exactly as it does today (it was already
 -- in the app's own update paths, and remains grantable here). `genre`
 -- is a legacy read-only display field not present in EDITABLE_FIELDS so

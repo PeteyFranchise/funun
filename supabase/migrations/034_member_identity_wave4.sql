@@ -24,43 +24,54 @@ ALTER TABLE artist_profiles
   ADD COLUMN IF NOT EXISTS featured_project_id UUID;
 
 -- ─── search_vector (people search, Phase 12) ────────────────────────
--- Even the two-argument to_tsvector(regconfig, text) form is marked
--- STABLE (not IMMUTABLE) in Postgres's own catalog — a GENERATED ALWAYS
--- AS ... STORED column requires an IMMUTABLE expression, so calling
--- to_tsvector directly is rejected with "generation expression is not
--- immutable" (SQLSTATE 42P17). The standard workaround is an explicit
--- IMMUTABLE wrapper — but it must be LANGUAGE plpgsql, not LANGUAGE
--- sql: Postgres inlines simple single-statement SQL functions during
--- parse analysis, which would substitute the raw to_tsvector(...) call
--- back into the generated expression and re-trigger the same error
--- regardless of the wrapper's own IMMUTABLE label. plpgsql function
--- bodies are opaque to the planner (never inlined), so the declared
--- IMMUTABLE label is trusted as-is. 'english' text search config is
--- not expected to change underneath this app. genres and
+-- Even a custom wrapper function explicitly marked IMMUTABLE around
+-- to_tsvector was rejected by Postgres's GENERATED ALWAYS AS ... STORED
+-- immutability check (SQLSTATE 42P17), in both LANGUAGE sql and
+-- LANGUAGE plpgsql forms — tried and failed against the live database.
+-- Rather than keep guessing at the exact internal rule Postgres is
+-- enforcing here, this uses the older, battle-tested pattern that
+-- predates generated columns entirely: a plain tsvector column
+-- maintained by a BEFORE INSERT/UPDATE trigger. Trigger function
+-- bodies have no immutability restriction — STABLE calls like
+-- to_tsvector are unconditionally fine inside one. genres and
 -- industry_roles are TEXT[] columns that are nullable in practice
 -- (DEFAULT '{}' but no NOT NULL constraint), and array_to_string()
 -- returns NULL — not '' — when its array argument is NULL, which
 -- would otherwise NULL out the entire concatenation via the ||
 -- operator. Each array_to_string() call is wrapped in coalesce(..., '')
 -- to guard against that.
-CREATE OR REPLACE FUNCTION immutable_english_tsvector(text_content TEXT)
-RETURNS tsvector LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
+ALTER TABLE artist_profiles ADD COLUMN IF NOT EXISTS search_vector tsvector;
+
+CREATE OR REPLACE FUNCTION artist_profiles_update_search_vector()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-  RETURN to_tsvector('english', text_content);
+  NEW.search_vector := to_tsvector('english',
+    coalesce(NEW.artist_name, '') || ' ' ||
+    coalesce(array_to_string(NEW.genres, ' '), '') || ' ' ||
+    coalesce(NEW.location, '') || ' ' ||
+    coalesce(array_to_string(NEW.industry_roles, ' '), '') || ' ' ||
+    coalesce(NEW.handle, '') || ' ' ||
+    coalesce(NEW.bio, '')
+  );
+  RETURN NEW;
 END;
 $$;
 
-ALTER TABLE artist_profiles ADD COLUMN IF NOT EXISTS search_vector tsvector
-  GENERATED ALWAYS AS (
-    immutable_english_tsvector(
-      coalesce(artist_name, '') || ' ' ||
-      coalesce(array_to_string(genres, ' '), '') || ' ' ||
-      coalesce(location, '') || ' ' ||
-      coalesce(array_to_string(industry_roles, ' '), '') || ' ' ||
-      coalesce(handle, '') || ' ' ||
-      coalesce(bio, '')
-    )
-  ) STORED;
+DROP TRIGGER IF EXISTS artist_profiles_search_vector_trigger ON artist_profiles;
+CREATE TRIGGER artist_profiles_search_vector_trigger
+  BEFORE INSERT OR UPDATE ON artist_profiles
+  FOR EACH ROW EXECUTE FUNCTION artist_profiles_update_search_vector();
+
+-- Backfill existing rows — the trigger only fires on future INSERT/UPDATE.
+UPDATE artist_profiles SET search_vector = to_tsvector('english',
+  coalesce(artist_name, '') || ' ' ||
+  coalesce(array_to_string(genres, ' '), '') || ' ' ||
+  coalesce(location, '') || ' ' ||
+  coalesce(array_to_string(industry_roles, ' '), '') || ' ' ||
+  coalesce(handle, '') || ' ' ||
+  coalesce(bio, '')
+)
+WHERE search_vector IS NULL;
 
 -- Built-in tsvector_ops GIN index (NOT gin_trgm_ops — a tsvector column
 -- takes a plain GIN index; trigram indexes are for raw text similarity,
