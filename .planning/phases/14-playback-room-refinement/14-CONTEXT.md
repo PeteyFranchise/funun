@@ -64,6 +64,7 @@ Phase 14 polishes the artist-facing **private Playback room** (`playback.html`'s
 - `docs/design/wave-4-social-layer/sound-vault.html` — the Sound Vault dashboard (project card grid); confirms what a project card looks like and that it should lead into the playback room (D-01)
 - `docs/design/wave-4-social-layer/playback.html` — the target design for this phase: 3-column layout (tracklist+files / center player+toggle+waveform+transport / credits+splits+metadata), "Export pack" button in the topbar
 - `docs/design/wave-4-social-layer/artist-profile.html` — reference only for contrast; this is Phase 9's public player, NOT this phase's scope
+- `docs/design/wave-4-social-layer/release-readiness.html` — the target for D-02's readiness-score widget link: 300px circular score ring, progress bar ("N of 10 complete"), "AI Rights Coach" callout, and the gate-row checklist (`.gate.ok/.warn/.bad`). Phase 14 does not rebuild this page — it already exists elsewhere in the codebase — but the widget added to the playback room (topbar chip + inline near tracklist) must link out to it, so this file is the visual contract for what that destination looks like.
 
 ### Codebase integration points
 - `components/vault/VaultProjectCard.tsx` (line ~70) — current card link target (`/vault/${card.id}`) needs to change to point at the playback room per D-01
