@@ -1,0 +1,112 @@
+import { NextResponse } from 'next/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+
+const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+const BUCKET = 'track-audio'
+
+type RouteCtx = { params: Promise<{ projectId: string; trackId: string }> }
+
+// POST — persist an instrumental audio reference onto the track's metadata
+// after the browser has already uploaded the bytes directly to Supabase Storage.
+// Body: { path: string; size?: number; ext?: string }
+// This route deliberately does NOT accept file bytes — no form-data body parsing.
+// The browser completed the direct-to-Storage transfer before calling here
+// (D-05 / Pitfall 1 — stays well under Vercel's 4.5MB body ceiling).
+export async function POST(request: Request, { params }: RouteCtx) {
+  const { projectId, trackId } = await params
+
+  if (DEMO) {
+    return NextResponse.json(
+      { error: 'Instrumental upload is not available in demo mode' },
+      { status: 400 }
+    )
+  }
+
+  const body = await request.json()
+
+  if (!body.path || typeof body.path !== 'string' || body.path.trim() === '') {
+    return NextResponse.json({ error: 'No instrumental path provided' }, { status: 400 })
+  }
+
+  const path: string = body.path.trim()
+  const size: number = typeof body.size === 'number' && Number.isFinite(body.size) ? body.size : 0
+  const ext: string = typeof body.ext === 'string' && body.ext.trim() !== '' ? body.ext.trim() : 'mp3'
+
+  const supabase = createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: track } = await supabase
+    .from('tracks')
+    .select('id, metadata')
+    .eq('id', trackId)
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (!track) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
+
+  const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
+  const update = { metadata: { ...metadata, instrumental: { path, size, ext } } }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('tracks')
+    .update(update)
+    .eq('id', trackId)
+    .eq('user_id', user.id)
+    .select()
+    .single()
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ data: updated })
+}
+
+// DELETE — remove the instrumental audio from Storage and clear the metadata reference.
+export async function DELETE(request: Request, { params }: RouteCtx) {
+  const { projectId, trackId } = await params
+
+  if (DEMO) {
+    return NextResponse.json(
+      { error: 'Instrumental upload is not available in demo mode' },
+      { status: 400 }
+    )
+  }
+
+  const supabase = createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: track } = await supabase
+    .from('tracks')
+    .select('id, metadata')
+    .eq('id', trackId)
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (!track) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
+
+  const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
+  const instrumentalPath = (metadata.instrumental as { path?: string } | undefined)?.path ?? null
+
+  const service = createServiceClient()
+  if (instrumentalPath) {
+    await service.storage.from(BUCKET).remove([instrumentalPath])
+  }
+
+  const nextMeta: Record<string, unknown> = { ...metadata }
+  delete nextMeta.instrumental
+
+  const { error } = await supabase
+    .from('tracks')
+    .update({ metadata: nextMeta })
+    .eq('id', trackId)
+    .eq('user_id', user.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ data: { ok: true } })
+}
