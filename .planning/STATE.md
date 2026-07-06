@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 Phase: 08 (identity-schema-foundation) — EXECUTING
 Plan: 6 of 6
 Status: Phase complete — ready for verification
-Last activity: 2026-07-05 — Phase 08 execution started
+Last activity: 2026-07-06 - Completed quick task 260706-3bp: Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -119,6 +119,12 @@ Recent decisions affecting current work (v1.2 The Green Room):
 currently.
 
 - [Phase 08] Task 3 (schema push, migrations 034-040) could not run in this sandbox: no supabase/config.toml, no linked Supabase project, SUPABASE_ACCESS_TOKEN unset. Manual-intervention gap -- see 08-05-SUMMARY.md for exact commands a human must run before Phase 8 is verified.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260706-3bp | Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types | 2026-07-06 | b41a133 | [260706-3bp-fix-typescript-type-error-in-addressauto](./quick/260706-3bp-fix-typescript-type-error-in-addressauto/) |
 
 ## Deferred Items
 
