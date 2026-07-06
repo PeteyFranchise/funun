@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 export type TabItem = {
   key: string
@@ -14,12 +15,12 @@ export type TabItem = {
  * keep all of them mounted and toggle visibility so in-progress form state
  * survives switching tabs.
  */
-export function ProjectTabs({ items }: { items: TabItem[] }) {
+export function ProjectTabs({ items, playbackHref }: { items: TabItem[]; playbackHref?: string }) {
   const [active, setActive] = useState<string>(items[0]?.key)
 
   return (
     <div>
-      <div role="tablist" className="flex gap-1 border-b border-white/10">
+      <div role="tablist" className="flex items-center gap-1 border-b border-white/10">
         {items.map(t => {
           const on = active === t.key
           return (
@@ -46,6 +47,14 @@ export function ProjectTabs({ items }: { items: TabItem[] }) {
             </button>
           )
         })}
+        {playbackHref && (
+          <Link
+            href={playbackHref}
+            className="ml-auto px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white/80 transition"
+          >
+            Playback room →
+          </Link>
+        )}
       </div>
 
       <div className="pt-6">

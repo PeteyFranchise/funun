@@ -381,6 +381,7 @@ export default async function VaultProjectPage({
       {/* Assets / Documents / Tools */}
       <div className="mt-8">
         <ProjectTabs
+          playbackHref={`/vault/${project.id}/play`}
           items={[
             {
               key: 'contents',
