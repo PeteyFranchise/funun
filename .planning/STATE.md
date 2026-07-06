@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 14
 current_phase_name: playback-room-refinement
 status: executing
-stopped_at: Phase 14 UI-SPEC approved
-last_updated: "2026-07-06T08:56:01.077Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-07-06T09:02:57.376Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 14 execution started
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
   percent: 80
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 14 (playback-room-refinement) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-06 — Phase 14 execution started
 
@@ -79,6 +79,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 08 P06 | 30min | 4 tasks | 7 files |
 | Phase 14-playback-room-refinement P01 | 10min | 4 tasks | 6 files |
 | Phase 14 P02 | 2min | 2 tasks | 3 files |
+| Phase 14 P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 08 P05]: settings/page.tsx's user_profiles select('*') left on the session-bound client (separate table from artist_profiles, unaffected by migration 040) rather than swapped to createServiceClient()
 - [Phase ?]: .planning/phases/08-identity-schema-foundation/08-06-SUMMARY.md
 - [Phase ?]: readStems and readInstrumental mirror readMasterAudio defensive-parse pattern as single canonical API for Plans 03/04/05
+- [Phase ?]: JSON-only metadata PATCH pattern: stems/instrumental routes accept JSON body, no FormData — browser already uploaded directly to Storage before calling these routes (D-07/Pitfall 1)
 
 ### Pending Todos
 
@@ -160,10 +162,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/14-playback-room-refinement/14-UI-SPEC.md
+**Resume file:** None
 
-Last session: 2026-07-06T08:56:01.063Z
-Stopped at: Phase 14 UI-SPEC approved
+Last session: 2026-07-06T09:02:57.363Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
