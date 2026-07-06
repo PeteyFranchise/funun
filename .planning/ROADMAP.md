@@ -5,6 +5,7 @@
 - ✅ **v1.0 — Wave 2: Rights & Registration Rails** — Phases 1–4 (shipped 2026-06-29)
 - ✅ **v1.1 — Wave 3: Launchpad** — Phases 5–7 (shipped 2026-07-04)
 - 🚧 **v1.2 — Wave 4: The Green Room** — Phases 8–13 (in progress)
+- 🚧 **v1.2 — Sound Vault: Playback Room Refinement** — Phase 14 (in progress; cross-domain addition, tracked alongside v1.2 for scheduling purposes only — this is Wave 1 Sound Vault work, not a Green Room networking feature)
 
 ## Phases
 
@@ -41,6 +42,12 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 - [ ] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected
 - [ ] **Phase 12: Discovery & People Search** - Global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion
 - [ ] **Phase 13: Network Tab & Trust & Safety** - Network tab (follows/connections/pending), hard bidirectional block, member/message reporting, admin verified-badge grant, and profile visibility controls
+
+### 🚧 Sound Vault — Playback Room Refinement (In Progress)
+
+**Not part of The Green Room milestone theme.** Surfaced during Phase 9 discussion: the private artist-facing Playback room (`playback.html` design — tracklist editing, WAV/stems upload, credits & splits editing, metadata editing) is existing Wave 1 Sound Vault functionality (`app/(artist)/vault/[projectId]/play/page.tsx`, `components/vault/PlaybackView.tsx`) that needs its own refinement pass, separate from Phase 9's public-player split work.
+
+- [ ] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) — scope TBD pending discussion
 
 ## Phase Details
 
@@ -141,6 +148,18 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 14: Playback Room Refinement
+
+**Goal**: The private Playback room (`playback.html`'s design) is polished for the artist's own working use, and a music supervisor or other industry recipient can be handed a complete export (stems, master, MP3, credits, metadata) without needing app access — distinct from Phase 9's public-only "now playing" share player, which stays deliberately stripped of this detail.
+**Depends on**: None (existing Wave 1 Sound Vault feature — independent of the Phase 8–13 Green Room chain)
+**Requirements**: TBD — pending `/gsd-discuss-phase 14`
+**Success Criteria** (what must be TRUE):
+
+  1. TBD — pending discussion
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -158,3 +177,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
+| 14. Playback Room Refinement | v1.2 (Sound Vault) | 0/TBD | Not started | - |
