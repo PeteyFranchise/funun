@@ -6,6 +6,19 @@
 -- Run via: supabase db push
 -- ============================================================
 
+-- Defensive re-add: migration 026 was supposed to add claimed_at, but
+-- pushing this milestone against the live database surfaced that 026's
+-- artist_profiles ALTER never actually landed there — a real gap in
+-- the live schema's history beyond what the CLI's bookkeeping table
+-- reflects. Placed here (not in 034) because 034 already succeeded and
+-- was recorded as applied by the time this gap was discovered, so
+-- edits to 034 no longer take effect on this database — only this
+-- migration's re-attempts still run. IF NOT EXISTS makes it a safe
+-- no-op wherever claimed_at already exists (e.g. a fresh install that
+-- ran 034's own copy of this same statement).
+ALTER TABLE artist_profiles
+  ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
+
 -- artist_profiles has had a `FOR SELECT USING (true)` RLS policy since
 -- migration 001 with ZERO column-level REVOKE/GRANT ever applied to it
 -- (confirmed via `grep -rn "REVOKE\|GRANT " supabase/migrations/` — the
