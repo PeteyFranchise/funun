@@ -24,18 +24,27 @@ ALTER TABLE artist_profiles
   ADD COLUMN IF NOT EXISTS featured_project_id UUID;
 
 -- ─── search_vector (people search, Phase 12) ────────────────────────
--- Uses the two-argument to_tsvector('english', ...) form — the
--- single-arg form depends on the session's search_path/config and is
--- NOT IMMUTABLE, which a GENERATED ALWAYS AS ... STORED column requires
--- (RESEARCH Pitfall 5). genres and industry_roles are TEXT[] columns
--- that are nullable in practice (DEFAULT '{}' but no NOT NULL
--- constraint), and array_to_string() returns NULL — not '' — when its
--- array argument is NULL, which would otherwise NULL out the entire
--- concatenation via the || operator. Each array_to_string() call is
--- wrapped in coalesce(..., '') to guard against that.
+-- Even the two-argument to_tsvector(regconfig, text) form is marked
+-- STABLE (not IMMUTABLE) in Postgres's own catalog — a GENERATED ALWAYS
+-- AS ... STORED column requires an IMMUTABLE expression, so calling
+-- to_tsvector directly is rejected with "generation expression is not
+-- immutable" (SQLSTATE 42P17). The standard, widely-used workaround is
+-- an explicit IMMUTABLE SQL wrapper: Postgres trusts the label rather
+-- than re-deriving volatility, and 'english' text search config is not
+-- expected to change underneath this app. genres and industry_roles are
+-- TEXT[] columns that are nullable in practice (DEFAULT '{}' but no
+-- NOT NULL constraint), and array_to_string() returns NULL — not '' —
+-- when its array argument is NULL, which would otherwise NULL out the
+-- entire concatenation via the || operator. Each array_to_string() call
+-- is wrapped in coalesce(..., '') to guard against that.
+CREATE OR REPLACE FUNCTION immutable_english_tsvector(text_content TEXT)
+RETURNS tsvector LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+  SELECT to_tsvector('english', text_content)
+$$;
+
 ALTER TABLE artist_profiles ADD COLUMN IF NOT EXISTS search_vector tsvector
   GENERATED ALWAYS AS (
-    to_tsvector('english',
+    immutable_english_tsvector(
       coalesce(artist_name, '') || ' ' ||
       coalesce(array_to_string(genres, ' '), '') || ' ' ||
       coalesce(location, '') || ' ' ||
