@@ -168,11 +168,22 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   4. Export Pack bundles every available artifact (master, MP3, stems, instrumental) + credits/splits PDF + metadata PDF, delivered as an immediate download or a 7-day expiring shareable link (D-10..D-12)
 
 **Plans**: 6 plans
+**Wave 1**
+
 - [ ] 14-01-PLAN.md — Storage config (250MB + ZIP MIME) + schema readers + packages (archiver/@react-pdf/renderer/tus-js-client)
 - [ ] 14-02-PLAN.md — D-01 navigation: project card → playback room; management page → playback room link
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 14-03-PLAN.md — Stems + instrumental JSON-only metadata routes (direct-to-storage, no byte proxy)
 - [ ] 14-04-PLAN.md — Export Pack manifest builder + credits/metadata PDF templates
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 14-05-PLAN.md — Playback room rework: Master/Instrumental toggle, uploads, Download-stems, readiness widgets, signed-URL playback fix
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 14-06-PLAN.md — Export Pack route (assemble→upload→signed URL, Hobby-safe) + delivery-choice panel
 
 **UI hint**: yes

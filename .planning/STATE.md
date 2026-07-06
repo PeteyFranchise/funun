@@ -4,11 +4,11 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 08
 current_phase_name: identity-schema-foundation
-status: verifying
-stopped_at: Phase 14 context gathered
-last_updated: "2026-07-06T05:18:05.507Z"
-last_activity: 2026-07-05
-last_activity_desc: Phase 08 execution started
+status: executing
+stopped_at: Phase 14 UI-SPEC approved
+last_updated: "2026-07-06T08:39:36.477Z"
+last_activity: 2026-07-06
+last_activity_desc: "Completed quick task 260706-3bp: Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types"
 progress:
   total_phases: 10
   completed_phases: 8
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 08 (identity-schema-foundation) — EXECUTING
 Plan: 6 of 6
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-06 - Completed quick task 260706-3bp: Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
@@ -148,6 +148,7 @@ currently.
 | Infrastructure | Migrate off Vercel serverless functions (4.5MB body cap, plan-tier-gated `maxDuration`) to a container platform or AWS, if limits become a recurring blocker | Deferred — see team-sizing note below; Vercel Pro/Enterprise upgrade is the low-cost first option | Phase 14 planning (2026-07-06) |
 
 **Infrastructure scaling note (Phase 14, 2026-07-06):** Confirmed during Phase 14 planning that this project runs on Vercel **Hobby** tier (hard 10s `maxDuration`, 4.5MB request body cap, both non-configurable). If these limits become a recurring blocker beyond a single phase's workaround (Phase 14 routes around it via direct-to-storage uploads + assemble-then-sign delivery, no migration needed yet), three tiers of alternative exist, roughly by team investment required:
+
 - **Vercel Pro/Enterprise upgrade** — no team needed beyond whoever already manages deploys today; a billing/config change only (Fluid Compute raises `maxDuration` well past 10s), zero migration work, zero new skills required.
 - **Container PaaS (Cloud Run / Fly.io / Render)** — buildable by ~1 engineer with light DevOps familiarity: containerize the app (Dockerfile), adjust CI/CD (image build+deploy vs. git-push), re-implement `vercel.json`'s cron job elsewhere. Ongoing management is on the order of a few hours/month for a team this size — typically absorbed by an existing full-stack engineer, not a dedicated hire.
 - **AWS (ECS/Fargate or Lambda + API Gateway)** — a genuine infrastructure project (VPC, IAM, load balancer, CI/CD via IaC). Realistically wants at least one dedicated or fractional DevOps/cloud engineer to both build and own it (security, cost, incident response) — likely overkill unless a specific enterprise/compliance requirement (data residency, existing AWS footprint) forces the move.
@@ -156,10 +157,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/14-playback-room-refinement/14-CONTEXT.md
+**Resume file:** .planning/phases/14-playback-room-refinement/14-UI-SPEC.md
 
-Last session: 2026-07-06T05:18:05.492Z
-Stopped at: Phase 14 context gathered
+Last session: 2026-07-06T06:49:14.975Z
+Stopped at: Phase 14 UI-SPEC approved
 Resume file: None
 
 ## Operator Next Steps
