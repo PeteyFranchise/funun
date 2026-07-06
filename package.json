@@ -15,9 +15,11 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@react-pdf/renderer": "^4.5.1",
     "@stripe/stripe-js": "^4.0.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.45.0",
+    "archiver": "^8.0.0",
     "next": "^15.0.0",
     "node-id3": "^0.2.9",
     "react": "^18.3.0",
@@ -25,9 +27,11 @@
     "resend": "^4.0.0",
     "stripe": "^17.7.0",
     "svix": "^1.96.1",
+    "tus-js-client": "^4.3.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/google.maps": "^3.65.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
