@@ -271,6 +271,38 @@ export function readMasterAudio(
   }
 }
 
+// ─── Stems file (the multi-track ZIP uploaded for producers / remixers) ──────
+export type StemsFile = { path: string; size: number; name: string }
+
+/** Read the stems ZIP reference out of a track's metadata JSONB (null if none). */
+export function readStems(
+  metadata: Record<string, unknown> | null | undefined
+): StemsFile | null {
+  const raw = metadata?.stems as Record<string, unknown> | undefined
+  if (!raw || typeof raw.path !== 'string' || !raw.path) return null
+  return {
+    path: raw.path,
+    size: typeof raw.size === 'number' ? raw.size : 0,
+    name: typeof raw.name === 'string' && raw.name ? raw.name : 'stems.zip',
+  }
+}
+
+// ─── Instrumental file (the no-vocal rendition for sync / licensing) ──────────
+export type InstrumentalFile = { path: string; size: number; ext: string }
+
+/** Read the instrumental-audio reference out of a track's metadata JSONB (null if none). */
+export function readInstrumental(
+  metadata: Record<string, unknown> | null | undefined
+): InstrumentalFile | null {
+  const raw = metadata?.instrumental as Record<string, unknown> | undefined
+  if (!raw || typeof raw.path !== 'string' || !raw.path) return null
+  return {
+    path: raw.path,
+    size: typeof raw.size === 'number' ? raw.size : 0,
+    ext: typeof raw.ext === 'string' && raw.ext ? raw.ext : 'mp3',
+  }
+}
+
 /** Read a typed performer array out of a loose metadata JSONB blob. */
 export function readPerformers(metadata: Record<string, unknown> | null | undefined): Performer[] {
   const raw = metadata?.performers
