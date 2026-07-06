@@ -84,7 +84,11 @@ The single most important finding is **architectural, not library-driven**: this
 
 For ZIP bundling, `archiver` (npm, `OK` verdict, 8.x, ~30M weekly downloads) is the standard streaming-ZIP library for Node and integrates cleanly with a Route Handler running in the Node.js runtime (not Edge) by piping its output stream into a `Response` body. For PDF generation, `@react-pdf/renderer` (npm, `OK` verdict, 4.x, ~4M weekly downloads) is the correct choice over Puppeteer/Playwright: it is a pure-JS layout engine with no headless-browser dependency, so it sidesteps Vercel's ~250MB deployment bundle limit that a bundled Chromium binary (~300MB) would blow past outright `[CITED: vercel.com/docs/functions/limitations]`. For the expiring shareable link, the codebase already has a working precedent — `supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds)`, used today at a 2-hour TTL (`app/(artist)/vault/[projectId]/page.tsx`, `.../metadata/embed/route.ts`) — and this native mechanism should be reused at a 7-day TTL rather than hand-rolling a DB token/`expires_at` table: Supabase's own storage layer already enforces expiry, satisfying D-12's "no manual revocation" requirement for free.
 
-**Primary recommendation:** Build stems/instrumental uploads as direct browser→Supabase-Storage writes (bypassing the Next.js body-size ceiling); generate the Export Pack synchronously in a single Node-runtime Route Handler using `archiver` (streaming) + `@react-pdf/renderer` (server-side PDF); deliver via either a direct streamed `Response` (immediate download) or an upserted Storage object plus `createSignedUrl(path, 60*60*24*7)` (shareable link) — no new DB table, no token system, no job queue needed for v1.
+**Primary recommendation (REVISED — see Confirmed Constraints below):** Build stems/instrumental uploads as direct browser→Supabase-Storage writes (bypassing the Next.js body-size ceiling); generate the Export Pack in a single Node-runtime Route Handler using `archiver` + `@react-pdf/renderer` (server-side PDF). Given the confirmed **Hobby tier** (10s hard `maxDuration`, not raisable), delivery for **both** "direct download" and "shareable link" must go through the same assemble-then-store-then-signed-URL path — never stream the finished archive directly as the Route Handler's `Response` body. The function's job is only to assemble the bundle and `upload()` it to Storage; the actual (potentially large, potentially slow-for-the-recipient) byte transfer happens client-side, direct from Supabase's storage/CDN endpoint, entirely outside the 10s function budget. "Direct download" = short-TTL signed URL (e.g. 5 min), auto-triggered; "shareable link" = long-TTL signed URL (7 days), copied by the artist. No new DB table, no token system, no job queue needed for v1 — but see Pitfall 3 for the real risk this tier imposes on the assembly step itself.
+
+### Confirmed Constraints (resolved during plan-phase, 2026-07-06)
+- **Vercel tier: Hobby** (confirmed by user). `maxDuration` is hard-capped at 10s and cannot be raised — this is not a config option, it's a plan-tier ceiling. This invalidates the `maxDuration = 300` figure used below in Pattern 2 and Pitfall 3; both are corrected in place.
+- **Existing master/share upload route fix: explicitly OUT OF SCOPE for Phase 14** (confirmed by user). The likely-broken 50MB proxy-upload route (Pitfall 1, Open Question 1) is a separately-tracked pre-existing issue, not a Phase 14 deliverable. Phase 14's hard requirement remains only that the *new* stems/instrumental uploads work correctly at 250MB via the direct-to-storage path.
 
 ## Architectural Responsibility Map
 
@@ -174,18 +178,24 @@ All three names were sourced via training knowledge / WebSearch (`[ASSUMED]` pro
                                                      │     archiver → ZIP          │
                                                      └───────────┬─────────────────┘
                                                                  │
+                                                                 │
+                                                    Upload finished ZIP to Storage
+                                                    (upsert, stable path) — ALWAYS,
+                                                    regardless of delivery choice
+                                                    (confirmed Hobby tier: 10s hard
+                                                    maxDuration rules out ever
+                                                    streaming the pack through the
+                                                    function response — see Pitfall 3)
                                         ┌────────────────────────┴───────────────────────┐
                                         ▼                                                ▼
                           (D-11 direct download)                          (D-11 shareable link)
-                        Stream ZIP directly as the                    Upload finished ZIP to
-                        Response body                                 Storage (upsert, stable
-                        (Content-Disposition: attachment)              path), then
-                                                                        createSignedUrl(path,
-                                                                        60*60*24*7) → artist
-                                                                        copies/sends the raw
-                                                                        signed URL — no app
-                                                                        access needed by the
-                                                                        recipient (D-12)
+                        createSignedUrl(path, 60*5)                    createSignedUrl(path,
+                        — 5 min TTL, browser                           60*60*24*7) — 7 days,
+                        immediately navigates to it;                   artist copies/sends the
+                        download happens client→                       raw signed URL — no app
+                        Supabase directly, never                       access needed by the
+                        proxied through the Vercel                     recipient (D-12)
+                        function
 ```
 
 ### Recommended Project Structure
@@ -248,23 +258,29 @@ async function uploadStems(file: File, userId: string, projectId: string, trackI
 }
 ```
 
-### Pattern 2: Streaming ZIP assembly from mixed sources (Storage streams + freshly-rendered PDFs)
-**What:** `archiver` pipes multiple readable streams — some fetched live from Supabase Storage, some generated in-process by `@react-pdf/renderer` — into one ZIP output stream, which becomes the Route Handler's `Response` body without buffering the full archive in memory.
-**When to use:** The Export Pack bundling route.
+### Pattern 2: Streaming ZIP assembly from mixed sources, uploaded to Storage (NOT streamed as the Response body)
+**What:** `archiver` pipes multiple readable streams — some fetched live from Supabase Storage, some generated in-process by `@react-pdf/renderer` — into one ZIP output stream. On confirmed **Hobby tier** (10s hard `maxDuration`, not raisable), this stream is piped into a Storage `upload()` call, NOT returned directly as the Route Handler's `Response` — streaming the full archive out to the requester's browser would keep the function alive for however long that download takes (which can vastly exceed 10s for a 250MB+ bundle on a slow connection), and there is no way to raise this ceiling on Hobby.
+**When to use:** The Export Pack bundling route, for both the "direct download" and "shareable link" delivery options (they now share this exact same assembly step — only the resulting signed URL's TTL and client behavior differ; see Pattern 3).
 **Example:**
 ```typescript
 // Source: archiver docs (github.com/archiverjs/node-archiver) + Next.js Route
-// Handler streaming pattern (Node.js Readable -> web ReadableStream via
-// Readable.toWeb, available Node 18+)
+// Handler pattern. maxDuration is set to 10 (the Hobby ceiling) as a explicit,
+// honest declaration — NOT 300; Hobby cannot raise this regardless of what's written here.
 export const runtime = 'nodejs'
-export const maxDuration = 300 // bump from the Vercel default; bundling is I/O-bound passthrough, not CPU-bound
+export const maxDuration = 10 // Hobby tier hard ceiling — cannot be raised; see Pitfall 3
 
 import archiver from 'archiver'
 import { Readable } from 'node:stream'
 
-export async function GET(request: Request, { params }: RouteCtx) {
+export async function POST(request: Request, { params }: RouteCtx) {
   // ...auth + ownership checks (mirror existing route pattern)...
-  const archive = archiver('zip', { zlib: { level: 6 } })
+  // zlib level 0 ("store", no compression) for already-compressed inputs
+  // (stems ZIP, MP3) — re-compressing already-compressed bytes wastes CPU time
+  // that this 10s budget cannot afford. Only the two small PDFs benefit from
+  // any compression, and even that cost is negligible at their size.
+  const archive = archiver('zip', { zlib: { level: 0 } })
+  const passthrough = new stream.PassThrough()
+  archive.pipe(passthrough)
 
   for (const file of filesToBundle) {
     const { data } = await service.storage.from('track-audio').download(file.path)
@@ -274,33 +290,39 @@ export async function GET(request: Request, { params }: RouteCtx) {
   archive.append(await renderMetadataSheet(bundle), { name: 'metadata.pdf' })
   archive.finalize()
 
-  return new Response(Readable.toWeb(archive) as ReadableStream, {
-    headers: {
-      'Content-Type': 'application/zip',
-      'Content-Disposition': `attachment; filename="${projectTitle}-export-pack.zip"`,
-    },
+  const packPath = `${userId}/${projectId}/export-pack.zip`
+  await service.storage.from('track-audio').upload(packPath, passthrough, {
+    contentType: 'application/zip',
+    upsert: true,
   })
+
+  // See Pattern 3 for the two signed-URL variants built from packPath.
+  return NextResponse.json({ path: packPath })
 }
 ```
 
-### Pattern 3: Expiring shareable link via native Storage signed URL (no hand-rolled token system)
-**What:** Generate the Export Pack once, `upsert` it to a stable per-project path in Storage, then call `createSignedUrl(path, 60 * 60 * 24 * 7)`. The URL itself stops working after 7 days — Supabase enforces this at the storage layer, so there is no `expires_at` column to check and no revocation logic to write.
-**When to use:** D-11's "shareable link" delivery option.
+### Pattern 3: Expiring signed URL, two TTL variants for the same assembled pack (no hand-rolled token system)
+**What:** After Pattern 2 uploads the assembled pack to `packPath`, call `createSignedUrl(packPath, expiresIn)` with one of two TTLs depending on D-11's delivery choice. Both variants call the exact same function — the only difference is the `expiresIn` argument and what the client does with the URL. Supabase enforces expiry at the storage layer, so there is no `expires_at` column to check and no revocation logic to write.
+**When to use:** D-11's delivery choice, for BOTH options, given confirmed Hobby tier rules out ever streaming the pack through the function response (Pattern 2's note):
+- **"Direct download" (immediate):** short TTL (e.g. 5 minutes) — just long enough for the client to receive the URL and the browser to start the download; not meant to be reused or shared.
+- **"Shareable link":** long TTL (7 days, per D-12) — the artist copies/sends this URL to a recipient.
 **Example:**
 ```typescript
-// Source: existing codebase precedent, extended TTL
+// Source: existing codebase precedent, extended/branched TTL
 // app/(artist)/vault/[projectId]/page.tsx:188 already does
 // .createSignedUrls(paths, 60 * 60 * 2) at a 2-hour TTL for private downloads
-const path = `${userId}/${projectId}/export-pack.zip`
-await service.storage.from('track-audio').upload(path, zipBuffer, {
-  contentType: 'application/zip',
-  upsert: true, // regenerating replaces the previous pack at a stable path
-})
-const { data: signed } = await service.storage
-  .from('track-audio')
-  .createSignedUrl(path, 60 * 60 * 24 * 7) // 7 days — matches D-12's suggested default
-// signed.signedUrl is what the artist copies and sends directly to a recipient —
-// no app route, no app auth needed on the recipient's end.
+async function signExportPack(packPath: string, mode: 'download' | 'share') {
+  const expiresIn = mode === 'download' ? 60 * 5 : 60 * 60 * 24 * 7 // 5 min vs 7 days
+  const { data: signed } = await service.storage
+    .from('track-audio')
+    .createSignedUrl(packPath, expiresIn)
+  return signed?.signedUrl
+  // Client either immediately navigates to this URL (download mode — browser
+  // downloads directly from Supabase, NOT proxied through the Vercel function,
+  // so the 10s Hobby ceiling never applies to this leg) or displays it for the
+  // artist to copy (share mode). No app route, no app auth needed on the
+  // recipient's end for either case.
+}
 ```
 
 ### Anti-Patterns to Avoid
@@ -340,11 +362,15 @@ const { data: signed } = await service.storage
 **How to avoid:** Explicitly set `export const runtime = 'nodejs'` on the export-pack route (mirrors the existing precedent in `app/api/vault/[projectId]/tracks/[trackId]/metadata/embed/route.ts`, which already does this for ID3/`node-id3` Node-only APIs).
 **Warning signs:** Import errors for `node:stream`/`archiver` only surfacing at deploy time, not locally.
 
-### Pitfall 3: Long-running bundling exceeding the serverless function's max duration
-**What goes wrong:** A bundle containing a 250MB stems ZIP plus a 50MB master plus a share MP3 plus an instrumental plus two PDFs could take long enough (especially re-fetching each Storage object as a stream) to exceed Vercel's default function duration (10s Hobby / 60s Pro unless raised).
-**Why it happens:** CLAUDE.md's own architectural constraint flags this: "Long-running tasks... consider job queue for 30s+ operations." Bundling is mostly I/O passthrough (not CPU-heavy), so it's usually fast, but total wall-clock time scales with total bytes and network conditions.
-**How to avoid:** Set `export const maxDuration = 300` (or the plan's account tier maximum) on the export route as a first line of defense; if timeouts still prove to be a real problem in practice, treat the job-queue approach as an explicit fast-follow — do not build a job queue speculatively for v1, since no such infrastructure exists yet in this codebase and one isn't clearly needed for a passthrough-heavy operation.
-**Warning signs:** Export Pack requests timing out specifically for large-catalog releases (albums with many tracks, or stems-heavy releases) but not singles.
+### Pitfall 3: Long-running bundling exceeding the serverless function's max duration (CONFIRMED — this project is on Hobby tier)
+**What goes wrong:** A bundle containing a 250MB stems ZIP plus a 50MB master plus a share MP3 plus an instrumental plus two PDFs could take long enough (especially re-fetching each Storage object as a stream, then re-uploading the assembled archive) to exceed the function's duration budget.
+**Why it happens:** Confirmed during plan-phase: this project is deployed on **Vercel Hobby tier**, which hard-caps `maxDuration` at **10 seconds with no override** — there is no config, env var, or `maxDuration` value that raises this on Hobby (unlike Pro's 300s or Enterprise's higher ceilings). CLAUDE.md's own architectural constraint independently flags this class of problem: "Long-running tasks... consider job queue for 30s+ operations" — on Hobby, the real threshold to worry about is 10x tighter than that. Bundling is mostly I/O passthrough (not CPU-heavy), but the assembly step now does TWO large transfers server-side (download existing sources from Storage, then upload the finished archive back to Storage) within that same 10s window — for a near-250MB stems bundle this requires sustained throughput that is not guaranteed.
+**How to avoid (revised for Hobby tier):**
+1. Set `export const maxDuration = 10` honestly (raising it does nothing on Hobby — don't write `300` and assume it works).
+2. Never stream the finished archive as the Route Handler's `Response` body (Pattern 2/3 revision) — the function's job is only to assemble + upload to Storage; the actual client-facing download happens via a signed URL served directly by Supabase, outside the function's duration budget entirely.
+3. Use `archiver('zip', { zlib: { level: 0 } })` (store, no compression) for already-compressed inputs (stems ZIP, MP3) to minimize CPU time inside the 10s window — only the two small PDFs are cheap to compress and it barely matters at their size.
+4. **This may still not be enough for very large bundles** (e.g. a stems-heavy multi-track album). If production testing (see Validation Architecture) shows the assembly step itself routinely exceeds 10s, the only real fixes are: (a) upgrade to Vercel Pro (removes the ceiling entirely, trivial config change, no code change), or (b) a background/queued assembly job (webhook-triggered function + polling or realtime status, genuinely new infrastructure). Do not build (b) speculatively for v1 — first confirm with production-realistic file sizes whether the 10s ceiling is actually hit; recommend (a) as the pragmatic fix if it is, since it requires zero application code changes.
+**Warning signs:** Export Pack requests failing/timing out specifically for large-catalog releases (albums with many tracks, or stems-heavy releases) but not singles — this is expected to be a real, not theoretical, risk on Hobby tier and must be verified against actual deployed file sizes, not just local dev (see Validation Architecture — Wave 0 Gaps).
 
 ### Pitfall 4: Storage bucket `allowed_mime_types` silently rejecting ZIP uploads
 **What goes wrong:** The `track-audio` bucket's `allowed_mime_types` array (migration `004_track_audio_storage.sql`) currently only lists audio MIME types — a stems ZIP upload will be rejected at the storage layer with no mention of "add zip to the allowlist" anywhere obvious in application code.
@@ -392,29 +418,23 @@ update = { metadata: { ...metadata, master: { path, size: file.size, ext } } }
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | The project is actually deployed on Vercel with default (not custom-configured) serverless function limits, so the 4.5MB body-size ceiling and the ~250MB deployment bundle limit both apply as described | Summary, Pitfall 1, Alternatives Considered | If deployed elsewhere (self-hosted Node, different PaaS) with different limits, the "must upload direct-to-storage" urgency may be lower, though it remains best practice regardless. CLAUDE.md states "Deployment target: Vercel (Next.js standard hosting)," which supports this assumption, but the exact plan tier (Hobby/Pro/Enterprise) — which affects `maxDuration` ceilings — is unconfirmed |
-| A2 | The existing 50MB master-audio upload route does not currently work in production for files over ~4.5MB | Summary, Pitfall 1 | This is inferred from Vercel's documented platform limit and the route's `request.formData()` implementation, not confirmed by reproducing a failed upload in a live deployment. If wrong (e.g., some undiscovered Vercel config already routes around this), the urgency framing overstates existing technical debt — but the recommendation to use direct-to-storage for the *new*, larger stems uploads holds regardless |
+| A1 | ~~The project is actually deployed on Vercel~~ **CONFIRMED**: Vercel Hobby tier (user-confirmed during plan-phase, 2026-07-06). The 4.5MB body-size ceiling and ~250MB deployment bundle limit apply as described; `maxDuration` is hard-capped at 10s with no override (no Pro/Enterprise `maxDuration` headroom available) | Summary, Pitfall 1, Pitfall 3, Alternatives Considered | No longer a risk — this is now a confirmed hard constraint, not an assumption. All Hobby-tier-dependent recommendations (never stream the full archive as the Response body; explicit production-realistic timing verification) should be treated as required, not conditional |
+| A2 | The existing 50MB master-audio upload route does not currently work in production for files over ~4.5MB | Summary, Pitfall 1 | Still inferred, not reproduced live — but moot for Phase 14 planning purposes: user confirmed fixing this route is explicitly **out of scope** for this phase regardless of whether the bug is real. Tracked as a separate pre-existing issue |
 | A3 | Reusing the `track-audio` bucket (raising its `file_size_limit` and `allowed_mime_types`) is preferable to a dedicated new bucket for stems/instrumental | Standard Stack, Pitfall 4 | Low risk either way — CONTEXT.md already flags this as Claude's discretion; if a clear operational reason to split buckets emerges during planning (e.g., wanting a different retention/cleanup policy for large ZIPs vs. small audio files), a dedicated bucket is a straightforward alternative |
 | A4 | A 7-day `createSignedUrl` TTL, generated at pack-creation time and not re-derived per click, satisfies D-12 without any additional revocation mechanism | Pattern 3, Pitfall 5 | If the product actually wants the artist to be able to revoke a link early (not just let it expire), this native mechanism has no revoke primitive short of deleting/moving the underlying Storage object — worth confirming with the user during planning if early revocation turns out to matter |
 
-## Open Questions
+## Open Questions — RESOLVED during plan-phase (2026-07-06)
 
-1. **Should the existing master/share audio upload route also be migrated to direct-to-storage in this phase, or left as a known-but-out-of-scope issue?**
-   - What we know: The stems/instrumental uploads must use direct-to-storage regardless; the existing master/share route likely has the same production bug at a smaller scale (any file 4.5MB–50MB).
-   - What's unclear: Whether fixing the existing route is in Phase 14's scope (CONTEXT.md's canonical refs treat it as a pattern to extend, not necessarily to replace) or a separate follow-up.
-   - Recommendation: Flag explicitly to the user/planner as a discovered-but-adjacent issue; Phase 14's hard requirement is only that the *new* stems/instrumental uploads work correctly at 250MB.
+1. ~~Should the existing master/share audio upload route also be migrated to direct-to-storage in this phase?~~ **RESOLVED: No — explicitly out of scope for Phase 14**, per user decision. It remains a separately-tracked, pre-existing issue. Phase 14's hard requirement is only that the *new* stems/instrumental uploads work correctly at 250MB via direct-to-storage.
 
-2. **What Vercel plan tier is this project deployed on, and what `maxDuration` ceiling does that impose?**
-   - What we know: Hobby caps at 10s (not raisable), Pro allows up to 300s via `maxDuration` (or higher with Fluid Compute), Enterprise higher still.
-   - What's unclear: Which tier this project is on — materially affects whether synchronous Export Pack bundling is viable for large releases without a job queue.
-   - Recommendation: Confirm during planning; if Hobby tier, synchronous bundling of very large packs (multi-track albums with stems on every track) may need a job-queue fallback sooner than assumed here.
+2. ~~What Vercel plan tier is this project deployed on?~~ **RESOLVED: Hobby tier**, per user confirmation. `maxDuration` is hard-capped at 10s, not raisable. This invalidates every reference to `maxDuration = 300` elsewhere in this document (corrected in place in Pattern 2/3 and Pitfall 3) and requires the Export Pack route to never stream the finished archive as its own Response body — see Pitfall 3's revised mitigation.
 
 ## Environment Availability
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
 | Supabase Storage TUS resumable endpoint | Stems ZIP direct upload (250MB) | Not verifiable from this sandbox (requires a live Supabase project) | — | If TUS proves unavailable/misconfigured on the project's Supabase instance, fall back to a plain (non-resumable) `supabase.storage.upload()` call from the browser — still bypasses the Vercel body-size limit, just less resilient to connection drops on very large files |
-| Vercel deployment (for accurate `maxDuration`/body-limit behavior) | Export Pack route duration budget, upload body-size ceiling | Not verifiable from this sandbox (no deployed environment inspected) | — | None needed — recommendations here are based on Vercel's documented platform limits, which apply regardless of specific plan tier (only the exact `maxDuration` ceiling varies) |
+| Vercel deployment (for accurate `maxDuration`/body-limit behavior) | Export Pack route duration budget, upload body-size ceiling | **Confirmed: Hobby tier** (user-provided, 2026-07-06) | `maxDuration` hard-capped at 10s, no override | None available on Hobby short of upgrading the plan — see Pitfall 3's revised mitigation (never stream the full archive as the Response body; verify assembly-step timing against real file sizes before shipping) |
 
 **Missing dependencies with no fallback:** none — all core libraries (`archiver`, `@react-pdf/renderer`, `tus-js-client`) are standard npm installs with no environment prerequisite beyond Node.js, which this project already requires.
 
@@ -437,13 +457,13 @@ update = { metadata: { ...metadata, master: { path, size: file.size, ext } } }
 | D-01 | Vault project card links to `/vault/[id]/play`, not `/vault/[id]` | manual-only (no test infra) | — | ❌ Wave 0 (if test infra is added) |
 | D-06 | Master/Instrumental toggle actually swaps `<audio src>` | manual-only | — | ❌ Wave 0 |
 | D-07 | Stems ZIP upload succeeds at sizes approaching 250MB in a real (non-local-dev) deployment | manual-only, deployment-dependent | — | ❌ Wave 0 — this specifically cannot be verified by unit/integration tests alone; requires a staging/production smoke test given the Vercel body-size-limit risk identified above |
-| D-10/D-11 | Export Pack ZIP contains all available files + both PDFs, opens correctly | manual-only | — | ❌ Wave 0 |
+| D-10/D-11 | Export Pack ZIP contains all available files + both PDFs, opens correctly; assembly completes within the confirmed Hobby-tier 10s `maxDuration` for realistic (near-250MB) bundles | manual-only, deployment-dependent | — | ❌ Wave 0 — must be tested against a real deployment with realistic file sizes; local `next dev` has no function-duration limit and will not surface a Hobby-tier timeout |
 | D-12 | Shareable link stops working after its TTL | manual-only (or a scripted check calling the signed URL after forcing/mocking TTL expiry) | — | ❌ Wave 0 |
 
 ### Sampling Rate
 - **Per task commit:** manual smoke check (no automated quick-run exists)
 - **Per wave merge:** manual verification of the specific decisions implemented in that wave
-- **Phase gate:** Given D-07's genuinely deployment-dependent risk (the whole 4.5MB body-size finding), the phase gate should include an explicit **staging/production upload test with a file over 4.5MB**, not just local `next dev` testing — this is the one behavior in this phase that can look correct locally and fail only in production.
+- **Phase gate:** Given D-07's genuinely deployment-dependent risk (the whole 4.5MB body-size finding) AND the confirmed Hobby-tier 10s `maxDuration` ceiling, the phase gate should include two explicit production-deployment tests, neither of which local `next dev` can surface: (1) a stems upload test with a file over 4.5MB (validates the direct-to-storage upload path actually bypasses the body-size limit), and (2) an Export Pack generation test with realistic/near-worst-case file sizes (validates the assembly step completes within 10s — see Pitfall 3).
 
 ### Wave 0 Gaps
 - No test framework exists in this codebase at all (confirmed via CLAUDE.md and `package.json` — no `"test"` script, no Jest/Vitest config). Introducing one is out of scope for this phase's decisions; treat all verification as manual per the `human_verify_mode: "end-of-phase"` project setting.
@@ -489,8 +509,8 @@ update = { metadata: { ...metadata, master: { path, size: file.size, ext } } }
 
 **Confidence breakdown:**
 - Standard stack: HIGH — all three packages verified via `package-legitimacy check` against the live npm registry with strong signals (repo, downloads, no red flags)
-- Architecture (direct-to-storage upload, streaming ZIP, signed-URL expiry): MEDIUM — the core reasoning (Vercel body-size limit, TUS recommendation, signed-URL mechanism) is grounded in official docs and existing codebase precedent, but the exact production impact (whether the *current* 50MB route is actually broken today) is inferred, not reproduced live
-- Pitfalls: MEDIUM — grounded in documented platform limits and direct codebase inspection, not in observed production failures
+- Architecture (direct-to-storage upload, streaming ZIP, signed-URL expiry): HIGH for the Hobby-tier constraint itself (user-confirmed, not inferred) — the resulting architecture revision (never stream the assembled pack through the Response body; both delivery options share one assemble-then-sign path) follows directly and mechanically from that confirmed fact. MEDIUM remains on whether the *existing* 50MB master/share route is actually broken today (still inferred, not reproduced live) — though this is now moot for Phase 14 since fixing it is explicitly out of scope
+- Pitfalls: MEDIUM-HIGH — Pitfall 3's core constraint (10s ceiling) is now a confirmed fact rather than a documented-but-unverified platform limit; whether realistic Phase 14 bundle sizes actually exceed 10s in practice remains unverified until production testing (Wave 0 gap)
 
 **Research date:** 2026-07-06
 **Valid until:** ~30 days (stable npm packages, stable Vercel platform limits) — re-verify package versions if planning is delayed past early August 2026
