@@ -1,6 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { readinessLabel } from '@/lib/vault/readiness'
+import { StemsUpload } from '@/components/vault/StemsUpload'
 
 export type TrackView = {
   id: string
@@ -11,7 +14,10 @@ export type TrackView = {
   iswc: string | null
   bpm: number | null
   language: string | null
-  audioUrl: string | null
+  audioUrl: string | null          // signed URL for the share/master playback
+  instrumentalUrl: string | null   // signed URL for the instrumental (null when absent)
+  hasStems: boolean                // whether a stems ZIP exists
+  stemsUrl: string | null          // signed download URL for stems ZIP (null when absent)
   credits: { name: string; role: string; split: number }[]
   splitTotal: number
 }
@@ -44,19 +50,30 @@ export function PlaybackView({
   artist,
   coverUrl,
   tracks,
+  projectId,
+  userId,
+  canManage,
+  readinessScore,
+  exportSlot,
   miniLeft = '252px',
 }: {
   releaseTitle: string
   artist: string | null
   coverUrl: string | null
   tracks: TrackView[]
+  projectId: string
+  userId: string
+  canManage: boolean
+  readinessScore: number
+  /** Reserved slot for Plan 06 Export Pack panel — pass an Export Pack button/trigger here. */
+  exportSlot?: React.ReactNode
   /** Left offset of the fixed mini-player — '252px' inside the app shell, '0' on no-shell pages. */
   miniLeft?: string
 }) {
   const [currentId, setCurrentId] = useState(tracks[0]?.id ?? '')
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState(0)
-  const [source, setSource] = useState<'master' | 'stems'>('master')
+  const [source, setSource] = useState<'master' | 'instrumental'>('master')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const current = useMemo(() => tracks.find(t => t.id === currentId) ?? tracks[0], [tracks, currentId])
@@ -64,18 +81,29 @@ export function PlaybackView({
   const duration = current?.durationSeconds ?? 0
   const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0
 
+  // Reset to master when switching tracks or when instrumental is no longer available.
+  useEffect(() => {
+    setSource('master')
+    setPosition(0)
+  }, [currentId])
+
+  const activeAudioUrl = source === 'instrumental' && current?.instrumentalUrl
+    ? current.instrumentalUrl
+    : current?.audioUrl ?? null
+
   useEffect(() => {
     const el = audioRef.current
     if (!el) return
     if (playing) el.play().catch(() => setPlaying(false))
     else el.pause()
-  }, [playing, currentId])
+  }, [playing, currentId, source])
 
   function selectTrack(id: string) {
     setCurrentId(id)
     setPosition(0)
     setPlaying(true)
   }
+
   function seekToFraction(f: number) {
     const el = audioRef.current
     const d = duration || el?.duration || 0
@@ -84,12 +112,14 @@ export function PlaybackView({
     if (el) el.currentTime = t
   }
 
+  const { label: readinessLabelText } = readinessLabel(readinessScore)
+
   if (!current) return <p className="px-9 py-8 text-lavdim">No tracks in this release yet.</p>
 
   return (
     <div className="flex-1 px-9 py-[30px] pb-[110px]">
       <div className="grid gap-7 lg:grid-cols-[300px_1fr_320px]">
-        {/* Left — tracklist */}
+        {/* Left — tracklist + files */}
         <div className="rounded-card border border-hair bg-card p-5">
           <div className="mb-4 text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Tracks</div>
           <ul className="space-y-1">
@@ -113,6 +143,8 @@ export function PlaybackView({
               )
             })}
           </ul>
+
+          {/* Files section */}
           <div className="mt-5 border-t border-hair pt-4">
             <div className="mb-2 text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Files</div>
             <div className="flex items-center justify-between text-[13px]">
@@ -121,10 +153,26 @@ export function PlaybackView({
                 {current.audioUrl ? 'Uploaded' : 'Missing'}
               </span>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[13px]">
-              <span className="text-lav">Stems</span>
-              <span className="text-lavdim">Not added</span>
-            </div>
+
+            {/* Instrumental + Stems rows (managed by StemsUpload) */}
+            <StemsUpload
+              projectId={projectId}
+              trackId={current.id}
+              userId={userId}
+              hasStemsFile={current.hasStems}
+              hasInstrumental={Boolean(current.instrumentalUrl)}
+              canManage={canManage}
+            />
+          </div>
+
+          {/* Inline readiness widget (D-02, placement 2) */}
+          <div className="mt-4 border-t border-hair pt-4">
+            <Link
+              href={`/vault/${projectId}`}
+              className="block text-[13px] font-semibold text-lavdim transition hover:text-white"
+            >
+              Readiness {readinessScore}/100 · {readinessLabelText} →
+            </Link>
           </div>
         </div>
 
@@ -142,18 +190,36 @@ export function PlaybackView({
             </div>
           </div>
 
-          {/* Master / Stems toggle */}
-          <div className="mt-5 inline-flex rounded-[10px] border border-hairstrong bg-card2 p-1 text-[13px] font-bold">
-            {(['master', 'stems'] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => setSource(s)}
-                className={`rounded-[7px] px-4 py-[7px] capitalize ${source === s ? 'bg-grad text-white' : 'text-lavdim'}`}
+          {/* Master / Instrumental toggle — only shown when instrumental exists (D-08) */}
+          {current.instrumentalUrl && (
+            <div className="mt-5 inline-flex rounded-[10px] border border-hairstrong bg-card2 p-1 text-[13px] font-bold">
+              {(['master', 'instrumental'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSource(s)}
+                  className={`rounded-[7px] px-4 py-[7px] capitalize ${source === s ? 'bg-grad text-white' : 'text-lavdim'}`}
+                >
+                  {s === 'master' ? 'Master' : 'Instrumental'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Download stems button — separate from transport (D-04); only shown when stems exist (D-08) */}
+          {current.stemsUrl && (
+            <div className="mt-3">
+              <a
+                href={current.stemsUrl}
+                download
+                className="inline-flex items-center gap-2 rounded-[9px] border border-hairstrong bg-card2 px-4 py-2 text-[13px] font-bold text-white transition hover:opacity-90"
               >
-                {s}
-              </button>
-            ))}
-          </div>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />
+                </svg>
+                Download stems
+              </a>
+            </div>
+          )}
 
           {/* Waveform */}
           <div className="mt-6 flex h-[72px] w-full max-w-[520px] items-center gap-[3px]">
@@ -202,7 +268,7 @@ export function PlaybackView({
             <button
               aria-label={playing ? 'pause' : 'play'}
               onClick={() => setPlaying(p => !p)}
-              disabled={!current.audioUrl}
+              disabled={!activeAudioUrl}
               className="flex h-[78px] w-[78px] items-center justify-center rounded-full bg-grad text-white shadow-cta disabled:opacity-40"
             >
               {playing ? (
@@ -225,9 +291,12 @@ export function PlaybackView({
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" /></svg>
             </button>
           </div>
-          {!current.audioUrl && (
+          {!activeAudioUrl && (
             <p className="mt-3 text-[12.5px] text-lavdim">No master uploaded for this track yet.</p>
           )}
+
+          {/* Export Pack slot — reserved for Plan 06 */}
+          {exportSlot && <div className="mt-5">{exportSlot}</div>}
         </div>
 
         {/* Right — credits & metadata */}
@@ -295,7 +364,7 @@ export function PlaybackView({
         </div>
         <button
           onClick={() => setPlaying(p => !p)}
-          disabled={!current.audioUrl}
+          disabled={!activeAudioUrl}
           className="ml-2 flex h-9 w-9 flex-none items-center justify-center rounded-full bg-grad text-white disabled:opacity-40"
           aria-label={playing ? 'pause' : 'play'}
         >
@@ -313,10 +382,10 @@ export function PlaybackView({
         </span>
       </div>
 
-      {/* Hidden audio element drives real playback when a master exists. */}
+      {/* Hidden audio element drives real playback when audio exists. */}
       <audio
         ref={audioRef}
-        src={current.audioUrl ?? undefined}
+        src={activeAudioUrl ?? undefined}
         onTimeUpdate={e => setPosition(e.currentTarget.currentTime)}
         onEnded={() => setPlaying(false)}
       />

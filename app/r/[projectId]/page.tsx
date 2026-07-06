@@ -38,6 +38,9 @@ function toTrackViews(tracks: TrackRow[]): TrackView[] {
         bpm: t.bpm ?? null,
         language: t.language ?? null,
         audioUrl: t.audio_file_url ?? null,
+        instrumentalUrl: null,
+        hasStems: false,
+        stemsUrl: null,
         credits: composers.map(c => ({ name: c.name, role: COMPOSER_ROLE_LABELS[c.role], split: c.split })),
         splitTotal,
       }
@@ -93,7 +96,17 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
         <h1 className="pb-1 pt-7 text-[27px] font-extrabold tracking-[-.01em]">{project.title}</h1>
         <p className="text-[14px] font-medium text-lavdim">{artist ? `${artist} · ` : ''}Now playing</p>
       </div>
-      <PlaybackView releaseTitle={project.title} artist={artist} coverUrl={project.cover_art_url} tracks={tracks} miniLeft="0px" />
+      <PlaybackView
+          releaseTitle={project.title}
+          artist={artist}
+          coverUrl={project.cover_art_url}
+          tracks={tracks}
+          projectId={projectId}
+          userId=""
+          canManage={false}
+          readinessScore={0}
+          miniLeft="0px"
+        />
     </div>
   )
 }
