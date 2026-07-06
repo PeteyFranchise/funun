@@ -64,6 +64,8 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   4. A column-level REVOKE/GRANT migration ships in the same migration that adds any private column, so no authenticated user can read private fields via direct PostgREST
   5. Industry-member identity is created without a `handle_new_user()` phantom-row race (role set at `admin.createUser()` time, early-return branch added)
 
+**Design references**: none in the design bundle — schema-only phase, no user-facing requirement. The one small UI surface (admin industry-member invite page) is ad hoc, not a hi-fi mockup from `docs/design/wave-4-social-layer/`.
+
 **Plans**: 6/6 plans complete
 
 - [x] 08-01-PLAN.md
@@ -87,6 +89,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` (primary — header, roles, stats, releases grid, Featured spotlight, owner-vs-visitor actions), `artist-profile.html` (the new public "now playing" player, D-01), `playback.html` (contrast only — stays the private working room, out of this phase's scope). Full detail already gathered in `09-CONTEXT.md`.
 
 ### Phase 10: Connections & Notifications
 
@@ -102,6 +105,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only partial precedent exists: the Follow/Message profile actions (`.pf-actions`) and the topbar notification bell with unread dot (`.pf-iconbtn .dotn`, top-right). **Gap**: no notification panel/dropdown (the actual list shown when the bell is clicked, with mark-all-read) exists anywhere in the design bundle — this phase needs net-new screen design for that panel during its `/gsd-ui-phase` run, not just recreation of the handoff.
 
 ### Phase 11: Presence & Messaging
 
@@ -117,6 +121,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — strong existing precedent, fully designed already: the floating DM widget (`.pf-dm` — header with avatar + "Active now" presence status, message bubbles for both sides, date divider, composer + send button) and the profile avatar's online-presence dot (`.pf-avatar .live`, green dot + "Online" label). **Gap**: no message-request (cold-outreach accept/decline/block) screen or rate-limit UI exists in the bundle — net-new design needed for that specific flow; the DM widget itself is ready to recreate directly.
 
 ### Phase 12: Discovery & People Search
 
@@ -132,6 +137,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only a static topbar search input (`.pf-search`, placeholder "Search artists, producers, supervisors…") exists as precedent; it is not wired to any results UI. **Gap**: no search-results layout, filter panel, or Discover-tab screen exists anywhere in the design bundle. `docs/design/wave-4-social-layer/antenna.html`'s filter-panel *pattern* (checkboxes with counts, a "minimum match" slider, tag chips) is a plausible structural reference to adapt, though it was designed for opportunity matching, not people search — this phase needs its own net-new screen design during `/gsd-ui-phase`.
 
 ### Phase 13: Network Tab & Trust & Safety
 
@@ -147,6 +153,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: none. No file in the design bundle (`docs/design/wave-4-social-layer/`) shows a Network tab, block/report flow, admin verified-badge grant UI, or visibility-control settings — this phase has **zero existing visual precedent** and needs full net-new UI design during its `/gsd-ui-phase` run.
 
 ### Phase 14: Playback Room Refinement
 
@@ -159,6 +166,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Plans**: TBD
 **UI hint**: yes
+**Design references**: `docs/design/wave-4-social-layer/playback.html` (primary target), `sound-vault.html` (D-01 project-card link target), `release-readiness.html` (D-02 widget link target — this phase adds a link to it, does not rebuild it), `artist-profile.html` (contrast only — Phase 9's public player, NOT this phase's scope). Full detail already gathered in `14-CONTEXT.md` / `14-RESEARCH.md`.
 
 ## Progress
 
