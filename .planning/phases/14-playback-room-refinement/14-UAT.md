@@ -48,12 +48,16 @@ result: [pending]
 expected: Generate an export pack and open credits-and-splits.pdf and metadata.pdf from the ZIP. Credits sheet shows real composer names, roles, PRO, IPI, split percentages. Metadata sheet shows ISRC, ISWC, BPM, key, language per track — not blank placeholder PDFs.
 result: [pending]
 
+### 9. Public Now Playing page streams audio and hides owner-only UI (post-review fixes CR-02, WR-08)
+expected: Open /r/{projectId} for a public release in a logged-out browser. Pressing play streams the master audio (signed URL — previously raw storage paths 404'd). The page shows no "Files" section and no "Readiness x/100" widget — those render only for the owner.
+result: [pending]
+
 ## Summary
 
-total: 8
+total: 9
 passed: 0
 issues: 0
-pending: 8
+pending: 9
 skipped: 0
 blocked: 0
 
