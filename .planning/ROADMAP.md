@@ -47,7 +47,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Not part of The Green Room milestone theme.** Surfaced during Phase 9 discussion: the private artist-facing Playback room (`playback.html` design — tracklist editing, WAV/stems upload, credits & splits editing, metadata editing) is existing Wave 1 Sound Vault functionality (`app/(artist)/vault/[projectId]/play/page.tsx`, `components/vault/PlaybackView.tsx`) that needs its own refinement pass, separate from Phase 9's public-player split work.
 
-- [ ] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) — scope TBD pending discussion
+- [x] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) — scope TBD pending discussion (completed 2026-07-07)
 
 ## Phase Details
 
@@ -167,7 +167,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. A readiness-score widget appears in the topbar and inline, linking to the management page (D-02)
   4. Export Pack bundles every available artifact (master, MP3, stems, instrumental) + credits/splits PDF + metadata PDF, delivered as an immediate download or a 7-day expiring shareable link (D-10..D-12)
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 **Wave 1**
 
 - [x] 14-01-PLAN.md — Storage config (250MB + ZIP MIME) + schema readers + packages (archiver/@react-pdf/renderer/tus-js-client)
@@ -184,7 +184,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 14-06-PLAN.md — Export Pack route (assemble→upload→signed URL, Hobby-safe) + delivery-choice panel
+- [x] 14-06-PLAN.md — Export Pack route (assemble→upload→signed URL, Hobby-safe) + delivery-choice panel
 
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/playback.html` (primary target), `sound-vault.html` (D-01 project-card link target), `release-readiness.html` (D-02 widget link target — this phase adds a link to it, does not rebuild it), `artist-profile.html` (contrast only — Phase 9's public player, NOT this phase's scope). Full detail already gathered in `14-CONTEXT.md` / `14-RESEARCH.md`.
@@ -206,4 +206,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
-| 14. Playback Room Refinement | v1.2 (Sound Vault) | 5/6 | In Progress|  |
+| 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
