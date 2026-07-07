@@ -26,8 +26,10 @@ export type TrackView = {
 
 function fmt(s: number | null): string {
   if (!s && s !== 0) return '—'
-  const m = Math.floor(s / 60)
-  const sec = Math.round(s % 60)
+  // Round first, then split — rounding the remainder shows "0:60" at x:59.5+.
+  const total = Math.round(s)
+  const m = Math.floor(total / 60)
+  const sec = total % 60
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
