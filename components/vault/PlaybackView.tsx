@@ -148,36 +148,41 @@ export function PlaybackView({
             })}
           </ul>
 
-          {/* Files section */}
-          <div className="mt-5 border-t border-hair pt-4">
-            <div className="mb-2 text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Files</div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-lav">Master</span>
-              <span className={current.audioUrl ? 'text-emerald-400' : 'text-lavdim'}>
-                {current.audioUrl ? 'Uploaded' : 'Missing'}
-              </span>
+          {/* Files section — file-status and readiness are management concerns:
+              never render them for canManage=false (public/anonymous) viewers. */}
+          {canManage && (
+            <div className="mt-5 border-t border-hair pt-4">
+              <div className="mb-2 text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Files</div>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-lav">Master</span>
+                <span className={current.audioUrl ? 'text-emerald-400' : 'text-lavdim'}>
+                  {current.audioUrl ? 'Uploaded' : 'Missing'}
+                </span>
+              </div>
+
+              {/* Instrumental + Stems rows (managed by StemsUpload) */}
+              <StemsUpload
+                projectId={projectId}
+                trackId={current.id}
+                userId={userId}
+                hasStemsFile={current.hasStems}
+                hasInstrumental={Boolean(current.instrumentalUrl)}
+                canManage={canManage}
+              />
             </div>
+          )}
 
-            {/* Instrumental + Stems rows (managed by StemsUpload) */}
-            <StemsUpload
-              projectId={projectId}
-              trackId={current.id}
-              userId={userId}
-              hasStemsFile={current.hasStems}
-              hasInstrumental={Boolean(current.instrumentalUrl)}
-              canManage={canManage}
-            />
-          </div>
-
-          {/* Inline readiness widget (D-02, placement 2) */}
-          <div className="mt-4 border-t border-hair pt-4">
-            <Link
-              href={`/vault/${projectId}`}
-              className="block text-[13px] font-semibold text-lavdim transition hover:text-white"
-            >
-              Readiness {readinessScore}/100 · {readinessLabelText} →
-            </Link>
-          </div>
+          {/* Inline readiness widget (D-02, placement 2) — owner-only */}
+          {canManage && (
+            <div className="mt-4 border-t border-hair pt-4">
+              <Link
+                href={`/vault/${projectId}`}
+                className="block text-[13px] font-semibold text-lavdim transition hover:text-white"
+              >
+                Readiness {readinessScore}/100 · {readinessLabelText} →
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Center — now playing */}
