@@ -38,6 +38,15 @@ export async function POST(request: Request, { params }: RouteCtx) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Owner-prefix gate (confused-deputy defense): downstream consumers act on this
+  // path with the service-role client (signed-URL minting, export ZIP assembly,
+  // DELETE removal), which bypasses Storage RLS entirely — so the path MUST live
+  // under the caller's own `{userId}/{projectId}/` prefix.
+  const expectedPrefix = `${user.id}/${projectId}/`
+  if (!path.startsWith(expectedPrefix) || path.includes('..')) {
+    return NextResponse.json({ error: 'Invalid storage path' }, { status: 400 })
+  }
+
   const { data: track } = await supabase
     .from('tracks')
     .select('id, metadata')
@@ -93,8 +102,12 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
   const instrumentalPath = (metadata.instrumental as { path?: string } | undefined)?.path ?? null
 
+  // Defense-in-depth: never let the service-role client (RLS bypass) delete an
+  // object outside the caller's own prefix, even if a stale/tampered path was
+  // persisted before the POST-side owner-prefix gate existed.
+  const expectedPrefix = `${user.id}/${projectId}/`
   const service = createServiceClient()
-  if (instrumentalPath) {
+  if (instrumentalPath && instrumentalPath.startsWith(expectedPrefix) && !instrumentalPath.includes('..')) {
     await service.storage.from(BUCKET).remove([instrumentalPath])
   }
 
