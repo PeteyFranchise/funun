@@ -153,6 +153,12 @@ export function StemsUpload({
           } else {
             router.refresh()
           }
+        } catch (err) {
+          // Network failure AFTER the bytes landed in Storage — without this catch
+          // the rejection is swallowed and the user sees no error at all.
+          setStemsError(
+            `Failed to save stems reference: ${err instanceof Error ? err.message : String(err)}`
+          )
         } finally {
           setStemsProgress(null)
         }
@@ -162,6 +168,11 @@ export function StemsUpload({
     upload.findPreviousUploads().then(prev => {
       if (prev.length > 0) upload.resumeFromPreviousUpload(prev[0])
       upload.start()
+    }).catch((err: unknown) => {
+      // findPreviousUploads can reject (e.g. urlStorage/localStorage errors) —
+      // without this catch, start() never runs and the UI sticks at 0% forever.
+      setStemsError(`Upload failed: ${err instanceof Error ? err.message : String(err)}`)
+      setStemsProgress(null)
     })
   }
 
