@@ -6,6 +6,7 @@
 - ✅ **v1.1 — Wave 3: Launchpad** — Phases 5–7 (shipped 2026-07-04)
 - 🚧 **v1.2 — Wave 4: The Green Room** — Phases 8–13 (in progress)
 - 🚧 **v1.2 — Sound Vault: Playback Room Refinement** — Phase 14 (in progress; cross-domain addition, tracked alongside v1.2 for scheduling purposes only — this is Wave 1 Sound Vault work, not a Green Room networking feature)
+- 🚧 **v1.2 — Account Capability Model** — Phase 15 (not started; cross-cutting identity change, tracked alongside v1.2 for scheduling only — deferred until after beta testing begins per explicit user decision, not part of the Green Room feature set)
 
 ## Phases
 
@@ -48,6 +49,12 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Not part of The Green Room milestone theme.** Surfaced during Phase 9 discussion: the private artist-facing Playback room (`playback.html` design — tracklist editing, WAV/stems upload, credits & splits editing, metadata editing) is existing Wave 1 Sound Vault functionality (`app/(artist)/vault/[projectId]/play/page.tsx`, `components/vault/PlaybackView.tsx`) that needs its own refinement pass, separate from Phase 9's public-player split work.
 
 - [ ] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) — scope TBD pending discussion (execution complete 2026-07-06; awaiting UAT — see 14-UAT.md)
+
+### 🚧 Account Capability Model (Not Started)
+
+**Cross-cutting identity change — not part of The Green Room feature set.** Surfaced during a discussion about the artist/industry account split: today `member_type` is a single exclusive value set at account creation, so one login can never hold both artist and industry capabilities. Explicitly deferred until after beta testing begins (per user decision) — scheduled after Phase 13 so it does not block or reorder the Green Room rollout.
+
+- [ ] **Phase 15: Account Capability Model** - Replace the single `member_type` value with multiple capability grants on one account — scope TBD pending discussion
 
 ## Phase Details
 
@@ -189,6 +196,17 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/playback.html` (primary target), `sound-vault.html` (D-01 project-card link target), `release-readiness.html` (D-02 widget link target — this phase adds a link to it, does not rebuild it), `artist-profile.html` (contrast only — Phase 9's public player, NOT this phase's scope). Full detail already gathered in `14-CONTEXT.md` / `14-RESEARCH.md`.
 
+### Phase 15: Account Capability Model
+
+**Goal:** A member can hold both artist and industry capabilities on a single account — `member_type` becomes a set of granted capabilities rather than one exclusive value, so a songwriter who is also an industry contact doesn't need a second signup to use both Sound Vault and Antenna.
+**Requirements**: TBD (no REQUIREMENTS.md IDs yet — this predates that scoping)
+**Depends on:** Phase 13 (sequencing only — not a technical blocker; scheduled after Green Room ships and beta testing begins, per explicit user decision)
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 15 to break down)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -207,3 +225,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
+| 15. Account Capability Model | v1.2 (cross-cutting) | 0/TBD | Not started | - |
