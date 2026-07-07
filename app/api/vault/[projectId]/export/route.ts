@@ -104,11 +104,11 @@ export async function POST(
   }
 
   // Build the manifest — pure transform, tells us which files exist and their paths.
-  // Cast via unknown: buildExportManifest only reads .title and .artist_name from the
-  // project row; the full ProjectRow shape is only needed by bundle.ts's other functions.
+  // buildExportManifest declares the minimal fields it reads (ManifestProjectInput /
+  // ManifestTrackInput), so no unsafe casts are needed here.
   const manifest = buildExportManifest(
-    { ...project, artist_name: profile?.artist_name ?? null } as unknown as Parameters<typeof buildExportManifest>[0],
-    tracks as Parameters<typeof buildExportManifest>[1]
+    { ...project, artist_name: profile?.artist_name ?? null },
+    tracks
   )
 
   // No-master gate — nothing meaningful to export without at least one master WAV

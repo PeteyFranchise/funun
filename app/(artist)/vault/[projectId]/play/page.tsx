@@ -146,10 +146,7 @@ export default async function PlaybackPage({ params }: { params: Promise<{ proje
   // buildExportManifest is pure (no I/O) — safe to call server-side here.
   // artist is already in scope from load() above.
   const exportManifest = !DEMO
-    ? buildExportManifest(
-        { title: project.title, artist_name: artist } as unknown as Parameters<typeof buildExportManifest>[0],
-        rawTracks as Parameters<typeof buildExportManifest>[1]
-      )
+    ? buildExportManifest({ title: project.title, artist_name: artist }, rawTracks)
     : null
 
   // Artifact labels shown in the Export Pack panel's included list (only items that exist — D-08)

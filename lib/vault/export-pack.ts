@@ -10,9 +10,33 @@ import {
   readInstrumental,
   readComposers,
 } from '@/lib/metadata/schema'
-import type { ProjectRow, TrackRow } from '@/lib/metadata/bundle'
 
 // ─── Types ───────────────────────────────────────────────────────────────
+
+/** The minimal project fields the manifest builder actually reads. */
+export type ManifestProjectInput = {
+  title: string
+  artist_name?: string | null
+}
+
+/**
+ * The minimal track fields the manifest builder actually reads. Declared here
+ * (not cast at call sites) so narrower page-level selects — e.g. the play page
+ * omits key_signature — stay compiler-checked instead of `as unknown as`-forced.
+ */
+export type ManifestTrackInput = {
+  id: string
+  title?: string | null
+  track_number?: number | null
+  isrc?: string | null
+  iswc?: string | null
+  duration_seconds?: number | null
+  bpm?: number | null
+  key_signature?: string | null
+  language?: string | null
+  audio_file_url?: string | null
+  metadata?: Record<string, unknown> | null
+}
 
 /** A single downloadable file in the export bundle. */
 export type BundleFile = {
@@ -60,7 +84,7 @@ export type ExportManifest = {
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 /** Sort tracks by track_number ascending; tracks with null come last. */
-function sortTracks(tracks: TrackRow[]): TrackRow[] {
+function sortTracks(tracks: ManifestTrackInput[]): ManifestTrackInput[] {
   return [...tracks].sort((a, b) => (a.track_number ?? 9999) - (b.track_number ?? 9999))
 }
 
@@ -120,8 +144,8 @@ function makeUniqueNamer(): (name: string) => string {
  * queries. All I/O responsibility belongs to the export route that calls it.
  */
 export function buildExportManifest(
-  project: ProjectRow & { artist_name?: string | null },
-  tracks: TrackRow[]
+  project: ManifestProjectInput,
+  tracks: ManifestTrackInput[]
 ): ExportManifest {
   const sorted = sortTracks(tracks)
   const files: BundleFile[] = []
@@ -129,8 +153,8 @@ export function buildExportManifest(
   let hasMaster = false
 
   for (const t of sorted) {
-    const num = t.track_number
-    const title = t.title
+    const num = t.track_number ?? null
+    const title = t.title ?? null
 
     // Share MP3 — present when audio_file_url is set
     if (t.audio_file_url) {
@@ -184,13 +208,13 @@ export function buildExportManifest(
   const exportTracks: ExportTrack[] = sorted.map(t => ({
     id: t.id,
     title: t.title ?? 'Untitled track',
-    track_number: t.track_number,
-    isrc: t.isrc,
-    iswc: t.iswc,
-    duration_seconds: t.duration_seconds,
-    bpm: t.bpm,
-    key_signature: t.key_signature,
-    language: t.language,
+    track_number: t.track_number ?? null,
+    isrc: t.isrc ?? null,
+    iswc: t.iswc ?? null,
+    duration_seconds: t.duration_seconds ?? null,
+    bpm: t.bpm ?? null,
+    key_signature: t.key_signature ?? null,
+    language: t.language ?? null,
     composers: readComposers(t.metadata),
   }))
 
