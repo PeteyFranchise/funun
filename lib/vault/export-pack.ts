@@ -92,6 +92,24 @@ function bundleFilename(
   return `${num}-${slug}.${kind}.${ext}`
 }
 
+/**
+ * Per-manifest filename deduplicator. Two tracks can legitimately collide
+ * (shared/null track_number plus identical or empty slugs — non-ASCII titles
+ * all slugify to 'track'), and archiver does NOT deduplicate entries: most
+ * extractors silently keep only one duplicate, dropping a deliverable.
+ * Appends `-2`, `-3`, … before the first dot on repeats.
+ */
+function makeUniqueNamer(): (name: string) => string {
+  const seen = new Map<string, number>()
+  return name => {
+    const n = (seen.get(name) ?? 0) + 1
+    seen.set(name, n)
+    if (n === 1) return name
+    const dot = name.indexOf('.')
+    return dot === -1 ? `${name}-${n}` : `${name.slice(0, dot)}-${n}${name.slice(dot)}`
+  }
+}
+
 // ─── Main export ─────────────────────────────────────────────────────────
 
 /**
@@ -107,6 +125,7 @@ export function buildExportManifest(
 ): ExportManifest {
   const sorted = sortTracks(tracks)
   const files: BundleFile[] = []
+  const unique = makeUniqueNamer()
   let hasMaster = false
 
   for (const t of sorted) {
@@ -119,7 +138,7 @@ export function buildExportManifest(
       // treat it as the path directly (the route already knows the bucket).
       files.push({
         path: t.audio_file_url,
-        filename: bundleFilename(num, title, 'share', 'mp3'),
+        filename: unique(bundleFilename(num, title, 'share', 'mp3')),
         kind: 'share',
         size: 0,
       })
@@ -131,7 +150,7 @@ export function buildExportManifest(
       hasMaster = true
       files.push({
         path: master.path,
-        filename: bundleFilename(num, title, 'master', master.ext),
+        filename: unique(bundleFilename(num, title, 'master', master.ext)),
         kind: 'master',
         size: master.size,
       })
@@ -143,7 +162,7 @@ export function buildExportManifest(
       const ext = stems.name.split('.').pop() ?? 'zip'
       files.push({
         path: stems.path,
-        filename: bundleFilename(num, title, 'stems', ext),
+        filename: unique(bundleFilename(num, title, 'stems', ext)),
         kind: 'stems',
         size: stems.size,
       })
@@ -154,7 +173,7 @@ export function buildExportManifest(
     if (instrumental) {
       files.push({
         path: instrumental.path,
-        filename: bundleFilename(num, title, 'instrumental', instrumental.ext),
+        filename: unique(bundleFilename(num, title, 'instrumental', instrumental.ext)),
         kind: 'instrumental',
         size: instrumental.size,
       })
