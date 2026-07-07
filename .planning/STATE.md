@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 14
-current_phase_name: playback-room-refinement
+current_phase: 15
+current_phase_name: account-capability-model
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-07-07T08:48:07.539Z"
-last_activity: 2026-07-06
-last_activity_desc: Phase 14 execution started
+stopped_at: "Phase 15 Plan 01 paused at Task 3 checkpoint (blocking-human): schema push cannot run in this sandbox (DB password required, none available)"
+last_updated: "2026-07-07T09:02:46.492Z"
+last_activity: 2026-07-07
+last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 11
   completed_phases: 9
-  total_plans: 44
+  total_plans: 48
   completed_plans: 44
   percent: 82
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 14 — playback-room-refinement
+**Current focus:** Phase 15 — account-capability-model
 
 ## Current Position
 
-Phase: 14 (playback-room-refinement) — EXECUTING
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-07-06 — Phase 14 execution started
+Phase: 15 (account-capability-model) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 15
+Last activity: 2026-07-07 — Phase 15 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -129,6 +129,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 currently.
 
 - [Phase 08] Task 3 (schema push, migrations 034-040) could not run in this sandbox: no supabase/config.toml, no linked Supabase project, SUPABASE_ACCESS_TOKEN unset. Manual-intervention gap -- see 08-05-SUMMARY.md for exact commands a human must run before Phase 8 is verified.
+- [Phase 15-01] Task 3 (checkpoint:human-verify, blocking-human): schema push for migration 042 (capability_grants) could not run in this sandbox. supabase/config.toml exists and the project is linked (funun / wgfjakfiyeewzfuxkgyo) and the CLI has a stored access token (supabase projects list succeeds), but "supabase db push --dry-run" fails at the interactive Postgres database-password prompt (FATAL: password authentication failed for user postgres -- no password supplied); SUPABASE_ACCESS_TOKEN and any DB password are unset in this shell and .env.local cannot be read for secrets. Migrations 034-041 also remain unpushed from Phase 8. A human must run "supabase db push" with the real database password (or --db-url) then run the 3 SQL checks in 15-01-PLAN.md Task 3 before Phase 15 Plan 01 can be marked verified.
 
 ### Quick Tasks Completed
 
@@ -171,10 +172,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/15-account-capability-model/15-CONTEXT.md
+**Resume file:** .planning/phases/15-account-capability-model/15-01-PLAN.md
 
-Last session: 2026-07-07T08:04:57.432Z
-Stopped at: Phase 15 context gathered
+Last session: 2026-07-07T09:02:46.476Z
+Stopped at: Phase 15 Plan 01 paused at Task 3 checkpoint (blocking-human): schema push cannot run in this sandbox (DB password required, none available)
 Resume file: None
 
 ## Operator Next Steps
