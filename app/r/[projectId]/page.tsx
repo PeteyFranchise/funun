@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import { readComposers, COMPOSER_ROLE_LABELS } from '@/lib/metadata/schema'
 import { PlaybackView, type TrackView } from '@/components/vault/PlaybackView'
@@ -22,7 +22,7 @@ type TrackRow = {
   metadata?: Record<string, unknown> | null
 }
 
-function toTrackViews(tracks: TrackRow[]): TrackView[] {
+function toTrackViews(tracks: TrackRow[], signedByPath: Record<string, string>): TrackView[] {
   return [...tracks]
     .sort((a, b) => (a.track_number ?? 0) - (b.track_number ?? 0))
     .map((t, i) => {
@@ -37,7 +37,9 @@ function toTrackViews(tracks: TrackRow[]): TrackView[] {
         iswc: t.iswc ?? null,
         bpm: t.bpm ?? null,
         language: t.language ?? null,
-        audioUrl: t.audio_file_url ?? null,
+        // audio_file_url stores a storage PATH in a private bucket, not a URL —
+        // only a server-minted signed URL is playable (mirrors the play page).
+        audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
         instrumentalUrl: null,
         hasStems: false,
         stemsUrl: null,
@@ -52,6 +54,7 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
 
   let project: { title: string; cover_art_url: string | null; tracks?: TrackRow[] } | null = null
   let artist: string | null = null
+  const signedByPath: Record<string, string> = {}
 
   if (DEMO) {
     const p = await getDemoProject(projectId)
@@ -79,9 +82,25 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
       .eq('id', (data as { user_id: string }).user_id)
       .maybeSingle()
     artist = prof?.artist_name ?? null
+
+    // Mint short-lived signed URLs for public playback. The `is_public` gate above
+    // is the app-level authorization for using the service client here — the bucket
+    // is private, so raw storage paths can never play in <audio src>.
+    const paths = (project.tracks ?? [])
+      .map(t => t.audio_file_url)
+      .filter((p): p is string => Boolean(p))
+    if (paths.length > 0) {
+      const service = createServiceClient()
+      const { data: signed } = await service.storage
+        .from('track-audio')
+        .createSignedUrls(paths, 60 * 60 * 2)
+      for (const row of signed ?? []) {
+        if (row.signedUrl && row.path) signedByPath[row.path] = row.signedUrl
+      }
+    }
   }
 
-  const tracks = toTrackViews(project.tracks ?? [])
+  const tracks = toTrackViews(project.tracks ?? [], signedByPath)
 
   return (
     <div className="min-h-screen bg-ink text-white">
