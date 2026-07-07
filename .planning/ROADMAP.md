@@ -210,10 +210,10 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Wave 2** *(blocked on Wave 1)*
 
 - [ ] 15-02-PLAN.md — capabilities request + admin approve API routes; D-14 server-side hasCapability() enforcement on opportunity posting
-- [ ] 15-03-PLAN.md — unified capability-aware ArtistNav (D-05/D-08), (industry) layout retirement + route relocation (D-06/D-07), D-09 footer request CTA
 
 **Wave 3** *(blocked on Wave 2)*
 
+- [ ] 15-03-PLAN.md — unified capability-aware ArtistNav (D-05/D-08), (industry) layout retirement + route relocation (D-06/D-07), D-09 footer request CTA (depends on 15-02's /api/capabilities/request route)
 - [ ] 15-04-PLAN.md — admin capability-requests approval queue page + component (D-03/D-11)
 
 ## Progress
