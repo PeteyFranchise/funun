@@ -4,8 +4,10 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import { readComposers, readMasterAudio, readStems, readInstrumental, COMPOSER_ROLE_LABELS } from '@/lib/metadata/schema'
 import { readinessLabel } from '@/lib/vault/readiness'
+import { buildExportManifest } from '@/lib/vault/export-pack'
 import { Topbar } from '@/components/layout/Topbar'
 import { PlaybackView, type TrackView } from '@/components/vault/PlaybackView'
+import { ExportPackButton } from '@/components/vault/ExportPackButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +60,8 @@ function toTrackViews(tracks: TrackRow[], signedByPath: Record<string, string>):
         hasStems: Boolean(stems),
         // Signed download URL for the stems ZIP
         stemsUrl: stems ? (signedByPath[stems.path] ?? null) : null,
+        // Whether this track has a master WAV — used for the no-master gate on Export Pack (D-10)
+        hasMasterWav: Boolean(readMasterAudio(t.metadata)),
         credits: composers.map(c => ({
           name: c.name,
           role: COMPOSER_ROLE_LABELS[c.role],
@@ -138,6 +142,27 @@ export default async function PlaybackPage({ params }: { params: Promise<{ proje
   const readinessScore = project.vault_readiness_score ?? 0
   const { label, tone } = readinessLabel(readinessScore)
 
+  // Derive export pack manifest to know which artifacts exist (for the button gate + panel list).
+  // buildExportManifest is pure (no I/O) — safe to call server-side here.
+  // artist is already in scope from load() above.
+  const exportManifest = !DEMO
+    ? buildExportManifest(
+        { title: project.title, artist_name: artist } as unknown as Parameters<typeof buildExportManifest>[0],
+        rawTracks as Parameters<typeof buildExportManifest>[1]
+      )
+    : null
+
+  // Artifact labels shown in the Export Pack panel's included list (only items that exist — D-08)
+  const artifactLabels: string[] = []
+  if (exportManifest) {
+    if (exportManifest.files.some(f => f.kind === 'master')) artifactLabels.push('Master WAV')
+    if (exportManifest.files.some(f => f.kind === 'share')) artifactLabels.push('Share MP3')
+    if (exportManifest.files.some(f => f.kind === 'stems')) artifactLabels.push('Stems (ZIP)')
+    if (exportManifest.files.some(f => f.kind === 'instrumental')) artifactLabels.push('Instrumental')
+    artifactLabels.push('Credits & splits sheet (PDF)')
+    artifactLabels.push('Metadata sheet (PDF)')
+  }
+
   // Topbar readiness chip tone classes (D-02, placement 1)
   const chipClasses: Record<typeof tone, string> = {
     green: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-400',
@@ -159,6 +184,14 @@ export default async function PlaybackPage({ params }: { params: Promise<{ proje
           <span className="h-[7px] w-[7px] rounded-full bg-current" />
           Readiness {readinessScore} · {label}
         </Link>
+        {/* Export pack button (D-10) — rightmost topbar element, gated on master presence */}
+        {!DEMO && exportManifest && (
+          <ExportPackButton
+            projectId={projectId}
+            hasMaster={exportManifest.hasMaster}
+            artifactLabels={artifactLabels}
+          />
+        )}
       </Topbar>
       <PlaybackView
         releaseTitle={project.title}

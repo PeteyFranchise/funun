@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { readinessLabel } from '@/lib/vault/readiness'
 import { StemsUpload } from '@/components/vault/StemsUpload'
+import { ExportPackPanel } from '@/components/vault/ExportPackPanel'
 
 export type TrackView = {
   id: string
@@ -18,6 +19,7 @@ export type TrackView = {
   instrumentalUrl: string | null   // signed URL for the instrumental (null when absent)
   hasStems: boolean                // whether a stems ZIP exists
   stemsUrl: string | null          // signed download URL for stems ZIP (null when absent)
+  hasMasterWav?: boolean           // whether a master WAV (not just share MP3) exists
   credits: { name: string; role: string; split: number }[]
   splitTotal: number
 }
