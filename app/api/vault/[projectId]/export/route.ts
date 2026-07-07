@@ -121,6 +121,13 @@ export async function POST(
   // from no additional CPU-expensive compression within the Hobby 10s budget (Pitfall 3).
   const archive = archiver({ zlib: { level: 0 } })
   const passthrough = new stream.PassThrough()
+  // Propagate mid-stream archiver failures into the upload stream. Without this,
+  // an unhandled 'error' event on the EventEmitter crashes the process, and the
+  // never-ending passthrough hangs the upload await until Vercel's 10s kill with
+  // no JSON error ever returned to the panel.
+  archive.on('error', err => {
+    passthrough.destroy(err instanceof Error ? err : new Error(String(err)))
+  })
   archive.pipe(passthrough)
 
   // Append each existing audio/stems file from Storage
@@ -145,15 +152,31 @@ export async function POST(
   const metaBuf = await renderMetadataSheet(manifest)
   archive.append(metaBuf, { name: 'metadata.pdf' })
 
-  archive.finalize()
-
   // ─── Upload to a STABLE path (never stream as Response body — Hobby ceiling) ─
   // Upsert so repeated calls overwrite the previous pack; recipient always gets
   // a fresh signed URL pointing to the current state of the release.
+  //
+  // finalize() races the upload: archiver drains its lazily-read sources only
+  // while the passthrough is being consumed, so both must be awaited together —
+  // a fire-and-forget finalize() leaves stream errors unobserved.
   const packPath = `${user.id}/${projectId}/export-pack.zip`
-  const { error: upError } = await service.storage
-    .from(BUCKET)
-    .upload(packPath, passthrough, { contentType: 'application/zip', upsert: true })
+  let upError: { message: string } | null = null
+  try {
+    const [, upResult] = await Promise.all([
+      archive.finalize(),
+      service.storage
+        .from(BUCKET)
+        .upload(packPath, passthrough, { contentType: 'application/zip', upsert: true }),
+    ])
+    upError = upResult.error
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: `Could not assemble the export pack: ${err instanceof Error ? err.message : String(err)}`,
+      },
+      { status: 502 }
+    )
+  }
   if (upError) {
     return NextResponse.json(
       { error: `Could not save the export pack: ${upError.message}` },
