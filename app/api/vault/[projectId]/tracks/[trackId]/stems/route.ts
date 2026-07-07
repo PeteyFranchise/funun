@@ -22,7 +22,14 @@ export async function POST(request: Request, { params }: RouteCtx) {
     )
   }
 
-  const body = await request.json()
+  // Guarded parse — a malformed/empty body must return a structured 400, not an
+  // unhandled 500; a literal JSON `null` body parses fine but has no properties.
+  let body: Record<string, unknown>
+  try {
+    body = ((await request.json()) ?? {}) as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
 
   if (!body.path || typeof body.path !== 'string' || body.path.trim() === '') {
     return NextResponse.json({ error: 'No stems path provided' }, { status: 400 })
