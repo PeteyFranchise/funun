@@ -126,10 +126,11 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 ### Blockers/Concerns
 
-currently.
+None currently.
 
-- [Phase 08] Task 3 (schema push, migrations 034-040) could not run in this sandbox: no supabase/config.toml, no linked Supabase project, SUPABASE_ACCESS_TOKEN unset. Manual-intervention gap -- see 08-05-SUMMARY.md for exact commands a human must run before Phase 8 is verified.
-- [Phase 15-01] Task 3 (checkpoint:human-verify, blocking-human): schema push for migration 042 (capability_grants) could not run in this sandbox. supabase/config.toml exists and the project is linked (funun / wgfjakfiyeewzfuxkgyo) and the CLI has a stored access token (supabase projects list succeeds), but "supabase db push --dry-run" fails at the interactive Postgres database-password prompt (FATAL: password authentication failed for user postgres -- no password supplied); SUPABASE_ACCESS_TOKEN and any DB password are unset in this shell and .env.local cannot be read for secrets. Migrations 034-041 also remain unpushed from Phase 8. A human must run "supabase db push" with the real database password (or --db-url) then run the 3 SQL checks in 15-01-PLAN.md Task 3 before Phase 15 Plan 01 can be marked verified.
+**Resolved 2026-07-07 (schema push verified live):**
+- ~~[Phase 08] migrations 034-040 unpushed~~ — RESOLVED: `supabase migration list` (run by Pete after `supabase login` + `link --project-ref wgfjakfiyeewzfuxkgyo`) confirmed LOCAL=REMOTE for ALL migrations 001–042. Migrations 034–040 were already live on the remote database; the recorded gap was stale. Phase 8's SC-4/SC-5 live-DB smoke assertions (08-VERIFICATION.md human-verification items) remain individually unexecuted but the push-blocker itself is gone.
+- ~~[Phase 15-01] Task 3 schema push for migration 042~~ — RESOLVED: Pete ran `supabase db push` (applied 041 + 042) and all 3 DB-level checks passed: D-12 backfill (5 artist/approved/backfill rows, zero industry rows correct — no industry accounts exist yet), column lockdown (42501 permission denied as authenticated), partial unique index (duplicate pending insert rejected). See 15-01-SUMMARY.md.
 
 ### Quick Tasks Completed
 
