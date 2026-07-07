@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 14
 current_phase_name: playback-room-refinement
 status: verifying
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-07-07T07:10:27.496Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-07-07T08:04:57.446Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 14 execution started
 progress:
@@ -171,10 +171,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-**Resume file:** None
+**Resume file:** .planning/phases/15-account-capability-model/15-CONTEXT.md
 
-Last session: 2026-07-07T06:48:11.911Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-07-07T08:04:57.432Z
+Stopped at: Phase 15 context gathered
 Resume file: None
 
 ## Operator Next Steps
