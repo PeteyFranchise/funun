@@ -22,6 +22,8 @@ export type BundleFile = {
   filename: string
   /** What audio rendition this file contains. */
   kind: 'master' | 'share' | 'stems' | 'instrumental'
+  /** Size in bytes from upload metadata (0 when unknown, e.g. the share MP3). */
+  size: number
 }
 
 /** A track row enriched with the derived fields PDF renderers need. */
@@ -119,6 +121,7 @@ export function buildExportManifest(
         path: t.audio_file_url,
         filename: bundleFilename(num, title, 'share', 'mp3'),
         kind: 'share',
+        size: 0,
       })
     }
 
@@ -130,6 +133,7 @@ export function buildExportManifest(
         path: master.path,
         filename: bundleFilename(num, title, 'master', master.ext),
         kind: 'master',
+        size: master.size,
       })
     }
 
@@ -141,6 +145,7 @@ export function buildExportManifest(
         path: stems.path,
         filename: bundleFilename(num, title, 'stems', ext),
         kind: 'stems',
+        size: stems.size,
       })
     }
 
@@ -151,6 +156,7 @@ export function buildExportManifest(
         path: instrumental.path,
         filename: bundleFilename(num, title, 'instrumental', instrumental.ext),
         kind: 'instrumental',
+        size: instrumental.size,
       })
     }
   }

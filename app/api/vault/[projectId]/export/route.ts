@@ -37,6 +37,11 @@ import { renderMetadataSheet } from '@/lib/vault/pdf/metadata-sheet'
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const BUCKET = 'track-audio'
 
+// Assembly buffers each artifact in memory inside Vercel Hobby's 10s hard
+// ceiling, and the destination bucket caps objects at 250MB (migration 041).
+// Reject oversized packs up front instead of burning the whole budget.
+const MAX_PACK_BYTES = 200 * 1024 * 1024 // 200MB
+
 // Columns the manifest + PDF renderers need from vault_projects
 const PROJECT_COLS =
   'id, title, type, genre, release_date, cover_art_url, user_id'
@@ -111,6 +116,19 @@ export async function POST(
     return NextResponse.json(
       { error: 'Upload a master WAV before generating an export pack.' },
       { status: 400 }
+    )
+  }
+
+  // Size gate — summed from upload metadata (share MP3 sizes are unknown → 0,
+  // acceptable slack: masters/stems dominate pack weight by orders of magnitude).
+  const totalBytes = manifest.files.reduce((sum, f) => sum + f.size, 0)
+  if (totalBytes > MAX_PACK_BYTES) {
+    return NextResponse.json(
+      {
+        error:
+          'Export pack is too large to assemble (over 200MB of audio). Download the stems ZIP separately from the playback room instead.',
+      },
+      { status: 413 }
     )
   }
 
