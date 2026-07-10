@@ -225,4 +225,83 @@ git push -u origin feature/your-change
 
 ---
 
+## Authentication
+
+Email/password auth via **Supabase Auth**, with confirmation and password-reset emails
+delivered through **Resend** (custom SMTP configured in the Supabase dashboard). All keys
+come from environment variables — no secrets are committed.
+
+### Flows
+
+| Flow | Page | Supabase call |
+|---|---|---|
+| Sign up | `/signup` | `signUp({ email, password, options: { emailRedirectTo } })` — sends a confirmation email; session stays `null` until the user verifies |
+| Email confirmation | `/auth/callback` | `exchangeCodeForSession(code)` — verifies the `?code=` link, then redirects into the app |
+| Sign in | `/signin` | `signInWithPassword({ email, password })` |
+| Sign out | `SignOutButton` | `signOut()` |
+| Forgot password | `/forgot-password` | `resetPasswordForEmail(email, { redirectTo: .../auth/callback?next=/update-password })` |
+| Set new password | `/update-password` | `updateUser({ password })` (reached via the recovery link → `/auth/callback` → here) |
+
+Route protection lives in [`middleware.ts`](middleware.ts): `/vault`, `/dashboard`,
+`/settings`, `/collaborators`, `/split-sheets`, `/launchpad`, and `/admin` require a session;
+`/signin`, `/signup`, and `/forgot-password` bounce signed-in users to `/vault`;
+`/update-password` stays reachable during the temporary recovery session.
+
+### Required env vars
+
+| Variable | Where it goes | Source |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `.env.local` (browser-exposed) | Supabase → Project Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local` (browser-exposed) | Supabase → Project Settings → API → `anon` `public` key |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` (server-only, never exposed) | Supabase → Project Settings → API → `service_role` key |
+| `NEXT_PUBLIC_APP_URL` | `.env.local` | `http://localhost:3000` locally · `https://funun.studio` in prod — used to build reset-email redirect URLs |
+
+### Supabase dashboard config (one-time, not in code)
+
+**Authentication → Emails → SMTP:** Resend, verified sender `noreply@auth.funun.studio`
+(display name **Funún**), host `smtp.resend.com`, port `465`, username `resend`, password =
+a Resend API key.
+
+**Authentication → URL Configuration:**
+- **Site URL:** `https://funun.studio` (production). This is the fallback redirect *and* the
+  `{{ .SiteURL }}` template variable in the auth emails — never leave it as `localhost` on a
+  production project.
+- **Redirect URLs allowlist** (production entries always; add the localhost pair only if you
+  test locally):
+  ```
+  https://funun.studio/auth/callback
+  https://funun.studio/update-password
+  http://localhost:3000/auth/callback      # dev only
+  http://localhost:3000/update-password    # dev only
+  ```
+  Supabase matches the base path and ignores the `?next=…` query string, so the `/auth/callback`
+  entry covers `/auth/callback?next=/update-password`. The `/update-password` entries are a
+  defensive fallback for the hash-fragment recovery flow.
+
+### How to test
+
+**Signup + email confirmation**
+1. Go to `/signup`, register with a real inbox you control.
+2. You should see "Check your email." A confirmation email arrives from **Funún
+   `<noreply@auth.funun.studio>`**.
+3. Click the link → it hits `/auth/callback`, the session is created, and you land in `/vault`.
+
+**Password reset**
+1. Go to `/signin` → **Forgot password?** → `/forgot-password`.
+2. Enter the account email → "If an account exists… we've sent a reset link."
+3. The recovery email arrives (same sender). Click it → `/auth/callback` exchanges the code →
+   you land on `/update-password` with an active recovery session.
+4. Set a new password → confirmation → auto-redirect to `/vault`. Sign out and sign back in
+   with the new password to confirm.
+
+**Verify email delivery**
+- **Resend → Emails/Logs:** each confirmation/reset send appears with delivery status. No row =
+  Supabase never called SMTP (check the SMTP config) or the address was rate-limited.
+- **Supabase → Authentication → Audit Logs / Users:** shows the auth event (user created,
+  recovery requested) independent of email delivery.
+- A stuck "Check your email" with nothing in Resend usually means the SMTP password (Resend API
+  key) is wrong or the sender domain isn't verified in Resend.
+
+---
+
 Built by Pete — multi-platinum songwriter, 15 years in the music industry.
