@@ -13,7 +13,16 @@ export async function middleware(req: NextRequest) {
 
   // Route groups like (artist) are NOT part of the URL, so match real path prefixes.
   const { pathname } = req.nextUrl
-  const isAuthRoute = pathname.startsWith('/signin') || pathname.startsWith('/signup')
+  // /forgot-password is a public auth route: a fully signed-in user has no reason
+  // to be there, so it bounces to /vault like signin/signup. /update-password is
+  // deliberately NOT listed here — during a password recovery the user holds a
+  // temporary session, and treating it as an auth route would bounce them off
+  // the page before they can set a new password. It also stays out of isProtected
+  // so the recovery landing is always reachable.
+  const isAuthRoute =
+    pathname.startsWith('/signin') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password')
   const isProtected =
     pathname.startsWith('/vault') ||
     pathname.startsWith('/dashboard') ||
