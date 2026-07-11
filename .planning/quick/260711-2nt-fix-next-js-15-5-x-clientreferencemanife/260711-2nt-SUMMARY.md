@@ -35,18 +35,37 @@ no client-component boundary anywhere — exactly the trigger shape.
 6. Matched the failure to vercel/next.js#93862 via web search — exact error string, exact route
    shape (server-only page, no client boundary).
 
-## Fix
-- New `components/admin/ManifestBoundary.tsx` — no-op `'use client'` component, renders `null`.
-- Rendered alongside `{children}` in `app/(admin)/layout.tsx` — gives the whole `(admin)` route
-  group (`/`, `/admin/checklist`, `/admin/members`, `/admin/curators`, `/tips`) a real
-  client-component boundary, not just the one page that surfaced the bug.
+## Fix — iteration 1 (insufficient, reverted)
+- New `components/admin/ManifestBoundary.tsx` — no-op `'use client'` component.
+- Rendered alongside `{children}` in `app/(admin)/layout.tsx`.
+- **Result:** Vercel Preview build failed identically. Confirmed locally that this bug DOES
+  reproduce (contrary to initial assumption) — `.next/server/app/(admin)/page_client-reference-manifest.js`
+  was still absent from the local build output even with the layout-level fix, and even after a
+  second attempt placing a runtime-gated client reference directly inside `page.tsx`. Next
+  generates a manifest per page, not per layout subtree, so neither workaround touched the page
+  actually missing one.
+
+## Fix — iteration 2 (root cause, actual fix)
+Investigating why `app/(admin)/page.tsx` specifically never got a manifest (even with a direct,
+non-tree-shakeable client reference) surfaced the real root cause: **`app/(admin)/page.tsx` and
+`app/page.tsx` both resolve to the same URL, `/`** — route groups don't add a URL segment. Next.js
+does not hard-error on this collision; it silently resolves in favor of `app/page.tsx` (confirmed:
+`/` in the build output is unchanged, still served by the real root page). `app/(admin)/page.tsx`
+was orphaned, unreachable dead code, excluded from the real route manifest — which is exactly why
+Next never wrote its `client-reference-manifest.js`, while Vercel's build still expects that file
+for every `page.tsx` found on disk.
+
+**Fix:** delete `app/(admin)/page.tsx` entirely (zero behavior change — it could never have been
+reached in production). Reverted the now-unnecessary `ManifestBoundary` component and layout
+wiring from iteration 1.
 
 ## Verification
 - `npx tsc --noEmit` — clean.
-- `npm run build` — exit 0, all `/admin/*` routes present in output, no ENOENT.
-- Note: this bug never reproduced locally (Vercel-environment-specific), so a clean local build
-  does not fully prove the fix — the real test is the Vercel Preview check on PR #28, being
-  watched separately.
+- `npm run build` — exit 0.
+- **Stronger local proof this time:** inspected `.next/server/app/(admin)/` directly — every
+  remaining page (`tips`, `checklist`, `admin/curators`, `admin/members`) has its manifest; no
+  orphaned page remains to be missing one.
+- Real confirmation is still the Vercel Preview check on PR #28 (2nd commit) — being watched.
 
 ## Deliverable
 [PR #28](https://github.com/PeteyFranchise/funun/pull/28) — `fix-admin-manifest-regression`
