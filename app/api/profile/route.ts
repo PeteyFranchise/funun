@@ -31,6 +31,7 @@ const EDITABLE_FIELDS = [
   'mailing_address',
   'industry_roles',
   'genres',
+  'allow_resharing',
 ] as const
 
 function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
@@ -83,6 +84,10 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
         update[key] = (value as unknown[])
           .filter((s): s is string => typeof s === 'string' && ALL_GENRE_SLUGS.includes(s))
       }
+      continue
+    }
+    if (key === 'allow_resharing') {
+      if (typeof value === 'boolean') update[key] = value
       continue
     }
     if (typeof value === 'string') {

@@ -376,6 +376,9 @@ export type ArtistProfile = {
   roles: ProfileRole[]
   open_to: OpenTo[]
   featured_project_id: string | null
+  // Lets visitors reshare an already-public release from the public player
+  // (migration 041, Phase 9 D-07). Default false — owner opts in.
+  allow_resharing: boolean
   // Wave 4 identity (migration 034)
   member_type: 'artist' | 'industry'
   search_vector: string | null

@@ -46,6 +46,7 @@ type FormState = {
   mailing_address: string
   mailing_address_structured: Record<string, string> | null
   industry_roles: string[]
+  allow_resharing: boolean
 }
 
 // State for the Rights Identity section — saved to /api/user-profiles
@@ -85,6 +86,7 @@ function toForm(p: ArtistProfile): FormState {
     mailing_address: (p.mailing_address as { raw?: string } | null)?.raw ?? '',
     mailing_address_structured: (p.mailing_address as Record<string, string> | null) ?? null,
     industry_roles: Array.isArray(p.industry_roles) ? p.industry_roles : [],
+    allow_resharing: p.allow_resharing ?? false,
   }
 }
 
@@ -586,6 +588,42 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
               />
             </div>
           </div>
+        </section>
+
+        {/* ── Sharing ────────────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Sharing</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Controls whether listeners can reshare your public releases from the player.
+              Your own Share button always works.
+            </p>
+          </div>
+          <label className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+            <span className="text-sm text-white/80">
+              Allow others to share my music
+              <span className="mt-0.5 block text-xs text-white/40">
+                Adds a Share button to your public player for every visitor. Only applies to releases you&apos;ve made public.
+              </span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.allow_resharing}
+              onClick={() => set('allow_resharing', !form.allow_resharing)}
+              className={[
+                'relative h-6 w-11 flex-none rounded-full border transition',
+                form.allow_resharing ? 'border-transparent bg-grad' : 'border-white/15 bg-white/10',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white transition-all',
+                  form.allow_resharing ? 'left-[22px]' : 'left-[2px]',
+                ].join(' ')}
+              />
+            </button>
+          </label>
         </section>
 
         {/* ── Rights & Royalties ─────────────────────────────────── */}

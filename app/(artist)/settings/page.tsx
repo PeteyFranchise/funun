@@ -33,6 +33,7 @@ const DEMO_PROFILE: ArtistProfile = {
   roles: [{ kind: 'preset', slug: 'artist' }],
   open_to: ['collabs', 'sync'],
   featured_project_id: null,
+  allow_resharing: false,
   member_type: 'artist',
   search_vector: null,
   legal_first_name: null,

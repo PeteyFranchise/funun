@@ -7,6 +7,7 @@ import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
 import { ActivityFeed, type ActivityState } from './ActivityFeed'
 import { DmWidget, type DmState } from './DmWidget'
+import { ProfileShareButton } from './ProfileShareButton'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -211,9 +212,7 @@ export function ProfileView({
                 <Link href="/settings" className="inline-flex items-center gap-[9px] rounded-[11px] bg-grad px-[22px] py-[13px] text-[15px] font-bold text-white shadow-cta">
                   Edit profile
                 </Link>
-                <button className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white">
-                  Share
-                </button>
+                <ProfileShareButton handle={data.handle} name={data.name} />
                 <button className="rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-lavdim" title="Analytics coming soon">
                   Analytics
                 </button>

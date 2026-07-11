@@ -73,16 +73,32 @@ export type Composer = {
   split: number
 }
 
-// Per-track lyrics, stored inside tracks.metadata JSONB. Plain text for v1
-// (time-synced/LRC is a later extension under the same object).
+// Per-track lyrics, stored inside tracks.metadata JSONB. `text` is the plain
+// full lyric and stays the source of truth for display. `lines` is an optional
+// time-synced track (each entry: seconds offset + that line's text) added for
+// the public player's future karaoke-style highlighting. It is additive — a
+// row with only `text` is still valid, and the current player renders `text`
+// regardless of whether `lines` is present. Populating `lines` (manual marking
+// vs. forced alignment) is a deferred fast-follow (Phase 9 D-13).
+export type TimedLyricLine = {
+  // Seconds from the start of the track when this line begins.
+  t: number
+  text: string
+}
 export type TrackLyrics = {
   text: string
   language?: string
   explicit?: boolean
+  lines?: TimedLyricLine[]
   updated_at?: string
 }
 
 export const LYRICS_MAX = 20000
+
+/** True when a track carries time-synced lyric lines (not just plain text). */
+export function hasTimedLyrics(lyrics: TrackLyrics | null | undefined): boolean {
+  return Array.isArray(lyrics?.lines) && lyrics.lines.length > 0
+}
 
 // ─── Neighbouring rights / DDEX RDR-N (recording side) ───────────────
 // Performers and recording context needed to register a sound recording
@@ -241,8 +257,19 @@ export function readLyrics(metadata: Record<string, unknown> | null | undefined)
     text: raw.text,
     language: typeof raw.language === 'string' && raw.language ? raw.language : undefined,
     explicit: raw.explicit === true,
+    lines: readTimedLines(raw.lines),
     updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
   }
+}
+
+/** Read a well-formed time-synced lyric array, or undefined if absent/invalid. */
+function readTimedLines(input: unknown): TimedLyricLine[] | undefined {
+  if (!Array.isArray(input)) return undefined
+  const lines = input
+    .map(l => (l ?? {}) as Record<string, unknown>)
+    .filter(l => typeof l.t === 'number' && Number.isFinite(l.t) && typeof l.text === 'string')
+    .map(l => ({ t: Math.max(0, l.t as number), text: l.text as string }))
+  return lines.length ? lines : undefined
 }
 
 /** Validate + normalize lyrics input from the client (null clears them). */
@@ -251,7 +278,8 @@ export function sanitizeLyrics(input: unknown): TrackLyrics | null {
   const text = String(o.text ?? '').slice(0, LYRICS_MAX)
   if (!text.trim()) return null
   const language = typeof o.language === 'string' && o.language ? o.language : undefined
-  return { text, language, explicit: o.explicit === true, updated_at: new Date().toISOString() }
+  const lines = readTimedLines(o.lines)
+  return { text, language, explicit: o.explicit === true, lines, updated_at: new Date().toISOString() }
 }
 
 // ── Master audio (the distribution-grade WAV; the shareable MP3 lives on the
