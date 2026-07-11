@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { ManifestBoundary } from '@/components/admin/ManifestBoundary'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createServerClient()
@@ -46,7 +45,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </Link>
       </nav>
       <div className="flex min-h-screen flex-1 flex-col">{children}</div>
-      <ManifestBoundary />
     </div>
   )
 }
