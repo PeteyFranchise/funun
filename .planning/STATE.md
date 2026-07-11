@@ -138,6 +138,7 @@ None currently.
 |---|-------------|------|--------|-----------|
 | 260706-3bp | Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types | 2026-07-06 | b41a133 | [260706-3bp-fix-typescript-type-error-in-addressauto](./quick/260706-3bp-fix-typescript-type-error-in-addressauto/) |
 | 260710-q9j | Add password-reset flow (/forgot-password + /update-password) to Supabase email/password auth, harden auth callback + middleware, document auth setup in README | 2026-07-10 | 954a033 | [260710-q9j-add-password-reset-flow-to-supabase-emai](./quick/260710-q9j-add-password-reset-flow-to-supabase-emai/) |
+| 260711-2nt | Fix Next.js 15.5.x clientReferenceManifest build regression (vercel/next.js#93862) blocking every Vercel deployment on the project (PR #28); root cause of PR #27/#26 also failing to build | 2026-07-11 | PR #28 | [260711-2nt-fix-next-js-15-5-x-clientreferencemanife](./quick/260711-2nt-fix-next-js-15-5-x-clientreferencemanife/) |
 
 ### Roadmap Evolution
 
