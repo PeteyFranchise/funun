@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { Opportunity, OpportunityType, CompensationType } from '@/types'
 import { runMatchingForOpportunity } from '@/lib/matching/run'
+import { hasCapability } from '@/lib/capabilities/check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -48,6 +49,16 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // D-14: server-side capability gate — hasCapability() requires an approved
+  // 'industry' grant row. Nav-hiding (Plan 03) is defense-in-depth only;
+  // this is the authoritative permission boundary (T-15-07 mitigation).
+  if (!(await hasCapability(user.id, 'industry'))) {
+    return NextResponse.json(
+      { error: 'Only accounts with industry access can post opportunities' },
+      { status: 403 }
+    )
+  }
 
   // Must be a registered industry pro.
   const { data: profile } = await supabase
