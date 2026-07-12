@@ -15,8 +15,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **PROFILE-04**: User can set "Open to" availability status (sync licensing, co-writes, features, brand deals) and it displays as chips on their profile
 - [x] **PROFILE-05**: User can pin one release as a "Featured" spotlight on their profile
 - [x] **PROFILE-06**: User sees a stats sidebar (followers, monthly listeners, placements, avg. readiness) on any profile
-- [ ] **PROFILE-07**: User sees a releases grid with readiness rings on any profile
-- [ ] **PROFILE-08**: Profile owner sees Edit profile / Share / View analytics actions; visitors see Follow / Message / more-options instead
+- [x] **PROFILE-07**: User sees a releases grid with readiness rings on any profile
+- [x] **PROFILE-08**: Profile owner sees Edit profile / Share / View analytics actions; visitors see Follow / Message / more-options instead
 - [x] **PROFILE-09**: User can upload and edit their own banner and avatar images
 
 ### Discover (search & discovery)
@@ -96,8 +96,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROFILE-04 | Phase 9 | Complete |
 | PROFILE-05 | Phase 9 | Complete |
 | PROFILE-06 | Phase 9 | Complete |
-| PROFILE-07 | Phase 9 | Pending |
-| PROFILE-08 | Phase 9 | Pending |
+| PROFILE-07 | Phase 9 | Complete |
+| PROFILE-08 | Phase 9 | Complete |
 | PROFILE-09 | Phase 9 | Complete |
 | DISCOVER-01 | Phase 12 | Pending |
 | DISCOVER-02 | Phase 12 | Pending |
