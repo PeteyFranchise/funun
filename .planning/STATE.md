@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 15
 current_phase_name: account-capability-model
-status: executing
-stopped_at: "Phase 15 Plan 02 complete (2/4 plans); Wave 3 (Plans 15-03, 15-04) next — run in parallel, both depend only on 15-02"
+status: complete
+stopped_at: "Phase 15 complete (4/4 plans) — Wave 3 (Plans 15-03, 15-04) executed and verified"
 last_updated: "2026-07-12T00:00:00.000Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 15 Plan 02 completed — resumed after a mid-task interruption, reconciled uncommitted Task 2 work, verified and committed
+last_activity_desc: Phase 15 Plans 03 and 04 completed (nav unification + D-09 CTA, admin approval queue) — phase complete
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 48
-  completed_plans: 45
-  percent: 84
+  completed_plans: 47
+  percent: 98
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 15 — account-capability-model
+**Current focus:** Phase 15 complete — next up is Phase 9 (Rich Member Profile) or PR #26's pending Thomas UAT
 
 ## Current Position
 
-Phase: 15 (account-capability-model) — EXECUTING
-Plan: 2 of 4 complete
-Status: Executing Phase 15 — Wave 3 (Plans 15-03, 15-04) next, run in parallel
-Last activity: 2026-07-12 — Phase 15 Plan 02 completed (capability request/approve routes + D-14 enforcement)
+Phase: 15 (account-capability-model) — COMPLETE
+Plan: 4 of 4 complete
+Status: Phase 15 fully executed — capability_grants schema, request/approve API routes with D-14 server-side enforcement, unified capability-aware nav, and the admin approval queue are all live
+Last activity: 2026-07-12 — Phase 15 Plans 03 (nav unification + D-09 CTA) and 04 (admin approval queue) completed
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -176,13 +176,12 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-**Resume file:** .planning/phases/15-account-capability-model/15-01-PLAN.md
-
-Last session: 2026-07-07T09:02:46.476Z
-Stopped at: Phase 15 Plan 01 paused at Task 3 checkpoint (blocking-human): schema push cannot run in this sandbox (DB password required, none available)
+Last session: 2026-07-12
+Stopped at: Phase 15 complete (4/4 plans) — no open resume file for Phase 15
 Resume file: None
 
 ## Operator Next Steps
 
-- Execute Phase 8 with `/gsd-execute-phase 8` (Identity & Schema Foundation — 6 plans, 3 waves)
-- Phases 9–13 are all UI-forward (design handoff locked at `docs/design/wave-4-social-layer/`); `/gsd-ui-phase` is enabled and applicable
+- Phase 15 (Account Capability Model) is done — `member_type` is now backed by `capability_grants`, with a unified nav, a self-serve request CTA, and an admin approval queue. Manual UAT items from 15-03-SUMMARY.md and 15-04-SUMMARY.md are still outstanding (multi-capability nav visibility, live approve/deny flow).
+- PR #26 (Phase 14 — Playback Room Refinement) is still waiting on Thomas's local UAT before it can be merged.
+- Phase 8 (Identity & Schema Foundation) is complete; Phases 9–13 are the next unstarted Green Room phases and are all UI-forward (design handoff locked at `docs/design/wave-4-social-layer/`); `/gsd-ui-phase` is enabled and applicable.
