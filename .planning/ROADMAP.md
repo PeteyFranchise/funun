@@ -201,15 +201,15 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Goal:** A member can hold both artist and industry capabilities on a single account — `member_type` becomes a set of granted capabilities rather than one exclusive value, so a songwriter who is also an industry contact doesn't need a second signup to use both Sound Vault and Antenna.
 **Requirements**: TBD (no REQUIREMENTS.md IDs yet — this predates that scoping; decisions D-01..D-14 in 15-CONTEXT.md are the acceptance source)
 **Depends on:** Phase 13 (sequencing only — not a technical blocker; scheduled after Green Room ships and beta testing begins, per explicit user decision)
-**Plans:** 4 plans (3 waves)
+**Plans:** 2/4 plans executed
 
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — capability_grants schema (migration 042) + lib/capabilities grant/check helpers + Wave 0 tests + [BLOCKING] schema push (D-01/D-02/D-10/D-12/D-14 foundation)
+- [x] 15-01-PLAN.md — capability_grants schema (migration 042) + lib/capabilities grant/check helpers + Wave 0 tests + [BLOCKING] schema push (D-01/D-02/D-10/D-12/D-14 foundation)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 15-02-PLAN.md — capabilities request + admin approve API routes; D-14 server-side hasCapability() enforcement on opportunity posting
+- [x] 15-02-PLAN.md — capabilities request + admin approve API routes; D-14 server-side hasCapability() enforcement on opportunity posting
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -234,4 +234,4 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
-| 15. Account Capability Model | v1.2 (cross-cutting) | 0/4 | Not started | - |
+| 15. Account Capability Model | v1.2 (cross-cutting) | 2/4 | In Progress|  |
