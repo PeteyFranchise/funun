@@ -151,3 +151,7 @@ None - no external service configuration required.
 ---
 *Phase: 09-rich-member-profile*
 *Completed: 2026-07-12*
+
+## Self-Check: PASSED
+
+All 5 claimed files exist on disk; all 3 commit hashes (c5e4b62, 64ecd2a, cfe137f) found in git log.
