@@ -94,7 +94,19 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. User can pin one release as a "Featured" spotlight on their profile
   4. Profile owner sees Edit profile / Share / View analytics actions and can upload/edit their banner and avatar; a visitor sees Follow / Message / more-options instead
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Foundation: migration 043 (`allow_resharing`) + PATCH allowlist/validators + `TrackLyrics.synced` (D-13) + placements stat + Wave 0 tests + [BLOCKING] schema push
+- [ ] 09-02-PLAN.md — Avatar/banner upload route + `AvatarBannerUpload` component (vault-assets bucket, PROFILE-09)
+- [ ] 09-03-PLAN.md — Public `PublicPlaybackView` + `LyricsPanel` + `/r/[projectId]` render swap (D-01..D-14)
+- [ ] 09-04-PLAN.md — Settings roles/open-to/resharing editors + `ShareButton` + `ProfileMoreMenu` + `FeaturedPicker` (PROFILE-02/04/05/08)
+- [ ] 09-05-PLAN.md — ProfileView + `/u/[handle]` integration: presence dot, placements row, mount share/upload/picker/menu (PROFILE-01/03/06/08/09)
+
+**Wave 1**: 09-01 (foundation)
+**Wave 2** *(blocked on Wave 1)*: 09-02 ‖ 09-03 ‖ 09-04 (parallel — zero file overlap)
+**Wave 3** *(blocked on 09-01, 09-02, 09-04)*: 09-05 (ProfileView + page integration)
+
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/user-profile.html` (primary — header, roles, stats, releases grid, Featured spotlight, owner-vs-visitor actions), `artist-profile.html` (the new public "now playing" player, D-01), `playback.html` (contrast only — stays the private working room, out of this phase's scope). Full detail already gathered in `09-CONTEXT.md`.
 
@@ -228,7 +240,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
-| 9. Rich Member Profile | v1.2 | 0/TBD | Not started | - |
+| 9. Rich Member Profile | v1.2 | 0/5 | Planned | - |
 | 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
