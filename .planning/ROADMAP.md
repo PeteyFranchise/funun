@@ -94,18 +94,20 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. User can pin one release as a "Featured" spotlight on their profile
   4. Profile owner sees Edit profile / Share / View analytics actions and can upload/edit their banner and avatar; a visitor sees Follow / Message / more-options instead
 
-**Plans**: 5 plans
+**Plans**: 6 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Foundation: migration 043 (`allow_resharing`) + PATCH allowlist/validators + `TrackLyrics.synced` (D-13) + placements stat + Wave 0 tests + [BLOCKING] schema push
+- [ ] 09-01a-PLAN.md — Wave 0 foundation (autonomous): four RED Jest scaffolds + `"test": "jest"` script + additive `TrackLyrics.synced` (D-13) + `OPEN_TO_VALUES` export
+- [ ] 09-01b-PLAN.md — DB/API layer: `lib/profile/validate.ts` validators (GREEN) + PATCH allowlist/featured pre-check + placements stat + migration 043 (`allow_resharing`) + [BLOCKING] schema push
 - [ ] 09-02-PLAN.md — Avatar/banner upload route + `AvatarBannerUpload` component (vault-assets bucket, PROFILE-09)
-- [ ] 09-03-PLAN.md — Public `PublicPlaybackView` + `LyricsPanel` + `/r/[projectId]` render swap (D-01..D-14)
+- [ ] 09-03-PLAN.md — Public `PublicPlaybackView` (+ own `PublicTrackView` type) + `LyricsPanel` + `/r/[projectId]` render swap (D-01..D-14)
 - [ ] 09-04-PLAN.md — Settings roles/open-to/resharing editors + `ShareButton` + `ProfileMoreMenu` + `FeaturedPicker` (PROFILE-02/04/05/08)
-- [ ] 09-05-PLAN.md — ProfileView + `/u/[handle]` integration: presence dot, placements row, mount share/upload/picker/menu (PROFILE-01/03/06/08/09)
+- [ ] 09-05-PLAN.md — ProfileView + `/u/[handle]` integration: presence dot, placements row, mount share/upload/picker/menu, server-resolved absolute `profileUrl` (PROFILE-01/03/06/08/09)
 
-**Wave 1**: 09-01 (foundation)
-**Wave 2** *(blocked on Wave 1)*: 09-02 ‖ 09-03 ‖ 09-04 (parallel — zero file overlap)
-**Wave 3** *(blocked on 09-01, 09-02, 09-04)*: 09-05 (ProfileView + page integration)
+**Wave 1**: 09-01a (Wave 0 tests + additive types — autonomous)
+**Wave 2** *(blocked on 09-01a)*: 09-01b (validators GREEN + allowlist + placements + migration 043 + [BLOCKING] push)
+**Wave 3** *(blocked on 09-01b)*: 09-02 ‖ 09-03 ‖ 09-04 (parallel — zero file overlap)
+**Wave 4** *(blocked on 09-01b, 09-02, 09-04)*: 09-05 (ProfileView + page integration)
 
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/user-profile.html` (primary — header, roles, stats, releases grid, Featured spotlight, owner-vs-visitor actions), `artist-profile.html` (the new public "now playing" player, D-01), `playback.html` (contrast only — stays the private working room, out of this phase's scope). Full detail already gathered in `09-CONTEXT.md`.
