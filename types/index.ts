@@ -270,6 +270,23 @@ export type OpenTo =
   | 'management'
   | 'booking'
 
+/**
+ * Single source of truth for every OpenTo union member — the enum-array
+ * counterpart to the type above. Consumed by 09-01b's filterOpenTo() and
+ * the profile-roles-validation.test.ts open_to assertions. Kept in sync
+ * with OpenTo by construction (typed `readonly OpenTo[]`, so a union
+ * change that isn't mirrored here surfaces as a compile error).
+ */
+export const OPEN_TO_VALUES: readonly OpenTo[] = [
+  'collabs',
+  'sync',
+  'features',
+  'production',
+  'writing',
+  'management',
+  'booking',
+] as const
+
 // ─── Social layer (migration 012) ────────────────────────────────────
 /** A lightweight author identity rendered on social items. */
 export type SocialAuthor = {

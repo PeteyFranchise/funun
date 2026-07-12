@@ -80,6 +80,17 @@ export type TrackLyrics = {
   language?: string
   explicit?: boolean
   updated_at?: string
+  /**
+   * Optional line-level timestamps for future sync-highlighting (Phase 9,
+   * D-13). Additive and forward-compatible — absent means static display
+   * only, which is exactly what Phase 9 ships. The timing-entry method
+   * (manual vs. forced-alignment) is not yet wired to any UI.
+   */
+  synced?: {
+    lines: { atMs: number; text: string }[]
+    method: 'manual' | 'forced_alignment'
+    updated_at: string
+  }
 }
 
 export const LYRICS_MAX = 20000
