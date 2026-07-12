@@ -21,18 +21,22 @@ type Item = {
   label: string
   match: string
   Icon: (p: { gradient?: boolean; className?: string }) => React.ReactNode
+  // D-08: rooms tagged here are hidden entirely (not grayed out) when the
+  // account's capability set doesn't include this value. Untagged items
+  // (Antenna, Settings) are universal — Antenna is dual-use per D-07.
+  requiresCapability?: 'artist' | 'industry'
 }
 
 const ITEMS: Item[] = [
-  { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon },
-  { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon },
-  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon },
+  { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
+  { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
+  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon, requiresCapability: 'artist' },
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
-  { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon },
-  { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon },
-  { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon },
-  { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon },
-  { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },
+  { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon, requiresCapability: 'artist' },
+  { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon, requiresCapability: 'artist' },
+  { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon, requiresCapability: 'artist' },
+  { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon, requiresCapability: 'artist' },
+  { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon, requiresCapability: 'artist' },
   { href: '/settings', label: 'Settings', match: '/settings', Icon: SettingsIcon },
 ]
 
@@ -45,7 +49,17 @@ const STORAGE_KEY_COLLAPSED = 'funun-nav-collapsed'
 
 type NavUser = { name?: string; plan?: string; initials?: string }
 
-export function ArtistNav({ user }: { user?: NavUser }) {
+export function ArtistNav({
+  user,
+  capabilities = ['artist'],
+}: {
+  user?: NavUser
+  // Default ['artist'] preserves existing behavior for any caller that
+  // hasn't been updated to pass the real set yet (backward-compat during
+  // rollout). The real value always comes from a server-side read of
+  // capability_grants (app/(artist)/layout.tsx) — never fetched client-side.
+  capabilities?: string[]
+}) {
   const pathname = usePathname() ?? ''
   const name = user?.name ?? 'Your Profile'
   const plan = user?.plan ?? 'Free plan'
@@ -57,6 +71,12 @@ export function ArtistNav({ user }: { user?: NavUser }) {
       .slice(0, 2)
       .join('')
       .toUpperCase()
+
+  // D-08: hide rooms outside the account's capability set entirely — never
+  // render a disabled/grayed dead-end control.
+  const visibleItems = ITEMS.filter(
+    item => !item.requiresCapability || capabilities.includes(item.requiresCapability)
+  )
 
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [collapsed, setCollapsed] = useState(false)
@@ -207,7 +227,7 @@ export function ArtistNav({ user }: { user?: NavUser }) {
       )}
 
       {/* Nav items */}
-      {ITEMS.map(({ href, label, match, Icon }) => {
+      {visibleItems.map(({ href, label, match, Icon }) => {
         const active = pathname === match || pathname.startsWith(match + '/')
         return (
           <Link
