@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 15
 current_phase_name: account-capability-model
 status: executing
-stopped_at: "Phase 15 Plan 01 paused at Task 3 checkpoint (blocking-human): schema push cannot run in this sandbox (DB password required, none available)"
-last_updated: "2026-07-07T09:02:46.492Z"
-last_activity: 2026-07-07
-last_activity_desc: Phase 15 execution started
+stopped_at: "Phase 15 Plan 02 complete (2/4 plans); Wave 3 (Plans 15-03, 15-04) next — run in parallel, both depend only on 15-02"
+last_updated: "2026-07-12T00:00:00.000Z"
+last_activity: 2026-07-12
+last_activity_desc: Phase 15 Plan 02 completed — resumed after a mid-task interruption, reconciled uncommitted Task 2 work, verified and committed
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 48
-  completed_plans: 44
-  percent: 82
+  completed_plans: 45
+  percent: 84
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 15 (account-capability-model) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 15
-Last activity: 2026-07-07 — Phase 15 execution started
+Plan: 2 of 4 complete
+Status: Executing Phase 15 — Wave 3 (Plans 15-03, 15-04) next, run in parallel
+Last activity: 2026-07-12 — Phase 15 Plan 02 completed (capability request/approve routes + D-14 enforcement)
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -139,6 +139,7 @@ None currently.
 | 260706-3bp | Fix TypeScript type error in AddressAutocomplete.tsx by installing @types/google.maps and restoring proper Google Maps types | 2026-07-06 | b41a133 | [260706-3bp-fix-typescript-type-error-in-addressauto](./quick/260706-3bp-fix-typescript-type-error-in-addressauto/) |
 | 260710-q9j | Add password-reset flow (/forgot-password + /update-password) to Supabase email/password auth, harden auth callback + middleware, document auth setup in README. Merged as 06319e5 (PR #27) — production deploy confirmed successful, live on funun.studio | 2026-07-10 | 06319e5 | [260710-q9j-add-password-reset-flow-to-supabase-emai](./quick/260710-q9j-add-password-reset-flow-to-supabase-emai/) |
 | 260711-2nt | Fix Next.js 15.5.x clientReferenceManifest build regression: root cause was a silent route collision (app/page.tsx vs app/(admin)/page.tsx both resolving to `/`) orphaning the latter and breaking Vercel's build. Merged as 88700bb (PR #28) — production deploy confirmed successful; unblocks PR #27/#26 | 2026-07-11 | 88700bb | [260711-2nt-fix-next-js-15-5-x-clientreferencemanife](./quick/260711-2nt-fix-next-js-15-5-x-clientreferencemanife/) |
+| 260701-vx5 | Fix broken admin sidebar links (/admin/checklist, /admin/tips 404'd — route group strips `/admin`). Done and verified on an orphaned worktree branch (`claude/funny-davinci-143e00`) that was never merged; discovered during 2026-07-12 cleanup. No action needed — current `main`'s `app/(admin)/layout.tsx` already has the correct `/checklist`/`/tips` links, independently fixed by later Phase 8 work (admin/members). Recorded here for audit-trail completeness only | 2026-07-01 (discovered 2026-07-12) | n/a — superseded, never merged | (orphaned, not recreated — see `claude/funny-davinci-143e00` branch if historical detail is ever needed) |
 
 ### Roadmap Evolution
 
