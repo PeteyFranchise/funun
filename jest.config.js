@@ -2,6 +2,8 @@
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Jest owns the unit tests in __tests__; Playwright owns tests/e2e/*.spec.ts.
+  testMatch: ['<rootDir>/__tests__/**/*.test.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
