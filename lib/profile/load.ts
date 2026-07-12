@@ -87,7 +87,11 @@ function toRelease(p: ProfileProjectRow): ProfileRelease {
 export function buildProfileData(
   profile: ArtistProfile,
   projects: ProfileProjectRow[],
-  { publicOnly, followerCount = null }: { publicOnly: boolean; followerCount?: number | null }
+  {
+    publicOnly,
+    followerCount = null,
+    placementsCount = null,
+  }: { publicOnly: boolean; followerCount?: number | null; placementsCount?: number | null }
 ): ProfileData {
   const visible = publicOnly ? projects.filter(p => p.is_public) : projects
   const releases = visible.map(toRelease)
@@ -122,6 +126,7 @@ export function buildProfileData(
     totalStreams: profile.total_streams,
     avgReadiness,
     followerCount,
+    placementsCount,
     featured: featuredRow ? toRelease(featuredRow) : null,
     releases,
   }

@@ -29,6 +29,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let profile: ArtistProfile | null = null
   let projects: ProfileProjectRow[] = []
   let followerCount: number | null = null
+  let placementsCount: number | null = null
   let follow: FollowState | undefined
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
@@ -49,6 +50,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       is_public: true,
     }))
     followerCount = 12800
+    placementsCount = 1
     follow = { profileUserId: profile.id, isFollowing: false, canFollow: true }
     wall = {
       profileUserId: profile.id,
@@ -119,17 +121,23 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     if (!prof || !(prof as ArtistProfile).is_public) notFound()
     profile = prof as ArtistProfile
 
-    const [{ data: projs }, { count }, { data: viewer }] = await Promise.all([
+    const [{ data: projs }, { count }, { count: placementsCountResult }, { data: viewer }] = await Promise.all([
       supabase
         .from('vault_projects')
         .select('id, title, type, cover_art_url, vault_readiness_score, release_date, is_public')
         .eq('user_id', profile.id)
         .order('vault_readiness_score', { ascending: false }),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('followee_id', profile.id),
+      supabase
+        .from('activity_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', profile.id)
+        .eq('kind', 'placement'),
       supabase.auth.getUser(),
     ])
     projects = (projs ?? []) as ProfileProjectRow[]
     followerCount = count ?? 0
+    placementsCount = placementsCountResult ?? 0
 
     const viewerId = viewer.user?.id ?? null
     let isFollowing = false
@@ -199,7 +207,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }
   }
 
-  const data = buildProfileData(profile, projects, { publicOnly: true, followerCount })
+  const data = buildProfileData(profile, projects, { publicOnly: true, followerCount, placementsCount })
   return (
     <ProfileView
       data={data}

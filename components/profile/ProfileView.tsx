@@ -51,6 +51,7 @@ export type ProfileData = {
   totalStreams: number | null
   avgReadiness: number | null
   followerCount: number | null
+  placementsCount: number | null
   featured: ProfileRelease | null
   releases: ProfileRelease[]
 }
