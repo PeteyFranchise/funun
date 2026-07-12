@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 10
 current_phase_name: connections-notifications
 status: executing
-stopped_at: Phase 10 planning complete — 6 plans ready (4 waves)
-last_updated: "2026-07-12T15:13:58.905Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-07-12T15:45:37.242Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 60
-  completed_plans: 55
+  completed_plans: 56
   percent: 92
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 10 (connections-notifications) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 10 execution started
 
@@ -89,6 +89,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 09 P04 | 25min | 3 tasks | 7 files |
 | Phase 09 P05 | 15min | 3 tasks | 3 files |
 | Phase 10 P01 | 2min | 4 tasks | 7 files |
+| Phase 10 P02 | checkpoint-spanning | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 09-05]: FeaturedPicker mounted inside the existing data.featured conditional rather than always-rendered -- owner mode derives data.featured from ALL projects (not just public), so the picker is reachable whenever the owner has at least one project
 - [Phase ?]: [Phase 10-01]: new_follower notifications suppressed for connect-accept trigger-seeded follows -- only connection_accepted fires on accept (RESEARCH Open Question #1)
 - [Phase ?]: [Phase 10-01]: buildConnectRequest()/buildRespondTransition() throw descriptive Error instances rather than returning an {error} result shape, matching lib/capabilities/grant.ts's established convention
+- [Phase 10-02]: Migration 044 pushed live and DB-verified by human operator via supabase db push + supabase migration list (LOCAL=REMOTE for 001-044), per established schema-push convention
+- [Phase 10-02]: no_block() gate on connections_insert_own closes the migration-038 gap before Phase 13 populates blocks -- inert today, DB-verified via rollback smoke test
+- [Phase 10-02]: connections_seed_follows() SECURITY DEFINER trigger seeds both follows directions atomically on accept -- verified live via smoke test showing exactly 2 rows with matching timestamps
 
 ### Pending Todos
 
@@ -197,9 +201,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T15:13:21.804Z
-Stopped at: Phase 10 planning complete — 6 plans ready (4 waves)
-Resume file: .planning/phases/10-connections-notifications/10-01-PLAN.md
+Last session: 2026-07-12T15:45:37.227Z
+Stopped at: Completed 10-02-PLAN.md
+Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
 
 ## Operator Next Steps
 

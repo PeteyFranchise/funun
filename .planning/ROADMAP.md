@@ -125,12 +125,12 @@ Plans:
   3. User sees an unread-count badge on the notifications bell that is separate from the messages-icon badge
   4. User can open a notification panel, see the list, and mark all as read
 
-**Plans**: 1/6 plans executed
+**Plans**: 2/6 plans executed
 
 Plans:
 
 - [x] 10-01-PLAN.md — Foundation (Wave 0/1): 3 RED Jest scaffolds + notification type catalog & per-type builders + connect payload/transition builders + `createNotification()`/`Notification` actor-snapshot extension
-- [ ] 10-02-PLAN.md — Migration 044 (`connections.note` + `no_block()` gap close + SECURITY DEFINER auto-follow-seed trigger) + [BLOCKING] schema push
+- [x] 10-02-PLAN.md — Migration 044 (`connections.note` + `no_block()` gap close + SECURITY DEFINER auto-follow-seed trigger) + [BLOCKING] schema push
 - [ ] 10-03-PLAN.md — API routes: `app/api/connections/route.ts` (request/accept/decline/withdraw) + `app/api/notifications/route.ts` (list+unread COUNT, mark-all-read)
 - [ ] 10-04-PLAN.md — Notification trigger wiring into 4 existing routes (follows→new_follower, wall→wall_post, endorsements→endorsement, release-comments→release_comment)
 - [ ] 10-05-PLAN.md — NotificationBell (global Realtime+poll badge) + NotificationPanel (dropdown, mark-all-read, inline accept/decline, cursor pagination) + net-new authenticated header row
@@ -259,7 +259,7 @@ Plans:
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
 | 9. Rich Member Profile | v1.2 | 6/6 | Complete    | 2026-07-12 |
-| 10. Connections & Notifications | v1.2 | 1/6 | In Progress|  |
+| 10. Connections & Notifications | v1.2 | 2/6 | In Progress|  |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
