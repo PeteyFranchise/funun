@@ -10,11 +10,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Profile (rich member identity)
 
 - [ ] **PROFILE-01**: User can view a rich profile header — banner, avatar with online presence dot, name, pronouns, verified badge, and multi-role badges with the lead role highlighted
-- [ ] **PROFILE-02**: User can add a custom title alongside standard industry roles (Artist, Producer, Songwriter, Music Supervisor, A&R, Exec)
+- [x] **PROFILE-02**: User can add a custom title alongside standard industry roles (Artist, Producer, Songwriter, Music Supervisor, A&R, Exec)
 - [ ] **PROFILE-03**: User can set a location and sees their tenure ("On Funūn since [year]") on their profile
-- [ ] **PROFILE-04**: User can set "Open to" availability status (sync licensing, co-writes, features, brand deals) and it displays as chips on their profile
-- [ ] **PROFILE-05**: User can pin one release as a "Featured" spotlight on their profile
-- [ ] **PROFILE-06**: User sees a stats sidebar (followers, monthly listeners, placements, avg. readiness) on any profile
+- [x] **PROFILE-04**: User can set "Open to" availability status (sync licensing, co-writes, features, brand deals) and it displays as chips on their profile
+- [x] **PROFILE-05**: User can pin one release as a "Featured" spotlight on their profile
+- [x] **PROFILE-06**: User sees a stats sidebar (followers, monthly listeners, placements, avg. readiness) on any profile
 - [ ] **PROFILE-07**: User sees a releases grid with readiness rings on any profile
 - [ ] **PROFILE-08**: Profile owner sees Edit profile / Share / View analytics actions; visitors see Follow / Message / more-options instead
 - [ ] **PROFILE-09**: User can upload and edit their own banner and avatar images
@@ -91,11 +91,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PROFILE-01 | Phase 9 | Pending |
-| PROFILE-02 | Phase 9 | Pending |
+| PROFILE-02 | Phase 9 | Complete |
 | PROFILE-03 | Phase 9 | Pending |
-| PROFILE-04 | Phase 9 | Pending |
-| PROFILE-05 | Phase 9 | Pending |
-| PROFILE-06 | Phase 9 | Pending |
+| PROFILE-04 | Phase 9 | Complete |
+| PROFILE-05 | Phase 9 | Complete |
+| PROFILE-06 | Phase 9 | Complete |
 | PROFILE-07 | Phase 9 | Pending |
 | PROFILE-08 | Phase 9 | Pending |
 | PROFILE-09 | Phase 9 | Pending |
@@ -120,6 +120,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFETY-04 | Phase 13 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 28 total
 - Mapped to phases: 28 ✓
 - Unmapped: 0 ✓

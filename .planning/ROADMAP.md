@@ -94,10 +94,11 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. User can pin one release as a "Featured" spotlight on their profile
   4. Profile owner sees Edit profile / Share / View analytics actions and can upload/edit their banner and avatar; a visitor sees Follow / Message / more-options instead
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 Plans:
-- [ ] 09-01a-PLAN.md — Wave 0 foundation (autonomous): four RED Jest scaffolds + `"test": "jest"` script + additive `TrackLyrics.synced` (D-13) + `OPEN_TO_VALUES` export
+
+- [x] 09-01a-PLAN.md — Wave 0 foundation (autonomous): four RED Jest scaffolds + `"test": "jest"` script + additive `TrackLyrics.synced` (D-13) + `OPEN_TO_VALUES` export
 - [ ] 09-01b-PLAN.md — DB/API layer: `lib/profile/validate.ts` validators (GREEN) + PATCH allowlist/featured pre-check + placements stat + migration 043 (`allow_resharing`) + [BLOCKING] schema push
 - [ ] 09-02-PLAN.md — Avatar/banner upload route + `AvatarBannerUpload` component (vault-assets bucket, PROFILE-09)
 - [ ] 09-03-PLAN.md — Public `PublicPlaybackView` (+ own `PublicTrackView` type) + `LyricsPanel` + `/r/[projectId]` render swap (D-01..D-14)
@@ -242,7 +243,7 @@ Plans:
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
-| 9. Rich Member Profile | v1.2 | 0/5 | Planned | - |
+| 9. Rich Member Profile | v1.2 | 1/6 | In Progress|  |
 | 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |

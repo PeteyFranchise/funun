@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 15
-current_phase_name: account-capability-model
-status: complete
+current_phase: 09
+current_phase_name: rich-member-profile
+status: executing
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-07-12T05:05:28.423Z"
+last_updated: "2026-07-12T09:12:08.193Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 15 Plans 03 (nav unification + D-09 CTA) and 04 (admin approval queue) completed
+last_activity_desc: Phase 09 execution started
 progress:
   total_phases: 11
   completed_phases: 10
-  total_plans: 48
-  completed_plans: 48
+  total_plans: 54
+  completed_plans: 49
   percent: 91
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 15 complete — next up is Phase 9 (Rich Member Profile) or PR #26's pending Thomas UAT
+**Current focus:** Phase 09 — rich-member-profile
 
 ## Current Position
 
-Phase: 15 (account-capability-model) — COMPLETE
-Plan: 4 of 4 complete
-Status: Phase 15 fully executed — capability_grants schema, request/approve API routes with D-14 server-side enforcement, unified capability-aware nav, and the admin approval queue are all live
-Last activity: 2026-07-12 — Phase 15 Plans 03 (nav unification + D-09 CTA) and 04 (admin approval queue) completed
+Phase: 09 (rich-member-profile) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-07-12 — Phase 09 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -83,6 +83,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 14-playback-room-refinement P04 | 8min | 3 tasks | 3 files |
 | Phase 14 P05 | 5min | 3 tasks | 4 files |
 | Phase 14 P06 | 424 | 3 tasks | 5 files |
+| Phase 09 P01a | 15min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: JSON-only metadata PATCH pattern: stems/instrumental routes accept JSON body, no FormData — browser already uploaded directly to Storage before calling these routes (D-07/Pitfall 1)
 - [Phase ?]: buildExportManifest() pure transform — I/O stays in Plan 06 route
 - [Phase ?]: archiver v8 uses ZipArchive named export — thin factory alias added
+- [Phase ?]: This project's ts-jest runs transpile-only (root tsconfig.json isolatedModules: true) -- TS type errors don't fail Jest runs; schema-lyrics.test.ts's RED/GREEN contract is enforced via tsc --noEmit instead
 
 ### Pending Todos
 
@@ -177,7 +179,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T05:05:28.408Z
+Last session: 2026-07-12T09:11:20.677Z
 Stopped at: Phase 9 UI-SPEC approved
 Resume file: .planning/phases/09-rich-member-profile/09-UI-SPEC.md
 
