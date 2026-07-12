@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ArtistProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
+import { sanitizeProfileRoles, filterOpenTo, isFeaturableProjectRow } from '@/lib/profile/validate'
 
 const EDITABLE_FIELDS = [
   'artist_name',
@@ -31,9 +33,24 @@ const EDITABLE_FIELDS = [
   'mailing_address',
   'industry_roles',
   'genres',
+  'pronouns',
+  'roles',
+  'open_to',
+  'avatar_url',
+  'banner_url',
+  'featured_project_id',
+  'allow_resharing',
 ] as const
 
-function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
+type SanitizeResult =
+  | { update: Partial<ArtistProfile> }
+  | { error: string; status: number }
+
+async function sanitize(
+  body: Record<string, unknown>,
+  service: SupabaseClient,
+  userId: string
+): Promise<SanitizeResult> {
   const update: Record<string, unknown> = {}
   for (const key of EDITABLE_FIELDS) {
     if (!(key in body)) continue
@@ -85,6 +102,42 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
       }
       continue
     }
+    if (key === 'roles') {
+      update[key] = sanitizeProfileRoles(value)
+      continue
+    }
+    if (key === 'open_to') {
+      update[key] = filterOpenTo(value)
+      continue
+    }
+    if (key === 'allow_resharing') {
+      if (typeof value === 'boolean') update[key] = value
+      continue
+    }
+    if (key === 'featured_project_id') {
+      if (value === null) {
+        update[key] = null
+        continue
+      }
+      const { data: proj } = await service
+        .from('vault_projects')
+        .select('id, user_id, is_public')
+        .eq('id', value as string)
+        .maybeSingle()
+      const check = isFeaturableProjectRow(
+        proj as { id: string; user_id: string; is_public: boolean } | null,
+        userId
+      )
+      if (check === 'not-found') return { error: 'Release not found', status: 404 }
+      if (check === 'rejected-not-public') {
+        return {
+          error: 'Only public releases can be featured — publish it first.',
+          status: 400,
+        }
+      }
+      update[key] = value
+      continue
+    }
     if (typeof value === 'string') {
       const trimmed = value.trim()
       update[key] = trimmed === '' ? null : trimmed
@@ -92,7 +145,7 @@ function sanitize(body: Record<string, unknown>): Partial<ArtistProfile> {
       update[key] = null
     }
   }
-  return update as Partial<ArtistProfile>
+  return { update: update as Partial<ArtistProfile> }
 }
 
 export async function PATCH(request: Request) {
@@ -103,10 +156,6 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await request.json()) as Record<string, unknown>
-  const update = sanitize(body)
-  if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
-  }
 
   // Ownership already verified above via the session-bound client's
   // auth.getUser(). The write + read-back run on the service-role client
@@ -114,8 +163,19 @@ export async function PATCH(request: Request) {
   // touching a PRIVATE column (e.g. legal name, contact info) doesn't
   // 42501 on its own `.select()` read-back — D-19 companion fix.
   // EDITABLE_FIELDS above remains the mass-assignment allowlist; only the
-  // client used to execute the already-sanitized update changes.
+  // client used to execute the already-sanitized update changes. The
+  // service client is also needed inside sanitize() itself for the
+  // featured_project_id ownership+is_public pre-check (Pitfall 4).
   const service = createServiceClient()
+  const result = await sanitize(body, service, user.id)
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status })
+  }
+  const update = result.update
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
   const { data, error } = await service
     .from('artist_profiles')
     .update(update)
