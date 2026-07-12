@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 09
-current_phase_name: rich-member-profile
-status: executing
-stopped_at: Phase 09-01b complete; Plan 3 of 6 (09-02/09-03/09-04, Wave 3) up next
-last_updated: "2026-07-12T10:08:42.671Z"
+current_phase: 10
+current_phase_name: Connections & Notifications
+status: Ready to plan
+stopped_at: Phase 10 context gathered
+last_updated: "2026-07-12T14:12:00.459Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
+last_activity_desc: Phase 09 complete (UAT 4/4 passed, security verified)
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 11
   total_plans: 54
   completed_plans: 54
-  percent: 100
+  percent: 92
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 09 — rich-member-profile
+**Current focus:** Phase 10 — Connections & Notifications
 
 ## Current Position
 
-Phase: 09 (rich-member-profile) — EXECUTING
-Plan: 6 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
-Status: Ready to proceed to Wave 3 — Plans 09-02, 09-03, 09-04 (parallel, zero file overlap)
-Last activity: 2026-07-12 — Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
+Phase: 10 — Connections & Notifications
+Plan: Not started
+Status: Ready to plan — Phase 09 (Rich Member Profile) is complete; Phases 14/15 were already complete out of sequence
+Last activity: 2026-07-12 — Phase 09 complete (UAT 4/4 passed, security verified)
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -50,7 +50,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 
 **Velocity:**
 
-- Total plans completed: 18 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
+- Total plans completed: 12 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
 - Average duration: -
 - Total execution time: 0 hours (v1.2 not started)
 
@@ -59,7 +59,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 08 | 6 | - | - |
-| 09 | TBD | - | - |
+| 09 | 6 | - | - |
 | 10 | TBD | - | - |
 | 11 | TBD | - | - |
 | 12 | TBD | - | - |
@@ -194,9 +194,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T10:07:36.880Z
-Stopped at: Phase 09-01b complete (Task 4 checkpoint approved). Next: Wave 3 — 09-02/09-03/09-04 (parallel)
-Resume file: .planning/phases/09-rich-member-profile/09-02-PLAN.md (or next unstarted Wave 3 plan)
+Last session: 2026-07-12T14:12:00.444Z
+Stopped at: Phase 10 context gathered
+Resume file: .planning/phases/10-connections-notifications/10-CONTEXT.md
 
 ## Operator Next Steps
 
