@@ -37,7 +37,7 @@ key-decisions:
   - "sanitizeProfileRoles() always returns ProfileRole[] (never null) — PLAN.md's action text says 'or null when invalid', but __tests__/profile-roles-validation.test.ts asserts [] for every invalid-input case (unknown slug, empty/overlong custom label, non-array payload), never null; implemented to satisfy the RED test exactly"
   - "Migration 043's column type is written lowercase 'boolean' (not the repo's usual uppercase BOOLEAN convention seen in migrations 010/034) because the plan's own automated <verify> grep for Task 3 is case-sensitive for the literal string 'allow_resharing boolean'"
 
-requirements-completed: []  # None yet — PROFILE-02/04/05/06 code lands with this plan but the plan's own must_haves require migration 043 live on REMOTE, which is still pending (Task 4 checkpoint)
+requirements-completed: [PROFILE-02, PROFILE-04, PROFILE-05, PROFILE-06]  # Migration 043 confirmed live on REMOTE (Task 4 checkpoint approved)
 
 coverage:
   - id: D1
@@ -71,23 +71,26 @@ coverage:
   - id: D4
     description: "Migration 043 (artist_profiles.allow_resharing boolean, public-read GRANT SELECT) pushed live to the remote database"
     requirement: "PROFILE-05"
-    verification: []
+    verification:
+      - kind: other
+        ref: "npx supabase migration list (043 populated in both LOCAL and REMOTE columns, matching migrations 001-042)"
+        status: pass
     human_judgment: true
-    rationale: "BLOCKING checkpoint (Task 4) — requires the operator to run `supabase db push` against production; not run by this agent per the plan's autonomous: false gate. Migration file exists and is verified locally (grep checks pass) but LOCAL != REMOTE until the operator runs the push."
+    rationale: "BLOCKING checkpoint (Task 4) — operator ran `supabase db push` against production. Independently re-confirmed via `npx supabase migration list`: 043 shows LOCAL=REMOTE, matching every prior migration row's format."
 
-duration: ~15min (Tasks 1-3 only; Task 4 pending)
+duration: ~15min (Tasks 1-3) + operator push time (Task 4)
 completed: 2026-07-12
-status: blocked
+status: complete
 ---
 
 # Phase 9 Plan 01b: Profile validators, PATCH allowlist, placements stat, migration 043 Summary
 
-**Zod-validated roles/open_to/featured_project_id branches added to PATCH /api/profile, placementsCount threaded through buildProfileData via an activity_events COUNT, and migration 043 (allow_resharing) authored but NOT yet pushed to the remote database — Task 4's blocking checkpoint stops here.**
+**Zod-validated roles/open_to/featured_project_id branches added to PATCH /api/profile, placementsCount threaded through buildProfileData via an activity_events COUNT, and migration 043 (allow_resharing) authored and pushed live to the remote database — plan complete.**
 
 ## Performance
 
-- **Duration:** ~15 min (Tasks 1-3)
-- **Tasks:** 3 of 4 completed (Task 4 is a BLOCKING checkpoint requiring the operator to run `supabase db push`)
+- **Duration:** ~15 min (Tasks 1-3) + operator push time (Task 4)
+- **Tasks:** 4 of 4 completed (Task 4 blocking checkpoint approved — operator ran `supabase db push`, confirmed via `npx supabase migration list`)
 - **Files modified:** 6 (1 new validator module, 1 new migration, 4 extended source files)
 
 ## Accomplishments
@@ -105,7 +108,7 @@ Each task was committed atomically:
 1. **Task 1: lib/profile/validate.ts validators + PATCH /api/profile allowlist extension (GREEN)** - `ec2aaca` (feat)
 2. **Task 2: buildProfileData placements + u/[handle] placements query (GREEN)** - `1f5d393` (feat)
 3. **Task 3: Migration 043 — allow_resharing column with column-privilege lockdown** - `e23b331` (feat)
-4. **Task 4: [BLOCKING] Push migration 043 to the remote database** - NOT RUN (blocking checkpoint; see below)
+4. **Task 4: [BLOCKING] Push migration 043 to the remote database** - Operator ran `supabase db push`; confirmed live via `npx supabase migration list` (043 populated LOCAL+REMOTE)
 
 _Note: TDD tasks may have multiple commits (test → feat → refactor). Here, Tasks 1-2 were `tdd="true"` but the RED tests already existed from 09-01a, so this plan's commits are the GREEN step only — no separate RED commit was needed in this plan._
 
@@ -148,23 +151,19 @@ None beyond the deviation above.
 
 ## User Setup Required
 
-**External database migration requires manual operator action.** Task 4 of this plan is a BLOCKING checkpoint (`type="checkpoint:human-verify" gate="blocking"`, `autonomous: false`): the operator must run `supabase db push` from the repo root to apply migration 043 to the remote database (project ref `wgfjakfiyeewzfuxkgyo`). This agent did not run `supabase db push` or `supabase login` — per explicit instruction, this is a real production schema migration and must be operator-executed. See "Next Phase Readiness" below for the exact steps.
+**Complete.** Task 4 of this plan was a BLOCKING checkpoint (`type="checkpoint:human-verify" gate="blocking"`, `autonomous: false`): the operator ran `supabase db push` from the repo root, applying migration 043 to the remote database (project ref `wgfjakfiyeewzfuxkgyo`). This agent did not run the push itself — per explicit instruction, this was operator-executed as a real production schema migration.
 
 ## Next Phase Readiness
 
-**Blocked on Task 4.** Tasks 1-3 are complete, committed, and independently verified (58/58 Jest tests pass, `tsc --noEmit` clean, all Task 1-3 acceptance-criteria greps pass). Migration 043 exists locally but is **not yet live on the remote database** — `supabase migration list` will show 043 in LOCAL only until the push runs.
+**Plan complete.** All 4 tasks done, committed, and verified:
+- Tasks 1-3: 58/58 Jest tests pass, `tsc --noEmit` clean, all acceptance-criteria greps pass.
+- Task 4: Operator ran `supabase db push`; independently re-confirmed via `npx supabase migration list` — migration 043 shows LOCAL and REMOTE both populated, matching every migration 001-042's row format.
 
-**To unblock and complete this plan:**
-1. From the repo root, run `supabase db push` (applies migration 043). If prompted for auth, run `supabase login` first, or set `SUPABASE_ACCESS_TOKEN` for non-interactive use.
-2. Confirm: `supabase migration list` shows migration 043 with both LOCAL and REMOTE populated.
-3. Confirm the column reads: as an authenticated session, `SELECT allow_resharing FROM artist_profiles LIMIT 1;` returns without a 42501 error, default `true`.
-4. Resume plan execution to close out Task 4 and finalize this plan's SUMMARY/STATE/ROADMAP updates.
-
-**Downstream impact:** Plans 09-02 through 09-05 all depend on this plan's DB/API layer (they write to the new profile fields, read `allow_resharing`, and render `placementsCount`) — none can proceed until migration 043 is confirmed live.
+**Downstream impact:** Plans 09-02 through 09-05 all depend on this plan's DB/API layer (they write to the new profile fields, read `allow_resharing`, and render `placementsCount`) — all are now unblocked.
 
 ---
 *Phase: 09-rich-member-profile*
-*Status: Blocked at Task 4 (blocking human-verify checkpoint) — not yet complete*
+*Status: Complete — all 4 tasks done, migration 043 confirmed live on remote*
 
 ## Self-Check: PASSED
 
