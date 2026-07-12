@@ -165,3 +165,7 @@ None beyond the deviation above.
 ---
 *Phase: 09-rich-member-profile*
 *Status: Blocked at Task 4 (blocking human-verify checkpoint) — not yet complete*
+
+## Self-Check: PASSED
+
+All 6 created/modified files confirmed present on disk; all 4 commit hashes (`ec2aaca`, `1f5d393`, `e23b331`, `f407c98`) confirmed present in `git log --oneline --all`.
