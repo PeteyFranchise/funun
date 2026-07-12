@@ -6,15 +6,15 @@ current_phase: 09
 current_phase_name: rich-member-profile
 status: executing
 stopped_at: Phase 09-01b complete; Plan 3 of 6 (09-02/09-03/09-04, Wave 3) up next
-last_updated: "2026-07-12T09:40:00.000Z"
+last_updated: "2026-07-12T09:38:33.733Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 09-01b Task 4 checkpoint approved (migration 043 confirmed live on remote); plan complete
+last_activity_desc: Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 54
   completed_plans: 51
-  percent: 94
+  percent: 91
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 09 (rich-member-profile) — EXECUTING
-Plan: 2 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
+Plan: 3 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
 Status: Ready to proceed to Wave 3 — Plans 09-02, 09-03, 09-04 (parallel, zero file overlap)
 Last activity: 2026-07-12 — Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
 
@@ -84,6 +84,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 14 P05 | 5min | 3 tasks | 4 files |
 | Phase 14 P06 | 424 | 3 tasks | 5 files |
 | Phase 09 P01a | 15min | 2 tasks | 7 files |
+| Phase 09 P02 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 09-01b]: isFeaturableProjectRow/sanitizeProfileRoles implemented to match 09-01a's RED test literal assertions (hyphenated 'not-found'/'rejected-not-public'; sanitizeProfileRoles always returns [] never null), not PLAN.md's prose description — The RED test files are the binding machine-checked contract per this plan's read_first instruction
 - [Phase 09-01b]: sanitize() in app/api/profile/route.ts made async, taking (body, service, userId), returning { update } | { error, status } -- enables the featured_project_id ownership/is_public DB pre-check inside the same allowlist loop — Needed to return friendly 404/400 before the DB trigger exception reaches the client
 - [Phase 09-01b]: Task 4 checkpoint approved 2026-07-12 — migration 043 (allow_resharing) confirmed live on remote via independent `npx supabase migration list` re-check; plan complete, Wave 3 (09-02/09-03/09-04) unblocked
+- [Phase ?]: [Phase 09-02]: AvatarBannerUpload renders only the upload affordance overlay (not the image itself) -- Plan 05 wraps existing ProfileView banner/avatar divs in relative containers and mounts this on top, avoiding re-render of already-correct image display logic
 
 ### Pending Todos
 
@@ -135,6 +137,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 - ~~[Phase 08] migrations 034-040 unpushed~~ — RESOLVED: `supabase migration list` (run by Pete after `supabase login` + `link --project-ref wgfjakfiyeewzfuxkgyo`) confirmed LOCAL=REMOTE for ALL migrations 001–042. Migrations 034–040 were already live on the remote database; the recorded gap was stale. Phase 8's SC-4/SC-5 live-DB smoke assertions (08-VERIFICATION.md human-verification items) remain individually unexecuted but the push-blocker itself is gone.
 - ~~[Phase 15-01] Task 3 schema push for migration 042~~ — RESOLVED: Pete ran `supabase db push` (applied 041 + 042) and all 3 DB-level checks passed: D-12 backfill (5 artist/approved/backfill rows, zero industry rows correct — no industry accounts exist yet), column lockdown (42501 permission denied as authenticated), partial unique index (duplicate pending insert rejected). See 15-01-SUMMARY.md.
+
 ~~Phase 09-01b Task 4 BLOCKING checkpoint: migration 043 (artist_profiles.allow_resharing) authored locally but not yet pushed to the remote database.~~ — RESOLVED 2026-07-12: Operator ran `supabase db push`; `npx supabase migration list` confirms 043 populated in both LOCAL and REMOTE columns, matching migrations 001-042. Plan 09-01b is complete; Plans 09-02..09-05 (which depend on this DB/API layer) are unblocked.
 
 ### Quick Tasks Completed
@@ -181,7 +184,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T09:40:00.000Z
+Last session: 2026-07-12T09:38:02.596Z
 Stopped at: Phase 09-01b complete (Task 4 checkpoint approved). Next: Wave 3 — 09-02/09-03/09-04 (parallel)
 Resume file: .planning/phases/09-rich-member-profile/09-02-PLAN.md (or next unstarted Wave 3 plan)
 

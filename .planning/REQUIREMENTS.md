@@ -17,7 +17,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **PROFILE-06**: User sees a stats sidebar (followers, monthly listeners, placements, avg. readiness) on any profile
 - [ ] **PROFILE-07**: User sees a releases grid with readiness rings on any profile
 - [ ] **PROFILE-08**: Profile owner sees Edit profile / Share / View analytics actions; visitors see Follow / Message / more-options instead
-- [ ] **PROFILE-09**: User can upload and edit their own banner and avatar images
+- [x] **PROFILE-09**: User can upload and edit their own banner and avatar images
 
 ### Discover (search & discovery)
 
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROFILE-06 | Phase 9 | Complete |
 | PROFILE-07 | Phase 9 | Pending |
 | PROFILE-08 | Phase 9 | Pending |
-| PROFILE-09 | Phase 9 | Pending |
+| PROFILE-09 | Phase 9 | Complete |
 | DISCOVER-01 | Phase 12 | Pending |
 | DISCOVER-02 | Phase 12 | Pending |
 | DISCOVER-03 | Phase 12 | Pending |
