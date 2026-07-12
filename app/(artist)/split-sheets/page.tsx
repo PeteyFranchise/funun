@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SplitSheetBuilder } from '@/components/split-sheets/SplitSheetBuilder'
@@ -21,6 +22,12 @@ export default async function IndustrySplitSheetsPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8 border-b border-white/10 pb-6">
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-[.18em] text-lavdim">
+          Part of{' '}
+          <Link href="/contracts" className="text-lav underline-offset-2 hover:underline">
+            Contract Locker
+          </Link>
+        </p>
         <h1 className="text-[22px] font-extrabold text-white">Create Split Sheet</h1>
         <p className="mt-1 text-sm text-white/50">
           Set up split percentages for your collaborators — everyone receives an

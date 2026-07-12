@@ -15,6 +15,7 @@ import {
   CollaboratorsIcon,
   SettingsIcon,
 } from './icons'
+import { CapabilityCta } from './CapabilityCta'
 
 type Item = {
   href: string
@@ -291,6 +292,8 @@ export function ArtistNav({
         </svg>
         {!collapsed && <span className="text-[13px] font-medium">Collapse</span>}
       </button>
+
+      {!collapsed && <CapabilityCta capabilities={capabilities} />}
 
       {/* User footer */}
       <Link
