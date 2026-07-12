@@ -393,6 +393,9 @@ export type ArtistProfile = {
   roles: ProfileRole[]
   open_to: OpenTo[]
   featured_project_id: string | null
+  // Whether visitors may reshare this artist's public tracks/profile link
+  // (migration 043, D-07). Defaults true at the DB level.
+  allow_resharing: boolean
   // Wave 4 identity (migration 034)
   member_type: 'artist' | 'industry'
   search_vector: string | null

@@ -2,12 +2,31 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ArtistProfile } from '@/types'
+import type { ArtistProfile, OpenTo, ProfileRole, ProfileRoleSlug } from '@/types'
+import { PROFILE_ROLES, PROFILE_ROLE_LABELS } from '@/types'
 import type { UserProfile } from '@/app/(artist)/settings/page'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { GENRES } from '@/lib/genres'
 import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
+
+const MAX_PROFILE_ROLES = 6
+const MAX_CUSTOM_ROLE_LEN = 40
+
+function profileRoleLabel(r: ProfileRole): string {
+  return r.kind === 'preset' ? PROFILE_ROLE_LABELS[r.slug] : r.label
+}
+
+// "Open to" editor options — labels per UI-SPEC section 4b, mapped onto the
+// existing OpenTo union (types/index.ts). There is no dedicated `brand_deals`
+// slug; `management` is used as the closest existing slug for "Brand deals"
+// (per 09-04-PLAN.md's discretion note — see 09-04-SUMMARY.md deviations).
+const OPEN_TO_EDITOR_OPTIONS: { slug: OpenTo; label: string }[] = [
+  { slug: 'sync', label: 'Sync licensing' },
+  { slug: 'collabs', label: 'Co-writes' },
+  { slug: 'features', label: 'Features' },
+  { slug: 'management', label: 'Brand deals' },
+]
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -46,6 +65,9 @@ type FormState = {
   mailing_address: string
   mailing_address_structured: Record<string, string> | null
   industry_roles: string[]
+  roles: ProfileRole[]
+  open_to: OpenTo[]
+  allow_resharing: boolean
 }
 
 // State for the Rights Identity section — saved to /api/user-profiles
@@ -85,6 +107,9 @@ function toForm(p: ArtistProfile): FormState {
     mailing_address: (p.mailing_address as { raw?: string } | null)?.raw ?? '',
     mailing_address_structured: (p.mailing_address as Record<string, string> | null) ?? null,
     industry_roles: Array.isArray(p.industry_roles) ? p.industry_roles : [],
+    roles: Array.isArray(p.roles) ? p.roles : [],
+    open_to: Array.isArray(p.open_to) ? p.open_to : [],
+    allow_resharing: p.allow_resharing ?? true,
   }
 }
 
@@ -229,6 +254,73 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
         ? f.industry_roles.filter(r => r !== slug)
         : [...f.industry_roles, slug]
       return { ...f, industry_roles: roles }
+    })
+    setSaved(false)
+  }
+
+  // ── Profile role badges (PROFILE-02) ──────────────────────────────
+  // Lead role = array index 0 (existing convention, ProfileView.tsx) —
+  // NOT a separate schema field. Min 1 role, max 6 total (presets + custom),
+  // mirroring the server-side Zod cap (lib/profile/validate.ts).
+  const [addingCustomRole, setAddingCustomRole] = useState(false)
+  const [customRoleInput, setCustomRoleInput] = useState('')
+
+  function isPresetRoleSelected(slug: ProfileRoleSlug) {
+    return form.roles.some(r => r.kind === 'preset' && r.slug === slug)
+  }
+
+  function togglePresetRole(slug: ProfileRoleSlug) {
+    setForm(f => {
+      const idx = f.roles.findIndex(r => r.kind === 'preset' && r.slug === slug)
+      if (idx >= 0) {
+        if (f.roles.length <= 1) return f // block removing the last role
+        return { ...f, roles: f.roles.filter((_, i) => i !== idx) }
+      }
+      if (f.roles.length >= MAX_PROFILE_ROLES) return f
+      return { ...f, roles: [...f.roles, { kind: 'preset', slug }] }
+    })
+    setSaved(false)
+  }
+
+  function addCustomRole() {
+    const label = customRoleInput.trim().slice(0, MAX_CUSTOM_ROLE_LEN)
+    if (!label) return
+    setForm(f => {
+      if (f.roles.length >= MAX_PROFILE_ROLES) return f
+      return { ...f, roles: [...f.roles, { kind: 'custom', label }] }
+    })
+    setSaved(false)
+    setCustomRoleInput('')
+    setAddingCustomRole(false)
+  }
+
+  function removeRoleAt(index: number) {
+    setForm(f => {
+      if (f.roles.length <= 1) return f // min 1 role required
+      if (index === 0) return f // lead chip has no remove action
+      return { ...f, roles: f.roles.filter((_, i) => i !== index) }
+    })
+    setSaved(false)
+  }
+
+  function setLeadRole(index: number) {
+    setForm(f => {
+      if (index === 0) return f
+      const roles = [...f.roles]
+      const [entry] = roles.splice(index, 1)
+      roles.unshift(entry)
+      return { ...f, roles }
+    })
+    setSaved(false)
+  }
+
+  // ── Open-to availability chips (PROFILE-04) ───────────────────────
+  function toggleOpenTo(slug: OpenTo) {
+    setForm(f => {
+      const open_to = f.open_to.includes(slug)
+        ? f.open_to.filter(o => o !== slug)
+        : [...f.open_to, slug]
+      return { ...f, open_to }
     })
     setSaved(false)
   }
@@ -458,6 +550,183 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
                 ))}
               </select>
             </div>
+          </div>
+        </section>
+
+        {/* ── Profile Badges & Availability ──────────────────────────
+            Public profile role badges (PROFILE-02), "Open to" chips
+            (PROFILE-04), and the resharing toggle (D-07). Distinct from
+            the "Industry Roles" section below, which powers split
+            sheets/contracts — these badges are what visitors see on
+            /u/[handle].
+        ─────────────────────────────────────────────────────────────── */}
+        <section className="space-y-6">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Profile Badges &amp; Availability</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Role badges and "open to" chips shown on your public profile.
+            </p>
+          </div>
+
+          {/* Roles */}
+          <div className="space-y-3">
+            <label className={labelClass}>
+              Role badges <span className="normal-case font-normal">(up to {MAX_PROFILE_ROLES})</span>
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {PROFILE_ROLES.map(slug => {
+                const selected = isPresetRoleSelected(slug)
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    onClick={() => togglePresetRole(slug)}
+                    className={[
+                      'rounded-[10px] border px-[14px] py-2 text-[13px] font-semibold transition',
+                      selected
+                        ? 'border-hairstrong bg-card2 text-white'
+                        : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+                    ].join(' ')}
+                  >
+                    {PROFILE_ROLE_LABELS[slug]}
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-xs text-white/30">
+              Current badges — first is your lead role, shown highlighted on your profile.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {form.roles.map((r, i) => (
+                <span
+                  key={i}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-[10px] border px-[14px] py-2 text-[14px] font-semibold text-white',
+                    i === 0
+                      ? 'border-brandindigo/40 bg-[linear-gradient(105deg,rgba(129,140,248,.22),rgba(217,70,239,.18))]'
+                      : 'border-hairstrong bg-card2',
+                  ].join(' ')}
+                >
+                  {profileRoleLabel(r)}
+                  {i !== 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setLeadRole(i)}
+                        className="text-[11px] font-semibold text-brandindigo hover:text-white"
+                      >
+                        Set as lead
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeRoleAt(i)}
+                        aria-label={`Remove ${profileRoleLabel(r)}`}
+                        className="text-white/40 hover:text-white"
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
+                </span>
+              ))}
+
+              {addingCustomRole ? (
+                <span className="inline-flex items-center gap-2 rounded-[10px] border border-dashed border-hairstrong bg-card2 px-[10px] py-1.5">
+                  <input
+                    autoFocus
+                    value={customRoleInput}
+                    onChange={e => setCustomRoleInput(e.target.value.slice(0, MAX_CUSTOM_ROLE_LEN))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addCustomRole()
+                      }
+                      if (e.key === 'Escape') {
+                        setAddingCustomRole(false)
+                        setCustomRoleInput('')
+                      }
+                    }}
+                    placeholder="e.g. Mixing engineer"
+                    maxLength={MAX_CUSTOM_ROLE_LEN}
+                    className="w-40 bg-transparent text-[13px] text-white placeholder-white/30 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomRole}
+                    className="text-[12px] font-semibold text-brandindigo hover:text-white"
+                  >
+                    Add
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={form.roles.length >= MAX_PROFILE_ROLES}
+                  onClick={() => setAddingCustomRole(true)}
+                  className="rounded-[10px] border border-dashed border-hairstrong px-[14px] py-2 text-[13px] font-semibold text-lavdim disabled:opacity-40"
+                >
+                  + Add role
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Open to */}
+          <div className="space-y-2">
+            <label className={labelClass}>Open to</label>
+            <div className="flex flex-wrap gap-2">
+              {OPEN_TO_EDITOR_OPTIONS.map(({ slug, label }) => {
+                const selected = form.open_to.includes(slug)
+                return (
+                  <button
+                    key={slug}
+                    type="button"
+                    onClick={() => toggleOpenTo(slug)}
+                    className={[
+                      'inline-flex items-center gap-[7px] rounded-full border px-[13px] py-[7px] text-[13.5px] font-semibold transition',
+                      selected
+                        ? 'border-emerald-400/26 bg-emerald-400/10 text-emerald-400'
+                        : 'border-hairstrong bg-card2 text-lavdim',
+                    ].join(' ')}
+                  >
+                    {selected && (
+                      <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m20 6-11 11-5-5" />
+                      </svg>
+                    )}
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Resharing toggle */}
+          <div className="flex items-start justify-between gap-4 border-t border-white/10 pt-4">
+            <div>
+              <p className="text-sm font-medium text-white">Allow others to share my music</p>
+              <p className="mt-1 text-xs text-white/40">
+                When on, visitors can share your public tracks and profile link. Turned off, only you can share.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set('allow_resharing', !form.allow_resharing)}
+              role="switch"
+              aria-checked={form.allow_resharing}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                form.allow_resharing ? 'bg-emerald-400' : 'bg-white/15'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                  form.allow_resharing ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
           </div>
         </section>
 
