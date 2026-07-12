@@ -73,6 +73,19 @@ function band(score: number): { arc: string; value: string } {
   return { arc: '#F43F5E', value: '#F43F5E' }
 }
 
+// Honest presence-dot slot (PROFILE-01). Phase 11 wires the real Realtime
+// Presence signal into `online` — this phase renders nothing when it is
+// undefined/false so no member is ever falsely shown as "Online".
+function PresenceDot({ online }: { online?: boolean }) {
+  if (!online) return null
+  return (
+    <div className="absolute bottom-3 right-3 flex items-center gap-[6px] rounded-full border border-hairstrong bg-ink px-[9px] py-1 text-[12px] font-bold text-emerald-400">
+      <span className="h-[7px] w-[7px] rounded-full bg-emerald-400" />
+      Online
+    </div>
+  )
+}
+
 function ReleaseCard({ r }: { r: ProfileRelease }) {
   const b = band(r.score)
   return (
@@ -163,10 +176,11 @@ export function ProfileView({
         {/* Header */}
         <div className="relative z-[5] -mt-[92px] flex flex-wrap items-end gap-7 px-9">
           <div
-            className="h-[168px] w-[168px] flex-none rounded-full border-[5px] border-ink bg-gradient-to-br from-brandindigo to-brandfuchsia bg-cover bg-center shadow-[0_20px_50px_-16px_rgba(0,0,0,.7)]"
+            className="relative h-[168px] w-[168px] flex-none rounded-full border-[5px] border-ink bg-gradient-to-br from-brandindigo to-brandfuchsia bg-cover bg-center shadow-[0_20px_50px_-16px_rgba(0,0,0,.7)]"
             style={data.avatarUrl ? { backgroundImage: `url('${data.avatarUrl}')` } : undefined}
           >
             {!data.avatarUrl && <span className="flex h-full w-full items-center justify-center text-[44px] font-black">{initials(data.name)}</span>}
+            <PresenceDot />
           </div>
 
           <div className="flex-1 pb-2">
@@ -306,8 +320,10 @@ export function ProfileView({
           {/* Sidebar */}
           <aside className="flex flex-col gap-6 lg:sticky lg:top-[88px]">
             <Card title="Stats">
+              <p className="-mt-3 mb-[14px] text-[11px] text-lavdim">Self-reported by artist</p>
               <Stat k="Followers" v={fmtNum(data.followerCount)} />
               <Stat k="Monthly listeners" v={fmtNum(data.monthlyListeners)} />
+              <Stat k="Placements landed" v={fmtNum(data.placementsCount)} cls="mtext" />
               <Stat k="Total streams" v={fmtNum(data.totalStreams)} />
               <Stat k="Releases" v={String(data.releases.length)} />
               <Stat k="Avg. readiness" v={data.avgReadiness != null ? String(data.avgReadiness) : '—'} cls="gtext" last />
