@@ -19,6 +19,9 @@ export async function createNotification(
     data?: Record<string, unknown>
     email?: string | null
     sendEmailCopy?: boolean
+    actorId?: string | null
+    actorName?: string | null
+    actorAvatarUrl?: string | null
   }
 ): Promise<{ ok: boolean; error?: string }> {
   let emailed = false
@@ -44,6 +47,9 @@ export async function createNotification(
     link: args.link ?? null,
     data: args.data ?? {},
     emailed,
+    actor_id: args.actorId ?? null,
+    actor_name: args.actorName ?? null,
+    actor_avatar_url: args.actorAvatarUrl ?? null,
   })
 
   return { ok: !error, error: error?.message }

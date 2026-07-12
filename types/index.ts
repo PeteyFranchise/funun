@@ -680,6 +680,9 @@ export type Notification = {
   emailed: boolean
   read: boolean
   created_at: string
+  actor_id: string | null
+  actor_name: string | null
+  actor_avatar_url: string | null
 }
 
 // ─── Community ────────────────────────────────────────────────────────
