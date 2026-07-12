@@ -125,9 +125,24 @@ Plans:
   3. User sees an unread-count badge on the notifications bell that is separate from the messages-icon badge
   4. User can open a notification panel, see the list, and mark all as read
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+
+- [ ] 10-01-PLAN.md — Foundation (Wave 0/1): 3 RED Jest scaffolds + notification type catalog & per-type builders + connect payload/transition builders + `createNotification()`/`Notification` actor-snapshot extension
+- [ ] 10-02-PLAN.md — Migration 044 (`connections.note` + `no_block()` gap close + SECURITY DEFINER auto-follow-seed trigger) + [BLOCKING] schema push
+- [ ] 10-03-PLAN.md — API routes: `app/api/connections/route.ts` (request/accept/decline/withdraw) + `app/api/notifications/route.ts` (list+unread COUNT, mark-all-read)
+- [ ] 10-04-PLAN.md — Notification trigger wiring into 4 existing routes (follows→new_follower, wall→wall_post, endorsements→endorsement, release-comments→release_comment)
+- [ ] 10-05-PLAN.md — NotificationBell (global Realtime+poll badge) + NotificationPanel (dropdown, mark-all-read, inline accept/decline, cursor pagination) + net-new authenticated header row
+- [ ] 10-06-PLAN.md — ConnectButton (3-state + note composer + inline accept/decline) + ProfileView mount + `#wall`/`#endorsements` anchors + page connect-state derivation
+
+**Wave 1**: 10-01 (autonomous — pure builders + type extensions + Wave-0 tests)
+**Wave 2** *(blocked on 10-01)*: 10-02 (migration 044 + [BLOCKING] schema push — not autonomous)
+**Wave 3** *(blocked on 10-01, 10-02)*: 10-03 ‖ 10-04 (parallel — zero file overlap: new API routes vs. modified existing routes)
+**Wave 4** *(blocked on 10-03)*: 10-05 ‖ 10-06 (parallel — zero file overlap: nav/layout surfaces vs. profile surfaces; both end in a human-verify checkpoint)
+
 **UI hint**: yes
-**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only partial precedent exists: the Follow/Message profile actions (`.pf-actions`) and the topbar notification bell with unread dot (`.pf-iconbtn .dotn`, top-right). **Gap**: no notification panel/dropdown (the actual list shown when the bell is clicked, with mark-all-read) exists anywhere in the design bundle — this phase needs net-new screen design for that panel during its `/gsd-ui-phase` run, not just recreation of the handoff.
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only partial precedent exists: the Follow/Message profile actions (`.pf-actions`) and the topbar notification bell with unread dot (`.pf-iconbtn .dotn`, top-right). **Gap**: no notification panel/dropdown (the actual list shown when the bell is clicked, with mark-all-read) exists anywhere in the design bundle — net-new screen design captured in `10-UI-SPEC.md` (header row, bell+badge+panel, ConnectButton+note composer).
 
 ### Phase 11: Presence & Messaging
 
@@ -216,7 +231,7 @@ Plans:
 **Goal:** A member can hold both artist and industry capabilities on a single account — `member_type` becomes a set of granted capabilities rather than one exclusive value, so a songwriter who is also an industry contact doesn't need a second signup to use both Sound Vault and Antenna.
 **Requirements**: TBD (no REQUIREMENTS.md IDs yet — this predates that scoping; decisions D-01..D-14 in 15-CONTEXT.md are the acceptance source)
 **Depends on:** Phase 13 (sequencing only — not a technical blocker; scheduled after Green Room ships and beta testing begins, per explicit user decision)
-**Plans:** 4/4 plans executed — phase complete
+**Plans:** 6/6 plans complete
 
 **Wave 1**
 
@@ -243,8 +258,8 @@ Plans:
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
-| 9. Rich Member Profile | v1.2 | 6/6 | Complete   | 2026-07-12 |
-| 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
+| 9. Rich Member Profile | v1.2 | 6/6 | Complete    | 2026-07-12 |
+| 10. Connections & Notifications | v1.2 | 0/6 | Planned | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
