@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
+import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
 import { ProfileView, type FollowState } from '@/components/profile/ProfileView'
@@ -9,6 +10,7 @@ import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import type { ActivityState } from '@/components/profile/ActivityFeed'
 import type { DmState } from '@/components/profile/DmWidget'
+import type { FeaturedPickerRelease } from '@/components/profile/FeaturedPicker'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
@@ -23,8 +25,36 @@ function ago(hours: number): string {
   return new Date(Date.now() - hours * 3600_000).toISOString()
 }
 
+function releaseYear(iso: string | null): string | null {
+  if (!iso) return null
+  const y = new Date(iso).getUTCFullYear()
+  return Number.isFinite(y) ? String(y) : null
+}
+
+function toFeaturedPickerRelease(p: ProfileProjectRow): FeaturedPickerRelease {
+  return {
+    id: p.id,
+    title: p.title,
+    typeLabel: VAULT_PROJECT_TYPE_LABELS[p.type],
+    year: releaseYear(p.release_date),
+    coverUrl: p.cover_art_url,
+    isPublic: Boolean(p.is_public),
+  }
+}
+
 export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params
+
+  // Absolute base URL, resolved server-side. This page has no `req` object
+  // (App Router), so the origin must come from configured env, never a
+  // relative-path fallback or client-side guess (RESEARCH Pitfall 5 — the
+  // Share/ProfileMoreMenu click handlers need an already-absolute URL to
+  // call navigator.share() synchronously with no intervening await).
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    throw new Error('NEXT_PUBLIC_APP_URL is not configured — profile share links require an absolute base URL')
+  }
+  const profileUrl = `${appUrl}/u/${handle}`
 
   let profile: ArtistProfile | null = null
   let projects: ProfileProjectRow[] = []
@@ -113,7 +143,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // reads both to build the profile's `tags` display (see 08-05-SUMMARY.md).
     const { data: prof } = await supabase
       .from('artist_profiles')
-      .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, search_vector, avatar_url, verified, roles, is_public, created_at, updated_at')
+      .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, allow_resharing, search_vector, avatar_url, verified, roles, is_public, created_at, updated_at')
       .eq('handle', handle)
       .maybeSingle()
 
@@ -208,10 +238,16 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount, placementsCount })
+  const allowResharing = Boolean(profile.allow_resharing)
+  const ownerReleases = projects.map(toFeaturedPickerRelease)
   return (
     <ProfileView
       data={data}
       mode="public"
+      profileUrl={profileUrl}
+      allowResharing={allowResharing}
+      ownerReleases={ownerReleases}
+      currentFeaturedId={profile.featured_project_id}
       follow={follow}
       wall={wall}
       endorsements={endorsements}

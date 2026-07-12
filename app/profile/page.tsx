@@ -8,6 +8,8 @@ import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import type { ActivityState } from '@/components/profile/ActivityFeed'
+import type { FeaturedPickerRelease } from '@/components/profile/FeaturedPicker'
+import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
@@ -19,6 +21,23 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
 function initialsOf(name: string | null): string {
   return (name ?? 'You').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function releaseYear(iso: string | null): string | null {
+  if (!iso) return null
+  const y = new Date(iso).getUTCFullYear()
+  return Number.isFinite(y) ? String(y) : null
+}
+
+function toFeaturedPickerRelease(p: ProfileProjectRow): FeaturedPickerRelease {
+  return {
+    id: p.id,
+    title: p.title,
+    typeLabel: VAULT_PROJECT_TYPE_LABELS[p.type],
+    year: releaseYear(p.release_date),
+    coverUrl: p.cover_art_url,
+    isPublic: Boolean(p.is_public),
+  }
 }
 
 export default async function OwnerProfilePage() {
@@ -142,11 +161,26 @@ export default async function OwnerProfilePage() {
 
   if (!profile) redirect('/settings')
 
+  // Same absolute-URL-only rule as app/u/[handle]/page.tsx (RESEARCH
+  // Pitfall 5) — no relative-path fallback. Owners without a handle yet
+  // fall back to the app root rather than an invalid /u/ path.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    throw new Error('NEXT_PUBLIC_APP_URL is not configured — profile share links require an absolute base URL')
+  }
+  const profileUrl = profile.handle ? `${appUrl}/u/${profile.handle}` : appUrl
+  const allowResharing = Boolean(profile.allow_resharing)
+  const ownerReleases = projects.map(toFeaturedPickerRelease)
+
   const data = buildProfileData(profile, projects, { publicOnly: false, followerCount })
   return (
     <ProfileView
       data={data}
       mode="owner"
+      profileUrl={profileUrl}
+      allowResharing={allowResharing}
+      ownerReleases={ownerReleases}
+      currentFeaturedId={profile.featured_project_id}
       wall={wall}
       endorsements={endorsements}
       comments={comments}
