@@ -7,6 +7,10 @@ import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
 import { ActivityFeed, type ActivityState } from './ActivityFeed'
 import { DmWidget, type DmState } from './DmWidget'
+import { ShareButton } from './ShareButton'
+import { ProfileMoreMenu } from './ProfileMoreMenu'
+import { FeaturedPicker, type FeaturedPickerRelease } from './FeaturedPicker'
+import { AvatarBannerUpload } from './AvatarBannerUpload'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -126,6 +130,10 @@ function Card({ title, children, eyebrow }: { title?: string; eyebrow?: string; 
 export function ProfileView({
   data,
   mode,
+  profileUrl,
+  allowResharing,
+  ownerReleases,
+  currentFeaturedId,
   follow,
   wall,
   endorsements,
@@ -135,6 +143,10 @@ export function ProfileView({
 }: {
   data: ProfileData
   mode: 'owner' | 'public'
+  profileUrl: string
+  allowResharing: boolean
+  ownerReleases?: FeaturedPickerRelease[]
+  currentFeaturedId?: string | null
   follow?: FollowState
   wall?: WallState
   endorsements?: EndorsementState
@@ -142,6 +154,7 @@ export function ProfileView({
   activity?: ActivityState
   dm?: DmState
 }) {
+  const shareCaption = `Check out ${data.name} on Funūn → ${profileUrl}`
   return (
     <div className="min-h-screen bg-ink text-white">
       {/* Top bar */}
@@ -171,7 +184,9 @@ export function ProfileView({
               ? `url('${data.bannerUrl}') center/cover`
               : 'radial-gradient(900px 420px at 16% -40%, rgba(129,140,248,.55), transparent 60%), radial-gradient(760px 420px at 84% 150%, rgba(217,70,239,.5), transparent 60%), linear-gradient(120deg,#1b1740 0%,#120f26 55%,#241338 100%)',
           }}
-        />
+        >
+          {mode === 'owner' && <AvatarBannerUpload variant="banner" currentUrl={data.bannerUrl} />}
+        </div>
 
         {/* Header */}
         <div className="relative z-[5] -mt-[92px] flex flex-wrap items-end gap-7 px-9">
@@ -180,6 +195,7 @@ export function ProfileView({
             style={data.avatarUrl ? { backgroundImage: `url('${data.avatarUrl}')` } : undefined}
           >
             {!data.avatarUrl && <span className="flex h-full w-full items-center justify-center text-[44px] font-black">{initials(data.name)}</span>}
+            {mode === 'owner' && <AvatarBannerUpload variant="avatar" currentUrl={data.avatarUrl} />}
             <PresenceDot />
           </div>
 
@@ -226,9 +242,12 @@ export function ProfileView({
                 <Link href="/settings" className="inline-flex items-center gap-[9px] rounded-[11px] bg-grad px-[22px] py-[13px] text-[15px] font-bold text-white shadow-cta">
                   Edit profile
                 </Link>
-                <button className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white">
-                  Share
-                </button>
+                <ShareButton
+                  url={profileUrl}
+                  caption={shareCaption}
+                  className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white"
+                  label="Share"
+                />
                 <button className="rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-lavdim" title="Analytics coming soon">
                   Analytics
                 </button>
@@ -253,6 +272,7 @@ export function ProfileView({
                     Message
                   </button>
                 )}
+                {allowResharing && <ProfileMoreMenu profileUrl={profileUrl} caption={shareCaption} />}
               </>
             )}
           </div>
@@ -277,7 +297,12 @@ export function ProfileView({
 
             {data.featured && (
               <section>
-                <div className="mb-[18px] text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Featured</div>
+                <div className="mb-[18px] flex items-center justify-between">
+                  <span className="text-[12px] font-bold uppercase tracking-[.16em] text-lavdim">Featured</span>
+                  {mode === 'owner' && (
+                    <FeaturedPicker releases={ownerReleases ?? []} currentFeaturedId={currentFeaturedId ?? null} />
+                  )}
+                </div>
                 <div className="relative flex items-center gap-[22px] overflow-hidden rounded-[18px] border border-brandindigo/30 bg-[linear-gradient(150deg,#1c1640_0%,#0f0c20_60%)] p-6">
                   <span className="absolute right-[18px] top-[18px] inline-flex items-center gap-[7px] rounded-full bg-grad px-[13px] py-[6px] text-[12px] font-extrabold uppercase tracking-[.08em] text-white">Featured</span>
                   <Link href={`/r/${data.featured.id}`} className="relative h-[140px] w-[140px] flex-none rounded-[14px] bg-gradient-to-br from-brandindigo/40 to-brandfuchsia/30 bg-cover bg-center shadow-[0_16px_40px_-14px_rgba(0,0,0,.7)]" style={data.featured.coverUrl ? { backgroundImage: `url('${data.featured.coverUrl}')` } : undefined}>
