@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 10
-current_phase_name: Connections & Notifications
-status: Ready to execute
+current_phase_name: connections-notifications
+status: executing
 stopped_at: Phase 10 planning complete — 6 plans ready (4 waves)
-last_updated: "2026-07-12T15:05:00.125Z"
+last_updated: "2026-07-12T15:13:58.905Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 10 planning complete (RESEARCH, VALIDATION, UI-SPEC, PATTERNS, 6 PLAN.md across 4 waves)
+last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 60
-  completed_plans: 54
-  percent: 90
+  completed_plans: 55
+  percent: 92
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 10 — Connections & Notifications
+**Current focus:** Phase 10 — connections-notifications
 
 ## Current Position
 
-Phase: 10 — Connections & Notifications
-Plan: Planned — 6 plans across 4 waves (execution not started)
-Status: Ready to execute — plan-checker verification passed (1 revision cycle, 2 blockers resolved); Phase 09 (Rich Member Profile) is complete; Phases 14/15 were already complete out of sequence
-Last activity: 2026-07-12 — Phase 10 planning complete (RESEARCH, VALIDATION, UI-SPEC, PATTERNS, 6 PLAN.md across 4 waves)
+Phase: 10 (connections-notifications) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-07-12 — Phase 10 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -88,6 +88,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 09 P03 | 25min | 3 tasks | 3 files |
 | Phase 09 P04 | 25min | 3 tasks | 7 files |
 | Phase 09 P05 | 15min | 3 tasks | 3 files |
+| Phase 10 P01 | 2min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 09-04]: Added ArtistProfile.allow_resharing to types/index.ts -- migration 043's column and 09-01b's API allowlist already existed but the shared type was never extended (blocking gap, Rule 3)
 - [Phase ?]: [Phase 09-05]: app/profile/page.tsx updated alongside ProfileView.tsx and app/u/[handle]/page.tsx (not in this plan's files_modified) because ProfileView's new profileUrl/allowResharing props are required -- Rule 3 blocking-issue auto-fix to keep npm run build green
 - [Phase ?]: [Phase 09-05]: FeaturedPicker mounted inside the existing data.featured conditional rather than always-rendered -- owner mode derives data.featured from ALL projects (not just public), so the picker is reachable whenever the owner has at least one project
+- [Phase ?]: [Phase 10-01]: new_follower notifications suppressed for connect-accept trigger-seeded follows -- only connection_accepted fires on accept (RESEARCH Open Question #1)
+- [Phase ?]: [Phase 10-01]: buildConnectRequest()/buildRespondTransition() throw descriptive Error instances rather than returning an {error} result shape, matching lib/capabilities/grant.ts's established convention
 
 ### Pending Todos
 
@@ -194,7 +197,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T15:05:00.108Z
+Last session: 2026-07-12T15:13:21.804Z
 Stopped at: Phase 10 planning complete — 6 plans ready (4 waves)
 Resume file: .planning/phases/10-connections-notifications/10-01-PLAN.md
 
