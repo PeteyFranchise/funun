@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
-import { readComposers, COMPOSER_ROLE_LABELS } from '@/lib/metadata/schema'
-import { PlaybackView, type TrackView } from '@/components/vault/PlaybackView'
+import { readComposers, readLyrics, COMPOSER_ROLE_LABELS } from '@/lib/metadata/schema'
+import { PublicPlaybackView, type PublicTrackView } from '@/components/vault/PublicPlaybackView'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,38 +13,28 @@ type TrackRow = {
   id: string
   title?: string | null
   track_number?: number | null
-  isrc?: string | null
-  iswc?: string | null
-  bpm?: number | null
-  language?: string | null
   duration_seconds?: number | null
   audio_file_url?: string | null
   metadata?: Record<string, unknown> | null
 }
 
-function toTrackViews(tracks: TrackRow[], signedByPath: Record<string, string>): TrackView[] {
+function toTrackViews(tracks: TrackRow[], signedByPath: Record<string, string>): PublicTrackView[] {
   return [...tracks]
     .sort((a, b) => (a.track_number ?? 0) - (b.track_number ?? 0))
     .map((t, i) => {
       const composers = readComposers(t.metadata)
-      const splitTotal = Math.round(composers.reduce((s, c) => s + (c.split || 0), 0) * 100) / 100
+      const lyrics = readLyrics(t.metadata)
       return {
         id: t.id,
         number: t.track_number ?? i + 1,
         title: t.title || `Track ${i + 1}`,
         durationSeconds: t.duration_seconds ?? null,
-        isrc: t.isrc ?? null,
-        iswc: t.iswc ?? null,
-        bpm: t.bpm ?? null,
-        language: t.language ?? null,
         // audio_file_url stores a storage PATH in a private bucket, not a URL —
         // only a server-minted signed URL is playable (mirrors the play page).
         audioUrl: t.audio_file_url ? signedByPath[t.audio_file_url] ?? null : null,
-        instrumentalUrl: null,
-        hasStems: false,
-        stemsUrl: null,
-        credits: composers.map(c => ({ name: c.name, role: COMPOSER_ROLE_LABELS[c.role], split: c.split })),
-        splitTotal,
+        // Public credits: names + role labels only, NO split (D-11).
+        credits: composers.map(c => ({ name: c.name, role: COMPOSER_ROLE_LABELS[c.role] })),
+        lyrics: lyrics?.text ?? null,
       }
     })
 }
@@ -54,6 +44,7 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
 
   let project: { title: string; cover_art_url: string | null; tracks?: TrackRow[] } | null = null
   let artist: string | null = null
+  let allowResharing = false
   const signedByPath: Record<string, string> = {}
 
   if (DEMO) {
@@ -67,7 +58,7 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
       .from('vault_projects')
       .select(
         `title, cover_art_url, is_public, user_id,
-         tracks (id, title, track_number, isrc, iswc, bpm, language, duration_seconds, audio_file_url, metadata)`
+         tracks (id, title, track_number, duration_seconds, audio_file_url, metadata)`
       )
       .eq('id', projectId)
       .maybeSingle()
@@ -78,10 +69,13 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
 
     const { data: prof } = await supabase
       .from('artist_profiles')
-      .select('artist_name')
+      .select('artist_name, allow_resharing')
       .eq('id', (data as { user_id: string }).user_id)
       .maybeSingle()
     artist = prof?.artist_name ?? null
+    // Default to false when null/absent — the visitor Share affordance is
+    // omitted unless the artist has explicitly opted in (D-07).
+    allowResharing = Boolean((prof as { allow_resharing?: boolean } | null)?.allow_resharing)
 
     // Mint short-lived signed URLs for public playback. The `is_public` gate above
     // is the app-level authorization for using the service client here — the bucket
@@ -115,16 +109,13 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
         <h1 className="pb-1 pt-7 text-[27px] font-extrabold tracking-[-.01em]">{project.title}</h1>
         <p className="text-[14px] font-medium text-lavdim">{artist ? `${artist} · ` : ''}Now playing</p>
       </div>
-      <PlaybackView
+      <PublicPlaybackView
           releaseTitle={project.title}
           artist={artist}
           coverUrl={project.cover_art_url}
           tracks={tracks}
           projectId={projectId}
-          userId=""
-          canManage={false}
-          readinessScore={0}
-          miniLeft="0px"
+          allowResharing={allowResharing}
         />
     </div>
   )
