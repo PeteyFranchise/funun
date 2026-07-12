@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "jest",
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
     "db:push": "supabase db push"
   },
