@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 09
 current_phase_name: rich-member-profile
 status: executing
-stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-07-12T09:12:08.193Z"
+stopped_at: Phase 09-01b Task 4 blocking checkpoint (supabase db push required)
+last_updated: "2026-07-12T09:26:17.569Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 09 execution started
+last_activity_desc: Phase 09-01b Tasks 1-3 executed and committed; Task 4 checkpoint returned
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 54
-  completed_plans: 49
+  completed_plans: 50
   percent: 91
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 09 (rich-member-profile) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-07-12 — Phase 09 execution started
+Plan: 2 of 6 (09-01b) — Tasks 1-3 complete, BLOCKED on Task 4 (blocking human-verify checkpoint: `supabase db push` for migration 043)
+Status: Blocked — awaiting operator to push migration 043 to the remote database
+Last activity: 2026-07-12 — Phase 09-01b Tasks 1-3 executed and committed; Task 4 checkpoint returned
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -118,6 +118,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: buildExportManifest() pure transform — I/O stays in Plan 06 route
 - [Phase ?]: archiver v8 uses ZipArchive named export — thin factory alias added
 - [Phase ?]: This project's ts-jest runs transpile-only (root tsconfig.json isolatedModules: true) -- TS type errors don't fail Jest runs; schema-lyrics.test.ts's RED/GREEN contract is enforced via tsc --noEmit instead
+- [Phase 09-01b]: isFeaturableProjectRow/sanitizeProfileRoles implemented to match 09-01a's RED test literal assertions (hyphenated 'not-found'/'rejected-not-public'; sanitizeProfileRoles always returns [] never null), not PLAN.md's prose description — The RED test files are the binding machine-checked contract per this plan's read_first instruction
+- [Phase 09-01b]: sanitize() in app/api/profile/route.ts made async, taking (body, service, userId), returning { update } | { error, status } -- enables the featured_project_id ownership/is_public DB pre-check inside the same allowlist loop — Needed to return friendly 404/400 before the DB trigger exception reaches the client
 
 ### Pending Todos
 
@@ -128,12 +130,11 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 ### Blockers/Concerns
 
-None currently.
-
 **Resolved 2026-07-07 (schema push verified live):**
 
 - ~~[Phase 08] migrations 034-040 unpushed~~ — RESOLVED: `supabase migration list` (run by Pete after `supabase login` + `link --project-ref wgfjakfiyeewzfuxkgyo`) confirmed LOCAL=REMOTE for ALL migrations 001–042. Migrations 034–040 were already live on the remote database; the recorded gap was stale. Phase 8's SC-4/SC-5 live-DB smoke assertions (08-VERIFICATION.md human-verification items) remain individually unexecuted but the push-blocker itself is gone.
 - ~~[Phase 15-01] Task 3 schema push for migration 042~~ — RESOLVED: Pete ran `supabase db push` (applied 041 + 042) and all 3 DB-level checks passed: D-12 backfill (5 artist/approved/backfill rows, zero industry rows correct — no industry accounts exist yet), column lockdown (42501 permission denied as authenticated), partial unique index (duplicate pending insert rejected). See 15-01-SUMMARY.md.
+- Phase 09-01b Task 4 BLOCKING checkpoint: migration 043 (artist_profiles.allow_resharing) authored locally but not yet pushed to the remote database. Operator must run 'supabase db push' from repo root, then confirm 'supabase migration list' shows 043 with both LOCAL and REMOTE populated, before this plan can be marked complete and Plans 09-02..09-05 (which depend on this DB/API layer) can proceed.
 
 ### Quick Tasks Completed
 
@@ -179,9 +180,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T09:11:20.677Z
-Stopped at: Phase 9 UI-SPEC approved
-Resume file: .planning/phases/09-rich-member-profile/09-UI-SPEC.md
+Last session: 2026-07-12T09:25:02.512Z
+Stopped at: Phase 09-01b Task 4 blocking checkpoint (supabase db push required)
+Resume file: .planning/phases/09-rich-member-profile/09-01b-PLAN.md
 
 ## Operator Next Steps
 
