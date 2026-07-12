@@ -9,9 +9,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Profile (rich member identity)
 
-- [ ] **PROFILE-01**: User can view a rich profile header — banner, avatar with online presence dot, name, pronouns, verified badge, and multi-role badges with the lead role highlighted
+- [x] **PROFILE-01**: User can view a rich profile header — banner, avatar with online presence dot, name, pronouns, verified badge, and multi-role badges with the lead role highlighted
 - [x] **PROFILE-02**: User can add a custom title alongside standard industry roles (Artist, Producer, Songwriter, Music Supervisor, A&R, Exec)
-- [ ] **PROFILE-03**: User can set a location and sees their tenure ("On Funūn since [year]") on their profile
+- [x] **PROFILE-03**: User can set a location and sees their tenure ("On Funūn since [year]") on their profile
 - [x] **PROFILE-04**: User can set "Open to" availability status (sync licensing, co-writes, features, brand deals) and it displays as chips on their profile
 - [x] **PROFILE-05**: User can pin one release as a "Featured" spotlight on their profile
 - [x] **PROFILE-06**: User sees a stats sidebar (followers, monthly listeners, placements, avg. readiness) on any profile
@@ -90,9 +90,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROFILE-01 | Phase 9 | Pending |
+| PROFILE-01 | Phase 9 | Complete |
 | PROFILE-02 | Phase 9 | Complete |
-| PROFILE-03 | Phase 9 | Pending |
+| PROFILE-03 | Phase 9 | Complete |
 | PROFILE-04 | Phase 9 | Complete |
 | PROFILE-05 | Phase 9 | Complete |
 | PROFILE-06 | Phase 9 | Complete |

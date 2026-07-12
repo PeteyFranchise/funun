@@ -38,7 +38,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Milestone Goal:** Turn Funūn's thin social layer into a full professional network for the music industry — rich member profiles, discovery, connections, notifications, and real-time presence — recreated pixel-faithfully from the locked hi-fi design handoff.
 
 - [x] **Phase 8: Identity & Schema Foundation** - Extend the member-identity table and stand up the connection/block/notification/presence schema with column-privilege and block-enforcement guarantees baked in (completed 2026-07-05)
-- [ ] **Phase 9: Rich Member Profile** - Ship the hi-fi hero profile (banner, avatar, role badges, "Open to" chips, stats, releases grid, Featured spotlight) with owner-vs-public view switching and image upload
+- [x] **Phase 9: Rich Member Profile** - Ship the hi-fi hero profile (banner, avatar, role badges, "Open to" chips, stats, releases grid, Featured spotlight) with owner-vs-public view switching and image upload (completed 2026-07-12)
 - [ ] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel
 - [ ] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected
 - [ ] **Phase 12: Discovery & People Search** - Global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion
@@ -94,7 +94,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
   3. User can pin one release as a "Featured" spotlight on their profile
   4. Profile owner sees Edit profile / Share / View analytics actions and can upload/edit their banner and avatar; a visitor sees Follow / Message / more-options instead
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 
 Plans:
 
@@ -103,7 +103,7 @@ Plans:
 - [x] 09-02-PLAN.md — Avatar/banner upload route + `AvatarBannerUpload` component (vault-assets bucket, PROFILE-09)
 - [x] 09-03-PLAN.md — Public `PublicPlaybackView` (+ own `PublicTrackView` type) + `LyricsPanel` + `/r/[projectId]` render swap (D-01..D-14)
 - [x] 09-04-PLAN.md — Settings roles/open-to/resharing editors + `ShareButton` + `ProfileMoreMenu` + `FeaturedPicker` (PROFILE-02/04/05/08)
-- [ ] 09-05-PLAN.md — ProfileView + `/u/[handle]` integration: presence dot, placements row, mount share/upload/picker/menu, server-resolved absolute `profileUrl` (PROFILE-01/03/06/08/09)
+- [x] 09-05-PLAN.md — ProfileView + `/u/[handle]` integration: presence dot, placements row, mount share/upload/picker/menu, server-resolved absolute `profileUrl` (PROFILE-01/03/06/08/09)
 
 **Wave 1**: 09-01a (Wave 0 tests + additive types — autonomous)
 **Wave 2** *(blocked on 09-01a)*: 09-01b (validators GREEN + allowlist + placements + migration 043 + [BLOCKING] push)
@@ -243,7 +243,7 @@ Plans:
 | 6. Playlist Curator Pitching | v1.1 | 6/6 | Complete | 2026-07-02 |
 | 7. Social Campaign Planner | v1.1 | 6/6 | Complete | 2026-07-03 |
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
-| 9. Rich Member Profile | v1.2 | 5/6 | In Progress|  |
+| 9. Rich Member Profile | v1.2 | 6/6 | Complete   | 2026-07-12 |
 | 10. Connections & Notifications | v1.2 | 0/TBD | Not started | - |
 | 11. Presence & Messaging | v1.2 | 0/TBD | Not started | - |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |

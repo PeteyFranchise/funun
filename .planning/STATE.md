@@ -6,15 +6,15 @@ current_phase: 09
 current_phase_name: rich-member-profile
 status: executing
 stopped_at: Phase 09-01b complete; Plan 3 of 6 (09-02/09-03/09-04, Wave 3) up next
-last_updated: "2026-07-12T09:57:47.123Z"
+last_updated: "2026-07-12T10:08:42.671Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 54
-  completed_plans: 53
-  percent: 91
+  completed_plans: 54
+  percent: 100
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 09 (rich-member-profile) — EXECUTING
-Plan: 5 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
+Plan: 6 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
 Status: Ready to proceed to Wave 3 — Plans 09-02, 09-03, 09-04 (parallel, zero file overlap)
 Last activity: 2026-07-12 — Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
 
@@ -87,6 +87,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 09 P02 | 12min | 2 tasks | 2 files |
 | Phase 09 P03 | 25min | 3 tasks | 3 files |
 | Phase 09 P04 | 25min | 3 tasks | 7 files |
+| Phase 09 P05 | 15min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 09-04]: shareOrCopy() exported from ShareButton.tsx as a shared helper so ProfileMoreMenu's Copy-profile-link item reuses the exact Web-Share/clipboard mechanism instead of re-implementing the synchronous-first-call rule
 - [Phase 09-04]: Open-to editor maps 'Brand deals' to the existing 'management' OpenTo slug -- no dedicated brand_deals member exists in the union, plan authorized closest-slug substitution
 - [Phase 09-04]: Added ArtistProfile.allow_resharing to types/index.ts -- migration 043's column and 09-01b's API allowlist already existed but the shared type was never extended (blocking gap, Rule 3)
+- [Phase ?]: [Phase 09-05]: app/profile/page.tsx updated alongside ProfileView.tsx and app/u/[handle]/page.tsx (not in this plan's files_modified) because ProfileView's new profileUrl/allowResharing props are required -- Rule 3 blocking-issue auto-fix to keep npm run build green
+- [Phase ?]: [Phase 09-05]: FeaturedPicker mounted inside the existing data.featured conditional rather than always-rendered -- owner mode derives data.featured from ALL projects (not just public), so the picker is reachable whenever the owner has at least one project
 
 ### Pending Todos
 
@@ -191,7 +194,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T09:57:09.560Z
+Last session: 2026-07-12T10:07:36.880Z
 Stopped at: Phase 09-01b complete (Task 4 checkpoint approved). Next: Wave 3 — 09-02/09-03/09-04 (parallel)
 Resume file: .planning/phases/09-rich-member-profile/09-02-PLAN.md (or next unstarted Wave 3 plan)
 
