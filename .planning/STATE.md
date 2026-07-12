@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 15
 current_phase_name: account-capability-model
 status: complete
-stopped_at: "Phase 15 complete (4/4 plans) — Wave 3 (Plans 15-03, 15-04) executed and verified"
-last_updated: "2026-07-12T00:00:00.000Z"
+stopped_at: Phase 9 UI-SPEC approved
+last_updated: "2026-07-12T05:05:28.423Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 15 Plans 03 and 04 completed (nav unification + D-09 CTA, admin approval queue) — phase complete
+last_activity_desc: Phase 15 Plans 03 (nav unification + D-09 CTA) and 04 (admin approval queue) completed
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 48
-  completed_plans: 47
-  percent: 98
+  completed_plans: 48
+  percent: 91
 ---
 
 # Project State
@@ -129,6 +129,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 None currently.
 
 **Resolved 2026-07-07 (schema push verified live):**
+
 - ~~[Phase 08] migrations 034-040 unpushed~~ — RESOLVED: `supabase migration list` (run by Pete after `supabase login` + `link --project-ref wgfjakfiyeewzfuxkgyo`) confirmed LOCAL=REMOTE for ALL migrations 001–042. Migrations 034–040 were already live on the remote database; the recorded gap was stale. Phase 8's SC-4/SC-5 live-DB smoke assertions (08-VERIFICATION.md human-verification items) remain individually unexecuted but the push-blocker itself is gone.
 - ~~[Phase 15-01] Task 3 schema push for migration 042~~ — RESOLVED: Pete ran `supabase db push` (applied 041 + 042) and all 3 DB-level checks passed: D-12 backfill (5 artist/approved/backfill rows, zero industry rows correct — no industry accounts exist yet), column lockdown (42501 permission denied as authenticated), partial unique index (duplicate pending insert rejected). See 15-01-SUMMARY.md.
 
@@ -176,9 +177,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12
-Stopped at: Phase 15 complete (4/4 plans) — no open resume file for Phase 15
-Resume file: None
+Last session: 2026-07-12T05:05:28.408Z
+Stopped at: Phase 9 UI-SPEC approved
+Resume file: .planning/phases/09-rich-member-profile/09-UI-SPEC.md
 
 ## Operator Next Steps
 
