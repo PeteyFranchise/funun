@@ -27,16 +27,18 @@ export function useShare(onCopied?: (message: string) => void) {
 
       if (nav && typeof nav.share === 'function') {
         try {
-          await nav.share({ title: p.artist ? `${p.title} — ${p.artist}` : p.title, text, url: p.url })
+          await nav.share({ title: p.artist ? `${p.title} - ${p.artist}` : p.title, text, url: p.url })
           return
         } catch (e) {
-          // User dismissed the sheet — treat as a no-op, don't fall back.
+          // User dismissed the sheet - treat as a no-op, don't fall back.
           if (e instanceof DOMException && e.name === 'AbortError') return
           // Any other failure falls through to the clipboard path below.
         }
       }
 
-      await copyToClipboard(text, onCopied)
+      // Desktop fallback copies the bare URL (not the caption) so the
+      // "Link copied!" toast stays accurate and matches the "Copy link" action.
+      await copyToClipboard(p.url, onCopied)
     },
     [onCopied]
   )
