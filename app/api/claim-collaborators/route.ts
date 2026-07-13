@@ -14,7 +14,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 //   the service-role client — never from a user-session client directly.
 export async function POST() {
   // Step 1: validate session — reject if no authenticated user
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

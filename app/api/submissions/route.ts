@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

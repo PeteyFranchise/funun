@@ -20,7 +20,7 @@ export async function GET(
 
   if (DEMO) return new Response('Not available in demo mode', { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

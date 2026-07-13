@@ -64,7 +64,7 @@ export async function POST(
   }
 
   // Auth gate
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

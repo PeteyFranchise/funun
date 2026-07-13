@@ -14,7 +14,7 @@ const PAGE_SIZE = 20
 export async function GET(request: Request) {
   if (DEMO) return NextResponse.json({ data: [], unreadCount: 0 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 export async function PATCH() {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

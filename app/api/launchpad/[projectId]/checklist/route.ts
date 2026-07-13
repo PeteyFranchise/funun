@@ -20,7 +20,7 @@ export async function GET(
 
   // Auth check via user-scoped client — confirms the caller is authenticated
   // and owns the requested project before we issue any service-client reads.
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

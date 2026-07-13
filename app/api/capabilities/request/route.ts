@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   // Derive identity from session — never from the request body (T-15-05).
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

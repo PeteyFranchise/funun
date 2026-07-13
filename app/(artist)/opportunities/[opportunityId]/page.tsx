@@ -40,7 +40,7 @@ export default async function OpportunityInboxPage({
       ]
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

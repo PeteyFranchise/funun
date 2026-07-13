@@ -149,7 +149,7 @@ async function sanitize(
 }
 
 export async function PATCH(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

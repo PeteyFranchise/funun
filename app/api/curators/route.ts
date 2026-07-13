@@ -34,7 +34,7 @@ type DirectoryRow = Pick<
 // response rate (PITCH-04 display side). Filterable via repeatable
 // ?genre= and ?platform= searchParams (PITCH-01).
 export async function GET(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

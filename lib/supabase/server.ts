@@ -2,8 +2,18 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-export const createServerClient = () => createServerComponentClient({ cookies })
-export const createApiClient = () => createRouteHandlerClient({ cookies })
+
+type CookieFactory = typeof cookies
+
+export async function createServerClient() {
+  const cookieStore = await cookies()
+  return createServerComponentClient({ cookies: (() => cookieStore) as unknown as CookieFactory })
+}
+
+export async function createApiClient() {
+  const cookieStore = await cookies()
+  return createRouteHandlerClient({ cookies: (() => cookieStore) as unknown as CookieFactory })
+}
 
 /**
  * Service-role client — bypasses RLS. Use ONLY in server code (route

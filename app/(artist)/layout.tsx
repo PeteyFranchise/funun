@@ -9,7 +9,7 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 // carries the same column-lockdown doctrine as every other privileged table
 // (RESEARCH anti-pattern guard).
 export default async function ArtistLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -46,7 +46,7 @@ export default async function DocumentsPage({
   if (DEMO) {
     project = (await getDemoProject(projectId)) as StageProject | null
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

@@ -13,7 +13,7 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
   const { tab } = await searchParams
   const initialTab = tab === 'credits' ? 'credits' : 'roster'
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

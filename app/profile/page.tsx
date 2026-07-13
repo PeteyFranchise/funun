@@ -104,7 +104,7 @@ export default async function OwnerProfilePage() {
       ],
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

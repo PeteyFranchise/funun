@@ -33,7 +33,7 @@ export async function POST(
 ) {
   const { projectId, campaignId, slotId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

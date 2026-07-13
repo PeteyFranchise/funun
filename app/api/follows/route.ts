@@ -13,7 +13,7 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
   const { followeeId } = (await request.json().catch(() => ({}))) as { followeeId?: string }
   if (!followeeId) return NextResponse.json({ error: 'Missing followeeId' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

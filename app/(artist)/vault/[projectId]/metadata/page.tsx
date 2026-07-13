@@ -57,7 +57,7 @@ export default async function MetadataPage({
     project = (await getDemoProject(projectId)) as MetaProject | null
     artistName = 'Demo Artist'
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

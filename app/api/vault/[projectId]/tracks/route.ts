@@ -25,7 +25,7 @@ export async function POST(
     return NextResponse.json({ data: project })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

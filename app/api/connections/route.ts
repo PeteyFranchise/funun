@@ -15,7 +15,7 @@ const ACTIVE_CONNECTION_STATUSES = ['pending', 'accepted']
 // notification actor snapshot. Column is `artist_name`, NOT `display_name`
 // (RESEARCH Pattern 2). Never trust client-supplied actor data (T-10-07).
 async function loadActor(
-  supabase: ReturnType<typeof createApiClient>,
+  supabase: Awaited<ReturnType<typeof createApiClient>>,
   userId: string
 ): Promise<{ name: string; avatarUrl: string | null; handle: string }> {
   const { data } = await supabase
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   }
   if (!addresseeId) return NextResponse.json({ error: 'Missing addresseeId' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -146,7 +146,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -137,7 +137,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       initialMessages: [],
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     // Explicit PUBLIC column list (D-11) — must stay identical to migration
     // 040's GRANT SELECT list so the app-layer projection and the DB-layer
     // grant never drift. Includes `genre` and `sound_identity` (legacy

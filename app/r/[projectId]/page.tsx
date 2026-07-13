@@ -53,7 +53,7 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
     project = p as unknown as { title: string; cover_art_url: string | null; tracks?: TrackRow[] }
     artist = 'Maya Reyes'
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const { data } = await supabase
       .from('vault_projects')
       .select(

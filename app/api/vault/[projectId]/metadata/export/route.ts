@@ -24,7 +24,7 @@ export async function GET(
     return new Response('Export is not available in demo mode', { status: 400 })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

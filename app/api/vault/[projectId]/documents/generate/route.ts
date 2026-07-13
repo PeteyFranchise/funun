@@ -58,7 +58,7 @@ export async function POST(
   const input = body.input ?? {}
   const trackId = body.trackId ?? null
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

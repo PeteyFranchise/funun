@@ -17,7 +17,7 @@ export default async function OpportunitiesPage() {
   if (DEMO) {
     opps = DEMO_OPPORTUNITIES.map(o => ({ ...o, matchCount: 3, appliedCount: 1 }))
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

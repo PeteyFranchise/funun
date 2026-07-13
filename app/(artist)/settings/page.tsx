@@ -73,7 +73,7 @@ export default async function SettingsPage() {
   if (DEMO) {
     profile = DEMO_PROFILE
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

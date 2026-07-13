@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const otherId = new URL(request.url).searchParams.get('with')
   if (!otherId) return NextResponse.json({ error: 'Missing ?with' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

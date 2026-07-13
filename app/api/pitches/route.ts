@@ -38,7 +38,7 @@ function escapeHtml(s: string): string {
 // This is the ONLY route that creates pitch_history rows and the ONLY
 // place response_token is generated (06-06 reads, never generates).
 export async function POST(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -23,7 +23,7 @@ function toStringArray(v: unknown): string[] {
 // GET /api/antenna/opportunities — list the signed-in industry pro's own opps.
 export async function GET() {
   if (DEMO) return NextResponse.json({ data: [] })
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Creating is disabled in demo mode' }, { status: 400 })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

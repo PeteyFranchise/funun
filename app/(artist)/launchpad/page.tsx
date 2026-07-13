@@ -13,7 +13,7 @@ const STATUS_BADGE: Record<PlaybookStatus, { label: string; cls: string }> = {
 }
 
 export default async function LaunchpadPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

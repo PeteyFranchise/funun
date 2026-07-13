@@ -93,7 +93,7 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

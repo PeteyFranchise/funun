@@ -14,7 +14,7 @@ export async function PATCH(
 ) {
   const { projectId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

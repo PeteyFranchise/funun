@@ -6,7 +6,7 @@ type RouteCtx = { params: Promise<{ projectId: string }> }
 // for sharing with collaborators, press, and promo. Owner-only.
 export async function GET(_request: Request, { params }: RouteCtx) {
   const { projectId } = await params
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

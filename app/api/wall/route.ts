@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (!text) return NextResponse.json({ error: 'Message is empty' }, { status: 400 })
   if (text.length > 2000) return NextResponse.json({ error: 'Message too long' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -65,7 +65,7 @@ export async function DELETE(request: Request) {
   const { postId } = (await request.json().catch(() => ({}))) as { postId?: string }
   if (!postId) return NextResponse.json({ error: 'Missing postId' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
