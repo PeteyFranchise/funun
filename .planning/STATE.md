@@ -6,14 +6,14 @@ current_phase: 10
 current_phase_name: connections-notifications
 status: executing
 stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-07-13T02:21:45.277Z"
+last_updated: "2026-07-13T02:27:37.211Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 60
-  completed_plans: 57
+  completed_plans: 58
   percent: 92
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 10 (connections-notifications) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 10 execution started
 
@@ -91,6 +91,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 10 P01 | 2min | 4 tasks | 7 files |
 | Phase 10 P02 | checkpoint-spanning | 2 tasks | 1 files |
 | Phase 10 P03 | 2min | 2 tasks | 2 files |
+| Phase 10 P04 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10-02]: connections_seed_follows() SECURITY DEFINER trigger seeds both follows directions atomically on accept -- verified live via smoke test showing exactly 2 rows with matching timestamps
 - [Phase 10]: 10-03: connect status transition uses session client only; RLS two-policy split enforces addressee-accepts / requester-withdraws (T-10-06). Service-role only for the cross-user notification insert.
 - [Phase 10]: 10-03: PATCH /api/connections returns 404 on a zero-row RLS-filtered UPDATE (single round-trip, no existence leak) rather than 403.
+- [Phase ?]: Plan 10-04: notification triggers are best-effort try/catch side effects AFTER the primary mutation (never block follow/post/endorse/comment)
+- [Phase ?]: Plan 10-04: release_comment resolves the project owner (vault_projects.user_id) and suppresses self-comment notifications
 
 ### Pending Todos
 
@@ -204,7 +207,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T02:21:15.032Z
+Last session: 2026-07-13T02:27:15.081Z
 Stopped at: Completed 10-02-PLAN.md
 Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
 
