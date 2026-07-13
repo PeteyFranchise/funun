@@ -5,17 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 11
 current_phase_name: presence-messaging
 status: ready
-stopped_at: Phase 10 passed after UAT fixes and WR-04 hardening
-last_updated: "2026-07-13T04:27:52-04:00"
+stopped_at: Phase 11 context gathered
+last_updated: "2026-07-13T09:08:32.070Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 10 live-backend UAT completed; Follow visual weight, notification compound-cursor pagination, and duplicate accept notification hardening fixed, retested, and recorded
+last_activity_desc: completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, closed WR-04 with a pending-state PATCH guard, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
 progress:
-  total_phases: 6
-  completed_phases: 2
-  structurally_verified_or_code_complete_phases: 3
-  known_plans: 18
-  completed_known_plans: 18
-  percent_complete_by_passed_phase: 33
+  total_phases: 13
+  completed_phases: 12
+  total_plans: 60
+  completed_plans: 60
+  percent: 92
 ---
 
 # Project State
@@ -216,9 +215,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T02:45:49.311Z
-Stopped at: Completed 10-02-PLAN.md
-Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
+Last session: 2026-07-13T09:08:32.049Z
+Stopped at: Phase 11 context gathered
+Resume file: .planning/phases/11-presence-messaging/11-CONTEXT.md
 
 ## Operator Next Steps
 
