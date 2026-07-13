@@ -29,6 +29,9 @@ export const NOTIFICATION_TYPES = {
   // in the catalog so the panel can render them too.
   antenna_match: { icon: 'radio', inlineAction: null },
   application_received: { icon: 'inbox', inlineAction: null },
+  // Phase 11 — message-request flow (CONNECT-03) and direct-message notification
+  message_request: { icon: 'message-circle', inlineAction: 'message_request_respond' },
+  new_dm: { icon: 'message-square', inlineAction: null },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -191,4 +194,52 @@ export type NotificationPageCursor = {
 
 export function buildNotificationCursorPredicate(cursor: NotificationPageCursor): string {
   return `created_at.lt.${cursor.before},and(created_at.eq.${cursor.before},id.lt.${cursor.beforeId})`
+}
+
+// ─── message_request ─────────────────────────────────────────────────────
+// Fires when a non-connection sends their first DM (the request itself).
+// `preview` is the truncated (~60 char) first-message body — caller truncates.
+
+export function buildMessageRequestNotification(args: {
+  recipientId: string
+  actorId: string
+  actorName: string
+  actorAvatarUrl: string | null
+  actorHandle: string
+  threadId: string
+  preview: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'message_request',
+    title: `${args.actorName} sent you a message request`,
+    body: args.preview,
+    link: `/messages?thread=${args.threadId}`,
+    data: { threadId: args.threadId },
+    actorId: args.actorId,
+    actorName: args.actorName,
+    actorAvatarUrl: args.actorAvatarUrl,
+  }
+}
+
+// ─── new_dm ──────────────────────────────────────────────────────────────
+// Fires when an accepted connection sends a reply in a direct thread.
+
+export function buildNewDmNotification(args: {
+  recipientId: string
+  actorId: string
+  actorName: string
+  actorAvatarUrl: string | null
+  threadId: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'new_dm',
+    title: `${args.actorName} replied to your message`,
+    link: `/messages?thread=${args.threadId}`,
+    data: { threadId: args.threadId },
+    actorId: args.actorId,
+    actorName: args.actorName,
+    actorAvatarUrl: args.actorAvatarUrl,
+  }
 }
