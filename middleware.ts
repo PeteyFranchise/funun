@@ -9,7 +9,11 @@ export async function middleware(req: NextRequest) {
   if (process.env.NEXT_PUBLIC_VAULT_DEMO === 'true') return res
 
   const supabase = createMiddlewareClient({ req, res })
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use getUser() rather than getSession(): getSession() can reflect a stale
+  // client cookie, while server pages/routes validate with getUser(). Keeping
+  // middleware on the same contract prevents deleted/expired users from
+  // entering protected pages with auth.getUser() resolving to null.
+  const { data: { user } } = await supabase.auth.getUser()
 
   // Route groups like (artist) are NOT part of the URL, so match real path prefixes.
   const { pathname } = req.nextUrl
@@ -34,24 +38,24 @@ export async function middleware(req: NextRequest) {
   // Note: /approve and /join are intentionally public — collaborators access
   // approval and invite pages without a Funūn account (D-15, D-08).
 
-  if (isProtected && !session) {
+  if (isProtected && !user) {
     const url = new URL('/signin', req.url)
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
-  if (isAuthRoute && session) {
+  if (isAuthRoute && user) {
     return NextResponse.redirect(new URL('/vault', req.url))
   }
 
   // Phase 4: fire the claim completion for users whose collaborator rows
   // have not yet been linked. Short-circuits via the claimed_at sentinel
   // once claim has been confirmed — avoids repeated DB work on hot path (D-02).
-  if (session && !isAuthRoute) {
+  if (user && !isAuthRoute) {
     const { data: ap } = await supabase
       .from('artist_profiles')
       .select('claimed_at')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .maybeSingle()
 
     if (ap && ap.claimed_at === null) {
