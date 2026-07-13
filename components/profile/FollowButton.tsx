@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+const ghostClass = 'border border-hairstrong bg-card text-white'
+
 export function FollowButton({
   profileUserId,
   initialFollowing,
@@ -39,7 +41,7 @@ export function FollowButton({
     return (
       <a
         href="/signin"
-        className="inline-flex items-center gap-[9px] rounded-[11px] bg-grad px-[22px] py-[13px] text-[15px] font-bold text-white shadow-cta"
+        className={`inline-flex items-center gap-[9px] rounded-[11px] px-[22px] py-[13px] text-[15px] font-bold ${ghostClass}`}
       >
         Follow
       </a>
@@ -52,9 +54,7 @@ export function FollowButton({
       disabled={busy}
       className={[
         'inline-flex items-center gap-[9px] rounded-[11px] px-[22px] py-[13px] text-[15px] font-bold transition disabled:opacity-60',
-        following
-          ? 'border border-hairstrong bg-card text-white'
-          : 'bg-grad text-white shadow-cta',
+        ghostClass,
       ].join(' ')}
     >
       {following ? 'Following' : 'Follow'}

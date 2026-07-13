@@ -162,6 +162,7 @@ export async function PATCH(request: Request) {
     .from('connections')
     .update({ status: target })
     .eq('id', connectionId)
+    .eq('status', 'pending')
     .select('id, requester_id, addressee_id')
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

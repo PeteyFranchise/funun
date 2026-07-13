@@ -123,8 +123,9 @@ export function NotificationPanel({ unreadCount, onMarkedAllRead, onRespondedToR
     if (loadingMore || done || loading || error || items.length === 0) return
     setLoadingMore(true)
     try {
-      const oldest = items[items.length - 1].created_at
-      const res = await fetch(`/api/notifications?before=${encodeURIComponent(oldest)}`)
+      const oldest = items[items.length - 1]
+      const params = new URLSearchParams({ before: oldest.created_at, beforeId: oldest.id })
+      const res = await fetch(`/api/notifications?${params.toString()}`)
       if (!res.ok) throw new Error('fetch failed')
       const json = await res.json()
       const rows = (json.data ?? []) as Notification[]

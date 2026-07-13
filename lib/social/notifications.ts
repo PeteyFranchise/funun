@@ -179,3 +179,16 @@ export function buildReleaseCommentNotification(args: {
 export function buildMarkAllReadFilter(userId: string): { user_id: string; read: false } {
   return { user_id: userId, read: false }
 }
+
+// ─── notification pagination cursor (NOTIF-03 / D-11) ───────────────────
+// `created_at` alone is not unique under burst inserts, so cursor pagination
+// must include `id` as a deterministic tiebreaker to avoid skipping siblings
+// that share the boundary timestamp.
+export type NotificationPageCursor = {
+  before: string
+  beforeId: string
+}
+
+export function buildNotificationCursorPredicate(cursor: NotificationPageCursor): string {
+  return `created_at.lt.${cursor.before},and(created_at.eq.${cursor.before},id.lt.${cursor.beforeId})`
+}
