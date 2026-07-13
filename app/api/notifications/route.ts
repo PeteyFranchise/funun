@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { buildMarkAllReadFilter } from '@/lib/social/notifications'
+import { buildMarkAllReadFilter, buildNotificationCursorPredicate } from '@/lib/social/notifications'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const PAGE_SIZE = 20
 
-// GET /api/notifications?before=<iso>  → { data: [...], unreadCount }
+// GET /api/notifications?before=<iso>&beforeId=<uuid>  → { data: [...], unreadCount }
 //
-// Cursor pagination via `before=<created_at>` (race-safe on a table that
-// receives concurrent inserts, RESEARCH Open Question #2 — never offset).
+// Cursor pagination uses `created_at` plus `id` as a stable tiebreaker so
+// burst inserts sharing the same timestamp do not skip rows. Never offset.
 // Unread count is ALWAYS a fresh head-count query (STATE.md convention,
 // Anti-Patterns guard) — never derived from a stored counter.
 export async function GET(request: Request) {
@@ -20,15 +20,22 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const before = new URL(request.url).searchParams.get('before')
+  const searchParams = new URL(request.url).searchParams
+  const before = searchParams.get('before')
+  const beforeId = searchParams.get('beforeId')
 
   let query = supabase
     .from('notifications')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(PAGE_SIZE)
-  if (before) query = query.lt('created_at', before)
+  if (before && beforeId) {
+    query = query.or(buildNotificationCursorPredicate({ before, beforeId }))
+  } else if (before) {
+    query = query.lt('created_at', before)
+  }
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

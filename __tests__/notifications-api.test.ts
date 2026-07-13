@@ -7,7 +7,7 @@
 // RED (Task 1): lib/social/notifications.ts does not exist yet — this
 // file MUST fail on module resolution. Task 2 makes it GREEN.
 
-import { buildMarkAllReadFilter } from '@/lib/social/notifications'
+import { buildMarkAllReadFilter, buildNotificationCursorPredicate } from '@/lib/social/notifications'
 
 describe('buildMarkAllReadFilter (mark-all-read mutation scoping)', () => {
   it('scopes the filter to the passed userId', () => {
@@ -24,5 +24,18 @@ describe('buildMarkAllReadFilter (mark-all-read mutation scoping)', () => {
     const filterA = buildMarkAllReadFilter('user-a')
     const filterB = buildMarkAllReadFilter('user-b')
     expect(filterA.user_id).not.toBe(filterB.user_id)
+  })
+})
+
+describe('buildNotificationCursorPredicate (notification pagination)', () => {
+  it('uses created_at plus id as a compound cursor', () => {
+    const predicate = buildNotificationCursorPredicate({
+      before: '2026-07-13T07:54:54.576609+00:00',
+      beforeId: '00000000-0000-0000-0000-000000000123',
+    })
+
+    expect(predicate).toContain('created_at.lt.2026-07-13T07:54:54.576609+00:00')
+    expect(predicate).toContain('created_at.eq.2026-07-13T07:54:54.576609+00:00')
+    expect(predicate).toContain('id.lt.00000000-0000-0000-0000-000000000123')
   })
 })
