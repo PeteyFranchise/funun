@@ -156,14 +156,14 @@ Plans:
   3. User can send a message request to a non-connection; the recipient can accept (opens a DM thread), decline, or block
   4. User is rate-limited on outbound cold message requests (e.g. 10/week), and can message a mutual connection directly with no request step
 
-**Plans**: 2/6 plans executed
+**Plans**: 4/6 plans executed
 
 Plans:
 
 - [x] 11-01-PLAN.md — Wave 0 (autonomous): RED tests + pure helpers — `lib/social/presence.ts` (D-21 buckets), `dm.ts` gate/rate-limit/unread helpers + constants (10/30/3), `notifications.ts` message_request/new_dm builders + catalog
 - [x] 11-02-PLAN.md — Migration 054 (`dm_threads.status`+`requester_id`, `artist_profiles.last_seen_at` + column GRANT) + [BLOCKING] schema push
-- [ ] 11-03-PLAN.md — DM API layer: `/api/dm/send` connection-gate + rate limit + request flow; net-new threads/read/request(accept·decline·block)/presence-heartbeat routes
-- [ ] 11-04-PLAN.md — Nav surfaces: `MessagesIcon` (unread badge) + `PresenceTracker` (single presence-global channel + heartbeat) + `ArtistLayoutClient` docked-widget host + layout/nav wiring
+- [x] 11-03-PLAN.md — DM API layer: `/api/dm/send` connection-gate + rate limit + request flow; net-new threads/read/request(accept·decline·block)/presence-heartbeat routes
+- [x] 11-04-PLAN.md — Nav surfaces: `MessagesIcon` (unread badge) + `PresenceTracker` (single presence-global channel + heartbeat) + `ArtistLayoutClient` docked-widget host + layout/nav wiring
 - [ ] 11-05-PLAN.md — `/messages` inbox: page + `MessagesPageClient` two-pane, `ThreadList` (+Requests section), `ConversationView`, `RequestView`, `DockedWidget`, `Composer` (budget hint + rate-limit wall)
 - [ ] 11-06-PLAN.md — Profile surface: live `ProfilePresenceDot` Online pill + Message button → `/messages?with=` link; retire in-place `DmWidget`
 
@@ -275,7 +275,7 @@ Plans:
 | 8. Identity & Schema Foundation | v1.2 | 6/6 | Complete   | 2026-07-05 |
 | 9. Rich Member Profile | v1.2 | 6/6 | Complete    | 2026-07-12 |
 | 10. Connections & Notifications | v1.2 | 6/6 | Verifying  | - |
-| 11. Presence & Messaging | v1.2 | 2/6 | In Progress|  |
+| 11. Presence & Messaging | v1.2 | 4/6 | In Progress|  |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
 | 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
