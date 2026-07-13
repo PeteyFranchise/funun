@@ -19,13 +19,6 @@ ALTER TABLE dm_threads
   ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'direct'
     CHECK (status IN ('direct', 'pending', 'declined'));
 
--- Partial index for the Requests-section (Plan 05) and rate-limit queries
--- (Plan 01's countRecentRequests): only pending rows need to be scanned
--- quickly by requester_id, so a partial index keeps the scan tight.
-CREATE INDEX IF NOT EXISTS dm_threads_pending_idx
-  ON dm_threads (requester_id, created_at)
-  WHERE status = 'pending';
-
 -- ─── dm_threads.requester_id (CONNECT-04) ────────────────────────────
 -- Records who initiated the thread so rate-limit COUNT (Plan 01) and the
 -- Requests-section "received vs sent" split (Plan 05) work correctly.
@@ -33,6 +26,14 @@ CREATE INDEX IF NOT EXISTS dm_threads_pending_idx
 -- initiator and NULL is a valid, expected value for them.
 ALTER TABLE dm_threads
   ADD COLUMN IF NOT EXISTS requester_id UUID REFERENCES auth.users ON DELETE SET NULL;
+
+-- Partial index for the Requests-section (Plan 05) and rate-limit queries
+-- (Plan 01's countRecentRequests): only pending rows need to be scanned
+-- quickly by requester_id, so a partial index keeps the scan tight.
+-- (Must come after requester_id is added above — the index references it.)
+CREATE INDEX IF NOT EXISTS dm_threads_pending_idx
+  ON dm_threads (requester_id, created_at)
+  WHERE status = 'pending';
 
 -- ─── artist_profiles.last_seen_at (PRESENCE-01/02) ───────────────────
 -- Nullable timestamp written by Plan 03's service-role heartbeat route.
