@@ -6,8 +6,8 @@
 // countRecentRequests() BEFORE ensureThread() so the connection gate can
 // never be bypassed by a client-trust shortcut (T-11-06).
 
-import { chooseSendPath, POST } from '@/app/api/dm/send/route'
-import { BASELINE_REQUEST_LIMIT, VERIFIED_REQUEST_LIMIT, PENDING_STACK_CAP } from '@/lib/social/dm'
+import { POST } from '@/app/api/dm/send/route'
+import { chooseSendPath, BASELINE_REQUEST_LIMIT, VERIFIED_REQUEST_LIMIT, PENDING_STACK_CAP } from '@/lib/social/dm'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),

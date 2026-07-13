@@ -6,9 +6,7 @@ import {
   isConnected,
   countRecentRequests,
   countPendingMessagesFrom,
-  BASELINE_REQUEST_LIMIT,
-  VERIFIED_REQUEST_LIMIT,
-  PENDING_STACK_CAP,
+  chooseSendPath,
 } from '@/lib/social/dm'
 import { buildMessageRequestNotification, buildNewDmNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
@@ -42,27 +40,6 @@ async function loadActor(
     avatarUrl: row.avatar_url ?? null,
     handle: row.handle ?? '',
   }
-}
-
-// ─── send-gate decision core (pure, unit-tested) ────────────────────────
-// Machine-verifiable without a live DB — the route below wires this to the
-// real isConnected/countRecentRequests/countPendingMessagesFrom queries.
-export type SendPathKind = 'direct' | 'stack' | 'request' | 'reject-rate' | 'reject-stack'
-
-export function chooseSendPath(args: {
-  connected: boolean
-  existingPendingByMe: boolean
-  pendingMsgCount: number
-  recentRequestCount: number
-  verified: boolean
-}): { kind: SendPathKind } {
-  const { connected, existingPendingByMe, pendingMsgCount, recentRequestCount, verified } = args
-  if (connected) return { kind: 'direct' }
-  if (existingPendingByMe) {
-    return { kind: pendingMsgCount >= PENDING_STACK_CAP ? 'reject-stack' : 'stack' }
-  }
-  const limit = verified ? VERIFIED_REQUEST_LIMIT : BASELINE_REQUEST_LIMIT
-  return { kind: recentRequestCount >= limit ? 'reject-rate' : 'request' }
 }
 
 // POST /api/dm/send  { toUserId, body }  → send a 1:1 message
