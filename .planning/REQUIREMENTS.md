@@ -30,9 +30,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **CONNECT-01**: User can follow another member (one-way, no approval required)
 - [x] **CONNECT-02**: User can send a Connect request to another member; recipient can accept or decline, establishing a mutual connection
-- [ ] **CONNECT-03**: User can send a message request to a non-connection; recipient can accept (opens a DM thread), decline, or block
-- [ ] **CONNECT-04**: User is rate-limited on outbound cold message requests (e.g. 10/week) to prevent spam
-- [ ] **CONNECT-05**: User can message directly, with no request step, once mutually connected
+- [x] **CONNECT-03**: User can send a message request to a non-connection; recipient can accept (opens a DM thread), decline, or block
+- [x] **CONNECT-04**: User is rate-limited on outbound cold message requests (e.g. 10/week) to prevent spam
+- [x] **CONNECT-05**: User can message directly, with no request step, once mutually connected
 
 ### Notifications
 
@@ -42,9 +42,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Presence & DMs
 
-- [ ] **PRESENCE-01**: User sees an online presence dot on another member's avatar when that member is actively on the platform
-- [ ] **PRESENCE-02**: User sees "Active now" or "Active X ago" status in the DM widget header
-- [ ] **PRESENCE-03**: The floating DM widget shows an unread message count badge
+- [x] **PRESENCE-01**: User sees an online presence dot on another member's avatar when that member is actively on the platform
+- [x] **PRESENCE-02**: User sees "Active now" or "Active X ago" status in the DM widget header
+- [x] **PRESENCE-03**: The floating DM widget shows an unread message count badge
 
 ### Trust & Safety
 
@@ -105,15 +105,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISCOVER-04 | Phase 13 | Pending |
 | CONNECT-01 | Phase 10 | Complete |
 | CONNECT-02 | Phase 10 | Complete |
-| CONNECT-03 | Phase 11 | Pending |
-| CONNECT-04 | Phase 11 | Pending |
-| CONNECT-05 | Phase 11 | Pending |
+| CONNECT-03 | Phase 11 | Complete |
+| CONNECT-04 | Phase 11 | Complete |
+| CONNECT-05 | Phase 11 | Complete |
 | NOTIF-01 | Phase 10 | Complete |
 | NOTIF-02 | Phase 10 | Complete |
 | NOTIF-03 | Phase 10 | Complete |
-| PRESENCE-01 | Phase 11 | Pending |
-| PRESENCE-02 | Phase 11 | Pending |
-| PRESENCE-03 | Phase 11 | Pending |
+| PRESENCE-01 | Phase 11 | Complete |
+| PRESENCE-02 | Phase 11 | Complete |
+| PRESENCE-03 | Phase 11 | Complete |
 | SAFETY-01 | Phase 13 | Pending |
 | SAFETY-02 | Phase 13 | Pending |
 | SAFETY-03 | Phase 13 | Pending |
