@@ -84,3 +84,104 @@ coverage:
         ref: "npx tsc --noEmit (0 errors); npm test -- full suite 138/138 pass"
         status: pass
     human_judgment: false
+
+# Metrics
+duration: 12min
+completed: 2026-07-13
+status: complete
+---
+
+# Phase 11 Plan 04: Layout-Level Presence & Messaging Surfaces Summary
+
+**MessagesIcon topbar badge + PresenceTracker global presence channel + ArtistLayoutClient docked-widget host, mirroring NotificationBell's proven global-subscription pattern**
+
+## Performance
+
+- **Duration:** 12 min
+- **Started:** 2026-07-13T22:57:00Z
+- **Completed:** 2026-07-13T23:09:00Z
+- **Tasks:** 3
+- **Files modified:** 7 (3 created, 4 modified)
+
+## Accomplishments
+
+- `MessagesIcon` — topbar chat-bubble icon + unread-thread badge, mirroring `NotificationBell`'s global Realtime subscription + fresh-COUNT-only badge discipline (D-07); navigates to `/messages` via `Link`, no dropdown panel (D-02)
+- `PresenceTracker` — single user-scoped `presence-global` Realtime Presence channel per session, `visibilitychange` re-track/untrack, throttled heartbeat POST to `/api/presence/heartbeat`, full `removeChannel` + listener/interval cleanup on unmount
+- `ArtistLayoutClient` — client wrapper holding `useState<string | null>` for the docked-thread id plus a `MessagesDockContext` (`openDock`/`closeDock`) for the `/messages` page (Plan 05) to call; persists across SPA navigation because the layout never unmounts (D-03)
+- `app/(artist)/layout.tsx` mounts `MessagesIcon` immediately before `NotificationBell` in the header and `PresenceTracker` once after `{children}`; wraps the tree in `ArtistLayoutClient` when a user session exists
+- `ArtistNav` gained a universal `/messages` entry (no `requiresCapability`, like Antenna) with a new `MessagesNavIcon` inline SVG in `icons.tsx`
+- `NotificationBell` button reconciled from `h-[42px] w-[42px]` to `h-11 w-11` for visual peer parity with the new `MessagesIcon` (UI-SPEC D-02 note)
+
+## Task Commits
+
+Each task was committed atomically:
+
+1. **Task 1: MessagesIcon — topbar chat icon + unread-thread badge** - `7ad0402` (feat)
+2. **Task 2: PresenceTracker — single presence-global channel + heartbeat** - `fc5818a` (feat)
+3. **Task 3: ArtistLayoutClient wrapper + layout/nav wiring** - `e5d6944` (feat)
+
+**Plan metadata:** `0ae5b0b` (docs: complete plan)
+
+## Files Created/Modified
+
+- `components/nav/MessagesIcon.tsx` - topbar chat icon + unread-thread badge (net-new)
+- `components/nav/PresenceTracker.tsx` - single presence-global channel + heartbeat (net-new)
+- `components/nav/ArtistLayoutClient.tsx` - docked-widget state wrapper + MessagesDockContext (net-new)
+- `app/(artist)/layout.tsx` - mounts MessagesIcon/NotificationBell/PresenceTracker, wraps tree in ArtistLayoutClient
+- `components/nav/ArtistNav.tsx` - universal `/messages` nav entry
+- `components/nav/NotificationBell.tsx` - button size reconciled to `h-11 w-11`
+- `components/nav/icons.tsx` - new `MessagesNavIcon` inline SVG
+
+## Decisions Made
+
+- Heartbeat cadence: 50s interval (within the plan's 45-60s window), gated on `document.visibilityState === 'visible'` so background tabs don't ping `/api/presence/heartbeat`
+- `MessagesDockContext` lives inside `ArtistLayoutClient.tsx` (the plan's "in this file or a sibling" discretion resolved to same-file); `useMessagesDock()` throws if called outside the provider
+- Docked widget rendered via a minimal inline `DockedWidgetPlaceholder` (not a separate `components/messages/DockedWidget.tsx` file) since Plan 05 has not landed and this plan's `files_modified` doesn't include `components/messages/` — Plan 05 is expected to swap in the real component
+- Messages nav entry placed immediately after Antenna in `ArtistNav`'s `ITEMS` array — both are universal, grouping the two capability-agnostic rooms together
+
+## Deviations from Plan
+
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Added `gap-3` to the header row in `app/(artist)/layout.tsx`**
+- **Found during:** Task 3
+- **Issue:** The original header (`app/(artist)/layout.tsx` line 32) had no gap utility because it only ever mounted one icon (`NotificationBell`). Adding `MessagesIcon` immediately before it without a gap would render the two 44px buttons flush against each other.
+- **Fix:** Added `gap-3` (8px) to the header's className.
+- **Files modified:** `app/(artist)/layout.tsx`
+- **Verification:** Visual review of the className change against the UI-SPEC spacing scale (`sm` = 8px, inline element gaps); `npx tsc --noEmit` clean
+- **Committed in:** `e5d6944` (Task 3 commit)
+
+---
+
+**Total deviations:** 1 auto-fixed (1 minor spacing bug)
+**Impact on plan:** Cosmetic fix only, necessary for the two new adjacent header icons to render correctly. No scope creep.
+
+## Issues Encountered
+
+`npm run build` fails at the static-export step for the unrelated `/(auth)/update-password` page with `Error: either NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY env variables ... are required!` — this worktree has no `.env.local`/Supabase secrets configured (confirmed via `env | grep -i SUPABASE` returning empty) and the failure is in a page this plan never touches. Type-checking completed successfully before the failure ("Compiled successfully", "Linting and checking validity of types ..." passed). `npx tsc --noEmit` is clean and the full Jest suite (138/138) passes with no regressions. This is a pre-existing environment limitation (missing secrets in this sandbox), not a defect introduced by this plan's changes.
+
+## User Setup Required
+
+None - no external service configuration required. (Supabase secrets for the sandbox `npm run build` limitation noted above are an existing project setup concern, not new work from this plan.)
+
+## Next Phase Readiness
+
+- `MessagesDockContext`/`useMessagesDock()` is exported from `components/nav/ArtistLayoutClient.tsx` and ready for Plan 05's `/messages` page to call `openDock(threadId)` from a pop-out affordance
+- Plan 05 should replace `ArtistLayoutClient.tsx`'s inline `DockedWidgetPlaceholder` with the real `components/messages/DockedWidget.tsx` import once that component exists
+- `MessagesIcon` and `PresenceTracker` call `/api/dm/threads?unread=true` and `/api/presence/heartbeat` respectively — both routes are Plan 03's responsibility (parallel wave 3); these calls will 404 until 11-03 is merged alongside this plan
+- No blockers for this plan's own scope
+
+## Self-Check: PASSED
+
+- `components/nav/MessagesIcon.tsx` exists: FOUND
+- `components/nav/PresenceTracker.tsx` exists: FOUND
+- `components/nav/ArtistLayoutClient.tsx` exists: FOUND
+- `app/(artist)/layout.tsx`, `components/nav/ArtistNav.tsx`, `components/nav/NotificationBell.tsx`, `components/nav/icons.tsx` exist: FOUND
+- All 4 commits exist in git log: `7ad0402`, `fc5818a`, `e5d6944`, `0ae5b0b` — FOUND
+- `npx tsc --noEmit`: 0 errors — CONFIRMED
+- `npm test`: 138/138 pass — CONFIRMED
+- All task-level acceptance-criteria grep checks (aria-label, endpoint strings, presence key, removeChannel, nav item, button-size reconciliation, hidden lg:block) — CONFIRMED
+
+---
+*Phase: 11-presence-messaging*
+*Completed: 2026-07-13*
