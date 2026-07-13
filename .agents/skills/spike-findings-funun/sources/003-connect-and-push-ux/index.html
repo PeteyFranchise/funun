@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<!--
+  Spike 003: connect-and-push-ux
+  The "UI experience" half of the Buffer idea. A self-contained, fully-mocked
+  walkthrough of the HONEST flow given the 2026 constraint that Buffer has no
+  third-party OAuth for new apps: Connect (paste personal key) → Map platforms
+  to channels → Push the 4-week calendar → per-slot status + sync-back.
+  No server, no live API, no real key — open this file directly in a browser.
+  Everything is simulated in-page so you can FEEL the flow and judge whether
+  BYOK is an acceptable experience before investing in the real plumbing.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spike 003 — Connect Buffer &amp; push calendar (UX mock)</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #0a0a0f; --card: #12121c; --card2: #171724; --hair: #23233a;
+    --lav: #c7c7e0; --lavdim: #8b8ba7; --white: #e7e7ef;
+    --indigo: #818CF8; --fuchsia: #D946EF;
+    --grad: linear-gradient(90deg, #818CF8, #D946EF);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.55 -apple-system, system-ui, sans-serif; background: var(--ink); color: var(--white); padding: 28px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .sub { color: var(--lavdim); margin: 0 0 22px; font-size: 13px; }
+  .card { border: 1px solid var(--hair); background: var(--card); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .step-label { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--lavdim); font-weight: 700; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 12px; color: var(--lavdim); margin: 12px 0 5px; }
+  input { width: 100%; background: var(--ink); border: 1px solid #2c2c46; color: var(--white); border-radius: 8px; padding: 9px 11px; font: inherit; }
+  button { background: var(--grad); border: 0; color: #fff; font-weight: 700; border-radius: 9px; padding: 10px 18px; cursor: pointer; margin-top: 14px; box-shadow: 0 6px 18px rgba(129,140,248,.25); }
+  button.sec { background: var(--card2); box-shadow: none; border: 1px solid var(--hair); }
+  button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+  .muted { color: var(--lavdim); } .ok { color: #34d399; } .warn { color: #fbbf24; } .bad { color: #fb7185; }
+  .notice { border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-top: 12px; }
+  .notice.amber { border: 1px solid rgba(251,191,36,.3); background: rgba(251,191,36,.08); color: #fcd34d; }
+  .notice.indigo { border: 1px solid rgba(129,140,248,.3); background: rgba(129,140,248,.08); color: var(--lav); }
+  .rowmap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); }
+  .rowmap:last-child { border-bottom: 0; }
+  .chip { display: inline-block; border: 1px solid var(--hair); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .chip.gap { border-color: rgba(251,191,36,.4); color: #fcd34d; }
+  select { background: var(--ink); border: 1px solid #2c2c46; color: var(--white); border-radius: 8px; padding: 6px 9px; font: inherit; }
+  .slot { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--hair); font-size: 13px; }
+  .slot:last-child { border-bottom: 0; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #3a3a52; flex: 0 0 auto; }
+  .dot.queued { background: #fbbf24; } .dot.scheduled { background: #34d399; } .dot.sent { background: #818CF8; } .dot.error { background: #fb7185; }
+  .slot .plat { width: 128px; color: var(--lavdim); flex: 0 0 auto; }
+  .slot .cap { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot .st { width: 96px; text-align: right; flex: 0 0 auto; font-size: 12px; }
+  .steps { display: flex; gap: 8px; margin-bottom: 20px; font-size: 12px; }
+  .steps span { flex: 1; text-align: center; padding: 7px; border-radius: 8px; border: 1px solid var(--hair); color: var(--lavdim); }
+  .steps span.on { border-color: var(--indigo); color: var(--white); background: rgba(129,140,248,.1); }
+  .steps span.done { color: #34d399; border-color: rgba(52,211,153,.3); }
+  .hide { display: none; }
+  pre { background: var(--ink); border: 1px solid var(--hair); border-radius: 8px; padding: 12px; font-size: 12px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+</style>
+</head>
+<body>
+  <h1>Push your calendar to Buffer</h1>
+  <p class="sub">Spike 003 — a fully-mocked UX walkthrough. No real Buffer account or key needed; everything here is simulated so you can feel the flow.</p>
+
+  <div class="steps">
+    <span id="s1" class="on">1 · Connect</span>
+    <span id="s2">2 · Map channels</span>
+    <span id="s3">3 · Push &amp; status</span>
+  </div>
+
+  <!-- STEP 1 — Connect (BYOK) -->
+  <div class="card" id="step1">
+    <p class="step-label">Step 1</p>
+    <h2>Connect Buffer</h2>
+    <div class="notice indigo" style="border-color:rgba(129,140,248,.4)">
+      <strong>New to Buffer?</strong> Buffer is a social media scheduling tool — you connect your
+      Instagram, TikTok, X, Facebook, and Threads accounts once, and it publishes your posts for you at
+      set times. Connecting it here lets Funūn push your whole content calendar straight into Buffer's
+      queue, so every planned post goes live automatically — no copy-pasting, no CSV files.
+      <a href="https://buffer.com" target="_blank" rel="noopener" style="color:var(--indigo)">Learn more ↗</a>
+    </div>
+    <div class="notice indigo">
+      Buffer doesn't offer one-click connect for new apps yet. Instead, paste a
+      <strong>personal API key</strong>: in Buffer go to <span class="muted">Settings → API</span>, create a key, and paste it below.
+      Funūn stores it encrypted and only uses it to schedule the posts you approve.
+    </div>
+    <label>Buffer personal API key</label>
+    <input id="key" type="password" placeholder="bfr_… (any text works in this mock)" />
+    <div>
+      <button id="connectBtn">Connect Buffer</button>
+      <span id="connectMsg" class="muted" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <!-- STEP 2 — Map channels -->
+  <div class="card hide" id="step2">
+    <p class="step-label">Step 2</p>
+    <h2>Map your platforms to Buffer channels</h2>
+    <p class="muted" style="margin:0 0 8px;font-size:13px">We found these channels on your Buffer account. Confirm which Buffer channel each Funūn platform posts to.</p>
+    <div id="mapRows"></div>
+    <div class="notice amber" id="gapNotice">
+      <strong>YouTube Shorts</strong> isn't connected on your Buffer plan, so those 1 slot(s) will be skipped. Connect it in Buffer, or export those separately.
+    </div>
+    <button id="toPushBtn">Looks good — continue</button>
+  </div>
+
+  <!-- STEP 3 — Push & status -->
+  <div class="card hide" id="step3">
+    <p class="step-label">Step 3</p>
+    <h2>Push &amp; track status</h2>
+    <p class="muted" style="margin:0 0 6px;font-size:13px">Your 4-week calendar. Push schedules every mapped slot into Buffer's queue; skipped slots stay in Funūn only.</p>
+    <div id="slots"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="pushBtn">Push 4-week calendar to Buffer</button>
+      <button class="sec" id="syncBtn" disabled>Sync status from Buffer</button>
+      <button class="sec" id="logBtn">Push log</button>
+    </div>
+    <div id="summary" class="notice indigo hide"></div>
+    <pre id="log" class="hide"></pre>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id)
+
+  // ── Mocked "detected" Buffer channels (what a channels query would return) ──
+  const bufferChannels = [
+    { id: 'chan_ig_001', service: 'instagram', name: '@midnightbloom' },
+    { id: 'chan_tt_002', service: 'tiktok',    name: '@midnightbloom' },
+    { id: 'chan_tw_003', service: 'twitter',   name: '@mbloom' },
+    { id: 'chan_fb_004', service: 'facebook',  name: 'Midnight Bloom' },
+    { id: 'chan_th_005', service: 'threads',   name: '@midnightbloom' },
+  ]
+  // Funūn platforms present in the active campaign → Buffer service to auto-match
+  const funPlatforms = [
+    { platform: 'instagram',      buffer: 'instagram' },
+    { platform: 'tiktok',         buffer: 'tiktok' },
+    { platform: 'x',              buffer: 'twitter' },   // note the rename
+    { platform: 'threads',        buffer: 'threads' },
+    { platform: 'youtube_shorts', buffer: 'youtube' },   // no channel → coverage gap
+  ]
+  const platLabel = { instagram: 'Instagram', tiktok: 'TikTok', x: 'X (Twitter)', threads: 'Threads', youtube_shorts: 'YouTube Shorts' }
+
+  // Mocked campaign slots (subset of a 4-week calendar)
+  const slots = [
+    { id: 'p1', platform: 'instagram',      week: 1, caption: 'Out now: Midnight Bloom 🌙',   status: 'draft' },
+    { id: 'p2', platform: 'tiktok',         week: 1, caption: 'POV: the beat drops at 0:14',  status: 'draft' },
+    { id: 'p3', platform: 'x',              week: 2, caption: 'thank you for 10k streams 🙏',  status: 'draft' },
+    { id: 'p4', platform: 'threads',        week: 2, caption: '"we bloom in the dark"',        status: 'draft' },
+    { id: 'p5', platform: 'youtube_shorts', week: 3, caption: 'behind the sound',              status: 'draft' },
+  ]
+  const mapping = {} // platform -> channelId (or null)
+  const pushLog = []
+  const logEvent = (cat, o) => pushLog.push({ ts: new Date().toISOString(), cat, ...o })
+
+  // ── Step 1: connect ──
+  $('connectBtn').onclick = () => {
+    if (!$('key').value.trim()) { $('connectMsg').textContent = 'Paste a key first'; return }
+    $('connectMsg').innerHTML = '<span class="ok">✓ Connected — 5 channels found</span>'
+    logEvent('connect', { channels: bufferChannels.length })
+    setStep(2)
+    renderMap()
+  }
+
+  // ── Step 2: map ──
+  function renderMap() {
+    $('mapRows').innerHTML = funPlatforms.map(fp => {
+      const match = bufferChannels.find(c => c.service === fp.buffer)
+      mapping[fp.platform] = match ? match.id : null
+      const right = match
+        ? `<select data-plat="${fp.platform}">` + bufferChannels.map(c => `<option value="${c.id}" ${c.id===match.id?'selected':''}>${c.service} · ${c.name}</option>`).join('') + `</select>`
+        : `<span class="chip gap">no channel — will skip</span>`
+      return `<div class="rowmap"><span><span class="chip">${platLabel[fp.platform]}</span></span>${right}</div>`
+    }).join('')
+    document.querySelectorAll('[data-plat]').forEach(sel => sel.onchange = e => { mapping[e.target.dataset.plat] = e.target.value })
+  }
+  $('toPushBtn').onclick = () => { setStep(3); renderSlots() }
+
+  // ── Step 3: push ──
+  function renderSlots() {
+    $('slots').innerHTML = slots.map(s => {
+      const skipped = !mapping[s.platform]
+      return `<div class="slot" id="slot-${s.id}">
+        <span class="dot ${skipped ? 'error' : ''}" id="dot-${s.id}"></span>
+        <span class="plat">W${s.week} · ${platLabel[s.platform]}</span>
+        <span class="cap">${s.caption}</span>
+        <span class="st ${skipped ? 'warn' : 'muted'}" id="st-${s.id}">${skipped ? 'skipped' : 'not pushed'}</span>
+      </div>`
+    }).join('')
+  }
+
+  $('pushBtn').onclick = async () => {
+    $('pushBtn').disabled = true
+    logEvent('push-start', { slots: slots.length })
+    let scheduled = 0, skipped = 0
+    for (const s of slots) {
+      const st = $('st-' + s.id), dot = $('dot-' + s.id)
+      if (!mapping[s.platform]) { skipped++; logEvent('skip', { id: s.id, platform: s.platform, reason: 'no channel' }); continue }
+      st.textContent = 'queuing…'; dot.className = 'dot queued'
+      await wait(420)
+      // Simulate one transient failure to show error handling
+      const fail = s.id === 'p3' && !s._retried
+      if (fail) {
+        s._retried = true
+        st.innerHTML = '<span class="bad">rate-limited · retrying</span>'; dot.className = 'dot error'
+        logEvent('retry', { id: s.id, reason: '429 rate limit' })
+        await wait(600)
+      }
+      st.innerHTML = '<span class="ok">scheduled</span>'; dot.className = 'dot scheduled'
+      s.status = 'scheduled'; scheduled++
+      logEvent('scheduled', { id: s.id, channelId: mapping[s.platform] })
+    }
+    logEvent('push-done', { scheduled, skipped })
+    $('summary').classList.remove('hide')
+    $('summary').innerHTML = `✓ Pushed <strong>${scheduled}</strong> slot(s) into Buffer's queue. <strong>${skipped}</strong> skipped (no channel). They're now visible in your Buffer calendar; Funūn keeps tracking go-live status.`
+    $('syncBtn').disabled = false
+  }
+
+  $('syncBtn').onclick = async () => {
+    logEvent('sync-start', {})
+    // Simulate Buffer reporting one post already published (Scheduled → Sent)
+    for (const s of slots.filter(x => x.status === 'scheduled')) {
+      if (s.id === 'p2') {
+        $('st-' + s.id).innerHTML = '<span style="color:#818CF8">posted ✓</span>'
+        $('dot-' + s.id).className = 'dot sent'
+        s.status = 'sent'
+        logEvent('status-sync', { id: s.id, bufferStatus: 'sent' })
+      }
+    }
+    $('summary').innerHTML += '<br>↻ Synced from Buffer: 1 post already went live (Funūn marks that slot complete automatically).'
+  }
+
+  $('logBtn').onclick = () => {
+    const el = $('log'); el.classList.toggle('hide')
+    el.textContent = JSON.stringify(pushLog, null, 2)
+  }
+
+  function setStep(n) {
+    ['1','2','3'].forEach(i => { $('step'+i).classList.toggle('hide', i != n); const tab=$('s'+i); tab.classList.remove('on','done'); if (i<n) tab.classList.add('done'); if (i==n) tab.classList.add('on') })
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms))
+</script>
+</body>
+</html>
