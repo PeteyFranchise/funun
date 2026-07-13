@@ -112,7 +112,14 @@ export function NotificationBell({ userId }: { userId: string }) {
         <NotificationPanel
           userId={userId}
           unreadCount={unreadCount}
-          onMarkedAllRead={() => setUnreadCount(0)}
+          onMarkedAllRead={() => {
+            fetch('/api/notifications?unread=true')
+              .then(r => (r.ok ? r.json() : null))
+              .then(json => {
+                if (json && typeof json.unreadCount === 'number') setUnreadCount(json.unreadCount)
+              })
+              .catch(() => {})
+          }}
           onRespondedToRequest={() => {
             fetch('/api/notifications?unread=true')
               .then(r => (r.ok ? r.json() : null))
