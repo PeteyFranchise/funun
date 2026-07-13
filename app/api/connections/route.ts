@@ -8,6 +8,7 @@ import {
 import { createNotification } from '@/lib/notifications'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+const ACTIVE_CONNECTION_STATUSES = ['pending', 'accepted']
 
 // ─── actor snapshot ─────────────────────────────────────────────────────
 // Read the caller's own artist_profiles row (keyed by auth.uid()) for the
@@ -62,6 +63,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 })
   }
 
+  // Friendly pre-check for the unordered active-pair invariant enforced by
+  // migration 050. This avoids a confusing duplicate-key error when the other
+  // member has already sent a pending request or the pair is already connected.
+  const { data: existingActive, error: existingError } = await supabase
+    .from('connections')
+    .select('id, status')
+    .or(
+      `and(requester_id.eq.${user.id},addressee_id.eq.${addresseeId}),and(requester_id.eq.${addresseeId},addressee_id.eq.${user.id})`
+    )
+    .in('status', ACTIVE_CONNECTION_STATUSES)
+    .limit(1)
+    .maybeSingle()
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingActive) {
+    const status = (existingActive as { status: string }).status
+    return NextResponse.json(
+      {
+        error:
+          status === 'accepted'
+            ? 'You are already connected with this member.'
+            : 'There is already a pending connection request between you and this member.',
+      },
+      { status: 409 }
+    )
+  }
+
   // Status transition path: SESSION client only — RLS `connections_insert_own`
   // enforces requester_id = auth.uid() and no_block() gates the pair.
   const { data: inserted, error } = await supabase
@@ -69,7 +96,15 @@ export async function POST(request: Request) {
     .insert(payload)
     .select('id')
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'There is already an active connection between you and this member.' },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   // Cross-user notify via service client, best-effort (non-fatal): the
   // request already succeeded. Recipient is the addressee (server-derived).

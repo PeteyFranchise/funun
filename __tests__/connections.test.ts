@@ -6,6 +6,8 @@
 // MUST fail on module resolution. Task 3 makes it GREEN.
 
 import { buildConnectRequest, buildRespondTransition } from '@/lib/social/connections'
+import { readFileSync } from 'fs'
+import path from 'path'
 
 // ─── buildConnectRequest ─────────────────────────────────────────────────
 
@@ -70,5 +72,21 @@ describe('buildRespondTransition', () => {
 
   it('rejects any other action string', () => {
     expect(() => buildRespondTransition('approve')).toThrow()
+  })
+})
+
+// ─── database invariant ──────────────────────────────────────────────────────
+
+describe('connections active-pair uniqueness migration', () => {
+  it('enforces one active connection per unordered member pair', () => {
+    const migration = readFileSync(
+      path.join(process.cwd(), 'supabase/migrations/050_connections_symmetric_active_pair.sql'),
+      'utf8'
+    )
+
+    expect(migration).toContain('connections_active_unordered_pair_uniq')
+    expect(migration).toContain('LEAST(requester_id, addressee_id)')
+    expect(migration).toContain('GREATEST(requester_id, addressee_id)')
+    expect(migration).toContain("WHERE status IN ('pending', 'accepted')")
   })
 })
