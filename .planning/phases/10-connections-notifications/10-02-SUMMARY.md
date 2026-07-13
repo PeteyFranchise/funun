@@ -24,11 +24,11 @@ tech-stack:
 
 key-files:
   created:
-    - supabase/migrations/050_connections_note.sql
+    - supabase/migrations/044_connections_note.sql
   modified: []
 
 key-decisions:
-  - "Migration 050 pushed live and DB-verified by the human operator via supabase db push + supabase migration list (LOCAL=REMOTE for 001-043 plus 045-050), per this project's established schema-push convention (STATE.md Blockers/Concerns log, mirrored from Phases 8/9/15)"
+  - "Migration 044 pushed live and DB-verified by the human operator via supabase db push + supabase migration list (LOCAL=REMOTE for 001-044), per this project's established schema-push convention (STATE.md Blockers/Concerns log, mirrored from Phases 8/9/15)"
   - "All three DB-level smoke checks were run against the live production database wrapped in explicit `set local role authenticated; set local request.jwt.claims` transactions (not as the SQL Editor's default superuser `postgres` role), since naive inserts as postgres would bypass RLS entirely and produce a false-positive verification"
 
 patterns-established:
@@ -62,11 +62,11 @@ coverage:
         status: pass
     human_judgment: false
   - id: D4
-    description: "Migration 050 applied and confirmed live on the remote database via supabase migration list (LOCAL and REMOTE populated for 050, matching 001-043)"
+    description: "Migration 044 applied and confirmed live on the remote database via supabase migration list (LOCAL and REMOTE populated for 044, matching 001-043)"
     requirement: "CONNECT-02"
     verification:
       - kind: manual_procedural
-        ref: "Human operator ran supabase db push (via Homebrew Supabase CLI, post supabase login) + supabase migration list; confirmed 050 in both LOCAL and REMOTE columns"
+        ref: "Human operator ran supabase db push (via Homebrew Supabase CLI, post supabase login) + supabase migration list; confirmed 044 in both LOCAL and REMOTE columns"
         status: pass
     human_judgment: false
 
@@ -77,7 +77,7 @@ status: complete
 
 # Phase 10 Plan 02: Connections Note Column, Block-Gap Closure & Auto-Follow-Seed Trigger Summary
 
-**Migration 050 shipped and pushed live: `connections.note` (200-char CHECK), the `no_block()` gap closed on `connections` INSERT (T-10-04), and a `SECURITY DEFINER` trigger that seeds both `follows` directions atomically when a Connect request is accepted — all three confirmed via live-DB smoke checks run under simulated RLS sessions.**
+**Migration 044 shipped and pushed live: `connections.note` (200-char CHECK), the `no_block()` gap closed on `connections` INSERT (T-10-04), and a `SECURITY DEFINER` trigger that seeds both `follows` directions atomically when a Connect request is accepted — all three confirmed via live-DB smoke checks run under simulated RLS sessions.**
 
 ## Performance
 
@@ -87,8 +87,8 @@ status: complete
 - **Files modified:** 1
 
 ## Accomplishments
-- Authored `supabase/migrations/050_connections_note.sql` — three additive changes in one migration: `note` column + CHECK, `connections_insert_own` re-created with `no_block()`, and the `connections_seed_follows()` / `connections_on_accept` SECURITY DEFINER trigger
-- Migration pushed live via `supabase db push`; `supabase migration list` confirms `050` in both LOCAL and REMOTE columns, matching migrations 001-043
+- Authored `supabase/migrations/044_connections_note.sql` — three additive changes in one migration: `note` column + CHECK, `connections_insert_own` re-created with `no_block()`, and the `connections_seed_follows()` / `connections_on_accept` SECURITY DEFINER trigger
+- Migration pushed live via `supabase db push`; `supabase migration list` confirms `044` in both LOCAL and REMOTE columns, matching migrations 001-043
 - Ran all three DB-level smoke checks against the live production database using two real test accounts, each wrapped in a `set local role authenticated; set local request.jwt.claims` transaction to correctly simulate `auth.uid()` under RLS (avoiding the SQL Editor's default superuser bypass):
   - Auto-follow-seed: accepted a pending connection A->B, confirmed both `(A,B)` and `(B,A)` rows exist in `follows` with matching timestamps
   - Note CHECK: a 201-char note insert was rejected with `23514` (`connections_note_check`)
@@ -99,13 +99,13 @@ status: complete
 
 Each task was committed atomically:
 
-1. **Task 1: Write migration 050 — note column + no_block() wiring + auto-follow-seed trigger** - `1747f87` (feat)
-2. **Task 2: [BLOCKING] Schema push + DB-level smoke verification for migration 050** - checkpoint:human-verify, no code commit (DB-state change only — human operator ran `supabase db push` + live-DB SQL Editor checks; approved 2026-07-12)
+1. **Task 1: Write migration 044 — note column + no_block() wiring + auto-follow-seed trigger** - `1747f87` (feat)
+2. **Task 2: [BLOCKING] Schema push + DB-level smoke verification for migration 044** - checkpoint:human-verify, no code commit (DB-state change only — human operator ran `supabase db push` + live-DB SQL Editor checks; approved 2026-07-12)
 
 **Plan metadata:** (this commit) `docs(10-02): complete plan`
 
 ## Files Created/Modified
-- `supabase/migrations/050_connections_note.sql` - Adds `connections.note` (200-char CHECK), closes the `no_block()` gap on `connections_insert_own`, and adds the `connections_on_accept` SECURITY DEFINER auto-follow-seed trigger
+- `supabase/migrations/044_connections_note.sql` - Adds `connections.note` (200-char CHECK), closes the `no_block()` gap on `connections_insert_own`, and adds the `connections_on_accept` SECURITY DEFINER auto-follow-seed trigger
 
 ## Decisions Made
 - Confirmed the migration is live via the project's established human-verify convention (schema pushes are never run unattended by CI) — mirrors the Phase 8/9/15 precedent already logged in STATE.md
@@ -130,7 +130,7 @@ None - no further external service configuration required. The schema push itsel
 
 ## Self-Check: PASSED
 
-`supabase/migrations/050_connections_note.sql` confirmed present on disk. Task 1 commit `1747f87` confirmed in `git log --oneline`. This SUMMARY.md and the plan-metadata commit are the final artifacts for this plan.
+`supabase/migrations/044_connections_note.sql` confirmed present on disk. Task 1 commit `1747f87` confirmed in `git log --oneline`. This SUMMARY.md and the plan-metadata commit are the final artifacts for this plan.
 
 ---
 *Phase: 10-connections-notifications*

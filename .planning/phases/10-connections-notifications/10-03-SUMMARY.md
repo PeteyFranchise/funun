@@ -9,7 +9,7 @@ requires:
   - phase: 10-connections-notifications
     provides: "buildConnectRequest/buildRespondTransition (lib/social/connections.ts), buildConnectionRequestNotification/buildConnectionAcceptedNotification/buildMarkAllReadFilter (lib/social/notifications.ts), createNotification() actor-snapshot extension (Plan 01)"
   - phase: 10-connections-notifications
-    provides: "migration 050 auto-follow-seed trigger + connections.note column + no_block() wiring (Plan 02, LIVE on remote)"
+    provides: "migration 044 auto-follow-seed trigger + connections.note column + no_block() wiring (Plan 02, LIVE on remote)"
 provides:
   - "POST /api/connections — create a connect request (session-client INSERT, best-effort connection_request notification)"
   - "PATCH /api/connections — accept/decline/withdraw via session-client status transition (RLS two-policy split); single connection_accepted notification on accept only"
@@ -104,7 +104,7 @@ status: complete
 ## Accomplishments
 - Shipped `app/api/connections/route.ts`:
   - **POST** create-request — DEMO short-circuit, session-client INSERT (RLS `connections_insert_own` + `no_block()` gate), note trimmed/validated by `buildConnectRequest()` (400 on 200+ chars or self-target), best-effort `connection_request` notification to the addressee via the service client.
-  - **PATCH** respond — `buildRespondTransition()` maps `accept|decline|withdraw` → status (400 on unknown action); the status UPDATE uses the **session client only** so RLS's two-policy split (migration 035) enforces who may accept vs. withdraw; zero-row → 404. No `follows` INSERT (the migration-050 trigger owns the auto-follow seed). Exactly one `connection_accepted` notification on accept, to `requester_id` (server-derived); none on decline/withdraw.
+  - **PATCH** respond — `buildRespondTransition()` maps `accept|decline|withdraw` → status (400 on unknown action); the status UPDATE uses the **session client only** so RLS's two-policy split (migration 035) enforces who may accept vs. withdraw; zero-row → 404. No `follows` INSERT (the migration-044 trigger owns the auto-follow seed). Exactly one `connection_accepted` notification on accept, to `requester_id` (server-derived); none on decline/withdraw.
 - Shipped `app/api/notifications/route.ts`:
   - **GET** — session-client SELECT scoped to `user_id`, `created_at`-cursor pagination (`before` → `.lt('created_at', …)`, limit 20, no offset), plus a **fresh** unread head-count (`{ count: 'exact', head: true }`) recomputed every call.
   - **PATCH** mark-all-read — scoped to `user_id = caller AND read = false` via `buildMarkAllReadFilter()`, RLS backstop.

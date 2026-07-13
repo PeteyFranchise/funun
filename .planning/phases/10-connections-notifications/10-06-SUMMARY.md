@@ -6,7 +6,7 @@ tags: [connect-button, connections, profile, notifications-deeplinks, ui]
 requires:
   - "app/api/connections/route.ts (Plan 10-03) — POST create + PATCH accept/decline/withdraw"
   - "lib/social/connections.ts (Plan 10-01) — buildConnectRequest/buildRespondTransition builders"
-  - "migration 035 connections_select_participant RLS + migration 050 connections.note + auto-follow-seed trigger"
+  - "migration 035 connections_select_participant RLS + migration 044 connections.note + auto-follow-seed trigger"
 provides:
   - "components/profile/ConnectButton.tsx — three-state Connect control + inline accept/decline + note composer"
   - "ProfileView.tsx ConnectState prop + Connect-as-primary action row + #wall/#endorsements anchors"

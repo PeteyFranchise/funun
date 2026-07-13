@@ -7,7 +7,7 @@
 // (see lib/social/activity-emit.ts).
 //
 // Suppression note (RESEARCH Open Question #1): accepting a connection
-// request auto-seeds two `follows` rows via a DB trigger (migration 050).
+// request auto-seeds two `follows` rows via a DB trigger (migration 044).
 // Those trigger-seeded follow rows do NOT get a `new_follower` builder
 // call — only `buildConnectionAcceptedNotification()` fires (to the
 // original requester). Firing `new_follower` for both auto-seeded follows
