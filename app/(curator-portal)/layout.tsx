@@ -12,7 +12,7 @@ import { createServerClient } from '@/lib/supabase/server'
 // an unauthenticated visitor is redirected to /curators/claim (a curator-
 // specific landing page), never to /signin.
 export default async function CuratorPortalLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

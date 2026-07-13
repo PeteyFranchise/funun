@@ -53,7 +53,7 @@ export async function uploadSignedPdf(params: {
   }
 
   const path = `${params.userId}/${params.projectId}/${params.docId}-${Date.now()}.pdf`
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
 
   const { error } = await supabase.storage
     .from(DOC_BUCKET)

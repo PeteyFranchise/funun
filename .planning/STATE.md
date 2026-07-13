@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 09
-current_phase_name: rich-member-profile
-status: executing
-stopped_at: Phase 09-01b complete; Plan 3 of 6 (09-02/09-03/09-04, Wave 3) up next
-last_updated: "2026-07-12T10:08:42.671Z"
-last_activity: 2026-07-12
-last_activity_desc: Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
+current_phase: 10
+current_phase_name: connections-notifications
+status: verifying
+stopped_at: Completed 10-06-PLAN.md
+last_updated: "2026-07-13T02:45:49.327Z"
+last_activity: 2026-07-13
+last_activity_desc: Phase 10 executed + auto-verified; verification returned human_needed — 8 UAT items pending (/gsd-verify-work 10)
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 54
-  completed_plans: 54
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 60
+  completed_plans: 60
   percent: 100
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 09 — rich-member-profile
+**Current focus:** Phase 10 — connections-notifications
 
 ## Current Position
 
-Phase: 09 (rich-member-profile) — EXECUTING
-Plan: 6 of 6 (09-01b) — COMPLETE (all 4 tasks done; migration 043 confirmed live on remote)
-Status: Ready to proceed to Wave 3 — Plans 09-02, 09-03, 09-04 (parallel, zero file overlap)
-Last activity: 2026-07-12 — Phase 09-01b Task 4 checkpoint approved (operator ran `supabase db push`; confirmed via `npx supabase migration list`)
+Phase: 10 (connections-notifications) — VERIFYING
+Plan: 6 of 6
+Status: All 6 plans executed + auto-verified (11/11 structural must-haves, build/tests/types green); 8 behavior-dependent truths pending human UAT — run /gsd-verify-work 10
+Last activity: 2026-07-12 — Phase 10 execution complete; verification returned human_needed (8 UAT items persisted to 10-UAT.md)
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -39,7 +39,7 @@ Last activity: 2026-07-12 — Phase 09-01b Task 4 checkpoint approved (operator 
 |-------|------|--------------|--------|
 | 8 | Identity & Schema Foundation | (foundation — none mapped) | Planned |
 | 9 | Rich Member Profile | PROFILE-01..09 (9) | Not started |
-| 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Not started |
+| 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Verifying (pending UAT) |
 | 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Not started |
 | 12 | Discovery & People Search | DISCOVER-01,02,03 (3) | Not started |
 | 13 | Network Tab & Trust & Safety | DISCOVER-04 · SAFETY-01,02,03,04 (5) | Not started |
@@ -50,7 +50,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 
 **Velocity:**
 
-- Total plans completed: 18 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
+- Total plans completed: 12 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
 - Average duration: -
 - Total execution time: 0 hours (v1.2 not started)
 
@@ -59,7 +59,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 08 | 6 | - | - |
-| 09 | TBD | - | - |
+| 09 | 6 | - | - |
 | 10 | TBD | - | - |
 | 11 | TBD | - | - |
 | 12 | TBD | - | - |
@@ -88,6 +88,12 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 09 P03 | 25min | 3 tasks | 3 files |
 | Phase 09 P04 | 25min | 3 tasks | 7 files |
 | Phase 09 P05 | 15min | 3 tasks | 3 files |
+| Phase 10 P01 | 2min | 4 tasks | 7 files |
+| Phase 10 P02 | checkpoint-spanning | 2 tasks | 1 files |
+| Phase 10 P03 | 2min | 2 tasks | 2 files |
+| Phase 10 P04 | 2min | 2 tasks | 4 files |
+| Phase 10 P05 | 3min | 2 tasks | 3 files |
+| Phase 10 P06 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -133,6 +139,19 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 09-04]: Added ArtistProfile.allow_resharing to types/index.ts -- migration 043's column and 09-01b's API allowlist already existed but the shared type was never extended (blocking gap, Rule 3)
 - [Phase ?]: [Phase 09-05]: app/profile/page.tsx updated alongside ProfileView.tsx and app/u/[handle]/page.tsx (not in this plan's files_modified) because ProfileView's new profileUrl/allowResharing props are required -- Rule 3 blocking-issue auto-fix to keep npm run build green
 - [Phase ?]: [Phase 09-05]: FeaturedPicker mounted inside the existing data.featured conditional rather than always-rendered -- owner mode derives data.featured from ALL projects (not just public), so the picker is reachable whenever the owner has at least one project
+- [Phase ?]: [Phase 10-01]: new_follower notifications suppressed for connect-accept trigger-seeded follows -- only connection_accepted fires on accept (RESEARCH Open Question #1)
+- [Phase ?]: [Phase 10-01]: buildConnectRequest()/buildRespondTransition() throw descriptive Error instances rather than returning an {error} result shape, matching lib/capabilities/grant.ts's established convention
+- [Phase 10-02]: Migration 044 pushed live and DB-verified by human operator via supabase db push + supabase migration list (LOCAL=REMOTE for 001-044), per established schema-push convention
+- [Phase 10-02]: no_block() gate on connections_insert_own closes the migration-038 gap before Phase 13 populates blocks -- inert today, DB-verified via rollback smoke test
+- [Phase 10-02]: connections_seed_follows() SECURITY DEFINER trigger seeds both follows directions atomically on accept -- verified live via smoke test showing exactly 2 rows with matching timestamps
+- [Phase 10]: 10-03: connect status transition uses session client only; RLS two-policy split enforces addressee-accepts / requester-withdraws (T-10-06). Service-role only for the cross-user notification insert.
+- [Phase 10]: 10-03: PATCH /api/connections returns 404 on a zero-row RLS-filtered UPDATE (single round-trip, no existence leak) rather than 403.
+- [Phase ?]: Plan 10-04: notification triggers are best-effort try/catch side effects AFTER the primary mutation (never block follow/post/endorse/comment)
+- [Phase ?]: Plan 10-04: release_comment resolves the project owner (vault_projects.user_id) and suppresses self-comment notifications
+- [Phase 10-05]: NotificationBell subscribes to notifications Realtime GLOBALLY (stable notifications-${userId} channel, memoized client, removeChannel cleanup) — not panel-gated like DmWidget (D-13); unread badge always from a fresh COUNT fetch, never client-incremented
+- [Phase 10-05]: app/(artist)/layout.tsx gains a net-new sticky authenticated header row (Pitfall 4 — no topbar existed) mounting the bell once so the Realtime subscription is app-wide
+- [Phase 10-05]: NotificationPanel resolves connection_request rows in place via a __resolved__ sentinel type; cursor pagination uses IntersectionObserver + before=<created_at>, not offset
+- [Phase 10-06]: ConnectButton owns the primary gradient slot and Follow stays ghost — satisfies the UI-SPEC visual-weight decision without a second gradient in the row; declined/withdrawn read as `none` (state query filters to pending/accepted) enabling re-request via the partial unique index; #wall/#endorsements anchors use scroll-mt-88 so the sticky header doesn't overlap deep-link targets; connect state derived from the connections table via connections_select_participant RLS mirroring the follow derivation
 
 ### Pending Todos
 
@@ -194,9 +213,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-12T10:07:36.880Z
-Stopped at: Phase 09-01b complete (Task 4 checkpoint approved). Next: Wave 3 — 09-02/09-03/09-04 (parallel)
-Resume file: .planning/phases/09-rich-member-profile/09-02-PLAN.md (or next unstarted Wave 3 plan)
+Last session: 2026-07-13T02:45:49.311Z
+Stopped at: Completed 10-02-PLAN.md
+Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
 
 ## Operator Next Steps
 

@@ -31,7 +31,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -142,7 +142,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

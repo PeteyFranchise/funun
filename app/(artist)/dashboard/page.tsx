@@ -44,7 +44,7 @@ export default async function DashboardPage() {
     projects = await getDemoProjects()
     // DEMO branch renders no credits preview (D-05)
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

@@ -11,7 +11,7 @@ export async function PATCH(
   if (DEMO) return NextResponse.json({ error: 'Disabled in demo mode' }, { status: 400 })
   const { opportunityId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -46,7 +46,7 @@ export async function DELETE(
   if (DEMO) return NextResponse.json({ error: 'Disabled in demo mode' }, { status: 400 })
   const { opportunityId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

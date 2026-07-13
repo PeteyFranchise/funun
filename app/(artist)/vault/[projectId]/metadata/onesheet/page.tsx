@@ -43,7 +43,7 @@ export default async function OneSheetPage({
       artistName = 'Demo Artist'
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

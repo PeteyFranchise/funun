@@ -13,7 +13,7 @@ export async function POST(
   if (DEMO) return NextResponse.json({ error: 'Applying is disabled in demo mode' }, { status: 400 })
   const { opportunityId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -9,7 +9,7 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ error: 'Disabled in demo mode' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

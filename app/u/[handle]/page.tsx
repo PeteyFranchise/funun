@@ -4,7 +4,7 @@ import type { ArtistProfile } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
-import { ProfileView, type FollowState } from '@/components/profile/ProfileView'
+import { ProfileView, type FollowState, type ConnectState } from '@/components/profile/ProfileView'
 import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
@@ -61,6 +61,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let followerCount: number | null = null
   let placementsCount: number | null = null
   let follow: FollowState | undefined
+  let connect: ConnectState | undefined
   let wall: WallState | undefined
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
@@ -82,6 +83,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     followerCount = 12800
     placementsCount = 1
     follow = { profileUserId: profile.id, isFollowing: false, canFollow: true }
+    connect = { profileUserId: profile.id, connectionId: null, state: 'none', note: null, canConnect: true }
     wall = {
       profileUserId: profile.id,
       ownerName: profile.artist_name ?? 'this artist',
@@ -135,7 +137,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       initialMessages: [],
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     // Explicit PUBLIC column list (D-11) — must stay identical to migration
     // 040's GRANT SELECT list so the app-layer projection and the DB-layer
     // grant never drift. Includes `genre` and `sound_identity` (legacy
@@ -184,6 +186,46 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       profileUserId: profile.id,
       isFollowing,
       canFollow: Boolean(viewerId) && viewerId !== profile.id,
+    }
+
+    // Derive connect state from the connections table for the viewer<->profile
+    // pair, mirroring the follow derivation above. connections_select_participant
+    // RLS (migration 035) returns only rows the viewer participates in, so a
+    // forged .or() filter can never leak a non-participant's connection (T-10-19).
+    // Only an active row (pending/accepted) matters — declined/withdrawn are
+    // terminal and read as `none` (re-request allowed via the partial unique index).
+    const canConnect = Boolean(viewerId) && viewerId !== profile.id
+    let connectState: ConnectState['state'] = 'none'
+    let connectionId: string | null = null
+    let connectNote: string | null = null
+    if (viewerId && viewerId !== profile.id) {
+      const { data: conn } = await supabase
+        .from('connections')
+        .select('id, requester_id, addressee_id, status, note')
+        .or(
+          `and(requester_id.eq.${viewerId},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${viewerId})`
+        )
+        .in('status', ['pending', 'accepted'])
+        .maybeSingle()
+      if (conn) {
+        const row = conn as { id: string; requester_id: string; addressee_id: string; status: string; note: string | null }
+        connectionId = row.id
+        if (row.status === 'accepted') {
+          connectState = 'connected'
+        } else if (row.requester_id === viewerId) {
+          connectState = 'pending_out'
+        } else {
+          connectState = 'pending_in'
+          connectNote = row.note // note only meaningful for the addressee's inline view
+        }
+      }
+    }
+    connect = {
+      profileUserId: profile.id,
+      connectionId,
+      state: connectState,
+      note: connectNote,
+      canConnect,
     }
 
     wall = {
@@ -248,6 +290,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       allowResharing={allowResharing}
       ownerReleases={ownerReleases}
       currentFeaturedId={profile.featured_project_id}
+      connect={connect}
       follow={follow}
       wall={wall}
       endorsements={endorsements}

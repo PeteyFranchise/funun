@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   if (!DEMO) {
     try {
-      const supabase = createApiClient()
+      const supabase = await createApiClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()

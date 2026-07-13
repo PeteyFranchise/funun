@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const size: number = typeof body.size === 'number' && Number.isFinite(body.size) ? body.size : 0
   const ext: string = typeof body.ext === 'string' && body.ext.trim() !== '' ? body.ext.trim() : 'mp3'
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -91,7 +91,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
     )
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

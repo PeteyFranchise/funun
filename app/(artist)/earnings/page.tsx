@@ -52,7 +52,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 async function loadImports(): Promise<DsrImportRow[]> {
   if (DEMO) return []
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

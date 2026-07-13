@@ -30,7 +30,7 @@ export async function PATCH(
     return NextResponse.json({ data: project })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -66,7 +66,7 @@ export async function DELETE(
     return NextResponse.json({ data: project })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

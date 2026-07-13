@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: 'File exceeds 20 MB' }, { status: 400 })
   if (!VALID_TYPES.includes(type)) return NextResponse.json({ error: 'Unknown contract type' }, { status: 400 })
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

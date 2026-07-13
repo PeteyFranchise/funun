@@ -16,7 +16,7 @@ type AdminChecklistItem = ChecklistItem & {
 export default async function AdminChecklistPage() {
   // T-05-02: explicit per-page admin check — layout redirect alone is not
   // relied upon as the authority decision (see lib/admin/gate.ts comment).
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

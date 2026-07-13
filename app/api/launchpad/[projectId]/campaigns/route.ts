@@ -34,7 +34,7 @@ export async function POST(
 ) {
   const { projectId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -254,7 +254,7 @@ export async function GET(
 ) {
   const { projectId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -286,7 +286,7 @@ export async function PATCH(
 ) {
   const { projectId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -335,7 +335,7 @@ export async function DELETE(
 ) {
   const { projectId: _projectId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

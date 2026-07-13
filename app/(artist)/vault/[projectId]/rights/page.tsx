@@ -46,7 +46,7 @@ export default async function RightsPage({
   // Demo mode does not support rights registration tracking
   if (DEMO) redirect('/vault')
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

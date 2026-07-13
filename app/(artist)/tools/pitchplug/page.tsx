@@ -15,7 +15,7 @@ export default async function PitchPlugPage() {
     projects = (await getDemoProjects()).map(p => ({ id: p.id, title: p.title, type: p.type, isPublic: true }))
     artistHandle = 'maya-reyes'
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

@@ -10,10 +10,14 @@ import { createApiClient } from '@/lib/supabase/server'
 type VerifyAdminResult =
   | { error: 'Unauthorized'; status: 401 }
   | { error: 'Forbidden'; status: 403 }
-  | { user: NonNullable<Awaited<ReturnType<ReturnType<typeof createApiClient>['auth']['getUser']>>['data']['user']> }
+  | {
+      user: NonNullable<
+        Awaited<ReturnType<Awaited<ReturnType<typeof createApiClient>>['auth']['getUser']>>['data']['user']
+      >
+    }
 
 export async function verifyAdmin(): Promise<VerifyAdminResult> {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

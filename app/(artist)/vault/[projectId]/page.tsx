@@ -127,7 +127,7 @@ export default async function VaultProjectPage({
   if (DEMO) {
     project = (await getDemoProject(projectId)) as DetailProject | null
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -210,7 +210,7 @@ export default async function VaultProjectPage({
   // Outreach history (PitchPlug sends + Antenna applications). Demo has no store.
   let submissions: Submission[] = []
   if (!DEMO) {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     submissions = await getProjectSubmissions(supabase, project.id)
   }
 

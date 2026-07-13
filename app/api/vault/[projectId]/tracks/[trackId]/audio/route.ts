@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'Unsupported audio format' }, { status: 400 })
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -131,7 +131,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
 
   const role: Role = new URL(request.url).searchParams.get('role') === 'master' ? 'master' : 'share'
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

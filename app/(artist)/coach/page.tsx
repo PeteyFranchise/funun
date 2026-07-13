@@ -21,7 +21,7 @@ export default async function CoachPage() {
     projects = (await getDemoProjects()) as unknown as LoadedProject[]
     artist = 'Maya Reyes'
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

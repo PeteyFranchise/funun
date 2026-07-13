@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(failureRedirect)
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     return NextResponse.redirect(failureRedirect)

@@ -39,7 +39,7 @@ export async function GET(
 ) {
   const { projectId, campaignId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

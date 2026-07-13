@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { ArtistNav } from '@/components/nav/ArtistNav'
+import { NotificationBell } from '@/components/nav/NotificationBell'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 
 // Reads the account's approved capability set server-side and passes it to
@@ -8,7 +9,7 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 // carries the same column-lockdown doctrine as every other privileged table
 // (RESEARCH anti-pattern guard).
 export default async function ArtistLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -27,7 +28,12 @@ export default async function ArtistLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen bg-ink text-white">
       <ArtistNav capabilities={capabilities} />
-      <div className="flex min-h-screen flex-1 flex-col">{children}</div>
+      <div className="flex min-h-screen flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex items-center justify-end border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">
+          {user && <NotificationBell userId={user.id} />}
+        </header>
+        {children}
+      </div>
     </div>
   )
 }

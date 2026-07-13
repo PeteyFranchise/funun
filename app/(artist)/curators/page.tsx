@@ -50,7 +50,7 @@ export default async function CuratorsPage({
     .map(p => p.trim())
     .filter((p): p is CuratorPlatform => (PLATFORM_VALUES as readonly string[]).includes(p))
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

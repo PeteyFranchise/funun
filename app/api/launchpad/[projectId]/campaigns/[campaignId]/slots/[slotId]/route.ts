@@ -22,7 +22,7 @@ export async function PATCH(
 ) {
   const { projectId, campaignId, slotId } = await params
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

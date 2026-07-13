@@ -30,7 +30,7 @@ export default async function BenchmarksPage() {
       playlistAddsPerMonth: 7,
     }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

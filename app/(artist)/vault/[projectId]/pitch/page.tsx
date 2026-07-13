@@ -21,7 +21,7 @@ export default async function VaultPitchPage({
     const p = await getDemoProject(projectId)
     if (p) project = { id: p.id, title: p.title, type: p.type }
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

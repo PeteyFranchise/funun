@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   // ── 1. Auth gate — must be an authenticated user ──────────────────
-  const apiClient = createApiClient()
+  const apiClient = await createApiClient()
   const {
     data: { user },
   } = await apiClient.auth.getUser()

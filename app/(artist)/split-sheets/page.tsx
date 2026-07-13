@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // projects, so SplitSheetBuilder receives no `projects` prop and the sheet
 // is always standalone (vault_project_id = null, D-18).
 export default async function IndustrySplitSheetsPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

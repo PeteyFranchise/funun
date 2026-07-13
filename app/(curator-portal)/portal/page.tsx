@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 // re-check convention (this route group is deliberately absent from
 // middleware.ts, RESEARCH.md Pitfall 3).
 export default async function CuratorPortalPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

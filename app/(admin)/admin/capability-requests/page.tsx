@@ -8,7 +8,7 @@ import type { CapabilityRequest } from '@/components/admin/CapabilityRequestsAdm
 export default async function AdminCapabilityRequestsPage() {
   // Explicit per-page admin check — layout redirect alone is not relied upon
   // as the authority decision (project convention; see lib/admin/gate.ts).
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

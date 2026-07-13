@@ -53,7 +53,7 @@ function sanitize(body: Record<string, unknown>): UserProfileUpdate {
 // Returns the authenticated user's user_profiles row, or null if it hasn't
 // been saved yet (first-time users). T-04-08: query scoped to id = user.id.
 export async function GET() {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -74,7 +74,7 @@ export async function GET() {
 // as fire-and-forget so claimed collaborator rows get updated additively.
 // A back-fill failure never blocks the settings save response.
 export async function PATCH(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

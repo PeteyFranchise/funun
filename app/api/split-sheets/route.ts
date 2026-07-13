@@ -30,7 +30,7 @@ function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
 
 // GET /api/split-sheets — list split sheets initiated by the current user
 export async function GET() {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -48,7 +48,7 @@ export async function GET() {
 
 // POST /api/split-sheets — create a new split sheet with party rows
 export async function POST(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

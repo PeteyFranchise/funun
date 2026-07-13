@@ -6,7 +6,7 @@ import { sanitizeCollaborator } from '@/lib/collaborators'
 // Returns the authenticated user's full collaborator roster,
 // ordered alphabetically by name.
 export async function GET() {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -27,7 +27,7 @@ export async function GET() {
 // Body fields are validated through the COLLABORATOR_EDITABLE_FIELDS
 // allowlist — unknown keys are silently dropped (T-01-02).
 export async function POST(request: Request) {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

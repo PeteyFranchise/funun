@@ -26,7 +26,7 @@ export async function uploadTrackAudio(
     throw new Error('Audio file must be under 250MB')
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const ext = file.name.split('.').pop()
   const path = `${userId}/${releaseId}/${trackId}.${ext}`
 
@@ -53,7 +53,7 @@ export async function uploadReleaseArtwork(
     throw new Error('Image must be under 10MB')
   }
 
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const ext = file.name.split('.').pop()
   const path = `${userId}/${releaseId}/${type}-${Date.now()}.${ext}`
 
@@ -68,7 +68,7 @@ export async function uploadReleaseArtwork(
 }
 
 export async function deleteStorageFile(bucket: string, path: string): Promise<void> {
-  const supabase = createApiClient()
+  const supabase = await createApiClient()
   const { error } = await supabase.storage.from(bucket).remove([path])
   if (error) throw new Error(`Delete failed: ${error.message}`)
 }

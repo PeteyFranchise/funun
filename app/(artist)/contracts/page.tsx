@@ -66,7 +66,7 @@ export default async function ContractsPage() {
   if (DEMO) {
     projects = (await getDemoProjects()) as Proj[]
   } else {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

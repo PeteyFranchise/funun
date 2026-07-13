@@ -82,7 +82,7 @@ async function load(projectId: string): Promise<{
     return p ? { project: { ...p, vault_readiness_score: p.vault_readiness_score ?? 0 }, artist: 'Maya Reyes', userId: '' } : null
   }
 
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

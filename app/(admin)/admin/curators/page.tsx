@@ -8,7 +8,7 @@ import type { Curator } from '@/types'
 export default async function AdminCuratorsPage() {
   // T-05-02 convention: explicit per-page admin check — layout redirect alone
   // is not relied upon as the authority decision (see lib/admin/gate.ts).
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
