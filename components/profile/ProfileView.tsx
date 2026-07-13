@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { ProfileRole, OpenTo } from '@/types'
 import { PROFILE_ROLE_LABELS } from '@/types'
 import { FollowButton } from './FollowButton'
+import { ConnectButton, type ConnectStateValue } from './ConnectButton'
 import { Wall, type WallState } from './Wall'
 import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
@@ -13,6 +14,14 @@ import { FeaturedPicker, type FeaturedPickerRelease } from './FeaturedPicker'
 import { AvatarBannerUpload } from './AvatarBannerUpload'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
+
+export type ConnectState = {
+  profileUserId: string
+  connectionId: string | null
+  state: ConnectStateValue
+  note: string | null
+  canConnect: boolean
+}
 
 // ─── Public showcase profile (full-page, no app shell) ───────────────
 // v1 = showcase: banner, header, About, Featured, Releases, sidebar.
@@ -134,6 +143,7 @@ export function ProfileView({
   allowResharing,
   ownerReleases,
   currentFeaturedId,
+  connect,
   follow,
   wall,
   endorsements,
@@ -147,6 +157,7 @@ export function ProfileView({
   allowResharing: boolean
   ownerReleases?: FeaturedPickerRelease[]
   currentFeaturedId?: string | null
+  connect?: ConnectState
   follow?: FollowState
   wall?: WallState
   endorsements?: EndorsementState
@@ -254,6 +265,15 @@ export function ProfileView({
               </>
             ) : (
               <>
+                {connect && (
+                  <ConnectButton
+                    profileUserId={connect.profileUserId}
+                    connectionId={connect.connectionId}
+                    state={connect.state}
+                    note={connect.note}
+                    canConnect={connect.canConnect}
+                  />
+                )}
                 {follow ? (
                   <FollowButton
                     profileUserId={follow.profileUserId}
@@ -333,8 +353,19 @@ export function ProfileView({
             </Card>
 
             {activity && <ActivityFeed state={activity} />}
-            {endorsements && <Endorsements state={endorsements} />}
-            {wall && <Wall wall={wall} />}
+            {/* #endorsements / #wall anchors back the Plan-04 notification
+                deep-links (/u/{handle}#endorsements, /u/{handle}#wall). Use
+                scroll-mt so the sticky header doesn't overlap the target. */}
+            {endorsements && (
+              <section id="endorsements" className="scroll-mt-[88px]">
+                <Endorsements state={endorsements} />
+              </section>
+            )}
+            {wall && (
+              <section id="wall" className="scroll-mt-[88px]">
+                <Wall wall={wall} />
+              </section>
+            )}
 
             {/* Follow, Wall, Endorsements, Comments & Activity are live; DMs are next. */}
             <div className="rounded-[18px] border border-dashed border-hairstrong bg-card/40 p-5 text-[13px] text-lavdim">
