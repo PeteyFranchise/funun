@@ -4,9 +4,9 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 11
 current_phase_name: presence-messaging
-status: ready
-stopped_at: Phase 11 context gathered
-last_updated: "2026-07-13T09:08:32.070Z"
+status: ready_to_execute
+stopped_at: Phase 11 planned (6 plans, 4 waves)
+last_updated: "2026-07-13T09:34:46.438Z"
 last_activity: 2026-07-13
 last_activity_desc: completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, closed WR-04 with a pending-state PATCH guard, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
 progress:
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 11 (presence-messaging) — READY
-Plan: not started
-Status: Phase 10 implementation, review-fix work, live-backend UAT, and WR-04 hardening are complete. UAT found two issues (Follow visual weight and notification timestamp-tie pagination); both are fixed, retested, and recorded in `10-UAT.md` / `10-VERIFICATION.md`.
-Last activity: 2026-07-13 — completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, closed WR-04 with a pending-state PATCH guard, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
+Phase: 11 (presence-messaging) — PLANNED, ready to execute
+Plan: 0/6 executed (6 plans, 4 waves; Wave 2 schema push is a non-autonomous operator checkpoint)
+Status: Phase 11 planning complete — plan-checker passed with zero issues; decision coverage 23/23 (D-19/D-23 citations added in revision); requirements coverage 6/6 (PRESENCE-01..03, CONNECT-03..05). Pattern map (11-PATTERNS.md) created.
+Last activity: 2026-07-13 — planned Phase 11 via /gsd-plan-phase: pattern mapping, 6 PLAN.md files across 4 waves, checker verification, coverage gates passed.
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -215,9 +215,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T09:08:32.049Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-presence-messaging/11-CONTEXT.md
+Last session: 2026-07-13T09:34:46.422Z
+Stopped at: Phase 11 planned (6 plans, 4 waves) — next: /gsd-execute-phase 11
+Resume file: .planning/phases/11-presence-messaging/11-01-PLAN.md
 
 ## Operator Next Steps
 
