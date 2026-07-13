@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { createNotification } from '@/lib/notifications'
+import { buildEndorsementNotification } from '@/lib/social/notifications'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -33,6 +35,31 @@ export async function POST(request: Request) {
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Best-effort side effect: notify the endorsed member (profileId). The
+  // endorsement deep-link anchors on the owner's OWN profile
+  // (/u/{ownHandle}#endorsements), so the handle passed to the builder is the
+  // owner's, resolved from artist_profiles keyed by profileId.
+  try {
+    const [{ data: actor }, { data: owner }] = await Promise.all([
+      supabase.from('artist_profiles').select('artist_name, avatar_url').eq('id', user.id).maybeSingle(),
+      supabase.from('artist_profiles').select('handle').eq('id', profileId).maybeSingle(),
+    ])
+    const service = createServiceClient()
+    await createNotification(
+      service,
+      buildEndorsementNotification({
+        recipientId: profileId,
+        actorId: user.id,
+        actorName: actor?.artist_name || 'Member',
+        actorAvatarUrl: actor?.avatar_url ?? null,
+        ownHandle: owner?.handle ?? '',
+      })
+    )
+  } catch {
+    // Non-fatal: the endorsement already succeeded.
+  }
+
   return NextResponse.json({ data })
 }
 
