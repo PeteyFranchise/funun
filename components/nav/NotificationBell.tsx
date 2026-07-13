@@ -84,7 +84,7 @@ export function NotificationBell({ userId }: { userId: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Notifications"
-        className="relative flex h-[42px] w-[42px] items-center justify-center rounded-[11px] border border-hair bg-card text-lav"
+        className="relative flex h-11 w-11 items-center justify-center rounded-[11px] border border-hair bg-card text-lav"
       >
         <svg
           viewBox="0 0 24 24"
