@@ -10,7 +10,6 @@ const DOC_TYPES: { value: string; label: string }[] = [
   { value: 'sample_clearance', label: 'Sample clearance' },
   { value: 'distribution_agreement', label: 'Distribution agreement' },
 ]
-const DOC_STATUSES = ['pending', 'signed', 'verified'] as const
 
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(
   DOC_TYPES.map(t => [t.value, t.label])
@@ -54,13 +53,13 @@ export function DocumentManager({
     router.refresh()
   }
 
-  async function changeStatus(docId: string, status: string) {
+  async function resetStatus(docId: string) {
     setBusyId(docId)
     setError(null)
     const res = await fetch(`/api/vault/${projectId}/documents/${docId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: 'pending' }),
     })
     if (!res.ok) {
       const json = await res.json().catch(() => ({}))
@@ -101,22 +100,25 @@ export function DocumentManager({
                 {TYPE_LABEL[d.type] ?? d.type.replace(/_/g, ' ')}
               </span>
               <div className="flex shrink-0 items-center gap-1.5">
-                <select
-                  value={d.status}
-                  disabled={busyId === d.id}
-                  onChange={e => changeStatus(d.id, e.target.value)}
-                  className={`rounded-md border px-1.5 py-0.5 text-xs outline-none ${
+                <span
+                  className={`rounded-md border px-1.5 py-0.5 text-xs ${
                     d.status === 'signed' || d.status === 'verified'
                       ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
                       : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
                   }`}
                 >
-                  {DOC_STATUSES.map(s => (
-                    <option key={s} value={s} className="bg-neutral-900 text-white">
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  {d.status}
+                </span>
+                {(d.status === 'signed' || d.status === 'verified') && (
+                  <button
+                    type="button"
+                    onClick={() => resetStatus(d.id)}
+                    disabled={busyId === d.id}
+                    className="rounded-md border border-white/10 px-1.5 py-0.5 text-xs text-white/45 transition hover:border-white/25 hover:text-white disabled:opacity-40"
+                  >
+                    Reset
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => removeDocument(d.id)}

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { createSubmission } from '@/lib/submissions'
 import { createNotification } from '@/lib/notifications'
 import { emitActivity } from '@/lib/social/activity-emit'
-import type { Opportunity } from '@/types'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -24,86 +22,68 @@ export async function POST(
   const b = (await request.json().catch(() => ({}))) as { projectId?: string; note?: string }
   if (!b.projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
 
-  // Opportunity must be active and have an open slot.
-  const { data: opp } = await supabase
-    .from('opportunities')
-    .select('*')
-    .eq('id', opportunityId)
-    .maybeSingle()
-  if (!opp || !opp.active) {
-    return NextResponse.json({ error: 'This opportunity is no longer open' }, { status: 404 })
-  }
-  const opportunity = opp as Opportunity
-  if (opportunity.slots_available > 0 && opportunity.slots_filled >= opportunity.slots_available) {
-    return NextResponse.json({ error: 'All slots have been filled' }, { status: 400 })
-  }
-
-  // The artist must own the project and have a match row for it.
-  const { data: project } = await supabase
-    .from('vault_projects')
-    .select('id, title')
-    .eq('id', b.projectId)
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-
-  const { data: match } = await supabase
-    .from('opportunity_matches')
-    .select('id, applied')
-    .eq('opportunity_id', opportunityId)
-    .eq('project_id', b.projectId)
-    .maybeSingle()
-  if (!match) {
-    return NextResponse.json({ error: 'This project isn’t matched to this opportunity' }, { status: 400 })
-  }
-  if (match.applied) {
-    return NextResponse.json({ error: 'You’ve already applied with this project' }, { status: 400 })
-  }
-
-  // 1. Mark the match applied (artist owns it via RLS).
-  await supabase
-    .from('opportunity_matches')
-    .update({ applied: true, applied_at: new Date().toISOString(), status: 'applied' })
-    .eq('id', match.id)
-
-  // 2. Record a submission so it shows in the project's outreach history.
-  const { data: submission, error: subErr } = await createSubmission(supabase, {
-    projectId: b.projectId,
-    userId: user.id,
-    type: 'antenna',
-    destination: { name: opportunity.title },
-    pitchText: b.note ?? null,
-    status: 'sent',
-  })
-  if (subErr) return NextResponse.json({ error: subErr }, { status: 500 })
-
-  // 3. Cross-user writes via service client: increment slots, notify owner.
-  try {
-    const service = createServiceClient()
-    await service
-      .from('opportunities')
-      .update({ slots_filled: opportunity.slots_filled + 1 })
-      .eq('id', opportunityId)
-
-    await createNotification(service, {
-      userId: opportunity.created_by,
-      type: 'application_received',
-      title: 'New application on your opportunity',
-      body: `"${project.title}" applied to ${opportunity.title}.`,
-      link: `/opportunities/${opportunityId}`,
-      data: { opportunityId, projectId: b.projectId },
+  // Atomically validates ownership/match state, reserves a slot, marks the
+  // match applied, and creates the submissions row. The Postgres function
+  // locks the opportunity row, so concurrent applies cannot overfill slots.
+  const service = createServiceClient()
+  const { data: applyResult, error: applyError } = await service
+    .rpc('apply_to_opportunity_atomic', {
+      p_opportunity_id: opportunityId,
+      p_project_id: b.projectId,
+      p_user_id: user.id,
+      p_note: b.note ?? null,
     })
+    .single()
+
+  if (applyError) return NextResponse.json({ error: applyError.message }, { status: 500 })
+
+  const result = applyResult as {
+    result: string
+    opportunity_title: string | null
+    opportunity_created_by: string | null
+    project_title: string | null
+    submission_id: string | null
+  } | null
+
+  if (!result || result.result !== 'applied') {
+    const messages: Record<string, { error: string; status: number }> = {
+      project_not_found: { error: 'Project not found', status: 404 },
+      opportunity_closed: { error: 'This opportunity is no longer open', status: 404 },
+      full: { error: 'All slots have been filled', status: 400 },
+      no_match: { error: 'This project isn’t matched to this opportunity', status: 400 },
+      already_applied: { error: 'You’ve already applied with this project', status: 400 },
+    }
+    const fallback = { error: 'Could not apply to this opportunity', status: 400 }
+    const response = messages[result?.result ?? ''] ?? fallback
+    return NextResponse.json({ error: response.error }, { status: response.status })
+  }
+
+  const opportunityTitle = result.opportunity_title ?? 'this opportunity'
+  const projectTitle = result.project_title ?? 'your project'
+
+  // Cross-user side effect via service client: notify owner.
+  try {
+    if (result.opportunity_created_by) {
+      await createNotification(service, {
+        userId: result.opportunity_created_by,
+        type: 'application_received',
+        title: 'New application on your opportunity',
+        body: `"${projectTitle}" applied to ${opportunityTitle}.`,
+        link: `/opportunities/${opportunityId}`,
+        data: { opportunityId, projectId: b.projectId },
+      })
+    }
   } catch {
     // Non-fatal: the application already succeeded.
   }
 
-  // 4. Activity feed: record the pitch as a placement-track milestone.
+  // Activity feed: record the pitch as a placement-track milestone.
   await emitActivity(supabase, {
     profileId: user.id,
     kind: 'placement',
-    body: `Pitched “${project.title}” to ${opportunity.title}.`,
+    body: `Pitched “${projectTitle}” to ${opportunityTitle}.`,
     data: { opportunityId, projectId: b.projectId },
   })
 
-  return NextResponse.json({ data: { submission, applied: true } })
+  return NextResponse.json({ data: { submission: { id: result.submission_id }, applied: true } })
 }

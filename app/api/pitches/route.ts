@@ -17,6 +17,7 @@ type BlockedCurator = { curatorId: string; reason: string }
 // a single unbroken "word" would otherwise pass the 150-word check while
 // still carrying an arbitrarily large payload (CR-01).
 const PITCH_NOTE_MAX_CHARS = 2000
+const PITCH_RESPONSE_TOKEN_EXPIRY_DAYS = 30
 
 // HTML-escape artist-controlled text before interpolating into the outbound
 // pitch email (CR-01) — trimmedNote and track.title are both fully
@@ -164,6 +165,9 @@ export async function POST(request: Request) {
     artist_id: user.id,
     note: trimmedNote,
     response_token: generateResponseToken(),
+    response_token_expires_at: new Date(
+      Date.now() + PITCH_RESPONSE_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString(),
   }))
 
   const { data: inserted, error: insertError } = await service

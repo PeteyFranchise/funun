@@ -31,7 +31,7 @@ export function CopyrightFiling({
       const res = await fetch(`/api/vault/${projectId}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'copyright_registration', status: 'verified' }),
+        body: JSON.stringify({ type: 'copyright_registration', status: 'pending' }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))

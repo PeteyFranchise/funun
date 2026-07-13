@@ -59,11 +59,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
       )
     }
 
-    const { error: claimError } = await service
+    const { data: claimed, error: claimError } = await service
       .from('curators')
       .update({ claimed_by: existing.user.id, claim_token: null })
       .eq('id', curator.id)
+      .eq('claim_token', token)
+      .is('claimed_by', null)
+      .select('id')
+      .maybeSingle()
     if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
+    if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
     await sendEmail({
       ...emailPayload,
@@ -73,11 +78,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     return NextResponse.json({ ok: true })
   }
 
-  const { error: claimError } = await service
+  const { data: claimed, error: claimError } = await service
     .from('curators')
     .update({ claimed_by: created.user.id, claim_token: null })
     .eq('id', curator.id)
+    .eq('claim_token', token)
+    .is('claimed_by', null)
+    .select('id')
+    .maybeSingle()
   if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
+  if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
   // Send the actual magic link via Resend (lib/email), not Supabase's
   // built-in email templates — matches how this app already owns all its

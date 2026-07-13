@@ -55,13 +55,19 @@ export async function POST(
 
   // ── 2. Apply action ───────────────────────────────────────────────
   if (action === 'approve') {
-    const { error: updateError } = await service
+    const { data: updatedParty, error: updateError } = await service
       .from('split_sheet_parties')
       .update({ approval_status: 'approved', approved_at: now })
       .eq('id', party.id)
+      .eq('approval_status', 'pending')
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+    if (!updatedParty) {
+      return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })
     }
 
     // Re-check if ALL parties are now approved — if so, flip sheet to 'approved'
@@ -71,9 +77,7 @@ export async function POST(
       .eq('split_sheet_id', sheet.id)
 
     if (!partiesError && allParties) {
-      const allApproved = allParties.every(p =>
-        p.id === party.id ? true : p.approval_status === 'approved'
-      )
+      const allApproved = allParties.every(p => p.approval_status === 'approved')
       if (allApproved) {
         await service
           .from('split_sheets')
@@ -105,16 +109,22 @@ export async function POST(
     )
   }
 
-  const { error: counterError } = await service
+  const { data: updatedParty, error: counterError } = await service
     .from('split_sheet_parties')
     .update({
       approval_status: 'countered',
       counter_proposal: counterSplit,
     })
     .eq('id', party.id)
+    .eq('approval_status', 'pending')
+    .select('id')
+    .maybeSingle()
 
   if (counterError) {
     return NextResponse.json({ error: counterError.message }, { status: 500 })
+  }
+  if (!updatedParty) {
+    return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })
   }
 
   // Set sheet status to 'countered'

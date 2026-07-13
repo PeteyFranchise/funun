@@ -4,19 +4,24 @@ import { updateDemoDocument, deleteDemoDocument } from '@/lib/vault/demo-store'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
-const DOC_STATUSES = ['pending', 'signed', 'verified'] as const
-type DocStatus = (typeof DOC_STATUSES)[number]
+const PATCHABLE_DOC_STATUSES = ['pending'] as const
+type PatchableDocStatus = (typeof PATCHABLE_DOC_STATUSES)[number]
 
-// PATCH /api/vault/[projectId]/documents/[docId] — change signing status.
+// PATCH /api/vault/[projectId]/documents/[docId] — reset signing status.
+// Signed/verified states are earned only through upload, e-sign webhook, or
+// verification routes that attach evidence.
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ projectId: string; docId: string }> }
 ) {
   const { projectId, docId } = await params
   const body = (await request.json()) as Record<string, unknown>
-  const status = body.status as DocStatus
-  if (!DOC_STATUSES.includes(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  const status = body.status as PatchableDocStatus
+  if (!PATCHABLE_DOC_STATUSES.includes(status)) {
+    return NextResponse.json(
+      { error: 'Signed or verified documents must come from an uploaded PDF or verification flow' },
+      { status: 400 }
+    )
   }
 
   if (DEMO) {
