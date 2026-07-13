@@ -24,8 +24,8 @@ human_verification:
 
 **Phase Goal:** A member's `/u/[handle]` profile renders the locked hi-fi hero screen and behaves differently for the owner versus a visitor — proving the unified-identity model end-to-end in the browser.
 **Verified:** 2026-07-12T10:15:22Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** passed
+**Re-verification:** Yes — human UAT persisted in `09-UAT.md`
 
 ## Goal Achievement
 
@@ -110,9 +110,9 @@ human_verification:
 
 None. No unreferenced `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER` debt markers in any of the 22 phase-touched files (the only matches are legitimate input-field `placeholder` attribute values). No hardcoded-empty stub returns found in the data-flow paths reviewed (avatar upload, PATCH allowlist, placements query, public playback projection).
 
-### Human Verification Required
+### Human Verification Completed
 
-See frontmatter `human_verification` — 4 items, all live-browser/device interactions that this project has no E2E harness for (per `09-VALIDATION.md` Manual-Only section, consistent across all five plan SUMMARYs' own `human_judgment: true` coverage entries):
+See `09-UAT.md` — all 4 live-browser/device interactions passed. These were originally manual-only because this project has no E2E harness for file upload persistence, native Web Share, live audio playback, or multi-step form persistence-on-reload.
 
 1. Avatar/banner upload persistence (Storage round-trip + reload)
 2. Public player audio playback + lyrics slide-up (real `/r/[projectId]` browsing)
@@ -121,7 +121,7 @@ See frontmatter `human_verification` — 4 items, all live-browser/device intera
 
 ### Gaps Summary
 
-No gaps found. All 9 ROADMAP+PLAN observable truths are VERIFIED against the actual codebase: every claimed artifact exists, is substantive (no stubs), and is wired end-to-end (route swaps confirmed via `git log`/`grep`, PATCH allowlist confirmed via direct read, migration 043 independently re-confirmed live via `supabase migration list` rather than trusting SUMMARY.md's claim). The full Jest suite (58/58), `tsc --noEmit`, and `npm run build` all pass cleanly. The only reason this report is not `passed` is that four behaviors are irreducibly browser/device-only (file upload persistence, native Web Share sheet, live audio playback, and multi-step form persistence-on-reload) and require a human click-through per this phase's own documented Manual-Only validation strategy — none of these represent an unresolved code gap.
+No gaps found. All 9 ROADMAP+PLAN observable truths are VERIFIED against the actual codebase: every claimed artifact exists, is substantive (no stubs), and is wired end-to-end (route swaps confirmed via `git log`/`grep`, PATCH allowlist confirmed via direct read, migration 043 independently re-confirmed live via `supabase migration list` rather than trusting SUMMARY.md's claim). The full Jest suite (58/58), `tsc --noEmit`, and `npm run build` all pass cleanly. The 4 manual-only UAT checks were completed and persisted in `09-UAT.md`, so Phase 9 is passed.
 
 ---
 

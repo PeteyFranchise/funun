@@ -5,16 +5,17 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 10
 current_phase_name: connections-notifications
 status: verifying
-stopped_at: Completed 10-06-PLAN.md
-last_updated: "2026-07-13T02:45:49.327Z"
+stopped_at: Phase 10 merged; UAT remains pending
+last_updated: "2026-07-13T07:55:00-04:00"
 last_activity: 2026-07-13
-last_activity_desc: Phase 10 executed + auto-verified; verification returned human_needed — 8 UAT items pending (/gsd-verify-work 10)
+last_activity_desc: Local main reset to origin/main; planning status reconciled without applying preserved backlog/stash
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 60
-  completed_plans: 60
-  percent: 100
+  total_phases: 6
+  completed_phases: 1
+  structurally_verified_or_code_complete_phases: 3
+  known_plans: 18
+  completed_known_plans: 18
+  percent_complete_by_passed_phase: 17
 ---
 
 # Project State
@@ -30,16 +31,16 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 10 (connections-notifications) — VERIFYING
 Plan: 6 of 6
-Status: All 6 plans executed + auto-verified (11/11 structural must-haves, build/tests/types green); 8 behavior-dependent truths pending human UAT — run /gsd-verify-work 10
-Last activity: 2026-07-12 — Phase 10 execution complete; verification returned human_needed (8 UAT items persisted to 10-UAT.md)
+Status: Phase 10 implementation and review-fix work are merged. Automated gates passed during the PR flow, but `10-UAT.md` still records 8 behavior-dependent checks as pending, so the phase remains human-needed until those results are persisted.
+Last activity: 2026-07-13 — reset local `main` to `origin/main`, preserved the old divergent local history in `backup/local-main-pre-reset-20260713-0739` and `stash@{0}`, then reconciled planning status without replaying backlog changes.
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 | Identity & Schema Foundation | (foundation — none mapped) | Planned |
-| 9 | Rich Member Profile | PROFILE-01..09 (9) | Not started |
-| 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Verifying (pending UAT) |
+| 8 | Identity & Schema Foundation | (foundation — none mapped) | Structurally verified; live DB/UAT checks still recorded as human_needed |
+| 9 | Rich Member Profile | PROFILE-01..09 (9) | Passed |
+| 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Merged; verifying (8 UAT checks pending) |
 | 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Not started |
 | 12 | Discovery & People Search | DISCOVER-01,02,03 (3) | Not started |
 | 13 | Network Tab & Trust & Safety | DISCOVER-04 · SAFETY-01,02,03,04 (5) | Not started |
