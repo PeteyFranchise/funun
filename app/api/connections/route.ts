@@ -136,6 +136,25 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Connection not found or not permitted' }, { status: 404 })
   }
 
+  // Resolve the originating connection_request notification so it stops
+  // resurfacing (with live Accept/Decline buttons) on a fresh GET after the
+  // responder has already acted. Scoped to the responder's own row so this
+  // never touches another user's notifications. Best-effort — the status
+  // transition itself already succeeded and must not be rolled back here.
+  if (target === 'accepted' || target === 'declined') {
+    try {
+      const service = createServiceClient()
+      await service
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('type', 'connection_request')
+        .eq('data->>connectionId', connectionId)
+    } catch {
+      // Non-fatal — the connection transition itself was persisted.
+    }
+  }
+
   // Only a successful accept fires exactly one connection_accepted
   // notification to the original requester. No notification on
   // decline/withdraw (not in NOTIF-01).
