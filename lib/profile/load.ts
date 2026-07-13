@@ -111,6 +111,7 @@ export function buildProfileData(
   const tags = Array.from(new Set([profile.genre, ...moodTags].filter(Boolean))) as string[]
 
   return {
+    id: profile.id,
     name: profile.artist_name || 'Unnamed artist',
     handle: profile.handle,
     pronouns: profile.pronouns,

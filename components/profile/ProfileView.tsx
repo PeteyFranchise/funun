@@ -7,11 +7,11 @@ import { Wall, type WallState } from './Wall'
 import { Endorsements, type EndorsementState } from './Endorsements'
 import { ReleaseComments, type ReleaseCommentsState } from './ReleaseComments'
 import { ActivityFeed, type ActivityState } from './ActivityFeed'
-import { DmWidget, type DmState } from './DmWidget'
 import { ShareButton } from './ShareButton'
 import { ProfileMoreMenu } from './ProfileMoreMenu'
 import { FeaturedPicker, type FeaturedPickerRelease } from './FeaturedPicker'
 import { AvatarBannerUpload } from './AvatarBannerUpload'
+import { ProfilePresenceDot } from './ProfilePresenceDot'
 
 export type FollowState = { profileUserId: string; isFollowing: boolean; canFollow: boolean }
 
@@ -48,6 +48,7 @@ export type ProfileRelease = {
 }
 
 export type ProfileData = {
+  id: string
   name: string
   handle: string | null
   pronouns: string | null
@@ -84,19 +85,6 @@ function band(score: number): { arc: string; value: string } {
   if (score >= 80) return { arc: '#34D399', value: '#34D399' }
   if (score >= 50) return { arc: '#F59E0B', value: '#F4C77B' }
   return { arc: '#F43F5E', value: '#F43F5E' }
-}
-
-// Honest presence-dot slot (PROFILE-01). Phase 11 wires the real Realtime
-// Presence signal into `online` — this phase renders nothing when it is
-// undefined/false so no member is ever falsely shown as "Online".
-function PresenceDot({ online }: { online?: boolean }) {
-  if (!online) return null
-  return (
-    <div className="absolute bottom-3 right-3 flex items-center gap-[6px] rounded-full border border-hairstrong bg-ink px-[9px] py-1 text-[12px] font-bold text-emerald-400">
-      <span className="h-[7px] w-[7px] rounded-full bg-emerald-400" />
-      Online
-    </div>
-  )
 }
 
 function ReleaseCard({ r }: { r: ProfileRelease }) {
@@ -149,7 +137,6 @@ export function ProfileView({
   endorsements,
   comments,
   activity,
-  dm,
 }: {
   data: ProfileData
   mode: 'owner' | 'public'
@@ -163,7 +150,6 @@ export function ProfileView({
   endorsements?: EndorsementState
   comments?: ReleaseCommentsState
   activity?: ActivityState
-  dm?: DmState
 }) {
   const shareCaption = `Check out ${data.name} on Funūn → ${profileUrl}`
   return (
@@ -207,7 +193,7 @@ export function ProfileView({
           >
             {!data.avatarUrl && <span className="flex h-full w-full items-center justify-center text-[44px] font-black">{initials(data.name)}</span>}
             {mode === 'owner' && <AvatarBannerUpload variant="avatar" currentUrl={data.avatarUrl} />}
-            <PresenceDot />
+            <ProfilePresenceDot targetUserId={data.id} />
           </div>
 
           <div className="flex-1 pb-2">
@@ -285,13 +271,12 @@ export function ProfileView({
                     Follow
                   </button>
                 )}
-                {dm ? (
-                  <DmWidget dm={dm} />
-                ) : (
-                  <button className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white opacity-60" title="Messaging coming soon" disabled>
-                    Message
-                  </button>
-                )}
+                <Link
+                  href={`/messages?with=${data.id}`}
+                  className="inline-flex items-center gap-[9px] rounded-[11px] border border-hairstrong bg-card px-[22px] py-[13px] text-[15px] font-bold text-white"
+                >
+                  Message
+                </Link>
                 {allowResharing && <ProfileMoreMenu profileUrl={profileUrl} caption={shareCaption} />}
               </>
             )}
@@ -367,10 +352,6 @@ export function ProfileView({
               </section>
             )}
 
-            {/* Follow, Wall, Endorsements, Comments & Activity are live; DMs are next. */}
-            <div className="rounded-[18px] border border-dashed border-hairstrong bg-card/40 p-5 text-[13px] text-lavdim">
-              Direct messaging is rolling out next.
-            </div>
           </div>
 
           {/* Sidebar */}

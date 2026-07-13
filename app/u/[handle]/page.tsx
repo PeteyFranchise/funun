@@ -9,13 +9,11 @@ import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import type { ActivityState } from '@/components/profile/ActivityFeed'
-import type { DmState } from '@/components/profile/DmWidget'
 import type { FeaturedPickerRelease } from '@/components/profile/FeaturedPicker'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
-import { loadConversation, findThread } from '@/lib/social/dm'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +64,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
   let activity: ActivityState | undefined
-  let dm: DmState | undefined
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -126,15 +123,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         { id: 'a2', kind: 'release', body: 'Released a new single — “Paper” is out now and cleared for sync.', createdAt: ago(6) },
         { id: 'a3', kind: 'readiness', body: 'Hit readiness 92 on “Midnight Ride” — now deal-ready and visible to supervisors.', createdAt: ago(168) },
       ],
-    }
-    dm = {
-      ownerId: profile.id,
-      ownerName: profile.artist_name ?? 'this artist',
-      ownerAvatarUrl: profile.avatar_url,
-      canMessage: true,
-      viewerId: 'demo-viewer',
-      threadId: null,
-      initialMessages: [],
     }
   } else {
     const supabase = await createServerClient()
@@ -260,23 +248,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }
 
     activity = { items: await loadActivity(supabase, profile.id) }
-
-    const canMessage = Boolean(viewerId) && viewerId !== profile.id
-    const [dmMessages, dmThread] = canMessage && viewerId
-      ? await Promise.all([
-          loadConversation(supabase, viewerId, profile.id),
-          findThread(supabase, viewerId, profile.id),
-        ])
-      : [[], null]
-    dm = {
-      ownerId: profile.id,
-      ownerName: profile.artist_name ?? 'this artist',
-      ownerAvatarUrl: profile.avatar_url,
-      canMessage,
-      viewerId: viewerId ?? '',
-      threadId: dmThread,
-      initialMessages: dmMessages,
-    }
   }
 
   const data = buildProfileData(profile, projects, { publicOnly: true, followerCount, placementsCount })
@@ -296,7 +267,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       endorsements={endorsements}
       comments={comments}
       activity={activity}
-      dm={dm}
     />
   )
 }
