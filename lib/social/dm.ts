@@ -45,6 +45,29 @@ export const BASELINE_REQUEST_LIMIT = 10
 export const VERIFIED_REQUEST_LIMIT = 30
 export const PENDING_STACK_CAP = 3
 
+// ─── Send-gate decision core (pure, unit-tested) ─────────────────────────
+// Lives here (not in app/api/dm/send/route.ts) because Next.js route files
+// may only export HTTP method handlers — any other export fails the build's
+// route-type validation. The route wires this to the real
+// isConnected()/countRecentRequests()/countPendingMessagesFrom() queries.
+export type SendPathKind = 'direct' | 'stack' | 'request' | 'reject-rate' | 'reject-stack'
+
+export function chooseSendPath(args: {
+  connected: boolean
+  existingPendingByMe: boolean
+  pendingMsgCount: number
+  recentRequestCount: number
+  verified: boolean
+}): { kind: SendPathKind } {
+  const { connected, existingPendingByMe, pendingMsgCount, recentRequestCount, verified } = args
+  if (connected) return { kind: 'direct' }
+  if (existingPendingByMe) {
+    return { kind: pendingMsgCount >= PENDING_STACK_CAP ? 'reject-stack' : 'stack' }
+  }
+  const limit = verified ? VERIFIED_REQUEST_LIMIT : BASELINE_REQUEST_LIMIT
+  return { kind: recentRequestCount >= limit ? 'reject-rate' : 'request' }
+}
+
 // ─── Rate-limit count — rolling 7-day window (CONNECT-04, D-14) ──────────
 
 /**
