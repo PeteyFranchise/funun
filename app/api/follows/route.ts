@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { createNotification } from '@/lib/notifications'
+import { buildNewFollowerNotification } from '@/lib/social/notifications'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -23,6 +25,31 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
       .from('follows')
       .upsert({ follower_id: user.id, followee_id: followeeId }, { onConflict: 'follower_id,followee_id' })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Best-effort side effect: notify the followee. Fires ONLY for genuine
+    // explicit follows through this route — connect-accept-seeded follow rows
+    // are inserted by the Plan-02 DB trigger and never reach this handler, so
+    // no suppression logic is needed here (RESEARCH Open Question #1).
+    try {
+      const { data: actor } = await supabase
+        .from('artist_profiles')
+        .select('artist_name, avatar_url, handle')
+        .eq('id', user.id)
+        .maybeSingle()
+      const service = createServiceClient()
+      await createNotification(
+        service,
+        buildNewFollowerNotification({
+          recipientId: followeeId,
+          actorId: user.id,
+          actorName: actor?.artist_name || 'Member',
+          actorAvatarUrl: actor?.avatar_url ?? null,
+          actorHandle: actor?.handle ?? '',
+        })
+      )
+    } catch {
+      // Non-fatal: the follow already succeeded.
+    }
   } else {
     const { error } = await supabase
       .from('follows')
