@@ -11,8 +11,6 @@ const DOC_TYPES = [
   'sample_clearance',
   'distribution_agreement',
 ] as const
-const DOC_STATUSES = ['pending', 'signed', 'verified'] as const
-type DocStatus = (typeof DOC_STATUSES)[number]
 
 // GET /api/vault/[projectId]/documents — list documents for a project.
 export async function GET(
@@ -50,16 +48,20 @@ export async function POST(
   const { projectId } = await params
   const body = (await request.json()) as Record<string, unknown>
   const type = String(body.type ?? '')
-  const status = (DOC_STATUSES.includes(body.status as DocStatus)
-    ? body.status
-    : 'pending') as DocStatus
+  const requestedStatus = typeof body.status === 'string' ? body.status : 'pending'
 
   if (!DOC_TYPES.includes(type as (typeof DOC_TYPES)[number])) {
     return NextResponse.json({ error: 'Invalid document type' }, { status: 400 })
   }
+  if (requestedStatus !== 'pending') {
+    return NextResponse.json(
+      { error: 'Signed or verified documents must come from an uploaded PDF or verification flow' },
+      { status: 400 }
+    )
+  }
 
   if (DEMO) {
-    const project = await addDemoDocument(projectId, { type, status })
+    const project = await addDemoDocument(projectId, { type, status: 'pending' })
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     return NextResponse.json({ data: project })
   }
@@ -84,8 +86,8 @@ export async function POST(
       user_id: user.id,
       project_id: projectId,
       type,
-      status,
-      signed_at: status === 'pending' ? null : new Date().toISOString(),
+      status: 'pending',
+      signed_at: null,
     })
     .select()
     .single()

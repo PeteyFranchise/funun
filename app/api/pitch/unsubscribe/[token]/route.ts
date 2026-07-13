@@ -10,15 +10,28 @@ import { createServiceClient } from '@/lib/supabase/server'
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const service = createServiceClient()
+  const now = new Date().toISOString()
 
   const { data: pitch } = await service
     .from('pitch_history')
     .select('id, curator_id')
     .eq('response_token', token)
+    .gt('response_token_expires_at', now)
     .maybeSingle()
 
   if (!pitch) {
-    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+    const { data: existing } = await service
+      .from('pitch_history')
+      .select('id, response_token_expires_at')
+      .eq('response_token', token)
+      .maybeSingle()
+    const expired =
+      existing?.response_token_expires_at &&
+      existing.response_token_expires_at <= now
+    return NextResponse.json(
+      { error: expired ? 'This pitch link has expired' : 'Invalid or expired link' },
+      { status: existing ? 410 : 404 }
+    )
   }
 
   const { error: updateError } = await service

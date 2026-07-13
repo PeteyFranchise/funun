@@ -1,0 +1,44 @@
+[
+  {
+    "text": "Out now: Midnight Bloom 🌙",
+    "channelId": "chan_ig_001",
+    "schedulingType": "automatic",
+    "mode": "customScheduled",
+    "dueAt": "2026-07-15T16:00:00.000Z",
+    "assets": [
+      {
+        "image": {
+          "url": "https://cdn.funun.app/covers/midnight-bloom.jpg"
+        }
+      }
+    ]
+  },
+  {
+    "text": "POV: the beat drops at 0:14",
+    "channelId": "chan_tt_002",
+    "schedulingType": "automatic",
+    "mode": "customScheduled",
+    "dueAt": "2026-07-14T23:00:00.000Z"
+  },
+  {
+    "text": "thank you for 10k streams 🙏",
+    "channelId": "chan_tw_003",
+    "schedulingType": "automatic",
+    "mode": "customScheduled",
+    "dueAt": "2026-07-22T17:00:00.000Z"
+  },
+  {
+    "text": "\"we bloom in the dark\"",
+    "channelId": "chan_th_005",
+    "schedulingType": "automatic",
+    "mode": "customScheduled",
+    "dueAt": "2026-07-23T13:00:00.000Z",
+    "assets": [
+      {
+        "image": {
+          "url": "https://cdn.funun.app/covers/midnight-bloom.jpg"
+        }
+      }
+    ]
+  }
+]

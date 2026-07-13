@@ -8,6 +8,7 @@ type PitchRow = {
   project_id: string
   curator_id: string
   artist_id: string
+  response_token_expires_at: string | null
   vault_projects: { user_id: string; title: string } | { user_id: string; title: string }[] | null
 }
 
@@ -18,31 +19,44 @@ type PitchRow = {
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const service = createServiceClient()
+  const now = new Date().toISOString()
 
-  const { data: pitch } = await service
+  const { data: pitch, error: updateError } = await service
     .from('pitch_history')
-    .select('id, status, project_id, curator_id, artist_id, vault_projects(user_id, title)')
+    .update({ status: 'accepted', responded_at: now })
     .eq('response_token', token)
+    .eq('status', 'pending')
+    .gt('response_token_expires_at', now)
+    .select('id, status, project_id, curator_id, artist_id, response_token_expires_at, vault_projects(user_id, title)')
     .maybeSingle<PitchRow>()
 
-  if (!pitch) {
-    return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
-  if (pitch.status !== 'pending') {
-    return NextResponse.json({ error: 'This pitch was already responded to' }, { status: 410 })
+  if (!pitch) {
+    const { data: existing } = await service
+      .from('pitch_history')
+      .select('id, status, response_token_expires_at')
+      .eq('response_token', token)
+      .maybeSingle()
+    const expired =
+      existing?.response_token_expires_at &&
+      existing.response_token_expires_at <= now
+    return NextResponse.json(
+      {
+        error: expired
+          ? 'This pitch link has expired'
+          : existing
+            ? 'This pitch was already responded to'
+            : 'Invalid or expired link',
+      },
+      { status: existing ? 410 : 404 }
+    )
   }
 
   const project = Array.isArray(pitch.vault_projects) ? pitch.vault_projects[0] : pitch.vault_projects
   if (!project) {
     return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
-  }
-
-  const { error: updateError } = await service
-    .from('pitch_history')
-    .update({ status: 'accepted', responded_at: new Date().toISOString() })
-    .eq('id', pitch.id)
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
   // D-14: notify the artist via in-app + email, reusing the Antenna-match
