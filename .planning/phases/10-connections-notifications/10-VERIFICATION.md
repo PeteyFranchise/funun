@@ -14,7 +14,7 @@ requirements_coverage:
 behavior_unverified_items: []
 human_verification: []
 quality_signals:
-  code_review: "CR-01 email HTML escaping is fixed. WR-04 duplicate accept notification remains an advisory follow-up and does not block this UAT pass. UAT-specific failures (Follow visual weight, timestamp-tie pagination) are fixed and retested."
+  code_review: "CR-01 email HTML escaping is fixed. WR-04 duplicate accept notification is fixed with a pending-state PATCH guard and route regression test. UAT-specific failures (Follow visual weight, timestamp-tie pagination) are fixed and retested."
 ---
 
 # Phase 10: Connections & Notifications Verification Report
@@ -134,13 +134,13 @@ No `TBD`/`FIXME`/`XXX` debt markers in any of the 16 phase-modified files. No st
 
 Complete. See `10-UAT.md` for the full 8-test live-backend UAT record. No behavior-dependent truths remain unverified.
 
-### Quality Signal (advisory — 10-REVIEW.md)
+### Quality Signal (10-REVIEW.md)
 
-The code review originally found 1 Critical + 6 Warning + 4 Info. These are advisory and do not by themselves fail phase-goal verification. The critical email escaping issue is fixed; one warning remains worth closing before ship:
+The code review originally found 1 Critical + 6 Warning + 4 Info. The two highest-priority notification accuracy/security items are now fixed:
 - **CR-01 (Critical):** HTML injection into notification emails — fixed in `lib/notifications/index.ts` by escaping user-controlled title/body content before templating email HTML.
-- **WR-04 (Warning):** A repeat `accept` PATCH on an already-accepted row is not guarded by `status = 'pending'` in the UPDATE, so a double-click can fire a second `connection_accepted` notification (the trigger's `OLD.status='pending'` guard correctly suppresses duplicate follows, but the route's notify has no equivalent guard). Worth closing since it directly affects the "accurate notifications" goal.
+- **WR-04 (Warning):** Repeat accept PATCH can emit a duplicate `connection_accepted` notification — fixed in `app/api/connections/route.ts` by adding `.eq('status', 'pending')` to the transition update; covered by `__tests__/connections-route.test.ts`.
 
-WR-04 is tracked separately for gap closure or `--fix`; it is recorded here as a quality signal, not as a phase-goal gap.
+No open Phase 10 review item blocks merging this PR.
 
 ### Gaps Summary
 

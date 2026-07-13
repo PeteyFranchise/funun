@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 11
 current_phase_name: presence-messaging
 status: ready
-stopped_at: Phase 10 passed after UAT fixes
-last_updated: "2026-07-13T04:14:36-04:00"
+stopped_at: Phase 10 passed after UAT fixes and WR-04 hardening
+last_updated: "2026-07-13T04:27:52-04:00"
 last_activity: 2026-07-13
-last_activity_desc: Phase 10 live-backend UAT completed; Follow visual weight and notification compound-cursor pagination fixed, retested, and recorded
+last_activity_desc: Phase 10 live-backend UAT completed; Follow visual weight, notification compound-cursor pagination, and duplicate accept notification hardening fixed, retested, and recorded
 progress:
   total_phases: 6
   completed_phases: 2
@@ -31,8 +31,8 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 11 (presence-messaging) — READY
 Plan: not started
-Status: Phase 10 implementation, review-fix work, and live-backend UAT are complete. UAT found two issues (Follow visual weight and notification timestamp-tie pagination); both are fixed, retested, and recorded in `10-UAT.md` / `10-VERIFICATION.md`.
-Last activity: 2026-07-13 — completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
+Status: Phase 10 implementation, review-fix work, live-backend UAT, and WR-04 hardening are complete. UAT found two issues (Follow visual weight and notification timestamp-tie pagination); both are fixed, retested, and recorded in `10-UAT.md` / `10-VERIFICATION.md`.
+Last activity: 2026-07-13 — completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, closed WR-04 with a pending-state PATCH guard, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -154,10 +154,10 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10-05]: NotificationPanel resolves connection_request rows in place via a __resolved__ sentinel type; cursor pagination uses IntersectionObserver + before=<created_at>, not offset
 - [Phase 10-06]: ConnectButton owns the primary gradient slot and Follow stays ghost — satisfies the UI-SPEC visual-weight decision without a second gradient in the row; declined/withdrawn read as `none` (state query filters to pending/accepted) enabling re-request via the partial unique index; #wall/#endorsements anchors use scroll-mt-88 so the sticky header doesn't overlap deep-link targets; connect state derived from the connections table via connections_select_participant RLS mirroring the follow derivation
 - [Phase 10 UAT]: Live-backend UAT completed 2026-07-13; 8/8 checks passed after fixing FollowButton's ghost styling and replacing notification pagination's created_at-only cursor with a compound created_at/id cursor for same-timestamp rows
+- [Phase 10 WR-04]: PATCH /api/connections now filters transition updates with `status = 'pending'`, so double-submit/retry on an already accepted/declined/withdrawn row returns 404 and cannot emit duplicate `connection_accepted` notifications
 
 ### Pending Todos
 
-- Close Phase 10 review warning WR-04 before production hardening: guard connection accept/decline/withdraw PATCH updates with `status = 'pending'` so a repeat accept cannot emit a duplicate `connection_accepted` notification.
 - Resolve during Phase 8 planning: industry-member signup/routing flow (where `app_metadata.role` is set, post-auth redirect, distinct onboarding), and a reserved-handle list (squatting risk MINOR-3) — product decision, not purely engineering
 - Confirm during Phase 11 planning: Supabase Realtime concurrent-connection budgeting / monitoring strategy
 - Confirm during Phase 12 planning: pg_trgm/tsvector performance at 10K+ profiles via EXPLAIN ANALYZE before committing to plain GIN-index approach
