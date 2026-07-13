@@ -92,3 +92,7 @@ Per this project's `workflow.human_verify_mode = end-of-phase`, the plan's termi
 ## Threat Surface
 
 No new security-relevant surface beyond the plan's `<threat_model>`. The composer's 200-char cap is convenience only (T-10-17); the `/api/connections` route + `buildConnectRequest` + Postgres CHECK are the boundary. Forged connectionId/addressee fails the migration-035 RLS UPDATE (T-10-18). The pair state query is scoped by `connections_select_participant` RLS — a non-participant gets no row regardless of the client-supplied `.or()` filter (T-10-19). No packages installed (T-10-SC).
+
+## Self-Check: PASSED
+
+All created/modified files exist on disk; all three task commits (`2cfdc69`, `7ba6e75`, `6dd3314`) are present in git history.

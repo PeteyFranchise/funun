@@ -4,17 +4,17 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 10
 current_phase_name: connections-notifications
-status: executing
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-07-13T02:37:38.629Z"
-last_activity: 2026-07-12
-last_activity_desc: Phase 10 execution started
+status: verifying
+stopped_at: Completed 10-06-PLAN.md
+last_updated: "2026-07-13T02:45:49.327Z"
+last_activity: 2026-07-13
+last_activity_desc: Completed 10-06-PLAN.md — Phase 10 ready for verification
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 60
-  completed_plans: 59
-  percent: 92
+  completed_plans: 60
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 10 (connections-notifications) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-12 — Phase 10 execution started
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
@@ -93,6 +93,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 10 P03 | 2min | 2 tasks | 2 files |
 | Phase 10 P04 | 2min | 2 tasks | 4 files |
 | Phase 10 P05 | 3min | 2 tasks | 3 files |
+| Phase 10 P06 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10-05]: NotificationBell subscribes to notifications Realtime GLOBALLY (stable notifications-${userId} channel, memoized client, removeChannel cleanup) — not panel-gated like DmWidget (D-13); unread badge always from a fresh COUNT fetch, never client-incremented
 - [Phase 10-05]: app/(artist)/layout.tsx gains a net-new sticky authenticated header row (Pitfall 4 — no topbar existed) mounting the bell once so the Realtime subscription is app-wide
 - [Phase 10-05]: NotificationPanel resolves connection_request rows in place via a __resolved__ sentinel type; cursor pagination uses IntersectionObserver + before=<created_at>, not offset
+- [Phase 10-06]: ConnectButton owns the primary gradient slot and Follow stays ghost — satisfies the UI-SPEC visual-weight decision without a second gradient in the row; declined/withdrawn read as `none` (state query filters to pending/accepted) enabling re-request via the partial unique index; #wall/#endorsements anchors use scroll-mt-88 so the sticky header doesn't overlap deep-link targets; connect state derived from the connections table via connections_select_participant RLS mirroring the follow derivation
 
 ### Pending Todos
 
@@ -211,7 +213,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T02:36:41.338Z
+Last session: 2026-07-13T02:45:49.311Z
 Stopped at: Completed 10-02-PLAN.md
 Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
 
