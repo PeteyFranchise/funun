@@ -37,7 +37,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Notifications
 
 - [x] **NOTIF-01**: User receives a notification for: new follower, connection request, connection accepted, message request, new DM, release comment, endorsement received, and wall post received
-- [ ] **NOTIF-02**: User sees an unread count badge on the notifications bell, separate from an unread count badge on the messages icon
+- [x] **NOTIF-02**: User sees an unread count badge on the notifications bell, separate from an unread count badge on the messages icon
 - [x] **NOTIF-03**: User can view a notification list/panel and mark all as read
 
 ### Presence & DMs
@@ -109,7 +109,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONNECT-04 | Phase 11 | Pending |
 | CONNECT-05 | Phase 11 | Pending |
 | NOTIF-01 | Phase 10 | Complete |
-| NOTIF-02 | Phase 10 | Pending |
+| NOTIF-02 | Phase 10 | Complete |
 | NOTIF-03 | Phase 10 | Complete |
 | PRESENCE-01 | Phase 11 | Pending |
 | PRESENCE-02 | Phase 11 | Pending |
