@@ -12,7 +12,7 @@ requirements_coverage:
   NOTIF-02: satisfied (structural — live badge accuracy routes to UAT)
   NOTIF-03: satisfied (structural — panel + mark-all-read behavior routes to UAT)
 behavior_unverified_items:
-  - truth: "Accepting a Connect request seeds BOTH follow directions atomically via the migration-044 SECURITY DEFINER trigger (D-05)"
+  - truth: "Accepting a Connect request seeds BOTH follow directions atomically via the migration-050 SECURITY DEFINER trigger (D-05)"
     test: "With two accounts A and B: A sends B a Connect request, B accepts. Then check follower/following on both profiles."
     expected: "A follows B AND B follows A (two follows rows seeded by connections_on_accept), and exactly one connection_accepted notification reaches A. No new_follower notifications fire for the seeded rows."
     why_human: "The trigger is a DB-level state-transition invariant; no Jest test exercises it (pure-builder tests only). Migration is live + DB-smoke-verified during 10-02 execution, but the end-to-end app path (route UPDATE -> trigger -> follows) is not covered by any automated test."
@@ -93,7 +93,7 @@ Because the goal's correctness hinges on runtime behaviors that no automated tes
 | 1 | Pure per-type notification builders (6 phase-owned) return correctly-shaped payloads (title/link/actor) | ✓ VERIFIED | `lib/social/notifications.ts` (181 lines) + `__tests__/notification-triggers.test.ts` GREEN; titles/links match UI-SPEC verbatim |
 | 2 | Connect request/respond/withdraw builders enforce transitions + 200-char note validation before any write | ✓ VERIFIED | `lib/social/connections.ts` + `__tests__/connections.test.ts` GREEN |
 | 3 | createNotification() + Notification type carry actor_id/actor_name/actor_avatar_url | ✓ VERIFIED | `lib/notifications/index.ts` insert + `types/index.ts`; tsc clean |
-| 4 | Migration 044 adds note CHECK(<=200), no_block() on connections INSERT, auto-follow-seed trigger | ✓ VERIFIED | `044_connections_note.sql` all three blocks present; pushed live + DB-smoke-verified (10-02-SUMMARY) |
+| 4 | Migration 050 adds note CHECK(<=200), no_block() on connections INSERT, auto-follow-seed trigger | ✓ VERIFIED | `050_connections_note.sql` all three blocks present; pushed live + DB-smoke-verified (10-02-SUMMARY) |
 | 5 | POST/PATCH /api/connections use session client for the transition (RLS split), service client only for cross-user notify | ✓ VERIFIED | `app/api/connections/route.ts`: `createApiClient()` for INSERT/UPDATE, `createServiceClient()` only inside notify try/catch; no follows INSERT |
 | 6 | GET /api/notifications returns cursor-paginated list + fresh unread head-count; PATCH scopes mark-all-read to caller | ✓ VERIFIED | `app/api/notifications/route.ts`: `{count:'exact',head:true}`, `.lt('created_at',before)`, `.eq('user_id').eq('read',false)` |
 | 7 | follows/wall/endorsements/release-comments each fire the correct notification best-effort (never blocking the mutation) | ✓ VERIFIED | All four routes import the right builder + `createServiceClient()` in try/catch AFTER the primary mutation; release-comments resolves `vault_projects.user_id` owner + self-suppress |
@@ -117,7 +117,7 @@ Because the goal's correctness hinges on runtime behaviors that no automated tes
 | `lib/social/connections.ts` | pure request/transition builders | ✓ VERIFIED | 63 lines; pure (no supabase import) |
 | `lib/notifications/index.ts` | createNotification() + actor fields | ✓ VERIFIED | actor_id/name/avatar_url in insert |
 | `types/index.ts` | Notification type + actor fields | ✓ VERIFIED | string\|null actor columns |
-| `supabase/migrations/044_connections_note.sql` | note + no_block + trigger | ✓ VERIFIED | all three additive blocks; live |
+| `supabase/migrations/050_connections_note.sql` | note + no_block + trigger | ✓ VERIFIED | all three additive blocks; live |
 | `app/api/connections/route.ts` | POST + PATCH | ✓ VERIFIED | 160 lines; correct client split |
 | `app/api/notifications/route.ts` | GET + PATCH | ✓ VERIFIED | 69 lines; fresh COUNT + cursor |
 | `app/api/{follows,wall,endorsements,release-comments}/route.ts` | notify side effects | ✓ VERIFIED | all four wired best-effort |
@@ -133,7 +133,7 @@ Because the goal's correctness hinges on runtime behaviors that no automated tes
 | From | To | Via | Status |
 | ---- | --- | --- | ------ |
 | connections PATCH | connections table | session client UPDATE (RLS two-policy split) | ✓ WIRED |
-| connections accept UPDATE | follows table | migration-044 SECURITY DEFINER trigger (both directions) | ✓ WIRED (behavior -> UAT) |
+| connections accept UPDATE | follows table | migration-050 SECURITY DEFINER trigger (both directions) | ✓ WIRED (behavior -> UAT) |
 | NotificationBell | notifications table | Realtime `notifications-${userId}` channel + removeChannel | ✓ WIRED (behavior -> UAT) |
 | NotificationBell/Panel | /api/notifications | fetch GET (list+count), PATCH (mark-all) | ✓ WIRED |
 | Panel inline actions | /api/connections | PATCH accept/decline | ✓ WIRED |
@@ -169,7 +169,7 @@ No `scripts/*/tests/probe-*.sh` probes declared or discovered for this phase. No
 | Requirement | Source Plan | Description | Status | Evidence |
 | ----------- | ---------- | ----------- | ------ | -------- |
 | CONNECT-01 | 10-01, 10-04, 10-06 | Follow another member (one-way) | ✓ SATISFIED | follows route + FollowButton intact |
-| CONNECT-02 | 10-01, 10-02, 10-03, 10-06 | Send Connect request; accept/decline -> mutual | ✓ SATISFIED | connections route + migration 044 + ConnectButton (accept/decline behavior -> UAT) |
+| CONNECT-02 | 10-01, 10-02, 10-03, 10-06 | Send Connect request; accept/decline -> mutual | ✓ SATISFIED | connections route + migration 050 + ConnectButton (accept/decline behavior -> UAT) |
 | NOTIF-01 | 10-01, 10-04 | Notification for follower/connect-req/accepted/comment/endorsement/wall | ✓ SATISFIED (phase scope) | 6 of 8 event types wired; message_request/new_dm are Phase 11 (CONNECT-03/DM) |
 | NOTIF-02 | 10-03, 10-05 | Unread bell badge, separate from messages badge | ✓ SATISFIED (structural) | NotificationBell (bell) is a distinct component from DmWidget (messages); live accuracy -> UAT |
 | NOTIF-03 | 10-01, 10-03, 10-05 | View notification panel + mark all read | ✓ SATISFIED (structural) | panel + mark-all-read route + PATCH; interactive clear -> UAT |
@@ -209,7 +209,7 @@ These are tracked separately for gap closure or `--fix`; they are recorded here 
 
 ### Gaps Summary
 
-No gaps. Every must-have artifact exists, is substantive, is wired, and (for dynamic-data artifacts) has real data flowing. The automated gate is fully green (80/80 tests, clean tsc, successful build). Migration 044 is live and was DB-smoke-verified during execution. Requirement coverage is complete for the phase's scope, with the message_request/new_dm portion of NOTIF-01 correctly deferred to Phase 11.
+No gaps. Every must-have artifact exists, is substantive, is wired, and (for dynamic-data artifacts) has real data flowing. The automated gate is fully green (80/80 tests, clean tsc, successful build). Migration 050 is live and was DB-smoke-verified during execution. Requirement coverage is complete for the phase's scope, with the message_request/new_dm portion of NOTIF-01 correctly deferred to Phase 11.
 
 The phase is not `passed` only because 8 behavior-dependent truths (one DB-trigger invariant + seven Realtime/interactive UI behaviors) cannot be machine-verified in this project — no E2E runner exists (VALIDATION.md) — and the `end-of-phase` human-verify workflow deliberately deferred these to UAT. They are surfaced above so the orchestrator can persist them into a UAT file. Status: **human_needed**.
 

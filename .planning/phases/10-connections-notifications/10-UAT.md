@@ -20,7 +20,7 @@ awaiting: user response
 ## Tests
 
 ### 1. Auto-follow-seed on accept (D-05)
-expected: A requests, B accepts → both follow directions (A→B and B→A) seeded by the migration-044 SECURITY DEFINER trigger; exactly one connection_accepted notification to A; no new_follower for the seeded rows. (Migration is live + was DB-smoke-verified during 10-02 execution; this confirms the end-to-end app path route UPDATE → trigger → follows.)
+expected: A requests, B accepts → both follow directions (A→B and B→A) seeded by the migration-050 SECURITY DEFINER trigger; exactly one connection_accepted notification to A; no new_follower for the seeded rows. (Migration is live + was DB-smoke-verified during 10-02 execution; this confirms the end-to-end app path route UPDATE → trigger → follows.)
 result: [pending]
 
 ### 2. Bell renders app-wide, badge live + accurate, no channel leak

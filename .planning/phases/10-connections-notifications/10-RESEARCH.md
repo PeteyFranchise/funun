@@ -147,7 +147,7 @@ components/
 ├── profile/
 │   └── ConnectButton.tsx      # Connect/Pending/Connected + inline Accept/Decline states (D-02/D-03), sibling to existing Follow button markup
 supabase/migrations/
-└── 044_connections_note.sql   # ALTER TABLE connections ADD COLUMN note + CHECK; trigger for D-05 auto-follow seed; no_block() wiring into connections INSERT (Pitfall 2)
+└── 050_connections_note.sql   # ALTER TABLE connections ADD COLUMN note + CHECK; trigger for D-05 auto-follow seed; no_block() wiring into connections INSERT (Pitfall 2)
 ```
 
 ### Pattern 1: Service-role `createNotification()` call wrapped in try/catch at the call site
@@ -243,7 +243,7 @@ Keep `type` as a plain `TEXT` column (no DB CHECK/enum) — the existing `notifi
 ### Pitfall 2: `connections` INSERT is not covered by `no_block()` (D-15 gap)
 **What goes wrong:** Migration 038 wired `no_block()` into `follows`, `wall_posts`, `endorsements`, `dm_threads`, and `dm_messages` INSERT policies — but **not** `connections`. Verified by reading migration 038 directly: its policy list is exactly those five, `connections` is absent. Migration 035's `connections_insert_own` policy checks only `requester_id = auth.uid()`.
 **Why it happens:** Migration 035 (which created `connections`) predates migration 038 (which did the `no_block()` wiring pass) and was scoped as "create the tables and helper only; wiring is a later plan" per its own header comment — but the "later plan" (038) then enumerated the four *pre-existing* social tables and never came back for `connections`, likely because `connections` didn't exist yet when 038's enumeration was drafted, or was assumed to be Phase 10's own responsibility.
-**How to avoid:** Phase 10's new migration (044) should append `AND no_block(auth.uid(), addressee_id)` to `connections_insert_own`'s `WITH CHECK` clause, matching the exact pattern migration 038 used for the other four tables. This is currently inert (blocks table is empty until Phase 13 ships block UI, so zero behavior change today) but closes the gap before Phase 13 ships — otherwise Phase 13's block feature would need its own retrofit migration for `connections` specifically, which is exactly the redundant-work scenario migration 035's header comment says the block-table-early strategy was meant to avoid.
+**How to avoid:** Phase 10's new migration (050) should append `AND no_block(auth.uid(), addressee_id)` to `connections_insert_own`'s `WITH CHECK` clause, matching the exact pattern migration 038 used for the other four tables. This is currently inert (blocks table is empty until Phase 13 ships block UI, so zero behavior change today) but closes the gap before Phase 13 ships — otherwise Phase 13's block feature would need its own retrofit migration for `connections` specifically, which is exactly the redundant-work scenario migration 035's header comment says the block-table-early strategy was meant to avoid.
 **Warning signs:** A `plan-checker`/security review flagging "why does `connections` not get the same `no_block()` treatment as `follows`" — this is a five-minute additive fix inside the migration this phase is already writing for the `note` column, so there's no reason to defer it.
 
 ### Pitfall 3: `Notification` TypeScript type and `createNotification()` signature don't know about actor-snapshot columns
@@ -305,7 +305,7 @@ export async function createNotification(
 ### Connect state-transition migration (D-04 note column + D-15 no_block gap close), consistent with migration 031's column-privilege convention
 ```sql
 -- Source: this project's own migration 035/031 conventions (verified by reading both files)
--- 044_connections_note.sql
+-- 050_connections_note.sql
 ALTER TABLE connections
   ADD COLUMN IF NOT EXISTS note TEXT
     CHECK (note IS NULL OR char_length(note) <= 200);

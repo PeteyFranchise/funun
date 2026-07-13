@@ -1,6 +1,6 @@
 -- ============================================================
 -- Funūn — Wave 4: The Green Room
--- Migration 044: connections.note + no_block() wiring + auto-follow-seed trigger
+-- Migration 050: connections.note + no_block() wiring + auto-follow-seed trigger
 -- Run via: supabase db push
 -- ============================================================
 

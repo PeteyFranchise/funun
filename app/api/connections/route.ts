@@ -121,7 +121,7 @@ export async function PATCH(request: Request) {
   // (migration 035) allows the caller only the transitions they are
   // authorized for: addressee → accept/decline, requester → withdraw. Using
   // a service-role client here would let a requester self-accept (T-10-06).
-  // The auto-follow seed on accept is the DB trigger's job (migration 044),
+  // The auto-follow seed on accept is the DB trigger's job (migration 050),
   // NOT this route's — no follows INSERT here.
   const { data: updated, error } = await supabase
     .from('connections')

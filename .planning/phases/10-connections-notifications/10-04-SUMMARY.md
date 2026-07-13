@@ -9,7 +9,7 @@ requires:
   - phase: 10-connections-notifications
     provides: "buildXNotification() builders + createNotification() actor-snapshot args (Plan 01, lib/social/notifications.ts, lib/notifications/index.ts)"
   - phase: 10-connections-notifications
-    provides: "migration 044 live (auto-follow-seed trigger etc.) confirmed on remote (Plan 02)"
+    provides: "migration 050 live (auto-follow-seed trigger etc.) confirmed on remote (Plan 02)"
 provides:
   - "new_follower notification fired from app/api/follows/route.ts (explicit follow only)"
   - "wall_post notification fired from app/api/wall/route.ts (to wall owner)"
@@ -34,7 +34,7 @@ key-files:
 
 key-decisions:
   - "Actor name falls back to 'Member' when artist_profiles.artist_name is null, matching lib/social/wall.ts's existing convention; actorHandle/ownHandle fall back to '' so a missing handle degrades the link gracefully rather than throwing"
-  - "No connect-accept suppression logic added to follows/route.ts — trigger-seeded follow rows (migration 044) bypass this route entirely, so the route only ever sees genuine explicit follows (RESEARCH Open Question #1, no code change needed)"
+  - "No connect-accept suppression logic added to follows/route.ts — trigger-seeded follow rows (migration 050) bypass this route entirely, so the route only ever sees genuine explicit follows (RESEARCH Open Question #1, no code change needed)"
   - "release_comment skips the notify (not errors) when project.user_id === user.id, so owners are never notified about their own comments"
 
 requirements-completed: [CONNECT-01, NOTIF-01]
@@ -132,7 +132,7 @@ Each task was committed atomically:
 
 ## Decisions Made
 - Actor name falls back to `'Member'` (mirroring `lib/social/wall.ts`) and handles fall back to `''` so a missing handle degrades the link rather than throwing
-- No connect-accept suppression added to `follows/route.ts`: trigger-seeded follows (migration 044) never pass through this route, so it only ever fires `new_follower` for genuine explicit follows (RESEARCH Open Question #1)
+- No connect-accept suppression added to `follows/route.ts`: trigger-seeded follows (migration 050) never pass through this route, so it only ever fires `new_follower` for genuine explicit follows (RESEARCH Open Question #1)
 - `release_comment` skips (does not error) when `project.user_id === user.id` so owners aren't notified about their own comments
 
 ## Deviations from Plan

@@ -22,7 +22,7 @@ files_reviewed_list:
   - lib/notifications/index.ts
   - lib/social/connections.ts
   - lib/social/notifications.ts
-  - supabase/migrations/044_connections_note.sql
+  - supabase/migrations/050_connections_note.sql
   - types/index.ts
 findings:
   critical: 3
@@ -199,7 +199,7 @@ if (error) {
 
 ### WR-09: Accept/decline transition isn't scoped to `status = 'pending'`, allowing a repeat click to re-fire the accepted notification
 
-**File:** `app/api/connections/route.ts:126-159`, `supabase/migrations/044_connections_note.sql:66`
+**File:** `app/api/connections/route.ts:126-159`, `supabase/migrations/050_connections_note.sql:66`
 **Issue:** The PATCH handler does `.update({ status: target }).eq('id', connectionId)` with no `status = 'pending'` guard in the query itself — it relies entirely on RLS to gate *who* may transition, but not *from what state*. If the addressee's client double-submits an accept (or a stale panel/button is clicked again after already accepting), the UPDATE still matches an already-`accepted` row (RLS permits the addressee to write `status`), re-sets it to `accepted`, and the route proceeds to fire a **second** `connection_accepted` notification to the requester. The DB trigger already guards against this correctly for follow-seeding (`IF NEW.status = 'accepted' AND OLD.status = 'pending'`), but the API route has no equivalent guard for the notification it sends.
 **Fix:** Scope the UPDATE to pending rows only, so a repeat transition returns 404 instead of re-firing:
 ```ts

@@ -8,7 +8,7 @@
 
 | New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
 |--------------------|------|-----------|-----------------|----------------|
-| `supabase/migrations/044_connections_note.sql` | migration | CRUD (DDL + trigger) | `supabase/migrations/035_connections_blocks.sql` | exact |
+| `supabase/migrations/050_connections_note.sql` | migration | CRUD (DDL + trigger) | `supabase/migrations/035_connections_blocks.sql` | exact |
 | `lib/notifications/index.ts` (extend) | service/utility | request-response | itself (extend in place) | exact |
 | `types/index.ts` — `Notification` type (extend) | model | transform | itself (extend in place) | exact |
 | `lib/social/connections.ts` (new) | service | CRUD | `lib/social/wall.ts` (`loadWall()`) | exact |
@@ -29,7 +29,7 @@
 
 ## Pattern Assignments
 
-### `supabase/migrations/044_connections_note.sql` (migration)
+### `supabase/migrations/050_connections_note.sql` (migration)
 
 **Analog:** `supabase/migrations/035_connections_blocks.sql`
 
