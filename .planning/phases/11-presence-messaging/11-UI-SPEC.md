@@ -44,26 +44,28 @@ Declared values (multiples of 4 only):
 Exceptions:
 - Docked widget width: 336px (carried from `.pf-dm` CSS — inherited design value, not a spacing token)
 - Docked widget avatar: 36×36px (`h-9 w-9`) — design-spec value preserved from existing `DmWidget.tsx`
-- Presence dot: 6×6px inside widget header; 7×7px inside `.pf-avatar .live` pill and thread-list avatars
-- Topbar icon button: 42×42px (`h-[42px] w-[42px]`) — mirrors `NotificationBell` exactly (D-02 requirement: messages icon is a peer of the bell)
+- Presence dot: 8×8px in all contexts (`h-2 w-2`) — grid-aligned; applies to thread-list avatars, widget header, and `.pf-avatar .live` pill variant
+- Topbar icon button: 44×44px (`h-11 w-11`) — touch-safe minimum (multiple of 4); D-02 requires peer visual weight with `NotificationBell` — `NotificationBell` is being harmonized to 44px in the same pass if it is currently 42px; see Component Inventory for reconciliation note
 - Touch-safe minimum: all interactive rows ≥ 44px height on mobile
 
 ---
 
 ## Typography
 
+Exactly 4 font sizes, exactly 2 weights. No exceptions.
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Body | 14px | 400 (regular) | 1.5 | Thread-list preview text, message bubble body, inbox search input |
-| Label | 12px | 600 (semibold) | 1.4 | Presence status ("Active now"), date dividers, badge counts, request/section labels, rate-limit budget ("7 requests left") |
+| Body | 14px | 400 (regular) | 1.5 | Thread-list preview text, message bubble body, inbox search input, message timestamps inside bubbles (opacity-60 for de-emphasis) |
+| Label | 12px | 700 (bold) | 1.4 | Presence status ("Active now"), date dividers, unread badge counts on topbar icon, request/section labels, rate-limit budget hint ("7 requests left"), thread-list timestamp, section headers (uppercase letter-spacing `.18em` for section headers only) |
 | Heading | 15px | 700 (bold) | 1.2 | Thread row name, docked widget header name, conversation header name |
-| Display | 27px | 800 (extrabold) | 1.1 | `/messages` page title (matches existing topbar `h1` pattern) |
+| Display | 27px | 700 (bold) | 1.1 | `/messages` page title (matches existing topbar `h1` pattern) |
 
-Font-size exceptions for micro-elements:
-- Unread badge on topbar icon: 10px weight 800 (`text-[10px] font-extrabold`) — carries from `NotificationBell` pattern
-- Message timestamp inside bubble: 10px weight 400 opacity-60 — carries from `DmWidget.tsx`
-- Thread-list timestamp / "now": 11px weight 600 `text-lavdim`
-- Section header (e.g., "Requests", "Messages"): 11px weight 700 uppercase letter-spacing `.18em` — matches existing `.nav-group` pattern
+**Consolidation rationale (checker fix applied 2026-07-13):**
+- Unread badge (was 10px/800) → 12px label slot, weight 700. Badge is small enough that the container clips the glyph naturally.
+- Bubble timestamps (was 10px/400) → 14px body slot, opacity-60. Inline with message body; de-emphasis handled by opacity alone.
+- Thread-list timestamp and section headers (were 11px/600–700) → 12px label slot, weight 700. 12px at 700 is visually equivalent for micro-labels at this scale.
+- Weights collapsed: 400 (regular) and 700 (bold) only. Semibold (600) merged into bold (700); extrabold (800) merged into bold (700).
 
 ---
 
@@ -101,12 +103,12 @@ Font-size exceptions for micro-elements:
 
 | Component | Surface | Description |
 |-----------|---------|-------------|
-| `MessagesIcon` | `app/(artist)/layout.tsx` header | Topbar chat-bubble icon + unread badge. Mirrors `NotificationBell` 42×42px button pattern. Badge: `bg-brandfuchsia`, `-right-[4px] -top-[4px]`, `10px font-extrabold`. Navigates to `/messages` on click (no panel — D-02). |
-| `ThreadList` | `/messages` left pane | Scrollable list of threads. Each row: 60px min-height, avatar 40×40px, name `15px font-bold`, preview `14px text-lavdim truncate`, timestamp `11px text-lavdim`, unread dot `8px bg-brandfuchsia` if unread, online presence dot `6px bg-emerald-400` if active. Selected row: `bg-card2 border-l-2 border-indigo-400`. People-search filter at top. |
+| `MessagesIcon` | `app/(artist)/layout.tsx` header | Topbar chat-bubble icon + unread badge. Button size: 44×44px (`h-11 w-11`) — touch-safe, grid-aligned. **Note: if `NotificationBell` is currently 42px, reconcile it to 44px in the same PR for visual peer consistency (D-02).** Badge: `bg-brandfuchsia`, `-right-[4px] -top-[4px]`, `12px font-bold` (label slot). Icon-only button — `aria-label="Messages"` is the accessible name. Navigates to `/messages` on click (no panel — D-02). |
+| `ThreadList` | `/messages` left pane | Scrollable list of threads. Each row: 60px min-height, avatar 40×40px, name `15px font-bold` (heading slot), preview `14px text-lavdim truncate` (body slot), timestamp `12px text-lavdim` (label slot), unread dot `8px bg-brandfuchsia` if unread, online presence dot `8px bg-emerald-400` if active. Selected row: `bg-card2 border-l-2 border-indigo-400`. People-search filter at top. |
 | `ConversationView` | `/messages` right pane | Message thread. Header: avatar 36×36px + name + presence status. Body scrollable, same bubble pattern as `DmWidget.tsx`. Composer at bottom. Auto-mark-read on open (D-06). |
 | `RequestView` | `/messages` right pane (pending threads) | Replaces `ConversationView` when `dm_threads.status = 'pending'` and the viewer is the recipient. Shows the message(s), then Accept / Decline / Block button row. Accept: `bg-grad`; Decline: `bg-card2 border border-hairstrong`; Block: `text-rose-500 border border-rose-500/30 bg-rose-500/10`. |
 | `DockedWidget` | `app/(artist)/layout.tsx` (layout-level mount) | Bottom-right floating widget. Width 336px, `rounded-t-[14px]`, `border border-hairstrong`, `bg-card`, `shadow-[0_-20px_60px_-20px_rgba(0,0,0,.7)]`. Identical chrome to existing `DmWidget.tsx`. Header: avatar + name + presence status (emerald). Pop-out affordance: `↗` icon in header to open `/messages?thread=<id>`. Close: chevron-down (matches existing `DmWidget`). Desktop-only: hidden below `lg` breakpoint. |
-| `PresenceDot` | Profile avatar, thread list, conversation header | Online status indicator. Profile avatar variant: absolute `bottom-[12px] right-[12px]`, pill shape `bg-ink border border-hairstrong`, `text-emerald-400 text-[12px] font-bold`, `gap-[6px]`, 7×7px dot. Thread/header variant: 6×6px dot only, no pill. |
+| `PresenceDot` | Profile avatar, thread list, conversation header | Online status indicator. All variants use an 8×8px dot (`h-2 w-2 bg-emerald-400 rounded-full`) — grid-aligned throughout. Profile avatar variant: absolute `bottom-[12px] right-[12px]`, pill shape `bg-ink border border-hairstrong`, `text-emerald-400 text-[12px] font-bold`, `gap-2` (8px), dot 8×8px. Thread/header variant: 8×8px dot only, no pill. |
 | `RateLimitWall` | Composer area when budget = 0 | Replaces composer input when rate limit is exhausted. Copy: heading "You've used all 10 message requests this week", body "Your next request slot opens [date]. In the meantime, send a Connect request — connected members message directly.", CTA gradient button "Send Connect Request". |
 | `RequestsBudgetHint` | Composer area (non-connection, budget > 0) | Inline hint below composer when composing to a non-connection. "X message requests left this week" — `12px text-lavdim`. Disappears for connections. |
 
@@ -195,17 +197,27 @@ Font-size exceptions for micro-elements:
 
 | State | Visual |
 |-------|--------|
-| Active now (Realtime Presence) | 6–7px filled circle `bg-emerald-400` (green) |
+| Active now (Realtime Presence) | 8×8px filled circle `bg-emerald-400` (`h-2 w-2`) — grid-aligned, all contexts |
 | Active X ago / today / this week (`last_seen_at` bucket) | No dot — status text only in DM header; no dot in thread list for offline users |
 | No status (>7 days or unknown) | No dot, no text |
 
 **Presence dot placement rules (D-22):**
-- Profile avatar: `.live` pill (emerald dot + "Online" text) — absolute bottom-right of 168px avatar
-- Thread list row: 6px dot overlaid bottom-right of 40px avatar
-- Two-pane conversation header: 6px dot + "Active now" text (emerald) or no dot + "Active Xm ago" text (lavdim)
+- Profile avatar: `.live` pill (8×8px emerald dot + "Online" text) — absolute bottom-right of 168px avatar
+- Thread list row: 8×8px dot overlaid bottom-right of 40px avatar
+- Two-pane conversation header: 8×8px dot + "Active now" text (emerald) or no dot + "Active Xm ago" text (lavdim)
 - Docked widget header: identical to conversation header (the `dh .st` pattern from `.pf-dm`)
 - Notification panel avatars: no presence dot (D-22 exclusion — Phase 12 deferred)
 - Wall post avatars: no presence dot (D-22 exclusion)
+
+---
+
+## Focal Point
+
+**`/messages` page — desktop (≥ lg):** Active conversation pane (right side). The eye lands on the open message thread first; the thread list on the left is secondary navigation.
+
+**`/messages` page — mobile (< lg):** Full-screen thread list is the focal point when no thread is selected. After tapping a thread, the full-screen `ConversationView` is the focal point.
+
+**Docked widget:** The composer input is the focal point — it auto-focuses when the widget opens.
 
 ---
 
@@ -234,7 +246,7 @@ Font-size exceptions for micro-elements:
 
 - `Enter` key to send (matches existing `DmWidget.tsx` `onKeyDown` pattern).
 - `maxLength={4000}` (inherits from existing `DmWidget.tsx`).
-- Send button: disabled when input is empty or `busy` (optimistic send in flight).
+- Send button: **icon-only** (paper-plane SVG, no visible label). Accessible name: `aria-label="Send"`. Disabled when input is empty or `busy` (optimistic send in flight).
 - For non-connections: `RequestsBudgetHint` shown below input when budget > 0; `RateLimitWall` replaces composer entirely when budget = 0.
 - Pending thread (sender side, `status='pending'`): composer visible but shows stacked-message hint when message count ≥ 1. Composer disabled at 3 messages.
 
