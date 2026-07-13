@@ -27,13 +27,23 @@ export async function createNotification(
   let emailed = false
   if (args.sendEmailCopy && args.email) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+    // Escape user-controlled content (actorName, note/body, release titles)
+    // before templating into HTML — these values are freely editable by
+    // members and are not otherwise sanitized upstream.
+    const esc = (s: string) =>
+      s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
     const linkHtml = args.link
       ? `<p><a href="${appUrl}${args.link}">Open in Funūn →</a></p>`
       : ''
     const res = await sendEmail({
       to: args.email,
       subject: args.title,
-      html: `<h2>${args.title}</h2>${args.body ? `<p>${args.body}</p>` : ''}${linkHtml}`,
+      html: `<h2>${esc(args.title)}</h2>${args.body ? `<p>${esc(args.body)}</p>` : ''}${linkHtml}`,
       text: `${args.title}\n\n${args.body ?? ''}${args.link ? `\n\n${appUrl}${args.link}` : ''}`,
     })
     emailed = res.ok
