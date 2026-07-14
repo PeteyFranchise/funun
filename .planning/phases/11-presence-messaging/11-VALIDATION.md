@@ -5,7 +5,7 @@ status: complete_pending_human_uat
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-14
 ---
 
 # Phase 11 — Validation Record
@@ -20,7 +20,7 @@ Phase 11 implementation is complete from the automated/code/database side. The r
 |----------|-------|
 | Framework | Jest 29.x + TypeScript + Next.js build |
 | Config file | `jest.config.js`, `tsconfig.json`, `next.config.mjs` |
-| Targeted run command | `npm test -- --runInBand __tests__/dm-send-gate.test.ts __tests__/dm-request-routes-review-fixes.test.ts __tests__/dm-request.test.ts __tests__/dm-unread.test.ts __tests__/presence.test.ts` |
+| Targeted run command | `npm test -- --runInBand __tests__/migration-056.test.ts __tests__/dm-send-gate.test.ts __tests__/dm-request-routes-review-fixes.test.ts __tests__/dm-request.test.ts __tests__/dm-unread.test.ts __tests__/presence.test.ts` |
 | Full suite command | `npm test -- --runInBand` |
 | Static checks | `npm run lint`, `npx tsc --noEmit`, `npm run build` |
 | Database check | `npx supabase migration list` |
@@ -49,6 +49,9 @@ Phase 11 implementation is complete from the automated/code/database side. The r
 | UUID validation before raw PostgREST filters | CONNECT-03, CONNECT-05 | `__tests__/dm-request-routes-review-fixes.test.ts` | pass |
 | Migration 054 schema contract | PRESENCE-01, PRESENCE-02, CONNECT-03, CONNECT-04 | `__tests__/migration-054.test.ts`; remote migration list shows `054` LOCAL=REMOTE | pass |
 | Migration 055 RLS update policy | CONNECT-03 | `__tests__/migration-055.test.ts`; remote migration list shows `055` LOCAL=REMOTE | pass |
+| Migration 056 DM write privilege hardening | CONNECT-03, CONNECT-04, CONNECT-05 | `__tests__/migration-056.test.ts`; remote migration list shows `056` LOCAL=REMOTE | pass |
+| Server-owned DM writes/transitions | CONNECT-03, CONNECT-04, CONNECT-05 | `/api/dm/send` and request transition routes use service-role writes after session auth + route checks | pass locally |
+| Read marker participation invariant | PRESENCE-03 | `/api/dm/read/[threadId]` validates UUID and verifies visible participant thread before upsert | pass locally |
 | Whole app static correctness | All Phase 11 touched surfaces | `npm run lint`, `npx tsc --noEmit`, `npm run build` | pass |
 | Whole automated suite | Regression coverage | `npm test -- --runInBand` | pass |
 | Deployment preview | Integration smoke | Vercel PR checks on PR #37 | pass |
@@ -57,13 +60,21 @@ Phase 11 implementation is complete from the automated/code/database side. The r
 
 ## Review Fix Verification
 
-The adversarial review in `11-REVIEW.md` found 7 issues: CR-01, CR-02, CR-03, WR-01, WR-02, IN-01, and IN-02. `11-REVIEW-FIX.md` records the fixes. The fix commit verifies:
+The first adversarial review in `11-REVIEW.md` found 7 issues: CR-01, CR-02, CR-03, WR-01, WR-02, IN-01, and IN-02. `11-REVIEW-FIX.md` records the fixes. The fix commit verifies:
 
 - Requester self-accept and self-decline are blocked atomically in the update filter.
 - Blocked and declined delivery returns a silent `403` path instead of persisting new messages.
 - Recipient ids are validated as UUIDs before `.or()` filters are built.
 - Composer removes optimistic messages when a `200 OK` response lacks a usable message id.
 - Thread sort-fallback documentation now matches implementation.
+
+The second adversarial review on 2026-07-14 found remaining database-layer bypasses. The follow-up quick fix at `.planning/quick/260714-phase-11-adversarial-fixes/` verifies:
+
+- Direct authenticated `INSERT`/`UPDATE` privileges on `dm_threads` are revoked.
+- Direct authenticated `INSERT`/`UPDATE` privileges on `dm_messages` are revoked.
+- Server API routes own DM thread creation, request-state transitions, and message insertion after route-level checks.
+- Read markers require visible participant-thread membership before upsert.
+- Declined threads are excluded from normal inbox views.
 
 ---
 
@@ -72,6 +83,8 @@ The adversarial review in `11-REVIEW.md` found 7 issues: CR-01, CR-02, CR-03, WR
 `npx supabase migration list` was run against the linked remote on 2026-07-13. Migrations `054` and `055` are present in both LOCAL and REMOTE columns.
 
 This closes the Plan 03 live database gap: `dm_threads` now has the participant-scoped UPDATE policy required for accept, decline, and block transitions.
+
+Migration `056` was pushed on 2026-07-14 and is present in both LOCAL and REMOTE columns. It closes the direct PostgREST bypass by revoking authenticated client writes to `dm_threads` and `dm_messages`; server routes now use service-role writes after their own session and application checks.
 
 ---
 
@@ -96,7 +109,9 @@ This closes the Plan 03 live database gap: `dm_threads` now has the participant-
 - [x] No watch-mode commands used.
 - [x] Security review findings are fixed and regression-tested.
 - [x] Migrations 054 and 055 are applied remotely.
+- [x] Migration 056 authored, locally tested, and applied remotely.
 - [x] PR #37 Vercel checks pass.
+- [x] Migration 056 applied remotely.
 - [ ] Human UAT complete.
 
 **Implementation approval:** complete pending human UAT, 2026-07-13.

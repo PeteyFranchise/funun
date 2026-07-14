@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -45,7 +45,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
 
   // Move the thread out of the Requests section either way (idempotent on
   // a duplicate block: the thread should still leave 'pending').
-  await supabase.from('dm_threads').update({ status: 'declined' }).eq('id', threadId).eq('status', 'pending')
+  const service = createServiceClient()
+  await service
+    .from('dm_threads')
+    .update({ status: 'declined' })
+    .eq('id', threadId)
+    .eq('status', 'pending')
+    .or(`a_id.eq.${user.id},b_id.eq.${user.id}`)
 
   return NextResponse.json({ ok: true })
 }

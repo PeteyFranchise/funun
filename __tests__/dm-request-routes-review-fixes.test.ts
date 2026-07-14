@@ -23,6 +23,7 @@ function makeUpdateChain(data: unknown) {
     update: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     neq: jest.fn().mockReturnThis(),
+    or: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({ data, error: null }),
   }
@@ -34,8 +35,8 @@ describe('message request transition routes — review fixes', () => {
     const chain = makeUpdateChain(null)
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
-      from: jest.fn(() => chain),
     })
+    ;(createServiceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => chain) })
 
     const res = await acceptRequest(new Request('http://test.local'), {
       params: Promise.resolve({ threadId: 'thread-1' }),
@@ -46,7 +47,8 @@ describe('message request transition routes — review fixes', () => {
     expect(chain.eq).toHaveBeenCalledWith('id', 'thread-1')
     expect(chain.eq).toHaveBeenCalledWith('status', 'pending')
     expect(chain.neq).toHaveBeenCalledWith('requester_id', USER_ID)
-    expect(createServiceClient).not.toHaveBeenCalled()
+    expect(chain.or).toHaveBeenCalledWith(`a_id.eq.${USER_ID},b_id.eq.${USER_ID}`)
+    expect(createServiceClient).toHaveBeenCalled()
     expect(createNotification).not.toHaveBeenCalled()
   })
 
@@ -54,8 +56,8 @@ describe('message request transition routes — review fixes', () => {
     const chain = makeUpdateChain(null)
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: USER_ID } } }) },
-      from: jest.fn(() => chain),
     })
+    ;(createServiceClient as jest.Mock).mockReturnValue({ from: jest.fn(() => chain) })
 
     const res = await declineRequest(new Request('http://test.local'), {
       params: Promise.resolve({ threadId: 'thread-1' }),
@@ -66,5 +68,6 @@ describe('message request transition routes — review fixes', () => {
     expect(chain.eq).toHaveBeenCalledWith('id', 'thread-1')
     expect(chain.eq).toHaveBeenCalledWith('status', 'pending')
     expect(chain.neq).toHaveBeenCalledWith('requester_id', USER_ID)
+    expect(chain.or).toHaveBeenCalledWith(`a_id.eq.${USER_ID},b_id.eq.${USER_ID}`)
   })
 })

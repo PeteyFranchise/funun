@@ -236,19 +236,10 @@ describe('POST /api/dm/send — gate call order', () => {
       eq: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({ data: { verified: false }, error: null }),
     }
-    const messageChain = {
-      insert: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: { id: 'm1', body: 'hello', created_at: '2026-01-01T00:00:00.000Z' },
-        error: null,
-      }),
-    }
     const fakeSupabase = {
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
       from: jest.fn((table: string) => {
         if (table === 'artist_profiles') return profileChain
-        if (table === 'dm_messages') return messageChain
         return profileChain
       }),
     }
@@ -263,9 +254,18 @@ describe('POST /api/dm/send — gate call order', () => {
       or: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     }
+    const serviceMessageChain = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: { id: 'm1', body: 'hello', created_at: '2026-01-01T00:00:00.000Z' },
+        error: null,
+      }),
+    }
     const fakeService = {
       from: jest.fn((table: string) => {
         if (table === 'blocks') return serviceBlocksChain
+        if (table === 'dm_messages') return serviceMessageChain
         return serviceThreadChain
       }),
     }

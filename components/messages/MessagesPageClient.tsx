@@ -37,10 +37,17 @@ export function MessagesPageClient({ viewerId, viewerVerified, initialThreads, i
     fetch('/api/dm/threads')
       .then(r => (r.ok ? r.json() : null))
       .then(json => {
-        if (Array.isArray(json?.data)) setThreads(json.data as ThreadView[])
+        if (!Array.isArray(json?.data)) return
+        const nextThreads = json.data as ThreadView[]
+        setThreads(nextThreads)
+        if (activeThreadId && !nextThreads.some(t => t.id === activeThreadId)) {
+          setActiveThreadId(null)
+          setPendingTarget(null)
+          setMobileShowThread(false)
+        }
       })
       .catch(() => {})
-  }, [])
+  }, [activeThreadId])
 
   // Read-only presence: reuse PresenceTracker's single presence-global
   // channel (same memoized browser client + topic name) — never a second

@@ -215,7 +215,7 @@ export async function buildThreadViews(supabase: SupabaseClient, userId: string)
   const { data: threadsData } = await supabase
     .from('dm_threads')
     .select('id, a_id, b_id, status, requester_id, created_at')
-  const threads = (threadsData ?? []) as ThreadRow[]
+  const threads = ((threadsData ?? []) as ThreadRow[]).filter(t => t.status !== 'declined')
   if (threads.length === 0) return []
 
   const threadIds = threads.map(t => t.id)

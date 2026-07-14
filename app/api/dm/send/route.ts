@@ -88,14 +88,14 @@ export async function POST(request: Request) {
   const connected = await isConnected(supabase, user.id, toUserId)
 
   if (connected) {
-    const threadId = await ensureThread(supabase, user.id, toUserId)
+    const threadId = await ensureThread(service, user.id, toUserId)
     if (!threadId) return NextResponse.json({ error: 'Could not open thread' }, { status: 500 })
 
     // Grandfather edge (belt-and-suspenders): an earlier cold request that
     // has since become a mutual connection converts its thread to 'direct'.
     await service.from('dm_threads').update({ status: 'direct' }).eq('id', threadId).eq('status', 'pending')
 
-    const { data, error } = await supabase
+    const { data, error } = await service
       .from('dm_messages')
       .insert({ thread_id: threadId, sender_id: user.id, body: text })
       .select('id, body, created_at')
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
   if (decision.kind === 'stack') {
     threadId = existingThreadId
   } else {
-    threadId = await ensureThread(supabase, user.id, toUserId)
+    threadId = await ensureThread(service, user.id, toUserId)
     if (!threadId) return NextResponse.json({ error: 'Could not open thread' }, { status: 500 })
 
     // Stamp the freshly-created/never-used thread as a pending request. The
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
   }
   if (!threadId) return NextResponse.json({ error: 'Could not open thread' }, { status: 500 })
 
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from('dm_messages')
     .insert({ thread_id: threadId, sender_id: user.id, body: text })
     .select('id, body, created_at')

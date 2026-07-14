@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -16,12 +16,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: updated, error } = await supabase
+  // Service-client status transition: migration 056 revokes direct client
+  // UPDATE on dm_threads. Participant scope and recipient-only decline stay
+  // in the same atomic WHERE clause.
+  const service = createServiceClient()
+  const { data: updated, error } = await service
     .from('dm_threads')
     .update({ status: 'declined' })
     .eq('id', threadId)
     .eq('status', 'pending')
     .neq('requester_id', user.id)
+    .or(`a_id.eq.${user.id},b_id.eq.${user.id}`)
     .select('id, requester_id')
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

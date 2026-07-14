@@ -41,15 +41,17 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Session-client status transition: the `.eq('status', 'pending')` guard
-  // is the transition gate itself — zero rows means either the thread isn't
-  // pending anymore or the caller isn't a participant (dmt RLS).
-  const { data: updated, error } = await supabase
+  // Service-client status transition: migration 056 revokes direct client
+  // UPDATE on dm_threads, so the API owns this state change. The WHERE clause
+  // still enforces participant scope + recipient-only acceptance atomically.
+  const service = createServiceClient()
+  const { data: updated, error } = await service
     .from('dm_threads')
     .update({ status: 'direct' })
     .eq('id', threadId)
     .eq('status', 'pending')
     .neq('requester_id', user.id)
+    .or(`a_id.eq.${user.id},b_id.eq.${user.id}`)
     .select('id, requester_id, a_id, b_id')
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -64,7 +66,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
   if (updatedRow.requester_id) {
     try {
       const actor = await loadActor(supabase, user.id)
-      const service = createServiceClient()
       await createNotification(
         service,
         buildNewDmNotification({
