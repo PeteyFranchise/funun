@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 11
-current_phase_name: presence-messaging
-status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-07-13T23:11:36.198Z"
+current_phase: 12
+current_phase_name: discovery-people-search
+status: ready
+stopped_at: Completed Phase 11 implementation, review fixes, validation record, and remote migration verification
+last_updated: "2026-07-13T23:59:00.000Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 11 execution resumed (wave continue)
+last_activity_desc: Phase 11 implementation completed; PR #37 open as draft pending human UAT
 progress:
   total_phases: 13
   completed_phases: 12
-  total_plans: 66
-  completed_plans: 64
-  percent: 92
+  total_plans: 72
+  completed_plans: 69
+  percent: 96
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 11 — presence-messaging
+**Current focus:** Phase 12 — discovery-people-search
 
 ## Current Position
 
-Phase: 11 (presence-messaging) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 11
-Last activity: 2026-07-13 — Phase 11 execution resumed (wave continue)
+Phase: 12 (discovery-people-search) — READY
+Plan: not started
+Status: Phase 11 implementation complete; PR #37 remains draft pending human UAT and merge decision
+Last activity: 2026-07-13 — Phase 11 implementation completed, review findings fixed, migrations 054/055 verified LOCAL=REMOTE
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -40,7 +40,7 @@ Last activity: 2026-07-13 — Phase 11 execution resumed (wave continue)
 | 8 | Identity & Schema Foundation | (foundation — none mapped) | Structurally verified; live DB/UAT checks still recorded as human_needed |
 | 9 | Rich Member Profile | PROFILE-01..09 (9) | Passed |
 | 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Passed |
-| 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Ready |
+| 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Implementation complete; human UAT pending |
 | 12 | Discovery & People Search | DISCOVER-01,02,03 (3) | Not started |
 | 13 | Network Tab & Trust & Safety | DISCOVER-04 · SAFETY-01,02,03,04 (5) | Not started |
 
@@ -95,6 +95,12 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 10 P05 | 3min | 2 tasks | 3 files |
 | Phase 10 P06 | 4min | 2 tasks | 3 files |
 | Phase 11 P01 | 4min | 4 tasks | 6 files |
+| Phase 11 P02 | checkpoint-spanning | 2 tasks | 2 files |
+| Phase 11 P03 | 28min | 6 tasks | 11 files |
+| Phase 11 P04 | 8min | 3 tasks | 5 files |
+| Phase 11 P05 | 28min | 3 tasks | 11 files |
+| Phase 11 P06 | 8min | 2 tasks | 5 files |
+| Phase 11 Review Fix | codex follow-up | 7 findings fixed | 8 files |
 
 ## Accumulated Context
 
@@ -159,7 +165,6 @@ Recent decisions affecting current work (v1.2 The Green Room):
 ### Pending Todos
 
 - Resolve during Phase 8 planning: industry-member signup/routing flow (where `app_metadata.role` is set, post-auth redirect, distinct onboarding), and a reserved-handle list (squatting risk MINOR-3) — product decision, not purely engineering
-- Confirm during Phase 11 planning: Supabase Realtime concurrent-connection budgeting / monitoring strategy
 - Confirm during Phase 12 planning: pg_trgm/tsvector performance at 10K+ profiles via EXPLAIN ANALYZE before committing to plain GIN-index approach
 - Confirm during Phase 13 planning: verified-badge grant is admin-manual (no self-application UI) — explicit, not silent deferral
 
@@ -216,12 +221,13 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T18:32:23.687Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-07-13T23:59:00.000Z
+Stopped at: Completed Phase 11 implementation and validation closeout
 Resume file: None
 
 ## Operator Next Steps
 
+- Phase 11 (Presence & Messaging) implementation is complete on PR #37 (`codex/phase-11-presence-messaging`): six plans executed, review findings fixed, lint/TypeScript/Jest/build/Vercel pass, and migrations 054/055 are verified LOCAL=REMOTE. Remaining work is human UAT only: two-session presence, request accept/decline/block, unread clearing, docked widget persistence, rate-limit wall, and connected-direct-message flow.
 - Phase 15 (Account Capability Model) is done — `member_type` is now backed by `capability_grants`, with a unified nav, a self-serve request CTA, and an admin approval queue. Manual UAT items from 15-03-SUMMARY.md and 15-04-SUMMARY.md are still outstanding (multi-capability nav visibility, live approve/deny flow).
 - PR #26 (Phase 14 — Playback Room Refinement) is still waiting on Thomas's local UAT before it can be merged.
-- Phase 8 (Identity & Schema Foundation) is complete; Phases 9–13 are the next unstarted Green Room phases and are all UI-forward (design handoff locked at `docs/design/wave-4-social-layer/`); `/gsd-ui-phase` is enabled and applicable.
+- Phase 12 (Discovery & People Search) is the next unstarted Green Room phase; it is UI-forward with the design handoff locked at `docs/design/wave-4-social-layer/`, and `/gsd-ui-phase` is enabled and applicable.
