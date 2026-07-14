@@ -49,6 +49,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
     .update({ status: 'direct' })
     .eq('id', threadId)
     .eq('status', 'pending')
+    .neq('requester_id', user.id)
     .select('id, requester_id, a_id, b_id')
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -56,11 +57,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
 
   const updatedRow = updated as { id: string; requester_id: string | null; a_id: string; b_id: string }
 
-  // Recipient guard (T-11-08): the requester must never be able to
-  // self-accept their own request.
-  if (updatedRow.requester_id === user.id) {
-    return NextResponse.json({ error: 'Cannot accept your own request' }, { status: 403 })
-  }
+  // Recipient-only guard is enforced atomically above via requester_id != user.id.
 
   // Best-effort notification to the requester — the accept itself already
   // succeeded and must not be rolled back if this fails.

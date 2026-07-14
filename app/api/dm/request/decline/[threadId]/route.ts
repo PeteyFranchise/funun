@@ -21,6 +21,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
     .update({ status: 'declined' })
     .eq('id', threadId)
     .eq('status', 'pending')
+    .neq('requester_id', user.id)
     .select('id, requester_id')
     .maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -28,11 +29,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
 
   const updatedRow = updated as { id: string; requester_id: string | null }
 
-  // Recipient guard: the requester must never be able to decline their own
-  // outbound request via this route.
-  if (updatedRow.requester_id === user.id) {
-    return NextResponse.json({ error: 'Cannot decline your own request' }, { status: 403 })
-  }
+  // Recipient-only guard is enforced atomically above via requester_id != user.id.
 
   // No notification fired — decline is silent (D-11): the sender is never
   // told, and their side keeps showing the message as sent, never replied to.

@@ -2,6 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type DmMessageView = { id: string; body: string; createdAt: string; mine: boolean }
 
+// Canonical RFC-4122 UUID shape. User ids reaching the DM layer come from
+// request bodies / query params and are interpolated into PostgREST `.or()`
+// filters (see isConnected). Any non-UUID value is both meaningless as a
+// target and a filter-injection surface, so callers MUST validate before use.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** True only for a well-formed UUID string — reject everything else. */
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value)
+}
+
 /** Canonical (a < b) ordering so a pair always maps to one thread row. */
 export function canonicalPair(x: string, y: string): [string, string] {
   return x < y ? [x, y] : [y, x]
@@ -272,8 +283,7 @@ export async function buildThreadViews(supabase: SupabaseClient, userId: string)
   })
 
   // Order threads by latest message time desc; threads with no message yet
-  // (shouldn't normally happen — a thread is only created alongside its
-  // first message) fall back to created_at and sort last.
+  // use epoch fallback and sort last.
   views.sort((a, b) => {
     const aTime = new Date(a.lastMessage?.createdAt ?? 0).getTime()
     const bTime = new Date(b.lastMessage?.createdAt ?? 0).getTime()

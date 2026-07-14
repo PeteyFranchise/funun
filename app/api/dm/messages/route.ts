@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { loadConversation, findThread, isConnected } from '@/lib/social/dm'
+import { loadConversation, findThread, isConnected, isUuid } from '@/lib/social/dm'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
 
   const otherId = new URL(request.url).searchParams.get('with')
   if (!otherId) return NextResponse.json({ error: 'Missing ?with' }, { status: 400 })
+  if (!isUuid(otherId)) return NextResponse.json({ error: 'Invalid recipient' }, { status: 400 })
 
   const supabase = await createApiClient()
   const {

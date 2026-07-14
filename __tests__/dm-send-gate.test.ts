@@ -31,6 +31,9 @@ jest.mock('@/lib/social/dm', () => {
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { isConnected, countRecentRequests, ensureThread, findThread } from '@/lib/social/dm'
 
+const ME_ID = '11111111-1111-4111-8111-111111111111'
+const THEM_ID = '22222222-2222-4222-8222-222222222222'
+
 function jsonRequest(body: unknown) {
   return new Request('http://test.local/api/dm/send', {
     method: 'POST',
@@ -137,6 +140,78 @@ describe('POST /api/dm/send — gate call order', () => {
     jest.clearAllMocks()
   })
 
+  it('rejects a non-UUID recipient before auth or send-gate queries', async () => {
+    const res = await POST(jsonRequest({ toUserId: 'not-a-uuid),requester_id.eq.evil', body: 'hello' }))
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ error: 'Invalid recipient' })
+    expect(createApiClient).not.toHaveBeenCalled()
+    expect(isConnected).not.toHaveBeenCalled()
+    expect(ensureThread).not.toHaveBeenCalled()
+  })
+
+  it('rejects a blocked pair before connection or thread creation checks', async () => {
+    const fakeSupabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
+    }
+    ;(createApiClient as jest.Mock).mockResolvedValue(fakeSupabase)
+
+    const blocksChain = {
+      select: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: { blocker_id: THEM_ID }, error: null }),
+    }
+    ;(createServiceClient as jest.Mock).mockReturnValue({
+      from: jest.fn(() => blocksChain),
+    })
+
+    const res = await POST(jsonRequest({ toUserId: THEM_ID, body: 'hello' }))
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: 'Message could not be delivered' })
+    expect(isConnected).not.toHaveBeenCalled()
+    expect(ensureThread).not.toHaveBeenCalled()
+  })
+
+  it('rejects sends into a declined non-connection thread before inserting a message', async () => {
+    ;(isConnected as jest.Mock).mockResolvedValue(false)
+    ;(findThread as jest.Mock).mockResolvedValue('thread-declined')
+    ;(ensureThread as jest.Mock).mockResolvedValue('thread-should-not-be-used')
+
+    const threadChain = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { status: 'declined', requester_id: ME_ID },
+        error: null,
+      }),
+    }
+    const fakeSupabase = {
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
+      from: jest.fn((table: string) => {
+        if (table === 'dm_threads') return threadChain
+        throw new Error(`Unexpected table: ${table}`)
+      }),
+    }
+    ;(createApiClient as jest.Mock).mockResolvedValue(fakeSupabase)
+
+    const blocksChain = {
+      select: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+    ;(createServiceClient as jest.Mock).mockReturnValue({
+      from: jest.fn(() => blocksChain),
+    })
+
+    const res = await POST(jsonRequest({ toUserId: THEM_ID, body: 'still there?' }))
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: 'Message could not be delivered' })
+    expect(countRecentRequests).not.toHaveBeenCalled()
+    expect(ensureThread).not.toHaveBeenCalled()
+  })
+
   it('calls isConnected() and countRecentRequests() before ensureThread()', async () => {
     const callOrder: string[] = []
     ;(isConnected as jest.Mock).mockImplementation(async () => {
@@ -170,7 +245,7 @@ describe('POST /api/dm/send — gate call order', () => {
       }),
     }
     const fakeSupabase = {
-      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'me' } } }) },
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
       from: jest.fn((table: string) => {
         if (table === 'artist_profiles') return profileChain
         if (table === 'dm_messages') return messageChain
@@ -183,12 +258,20 @@ describe('POST /api/dm/send — gate call order', () => {
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
     }
+    const serviceBlocksChain = {
+      select: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
     const fakeService = {
-      from: jest.fn((_table: string) => serviceThreadChain),
+      from: jest.fn((table: string) => {
+        if (table === 'blocks') return serviceBlocksChain
+        return serviceThreadChain
+      }),
     }
     ;(createServiceClient as jest.Mock).mockReturnValue(fakeService)
 
-    const res = await POST(jsonRequest({ toUserId: 'them', body: 'hello' }))
+    const res = await POST(jsonRequest({ toUserId: THEM_ID, body: 'hello' }))
     expect(res.status).toBe(200)
 
     // The connection gate must be evaluated first, then the rate-limit
@@ -213,12 +296,21 @@ describe('POST /api/dm/send — gate call order', () => {
       maybeSingle: jest.fn().mockResolvedValue({ data: { verified: false }, error: null }),
     }
     const fakeSupabase = {
-      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'me' } } }) },
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
       from: jest.fn(() => profileChain),
     }
     ;(createApiClient as jest.Mock).mockResolvedValue(fakeSupabase)
 
-    const res = await POST(jsonRequest({ toUserId: 'them', body: 'cold outreach' }))
+    const serviceBlocksChain = {
+      select: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }
+    ;(createServiceClient as jest.Mock).mockReturnValue({
+      from: jest.fn(() => serviceBlocksChain),
+    })
+
+    const res = await POST(jsonRequest({ toUserId: THEM_ID, body: 'cold outreach' }))
     expect(res.status).toBe(429)
     const json = await res.json()
     expect(json).toEqual({ error: 'Rate limit reached', remaining: 0 })

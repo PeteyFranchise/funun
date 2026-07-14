@@ -152,11 +152,14 @@ export function Composer({
 
     const json = await res.json().catch(() => ({}))
     const real = json.data as (DmMessageView & { threadId?: string }) | undefined
-    if (real?.id) {
-      setMessages(m =>
-        m.map(x => (x.id === tmpId ? { id: real.id, body: real.body, createdAt: real.createdAt, mine: true } : x))
-      )
+    if (!real?.id) {
+      setMessages(m => m.filter(x => x.id !== tmpId))
+      setError("Message couldn't be sent. Try again.")
+      return
     }
+    setMessages(m =>
+      m.map(x => (x.id === tmpId ? { id: real.id, body: real.body, createdAt: real.createdAt, mine: true } : x))
+    )
     if (real?.threadId) onSent?.(real.threadId)
   }
 

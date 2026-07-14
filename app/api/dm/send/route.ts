@@ -4,6 +4,7 @@ import {
   ensureThread,
   findThread,
   isConnected,
+  isUuid,
   countRecentRequests,
   countPendingMessagesFrom,
   chooseSendPath,
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
   }
   const text = (body ?? '').trim()
   if (!toUserId) return NextResponse.json({ error: 'Missing recipient' }, { status: 400 })
+  // Reject non-UUID recipients before toUserId reaches isConnected's PostgREST
+  // `.or()` filter — prevents filter injection and a meaningless target.
+  if (!isUuid(toUserId)) return NextResponse.json({ error: 'Invalid recipient' }, { status: 400 })
   if (!text) return NextResponse.json({ error: 'Message is empty' }, { status: 400 })
   if (text.length > 4000) return NextResponse.json({ error: 'Message too long' }, { status: 400 })
 
@@ -62,6 +66,22 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === toUserId) return NextResponse.json({ error: 'Cannot message yourself' }, { status: 400 })
 
+  const service = createServiceClient()
+
+  // Blocks are bidirectional for delivery and must be checked even when a
+  // thread already exists, because ensureThread() short-circuits before the
+  // dm_threads INSERT policy can re-run no_block().
+  const { data: blockRow } = await service
+    .from('blocks')
+    .select('blocker_id')
+    .or(
+      `and(blocker_id.eq.${user.id},blocked_id.eq.${toUserId}),and(blocker_id.eq.${toUserId},blocked_id.eq.${user.id})`
+    )
+    .maybeSingle()
+  if (blockRow) {
+    return NextResponse.json({ error: 'Message could not be delivered' }, { status: 403 })
+  }
+
   // ─── Connection gate (CONNECT-05, D-13) ───────────────────────────────
   // The single trust boundary for "who may message whom" — checked
   // server-side before any thread/message write, never trusted from the client.
@@ -70,8 +90,6 @@ export async function POST(request: Request) {
   if (connected) {
     const threadId = await ensureThread(supabase, user.id, toUserId)
     if (!threadId) return NextResponse.json({ error: 'Could not open thread' }, { status: 500 })
-
-    const service = createServiceClient()
 
     // Grandfather edge (belt-and-suspenders): an earlier cold request that
     // has since become a mutual connection converts its thread to 'direct'.
@@ -124,6 +142,7 @@ export async function POST(request: Request) {
   const existingThreadId = await findThread(supabase, user.id, toUserId)
   let existingPendingByMe = false
   let pendingMsgCount = 0
+  let existingStatus: string | null = null
 
   if (existingThreadId) {
     const { data: threadRow } = await supabase
@@ -132,10 +151,15 @@ export async function POST(request: Request) {
       .eq('id', existingThreadId)
       .maybeSingle()
     const row = (threadRow ?? null) as { status: string; requester_id: string | null } | null
+    existingStatus = row?.status ?? null
     existingPendingByMe = !!row && row.status === 'pending' && row.requester_id === user.id
     if (existingPendingByMe) {
       pendingMsgCount = await countPendingMessagesFrom(supabase, existingThreadId, user.id)
     }
+  }
+
+  if (existingStatus === 'declined') {
+    return NextResponse.json({ error: 'Message could not be delivered' }, { status: 403 })
   }
 
   // The rate limit only applies to NEW cold outreach — stacking onto an
@@ -178,7 +202,6 @@ export async function POST(request: Request) {
     // Stamp the freshly-created/never-used thread as a pending request. The
     // `.eq('status', 'direct')` guard means this never clobbers a real
     // direct thread — only a brand-new row (default status) qualifies.
-    const service = createServiceClient()
     await service
       .from('dm_threads')
       .update({ requester_id: user.id, status: 'pending' })
