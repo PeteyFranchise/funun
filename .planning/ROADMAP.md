@@ -211,7 +211,7 @@ Plans:
   3. User can report a member profile or a specific message for admin review, and an admin can grant a verified badge to a member profile
   4. User can set profile visibility (public / connections-only) and can hide their "Open to" status from public view
 
-**Plans**: TBD
+**Plans**: `13-01` through `13-05` drafted in `.planning/phases/13-network-trust-safety/`; docs-only planning completed 2026-07-15 pending Phase 12 review/merge traction
 **UI hint**: yes
 **Design references**: none. No file in the design bundle (`docs/design/wave-4-social-layer/`) shows a Network tab, block/report flow, admin verified-badge grant UI, or visibility-control settings — this phase has **zero existing visual precedent** and needs full net-new UI design during its `/gsd-ui-phase` run.
 
@@ -304,6 +304,6 @@ Plans:
 | 10. Connections & Notifications | v1.2 | 6/6 | Verifying  | - |
 | 11. Presence & Messaging | v1.2 | 6/6 | Complete   | 2026-07-13 |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
-| 13. Network Tab & Trust & Safety | v1.2 | 0/TBD | Not started | - |
+| 13. Network Tab & Trust & Safety | v1.2 | 0/5 | Planned | Docs-only plan set drafted 2026-07-15 |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
