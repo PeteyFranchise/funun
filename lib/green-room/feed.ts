@@ -81,6 +81,16 @@ export type GreenRoomViewerProfile = {
 
 export type GreenRoomPlacementKind = 'organic' | 'featured' | 'sponsored' | 'partner' | 'program'
 
+export const GREEN_ROOM_REACTION_LABELS: Record<GreenRoomReaction, string> = {
+  like: 'Like',
+  love: 'Love',
+  fire: 'Fire',
+  congrats: 'Congrats',
+  inspired: 'Inspired',
+  helpful: 'Helpful',
+  interested: 'Interested',
+}
+
 export type GreenRoomRankInput = {
   relationship: 'self' | 'connected' | 'following' | 'outside_network'
   postType: GreenRoomPostType
@@ -339,4 +349,3 @@ export function explainFeedCard(input: GreenRoomRankInput): string {
   if (input.sameLocation) return 'Near your scene'
   return 'Recommended for discovery'
 }
-
