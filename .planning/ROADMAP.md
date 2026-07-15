@@ -41,7 +41,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 9: Rich Member Profile** - Ship the hi-fi hero profile (banner, avatar, role badges, "Open to" chips, stats, releases grid, Featured spotlight) with owner-vs-public view switching and image upload (completed 2026-07-12)
 - [ ] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel (all 6 plans executed; pending human UAT — /gsd-verify-work 10)
 - [x] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected (implementation complete 2026-07-13; human UAT pending)
-- [ ] **Phase 12: Discovery & People Search** - Global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion
+- [ ] **Phase 12: Discovery, Feed & People Search** - Green Room feed plus global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion
 - [ ] **Phase 13: Network Tab & Trust & Safety** - Network tab (follows/connections/pending), hard bidirectional block, member/message reporting, admin verified-badge grant, and profile visibility controls
 
 ### 🚧 Sound Vault — Playback Room Refinement (In Progress)
@@ -175,21 +175,29 @@ Plans:
 **UI hint**: yes
 **Design references**: `docs/design/wave-4-social-layer/user-profile.html` — strong existing precedent, fully designed already: the floating DM widget (`.pf-dm` — header with avatar + "Active now" presence status, message bubbles for both sides, date divider, composer + send button) and the profile avatar's online-presence dot (`.pf-avatar .live`, green dot + "Online" label). **Gap**: no message-request (cold-outreach accept/decline/block) screen or rate-limit UI exists in the bundle — net-new design captured in `11-UI-SPEC.md`; the DM widget itself is recreated directly (`DockedWidget`/`ConversationView`).
 
-### Phase 12: Discovery & People Search
+### Phase 12: Discovery, Feed & People Search
 
-**Goal**: Members can find each other — a global search bar and a Discover tab surface artists and industry pros by name, role, genre, and availability, enforced server-side so private and blocked profiles never leak.
+**Goal**: Members can find each other — a Green Room feed, global search bar, and Discover tab surface artists and industry pros through public activity, name, role, genre, and availability, enforced server-side so private and blocked profiles never leak.
 **Depends on**: Phase 11
-**Requirements**: DISCOVER-01, DISCOVER-02, DISCOVER-03
+**Requirements**: DISCOVER-01, DISCOVER-02, DISCOVER-03, FEED-01 through FEED-18
 **Success Criteria** (what must be TRUE):
 
-  1. User can search for members by name, role, or keyword via a global search bar
-  2. User can filter search/discovery results by role, "Open to" status, location, and genre
-  3. User can browse a Discover tab organized by role category and genre
-  4. Search and discovery run server-side only and exclude blocked members and non-public profiles from results
+  1. User can click "The Green Room" in the left-side app navigation and land on the feed as the room's default home
+  2. User can open a Green Room feed showing recent public activity from followed/connected members plus discoverable public members
+  3. Feed cards include actor context and exploration actions: avatar, name, role, handle, activity type, timestamp, profile/release links, and follow/connect/message where appropriate
+  4. User can search for members by name, role, or keyword via a global search bar
+  5. User can filter search/discovery results by role, "Open to" status, location, and genre
+  6. User can browse a Discover tab organized by role category and genre
+  7. Feed, search, and discovery run server-side only and exclude blocked members, non-public profiles, and activity the viewer is not allowed to see
+  8. Feed layout reserves clearly labeled promotional/sponsored slots for future monetization without shipping paid ad buying, targeting, or billing in v1
+  9. Secondary Green Room entry points may exist (for example header shortcut or dashboard card), but they route to the same feed destination and do not create duplicate feed logic
+  10. User can create structured feed posts from a guided composer with visibility controls, linked Funūn objects, lightweight comments/reactions, and strongly safeguarded repost/share behavior
+  11. Green Room launches with For You, Following, Discover, and Opportunities tabs, with a hybrid opportunity model that keeps formal opportunities in Antenna while allowing lighter opportunity/collab posts in the feed
+  12. Admin-curated sponsored/featured placements can promote members, public releases/projects, opportunities/open calls, partner cards, or curated programs, with self-serve paid ads intentionally deferred
 
 **Plans**: TBD
 **UI hint**: yes
-**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only a static topbar search input (`.pf-search`, placeholder "Search artists, producers, supervisors…") exists as precedent; it is not wired to any results UI. **Gap**: no search-results layout, filter panel, or Discover-tab screen exists anywhere in the design bundle. `docs/design/wave-4-social-layer/antenna.html`'s filter-panel *pattern* (checkboxes with counts, a "minimum match" slider, tag chips) is a plausible structural reference to adapt, though it was designed for opportunity matching, not people search — this phase needs its own net-new screen design during `/gsd-ui-phase`.
+**Design references**: `docs/design/wave-4-social-layer/user-profile.html` — only a static topbar search input (`.pf-search`, placeholder "Search artists, producers, supervisors…") exists as precedent; it is not wired to any results UI. **Gap**: no feed layout, composer, search-results layout, filter panel, or Discover-tab screen exists anywhere in the design bundle. `docs/design/wave-4-social-layer/antenna.html`'s filter-panel *pattern* (checkboxes with counts, a "minimum match" slider, tag chips) is a plausible structural reference to adapt, though it was designed for opportunity matching, not people search. The existing left sidebar (`components/nav/ArtistNav.tsx`) is the primary entry point: add a universal "The Green Room" item that routes to the feed landing page (likely `/green-room` or `/green-room/feed`, to be finalized in Phase 12 planning). The existing profile wall/activity surfaces and `activity_events`/`wall_posts` models are the brownfield feed substrate, but Phase 12 needs its own net-new screen design during `/gsd-ui-phase`. See `.planning/quick/260715-green-room-feed-plan/DISCUSSION-LOG.md` for the locked product decisions behind FEED-01 through FEED-18.
 
 ### Phase 13: Network Tab & Trust & Safety
 

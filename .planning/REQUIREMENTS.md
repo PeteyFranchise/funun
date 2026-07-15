@@ -26,6 +26,27 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **DISCOVER-03**: User can browse a Discover tab organized by role category and genre
 - [ ] **DISCOVER-04**: User can browse a Network tab showing people they follow, are connected with, or have pending requests with
 
+### Feed (network activity & exploration)
+
+- [ ] **FEED-01**: User can click "The Green Room" from the left-side app navigation and land on a Green Room feed that shows recent public activity from members they follow, are connected with, and discoverable public members
+- [ ] **FEED-02**: Feed items include enough actor context to drive exploration: avatar, name, role, handle, activity type, timestamp, and a link to the relevant profile/release/thread
+- [ ] **FEED-03**: User can take lightweight actions from feed cards where appropriate: follow/connect/message/view profile/open release, without needing to start from search
+- [ ] **FEED-04**: Feed reads run server-side and exclude blocked members, non-public profiles, and activity the viewer is not allowed to see
+- [ ] **FEED-05**: Feed layout reserves clearly labeled promotional/sponsored placement slots for future monetization, without shipping paid ad buying or targeting in v1
+- [ ] **FEED-06**: The Green Room destination can also be surfaced from secondary entry points, such as the authenticated header or dashboard cards, without creating duplicate feed logic or competing routes
+- [ ] **FEED-07**: User can create posts from a guided composer that feels like a simple "Share an update" box but stores a structured post type such as general update, collaborator request, release announcement, question, win/milestone, feedback request, or opportunity/need
+- [ ] **FEED-08**: User can set post visibility to Public, Followers, Connections, Draft, or Custom Audience, with server-enforced audience checks
+- [ ] **FEED-09**: Custom Audience supports relationship, role, genre, location, and specific-person targeting with safety limits, capped complexity, and clear "Visible to..." labels
+- [ ] **FEED-10**: Feed ranking is smart but transparent, using relationship strength, freshness, and relevance while labeling why items appear
+- [ ] **FEED-11**: Admins can curate featured/sponsored placements for members, public releases/projects, opportunities/open calls, partner cards, curated programs, or future paid placements
+- [ ] **FEED-12**: Users can leave lightweight comments on feed posts and react with Like, Love, Fire, Congrats, Inspired, Helpful, or Interested
+- [ ] **FEED-13**: Feed posts can attach linked Funūn objects in v1 — profiles, releases/projects, public tracks, or opportunities — while uploaded images are deferred until moderation/reporting is stronger
+- [ ] **FEED-14**: Users can repost/share eligible feed content with strong safeguards: clear original attribution, owner-controlled resharing, rate limits, report/remove controls, mute controls, and automatic disappearance when original visibility changes
+- [ ] **FEED-15**: Feed updates in real time with gentle controls: new-activity pill, animated insertion, and user-controlled jump-to-new behavior
+- [ ] **FEED-16**: Green Room launches with For You, Following, Discover, and Opportunities tabs, with a plan to expand toward specialized tabs later
+- [ ] **FEED-17**: Opportunities use a hybrid model: formal opportunities stay in Antenna, while lighter collab/opportunity posts can live in the feed and later graduate into Antenna
+- [ ] **FEED-18**: Artists and industry members use the same Green Room structure, but feed ranking/emphasis adapts by role/capability
+
 ### Connect (relationship model)
 
 - [x] **CONNECT-01**: User can follow another member (one-way, no approval required)
@@ -79,6 +100,7 @@ Explicitly excluded from this milestone. Documented to prevent scope creep.
 | Group messaging / team channels | Different complexity profile from 1:1 DMs; the "team" use case is already served by the collaborators table and shared vault access |
 | Live push notifications (FCM/APNs) | Requires service workers and platform approvals; in-app bell badge covers v1 |
 | Industry Round Table (live panels/replays/Q&A) | Distinct feature from the network layer itself; candidate for a follow-on social milestone (see `SEED-001`) |
+| Self-serve paid ad buying / targeting | Feed should reserve sponsored placement slots now, but paid campaign creation, targeting, billing, and ad review need their own monetization/safety phase |
 | Deep external integrations (Songstats, Buffer API push, Meta/TikTok OAuth publishing, SoundCloud/Bandsintown/YouTube) | Belongs to the originally-planned "deep integrations" Wave 4 track, not the social-layer track this milestone follows |
 | Pulling live Spotify/SoundCloud stats automatically into the stats sidebar | OAuth scope creep; self-reported stats with a "provided by artist" label are sufficient for v1 |
 | Swipe-based discovery | Not appropriate for a professional-context network; grid/list browse with filters is the correct pattern here |
@@ -103,6 +125,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISCOVER-02 | Phase 12 | Pending |
 | DISCOVER-03 | Phase 12 | Pending |
 | DISCOVER-04 | Phase 13 | Pending |
+| FEED-01 | Phase 12 | Pending |
+| FEED-02 | Phase 12 | Pending |
+| FEED-03 | Phase 12 | Pending |
+| FEED-04 | Phase 12 | Pending |
+| FEED-05 | Phase 12 | Pending |
+| FEED-06 | Phase 12 | Pending |
+| FEED-07 | Phase 12 | Pending |
+| FEED-08 | Phase 12 | Pending |
+| FEED-09 | Phase 12 | Pending |
+| FEED-10 | Phase 12 | Pending |
+| FEED-11 | Phase 12 | Pending |
+| FEED-12 | Phase 12 | Pending |
+| FEED-13 | Phase 12 | Pending |
+| FEED-14 | Phase 12 | Pending |
+| FEED-15 | Phase 12 | Pending |
+| FEED-16 | Phase 12 | Pending |
+| FEED-17 | Phase 12 | Pending |
+| FEED-18 | Phase 12 | Pending |
 | CONNECT-01 | Phase 10 | Complete |
 | CONNECT-02 | Phase 10 | Complete |
 | CONNECT-03 | Phase 11 | Complete |
@@ -121,12 +161,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 28 total
-- Mapped to phases: 28 ✓
+- v1 requirements: 46 total
+- Mapped to phases: 46 ✓
 - Unmapped: 0 ✓
 
 **Phase note:** Phase 8 (Identity & Schema Foundation) carries no user-facing requirement by design — it is the schema/migration root every Phase 9–13 requirement depends on (column-privilege lockdown, block enforcement, identity-race avoidance). Its success is verified structurally, not by a mapped requirement.
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-04 — traceability filled during roadmap creation (all 28 v1 requirements mapped to Phases 9–13)*
+*Last updated: 2026-07-15 — Green Room feed requirements added and mapped to Phase 12*

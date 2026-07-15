@@ -17,7 +17,7 @@ A thin social layer already ships (follow · wall · endorsements · release com
 Three pillars:
 
 1. **Rich member profiles & identity** — a hi-fi public profile (banner, avatar, pronouns, location, tenure, verified check) with multi-role badges (Artist, Producer, Songwriter, Music Supervisor, A&R, Exec, or custom title — one "lead" highlighted), "Open to" status chips (sync, co-writes, features, brand deals), a Featured spotlight, a stats sidebar (followers, monthly listeners, placements, avg. readiness), endorsements, wall, and "Worked with" collaborators. Owner-vs-public view switching (Follow/Message ↔ Edit profile / Share / View analytics).
-2. **Discovery & networking shell** — a top-level Discover / Opportunities / Network experience with global people search across artists and industry pros, follow + message + connect, and notification/message surfacing with unread badges.
+2. **Discovery & networking shell** — a top-level Feed / Discover / Opportunities / Network experience with public member activity, global people search across artists and industry pros, follow + message + connect, and notification/message surfacing with unread badges.
 3. **Presence & real-time messaging** — a floating DM widget with live presence ("Active now") and unread badges — closing the social backlog and making the network feel alive.
 
 Design is locked: a hi-fi handoff (`docs/design/wave-4-social-layer/`, hero screen `user-profile.html`) defines final colors, typography, spacing, and every profile section. This is a UI-forward milestone, recreated pixel-faithfully in Next.js/Tailwind against the existing `app.css` design tokens.
@@ -38,7 +38,7 @@ Funūn is where an independent artist's whole career lives — and where the ind
 - Rich hi-fi member profile: banner + avatar (owner-editable), pronouns, location, tenure, verified check, multi-role badges, "Open to" chips, Featured spotlight, stats sidebar, "Worked with"
 - Industry members as first-class: role identity beyond artist (Producer, Songwriter, Music Supervisor, A&R, Exec, custom title)
 - Owner-vs-public profile view switching (Edit profile / Share / View analytics)
-- Discovery & networking shell: Discover / Opportunities / Network nav + global people search
+- Discovery & networking shell: Green Room feed + Discover / Opportunities / Network nav + global people search
 - Follow / Message / Connect actions across member types
 - Notifications & messages surfacing with unread badges
 - Presence + real-time DM widget ("Active now")
