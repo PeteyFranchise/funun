@@ -170,6 +170,18 @@ Recommended scenarios:
 - Search/discover filters pass.
 - Admin placement tests pass.
 - Sponsored labeling manually verified.
+- People Search results exclude blocked, hidden, and non-public profiles.
+- People Search result payloads omit private profile/contact fields.
+- Admin placements can be paused/archived and stop rendering immediately.
+- Minimum report/remove/mute affordance plan is reviewed before widening posting behavior.
+
+---
+
+## Review Packets
+
+- `12-PR-REVIEW-PACKET.md` — current Phase 12 branch review packet for Thomas.
+- `12-09-EXECUTION-NOTES.md` — People Search API, filter, ranking, UI, and privacy plan.
+- `12-MODERATION-REPORTING-GUARDRAILS.md` — minimum Phase 12 safety hooks and Phase 13 handoff boundary.
 
 ---
 

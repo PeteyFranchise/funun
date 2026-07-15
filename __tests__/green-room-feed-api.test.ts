@@ -2,6 +2,7 @@ import { GET } from '@/app/api/green-room/feed/route'
 import { createApiClient } from '@/lib/supabase/server'
 import {
   buildFeedCursorPredicate,
+  buildPlacementWindowPredicate,
   clampFeedLimit,
   encodeFeedCursor,
   insertPlacementCards,
@@ -105,6 +106,12 @@ describe('Green Room feed query helpers', () => {
     )
   })
 
+  it('builds the active placement window predicate with expired placements excluded', () => {
+    expect(buildPlacementWindowPredicate('2026-07-15T12:00:00.000Z')).toBe(
+      'ends_at.is.null,ends_at.gt.2026-07-15T12:00:00.000Z'
+    )
+  })
+
   it('clamps requested limits to safe bounds', () => {
     expect(clampFeedLimit('7')).toBe(7)
     expect(clampFeedLimit('0')).toBe(1)
@@ -147,4 +154,3 @@ describe('Green Room feed query helpers', () => {
     ])
   })
 })
-

@@ -142,6 +142,10 @@ export function buildFeedCursorPredicate(cursor: GreenRoomFeedCursor): string {
   return `published_at.lt.${cursor.publishedAt},and(published_at.eq.${cursor.publishedAt},id.lt.${cursor.id})`
 }
 
+export function buildPlacementWindowPredicate(nowIso: string): string {
+  return `ends_at.is.null,ends_at.gt.${nowIso}`
+}
+
 export function insertPlacementCards(
   posts: GreenRoomPostCard[],
   placements: GreenRoomPlacementCard[],
@@ -332,11 +336,13 @@ async function loadPlacementCards(
   supabase: SupabaseClient,
   tab: GreenRoomTab
 ): Promise<GreenRoomPlacementCard[]> {
+  const nowIso = new Date().toISOString()
   let query = supabase
     .from('green_room_placements')
     .select('id, placement_kind, label, title, body, destination_type, destination_id, destination_url')
     .eq('status', 'active')
-    .lte('starts_at', new Date().toISOString())
+    .lte('starts_at', nowIso)
+    .or(buildPlacementWindowPredicate(nowIso))
     .order('priority', { ascending: false })
     .order('starts_at', { ascending: false })
     .limit(3)
@@ -432,4 +438,3 @@ function placementExplanation(kind: GreenRoomPlacementCard['placementKind']): st
   if (kind === 'program') return 'Curated program'
   return 'Featured opportunity'
 }
-
