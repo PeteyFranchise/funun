@@ -136,6 +136,47 @@ describe('createGreenRoomRepost', () => {
       status: 400,
     })
   })
+
+  it('allows RLS-visible follower and connection posts to be reshared', async () => {
+    for (const visibility of ['followers', 'connections']) {
+      const postQuery = chain({
+        data: {
+          id: 'post-1',
+          author_id: 'author-1',
+          visibility,
+          allow_resharing: true,
+          status: 'published',
+          moderation_status: 'visible',
+          deleted_at: null,
+        },
+        error: null,
+      })
+      const repostQuery = insertChain({
+        data: {
+          id: `repost-${visibility}`,
+          original_post_id: 'post-1',
+          author_id: 'user-1',
+          quote_body: null,
+          created_at: '2026-07-15T12:00:00.000Z',
+        },
+        error: null,
+      })
+      const from = jest.fn((table: string) => {
+        if (table === 'green_room_posts') return postQuery
+        if (table === 'green_room_reposts') return repostQuery
+        throw new Error(`Unexpected table: ${table}`)
+      })
+
+      const result = await createGreenRoomRepostActual({ from } as never, 'user-1', 'post-1', null)
+
+      expect(result.ok).toBe(true)
+      expect(repostQuery.insert).toHaveBeenCalledWith({
+        original_post_id: 'post-1',
+        author_id: 'user-1',
+        quote_body: null,
+      })
+    }
+  })
 })
 
 describe('DELETE /api/green-room/posts/[postId]/reposts', () => {
@@ -199,3 +240,18 @@ function deleteChain() {
   return query
 }
 
+function insertChain(response: { data: unknown; error: unknown }) {
+  const query: {
+    insert: jest.Mock
+    select: jest.Mock
+    single: jest.Mock
+  } = {
+    insert: jest.fn(),
+    select: jest.fn(),
+    single: jest.fn(),
+  }
+  query.insert.mockReturnValue(query)
+  query.select.mockReturnValue(query)
+  query.single.mockResolvedValue(response)
+  return query
+}

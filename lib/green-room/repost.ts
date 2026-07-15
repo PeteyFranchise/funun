@@ -63,6 +63,14 @@ export async function createGreenRoomRepost(
       post.status === 'published' &&
       post.moderation_status === 'visible' &&
       post.deleted_at === null,
+    // The original was loaded through the session client, so RLS has already
+    // proven the viewer's follower/connection eligibility for this post.
+    relationship:
+      visibility === 'followers'
+        ? { followsAuthor: true }
+        : visibility === 'connections'
+          ? { connectedToAuthor: true }
+          : undefined,
   })
 
   if (!decision.ok) return { ok: false, error: decision.reason, status: 400 }
@@ -94,4 +102,3 @@ export async function createGreenRoomRepost(
     },
   }
 }
-
