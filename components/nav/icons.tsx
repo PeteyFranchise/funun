@@ -52,6 +52,17 @@ export const AntennaIcon = (p: IconProps) => (
   </Svg>
 )
 
+// Green Room — network lounge / discovery room
+export const GreenRoomIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 18.5V9.5a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9" />
+    <path d="M7 18.5v-4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4" />
+    <path d="M8.5 8.5h7" />
+    <path d="M9.5 12.5 7 10l2.5-2.5" />
+    <path d="m14.5 12.5 2.5-2.5-2.5-2.5" />
+  </Svg>
+)
+
 // PitchPlug — send / paper plane
 export const PitchPlugIcon = (p: IconProps) => (
   <Svg {...p}>
