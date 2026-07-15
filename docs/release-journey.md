@@ -248,8 +248,8 @@ opportunities, and puts a face on the expertise behind the benchmarking framewor
 |---|---|
 | **Sound Vault** (+ per-project) | Assets, masters, artwork, metadata, distributor choice, video, Content ID, **Release Roadmap** |
 | **Metadata Studio** | Lyrics, .txt export, LRC sync, track listing, credits, ISRC/UPC |
-| **Contract Locker** | Split sheets, contracts, e-sign, copyright docs |
-| **Rights Coach** | Copyright/PRO/SoundExchange/publishing-admin guidance + registration |
+| **Contract Locker** | Split sheets, contracts, e-sign, copyright docs; future secure legal-document intelligence, bulk analysis, simple drafting, deal summaries, and earnings/audit modeling |
+| **Rights Coach** | Copyright/PRO/SoundExchange/publishing-admin guidance + registration; future next-step routing from Contract Locker analysis to missing actions, qualified professionals, attorney/service access, and follow-up tasks |
 | **Antenna** | Sync agents, radio, podcasts, playlist/promo/influencer opportunities |
 | **PitchPlug** | Editorial / curator / industry pitches |
 | **Benchmarks** | Songstats data + benchmarking |

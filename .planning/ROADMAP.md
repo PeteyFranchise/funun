@@ -269,6 +269,25 @@ Plans:
 - [x] 15-03-PLAN.md — unified capability-aware ArtistNav (D-05/D-08), (industry) layout retirement + route relocation (D-06/D-07), D-09 footer request CTA (depends on 15-02's /api/capabilities/request route)
 - [x] 15-04-PLAN.md — admin capability-requests approval queue page + component (D-03/D-11)
 
+## Future Roadmap Candidates
+
+### Contract Locker Intelligence & Deal Audit
+
+**Product note added 2026-07-15:** The Contract Locker should evolve from upload/status tracking into a secure legal-document intelligence layer for artists and industry members. The future version should securely store, organize, and bulk-analyze the legal documents the music industry relies on, while also helping draft simple, standard documents that do not require bespoke legal negotiation.
+
+**Core capabilities to plan:**
+
+1. Securely store and organize uploaded agreements, split sheets, work-for-hire docs, producer agreements, publishing/admin deals, distribution deals, label/record offers, licensing paperwork, and related legal PDFs
+2. Bulk-analyze document sets so an artist can ask cross-document questions, compare terms, surface conflicts, and see obligations across multiple agreements
+3. Summarize uploaded offers and agreements into artist-readable key points: parties, term, territory, rights granted, exclusivity, recoupment, royalty/split terms, audit rights, delivery obligations, termination windows, and unusual/risky clauses
+4. Draft simple music-industry documents from structured inputs, while routing complex or high-risk drafting to qualified legal review
+5. Feed suggested next steps into Rights Coach: what to verify, who to contact, what documents are missing, what registration or notification should happen next, and when an entertainment attorney or specialized professional should be involved
+6. Support a trusted-help pathway: if Funūn has an entertainment attorney, legal partner, or approved service provider available, eligible members can be guided toward those services without the product pretending to provide legal advice itself
+7. Model earnings/audit scenarios from all relevant documents: song splits, publishing-admin terms, distribution/label terms, recoupment, fees, royalty rates, territories, payment schedules, and DSR/earnings imports where available
+8. Help artists audit counterparties by comparing expected earnings against reported/paid earnings and highlighting discrepancies, missing statements, suspicious deductions, or contract terms that require human review
+
+**Guardrails:** This should be positioned as legal-document organization, summaries, issue spotting, workflow guidance, and earnings modeling — not as a substitute for counsel. Any "deal risk" or attorney-access feature needs legal/compliance review before implementation.
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |

@@ -35,6 +35,7 @@ export const INDUSTRY_ROLE_GROUPS: IndustryRoleGroup[] = [
       { slug: 'featured_artist',   label: 'Featured Artist' },
       { slug: 'vocalist',          label: 'Vocalist' },
       { slug: 'rapper_mc',         label: 'Rapper / MC' },
+      { slug: 'dj',                label: 'DJ' },
       { slug: 'session_musician',  label: 'Session Musician' },
     ],
   },
@@ -44,6 +45,7 @@ export const INDUSTRY_ROLE_GROUPS: IndustryRoleGroup[] = [
       { slug: 'recording_engineer',  label: 'Recording Engineer' },
       { slug: 'mixing_engineer',     label: 'Mixing Engineer' },
       { slug: 'mastering_engineer',  label: 'Mastering Engineer' },
+      { slug: 'live_sound_mixer',    label: 'Live Sound Mixer' },
       { slug: 'programmer',          label: 'Programmer' },
     ],
   },
@@ -56,6 +58,17 @@ export const INDUSTRY_ROLE_GROUPS: IndustryRoleGroup[] = [
       { slug: 'tour_manager',      label: 'Tour Manager' },
       { slug: 'music_supervisor',  label: 'Music Supervisor' },
       { slug: 'playlist_curator',  label: 'Playlist Curator' },
+    ],
+  },
+  {
+    group: 'Legal & Executive',
+    roles: [
+      { slug: 'attorney',                  label: 'Attorney' },
+      { slug: 'entertainment_attorney',    label: 'Entertainment Attorney' },
+      { slug: 'publishing_administrator',  label: 'Publishing Administrator' },
+      { slug: 'business_affairs',          label: 'Business Affairs' },
+      { slug: 'label_executive',           label: 'Label Executive' },
+      { slug: 'artist_relations',          label: 'Artist Relations' },
     ],
   },
 ]
