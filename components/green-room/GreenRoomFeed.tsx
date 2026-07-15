@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { GreenRoomComposer } from '@/components/green-room/GreenRoomComposer'
 import { FeedCard } from '@/components/green-room/FeedCard'
+import { subscribeToGreenRoomFeedUpdates } from '@/lib/green-room/realtime'
+import { createClient } from '@/lib/supabase/client'
 import type { GreenRoomFeedCard } from '@/lib/green-room/feed-query'
 import type { GreenRoomTab } from '@/lib/green-room/feed'
 
@@ -19,6 +21,8 @@ export function GreenRoomFeed() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [pendingActivityCount, setPendingActivityCount] = useState(0)
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     let cancelled = false
@@ -30,7 +34,10 @@ export function GreenRoomFeed() {
         const res = await fetch(`/api/green-room/feed?tab=${tab}`, { cache: 'no-store' })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error ?? 'Could not load the Green Room feed')
-        if (!cancelled) setCards(data.cards ?? [])
+        if (!cancelled) {
+          setCards(data.cards ?? [])
+          setPendingActivityCount(0)
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load the Green Room feed')
       } finally {
@@ -43,6 +50,13 @@ export function GreenRoomFeed() {
       cancelled = true
     }
   }, [tab, refreshKey])
+
+  useEffect(() => {
+    setPendingActivityCount(0)
+    return subscribeToGreenRoomFeedUpdates(supabase, tab, () => {
+      setPendingActivityCount(count => Math.min(99, count + 1))
+    })
+  }, [supabase, tab])
 
   function refresh() {
     setRefreshKey(key => key + 1)
@@ -97,6 +111,18 @@ export function GreenRoomFeed() {
           ))}
         </div>
 
+        {pendingActivityCount > 0 && (
+          <div className="sticky top-[88px] z-20 mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={refresh}
+              className="rounded-full border border-emerald-300/30 bg-emerald-300 px-5 py-2 text-sm font-black text-black shadow-[0_12px_40px_rgba(52,211,153,.28)] transition hover:-translate-y-0.5"
+            >
+              {pendingActivityCount === 1 ? '1 new update' : `${pendingActivityCount} new updates`} · Show latest
+            </button>
+          </div>
+        )}
+
         <div className="mt-5 space-y-4">
           {loading && (
             <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-sm text-white/55">
@@ -141,4 +167,3 @@ export function GreenRoomFeed() {
     </div>
   )
 }
-
