@@ -6,6 +6,7 @@ import {
   type GreenRoomPostType,
   type GreenRoomTab,
 } from '@/lib/green-room/feed'
+import { isDestinationVisible, type PlacementDestinationType } from '@/lib/green-room/placements-admin'
 import { PROFILE_ROLE_LABELS, type ProfileRole } from '@/types'
 import { industryRoleLabel } from '@/lib/industry-roles'
 
@@ -91,7 +92,7 @@ type PlacementRow = {
   label: string
   title: string
   body: string | null
-  destination_type: string
+  destination_type: PlacementDestinationType
   destination_id: string | null
   destination_url: string | null
 }
@@ -352,7 +353,9 @@ async function loadPlacementCards(
   const { data, error } = await query
   if (error) throw new Error(`Failed to load Green Room placements: ${error.message}`)
 
-  return ((data ?? []) as PlacementRow[]).map(row => ({
+  const visibleRows = await filterVisiblePlacementRows(supabase, (data ?? []) as PlacementRow[])
+
+  return visibleRows.map(row => ({
     kind: 'placement',
     id: row.id,
     placementKind: row.placement_kind,
@@ -366,6 +369,18 @@ async function loadPlacementCards(
     },
     explanationLabel: placementExplanation(row.placement_kind),
   }))
+}
+
+export async function filterVisiblePlacementRows(
+  supabase: SupabaseClient,
+  rows: PlacementRow[]
+): Promise<PlacementRow[]> {
+  const decisions = await Promise.all(
+    rows.map(row =>
+      isDestinationVisible(supabase, row.destination_type, row.destination_id, row.destination_url)
+    )
+  )
+  return rows.filter((_row, index) => decisions[index])
 }
 
 function toPostCard(

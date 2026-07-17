@@ -47,6 +47,7 @@ export type DiscoverCapability = (typeof DISCOVER_CAPABILITY_VALUES)[number]
 // the full industry-role master list. Used to validate the `role` filter so
 // an attacker-controlled value never reaches an array-contains filter.
 const KNOWN_ROLE_SLUGS = new Set<string>([...PROFILE_ROLES, ...ALL_INDUSTRY_ROLE_SLUGS])
+const PROFILE_ROLE_SLUGS = new Set<string>(PROFILE_ROLES)
 
 export type DiscoverFilters = {
   q: string | null
@@ -209,6 +210,15 @@ function roleLabelsFromRow(row: DiscoverProfileRow): string[] {
   return labels.slice(0, 4)
 }
 
+export function profileMatchesRole(row: Pick<DiscoverProfileRow, 'roles' | 'industry_roles'>, role: string | null): boolean {
+  if (!role) return true
+  if ((row.industry_roles ?? []).includes(role)) return true
+
+  if (!PROFILE_ROLE_SLUGS.has(role)) return false
+  const roles = Array.isArray(row.roles) ? (row.roles as ProfileRole[]) : []
+  return roles.some(item => item?.kind === 'preset' && item.slug === role)
+}
+
 function openToLabels(row: DiscoverProfileRow): string[] {
   const raw = Array.isArray(row.open_to) ? (row.open_to as unknown[]) : []
   return raw.filter((v): v is string => typeof v === 'string')
@@ -337,6 +347,7 @@ export async function loadDiscoverResults(
     if (restrictIds.length === 0) return { results: [], nextCursor: null }
   }
 
+  const queryLimit = filters.role ? Math.min(200, limit * 5 + 1) : limit + 1
   let query = supabase
     .from('artist_profiles')
     .select(DISCOVER_PUBLIC_COLUMNS)
@@ -344,7 +355,7 @@ export async function loadDiscoverResults(
     .neq('id', viewerId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
-    .limit(limit + 1)
+    .limit(queryLimit)
 
   if (restrictIds) query = query.in('id', restrictIds)
 
@@ -360,9 +371,6 @@ export async function loadDiscoverResults(
   }
 
   if (filters.q) query = query.textSearch('search_vector', filters.q, { type: 'websearch', config: 'english' })
-  // industry_roles is a TEXT[] column — the array form serializes to the PG
-  // array literal cs.{role} that @> expects.
-  if (filters.role) query = query.contains('industry_roles', [filters.role])
   // open_to is a JSONB column (migration 034). Passing an array would emit the
   // PG array literal cs.{collabs}, which Postgres rejects as invalid JSON for a
   // jsonb @>. Pass a JSON string so PostgREST emits jsonb containment
@@ -378,14 +386,16 @@ export async function loadDiscoverResults(
   const { data, error } = await query
   if (error) throw new Error(`Failed to search people: ${error.message}`)
 
-  const rows = (data ?? []) as DiscoverProfileRow[]
+  const rawRows = (data ?? []) as DiscoverProfileRow[]
+  const rows = rawRows.filter(row => profileMatchesRole(row, filters.role))
   const pageRows = rows.slice(0, limit)
   const results = pageRows.map(row => toPersonResult(row, viewerId, relationships, filters))
   const lastRow = pageRows[pageRows.length - 1]
-  const hasMore = rows.length > limit && lastRow
+  const cursorRow = rows.length > limit ? lastRow : rawRows[rawRows.length - 1]
+  const hasMore = (rows.length > limit || rawRows.length >= queryLimit) && cursorRow
 
   return {
     results,
-    nextCursor: hasMore ? encodeDiscoverCursor({ createdAt: lastRow.created_at, id: lastRow.id }) : null,
+    nextCursor: hasMore ? encodeDiscoverCursor({ createdAt: cursorRow.created_at, id: cursorRow.id }) : null,
   }
 }

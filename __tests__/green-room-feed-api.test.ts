@@ -5,6 +5,7 @@ import {
   buildPlacementWindowPredicate,
   clampFeedLimit,
   encodeFeedCursor,
+  filterVisiblePlacementRows,
   insertPlacementCards,
   loadGreenRoomFeed,
   parseFeedCursor,
@@ -152,5 +153,43 @@ describe('Green Room feed query helpers', () => {
       post('post-2'),
       placement,
     ])
+  })
+
+  it('filters active placements whose destination is no longer visible', async () => {
+    const rows = [
+      {
+        id: 'visible-placement',
+        placement_kind: 'featured',
+        label: 'Featured',
+        title: 'Public profile',
+        body: null,
+        destination_type: 'profile',
+        destination_id: 'visible-profile',
+        destination_url: null,
+      },
+      {
+        id: 'hidden-placement',
+        placement_kind: 'featured',
+        label: 'Featured',
+        title: 'Private profile',
+        body: null,
+        destination_type: 'profile',
+        destination_id: 'hidden-profile',
+        destination_url: null,
+      },
+    ]
+    const supabase = {
+      from: jest.fn((_table: string) => ({
+        select: jest.fn(() => ({
+          eq: jest.fn((_field: string, id: string) => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn(async () => ({ data: id === 'visible-profile' ? { id } : null })),
+            })),
+          })),
+        })),
+      })),
+    }
+
+    await expect(filterVisiblePlacementRows(supabase as never, rows as never)).resolves.toEqual([rows[0]])
   })
 })

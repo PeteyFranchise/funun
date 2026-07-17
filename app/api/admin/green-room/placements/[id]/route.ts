@@ -16,6 +16,11 @@ type PlacementRow = {
   ends_at: string | null
 }
 
+type PlacementDeleteRow = {
+  id: string
+  status: string
+}
+
 // ─── PATCH /api/admin/green-room/placements/[id] ─────────────────────────
 // Edits copy/priority/schedule and drives the lifecycle (draft ↔ active ↔
 // paused → archived). Transitioning TO `active` re-validates the (immutable)
@@ -89,6 +94,22 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const service = createServiceClient()
+  const { data: existing, error: fetchError } = await service
+    .from('green_room_placements')
+    .select('id, status')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (!existing) return NextResponse.json({ error: 'Placement not found' }, { status: 404 })
+  const row = existing as PlacementDeleteRow
+  if (row.status !== 'draft' && row.status !== 'archived') {
+    return NextResponse.json(
+      { error: 'Only draft or archived placements can be deleted; archive this placement first' },
+      { status: 409 }
+    )
+  }
+
   const { data, error } = await service
     .from('green_room_placements')
     .delete()

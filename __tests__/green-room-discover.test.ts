@@ -8,6 +8,7 @@ import {
   toPersonResult,
   reasonLabel,
   loadDiscoverResults,
+  profileMatchesRole,
   type DiscoverFilters,
 } from '@/lib/green-room/discover'
 
@@ -159,6 +160,14 @@ describe('reasonLabel', () => {
   })
 })
 
+describe('profileMatchesRole', () => {
+  it('matches artist profile roles as well as industry role slugs', () => {
+    expect(profileMatchesRole(profileRow({ industry_roles: [], roles: [{ kind: 'preset', slug: 'producer' }] }) as never, 'producer')).toBe(true)
+    expect(profileMatchesRole(profileRow({ industry_roles: ['attorney'], roles: [] }) as never, 'attorney')).toBe(true)
+    expect(profileMatchesRole(profileRow({ industry_roles: [], roles: [{ kind: 'preset', slug: 'artist' }] }) as never, 'attorney')).toBe(false)
+  })
+})
+
 describe('toPersonResult', () => {
   it('omits sensitive fields and shapes the public result', () => {
     const result = toPersonResult(profileRow() as never, 'me', { followingIds: new Set(), connectedIds: new Set() }, BASE_FILTERS)
@@ -231,7 +240,7 @@ describe('loadDiscoverResults', () => {
     expect(inList).toContain('b2')
   })
 
-  it('applies role / openTo / genre / location filters server-side', async () => {
+  it('applies openTo / genre / location filters server-side and role filtering in the result shaper', async () => {
     const { session, service, main } = makeClients([], {})
     await loadDiscoverResults(
       session as never,
@@ -241,7 +250,7 @@ describe('loadDiscoverResults', () => {
       null,
       20
     )
-    expect(main.calls.contains).toContainEqual(['industry_roles', ['producer']])
+    expect(main.calls.limit).toContainEqual([101])
     // open_to is JSONB — must be passed as a JSON string so PostgREST emits
     // jsonb containment (cs.["collabs"]), not the PG array literal cs.{collabs}
     // which Postgres rejects as invalid JSON. Regression guard for the bug the
@@ -249,6 +258,26 @@ describe('loadDiscoverResults', () => {
     expect(main.calls.contains).toContainEqual(['open_to', '["collabs"]'])
     expect(main.calls.ilike).toContainEqual(['genre', '%house%'])
     expect(main.calls.ilike).toContainEqual(['location', '%berlin%'])
+  })
+
+  it('returns members whose role lives only in the public profile roles JSON', async () => {
+    const artistRoleOnly = profileRow({
+      id: 'role-json-only',
+      industry_roles: [],
+      roles: [{ kind: 'preset', slug: 'producer' }],
+    })
+    const { session, service } = makeClients([artistRoleOnly])
+
+    const out = await loadDiscoverResults(
+      session as never,
+      service as never,
+      'me',
+      { ...BASE_FILTERS, role: 'producer' },
+      null,
+      20
+    )
+
+    expect(out.results.map(result => result.id)).toEqual(['role-json-only'])
   })
 
   it('short-circuits to empty when a following filter has no candidates', async () => {

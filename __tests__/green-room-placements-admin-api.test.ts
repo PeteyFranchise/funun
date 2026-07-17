@@ -1,5 +1,5 @@
 import { POST } from '@/app/api/admin/green-room/placements/route'
-import { PATCH } from '@/app/api/admin/green-room/placements/[id]/route'
+import { DELETE, PATCH } from '@/app/api/admin/green-room/placements/[id]/route'
 import { verifyAdmin } from '@/lib/admin/gate'
 import { createServiceClient } from '@/lib/supabase/server'
 import { isDestinationVisible } from '@/lib/green-room/placements-admin'
@@ -110,5 +110,47 @@ describe('PATCH /api/admin/green-room/placements/[id]', () => {
     })
     const res = await PATCH(req, { params: Promise.resolve({ id: 'p1' }) })
     expect(res.status).toBe(409)
+  })
+})
+
+describe('DELETE /api/admin/green-room/placements/[id]', () => {
+  function deleteClient(existing: unknown) {
+    return {
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({ maybeSingle: jest.fn(async () => ({ data: existing, error: null })) })),
+        })),
+        delete: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            select: jest.fn(() => ({ maybeSingle: jest.fn(async () => ({ data: { id: 'p1' }, error: null })) })),
+          })),
+        })),
+      })),
+    }
+  }
+
+  it('requires active placements to be archived before hard delete', async () => {
+    ;(verifyAdmin as jest.Mock).mockResolvedValue({ user: { id: 'admin' } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(deleteClient({ id: 'p1', status: 'active' }))
+
+    const res = await DELETE(new Request('http://t.local/api/admin/green-room/placements/p1'), {
+      params: Promise.resolve({ id: 'p1' }),
+    })
+
+    expect(res.status).toBe(409)
+    await expect(res.json()).resolves.toEqual({
+      error: 'Only draft or archived placements can be deleted; archive this placement first',
+    })
+  })
+
+  it('deletes archived placements', async () => {
+    ;(verifyAdmin as jest.Mock).mockResolvedValue({ user: { id: 'admin' } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(deleteClient({ id: 'p1', status: 'archived' }))
+
+    const res = await DELETE(new Request('http://t.local/api/admin/green-room/placements/p1'), {
+      params: Promise.resolve({ id: 'p1' }),
+    })
+
+    expect(res.status).toBe(200)
   })
 })

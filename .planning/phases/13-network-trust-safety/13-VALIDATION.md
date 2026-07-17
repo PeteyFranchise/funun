@@ -29,6 +29,7 @@ Phase 13 validation must prove privacy boundaries before UI polish.
 
 - Auth required to create report.
 - Reporter can only create report for visible/reportable target.
+- Profile, message, Green Room post, comment, repost, and placement targets are covered.
 - Reporter can read only their own report status.
 - Reported user cannot read report details.
 - Admin can update report status and internal notes.
@@ -61,8 +62,8 @@ Scenarios:
 2. A blocks B. Confirm B cannot view A profile, message A, discover A, or interact with A feed posts.
 3. B should not see that A blocked them; only access is denied or absent.
 4. A unblocks B. Confirm normal flows return only where relationship state still allows it.
-5. C reports A's profile. Confirm C sees submitted status; A cannot see report.
-6. Admin reviews C's report and marks dismissed/actioned.
+5. C reports A's profile and a visible Green Room post/comment/repost. Confirm C sees submitted status; A cannot see report details.
+6. Admin reviews C's report and marks dismissed/actioned; supported Green Room targets can be hidden/removed/paused.
 7. Admin grants verified badge to A. Confirm A cannot grant it to themselves.
 8. A sets profile visibility to connections-only. Confirm non-connection public route/search excludes A.
 9. A hides `Open to`; confirm profile/search omit it while settings retain values.
@@ -76,4 +77,3 @@ Scenarios:
 - [ ] Network tab state transitions preserve existing follows/connections behavior.
 - [ ] Phase 12 feed/search paths still pass after trust/safety changes.
 - [ ] Lint, TypeScript, and focused Jest suites pass.
-
