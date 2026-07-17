@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GreenRoomComposer } from '@/components/green-room/GreenRoomComposer'
 import { FeedCard } from '@/components/green-room/FeedCard'
+import { PeopleSearch } from '@/components/green-room/PeopleSearch'
 import { subscribeToGreenRoomFeedUpdates } from '@/lib/green-room/realtime'
 import { createClient } from '@/lib/supabase/client'
 import type { GreenRoomFeedCard } from '@/lib/green-room/feed-query'
@@ -149,6 +150,7 @@ export function GreenRoomFeed() {
       </section>
 
       <aside className="space-y-4">
+        <PeopleSearch />
         <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs font-bold uppercase tracking-[.18em] text-lavdim">Room Rules</p>
           <ul className="mt-3 space-y-2 text-sm text-white/60">
