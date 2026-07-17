@@ -43,6 +43,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           Industry Members
         </Link>
+        <Link
+          href="/admin/green-room-placements"
+          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+        >
+          Green Room Placements
+        </Link>
       </nav>
       <div className="flex min-h-screen flex-1 flex-col">{children}</div>
     </div>
