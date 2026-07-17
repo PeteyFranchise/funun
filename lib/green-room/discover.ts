@@ -360,8 +360,14 @@ export async function loadDiscoverResults(
   }
 
   if (filters.q) query = query.textSearch('search_vector', filters.q, { type: 'websearch', config: 'english' })
+  // industry_roles is a TEXT[] column — the array form serializes to the PG
+  // array literal cs.{role} that @> expects.
   if (filters.role) query = query.contains('industry_roles', [filters.role])
-  if (filters.openTo) query = query.contains('open_to', [filters.openTo])
+  // open_to is a JSONB column (migration 034). Passing an array would emit the
+  // PG array literal cs.{collabs}, which Postgres rejects as invalid JSON for a
+  // jsonb @>. Pass a JSON string so PostgREST emits jsonb containment
+  // (cs.["collabs"]) instead.
+  if (filters.openTo) query = query.contains('open_to', JSON.stringify([filters.openTo]))
   if (filters.genre) query = query.ilike('genre', `%${filters.genre}%`)
   if (filters.location) query = query.ilike('location', `%${filters.location}%`)
   if (filters.capability === 'artist') query = query.eq('member_type', 'artist')

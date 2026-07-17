@@ -242,7 +242,11 @@ describe('loadDiscoverResults', () => {
       20
     )
     expect(main.calls.contains).toContainEqual(['industry_roles', ['producer']])
-    expect(main.calls.contains).toContainEqual(['open_to', ['collabs']])
+    // open_to is JSONB — must be passed as a JSON string so PostgREST emits
+    // jsonb containment (cs.["collabs"]), not the PG array literal cs.{collabs}
+    // which Postgres rejects as invalid JSON. Regression guard for the bug the
+    // live smoke test surfaced.
+    expect(main.calls.contains).toContainEqual(['open_to', '["collabs"]'])
     expect(main.calls.ilike).toContainEqual(['genre', '%house%'])
     expect(main.calls.ilike).toContainEqual(['location', '%berlin%'])
   })
