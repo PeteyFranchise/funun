@@ -51,13 +51,27 @@ Confirm the current Phase 12 branch is safe to merge before People Search, admin
 ## Validation Already Run
 
 - `npm test -- --runInBand __tests__/green-room-feed.test.ts __tests__/green-room-feed-api.test.ts __tests__/green-room-posts-api.test.ts __tests__/green-room-interactions-api.test.ts __tests__/green-room-reposts-api.test.ts __tests__/green-room-ui-contract.test.ts __tests__/green-room-realtime.test.ts`
+- Wave 5: `npm test -- --runInBand __tests__/green-room-discover.test.ts __tests__/green-room-discover-api.test.ts __tests__/green-room-placements-admin.test.ts __tests__/green-room-placements-admin-api.test.ts` (34 tests) — or `npm test -- --runInBand green-room` for the full 88-test suite.
 - `npm run lint`
 - `npx tsc --noEmit`
+- `npm run build`
+
+## Wave 5 Update (2026-07-17)
+
+Wave 5 is now implemented and pushed to this branch (commits `56d67f3`, `7807244`, `863b604`):
+
+- **12-09 People Search / Discover filters** — `GET /api/green-room/discover` + a `PeopleSearch` module in the Green Room rail. Keyword (search_vector), role, open-to, genre, location, relationship, and member-type filters. Reads on the session client; the discover layer additionally enforces `is_public=true`, self-exclusion, and **bidirectional** block exclusion, and projects only public-safe columns (no PII). No schema change — reuses `search_vector` and the migration-040 public column grant.
+- **12-10 Admin-curated placements** — admin CRUD over the existing `green_room_placements` table (migration 057): `GET/POST /api/admin/green-room/placements` + `PATCH/DELETE [id]` behind `verifyAdmin()` + service client, and `/admin/green-room-placements` UI (create/activate/pause/resume/archive/delete). A placement can only **activate** once its destination is confirmed public/visible; the destination is immutable via PATCH so the check cannot be bypassed. No self-serve ads/targeting/billing/analytics.
+
+**Live verification performed:** migrations 054–057 confirmed live (LOCAL=REMOTE, remote up to date); discover auth gate returns 401 unauthenticated; the full discover query shape executes against real Postgres (HTTP 200); a jsonb `open_to` containment bug was caught by the live smoke test (`.contains` array form → HTTP 400 `22P02` on the JSONB column) and fixed to the JSON-string form (→ HTTP 200), regression-locked in tests; private columns are DB-blocked (`42501`). 34 new focused tests green; full green-room suite 88/88; tsc + lint + build clean.
+
+**Remaining Wave 5 UAT** (needs a logged-in / admin browser session — see `12-UAT.md`):
+1. People Search results correct + privacy-safe (block exclusion both directions, no PII, action gating).
+2. Admin placement create→activate visibility gate (private destination rejected 409; public succeeds; pause/archive lifecycle; non-admin 403).
 
 ## Known Follow-Ups
 
-- People Search and Discover filters are planned in `12-09`.
-- Admin placement management is planned in `12-10`.
 - Minimum report/remove/mute controls need to be nailed down before opening wider posting behavior.
 - Full trust and safety, including reporting dashboard, block management UI, verified-badge admin grant, and profile visibility settings, remains Phase 13.
+- `12-09` and `12-10` shipped without a GSD `SUMMARY.md` (unlike 12-03…12-08); the PLAN + this packet + `12-UAT.md` are the record. Worth backfilling summaries if the phase is formally closed through GSD.
 
