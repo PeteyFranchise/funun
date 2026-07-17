@@ -39,6 +39,14 @@ structurally cannot reach:
 
 ## Setup
 
+**Before you start:** `npm run e2e:verify` checks env vars, demo mode, the dev
+server, Supabase reachability, and migrations 054/057 in one pass, with a fix
+for whatever's missing. It also runs automatically before `npm run e2e:seed`
+and `npm run e2e` (via package.json's `pree2e:seed`/`pree2e` hooks), so a
+misconfigured run gets stopped before it wastes time instead of failing
+partway through with no clue why. If you're in Claude Code, ask it to "check
+my e2e setup" - there's a skill wired up for it.
+
 1. `npm install` and `npx playwright install chromium`.
 2. `cp .env.test.example .env.test` and fill in three account logins, the
    Supabase URL, and the service role key.
@@ -46,8 +54,11 @@ structurally cannot reach:
    Green Room route returns canned success in demo mode, so the suite would pass
    without testing anything. Setup asserts this and fails the run rather than
    skipping.
-4. Confirm migrations `054`-`057` are applied: `npx supabase migration list`.
-   Spec 17 asserts 056's revoked grants and will fail loudly if it never landed.
+4. Confirm migrations `054`-`057` are applied. `npm run e2e:verify --full`
+   checks 054 and 057 directly (no `supabase link` or CLI access token
+   needed); 055 and 056 are privilege/RLS-only changes with nothing to probe
+   for, so they're verified live instead by `specs/17-messaging-security.spec.ts`,
+   which will fail loudly if 056's revoked grants never landed.
 5. `npm run e2e:seed`.
 6. Start `next dev` - there's no `webServer` block, the server must already be up.
 

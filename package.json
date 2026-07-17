@@ -11,7 +11,10 @@
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
     "db:push": "supabase db push",
     "e2e": "playwright test",
+    "pree2e": "tsx tests/e2e/verify-setup.ts",
     "e2e:seed": "tsx tests/e2e/seed.ts",
+    "pree2e:seed": "tsx tests/e2e/verify-setup.ts --full",
+    "e2e:verify": "tsx tests/e2e/verify-setup.ts --full",
     "e2e:report": "playwright show-report",
     "e2e:typecheck": "tsc -p tests/tsconfig.json --noEmit"
   },
