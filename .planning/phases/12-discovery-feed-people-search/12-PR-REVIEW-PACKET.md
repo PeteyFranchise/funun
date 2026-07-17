@@ -73,5 +73,5 @@ Wave 5 is now implemented and pushed to this branch (commits `56d67f3`, `7807244
 
 - Minimum report/remove/mute controls need to be nailed down before opening wider posting behavior.
 - Full trust and safety, including reporting dashboard, block management UI, verified-badge admin grant, and profile visibility settings, remains Phase 13.
-- `12-09` and `12-10` shipped without a GSD `SUMMARY.md` (unlike 12-03…12-08); the PLAN + this packet + `12-UAT.md` are the record. Worth backfilling summaries if the phase is formally closed through GSD.
+- `12-09-SUMMARY.md` and `12-10-SUMMARY.md` are in place (backfilled for GSD consistency with 12-03…12-08).
 
