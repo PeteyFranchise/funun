@@ -134,7 +134,11 @@ export function DockedWidget({ threadId, viewerId, onClose }: { threadId: string
   const pendingMineCount = status === 'pending' && requesterId === viewerId ? messages.filter(m => m.mine).length : 0
 
   return (
-    <div className="fixed bottom-0 right-8 z-50 w-[336px] overflow-hidden rounded-t-[14px] border border-hairstrong bg-card shadow-[0_-20px_60px_-20px_rgba(0,0,0,.7)]">
+    <div
+      data-testid="docked-widget"
+      data-thread-id={threadId}
+      className="fixed bottom-0 right-8 z-50 w-[336px] overflow-hidden rounded-t-[14px] border border-hairstrong bg-card shadow-[0_-20px_60px_-20px_rgba(0,0,0,.7)]"
+    >
       <div className="flex items-center gap-[11px] border-b border-hair bg-[#13112a] px-4 py-[14px]">
         <span
           className="h-9 w-9 flex-none rounded-full bg-gradient-to-br from-brandindigo to-brandfuchsia bg-cover bg-center text-center text-[12px] font-bold leading-9 text-white"

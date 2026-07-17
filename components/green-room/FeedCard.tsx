@@ -84,7 +84,10 @@ function PostCard({ card, onChanged }: { card: GreenRoomPostCard; onChanged: () 
   }
 
   return (
-    <article className="rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_20px_60px_rgba(0,0,0,.22)]">
+    <article
+      data-testid="feed-card"
+      className="rounded-[26px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_20px_60px_rgba(0,0,0,.22)]"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-grad text-sm font-black text-white">

@@ -42,7 +42,10 @@ export function ProfilePresenceDot({ targetUserId }: { targetUserId: string }) {
 
   if (!online) return null
   return (
-    <div className="absolute bottom-3 right-3 flex items-center gap-[6px] rounded-full border border-hairstrong bg-ink px-[9px] py-1 text-[12px] font-bold text-emerald-400">
+    <div
+      data-testid="presence-pill"
+      className="absolute bottom-3 right-3 flex items-center gap-[6px] rounded-full border border-hairstrong bg-ink px-[9px] py-1 text-[12px] font-bold text-emerald-400"
+    >
       <span className="h-[7px] w-[7px] rounded-full bg-emerald-400" />
       Online
     </div>
