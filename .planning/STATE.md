@@ -4,17 +4,18 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
-status: executing
-stopped_at: Completed 13-03-PLAN.md (Hard Block Enforcement Audit) — last plan of Phase 13, ready for phase verification
+status: phase-13-verified
+stopped_at: Phase 13 goal-verified (13-VERIFICATION.md); migration 061 pushed; manual UAT items pending
 last_updated: "2026-07-18T19:06:15.936Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 13 execution started
+last_activity_desc: Phase 13 verified; migration 061 (release_comments no_block) live
 progress:
+  # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
   total_phases: 16
-  completed_phases: 15
-  total_plans: 86
-  completed_plans: 81
-  percent: 94
+  completed_phases: 13
+  total_plans: 44
+  completed_plans: 39
+  percent: 89
 ---
 
 # Project State
