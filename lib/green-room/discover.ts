@@ -8,6 +8,14 @@ import {
   type ProfileRoleSlug,
 } from '@/types'
 import { ALL_INDUSTRY_ROLE_SLUGS, industryRoleLabel } from '@/lib/industry-roles'
+import {
+  isProfileVisibleTo,
+  isOpenToVisibleTo,
+  isValidProfileVisibility,
+  isValidOpenToVisibility,
+  type ProfileVisibility,
+  type OpenToVisibility,
+} from '@/lib/trust-safety/contracts'
 
 // ─────────────────────────────────────────────────────────────────────────
 // People Search / Discover (Plan 12-09)
@@ -31,7 +39,7 @@ import { ALL_INDUSTRY_ROLE_SLUGS, industryRoleLabel } from '@/lib/industry-roles
 // mlc_id, soundexchange_id) and private activity fields. Kept as a string so
 // callers pass it straight to `.select()`.
 export const DISCOVER_PUBLIC_COLUMNS =
-  'id, artist_name, handle, avatar_url, bio, genre, genres, location, industry_roles, roles, open_to, member_type, verified, is_public, created_at'
+  'id, artist_name, handle, avatar_url, bio, genre, genres, location, industry_roles, roles, open_to, member_type, verified, is_public, profile_visibility, open_to_visibility, created_at'
 
 export const DISCOVER_PAGE_SIZE = 20
 export const DISCOVER_MAX_LIMIT = 40
@@ -97,6 +105,8 @@ type DiscoverProfileRow = {
   member_type: 'artist' | 'industry'
   verified: boolean | null
   is_public: boolean | null
+  profile_visibility: string | null
+  open_to_visibility: string | null
   created_at: string
 }
 
@@ -242,7 +252,35 @@ export function profileMatchesRole(row: Pick<DiscoverProfileRow, 'roles' | 'indu
   return roles.some(item => item?.kind === 'preset' && item.slug === role)
 }
 
-function openToLabels(row: DiscoverProfileRow): string[] {
+// ─── SAFETY-04: profile/open-to visibility (People Search) ──────────────
+// Discover results reuse isProfileVisibleTo/isOpenToVisibleTo (13-01's
+// contracts) rather than re-deriving visibility rules — same helpers the
+// public profile route (app/u/[handle]/page.tsx) enforces. The searching
+// viewer is never the row's owner (self is excluded via `.neq('id', viewerId)`
+// in the query below), so `viewerIsOwner` is always false here.
+function rowProfileVisibility(row: DiscoverProfileRow): ProfileVisibility {
+  return row.profile_visibility != null && isValidProfileVisibility(row.profile_visibility)
+    ? row.profile_visibility
+    : 'public'
+}
+
+function rowOpenToVisibility(row: DiscoverProfileRow): OpenToVisibility {
+  return row.open_to_visibility != null && isValidOpenToVisibility(row.open_to_visibility)
+    ? row.open_to_visibility
+    : 'public'
+}
+
+/** True when this row should appear in People Search results at all for a non-owner viewer. */
+export function isDiscoverRowVisible(row: DiscoverProfileRow, isConnected: boolean): boolean {
+  return isProfileVisibleTo(rowProfileVisibility(row), false, isConnected)
+}
+
+function isRowOpenToVisible(row: DiscoverProfileRow, isConnected: boolean): boolean {
+  return isOpenToVisibleTo(rowOpenToVisibility(row), false, isConnected)
+}
+
+function openToLabels(row: DiscoverProfileRow, isConnected: boolean): string[] {
+  if (!isRowOpenToVisible(row, isConnected)) return []
   const raw = Array.isArray(row.open_to) ? (row.open_to as unknown[]) : []
   return raw.filter((v): v is string => typeof v === 'string')
 }
@@ -260,7 +298,10 @@ export function reasonLabel(
   if (relationship === 'following') return 'You follow this member'
 
   if (filters.openTo) {
-    const openToSet = new Set(openToLabels(row))
+    // relationship is never 'connected' here — that case already returned
+    // above — so this viewer is never treated as a connection for the
+    // open_to_visibility check.
+    const openToSet = new Set(openToLabels(row, false))
     if (openToSet.has(filters.openTo)) return `Open to ${OPEN_TO_DISPLAY[filters.openTo]}`
   }
   if (filters.role && roleLabels.length > 0) {
@@ -289,6 +330,7 @@ export function toPersonResult(
   filters: DiscoverFilters
 ): GreenRoomPersonResult {
   const relationship = deriveRelationship(viewerId, row.id, relationships)
+  const isConnected = relationship === 'connected'
   const roleLabels = roleLabelsFromRow(row)
   const headline = row.bio ? row.bio.trim().slice(0, 140) || null : null
   return {
@@ -300,7 +342,7 @@ export function toPersonResult(
     roles: roleLabels,
     genre: row.genre ?? null,
     location: row.location ?? null,
-    openTo: openToLabels(row),
+    openTo: openToLabels(row, isConnected),
     verified: row.verified === true,
     memberType: row.member_type,
     relationship,
@@ -410,7 +452,19 @@ export async function loadDiscoverResults(
   if (error) throw new Error(`Failed to search people: ${error.message}`)
 
   const rawRows = (data ?? []) as DiscoverProfileRow[]
-  const rows = rawRows.filter(row => profileMatchesRole(row, filters.role))
+  // SAFETY-04: connections_only profiles are excluded from People Search
+  // entirely for non-connections (mirrors the public profile route's
+  // notFound() gate). A hidden open_to that matched the DB-level
+  // `.contains('open_to', ...)` filter above is also excluded here — a row
+  // matching an openTo filter only because of a field it hides from this
+  // viewer must not surface at all, not just render with the badge blanked.
+  const rows = rawRows.filter(row => {
+    if (!profileMatchesRole(row, filters.role)) return false
+    const isConnected = relationships.connectedIds.has(row.id)
+    if (!isDiscoverRowVisible(row, isConnected)) return false
+    if (filters.openTo && !isRowOpenToVisible(row, isConnected)) return false
+    return true
+  })
   const pageRows = rows.slice(0, limit)
   const results = pageRows.map(row => toPersonResult(row, viewerId, relationships, filters))
   const lastRow = pageRows[pageRows.length - 1]

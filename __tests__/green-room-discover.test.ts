@@ -63,6 +63,10 @@ function profileRow(overrides: Record<string, unknown> = {}) {
 
 describe('DISCOVER_PUBLIC_COLUMNS', () => {
   it('never selects private / PII columns', () => {
+    // Exact-token check, not substring — `profile_visibility` legitimately
+    // contains the substring "pro" (from "profile"), which a naive
+    // `.toContain('pro')` would false-positive on (SAFETY-04 addition).
+    const columns = new Set(DISCOVER_PUBLIC_COLUMNS.split(',').map(c => c.trim()))
     for (const forbidden of [
       'legal_first_name',
       'legal_last_name',
@@ -75,7 +79,7 @@ describe('DISCOVER_PUBLIC_COLUMNS', () => {
       'soundexchange_id',
       'email',
     ]) {
-      expect(DISCOVER_PUBLIC_COLUMNS).not.toContain(forbidden)
+      expect(columns.has(forbidden)).toBe(false)
     }
   })
 
