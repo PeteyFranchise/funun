@@ -9,6 +9,7 @@ import {
   reasonLabel,
   loadDiscoverResults,
   profileMatchesRole,
+  personActionFlags,
   type DiscoverFilters,
 } from '@/lib/green-room/discover'
 
@@ -145,6 +146,37 @@ describe('deriveRelationship', () => {
     expect(deriveRelationship('me', 'c1', rel)).toBe('connected')
     expect(deriveRelationship('me', 'f1', rel)).toBe('following')
     expect(deriveRelationship('me', 'x', rel)).toBe('outside_network')
+  })
+})
+
+describe('personActionFlags (UAT#1 action gating)', () => {
+  it('hides Message on your own card and never offers Follow to self', () => {
+    expect(personActionFlags('self')).toEqual({
+      canMessage: false,
+      canFollow: false,
+      alreadyFollowing: false,
+    })
+  })
+
+  it('offers Follow only for outside-network results', () => {
+    expect(personActionFlags('outside_network')).toEqual({
+      canMessage: true,
+      canFollow: true,
+      alreadyFollowing: false,
+    })
+  })
+
+  it('does not re-offer Follow to people you already follow or connect with', () => {
+    expect(personActionFlags('following')).toEqual({
+      canMessage: true,
+      canFollow: false,
+      alreadyFollowing: true,
+    })
+    expect(personActionFlags('connected')).toEqual({
+      canMessage: true,
+      canFollow: false,
+      alreadyFollowing: false,
+    })
   })
 })
 
@@ -291,6 +323,64 @@ describe('loadDiscoverResults', () => {
       20
     )
     expect(out.results).toEqual([])
+    expect(out.nextCursor).toBeNull()
+  })
+
+  // Pagination correctness (UAT#1 "Show more" without duplicates/skips).
+  function pageRows(count: number) {
+    return Array.from({ length: count }, (_, i) =>
+      profileRow({
+        id: `p${String(i).padStart(3, '0')}`,
+        // strictly-decreasing created_at so keyset order is deterministic
+        created_at: new Date(Date.UTC(2026, 0, 1, 0, 0, count - i)).toISOString(),
+      })
+    )
+  }
+
+  it('returns a nextCursor at the last returned row when more remain (no role filter)', async () => {
+    // limit 20, no role filter → queryLimit 21; seed exactly 21 rows.
+    const rows = pageRows(21)
+    const { session, service } = makeClients(rows)
+    const out = await loadDiscoverResults(session as never, service as never, 'me', BASE_FILTERS, null, 20)
+
+    expect(out.results).toHaveLength(20)
+    expect(out.nextCursor).not.toBeNull()
+    const decoded = parseDiscoverCursor(out.nextCursor as string)
+    // cursor must point at the 20th returned row (id p019), not the 21st raw row,
+    // so the next page resumes strictly after what was shown — no skip, no dupe.
+    expect(decoded?.id).toBe('p019')
+  })
+
+  it('returns no nextCursor when the last page is not full', async () => {
+    const rows = pageRows(12)
+    const { session, service } = makeClients(rows)
+    const out = await loadDiscoverResults(session as never, service as never, 'me', BASE_FILTERS, null, 20)
+
+    expect(out.results).toHaveLength(12)
+    expect(out.nextCursor).toBeNull()
+  })
+
+  it('with a role filter, advances the cursor past examined non-matching rows', async () => {
+    // 30 raw rows fetched under the over-fetch limit; only a few match the role.
+    // Non-matching rows are still "examined", so when fewer than a page match,
+    // the cursor advances to the LAST RAW row to avoid re-scanning them forever.
+    const rows = pageRows(30).map((r, i) =>
+      i < 3
+        ? { ...r, industry_roles: ['producer'] }
+        : { ...r, industry_roles: [], roles: [] }
+    )
+    const { session, service } = makeClients(rows)
+    const out = await loadDiscoverResults(
+      session as never,
+      service as never,
+      'me',
+      { ...BASE_FILTERS, role: 'producer' },
+      null,
+      20
+    )
+
+    expect(out.results.map(r => r.id)).toEqual(['p000', 'p001', 'p002'])
+    // 30 rows < queryLimit (101) → all candidates examined, nothing more to page.
     expect(out.nextCursor).toBeNull()
   })
 })

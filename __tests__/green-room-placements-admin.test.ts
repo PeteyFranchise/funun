@@ -122,4 +122,72 @@ describe('isDestinationVisible', () => {
     await expect(isDestinationVisible(service as never, 'external', null, 'https://ok.example')).resolves.toBe(true)
     await expect(isDestinationVisible(service as never, 'external', null, 'ftp://x')).resolves.toBe(false)
   })
+
+  // Routed chainable mock: resolves .maybeSingle() to a per-table row, and
+  // supports the arbitrary .eq()/.is() chains the different destination checks
+  // build. Returns null for any table not seeded.
+  function routedService(rowsByTable: Record<string, unknown>) {
+    const chain = (table: string) => {
+      const b: Record<string, unknown> = {}
+      b.select = () => b
+      b.eq = () => b
+      b.is = () => b
+      b.maybeSingle = async () => ({ data: rowsByTable[table] ?? null })
+      return b
+    }
+    return { from: jest.fn((t: string) => chain(t)) }
+  }
+
+  it('passes for a public project destination and fails for a private one', async () => {
+    await expect(
+      isDestinationVisible(routedService({ vault_projects: { id: UUID } }) as never, 'project', UUID, null)
+    ).resolves.toBe(true)
+    await expect(
+      isDestinationVisible(routedService({}) as never, 'project', UUID, null)
+    ).resolves.toBe(false)
+  })
+
+  it('resolves a track through its parent project visibility', async () => {
+    // track exists → parent project public
+    await expect(
+      isDestinationVisible(
+        routedService({ tracks: { project_id: 'proj-1' }, vault_projects: { id: 'proj-1' } }) as never,
+        'track',
+        UUID,
+        null
+      )
+    ).resolves.toBe(true)
+    // track exists → parent project NOT public
+    await expect(
+      isDestinationVisible(routedService({ tracks: { project_id: 'proj-1' } }) as never, 'track', UUID, null)
+    ).resolves.toBe(false)
+    // track missing entirely
+    await expect(
+      isDestinationVisible(routedService({}) as never, 'track', UUID, null)
+    ).resolves.toBe(false)
+  })
+
+  it('passes only for an active opportunity destination', async () => {
+    await expect(
+      isDestinationVisible(routedService({ opportunities: { id: UUID } }) as never, 'opportunity', UUID, null)
+    ).resolves.toBe(true)
+    await expect(
+      isDestinationVisible(routedService({}) as never, 'opportunity', UUID, null)
+    ).resolves.toBe(false)
+  })
+
+  it('passes only for a published/visible/public post destination', async () => {
+    await expect(
+      isDestinationVisible(routedService({ green_room_posts: { id: UUID } }) as never, 'post', UUID, null)
+    ).resolves.toBe(true)
+    await expect(
+      isDestinationVisible(routedService({}) as never, 'post', UUID, null)
+    ).resolves.toBe(false)
+  })
+
+  it('returns false for a null internal destination id', async () => {
+    await expect(
+      isDestinationVisible(routedService({}) as never, 'profile', null, null)
+    ).resolves.toBe(false)
+  })
 })

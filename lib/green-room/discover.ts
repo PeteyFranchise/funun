@@ -191,6 +191,27 @@ export function deriveRelationship(
   return 'outside_network'
 }
 
+// Which actions a viewer may take on a result card, derived purely from the
+// relationship. Message is offered for everyone except your own card; Follow
+// is offered only for people outside your graph (you already follow/connect
+// with the others, and you cannot follow yourself). Extracted here so the
+// gating is unit-verifiable rather than buried inline in the component.
+export type PersonActionFlags = {
+  canMessage: boolean
+  canFollow: boolean
+  alreadyFollowing: boolean
+}
+
+export function personActionFlags(
+  relationship: GreenRoomPersonResult['relationship']
+): PersonActionFlags {
+  return {
+    canMessage: relationship !== 'self',
+    canFollow: relationship === 'outside_network',
+    alreadyFollowing: relationship === 'following',
+  }
+}
+
 function roleLabelsFromRow(row: DiscoverProfileRow): string[] {
   const labels: string[] = []
   const roles = Array.isArray(row.roles) ? (row.roles as ProfileRole[]) : []

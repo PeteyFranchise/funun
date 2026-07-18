@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { GreenRoomPersonResult } from '@/lib/green-room/discover'
+import { personActionFlags, type GreenRoomPersonResult } from '@/lib/green-room/discover'
 import { OPEN_TO_VALUES } from '@/types'
 
 // ─── People Search / Discover (Plan 12-09) ───────────────────────────────
@@ -275,10 +275,9 @@ function FilterSelect({
 }
 
 function PersonCard({ person }: { person: GreenRoomPersonResult }) {
-  const [following, setFollowing] = useState(person.relationship === 'following')
+  const { canMessage, canFollow, alreadyFollowing } = personActionFlags(person.relationship)
+  const [following, setFollowing] = useState(alreadyFollowing)
   const [followBusy, setFollowBusy] = useState(false)
-  const canFollow = person.relationship === 'outside_network'
-  const canMessage = person.relationship !== 'self'
 
   async function follow() {
     if (followBusy || following) return
