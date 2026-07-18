@@ -312,14 +312,23 @@ export async function isDestinationVisible(
   if (destinationType === 'post') {
     const { data } = await service
       .from('green_room_posts')
-      .select('id')
+      .select('id, author_id')
       .eq('id', destinationId)
       .eq('status', 'published')
       .eq('moderation_status', 'visible')
       .eq('visibility', 'public')
       .is('deleted_at', null)
       .maybeSingle()
-    return !!data
+    const authorId = (data as { author_id?: string } | null)?.author_id
+    if (!authorId) return false
+
+    const { data: author } = await service
+      .from('artist_profiles')
+      .select('id')
+      .eq('id', authorId)
+      .eq('is_public', true)
+      .maybeSingle()
+    return !!author
   }
 
   return false

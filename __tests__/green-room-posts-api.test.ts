@@ -211,6 +211,31 @@ describe('createGreenRoomPost linked object publishing checks', () => {
     })
   })
 
+  it('rejects a linked track when its parent project is private', async () => {
+    const trackQuery = chain({ data: { id: 'track-1', user_id: 'user-1', project_id: 'project-1' }, error: null })
+    const projectQuery = chain({ data: { id: 'project-1', user_id: 'user-1', is_public: false }, error: null })
+    const from = jest.fn((table: string) => {
+      if (table === 'tracks') return trackQuery
+      if (table === 'vault_projects') return projectQuery
+      if (table === 'green_room_posts') throw new Error('Post insert should not run')
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    const result = await createGreenRoomPostActual({ from } as never, 'user-1', {
+      postType: 'release_announcement',
+      body: 'Track preview',
+      linkedObject: { type: 'track', id: 'track-1' },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Linked track project must be public before publishing',
+      status: 400,
+    })
+    expect(projectQuery.eq).toHaveBeenCalledWith('id', 'project-1')
+    expect(projectQuery.eq).toHaveBeenCalledWith('user_id', 'user-1')
+  })
+
   it('allows draft posts to reference an unverified linked object without publishing it', async () => {
     const inserted = {
       id: 'post-1',

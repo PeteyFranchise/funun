@@ -133,9 +133,10 @@ describe('clampDiscoverLimit', () => {
 
 describe('cursor', () => {
   it('round-trips and rejects garbage', () => {
-    const c = { createdAt: '2026-07-10T00:00:00.000Z', id: 'abc' }
+    const c = { createdAt: '2026-07-10T00:00:00.000Z', id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }
     expect(parseDiscoverCursor(encodeDiscoverCursor(c))).toEqual(c)
     expect(parseDiscoverCursor('not-a-cursor')).toBeNull()
+    expect(parseDiscoverCursor(encodeDiscoverCursor({ ...c, id: 'not-a-uuid' }))).toBeNull()
   })
 })
 
@@ -330,7 +331,7 @@ describe('loadDiscoverResults', () => {
   function pageRows(count: number) {
     return Array.from({ length: count }, (_, i) =>
       profileRow({
-        id: `p${String(i).padStart(3, '0')}`,
+        id: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`,
         // strictly-decreasing created_at so keyset order is deterministic
         created_at: new Date(Date.UTC(2026, 0, 1, 0, 0, count - i)).toISOString(),
       })
@@ -346,9 +347,9 @@ describe('loadDiscoverResults', () => {
     expect(out.results).toHaveLength(20)
     expect(out.nextCursor).not.toBeNull()
     const decoded = parseDiscoverCursor(out.nextCursor as string)
-    // cursor must point at the 20th returned row (id p019), not the 21st raw row,
+    // cursor must point at the 20th returned row, not the 21st raw row,
     // so the next page resumes strictly after what was shown — no skip, no dupe.
-    expect(decoded?.id).toBe('p019')
+    expect(decoded?.id).toBe('00000000-0000-0000-0000-000000000019')
   })
 
   it('returns no nextCursor when the last page is not full', async () => {
@@ -379,7 +380,11 @@ describe('loadDiscoverResults', () => {
       20
     )
 
-    expect(out.results.map(r => r.id)).toEqual(['p000', 'p001', 'p002'])
+    expect(out.results.map(r => r.id)).toEqual([
+      '00000000-0000-0000-0000-000000000000',
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+    ])
     // 30 rows < queryLimit (101) → all candidates examined, nothing more to page.
     expect(out.nextCursor).toBeNull()
   })

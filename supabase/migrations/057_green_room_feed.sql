@@ -200,6 +200,11 @@ AS $$
           p.status = 'published'
           AND p.published_at IS NOT NULL
           AND public.no_block(p_viewer, p.author_id)
+          AND EXISTS (
+            SELECT 1 FROM public.artist_profiles ap
+            WHERE ap.id = p.author_id
+              AND ap.is_public = true
+          )
           AND (
             p.visibility = 'public'
             OR (
@@ -237,7 +242,7 @@ GRANT EXECUTE ON FUNCTION public.green_room_post_matches_custom_audience(uuid, u
 GRANT EXECUTE ON FUNCTION public.green_room_can_view_post(uuid, uuid) TO authenticated;
 
 COMMENT ON FUNCTION public.green_room_can_view_post(uuid, uuid) IS
-  'Returns true when a viewer may read a Green Room post. Enforces draft privacy, published visibility, custom audiences, moderation state, deletes, and bidirectional blocks.';
+  'Returns true when a viewer may read a Green Room post. Enforces draft privacy, author publicness for non-owner reads, published visibility, custom audiences, moderation state, deletes, and bidirectional blocks.';
 
 -- ─── Comments ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS green_room_comments (
@@ -491,4 +496,3 @@ REVOKE INSERT, UPDATE, DELETE ON green_room_placements FROM authenticated, anon;
 
 COMMENT ON TABLE green_room_placements IS
   'Admin-curated Green Room placements. These are labeled featured/sponsored/partner/program/opportunity cards, not self-serve ads or billing surfaces.';
-

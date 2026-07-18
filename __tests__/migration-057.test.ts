@@ -5,6 +5,10 @@ const migration = readFileSync(
   path.join(process.cwd(), 'supabase/migrations/057_green_room_feed.sql'),
   'utf8'
 )
+const authorPublicnessMigration = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/059_green_room_feed_author_publicness.sql'),
+  'utf8'
+)
 
 describe('migration 057 — Green Room feed schema', () => {
   it('creates separate tables for posts, audiences, comments, reactions, reposts, and placements', () => {
@@ -38,8 +42,15 @@ describe('migration 057 — visibility and block enforcement', () => {
     expect(migration).toContain('CREATE OR REPLACE FUNCTION public.green_room_can_view_post')
     expect(migration).toContain('SECURITY DEFINER')
     expect(migration).toContain('public.no_block(p_viewer, p.author_id)')
+    expect(migration).toMatch(/FROM public\.artist_profiles ap[\s\S]*ap\.id = p\.author_id[\s\S]*ap\.is_public = true/)
     expect(migration).toContain("p.status = 'published'")
     expect(migration).toContain('p.author_id = p_viewer')
+  })
+
+  it('ships a forward migration for live databases that already applied 057', () => {
+    expect(authorPublicnessMigration).toContain('CREATE OR REPLACE FUNCTION public.green_room_can_view_post')
+    expect(authorPublicnessMigration).toMatch(/FROM public\.artist_profiles ap[\s\S]*ap\.id = p\.author_id[\s\S]*ap\.is_public = true/)
+    expect(authorPublicnessMigration).toContain('GRANT EXECUTE ON FUNCTION public.green_room_can_view_post(uuid, uuid) TO authenticated')
   })
 
   it('enforces followers, connections, and custom audience visibility server-side', () => {
@@ -77,4 +88,3 @@ describe('migration 057 — interactions and placement safeguards', () => {
     expect(migration).toContain('REVOKE INSERT, UPDATE, DELETE ON green_room_placements FROM authenticated, anon')
   })
 })
-

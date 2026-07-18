@@ -12,6 +12,7 @@ import { industryRoleLabel } from '@/lib/industry-roles'
 
 export const GREEN_ROOM_FEED_PAGE_SIZE = 20
 export const GREEN_ROOM_FEED_MAX_LIMIT = 50
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export type GreenRoomFeedCursor = {
   publishedAt: string
@@ -84,6 +85,7 @@ type AuthorRow = {
   avatar_url: string | null
   roles: unknown
   industry_roles: string[] | null
+  is_public: boolean | null
 }
 
 type PlacementRow = {
@@ -126,8 +128,9 @@ export function parseFeedCursor(value: string): GreenRoomFeedCursor | null {
   try {
     const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Record<string, unknown>
     if (typeof parsed.publishedAt !== 'string' || typeof parsed.id !== 'string') return null
-    if (Number.isNaN(new Date(parsed.publishedAt).getTime())) return null
-    return { publishedAt: parsed.publishedAt, id: parsed.id }
+    const publishedAt = new Date(parsed.publishedAt)
+    if (Number.isNaN(publishedAt.getTime()) || !UUID_RE.test(parsed.id)) return null
+    return { publishedAt: publishedAt.toISOString(), id: parsed.id }
   } catch {
     return null
   }
@@ -183,8 +186,9 @@ export async function loadGreenRoomFeed(
   const relationships = await loadRelationships(supabase, viewerId)
   const rawPosts = await loadVisiblePosts(supabase, options, relationships, limit)
   const filteredPosts = filterPostsForTab(rawPosts, viewerId, relationships, options.tab)
-  const pagePosts = filteredPosts.slice(0, limit)
-  const authors = await loadAuthors(supabase, pagePosts.map(post => post.author_id))
+  const candidatePosts = filteredPosts.slice(0, limit)
+  const authors = await loadAuthors(supabase, candidatePosts.map(post => post.author_id))
+  const pagePosts = candidatePosts.filter(post => post.author_id === viewerId || authors.has(post.author_id))
   const counts = await loadInteractionCounts(supabase, viewerId, pagePosts.map(post => post.id))
   const postCards = pagePosts.map(post =>
     toPostCard(post, viewerId, relationships, authors.get(post.author_id), counts)
@@ -278,8 +282,9 @@ async function loadAuthors(supabase: SupabaseClient, authorIds: string[]): Promi
 
   const { data, error } = await supabase
     .from('artist_profiles')
-    .select('id, artist_name, handle, avatar_url, roles, industry_roles')
+    .select('id, artist_name, handle, avatar_url, roles, industry_roles, is_public')
     .in('id', ids)
+    .eq('is_public', true)
 
   if (error) throw new Error(`Failed to load Green Room authors: ${error.message}`)
   return new Map(((data ?? []) as AuthorRow[]).map(row => [row.id, row]))
