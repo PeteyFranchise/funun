@@ -286,29 +286,34 @@ Plans:
 ### Phase 16: GTM Beta Launch & Buyer Portal
 
 **Goal:** Build the product foundation for founder-led sync buyer deals: a specialized buyer account/portal, structured license requests, safe buyer discovery/request entry points, admin deal workflow, Contract Locker/e-sign handoff, and metrics that validate whether the GTM motion is repeatable.
-**Requirements**: TBD (planning source: `.planning/phases/16-gtm-beta-buyer-portal/16-CONTEXT.md` decisions D-01 through D-10)
-**Depends on:** Phase 13 for broad buyer visibility and trust/safety enforcement; Phase 15 capability model as precedent for specialized account capabilities. Invite-only/founder-assisted beta work can be planned before full broad rollout if privacy gates are explicit.
-**Plans:** 0/5 executed; 5/5 drafted
+**Requirements**: BUYER-01..07 · DEAL-01..07 · PORTAL-01..05 · ARTIST-01,02 · ADMIN-01..03 · MONEY-01..03 · PAPER-01..04 · DELIVERY-01 · METRICS-01,02 (34 IDs; registered in REQUIREMENTS.md by plan 16-10, planning source: `16-CONTEXT.md` decisions D-01 through D-20)
+**Depends on:** Phase 13 for broad buyer visibility and trust/safety enforcement (shipped 2026-07-18 — prerequisite satisfied); Phase 15 capability model as precedent only (D-11 deliberately does NOT use it). Phase 14 export pack is reused unchanged for buyer delivery.
+**Plans:** 0/10 executed; 10/10 drafted (replanned 2026-07-18 after the discuss-phase session locked D-11..D-20; supersedes the earlier 5-plan draft)
 
-**Wave 1**
+**Wave 1** *(schema + contracts — parallel, disjoint files)*
 
-- [ ] 16-01-PLAN.md — buyer identity, capability, verification model, and permission tiers
+- [ ] 16-01-PLAN.md — buyer org/member schema, `handle_new_user` buyer early-return branch, permission tiers (migration 062, human-gated push)
+- [ ] 16-02-PLAN.md — `license_requests`/`license_request_tracks`/`project_license_terms` schema, sync-license document type, matching + commission logic (migration 063, human-gated push)
 
-**Wave 2** *(blocked on Wave 1)*
+**Wave 2** *(account/org machinery + artist surfaces)*
 
-- [ ] 16-02-PLAN.md — `license_requests` schema, lifecycle states, buyer/admin API route plan, and privacy doctrine
+- [ ] 16-03-PLAN.md — admin-created buyer orgs, org-admin employee invites, buyer portal gate + access landing
+- [ ] 16-04-PLAN.md — artist pre-cleared terms (Marmoset five) settings and the artist Deals room
 
-**Wave 3** *(blocked on Wave 2)*
+**Wave 3** *(portal surfaces + deal pipeline)*
 
-- [ ] 16-03-PLAN.md — buyer portal MVP, request composer, request status dashboard, and safe "Request License" entry points
+- [ ] 16-05-PLAN.md — filtered rights-ready catalog browse + org-shared shortlists (migration 064, human-gated push)
+- [ ] 16-06-PLAN.md — request composer with server-side pre-cleared matching + org request dashboard
+- [ ] 16-07-PLAN.md — admin negotiation queue, deal-stage machine, commission economics, manual intake
 
-**Wave 4** *(blocked on Wave 3)*
+**Wave 4** *(external integrations — credential-gated)*
 
-- [ ] 16-04-PLAN.md — deal room/admin workflow, Contract Locker handoff, and e-sign provider decision checkpoint
+- [ ] 16-08-PLAN.md — Stripe Connect Express payouts, buyer Checkout destination split, Stripe webhook (migration 065, human-gated push)
+- [ ] 16-09-PLAN.md — SignWell embedded e-sign adapter, sync-license PDF, Contract Locker handoff, docs rewrite
 
-**Wave 5** *(blocked on Wave 4)*
+**Wave 5** *(delivery + instrumentation)*
 
-- [ ] 16-05-PLAN.md — GTM beta metrics, enablement artifacts, and rollout gates for broader outreach/AE hiring
+- [ ] 16-10-PLAN.md — export-pack delivery unlock, GTM beta metrics dashboard, requirements registration
 
 **Planning note:** The external GTM plan's Tally/Typeform bridge is intentionally reframed here. Manual intake may exist only as a temporary founder/admin fallback that writes into the same product tables and workflows. The default product direction is an integrated buyer portal with specialized sync-buyer accounts, not a long-lived external form sidecar.
 
