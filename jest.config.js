@@ -2,6 +2,11 @@
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/.next/',
+    '/.claude/worktrees/',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
