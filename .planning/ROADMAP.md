@@ -7,6 +7,7 @@
 - 🚧 **v1.2 — Wave 4: The Green Room** — Phases 8–13 (in progress)
 - 🚧 **v1.2 — Sound Vault: Playback Room Refinement** — Phase 14 (in progress; cross-domain addition, tracked alongside v1.2 for scheduling purposes only — this is Wave 1 Sound Vault work, not a Green Room networking feature)
 - ✅ **v1.2 — Account Capability Model** — Phase 15 (shipped 2026-07-12; cross-cutting identity change, tracked alongside v1.2 for scheduling only — not part of the Green Room feature set)
+- 📝 **v1.3 — GTM Beta Launch & Buyer Portal** — Phase 16 (planned 2026-07-18; integrated sync-buyer portal, license-request workflow, deal room, and GTM metrics)
 
 ## Phases
 
@@ -55,6 +56,12 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Cross-cutting identity change — not part of The Green Room feature set.** Surfaced during a discussion about the artist/industry account split: today `member_type` is a single exclusive value set at account creation, so one login can never hold both artist and industry capabilities. Replaced with a `capability_grants` table (D-01/D-02) and a unified, capability-aware nav (D-05/D-08); the artist→instant / industry→admin-approved asymmetric gate (D-02) plus the in-app approval queue (D-03) closed the loop.
 
 - [x] **Phase 15: Account Capability Model** - Replace the single `member_type` value with multiple capability grants on one account (4/4 plans executed 2026-07-12)
+
+### 📝 v1.3 — GTM Beta Launch & Buyer Portal (Planned)
+
+**Milestone Goal:** Turn the external GTM/business plan into a product-backed beta launch motion. Phase 16 creates the buyer-side pathway for Hook-style sync buyers to discover rights-ready catalog, submit structured license requests, track request status, and move through a founder/admin deal workflow that links back to Sound Vault, Contract Locker, and e-sign state.
+
+- [ ] **Phase 16: GTM Beta Launch & Buyer Portal** - Specialized sync-buyer account/portal planning, first-class `license_requests`, safe "Request License" entry points, deal-room/admin workflow, Contract Locker/e-sign handoff, and GTM beta metrics.
 
 ## Phase Details
 
@@ -269,6 +276,35 @@ Plans:
 - [x] 15-03-PLAN.md — unified capability-aware ArtistNav (D-05/D-08), (industry) layout retirement + route relocation (D-06/D-07), D-09 footer request CTA (depends on 15-02's /api/capabilities/request route)
 - [x] 15-04-PLAN.md — admin capability-requests approval queue page + component (D-03/D-11)
 
+### Phase 16: GTM Beta Launch & Buyer Portal
+
+**Goal:** Build the product foundation for founder-led sync buyer deals: a specialized buyer account/portal, structured license requests, safe buyer discovery/request entry points, admin deal workflow, Contract Locker/e-sign handoff, and metrics that validate whether the GTM motion is repeatable.
+**Requirements**: TBD (planning source: `.planning/phases/16-gtm-beta-buyer-portal/16-CONTEXT.md` decisions D-01 through D-10)
+**Depends on:** Phase 13 for broad buyer visibility and trust/safety enforcement; Phase 15 capability model as precedent for specialized account capabilities. Invite-only/founder-assisted beta work can be planned before full broad rollout if privacy gates are explicit.
+**Plans:** 0/5 executed; 5/5 drafted
+
+**Wave 1**
+
+- [ ] 16-01-PLAN.md — buyer identity, capability, verification model, and permission tiers
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 16-02-PLAN.md — `license_requests` schema, lifecycle states, buyer/admin API route plan, and privacy doctrine
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 16-03-PLAN.md — buyer portal MVP, request composer, request status dashboard, and safe "Request License" entry points
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 16-04-PLAN.md — deal room/admin workflow, Contract Locker handoff, and e-sign provider decision checkpoint
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 16-05-PLAN.md — GTM beta metrics, enablement artifacts, and rollout gates for broader outreach/AE hiring
+
+**Planning note:** The external GTM plan's Tally/Typeform bridge is intentionally reframed here. Manual intake may exist only as a temporary founder/admin fallback that writes into the same product tables and workflows. The default product direction is an integrated buyer portal with specialized sync-buyer accounts, not a long-lived external form sidecar.
+
 ## Future Roadmap Candidates
 
 ### Contract Locker Intelligence & Deal Audit
@@ -307,3 +343,4 @@ Plans:
 | 13. Network Tab & Trust & Safety | v1.2 | 0/5 | Planned | Docs-only plan set drafted 2026-07-15 |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
+| 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |
