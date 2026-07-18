@@ -4,15 +4,15 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
-status: phase-13-complete
-stopped_at: Phases 12+13 formally closed (UAT waived by owner, recorded in 12-BROWSER-UAT-CHECKLIST.md + 13-VERIFICATION.md); PR #37 merged to main (1db5fbf); migrations 058-061 live
-last_updated: "2026-07-18T21:50:00.000Z"
+status: board-clear
+stopped_at: All phases 1-15 closed (10 was already UAT-passed, checkbox stale; 11/12/13/14 UAT waived by owner 2026-07-18). PR #37 merged to main (1db5fbf); migrations 058-061 live. Only Phase 16 (v1.3 GTM buyer portal) remains — planned, not started.
+last_updated: "2026-07-18T22:00:00.000Z"
 last_activity: 2026-07-18
-last_activity_desc: PR #37 merged; phases 12/13 closed via owner UAT waiver
+last_activity_desc: Board cleared — phases 10/14 closed; only Phase 16 open
 progress:
   # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
   total_phases: 16
-  completed_phases: 13
+  completed_phases: 15
   total_plans: 44
   completed_plans: 39
   percent: 89

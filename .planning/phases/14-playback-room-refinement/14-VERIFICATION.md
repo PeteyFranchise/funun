@@ -1,7 +1,8 @@
 ---
 phase: 14-playback-room-refinement
 verified: 2026-07-07T02:30:00Z
-status: human_needed
+status: complete_by_owner_waiver
+waiver: "2026-07-18 — owner directed the human_verification items be treated as successful without execution; see 14-UAT.md waiver record. Items remain unexecuted."
 score: 15/15
 behavior_unverified: 0
 overrides_applied: 0

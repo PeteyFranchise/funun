@@ -40,8 +40,8 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [x] **Phase 8: Identity & Schema Foundation** - Extend the member-identity table and stand up the connection/block/notification/presence schema with column-privilege and block-enforcement guarantees baked in (completed 2026-07-05)
 - [x] **Phase 9: Rich Member Profile** - Ship the hi-fi hero profile (banner, avatar, role badges, "Open to" chips, stats, releases grid, Featured spotlight) with owner-vs-public view switching and image upload (completed 2026-07-12)
-- [ ] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel (all 6 plans executed; pending human UAT — /gsd-verify-work 10)
-- [x] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected (implementation complete 2026-07-13; human UAT pending)
+- [x] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel (UAT passed 2026-07-13, 16/16 truths — checkbox was stale; corrected 2026-07-18)
+- [x] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected (implementation complete 2026-07-13; human UAT waived by owner 2026-07-18)
 - [x] **Phase 12: Discovery, Feed & People Search** - Green Room feed plus global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion (goal-verified 21/21 2026-07-18; browser UAT waived by owner — see 12-BROWSER-UAT-CHECKLIST.md waiver record)
 - [x] **Phase 13: Network Tab & Trust & Safety** - Network tab (follows/connections/pending), hard bidirectional block, member/message reporting, admin verified-badge grant, and profile visibility controls (completed 2026-07-18)
 
@@ -49,7 +49,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Not part of The Green Room milestone theme.** Surfaced during Phase 9 discussion: the private artist-facing Playback room (`playback.html` design — tracklist editing, WAV/stems upload, credits & splits editing, metadata editing) is existing Wave 1 Sound Vault functionality (`app/(artist)/vault/[projectId]/play/page.tsx`, `components/vault/PlaybackView.tsx`) that needs its own refinement pass, separate from Phase 9's public-player split work.
 
-- [ ] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) — scope TBD pending discussion (execution complete 2026-07-06; awaiting UAT — see 14-UAT.md)
+- [x] **Phase 14: Playback Room Refinement** - Polish the private Playback room and ship "Export pack" (bundling metadata/stems/master/MP3 for a music supervisor) (execution complete 2026-07-06; UAT waived by owner 2026-07-18 — see 14-UAT.md waiver record; HOBBY-1 large-upload check is the notable residual risk)
 
 ### ✅ Account Capability Model (Complete)
 
