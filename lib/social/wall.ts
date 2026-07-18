@@ -8,8 +8,24 @@ function roleLabel(roles: unknown): string | null {
   return r.kind === 'preset' ? PROFILE_ROLE_LABELS[r.slug] : r.label
 }
 
-/** Load a profile's wall posts with their authors' display identities. */
-export async function loadWall(supabase: SupabaseClient, profileId: string): Promise<WallPostView[]> {
+/**
+ * Load a profile's wall posts with their authors' display identities.
+ *
+ * `blockedIds` (13-03 hard-block-enforcement audit): wall_posts_select_all
+ * (migration 012) is `USING (true)` — no no_block() wiring at the RLS layer
+ * for reads, unlike the INSERT policy (migration 038). A pre-existing wall
+ * post from someone the viewer has blocked (or who has blocked the viewer)
+ * would otherwise still render here even though NEW posts across that pair
+ * are already rejected at INSERT. Filtering by the viewer's own bidirectional
+ * blocked-id set (lib/green-room/discover.ts's loadBlockedIds) closes that
+ * read-side gap without a migration. Defaults to an empty set so existing
+ * callers that don't pass one are unaffected (no filtering, same as before).
+ */
+export async function loadWall(
+  supabase: SupabaseClient,
+  profileId: string,
+  blockedIds: Set<string> = new Set()
+): Promise<WallPostView[]> {
   const { data: posts } = await supabase
     .from('wall_posts')
     .select('id, body, created_at, author_id')
@@ -17,7 +33,9 @@ export async function loadWall(supabase: SupabaseClient, profileId: string): Pro
     .order('created_at', { ascending: false })
     .limit(50)
 
-  const rows = (posts ?? []) as { id: string; body: string; created_at: string; author_id: string }[]
+  const rows = ((posts ?? []) as { id: string; body: string; created_at: string; author_id: string }[]).filter(
+    p => !blockedIds.has(p.author_id)
+  )
   if (rows.length === 0) return []
 
   const authorIds = Array.from(new Set(rows.map(p => p.author_id)))

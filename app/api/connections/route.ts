@@ -6,6 +6,7 @@ import {
   buildConnectionAcceptedNotification,
 } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
+import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const ACTIVE_CONNECTION_STATUSES = ['pending', 'accepted']
@@ -52,6 +53,17 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === addresseeId) {
     return NextResponse.json({ error: 'You cannot send a connection request to yourself.' }, { status: 400 })
+  }
+
+  // 13-03 hard-block-enforcement audit: connections_insert_own RLS
+  // (migration 044) already appends a no_block() check, but a raw RLS
+  // rejection surfaces a distinguishable Postgres error shape. Pre-check and
+  // return the same generic, block-state-agnostic error any other rejected
+  // request would get — checked BEFORE the existingActive precheck below so
+  // a blocked pair never even reaches that (equally generic) 409 path.
+  const service = createServiceClient()
+  if (await isBlockedRelativeTo(service, user.id, addresseeId)) {
+    return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
   }
 
   // Build the INSERT payload (trims/validates the note; may throw on a 200+
@@ -110,7 +122,6 @@ export async function POST(request: Request) {
   // request already succeeded. Recipient is the addressee (server-derived).
   try {
     const actor = await loadActor(supabase, user.id)
-    const service = createServiceClient()
     const notif = buildConnectionRequestNotification({
       recipientId: addresseeId,
       actorId: user.id,

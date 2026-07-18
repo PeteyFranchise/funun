@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildEndorsementNotification } from '@/lib/social/notifications'
+import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -26,6 +27,16 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === profileId) return NextResponse.json({ error: 'You cannot endorse yourself' }, { status: 400 })
 
+  // 13-03 hard-block-enforcement audit: endo_insert_author RLS (migration
+  // 038) already rejects this INSERT across a block, but a raw RLS
+  // rejection surfaces a distinguishable Postgres error shape. Pre-check
+  // and return the same generic, block-state-agnostic error any other
+  // rejected endorsement would get.
+  const service = createServiceClient()
+  if (await isBlockedRelativeTo(service, user.id, profileId)) {
+    return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+  }
+
   const { data, error } = await supabase
     .from('endorsements')
     .upsert(
@@ -45,7 +56,6 @@ export async function POST(request: Request) {
       supabase.from('artist_profiles').select('artist_name, avatar_url').eq('id', user.id).maybeSingle(),
       supabase.from('artist_profiles').select('handle').eq('id', profileId).maybeSingle(),
     ])
-    const service = createServiceClient()
     await createNotification(
       service,
       buildEndorsementNotification({

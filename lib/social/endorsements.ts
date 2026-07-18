@@ -8,11 +8,23 @@ function roleLabel(roles: unknown): string | null {
   return r.kind === 'preset' ? PROFILE_ROLE_LABELS[r.slug] : r.label
 }
 
-/** Load endorsements with author identities, and whether the viewer endorsed. */
+/**
+ * Load endorsements with author identities, and whether the viewer endorsed.
+ *
+ * `blockedIds` (13-03 hard-block-enforcement audit): endo_select_all
+ * (migration 012) is `USING (true)` — no no_block() read-side filtering,
+ * unlike the INSERT policy (migration 038). Filters out endorsements
+ * authored by anyone in the viewer's bidirectional blocked-id set
+ * (lib/green-room/discover.ts's loadBlockedIds) so a pre-existing
+ * endorsement from a now-blocked pair doesn't keep rendering. Computed from
+ * the UNFILTERED rows for `viewerHasEndorsed` — that flag only ever reads
+ * the viewer's OWN row, which can never be in its own blocked-id set.
+ */
 export async function loadEndorsements(
   supabase: SupabaseClient,
   profileId: string,
-  viewerId: string | null
+  viewerId: string | null,
+  blockedIds: Set<string> = new Set()
 ): Promise<{ items: EndorsementView[]; viewerHasEndorsed: boolean }> {
   const { data } = await supabase
     .from('endorsements')
@@ -21,8 +33,9 @@ export async function loadEndorsements(
     .order('created_at', { ascending: false })
     .limit(50)
 
-  const rows = (data ?? []) as { id: string; body: string; created_at: string; author_id: string }[]
-  const viewerHasEndorsed = viewerId ? rows.some(r => r.author_id === viewerId) : false
+  const allRows = (data ?? []) as { id: string; body: string; created_at: string; author_id: string }[]
+  const viewerHasEndorsed = viewerId ? allRows.some(r => r.author_id === viewerId) : false
+  const rows = allRows.filter(r => !blockedIds.has(r.author_id))
   if (rows.length === 0) return { items: [], viewerHasEndorsed }
 
   const authorIds = Array.from(new Set(rows.map(r => r.author_id)))

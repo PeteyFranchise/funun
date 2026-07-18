@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
@@ -14,6 +14,7 @@ import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
+import { loadBlockedIds } from '@/lib/green-room/discover'
 import {
   isProfileVisibleTo,
   isOpenToVisibleTo,
@@ -159,6 +160,22 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     } = await supabase.auth.getUser()
     const viewerId = viewerUser?.id ?? null
 
+    // ── SAFETY-01: hard block enforcement (13-03 audit) ──────────────────
+    // A block in EITHER direction between the viewer and this profile must
+    // render the exact same notFound() as a nonexistent/private profile — no
+    // distinguishable "you are blocked" state. loadBlockedIds (session read
+    // scoped to blocks_select_own, unioned server-side via the SERVICE
+    // client so it also sees blocks placed against the viewer) is reused
+    // verbatim from lib/green-room/discover.ts rather than re-derived here —
+    // the same bidirectional-exclusion doctrine People Search already
+    // enforces. Runs before every other query below (connections, wall,
+    // endorsements, comments, activity) so a blocked pair's profile visit
+    // never fetches — or exposes via timing — any of that data. blockedIds
+    // is also reused further down to filter wall/endorsement/comment
+    // authors the viewer is blocked with, independent of the profile owner.
+    const blockedIds = viewerId ? await loadBlockedIds(createServiceClient(), viewerId) : new Set<string>()
+    if (blockedIds.has(profile.id)) notFound()
+
     // Derive connect state from the connections table for the viewer<->profile
     // pair. connections_select_participant RLS (migration 035) returns only
     // rows the viewer participates in, so a forged .or() filter can never
@@ -261,10 +278,10 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       ownerName: profile.artist_name ?? 'this artist',
       canPost: Boolean(viewerId),
       viewerInitials: '',
-      posts: await loadWall(supabase, profile.id),
+      posts: await loadWall(supabase, profile.id, blockedIds),
     }
 
-    const endo = await loadEndorsements(supabase, profile.id, viewerId)
+    const endo = await loadEndorsements(supabase, profile.id, viewerId, blockedIds)
     endorsements = {
       profileUserId: profile.id,
       ownerName: profile.artist_name ?? 'this artist',
@@ -283,7 +300,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         releaseTitle: featProj.title,
         canComment: Boolean(viewerId),
         viewerInitials: '',
-        items: await loadReleaseComments(supabase, featProj.id),
+        items: await loadReleaseComments(supabase, featProj.id, blockedIds),
       }
     }
 
