@@ -7,6 +7,13 @@ import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { sanitizeProfileRoles, filterOpenTo, isFeaturableProjectRow } from '@/lib/profile/validate'
 
+// Mass-assignment allowlist. Deliberately EXCLUDES `verified`, `verified_at`,
+// `verified_by` (SAFETY-03 — admin-only, see app/api/admin/verification/
+// [id]/route.ts) and `profile_visibility`/`open_to_visibility` (SAFETY-04 —
+// owner-writable, but only via the dedicated app/api/profile/visibility
+// route per migration 058's no-authenticated-UPDATE-grant design). Any of
+// these keys present in a PATCH body here are silently ignored — the loop
+// below only ever reads keys that are IN this array.
 const EDITABLE_FIELDS = [
   'artist_name',
   'genre',
