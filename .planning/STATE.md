@@ -6,14 +6,14 @@ current_phase: 13
 current_phase_name: network-trust-safety
 status: executing
 stopped_at: Completed 13-01-PLAN.md (trust/safety contracts + migration 058 drafted)
-last_updated: "2026-07-18T16:32:17.059Z"
+last_updated: "2026-07-18T17:14:22.373Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 86
-  completed_plans: 77
+  completed_plans: 78
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 13 (network-trust-safety) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
@@ -110,6 +110,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 11 P06 | 8min | 2 tasks | 5 files |
 | Phase 11 Review Fix | codex follow-up | 7 findings fixed | 8 files |
 | Phase 13 P01 | 16min | 2 tasks | 4 files |
+| Phase 13 P02 | 40min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10 UAT]: Live-backend UAT completed 2026-07-13; 8/8 checks passed after fixing FollowButton's ghost styling and replacing notification pagination's created_at-only cursor with a compound created_at/id cursor for same-timestamp rows
 - [Phase 10 WR-04]: PATCH /api/connections now filters transition updates with `status = 'pending'`, so double-submit/retry on an already accepted/declined/withdrawn row returns 404 and cannot emit duplicate `connection_accepted` notifications
 - [Phase 13-01]: Trust/safety contracts + migration 058 drafted: reports table private-by-default with server-owned writes (mirrors migration 056); verification_audit_log admin-only via zero-policy RLS; profile_visibility/open_to_visibility additive columns
+- [Phase ?]: 13-02: Added a scoped POST/DELETE /api/network/blocks endpoint so the Network tab's Block/unblock acceptance criterion is real, not UI-only; 13-03 should build on it rather than duplicate it.
+- [Phase ?]: 13-02: Omitted the 'Remove' action for already-accepted connections - no RLS transition exists from accepted to a terminal state today; adding one is a schema change out of scope.
+- [Phase ?]: 13-02: Following/followers tabs exclude accepted connections (relationship-priority rule matching lib/green-room/discover.ts precedent) so a mutual connection isn't also shown as following/follower noise.
 
 ### Pending Todos
 
@@ -231,7 +235,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-18T16:32:17.036Z
+Last session: 2026-07-18T17:13:49.396Z
 Stopped at: Completed 13-01-PLAN.md (trust/safety contracts + migration 058 drafted)
 Resume file: None
 

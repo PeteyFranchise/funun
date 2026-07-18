@@ -24,7 +24,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **DISCOVER-01**: User can search for members by name, role, or keyword via a global search bar
 - [ ] **DISCOVER-02**: User can filter search/discovery results by role, "Open to" status, location, and genre
 - [ ] **DISCOVER-03**: User can browse a Discover tab organized by role category and genre
-- [ ] **DISCOVER-04**: User can browse a Network tab showing people they follow, are connected with, or have pending requests with
+- [x] **DISCOVER-04**: User can browse a Network tab showing people they follow, are connected with, or have pending requests with
 
 ### Feed (network activity & exploration)
 
@@ -124,7 +124,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISCOVER-01 | Phase 12 | Pending |
 | DISCOVER-02 | Phase 12 | Pending |
 | DISCOVER-03 | Phase 12 | Pending |
-| DISCOVER-04 | Phase 13 | Pending |
+| DISCOVER-04 | Phase 13 | Complete |
 | FEED-01 | Phase 12 | Pending |
 | FEED-02 | Phase 12 | Pending |
 | FEED-03 | Phase 12 | Pending |
