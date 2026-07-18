@@ -1,7 +1,8 @@
 ---
 phase: 13-network-trust-safety
 verified: 2026-07-18T00:00:00Z
-status: human_needed
+status: complete_by_owner_waiver
+waiver: "2026-07-18 — owner (Pete) directed the 4 human_verification items below be treated as successful without execution. Recorded as an accepted-risk waiver, not as pass evidence; the items remain unexecuted and this list doubles as the repro script if a related issue surfaces. Note: the release_comments DB-layer gap cited in Gaps Summary was subsequently closed by migration 061 (applied live 2026-07-18)."
 score: 9/9 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0

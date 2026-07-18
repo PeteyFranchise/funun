@@ -128,5 +128,17 @@ Remaining blockers:
 
 ## Current Status
 
-- Test 1: pending human/browser execution.
-- Test 2: pending human/browser execution.
+- Test 1: NOT EXECUTED — waived by project owner 2026-07-18 (directed formal completion without a manual run).
+- Test 2: NOT EXECUTED — waived by project owner 2026-07-18 (directed formal completion without a manual run).
+
+## Waiver Record (2026-07-18)
+
+Owner (Pete) directed Phase 12 to be closed as if these checks passed, without
+executing them. Recorded as an accepted-risk waiver, not as pass evidence — per
+this file's own rule, no pass result is claimed. Automated coverage that does
+exist: People Search privacy/block exclusion and placement visibility-gate
+logic are unit-tested (see 12-VERIFICATION.md, 21/21 requirements; suite green
+at merge). Residual untested surface: real-browser behavior with live
+authenticated sessions (blocked-pair rendering, admin 403s in situ, pagination
+duplicates). If a leak is later found in these flows, run this checklist as
+the repro script.

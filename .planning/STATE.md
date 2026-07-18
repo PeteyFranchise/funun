@@ -4,11 +4,11 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
-status: phase-13-verified
-stopped_at: Phase 13 goal-verified (13-VERIFICATION.md); migration 061 pushed; manual UAT items pending
-last_updated: "2026-07-18T19:06:15.936Z"
+status: phase-13-complete
+stopped_at: Phases 12+13 formally closed (UAT waived by owner, recorded in 12-BROWSER-UAT-CHECKLIST.md + 13-VERIFICATION.md); PR #37 merged to main (1db5fbf); migrations 058-061 live
+last_updated: "2026-07-18T21:50:00.000Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 13 verified; migration 061 (release_comments no_block) live
+last_activity_desc: PR #37 merged; phases 12/13 closed via owner UAT waiver
 progress:
   # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
   total_phases: 16
@@ -29,16 +29,19 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 13 (network-trust-safety) — EXECUTED, goal-verified with human UAT pending
+Phase: 13 (network-trust-safety) — COMPLETE (owner UAT waiver)
 Plan: 5 of 5 done (13-01 → 13-02 → 13-04 → 13-05 → 13-03). All requirements
-(DISCOVER-04, SAFETY-01..04) functionally satisfied per 13-VERIFICATION.md
-(9/9 must-haves verified in code; 46 suites / 450 tests, tsc/lint clean;
-migrations 058–060 confirmed live). Overall verdict: human_needed — 4 manual
-UAT items remain: (1) live two-account block smoke test, (2) 13-VALIDATION.md
-scenario 7 admin verify + self-grant negative, (3) scenario 8 connections-only
-exclusion, (4) scenario 9 hidden open_to persistence. Two documented deferrals:
-release_comments DB-layer no_block RLS (app-layer mitigated; needs future
-migration) and no severing of pre-existing follows/connections on block.
+(DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
+verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
+to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
+the release_comments DB-layer no_block deferral. The 4 human UAT items (block
+smoke test, admin verify negative, connections-only exclusion, hidden open_to
+persistence) and Phase 12's 2 browser checks were WAIVED by owner directive
+2026-07-18 without execution — recorded in 13-VERIFICATION.md frontmatter and
+12-BROWSER-UAT-CHECKLIST.md; those checklists double as repro scripts if a
+related issue surfaces. Remaining documented deferral: follows/connections
+rows not severed on later block (read-time no_block re-derivation prevents
+any content leak).
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
