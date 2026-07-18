@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-07-18T17:25:03.090Z",
+  "phase": "13",
+  "phase_name": "network-trust-safety",
+  "phase_dir": ".planning/phases/13-network-trust-safety",
+  "plan": 2,
+  "task": null,
+  "total_tasks": 5,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "13-01", "name": "Trust/safety contracts + migration 058 draft", "status": "done", "commit": "7260a19"},
+    {"id": "13-02", "name": "Network tab (API + UI, DISCOVER-04)", "status": "done", "commit": "a8dcc53"}
+  ],
+  "remaining_tasks": [
+    {"id": "13-03", "name": "Hard block enforcement audit (SAFETY-01)", "status": "not_started"},
+    {"id": "13-04", "name": "Reporting & admin review (SAFETY-02)", "status": "not_started"},
+    {"id": "13-05", "name": "Verification & profile visibility (SAFETY-03/04)", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "Migration 058 (supabase/migrations/058_trust_safety_schema.sql) drafted but NOT pushed to any database — 13-04 needs the reports table, 13-05 needs verification_audit_log + visibility columns", "type": "human_action", "workaround": "Run npm run db:push after reviewing the migration; this is an explicit human-gated DB checkpoint per 13-01-SUMMARY.md"},
+    {"description": "A Codex agent is committing to the shared branch codex/phase-11-presence-messaging in parallel (306eedd, 656a307 landed mid-session). 13-03 must retrofit block enforcement into green-room/profile/DM files Codex is actively editing for Phase 12", "type": "external", "workaround": "Wait for Phase 12 to finalize, or coordinate; re-read final Phase 12 diff before starting 13-03 (per 13-EXECUTION-PACKET.md collision watchlist)"},
+    {"description": "Phase 12 formally open: (1) two browser UAT items in 12-BROWSER-UAT-CHECKLIST.md need a human with 5 authenticated test accounts, (2) Codex adversarial review (codex CLI not installed on this machine; but Codex itself landed follow-ups in 306eedd), (3) PR #37 unmerged (MERGEABLE/CLEAN, no review approval, user chose to leave open)", "type": "human_action", "workaround": null}
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Push migration 058 (npm run db:push) to unblock 13-04/13-05", "context": "13-01 flagged the push as a human-gated checkpoint; RLS/column-grant behavior can only be truly verified against a live Postgres", "blocking": true},
+    {"action": "Run Phase 12 browser UAT (12-BROWSER-UAT-CHECKLIST.md, 2 tests) with viewer/public/private/blocked-pair/admin accounts", "context": "Phase 12 stays [ ] in ROADMAP until done; checklist forbids marking pass without a human run", "blocking": false},
+    {"action": "Decide PR #37 merge timing", "context": "32 commits (Phases 11+12+13) into main; mergeable and CI green but reviewDecision empty and its own gates unmet", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Left PR #37 open and proceeded to 13-02 (user's explicit choice via AskUserQuestion)", "rationale": "Merging with UAT + adversarial gates open would ship unverified authenticated-privacy behavior to main", "phase": "12"},
+    {"decision": "13-02 executed in isolated worktree by gsd-executor, then cherry-picked (af401f6..worktree branch) onto moved HEAD instead of merging", "rationale": "Codex committed 306eedd/656a307 to the branch mid-run; zero file overlap with 13-02 (network/* vs green-room/*), cherry-pick keeps history linear", "phase": "13"},
+    {"decision": "13-02 added /api/network/blocks (block/unblock) even though 13-03 nominally owns it", "rationale": "Task 2 acceptance criterion 'Block/unblock uses inline confirmation' cannot be UI-only per the non-negotiable safety rules; scoped to session-client INSERT/DELETE on existing blocks table under existing RLS. 13-03 must build on it, not duplicate it", "phase": "13"},
+    {"decision": "13-02 omitted 'Remove connection' action from UI despite UI-SPEC listing it", "rationale": "No RLS transition exists from accepted to a terminal state; adding one is a schema change out of 13-02 scope", "phase": "13"},
+    {"decision": "Following/followers tabs exclude accepted connections (relationship-priority rule)", "rationale": "Matches lib/green-room/discover.ts precedent; mutual connections should not double-render as follow noise", "phase": "13"}
+  ],
+  "uncommitted_files": [
+    ".planning/phases/12-discovery-feed-people-search/12-BROWSER-UAT-CHECKLIST.md",
+    ".planning/phases/13-network-trust-safety/13-EXECUTION-PACKET.md",
+    ".planning/quick/260718-phase13-uat-prep/"
+  ],
+  "next_action": "User picks one of: (a) push migration 058 then execute 13-04/13-05, (b) finalize Phase 12 / coordinate with Codex then execute 13-03, or (c) accept collision risk and draft 13-03 against current files. Before ANY 13-03 work: git log the branch and re-read the final Phase 12 diff (Codex may have landed more green-room commits).",
+  "context_notes": "Verification baseline at pause: HEAD 69b1142, tsc clean, lint clean, 40 suites / 331 tests green. Remaining plans 13-03/04/05 are all autonomous:false. STATE.md frontmatter progress counters known-stale; recompute at phase completion. The three untracked planning docs were deliberately left uncommitted by their author (Codex handoff docs) — do not delete them."
+}
