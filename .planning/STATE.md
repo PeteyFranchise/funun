@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: executing
-stopped_at: Completed 13-05-PLAN.md (Verification & profile visibility; SAFETY-03/SAFETY-04 met). 13-03 remains unexecuted.
-last_updated: "2026-07-18T18:32:03.929Z"
+stopped_at: Completed 13-03-PLAN.md (Hard Block Enforcement Audit) — last plan of Phase 13, ready for phase verification
+last_updated: "2026-07-18T19:06:15.936Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 16
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 86
-  completed_plans: 80
-  percent: 88
+  completed_plans: 81
+  percent: 94
 ---
 
 # Project State
@@ -113,6 +113,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P02 | 40min | 2 tasks | 8 files |
 | Phase 13 P04 | 50min | 2 tasks | 12 files |
 | Phase 13 P05 | 35min | 2 tasks | 18 files |
+| Phase 13 P03 | 55min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 13]: 13-05: verification grant/revoke audits every action unconditionally (even idempotent re-grants), since a single verified_at column cannot capture repeated admin actions on its own
 - [Phase 13]: 13-05: connections_only profiles 404 identically to private/nonexistent ones on the public profile route and are excluded entirely from People Search for non-connections — no distinguishable teaser state
 - [Phase 13]: 13-05: hidden open_to blanks the rendered/returned data only; the stored setting is never touched, so re-enabling visibility restores prior selections exactly
+- [Phase ?]: 13-03: release_comments (rc_insert_author) had no no_block() DB wiring at all — mitigated at the app layer (isBlockedRelativeTo pre-check); a migration to close the DB-layer gap is a follow-up, not applied by this executor (live db push is human-gated)
+- [Phase ?]: 13-03: existing follows/connections rows are not severed when a block is placed afterward — no precedent trigger exists; every content-read surface re-derives no_block() independently, so this is a data-hygiene deferral, not a leak
 
 ### Pending Todos
 
@@ -243,8 +246,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-18T18:31:57.908Z
-Stopped at: Completed 13-05-PLAN.md (Verification & profile visibility; SAFETY-03/SAFETY-04 met). 13-03 remains unexecuted.
+Last session: 2026-07-18T19:06:15.918Z
+Stopped at: Completed 13-03-PLAN.md (Hard Block Enforcement Audit) — last plan of Phase 13, ready for phase verification
 Resume file: None
 
 ## Operator Next Steps

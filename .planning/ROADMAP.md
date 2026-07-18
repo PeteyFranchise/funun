@@ -43,7 +43,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 - [ ] **Phase 10: Connections & Notifications** - Follow + Connect request/accept relationships and a notifications bell with unread badge and mark-all-read panel (all 6 plans executed; pending human UAT — /gsd-verify-work 10)
 - [x] **Phase 11: Presence & Messaging** - Realtime presence dots + "Active now", floating DM widget with unread badge, cold message-request flow with rate limiting, and direct messaging once connected (implementation complete 2026-07-13; human UAT pending)
 - [ ] **Phase 12: Discovery, Feed & People Search** - Green Room feed plus global people search with filters and a Discover tab organized by role and genre, enforced server-side with block/visibility exclusion
-- [ ] **Phase 13: Network Tab & Trust & Safety** - Network tab (follows/connections/pending), hard bidirectional block, member/message reporting, admin verified-badge grant, and profile visibility controls
+- [x] **Phase 13: Network Tab & Trust & Safety** - Network tab (follows/connections/pending), hard bidirectional block, member/message reporting, admin verified-badge grant, and profile visibility controls (completed 2026-07-18)
 
 ### 🚧 Sound Vault — Playback Room Refinement (In Progress)
 
@@ -218,11 +218,11 @@ Plans:
   3. User can report a member profile or a specific message for admin review, and an admin can grant a verified badge to a member profile
   4. User can set profile visibility (public / connections-only) and can hide their "Open to" status from public view
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 - [x] 13-01-PLAN.md
 - [x] 13-02-PLAN.md
-- [ ] 13-03-PLAN.md
+- [x] 13-03-PLAN.md
 - [x] 13-04-PLAN.md
 - [x] 13-05-PLAN.md
 
@@ -347,7 +347,7 @@ Plans:
 | 10. Connections & Notifications | v1.2 | 6/6 | Verifying  | - |
 | 11. Presence & Messaging | v1.2 | 6/6 | Complete   | 2026-07-13 |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
-| 13. Network Tab & Trust & Safety | v1.2 | 4/5 | In Progress|  |
+| 13. Network Tab & Trust & Safety | v1.2 | 5/5 | Complete   | 2026-07-18 |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |
