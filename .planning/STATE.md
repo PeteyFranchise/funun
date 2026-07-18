@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: executing
-stopped_at: Completed 13-04-PLAN.md (Reporting & admin review; SAFETY-02 met). 13-03/05 remain.
-last_updated: "2026-07-18T18:10:58.843Z"
+stopped_at: Completed 13-05-PLAN.md (Verification & profile visibility; SAFETY-03/SAFETY-04 met). 13-03 remains unexecuted.
+last_updated: "2026-07-18T18:32:03.929Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 86
-  completed_plans: 79
+  completed_plans: 80
   percent: 88
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 13 (network-trust-safety) — EXECUTING
-Plan: 4 of 5 (13-02 done; 13-03/04/05 remain)
-Status: 13-02 landed. 13-03/04/05 all autonomous:false. 13-04/05 hard-blocked on unpushed migration 058. 13-03 (block enforcement) overlaps files Codex is actively editing for Phase 12 — re-read final Phase 12 diff before starting.
+Plan: 5 of 5 (13-01/02/04/05 done; 13-03 remains unexecuted)
+Status: 13-01/02/04/05 landed (SAFETY-02/03/04 + DISCOVER-04 met). 13-03 (hard block enforcement, SAFETY-01) is the only remaining plan — it overlaps files Codex was actively editing for Phase 12; re-read final Phase 12 diff before starting. Phase-level verification (13-VERIFICATION.md) is a separate step once 13-03 lands.
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
@@ -112,6 +112,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P01 | 16min | 2 tasks | 4 files |
 | Phase 13 P02 | 40min | 2 tasks | 8 files |
 | Phase 13 P04 | 50min | 2 tasks | 12 files |
+| Phase 13 P05 | 35min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 13]: 13-04: report-target visibility mirrors currently-enforced rules (is_public/thread-participancy/green_room_can_view_post), not 13-05's not-yet-enforced profile_visibility column
 - [Phase 13]: 13-04: admin content-action routing reuses existing hide/remove/pause columns (moderation_status, deleted_at, placements status) instead of inventing new moderation state
 - [Phase 13]: 13-04: fixed jest.config.js worktree-self-exclusion bug (testPathIgnorePatterns) that made it impossible to run tests from inside an isolated executor worktree
+- [Phase 13]: 13-05: verification grant/revoke audits every action unconditionally (even idempotent re-grants), since a single verified_at column cannot capture repeated admin actions on its own
+- [Phase 13]: 13-05: connections_only profiles 404 identically to private/nonexistent ones on the public profile route and are excluded entirely from People Search for non-connections — no distinguishable teaser state
+- [Phase 13]: 13-05: hidden open_to blanks the rendered/returned data only; the stored setting is never touched, so re-enabling visibility restores prior selections exactly
 
 ### Pending Todos
 
@@ -239,8 +243,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-18T18:10:58.831Z
-Stopped at: Completed 13-04-PLAN.md (Reporting & admin review; SAFETY-02 met). 13-03/05 remain.
+Last session: 2026-07-18T18:31:57.908Z
+Stopped at: Completed 13-05-PLAN.md (Verification & profile visibility; SAFETY-03/SAFETY-04 met). 13-03 remains unexecuted.
 Resume file: None
 
 ## Operator Next Steps
