@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 12
-current_phase_name: discovery-people-search
-status: verified
-stopped_at: Phase 12 implemented + goal-verified (12-VERIFICATION.md); awaiting 2 visual UAT items, Codex adversarial review, and merge
-last_updated: "2026-07-18T00:00:00.000Z"
+current_phase: 13
+current_phase_name: network-trust-safety
+status: executing
+stopped_at: Completed 13-01-PLAN.md (trust/safety contracts + migration 058 drafted)
+last_updated: "2026-07-18T16:32:17.059Z"
 last_activity: 2026-07-18
-last_activity_desc: Phase 12 Wave 5 completed; UAT automation gaps closed; 12-01/12-02 SUMMARYs backfilled; goal-backward VERIFICATION written (21/21 requirements met)
+last_activity_desc: Phase 13 execution started
 progress:
-  total_phases: 13
-  completed_phases: 12
-  total_plans: 72
-  completed_plans: 69
-  percent: 96
+  total_phases: 16
+  completed_phases: 14
+  total_plans: 86
+  completed_plans: 77
+  percent: 88
 ---
 
 # Project State
@@ -24,18 +24,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 12 — discovery-people-search
+**Current focus:** Phase 13 — network-trust-safety
 
 ## Current Position
 
-Phase: 12 (discovery-people-search) — GOAL-VERIFIED, NOT YET CLOSED
-Plan: all 10 plans (12-01…12-10) implemented; PLAN + SUMMARY complete for each
-Status: Green Room feed, People Search/Discover, and admin placements implemented and
+Phase: 13 (network-trust-safety) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-07-18 — Phase 12 Wave 5 finished; UAT automation gaps closed;
+Last activity: 2026-07-18 — Phase 13 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -109,6 +109,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 11 P05 | 28min | 3 tasks | 11 files |
 | Phase 11 P06 | 8min | 2 tasks | 5 files |
 | Phase 11 Review Fix | codex follow-up | 7 findings fixed | 8 files |
+| Phase 13 P01 | 16min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10-06]: ConnectButton owns the primary gradient slot and Follow stays ghost — satisfies the UI-SPEC visual-weight decision without a second gradient in the row; declined/withdrawn read as `none` (state query filters to pending/accepted) enabling re-request via the partial unique index; #wall/#endorsements anchors use scroll-mt-88 so the sticky header doesn't overlap deep-link targets; connect state derived from the connections table via connections_select_participant RLS mirroring the follow derivation
 - [Phase 10 UAT]: Live-backend UAT completed 2026-07-13; 8/8 checks passed after fixing FollowButton's ghost styling and replacing notification pagination's created_at-only cursor with a compound created_at/id cursor for same-timestamp rows
 - [Phase 10 WR-04]: PATCH /api/connections now filters transition updates with `status = 'pending'`, so double-submit/retry on an already accepted/declined/withdrawn row returns 404 and cannot emit duplicate `connection_accepted` notifications
+- [Phase 13-01]: Trust/safety contracts + migration 058 drafted: reports table private-by-default with server-owned writes (mirrors migration 056); verification_audit_log admin-only via zero-policy RLS; profile_visibility/open_to_visibility additive columns
 
 ### Pending Todos
 
@@ -229,8 +231,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T23:59:00.000Z
-Stopped at: Completed Phase 11 implementation and validation closeout
+Last session: 2026-07-18T16:32:17.036Z
+Stopped at: Completed 13-01-PLAN.md (trust/safety contracts + migration 058 drafted)
 Resume file: None
 
 ## Operator Next Steps
