@@ -28,9 +28,16 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 13 (network-trust-safety) — EXECUTING
-Plan: 5 of 5 (13-01/02/04/05 done; 13-03 remains unexecuted)
-Status: 13-01/02/04/05 landed (SAFETY-02/03/04 + DISCOVER-04 met). 13-03 (hard block enforcement, SAFETY-01) is the only remaining plan — it overlaps files Codex was actively editing for Phase 12; re-read final Phase 12 diff before starting. Phase-level verification (13-VERIFICATION.md) is a separate step once 13-03 lands.
+Phase: 13 (network-trust-safety) — EXECUTED, goal-verified with human UAT pending
+Plan: 5 of 5 done (13-01 → 13-02 → 13-04 → 13-05 → 13-03). All requirements
+(DISCOVER-04, SAFETY-01..04) functionally satisfied per 13-VERIFICATION.md
+(9/9 must-haves verified in code; 46 suites / 450 tests, tsc/lint clean;
+migrations 058–060 confirmed live). Overall verdict: human_needed — 4 manual
+UAT items remain: (1) live two-account block smoke test, (2) 13-VALIDATION.md
+scenario 7 admin verify + self-grant negative, (3) scenario 8 connections-only
+exclusion, (4) scenario 9 hidden open_to persistence. Two documented deferrals:
+release_comments DB-layer no_block RLS (app-layer mitigated; needs future
+migration) and no severing of pre-existing follows/connections on block.
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
