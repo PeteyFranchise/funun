@@ -218,12 +218,12 @@ Plans:
   3. User can report a member profile or a specific message for admin review, and an admin can grant a verified badge to a member profile
   4. User can set profile visibility (public / connections-only) and can hide their "Open to" status from public view
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 - [x] 13-01-PLAN.md
 - [x] 13-02-PLAN.md
 - [ ] 13-03-PLAN.md
-- [ ] 13-04-PLAN.md
+- [x] 13-04-PLAN.md
 - [ ] 13-05-PLAN.md
 
 **UI hint**: yes
@@ -347,7 +347,7 @@ Plans:
 | 10. Connections & Notifications | v1.2 | 6/6 | Verifying  | - |
 | 11. Presence & Messaging | v1.2 | 6/6 | Complete   | 2026-07-13 |
 | 12. Discovery & People Search | v1.2 | 0/TBD | Not started | - |
-| 13. Network Tab & Trust & Safety | v1.2 | 2/5 | In Progress|  |
+| 13. Network Tab & Trust & Safety | v1.2 | 3/5 | In Progress|  |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |

@@ -70,7 +70,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Trust & Safety
 
 - [ ] **SAFETY-01**: User can block another member; a blocked member cannot view the blocker's profile, message them, or see them in search/discovery results
-- [ ] **SAFETY-02**: User can report a member profile or a specific message for admin review
+- [x] **SAFETY-02**: User can report a member profile or a specific message for admin review
 - [ ] **SAFETY-03**: Admin can grant a verified badge to a member profile
 - [ ] **SAFETY-04**: User can set profile visibility (public / connections-only) and can hide their "Open to" status from public view
 
@@ -155,7 +155,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRESENCE-02 | Phase 11 | Complete |
 | PRESENCE-03 | Phase 11 | Complete |
 | SAFETY-01 | Phase 13 | Pending |
-| SAFETY-02 | Phase 13 | Pending |
+| SAFETY-02 | Phase 13 | Complete |
 | SAFETY-03 | Phase 13 | Pending |
 | SAFETY-04 | Phase 13 | Pending |
 

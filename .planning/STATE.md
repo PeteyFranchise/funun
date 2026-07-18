@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: executing
-stopped_at: Completed 13-02-PLAN.md (Network tab; DISCOVER-04 met). 13-03/04/05 remain — all autonomous:false; 13-04/05 blocked on unpushed migration 058 (human DB checkpoint); 13-03 collides with Codex's live Phase 12 green-room edits.
-last_updated: "2026-07-18T17:30:00.000Z"
+stopped_at: Completed 13-04-PLAN.md (Reporting & admin review; SAFETY-02 met). 13-03/05 remain.
+last_updated: "2026-07-18T18:10:58.843Z"
 last_activity: 2026-07-18
-last_activity_desc: Executed 13-02 (Network tab) in isolated worktree; integrated to branch; suite green (40 suites/331 tests)
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 86
-  completed_plans: 78
+  completed_plans: 79
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 13 (network-trust-safety) — EXECUTING
-Plan: 3 of 5 (13-02 done; 13-03/04/05 remain)
+Plan: 4 of 5 (13-02 done; 13-03/04/05 remain)
 Status: 13-02 landed. 13-03/04/05 all autonomous:false. 13-04/05 hard-blocked on unpushed migration 058. 13-03 (block enforcement) overlaps files Codex is actively editing for Phase 12 — re-read final Phase 12 diff before starting.
 goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
@@ -111,6 +111,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 11 Review Fix | codex follow-up | 7 findings fixed | 8 files |
 | Phase 13 P01 | 16min | 2 tasks | 4 files |
 | Phase 13 P02 | 40min | 2 tasks | 8 files |
+| Phase 13 P04 | 50min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 13-02: Added a scoped POST/DELETE /api/network/blocks endpoint so the Network tab's Block/unblock acceptance criterion is real, not UI-only; 13-03 should build on it rather than duplicate it.
 - [Phase ?]: 13-02: Omitted the 'Remove' action for already-accepted connections - no RLS transition exists from accepted to a terminal state today; adding one is a schema change out of scope.
 - [Phase ?]: 13-02: Following/followers tabs exclude accepted connections (relationship-priority rule matching lib/green-room/discover.ts precedent) so a mutual connection isn't also shown as following/follower noise.
+- [Phase 13]: 13-04: report-target visibility mirrors currently-enforced rules (is_public/thread-participancy/green_room_can_view_post), not 13-05's not-yet-enforced profile_visibility column
+- [Phase 13]: 13-04: admin content-action routing reuses existing hide/remove/pause columns (moderation_status, deleted_at, placements status) instead of inventing new moderation state
+- [Phase 13]: 13-04: fixed jest.config.js worktree-self-exclusion bug (testPathIgnorePatterns) that made it impossible to run tests from inside an isolated executor worktree
 
 ### Pending Todos
 
@@ -235,8 +239,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-18T17:13:49.396Z
-Stopped at: Completed 13-01-PLAN.md (trust/safety contracts + migration 058 drafted)
+Last session: 2026-07-18T18:10:58.831Z
+Stopped at: Completed 13-04-PLAN.md (Reporting & admin review; SAFETY-02 met). 13-03/05 remain.
 Resume file: None
 
 ## Operator Next Steps
