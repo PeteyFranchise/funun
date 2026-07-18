@@ -48,6 +48,7 @@ export type DiscoverCapability = (typeof DISCOVER_CAPABILITY_VALUES)[number]
 // an attacker-controlled value never reaches an array-contains filter.
 const KNOWN_ROLE_SLUGS = new Set<string>([...PROFILE_ROLES, ...ALL_INDUSTRY_ROLE_SLUGS])
 const PROFILE_ROLE_SLUGS = new Set<string>(PROFILE_ROLES)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export type DiscoverFilters = {
   q: string | null
@@ -167,8 +168,9 @@ export function parseDiscoverCursor(value: string): DiscoverCursor | null {
   try {
     const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Record<string, unknown>
     if (typeof parsed.createdAt !== 'string' || typeof parsed.id !== 'string') return null
-    if (Number.isNaN(new Date(parsed.createdAt).getTime())) return null
-    return { createdAt: parsed.createdAt, id: parsed.id }
+    const createdAt = new Date(parsed.createdAt)
+    if (Number.isNaN(createdAt.getTime()) || !UUID_RE.test(parsed.id)) return null
+    return { createdAt: createdAt.toISOString(), id: parsed.id }
   } catch {
     return null
   }

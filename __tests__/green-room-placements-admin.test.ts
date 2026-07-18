@@ -176,12 +176,25 @@ describe('isDestinationVisible', () => {
     ).resolves.toBe(false)
   })
 
-  it('passes only for a published/visible/public post destination', async () => {
+  it('passes only for a published/visible/public post destination with a public author', async () => {
     await expect(
-      isDestinationVisible(routedService({ green_room_posts: { id: UUID } }) as never, 'post', UUID, null)
+      isDestinationVisible(
+        routedService({
+          green_room_posts: { id: UUID, author_id: 'author-1' },
+          artist_profiles: { id: 'author-1' },
+        }) as never,
+        'post',
+        UUID,
+        null
+      )
     ).resolves.toBe(true)
     await expect(
-      isDestinationVisible(routedService({}) as never, 'post', UUID, null)
+      isDestinationVisible(
+        routedService({ green_room_posts: { id: UUID, author_id: 'author-1' } }) as never,
+        'post',
+        UUID,
+        null
+      )
     ).resolves.toBe(false)
   })
 

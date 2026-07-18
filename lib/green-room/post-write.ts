@@ -246,13 +246,25 @@ async function validateLinkedObjectForPublish(
   }
 
   if (linkedObject.type === 'track') {
-    const { data } = await supabase
+    const { data: track } = await supabase
       .from('tracks')
-      .select('id, user_id')
+      .select('id, user_id, project_id')
       .eq('id', linkedObject.id)
       .eq('user_id', userId)
       .maybeSingle()
-    return data ? { ok: true } : { ok: false, error: 'Linked track not found', status: 404 }
+    const projectId = (track as { project_id?: string } | null)?.project_id
+    if (!projectId) return { ok: false, error: 'Linked track not found', status: 404 }
+
+    const { data: project } = await supabase
+      .from('vault_projects')
+      .select('id, user_id, is_public')
+      .eq('id', projectId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (!project) return { ok: false, error: 'Linked track project not found', status: 404 }
+    return (project as { is_public: boolean }).is_public
+      ? { ok: true }
+      : { ok: false, error: 'Linked track project must be public before publishing', status: 400 }
   }
 
   const { data } = await supabase
@@ -266,4 +278,3 @@ async function validateLinkedObjectForPublish(
     ? { ok: true }
     : { ok: false, error: 'Linked opportunity must be active before publishing', status: 400 }
 }
-

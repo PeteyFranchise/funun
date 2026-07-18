@@ -13,6 +13,10 @@ import {
   type GreenRoomPostCard,
 } from '@/lib/green-room/feed-query'
 
+const { loadGreenRoomFeed: loadGreenRoomFeedActual } = jest.requireActual(
+  '@/lib/green-room/feed-query'
+) as typeof import('@/lib/green-room/feed-query')
+
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
 }))
@@ -71,7 +75,8 @@ describe('GET /api/green-room/feed', () => {
   })
 
   it('loads typed cards for a valid tab, cursor, and limit', async () => {
-    const cursor = encodeFeedCursor({ publishedAt: '2026-07-15T12:00:00.000Z', id: 'post-1' })
+    const postId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    const cursor = encodeFeedCursor({ publishedAt: '2026-07-15T12:00:00.000Z', id: postId })
     const supabase = {
       auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'viewer-1' } } })) },
     }
@@ -90,7 +95,7 @@ describe('GET /api/green-room/feed', () => {
     })
     expect(loadGreenRoomFeed).toHaveBeenCalledWith(supabase, 'viewer-1', {
       tab: 'following',
-      cursor: { publishedAt: '2026-07-15T12:00:00.000Z', id: 'post-1' },
+      cursor: { publishedAt: '2026-07-15T12:00:00.000Z', id: postId },
       limit: 7,
     })
   })
@@ -98,12 +103,16 @@ describe('GET /api/green-room/feed', () => {
 
 describe('Green Room feed query helpers', () => {
   it('round-trips opaque cursors and builds a stable published_at/id predicate', () => {
-    const cursor = { publishedAt: '2026-07-15T12:00:00.000Z', id: 'post-1' }
+    const cursor = {
+      publishedAt: '2026-07-15T12:00:00.000Z',
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    }
 
     expect(parseFeedCursor(encodeFeedCursor(cursor))).toEqual(cursor)
     expect(parseFeedCursor('broken')).toBeNull()
+    expect(parseFeedCursor(encodeFeedCursor({ ...cursor, id: 'not-a-uuid' }))).toBeNull()
     expect(buildFeedCursorPredicate(cursor)).toBe(
-      'published_at.lt.2026-07-15T12:00:00.000Z,and(published_at.eq.2026-07-15T12:00:00.000Z,id.lt.post-1)'
+      'published_at.lt.2026-07-15T12:00:00.000Z,and(published_at.eq.2026-07-15T12:00:00.000Z,id.lt.aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa)'
     )
   })
 
@@ -192,4 +201,71 @@ describe('Green Room feed query helpers', () => {
 
     await expect(filterVisiblePlacementRows(supabase as never, rows as never)).resolves.toEqual([rows[0]])
   })
+
+  it('drops feed posts whose non-owner author profile is no longer public', async () => {
+    const publicAuthorId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    const privateAuthorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+    const posts = [
+      postRow({ id: '11111111-1111-1111-1111-111111111111', author_id: publicAuthorId }),
+      postRow({ id: '22222222-2222-2222-2222-222222222222', author_id: privateAuthorId }),
+    ]
+    const authors = [
+      {
+        id: publicAuthorId,
+        artist_name: 'Public Artist',
+        handle: 'public',
+        avatar_url: null,
+        roles: [],
+        industry_roles: [],
+        is_public: true,
+      },
+    ]
+    const supabase = feedService({ posts, authors })
+
+    const out = await loadGreenRoomFeedActual(supabase as never, 'viewer-1', { tab: 'for_you', limit: 20 })
+
+    expect(out.cards).toHaveLength(1)
+    expect(out.cards[0]).toMatchObject({ kind: 'post', id: '11111111-1111-1111-1111-111111111111' })
+  })
 })
+
+function postRow(overrides: Record<string, unknown>) {
+  return {
+    id: '11111111-1111-1111-1111-111111111111',
+    author_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    post_type: 'general_update',
+    body: 'Working on the next release.',
+    visibility: 'public',
+    linked_object_type: null,
+    linked_object_id: null,
+    allow_resharing: true,
+    published_at: '2026-07-15T12:00:00.000Z',
+    created_at: '2026-07-15T12:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function feedService({ posts, authors }: { posts: unknown[]; authors: unknown[] }) {
+  const terminal = (rows: unknown[]) => {
+    const builder: Record<string, unknown> = {}
+    for (const method of ['select', 'eq', 'is', 'order', 'limit', 'or', 'in', 'lte']) {
+      builder[method] = jest.fn(() => builder)
+    }
+    builder.then = (resolve: (value: unknown) => void) => resolve({ data: rows, error: null })
+    return builder
+  }
+
+  return {
+    from: jest.fn((table: string) => {
+      if (table === 'green_room_posts') return terminal(posts)
+      if (table === 'artist_profiles') return terminal(authors)
+      if (table === 'follows') return terminal([])
+      if (table === 'connections') return terminal([])
+      if (table === 'green_room_comments') return terminal([])
+      if (table === 'green_room_reactions') return terminal([])
+      if (table === 'green_room_reposts') return terminal([])
+      if (table === 'green_room_placements') return terminal([])
+      throw new Error(`Unexpected table: ${table}`)
+    }),
+  }
+}
