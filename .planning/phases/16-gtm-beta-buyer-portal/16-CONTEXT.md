@@ -1,22 +1,21 @@
 # Phase 16: GTM Beta Launch & Buyer Portal - Context
 
-**Gathered:** 2026-07-18
-**Status:** Planning drafted
+**Gathered:** 2026-07-18 (initial planning draft) · **Updated:** 2026-07-18 (discuss-phase session resolved Q-01..Q-05)
+**Status:** Ready for planning (replan required — prior 16-01..16-05 plans predate these decisions)
 
 <domain>
 ## Phase Boundary
 
 Phase 16 turns the GTM plan into a product-backed beta launch motion. It does not replace Green Room Phase 12 or Trust & Safety Phase 13. It builds on them by adding a buyer-facing pathway for sync buyers, agencies, filmmakers, brands, and creator teams to discover rights-ready catalog, request licenses, and move through a structured deal workflow.
 
-The original GTM plan proposed a lightweight Tally/Typeform license-request bridge. The revised direction is stronger: Funun should plan a fully integrated buyer-side portal, possibly with specialized sync-buyer accounts, so the first Hook-style deals create reusable product infrastructure instead of an operational side-channel.
-
 This phase covers:
 
-- Buyer account/capability model for sync buyers.
-- Buyer onboarding and verification-lite flow.
-- License-request schema and API routes.
-- Buyer portal UI for request creation and request tracking.
-- Artist/admin deal workflow tying requests to Sound Vault projects, Contract Locker documents, and readiness state.
+- Buyer org + buyer account model (separate from artist/industry accounts) with org admins and per-member permissions.
+- Admin-created buyer onboarding (founder-led beta; no self-serve org signup).
+- License-request schema and API routes, including pre-cleared-terms matching.
+- Buyer portal UI: filtered catalog browse, org-shared shortlists, request creation, org request dashboard with deal stages.
+- Artist-facing Deals room + per-project pre-cleared terms settings.
+- Admin deal workflow (negotiation queue) tying requests to Sound Vault projects, Contract Locker documents, and readiness state.
 - GTM beta metrics and founder-led sales instrumentation.
 
 This phase does not cover:
@@ -25,31 +24,60 @@ This phase does not cover:
 - Fully automated contract negotiation.
 - Legal advice or automated legal approval.
 - Direct Content ID administration.
-- Marketplace-scale search/ranking beyond beta-safe discovery.
+- Marketplace-scale free-text search/ranking beyond beta-safe filtered browse.
+- Buyer↔artist in-app messaging (admin-mediated for beta — see D-14).
 
 </domain>
 
 <decisions>
 ## Locked Decisions
 
+### Original (2026-07-18 planning draft)
+
 - **D-01:** Phase 16 is a new post-Green-Room planning lane: GTM Beta Launch & Buyer Portal.
 - **D-02:** The buyer/license-request gap should be solved with an integrated portal, not a long-lived manual intake form.
 - **D-03:** Manual intake is allowed only as a temporary admin fallback or founder-assist path. It should write into the same tables and workflows as the portal, never a separate spreadsheet/system.
-- **D-04:** Sync buyers are a distinct user audience. They may need specialized account capability, profile, verification, and permissions separate from artists and industry members.
+- **D-04:** Sync buyers are a distinct user audience with their own account capability, profile, verification, and permissions separate from artists and industry members.
 - **D-05:** Buyer accounts should not automatically receive broad Green Room social privileges. Buyer messaging, profile access, and search depth should be gated by verification/trust state.
 - **D-06:** The first buyer portal should optimize for Hook-style founder-led deals: fewer, higher-signal requests, structured rights terms, and fast legal/admin handoff.
 - **D-07:** License requests should become first-class data: requested tracks/artists, usage context, territory, term, exclusivity, budget, need-by date, buyer identity, stage, owner, notes, and linked contract/document artifacts.
 - **D-08:** Contract Locker should be the document destination for signed sync licenses and related legal PDFs. Phase 16 may link into Contract Locker but should not expand into the full Contract Locker Intelligence roadmap unless explicitly planned later.
-- **D-09:** Trust & Safety from Phase 13 is a prerequisite for broad buyer visibility, because buyer access affects profiles, messaging, reporting, verification, and block/privacy expectations.
+- **D-09:** Trust & Safety from Phase 13 is a prerequisite for broad buyer visibility, because buyer access affects profiles, messaging, reporting, verification, and block/privacy expectations. (Phase 13 shipped and merged 2026-07-18 — prerequisite satisfied.)
 - **D-10:** The GTM model should use real beta metrics before hiring an AE: 3-5 closed deals, request-to-quote time, quote-to-close rate, average sync fee, artist readiness pass rate, and buyer repeat/referral signal.
 
-## Open Product Questions
+### Discuss-phase session (2026-07-18) — resolves former Q-01..Q-05
 
-- **Q-01:** Should "sync buyer" be a new capability in `capability_grants`, a separate buyer table linked to auth users, or both?
-- **Q-02:** Can an existing artist/industry account also request buyer capability, or should buyer accounts be separately verified?
-- **Q-03:** What buyer actions require verification: requesting a license, messaging artists, viewing non-public contact/availability signals, or saving private shortlists?
-- **Q-04:** Should artists approve every license opportunity before contract drafting, or can they opt into pre-cleared terms by catalog/project?
-- **Q-05:** What is the minimum buyer portal we need for Hook: request form only, request dashboard, searchable catalog, saved shortlist, or all of the above?
+**Buyer identity model (resolves Q-01, Q-02):**
+
+- **D-11:** Buyers are **fully separate accounts** — NOT a capability grant on the artist/industry account model — with a **company/org layer**: buyer orgs, individual buyer profiles linked to their org, and org-level admins who add employees with scoped buying permissions. (An existing artist/industry member who is also a buyer uses a separate buyer login; revisit unification post-beta alongside the standing cross-capability review note.)
+- **D-12:** Org origin for beta is **Funūn-admin created**: platform admins create the company record and the first org-admin invite from the admin panel. Self-serve org signup (with approval or domain verification) is deferred post-beta.
+- **D-13:** Per-member buying permissions are **two tiers**: `requester` (browse catalog + submit license requests) and `approver` (requester rights + approve terms/budget + sign off). Org admins are approvers with member management. **Solo buyers** (indie filmmakers, creators) are allowed via an auto-created single-member personal org where they are the admin — one data model, no special cases.
+- **D-13a:** Activity attribution is **dual-level, company always shown**: every request/deal records the individual AND their org; a buyer profile shows the member's own activity; the company page aggregates all members' activity; artists always see which company is behind a request.
+
+**Verification gating (resolves Q-03):**
+
+- **D-14:** Verification is **org-level only** for beta: admin-created orgs are born verified; members inherit org verification; org admins vouch for the employees they invite. No per-member verification flow.
+- **D-14a:** Default verified-buyer reach WITHOUT artist opt-in: **browse rights-ready catalog + submit license requests**. Buyers get NO direct messaging and NO non-public availability/contact signals (consistent with D-05 and Phase 13-05's owner-controlled open-to visibility).
+- **D-14b:** Buyer↔artist communication is **admin-mediated for beta** (founder concierge). No request-scoped message threads and no DM unlock are built in Phase 16; revisit when deal volume outgrows concierge capacity.
+- **D-14c:** **Org-shared shortlists**: members can save tracks/artists to shortlists visible to their whole org (scout saves → approver reviews). Shortlists are invisible to artists.
+
+**Artist consent flow (resolves Q-04):**
+
+- **D-15:** Artists **pre-clear terms per project** rather than approving every request. Pre-clearable fields are the **"Marmoset five"**: minimum fee, allowed usage/media types, territories, exclusivity yes/no, and term length. (Modeled on Marmoset's quoting dimensions — media type, reach, territory, term, per-license exclusivity — where the representation agreement acts as artist pre-clearance.)
+- **D-15a:** Requests that do NOT match a project's pre-cleared terms (or target a project with none set) route to **admin negotiation first**: Funūn admins counter/align terms with the buyer before the artist is engaged — Funūn admins play the Marmoset-agency role.
+- **D-15b:** Artist-facing surface is a **dedicated "Deals" sidebar room** listing all license requests across the artist's projects with deal stages — not merely embedded in vault project pages. Requests also emit Phase 10 notifications.
+
+**Beta portal scope (resolves Q-05):**
+
+- **D-16:** Catalog discovery is **filtered browse**: browsable rights-ready catalog with sync-relevant filters (genre, mood/energy, vocals, usage cleared). NO free-text search ranking (stays inside the beta-safe discovery exclusion). Admin-curated collections may layer on top but are not the only path.
+- **D-16a:** Buyer request tracking is an **org dashboard with deal stages** (submitted → in negotiation → terms agreed → contract → closed/declined), visible org-wide. This dashboard doubles as the substrate for the D-10 GTM metrics.
+
+### Claude's Discretion
+
+- Schema mechanics for buyer orgs/members/permissions (tables, RLS doctrine) — follow the column-privilege and server-owned-write precedents from migrations 040/056/058.
+- Exact filter taxonomy for catalog browse (reuse metadata/genre vocabularies where they exist).
+- Deal-stage state machine details beyond the named stages.
+- Admin UI conventions — follow the `/admin` patterns established in 13-04/13-05 (verifyAdmin gate, admin sidebar).
 
 </decisions>
 
@@ -61,15 +89,17 @@ This phase does not cover:
 - `.planning/ROADMAP.md` - current phase map and sequencing.
 - `.planning/REQUIREMENTS.md` - Green Room discovery/feed/trust requirements.
 - `.planning/phases/12-discovery-feed-people-search/12-CONTEXT.md` - feed/search/discovery substrate and sponsored-placement decisions.
-- `.planning/phases/13-network-trust-safety/13-CONTEXT.md` - block/report/visibility/verification prerequisites.
-- `.planning/phases/15-account-capability-model/15-CONTEXT.md` - capability-grants precedent for multi-capability accounts.
+- `.planning/phases/13-network-trust-safety/13-CONTEXT.md` - block/report/visibility/verification prerequisites (shipped; migrations 058-061 live).
+- `.planning/phases/15-account-capability-model/15-CONTEXT.md` - capability-grants precedent (NOTE: buyers deliberately do NOT use this model per D-11; read for the trust-bar/admin-approval patterns only).
 - `.planning/quick/260715-contract-locker-intelligence-roadmap/PLAN.md` - future Contract Locker intelligence note.
 - `docs/e-sign-integration.md` - provider abstraction and live e-sign integration spec.
 - `lib/esign/provider.ts` - existing provider-agnostic e-sign interface.
 - `lib/vault/stage3.ts` - readiness/documents/content-ID status logic.
 - `app/(artist)/vault/[projectId]/rights/page.tsx` - rights guidance surface.
 - `app/(artist)/green-room/page.tsx` and `components/green-room/` - Green Room entry and feed/search surfaces.
-- `lib/capabilities/` - capability model created by Phase 15.
+- `lib/capabilities/` - capability model created by Phase 15 (precedent only, see above).
+- `lib/trust-safety/` - contracts, block-check, reports, verification, visibility modules from Phase 13 (privacy doctrine to extend to buyer surfaces).
+- https://www.marmosetmusic.com/license-agreement and https://www.licenseorg.com/guide/music-audio/marmoset-music - Marmoset licensing model referenced for D-15 (quoting dimensions + representation-as-pre-clearance).
 
 </canonical_refs>
 
@@ -77,16 +107,18 @@ This phase does not cover:
 ## Existing Product Substrate
 
 - Artists already have Sound Vault, metadata, document lifecycle, rights guidance, Launchpad, Antenna, Green Room, profile, connection, DM, and capability infrastructure.
+- Phases 11-13 are merged to main (PR #37, 2026-07-18); migrations through 061 are live. Trust & safety (blocks, reports, admin verification, profile/open-to visibility) is shipped — the D-09 prerequisite is satisfied.
+- Wave 3's curator accounts are the existing precedent for a fully separate account type (magic-link, isolated from artist_profiles) — closest analog to the D-11 buyer account decision.
+- Admin surface conventions are established: app/(admin) layout, verifyAdmin() gate, ReportsAdmin/VerificationAdmin/PlacementAdmin component patterns.
 - Upload-signed PDF flow exists for documents; live provider-backed embedded e-sign is abstracted but not implemented end-to-end.
-- Phase 12 adds Green Room feed/search/discovery and admin-curated placements.
-- Phase 13 is planned to add full block/report/visibility/verification controls.
-- Phase 15 created multi-capability account infrastructure, which is the likely precedent if buyer capability is added.
 
 ## Known Gaps
 
-- No `buyers` or `license_requests` schema was found during the review.
+- No `buyer_orgs`/`buyer_members`/`license_requests` schema exists.
 - No buyer portal route exists.
 - No public "Request License" flow exists on profile, release, project, or Green Room surfaces.
+- No pre-cleared-terms schema or matching logic exists on vault projects.
+- No artist "Deals" room exists.
 - No deal-stage workflow connects a buyer request to Contract Locker documents.
 - No GTM beta dashboard exists for deal/request metrics.
 - Current e-sign docs are not aligned on provider recommendation: older docs lean Dropbox Sign, while the external GTM plan recommends SignWell.
@@ -96,8 +128,13 @@ This phase does not cover:
 <deferred>
 ## Deferred Ideas
 
+- Self-serve buyer org signup (approval-queue or domain-verified) — post-beta; beta orgs are admin-created (D-12).
+- Per-member buyer verification tiers and action-based verification escalation — beta uses org-level verification only (D-14).
+- Request-scoped buyer↔artist message threads or DM unlock on accept — beta is admin-mediated (D-14b).
+- Third "viewer" permission tier for buyer orgs (browse-only seats) — beta ships requester/approver only (D-13).
+- Unifying buyer accounts with the Phase 15 capability model (one login holding artist+industry+buyer) — revisit post-beta with the standing cross-capability review.
+- Free-text catalog search and ranking — beta is filtered browse only (D-16).
 - Self-serve paid ad buying, targeting, budgets, Stripe billing, ad review, and ad analytics.
-- Fully public buyer marketplace search before Phase 13 safety controls are verified.
 - Content ID direct partnership or fingerprinting build.
 - Automated legal negotiation or legal advice.
 - AE hiring automation, CRM replacement, or broad sales tooling before the first 3-5 closed deals.
@@ -107,4 +144,4 @@ This phase does not cover:
 ---
 
 *Phase: 16-GTM Beta Launch & Buyer Portal*
-*Context gathered: 2026-07-18*
+*Context gathered: 2026-07-18 · updated after discuss-phase session 2026-07-18*
