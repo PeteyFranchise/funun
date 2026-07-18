@@ -10,16 +10,16 @@
   "status": "paused",
   "completed_tasks": [
     {"id": "13-01", "name": "Trust/safety contracts + migration 058 draft", "status": "done", "commit": "7260a19"},
-    {"id": "13-02", "name": "Network tab (API + UI, DISCOVER-04)", "status": "done", "commit": "a8dcc53"}
+    {"id": "13-02", "name": "Network tab (API + UI, DISCOVER-04)", "status": "done", "commit": "a8dcc53"},
+    {"id": "13-04", "name": "Reporting & admin review (SAFETY-02)", "status": "done", "commit": "25d40b5"},
+    {"id": "13-05", "name": "Verification & profile visibility (SAFETY-03/04)", "status": "done", "commit": "e7f5b1a"}
   ],
   "remaining_tasks": [
-    {"id": "13-03", "name": "Hard block enforcement audit (SAFETY-01)", "status": "not_started"},
-    {"id": "13-04", "name": "Reporting & admin review (SAFETY-02)", "status": "not_started"},
-    {"id": "13-05", "name": "Verification & profile visibility (SAFETY-03/04)", "status": "not_started"}
+    {"id": "13-03", "name": "Hard block enforcement audit (SAFETY-01) — last remaining plan; read migrations 059/060 first (Codex already landed part of block visibility) and audit gaps rather than re-implement", "status": "not_started"}
   ],
   "blockers": [
-    {"description": "Migration 058 (supabase/migrations/058_trust_safety_schema.sql) drafted but NOT pushed to any database — 13-04 needs the reports table, 13-05 needs verification_audit_log + visibility columns", "type": "human_action", "workaround": "Run npm run db:push after reviewing the migration; this is an explicit human-gated DB checkpoint per 13-01-SUMMARY.md"},
-    {"description": "A Codex agent is committing to the shared branch codex/phase-11-presence-messaging in parallel (306eedd, 656a307 landed mid-session). 13-03 must retrofit block enforcement into green-room/profile/DM files Codex is actively editing for Phase 12", "type": "external", "workaround": "Wait for Phase 12 to finalize, or coordinate; re-read final Phase 12 diff before starting 13-03 (per 13-EXECUTION-PACKET.md collision watchlist)"},
+    {"description": "STALE (resolved 2026-07-18): migration 058 turned out to be already applied — supabase migration list shows local/remote in sync through 060. 13-04/13-05 executed on it", "type": "human_action", "workaround": "none needed"},
+    {"description": "Codex quiet since 656a307, but still shares branch codex/phase-11-presence-messaging. Before 13-03: git log for new commits, read 059/060 migrations + final Phase 12 diff (13-EXECUTION-PACKET.md collision watchlist)", "type": "external", "workaround": "Check HEAD before any integration; ff/cherry-pick accordingly"},
     {"description": "Phase 12 formally open: (1) two browser UAT items in 12-BROWSER-UAT-CHECKLIST.md need a human with 5 authenticated test accounts, (2) Codex adversarial review (codex CLI not installed on this machine; but Codex itself landed follow-ups in 306eedd), (3) PR #37 unmerged (MERGEABLE/CLEAN, no review approval, user chose to leave open)", "type": "human_action", "workaround": null}
   ],
   "async_jobs": [],
@@ -40,6 +40,6 @@
     ".planning/phases/13-network-trust-safety/13-EXECUTION-PACKET.md",
     ".planning/quick/260718-phase13-uat-prep/"
   ],
-  "next_action": "User picks one of: (a) push migration 058 then execute 13-04/13-05, (b) finalize Phase 12 / coordinate with Codex then execute 13-03, or (c) accept collision risk and draft 13-03 against current files. Before ANY 13-03 work: git log the branch and re-read the final Phase 12 diff (Codex may have landed more green-room commits).",
-  "context_notes": "Verification baseline at pause: HEAD 69b1142, tsc clean, lint clean, 40 suites / 331 tests green. Remaining plans 13-03/04/05 are all autonomous:false. STATE.md frontmatter progress counters known-stale; recompute at phase completion. The three untracked planning docs were deliberately left uncommitted by their author (Codex handoff docs) — do not delete them."
+  "next_action": "Execute 13-03 (hard block enforcement audit, SAFETY-01) — last Phase 13 plan. First: git log for new Codex commits, then read migrations 059/060 and the final Phase 12 diff; audit gaps rather than re-implementing what 059/060 already enforce. After 13-03: gsd-verifier phase verification, then manual UAT (13-VALIDATION.md scenarios incl. 7/8/9).",
+  "context_notes": "Verification baseline: HEAD e7f5b1a, tsc clean, lint clean, 45 suites / 426 tests green. 13-04 added lib/trust-safety/reports.ts + admin-reports.ts + /api/reports + /admin/reports UI; 13-05 added verification admin workflow + profile/open-to visibility enforcement in app/u/[handle] and People Search. jest.config.js worktree-isolation fix landed in 13-04 (negative lookahead) — do not revert. STATE.md frontmatter progress counters known-stale; recompute at phase completion. The three untracked planning docs are deliberate Codex handoff docs — do not delete."
 }
