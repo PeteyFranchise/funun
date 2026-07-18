@@ -4,11 +4,11 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 12
 current_phase_name: discovery-people-search
-status: ready
-stopped_at: Completed Phase 11 implementation, review fixes, validation record, and remote migration verification
-last_updated: "2026-07-13T23:59:00.000Z"
-last_activity: 2026-07-13
-last_activity_desc: Phase 11 implementation completed; PR #37 open as draft pending human UAT
+status: verified
+stopped_at: Phase 12 implemented + goal-verified (12-VERIFICATION.md); awaiting 2 visual UAT items, Codex adversarial review, and merge
+last_updated: "2026-07-18T00:00:00.000Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 12 Wave 5 completed; UAT automation gaps closed; 12-01/12-02 SUMMARYs backfilled; goal-backward VERIFICATION written (21/21 requirements met)
 progress:
   total_phases: 13
   completed_phases: 12
@@ -28,10 +28,18 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 12 (discovery-people-search) — READY
-Plan: not started
-Status: Phase 11 implementation complete; PR #37 remains draft pending human UAT and merge decision
-Last activity: 2026-07-13 — Phase 11 implementation completed, review findings fixed, migrations 054/055 verified LOCAL=REMOTE
+Phase: 12 (discovery-people-search) — GOAL-VERIFIED, NOT YET CLOSED
+Plan: all 10 plans (12-01…12-10) implemented; PLAN + SUMMARY complete for each
+Status: Green Room feed, People Search/Discover, and admin placements implemented and
+goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
+(280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
+gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
+adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
+Last activity: 2026-07-18 — Phase 12 Wave 5 finished; UAT automation gaps closed;
+summaries backfilled; goal-backward verification written.
+
+Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
+be recomputed authoritatively by the phase-completion flow when Phase 12 is closed.
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -41,7 +49,7 @@ Last activity: 2026-07-13 — Phase 11 implementation completed, review findings
 | 9 | Rich Member Profile | PROFILE-01..09 (9) | Passed |
 | 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Passed |
 | 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Implementation complete; human UAT pending |
-| 12 | Discovery & People Search | DISCOVER-01,02,03 (3) | Not started |
+| 12 | Discovery, Feed & People Search | DISCOVER-01,02,03 · FEED-01..18 (21) | Goal-verified (21/21); visual UAT + Codex review + merge pending |
 | 13 | Network Tab & Trust & Safety | DISCOVER-04 · SAFETY-01,02,03,04 (5) | Not started |
 
 Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no user-facing requirement).
