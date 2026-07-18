@@ -15,6 +15,7 @@ import {
   BenchmarkIcon,
   LaunchpadIcon,
   CollaboratorsIcon,
+  NetworkIcon,
   SettingsIcon,
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
@@ -36,6 +37,7 @@ const ITEMS: Item[] = [
   { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon, requiresCapability: 'artist' },
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
   { href: '/green-room', label: 'The Green Room', match: '/green-room', Icon: GreenRoomIcon },
+  { href: '/network', label: 'Network', match: '/network', Icon: NetworkIcon },
   { href: '/messages', label: 'Messages', match: '/messages', Icon: MessagesNavIcon },
   { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon, requiresCapability: 'artist' },
   { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon, requiresCapability: 'artist' },

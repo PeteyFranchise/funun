@@ -132,3 +132,17 @@ export const CollaboratorsIcon = (p: IconProps) => (
     <path d="M16 13c-.29 0-.62.02-.97.05C16.19 13.89 17 15.1 17 17v2h7v-2c0-2.66-5.33-4-8-4z" />
   </Svg>
 )
+
+// Network — connected nodes / relationship graph (following, followers,
+// connections, pending, blocked — distinct from the Collaborators roster
+// icon above, which is a project-scoped people list, not a member's graph)
+export const NetworkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="6" cy="6" r="2.4" />
+    <circle cx="18" cy="6" r="2.4" />
+    <circle cx="12" cy="18" r="2.4" />
+    <path d="m7.9 7.4 3 8.8" />
+    <path d="m16.1 7.4-3 8.8" />
+    <path d="M8.4 6h7.2" />
+  </Svg>
+)
