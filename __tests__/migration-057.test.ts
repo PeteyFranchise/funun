@@ -9,6 +9,10 @@ const authorPublicnessMigration = readFileSync(
   path.join(process.cwd(), 'supabase/migrations/059_green_room_feed_author_publicness.sql'),
   'utf8'
 )
+const blockAndAudienceParityMigration = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/060_green_room_block_visibility_and_audience_roles.sql'),
+  'utf8'
+)
 
 describe('migration 057 — Green Room feed schema', () => {
   it('creates separate tables for posts, audiences, comments, reactions, reposts, and placements', () => {
@@ -68,6 +72,15 @@ describe('migration 057 — visibility and block enforcement', () => {
     expect(migration).toMatch(/CREATE POLICY\s+"green_room_audiences_select_visible"[\s\S]*public\.green_room_can_view_post\(post_id, auth\.uid\(\)\)/)
     expect(migration).toContain("AND p.visibility = 'custom'")
   })
+
+  it('matches custom-audience roles against both industry_roles and profile roles JSON', () => {
+    expect(migration).toContain("jsonb_array_elements(COALESCE(ap.roles, '[]'::jsonb)) AS role")
+    expect(migration).toContain("role->>'kind' = 'preset'")
+    expect(migration).toContain("role->>'slug'")
+    expect(migration).toContain("role->>'kind' = 'custom'")
+    expect(migration).toContain("role->>'label'")
+    expect(blockAndAudienceParityMigration).toContain("jsonb_array_elements(COALESCE(ap.roles, '[]'::jsonb)) AS role")
+  })
 })
 
 describe('migration 057 — interactions and placement safeguards', () => {
@@ -80,6 +93,15 @@ describe('migration 057 — interactions and placement safeguards', () => {
     expect(migration).toMatch(/green_room_reposts_select_visible[\s\S]*public\.green_room_can_view_post\(original_post_id, auth\.uid\(\)\)/)
     expect(migration).toContain('p.allow_resharing = true')
     expect(migration).toContain("p.visibility IN ('public', 'followers', 'connections')")
+  })
+
+  it('hides comments, reactions, and reposts from blocked interaction authors', () => {
+    expect(migration).toMatch(/green_room_comments_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), author_id\)/)
+    expect(migration).toMatch(/green_room_reactions_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), user_id\)/)
+    expect(migration).toMatch(/green_room_reposts_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), author_id\)/)
+    expect(blockAndAudienceParityMigration).toMatch(/green_room_comments_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), author_id\)/)
+    expect(blockAndAudienceParityMigration).toMatch(/green_room_reactions_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), user_id\)/)
+    expect(blockAndAudienceParityMigration).toMatch(/green_room_reposts_select_visible[\s\S]*public\.no_block\(auth\.uid\(\), author_id\)/)
   })
 
   it('labels placements and keeps v1 placement writes server-owned', () => {

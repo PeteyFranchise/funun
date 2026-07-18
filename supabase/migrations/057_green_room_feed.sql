@@ -172,7 +172,24 @@ AS $$
               )
           )
         )
-        OR (cardinality(a.roles) > 0 AND COALESCE(ap.industry_roles, '{}'::TEXT[]) && a.roles)
+        OR (
+          cardinality(a.roles) > 0
+          AND (
+            COALESCE(ap.industry_roles, '{}'::TEXT[]) && a.roles
+            OR EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(COALESCE(ap.roles, '[]'::jsonb)) AS role
+              WHERE (
+                role->>'kind' = 'preset'
+                AND lower(role->>'slug') = ANY(ARRAY(SELECT lower(r) FROM unnest(a.roles) AS r))
+              )
+              OR (
+                role->>'kind' = 'custom'
+                AND lower(role->>'label') = ANY(ARRAY(SELECT lower(r) FROM unnest(a.roles) AS r))
+              )
+            )
+          )
+        )
         OR (cardinality(a.genres) > 0 AND ap.genre IS NOT NULL AND lower(ap.genre) = ANY(ARRAY(SELECT lower(g) FROM unnest(a.genres) AS g)))
         OR (cardinality(a.locations) > 0 AND ap.location IS NOT NULL AND lower(ap.location) = ANY(ARRAY(SELECT lower(l) FROM unnest(a.locations) AS l)))
       )
@@ -409,6 +426,7 @@ CREATE POLICY "green_room_comments_select_visible" ON green_room_comments FOR SE
     deleted_at IS NULL
     AND moderation_status = 'visible'
     AND public.green_room_can_view_post(post_id, auth.uid())
+    AND public.no_block(auth.uid(), author_id)
   );
 
 CREATE POLICY "green_room_comments_insert_visible_post" ON green_room_comments FOR INSERT TO authenticated
@@ -436,7 +454,10 @@ DROP POLICY IF EXISTS "green_room_reactions_insert_own_visible_post" ON green_ro
 DROP POLICY IF EXISTS "green_room_reactions_delete_own" ON green_room_reactions;
 
 CREATE POLICY "green_room_reactions_select_visible" ON green_room_reactions FOR SELECT TO authenticated
-  USING (public.green_room_can_view_post(post_id, auth.uid()));
+  USING (
+    public.green_room_can_view_post(post_id, auth.uid())
+    AND public.no_block(auth.uid(), user_id)
+  );
 
 CREATE POLICY "green_room_reactions_insert_own_visible_post" ON green_room_reactions FOR INSERT TO authenticated
   WITH CHECK (
@@ -455,6 +476,7 @@ CREATE POLICY "green_room_reposts_select_visible" ON green_room_reposts FOR SELE
   USING (
     deleted_at IS NULL
     AND public.green_room_can_view_post(original_post_id, auth.uid())
+    AND public.no_block(auth.uid(), author_id)
   );
 
 CREATE POLICY "green_room_reposts_insert_own_visible_original" ON green_room_reposts FOR INSERT TO authenticated

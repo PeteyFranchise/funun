@@ -197,9 +197,39 @@ describe('Green Room feed query helpers', () => {
           })),
         })),
       })),
+      rpc: jest.fn(async () => ({ data: true, error: null })),
     }
 
-    await expect(filterVisiblePlacementRows(supabase as never, rows as never)).resolves.toEqual([rows[0]])
+    await expect(filterVisiblePlacementRows(supabase as never, 'viewer-1', rows as never)).resolves.toEqual([rows[0]])
+  })
+
+  it('filters otherwise-public placements when the destination owner is blocked', async () => {
+    const rows = [
+      {
+        id: 'blocked-placement',
+        placement_kind: 'featured',
+        label: 'Featured',
+        title: 'Blocked profile',
+        body: null,
+        destination_type: 'profile',
+        destination_id: 'blocked-profile',
+        destination_url: null,
+      },
+    ]
+    const supabase = {
+      from: jest.fn((_table: string) => ({
+        select: jest.fn(() => ({
+          eq: jest.fn((_field: string, id: string) => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn(async () => ({ data: { id }, error: null })),
+            })),
+          })),
+        })),
+      })),
+      rpc: jest.fn(async () => ({ data: false, error: null })),
+    }
+
+    await expect(filterVisiblePlacementRows(supabase as never, 'viewer-1', rows as never)).resolves.toEqual([])
   })
 
   it('drops feed posts whose non-owner author profile is no longer public', async () => {
@@ -267,5 +297,6 @@ function feedService({ posts, authors }: { posts: unknown[]; authors: unknown[] 
       if (table === 'green_room_placements') return terminal([])
       throw new Error(`Unexpected table: ${table}`)
     }),
+    rpc: jest.fn(async () => ({ data: true, error: null })),
   }
 }

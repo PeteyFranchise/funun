@@ -104,6 +104,7 @@ describe('isDestinationVisible', () => {
           }),
         })),
       })),
+      rpc: jest.fn(async () => ({ data: true, error: null })),
     }
   }
 
@@ -135,12 +136,20 @@ describe('isDestinationVisible', () => {
       b.maybeSingle = async () => ({ data: rowsByTable[table] ?? null })
       return b
     }
-    return { from: jest.fn((t: string) => chain(t)) }
+    return {
+      from: jest.fn((t: string) => chain(t)),
+      rpc: jest.fn(async () => ({ data: true, error: null })),
+    }
   }
 
   it('passes for a public project destination and fails for a private one', async () => {
     await expect(
-      isDestinationVisible(routedService({ vault_projects: { id: UUID } }) as never, 'project', UUID, null)
+      isDestinationVisible(
+        routedService({ vault_projects: { id: UUID, user_id: 'owner-1' } }) as never,
+        'project',
+        UUID,
+        null
+      )
     ).resolves.toBe(true)
     await expect(
       isDestinationVisible(routedService({}) as never, 'project', UUID, null)
@@ -151,7 +160,10 @@ describe('isDestinationVisible', () => {
     // track exists → parent project public
     await expect(
       isDestinationVisible(
-        routedService({ tracks: { project_id: 'proj-1' }, vault_projects: { id: 'proj-1' } }) as never,
+        routedService({
+          tracks: { project_id: 'proj-1' },
+          vault_projects: { id: 'proj-1', user_id: 'owner-1' },
+        }) as never,
         'track',
         UUID,
         null
@@ -169,7 +181,12 @@ describe('isDestinationVisible', () => {
 
   it('passes only for an active opportunity destination', async () => {
     await expect(
-      isDestinationVisible(routedService({ opportunities: { id: UUID } }) as never, 'opportunity', UUID, null)
+      isDestinationVisible(
+        routedService({ opportunities: { id: UUID, created_by: 'owner-1' } }) as never,
+        'opportunity',
+        UUID,
+        null
+      )
     ).resolves.toBe(true)
     await expect(
       isDestinationVisible(routedService({}) as never, 'opportunity', UUID, null)
@@ -195,6 +212,15 @@ describe('isDestinationVisible', () => {
         UUID,
         null
       )
+    ).resolves.toBe(false)
+  })
+
+  it('fails for a visible destination when the viewer is blocked by that owner', async () => {
+    const service = routedService({ artist_profiles: { id: UUID } })
+    service.rpc = jest.fn(async () => ({ data: false, error: null }))
+
+    await expect(
+      isDestinationVisible(service as never, 'profile', UUID, null, 'viewer-1')
     ).resolves.toBe(false)
   })
 

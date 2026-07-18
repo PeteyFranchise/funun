@@ -257,7 +257,8 @@ export async function isDestinationVisible(
   service: SupabaseClient,
   destinationType: PlacementDestinationType,
   destinationId: string | null,
-  destinationUrl: string | null
+  destinationUrl: string | null,
+  viewerId?: string
 ): Promise<boolean> {
   if (destinationType === 'external') return isHttpUrl(destinationUrl)
   if (!destinationId) return false
@@ -269,17 +270,20 @@ export async function isDestinationVisible(
       .eq('id', destinationId)
       .eq('is_public', true)
       .maybeSingle()
-    return !!data
+    if (!data) return false
+    return checkViewerBlock(service, viewerId, destinationId)
   }
 
   if (destinationType === 'project') {
     const { data } = await service
       .from('vault_projects')
-      .select('id')
+      .select('id, user_id')
       .eq('id', destinationId)
       .eq('is_public', true)
       .maybeSingle()
-    return !!data
+    const ownerId = (data as { user_id?: string } | null)?.user_id
+    if (!ownerId) return false
+    return checkViewerBlock(service, viewerId, ownerId)
   }
 
   if (destinationType === 'track') {
@@ -292,21 +296,25 @@ export async function isDestinationVisible(
     if (!projectId) return false
     const { data: project } = await service
       .from('vault_projects')
-      .select('id')
+      .select('id, user_id')
       .eq('id', projectId)
       .eq('is_public', true)
       .maybeSingle()
-    return !!project
+    const ownerId = (project as { user_id?: string } | null)?.user_id
+    if (!ownerId) return false
+    return checkViewerBlock(service, viewerId, ownerId)
   }
 
   if (destinationType === 'opportunity') {
     const { data } = await service
       .from('opportunities')
-      .select('id')
+      .select('id, created_by')
       .eq('id', destinationId)
       .eq('active', true)
       .maybeSingle()
-    return !!data
+    const ownerId = (data as { created_by?: string } | null)?.created_by
+    if (!ownerId) return false
+    return checkViewerBlock(service, viewerId, ownerId)
   }
 
   if (destinationType === 'post') {
@@ -328,8 +336,21 @@ export async function isDestinationVisible(
       .eq('id', authorId)
       .eq('is_public', true)
       .maybeSingle()
-    return !!author
+    if (!author) return false
+    return checkViewerBlock(service, viewerId, authorId)
   }
 
   return false
+}
+
+async function checkViewerBlock(
+  service: SupabaseClient,
+  viewerId: string | undefined,
+  ownerId: string
+): Promise<boolean> {
+  if (!viewerId || viewerId === ownerId) return true
+
+  const { data, error } = await service.rpc('no_block', { a: viewerId, b: ownerId })
+  if (error) return false
+  return data === true
 }

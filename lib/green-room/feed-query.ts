@@ -193,7 +193,7 @@ export async function loadGreenRoomFeed(
   const postCards = pagePosts.map(post =>
     toPostCard(post, viewerId, relationships, authors.get(post.author_id), counts)
   )
-  const placements = await loadPlacementCards(supabase, options.tab)
+  const placements = await loadPlacementCards(supabase, viewerId, options.tab)
   const cards = insertPlacementCards(postCards, placements, limit)
   const lastPost = pagePosts[pagePosts.length - 1]
   const hasMore = filteredPosts.length > limit || rawPosts.length > limit * 3
@@ -340,6 +340,7 @@ function countByPost(rows: CountRow[]): Map<string, number> {
 
 async function loadPlacementCards(
   supabase: SupabaseClient,
+  viewerId: string,
   tab: GreenRoomTab
 ): Promise<GreenRoomPlacementCard[]> {
   const nowIso = new Date().toISOString()
@@ -358,7 +359,7 @@ async function loadPlacementCards(
   const { data, error } = await query
   if (error) throw new Error(`Failed to load Green Room placements: ${error.message}`)
 
-  const visibleRows = await filterVisiblePlacementRows(supabase, (data ?? []) as PlacementRow[])
+  const visibleRows = await filterVisiblePlacementRows(supabase, viewerId, (data ?? []) as PlacementRow[])
 
   return visibleRows.map(row => ({
     kind: 'placement',
@@ -378,11 +379,12 @@ async function loadPlacementCards(
 
 export async function filterVisiblePlacementRows(
   supabase: SupabaseClient,
+  viewerId: string,
   rows: PlacementRow[]
 ): Promise<PlacementRow[]> {
   const decisions = await Promise.all(
     rows.map(row =>
-      isDestinationVisible(supabase, row.destination_type, row.destination_id, row.destination_url)
+      isDestinationVisible(supabase, row.destination_type, row.destination_id, row.destination_url, viewerId)
     )
   )
   return rows.filter((_row, index) => decisions[index])
