@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildReleaseCommentNotification } from '@/lib/social/notifications'
+import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -26,6 +27,27 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // 13-03 hard-block-enforcement audit: unlike wall_posts/endorsements,
+  // rc_insert_author (migration 012) was never wired with no_block() at the
+  // RLS layer (migrations 038/044 covered follows/wall_posts/endorsements/
+  // dm_threads/dm_messages/connections but not release_comments). Resolve
+  // the project owner FIRST so this app-layer check is the only gate
+  // preventing a fresh comment across a block — a genuine gap, not just an
+  // error-message-shape fix like the other routes in this plan. A migration
+  // adding no_block() to rc_insert_author would close this at the DB layer
+  // too, but that requires a live `supabase db push`, which is human-gated
+  // in this codebase (see migration 058's header comment) — documented as
+  // a follow-up rather than applied here.
+  const service = createServiceClient()
+  const { data: project } = await supabase
+    .from('vault_projects')
+    .select('user_id, title')
+    .eq('id', projectId)
+    .maybeSingle()
+  if (project && (await isBlockedRelativeTo(service, user.id, project.user_id))) {
+    return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+  }
+
   const { data, error } = await supabase
     .from('release_comments')
     .insert({ project_id: projectId, author_id: user.id, parent_id: parentId ?? null, body: text })
@@ -33,23 +55,17 @@ export async function POST(request: Request) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Best-effort side effect: notify the PROJECT OWNER (not the commenter). The
-  // comment row only carries author_id, so resolve the owner (user_id) and the
-  // release title from vault_projects. Skip the notify when the commenter IS
-  // the owner (don't notify someone about their own comment).
+  // Best-effort side effect: notify the PROJECT OWNER (not the commenter).
+  // Skip the notify when the commenter IS the owner (don't notify someone
+  // about their own comment). Reuses the `project` row already fetched above
+  // for the block check — no second vault_projects query.
   try {
-    const { data: project } = await supabase
-      .from('vault_projects')
-      .select('user_id, title')
-      .eq('id', projectId)
-      .maybeSingle()
     if (project && project.user_id !== user.id) {
       const { data: actor } = await supabase
         .from('artist_profiles')
         .select('artist_name, avatar_url')
         .eq('id', user.id)
         .maybeSingle()
-      const service = createServiceClient()
       await createNotification(
         service,
         buildReleaseCommentNotification({

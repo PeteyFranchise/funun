@@ -14,6 +14,7 @@ import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
+import { loadBlockedIds } from '@/lib/green-room/discover'
 
 export const dynamic = 'force-dynamic'
 
@@ -127,14 +128,22 @@ export default async function OwnerProfilePage() {
     profile = (prof as ArtistProfile) ?? null
     projects = (projs ?? []) as ProfileProjectRow[]
     followerCount = count ?? 0
+
+    // 13-03 hard-block-enforcement audit: the owner's own wall/endorsements/
+    // comments must not keep rendering content from someone the owner has
+    // blocked (or who has blocked the owner) just because the underlying
+    // read RLS is `USING (true)`. Reuses the same bidirectional blocked-id
+    // set as the public profile route (lib/green-room/discover.ts).
+    const blockedIds = await loadBlockedIds(service, user.id)
+
     wall = {
       profileUserId: user.id,
       ownerName: profile?.artist_name ?? 'You',
       canPost: true,
       viewerInitials: initialsOf(profile?.artist_name ?? null),
-      posts: await loadWall(supabase, user.id),
+      posts: await loadWall(supabase, user.id, blockedIds),
     }
-    const endo = await loadEndorsements(supabase, user.id, user.id)
+    const endo = await loadEndorsements(supabase, user.id, user.id, blockedIds)
     endorsements = {
       profileUserId: user.id,
       ownerName: profile?.artist_name ?? 'You',
@@ -152,7 +161,7 @@ export default async function OwnerProfilePage() {
         releaseTitle: featProj.title,
         canComment: true,
         viewerInitials: initialsOf(profile?.artist_name ?? null),
-        items: await loadReleaseComments(supabase, featProj.id),
+        items: await loadReleaseComments(supabase, featProj.id, blockedIds),
       }
     }
 

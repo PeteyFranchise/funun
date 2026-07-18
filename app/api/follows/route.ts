@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildNewFollowerNotification } from '@/lib/social/notifications'
+import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -21,6 +22,16 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
   if (user.id === followeeId) return NextResponse.json({ error: 'Cannot follow yourself' }, { status: 400 })
 
   if (action === 'follow') {
+    // 13-03 hard-block-enforcement audit: follows_insert_own RLS (migration
+    // 038) already rejects this INSERT across a block, but a raw RLS
+    // rejection surfaces a distinguishable Postgres error shape. Pre-check
+    // and return the same generic, block-state-agnostic error every other
+    // rejected follow would get.
+    const service = createServiceClient()
+    if (await isBlockedRelativeTo(service, user.id, followeeId)) {
+      return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+    }
+
     const { error } = await supabase
       .from('follows')
       .upsert({ follower_id: user.id, followee_id: followeeId }, { onConflict: 'follower_id,followee_id' })
@@ -36,7 +47,6 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
         .select('artist_name, avatar_url, handle')
         .eq('id', user.id)
         .maybeSingle()
-      const service = createServiceClient()
       await createNotification(
         service,
         buildNewFollowerNotification({

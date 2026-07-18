@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 11
-current_phase_name: presence-messaging
-status: ready
-stopped_at: Phase 10 passed after UAT fixes and WR-04 hardening
-last_updated: "2026-07-13T04:27:52-04:00"
-last_activity: 2026-07-13
-last_activity_desc: Phase 10 live-backend UAT completed; Follow visual weight, notification compound-cursor pagination, and duplicate accept notification hardening fixed, retested, and recorded
+current_phase: 13
+current_phase_name: network-trust-safety
+status: phase-13-verified
+stopped_at: Phase 13 goal-verified (13-VERIFICATION.md); migration 061 pushed; manual UAT items pending
+last_updated: "2026-07-18T19:06:15.936Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 13 verified; migration 061 (release_comments no_block) live
 progress:
-  total_phases: 6
-  completed_phases: 2
-  structurally_verified_or_code_complete_phases: 3
-  known_plans: 18
-  completed_known_plans: 18
-  percent_complete_by_passed_phase: 33
+  # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
+  total_phases: 16
+  completed_phases: 13
+  total_plans: 44
+  completed_plans: 39
+  percent: 89
 ---
 
 # Project State
@@ -25,14 +25,29 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 11 — presence-messaging
+**Current focus:** Phase 13 — network-trust-safety
 
 ## Current Position
 
-Phase: 11 (presence-messaging) — READY
-Plan: not started
-Status: Phase 10 implementation, review-fix work, live-backend UAT, and WR-04 hardening are complete. UAT found two issues (Follow visual weight and notification timestamp-tie pagination); both are fixed, retested, and recorded in `10-UAT.md` / `10-VERIFICATION.md`.
-Last activity: 2026-07-13 — completed Phase 10 UAT against the live Supabase backend, fixed the two UAT failures, closed WR-04 with a pending-state PATCH guard, reran lint/Jest/tsc/build, and advanced the roadmap pointer to Phase 11.
+Phase: 13 (network-trust-safety) — EXECUTED, goal-verified with human UAT pending
+Plan: 5 of 5 done (13-01 → 13-02 → 13-04 → 13-05 → 13-03). All requirements
+(DISCOVER-04, SAFETY-01..04) functionally satisfied per 13-VERIFICATION.md
+(9/9 must-haves verified in code; 46 suites / 450 tests, tsc/lint clean;
+migrations 058–060 confirmed live). Overall verdict: human_needed — 4 manual
+UAT items remain: (1) live two-account block smoke test, (2) 13-VALIDATION.md
+scenario 7 admin verify + self-grant negative, (3) scenario 8 connections-only
+exclusion, (4) scenario 9 hidden open_to persistence. Two documented deferrals:
+release_comments DB-layer no_block RLS (app-layer mitigated; needs future
+migration) and no severing of pre-existing follows/connections on block.
+goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite green
+(280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
+gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
+adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
+Last activity: 2026-07-18 — Phase 13 execution started
+summaries backfilled; goal-backward verification written.
+
+Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
+be recomputed authoritatively by the phase-completion flow when Phase 12 is closed.
 
 ## Roadmap Snapshot (v1.2 — Phases 8–13)
 
@@ -41,8 +56,8 @@ Last activity: 2026-07-13 — completed Phase 10 UAT against the live Supabase b
 | 8 | Identity & Schema Foundation | (foundation — none mapped) | Structurally verified; live DB/UAT checks still recorded as human_needed |
 | 9 | Rich Member Profile | PROFILE-01..09 (9) | Passed |
 | 10 | Connections & Notifications | CONNECT-01,02 · NOTIF-01,02,03 (5) | Passed |
-| 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Ready |
-| 12 | Discovery & People Search | DISCOVER-01,02,03 (3) | Not started |
+| 11 | Presence & Messaging | PRESENCE-01,02,03 · CONNECT-03,04,05 (6) | Implementation complete; human UAT pending |
+| 12 | Discovery, Feed & People Search | DISCOVER-01,02,03 · FEED-01..18 (21) | Goal-verified (21/21); visual UAT + Codex review + merge pending |
 | 13 | Network Tab & Trust & Safety | DISCOVER-04 · SAFETY-01,02,03,04 (5) | Not started |
 
 Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no user-facing requirement).
@@ -95,6 +110,18 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 10 P04 | 2min | 2 tasks | 4 files |
 | Phase 10 P05 | 3min | 2 tasks | 3 files |
 | Phase 10 P06 | 4min | 2 tasks | 3 files |
+| Phase 11 P01 | 4min | 4 tasks | 6 files |
+| Phase 11 P02 | checkpoint-spanning | 2 tasks | 2 files |
+| Phase 11 P03 | 28min | 6 tasks | 11 files |
+| Phase 11 P04 | 8min | 3 tasks | 5 files |
+| Phase 11 P05 | 28min | 3 tasks | 11 files |
+| Phase 11 P06 | 8min | 2 tasks | 5 files |
+| Phase 11 Review Fix | codex follow-up | 7 findings fixed | 8 files |
+| Phase 13 P01 | 16min | 2 tasks | 4 files |
+| Phase 13 P02 | 40min | 2 tasks | 8 files |
+| Phase 13 P04 | 50min | 2 tasks | 12 files |
+| Phase 13 P05 | 35min | 2 tasks | 18 files |
+| Phase 13 P03 | 55min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -155,11 +182,22 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 10-06]: ConnectButton owns the primary gradient slot and Follow stays ghost — satisfies the UI-SPEC visual-weight decision without a second gradient in the row; declined/withdrawn read as `none` (state query filters to pending/accepted) enabling re-request via the partial unique index; #wall/#endorsements anchors use scroll-mt-88 so the sticky header doesn't overlap deep-link targets; connect state derived from the connections table via connections_select_participant RLS mirroring the follow derivation
 - [Phase 10 UAT]: Live-backend UAT completed 2026-07-13; 8/8 checks passed after fixing FollowButton's ghost styling and replacing notification pagination's created_at-only cursor with a compound created_at/id cursor for same-timestamp rows
 - [Phase 10 WR-04]: PATCH /api/connections now filters transition updates with `status = 'pending'`, so double-submit/retry on an already accepted/declined/withdrawn row returns 404 and cannot emit duplicate `connection_accepted` notifications
+- [Phase 13-01]: Trust/safety contracts + migration 058 drafted: reports table private-by-default with server-owned writes (mirrors migration 056); verification_audit_log admin-only via zero-policy RLS; profile_visibility/open_to_visibility additive columns
+- [Phase ?]: 13-02: Added a scoped POST/DELETE /api/network/blocks endpoint so the Network tab's Block/unblock acceptance criterion is real, not UI-only; 13-03 should build on it rather than duplicate it.
+- [Phase ?]: 13-02: Omitted the 'Remove' action for already-accepted connections - no RLS transition exists from accepted to a terminal state today; adding one is a schema change out of scope.
+- [Phase ?]: 13-02: Following/followers tabs exclude accepted connections (relationship-priority rule matching lib/green-room/discover.ts precedent) so a mutual connection isn't also shown as following/follower noise.
+- [Phase 13]: 13-04: report-target visibility mirrors currently-enforced rules (is_public/thread-participancy/green_room_can_view_post), not 13-05's not-yet-enforced profile_visibility column
+- [Phase 13]: 13-04: admin content-action routing reuses existing hide/remove/pause columns (moderation_status, deleted_at, placements status) instead of inventing new moderation state
+- [Phase 13]: 13-04: fixed jest.config.js worktree-self-exclusion bug (testPathIgnorePatterns) that made it impossible to run tests from inside an isolated executor worktree
+- [Phase 13]: 13-05: verification grant/revoke audits every action unconditionally (even idempotent re-grants), since a single verified_at column cannot capture repeated admin actions on its own
+- [Phase 13]: 13-05: connections_only profiles 404 identically to private/nonexistent ones on the public profile route and are excluded entirely from People Search for non-connections — no distinguishable teaser state
+- [Phase 13]: 13-05: hidden open_to blanks the rendered/returned data only; the stored setting is never touched, so re-enabling visibility restores prior selections exactly
+- [Phase ?]: 13-03: release_comments (rc_insert_author) had no no_block() DB wiring at all — mitigated at the app layer (isBlockedRelativeTo pre-check); a migration to close the DB-layer gap is a follow-up, not applied by this executor (live db push is human-gated)
+- [Phase ?]: 13-03: existing follows/connections rows are not severed when a block is placed afterward — no precedent trigger exists; every content-read surface re-derives no_block() independently, so this is a data-hygiene deferral, not a leak
 
 ### Pending Todos
 
 - Resolve during Phase 8 planning: industry-member signup/routing flow (where `app_metadata.role` is set, post-auth redirect, distinct onboarding), and a reserved-handle list (squatting risk MINOR-3) — product decision, not purely engineering
-- Confirm during Phase 11 planning: Supabase Realtime concurrent-connection budgeting / monitoring strategy
 - Confirm during Phase 12 planning: pg_trgm/tsvector performance at 10K+ profiles via EXPLAIN ANALYZE before committing to plain GIN-index approach
 - Confirm during Phase 13 planning: verified-badge grant is admin-manual (no self-application UI) — explicit, not silent deferral
 
@@ -216,12 +254,13 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-13T02:45:49.311Z
-Stopped at: Completed 10-02-PLAN.md
-Resume file: .planning/phases/10-connections-notifications/10-03-PLAN.md
+Last session: 2026-07-18T19:06:15.918Z
+Stopped at: Completed 13-03-PLAN.md (Hard Block Enforcement Audit) — last plan of Phase 13, ready for phase verification
+Resume file: None
 
 ## Operator Next Steps
 
+- Phase 11 (Presence & Messaging) implementation is complete on PR #37 (`codex/phase-11-presence-messaging`): six plans executed, review findings fixed, lint/TypeScript/Jest/build/Vercel pass, and migrations 054/055 are verified LOCAL=REMOTE. Remaining work is human UAT only: two-session presence, request accept/decline/block, unread clearing, docked widget persistence, rate-limit wall, and connected-direct-message flow.
 - Phase 15 (Account Capability Model) is done — `member_type` is now backed by `capability_grants`, with a unified nav, a self-serve request CTA, and an admin approval queue. Manual UAT items from 15-03-SUMMARY.md and 15-04-SUMMARY.md are still outstanding (multi-capability nav visibility, live approve/deny flow).
 - PR #26 (Phase 14 — Playback Room Refinement) is still waiting on Thomas's local UAT before it can be merged.
-- Phase 8 (Identity & Schema Foundation) is complete; Phases 9–13 are the next unstarted Green Room phases and are all UI-forward (design handoff locked at `docs/design/wave-4-social-layer/`); `/gsd-ui-phase` is enabled and applicable.
+- Phase 12 (Discovery & People Search) is the next unstarted Green Room phase; it is UI-forward with the design handoff locked at `docs/design/wave-4-social-layer/`, and `/gsd-ui-phase` is enabled and applicable.

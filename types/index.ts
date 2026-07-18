@@ -399,6 +399,15 @@ export type ArtistProfile = {
   // Wave 4 identity (migration 034)
   member_type: 'artist' | 'industry'
   search_vector: string | null
+  // Trust & safety (migration 058, SAFETY-03/SAFETY-04). Inlined as literal
+  // unions rather than importing ProfileVisibility/OpenToVisibility from
+  // lib/trust-safety/contracts.ts — this file has no imports today and stays
+  // self-contained; the value sets are kept in lockstep by hand.
+  profile_visibility: 'public' | 'connections_only'
+  open_to_visibility: 'public' | 'connections' | 'hidden'
+  // Timestamp of the last admin verification grant/revoke action. Private —
+  // never exposed via the public/anon column grant (see migration 058).
+  verified_at: string | null
   created_at: string
   updated_at: string
 }

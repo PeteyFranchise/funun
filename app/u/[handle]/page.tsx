@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { ArtistProfile } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
@@ -9,13 +9,18 @@ import type { WallState } from '@/components/profile/Wall'
 import type { EndorsementState } from '@/components/profile/Endorsements'
 import type { ReleaseCommentsState } from '@/components/profile/ReleaseComments'
 import type { ActivityState } from '@/components/profile/ActivityFeed'
-import type { DmState } from '@/components/profile/DmWidget'
 import type { FeaturedPickerRelease } from '@/components/profile/FeaturedPicker'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 import { loadActivity } from '@/lib/social/activity'
-import { loadConversation, findThread } from '@/lib/social/dm'
+import { loadBlockedIds } from '@/lib/green-room/discover'
+import {
+  isProfileVisibleTo,
+  isOpenToVisibleTo,
+  isValidProfileVisibility,
+  isValidOpenToVisibility,
+} from '@/lib/trust-safety/contracts'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +71,10 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   let endorsements: EndorsementState | undefined
   let comments: ReleaseCommentsState | undefined
   let activity: ActivityState | undefined
-  let dm: DmState | undefined
+  // SAFETY-04: whether `open_to` is visible to THIS viewer. Defaults true
+  // for the DEMO branch (always fully visible showcase data); the real
+  // branch below recomputes it from open_to_visibility + viewer relationship.
+  let openToVisible = true
 
   if (DEMO) {
     if (handle !== DEMO_PROFILE.handle) notFound()
@@ -127,15 +135,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         { id: 'a3', kind: 'readiness', body: 'Hit readiness 92 on “Midnight Ride” — now deal-ready and visible to supervisors.', createdAt: ago(168) },
       ],
     }
-    dm = {
-      ownerId: profile.id,
-      ownerName: profile.artist_name ?? 'this artist',
-      ownerAvatarUrl: profile.avatar_url,
-      canMessage: true,
-      viewerId: 'demo-viewer',
-      threadId: null,
-      initialMessages: [],
-    }
   } else {
     const supabase = await createServerClient()
     // Explicit PUBLIC column list (D-11) — must stay identical to migration
@@ -143,9 +142,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // grant never drift. Includes `genre` and `sound_identity` (legacy
     // fields, not in the original D-11 draft) because buildProfileData()
     // reads both to build the profile's `tags` display (see 08-05-SUMMARY.md).
+    // profile_visibility/open_to_visibility (migration 058, SAFETY-04) carry
+    // their own explicit column-level SELECT grant to authenticated/anon —
+    // needed here to decide what to render, enforced below.
     const { data: prof } = await supabase
       .from('artist_profiles')
-      .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, allow_resharing, search_vector, avatar_url, verified, roles, is_public, created_at, updated_at')
+      .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, allow_resharing, search_vector, avatar_url, verified, roles, is_public, profile_visibility, open_to_visibility, created_at, updated_at')
       .eq('handle', handle)
       .maybeSingle()
 
@@ -153,47 +155,36 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     if (!prof || !(prof as ArtistProfile).is_public) notFound()
     profile = prof as ArtistProfile
 
-    const [{ data: projs }, { count }, { count: placementsCountResult }, { data: viewer }] = await Promise.all([
-      supabase
-        .from('vault_projects')
-        .select('id, title, type, cover_art_url, vault_readiness_score, release_date, is_public')
-        .eq('user_id', profile.id)
-        .order('vault_readiness_score', { ascending: false }),
-      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('followee_id', profile.id),
-      supabase
-        .from('activity_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', profile.id)
-        .eq('kind', 'placement'),
-      supabase.auth.getUser(),
-    ])
-    projects = (projs ?? []) as ProfileProjectRow[]
-    followerCount = count ?? 0
-    placementsCount = placementsCountResult ?? 0
+    const {
+      data: { user: viewerUser },
+    } = await supabase.auth.getUser()
+    const viewerId = viewerUser?.id ?? null
 
-    const viewerId = viewer.user?.id ?? null
-    let isFollowing = false
-    if (viewerId && viewerId !== profile.id) {
-      const { data: rel } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('follower_id', viewerId)
-        .eq('followee_id', profile.id)
-        .maybeSingle()
-      isFollowing = Boolean(rel)
-    }
-    follow = {
-      profileUserId: profile.id,
-      isFollowing,
-      canFollow: Boolean(viewerId) && viewerId !== profile.id,
-    }
+    // ── SAFETY-01: hard block enforcement (13-03 audit) ──────────────────
+    // A block in EITHER direction between the viewer and this profile must
+    // render the exact same notFound() as a nonexistent/private profile — no
+    // distinguishable "you are blocked" state. loadBlockedIds (session read
+    // scoped to blocks_select_own, unioned server-side via the SERVICE
+    // client so it also sees blocks placed against the viewer) is reused
+    // verbatim from lib/green-room/discover.ts rather than re-derived here —
+    // the same bidirectional-exclusion doctrine People Search already
+    // enforces. Runs before every other query below (connections, wall,
+    // endorsements, comments, activity) so a blocked pair's profile visit
+    // never fetches — or exposes via timing — any of that data. blockedIds
+    // is also reused further down to filter wall/endorsement/comment
+    // authors the viewer is blocked with, independent of the profile owner.
+    const blockedIds = viewerId ? await loadBlockedIds(createServiceClient(), viewerId) : new Set<string>()
+    if (blockedIds.has(profile.id)) notFound()
 
     // Derive connect state from the connections table for the viewer<->profile
-    // pair, mirroring the follow derivation above. connections_select_participant
-    // RLS (migration 035) returns only rows the viewer participates in, so a
-    // forged .or() filter can never leak a non-participant's connection (T-10-19).
-    // Only an active row (pending/accepted) matters — declined/withdrawn are
-    // terminal and read as `none` (re-request allowed via the partial unique index).
+    // pair. connections_select_participant RLS (migration 035) returns only
+    // rows the viewer participates in, so a forged .or() filter can never
+    // leak a non-participant's connection (T-10-19). Only an active row
+    // (pending/accepted) matters — declined/withdrawn are terminal and read
+    // as `none` (re-request allowed via the partial unique index). Hoisted
+    // above the projects/follower/placements load so its `connected` result
+    // can also gate SAFETY-04's profile_visibility check below, without a
+    // second query.
     const canConnect = Boolean(viewerId) && viewerId !== profile.id
     let connectState: ConnectState['state'] = 'none'
     let connectionId: string | null = null
@@ -220,6 +211,27 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         }
       }
     }
+
+    // ── SAFETY-04: server-side profile/open-to visibility enforcement ──
+    // A connections_only profile renders the same notFound() as a
+    // nonexistent/private one for any non-owner, non-connection viewer — no
+    // distinguishable "this profile is connections-only" teaser (13-UI-SPEC.md
+    // has no teaser state for this). Runs before the wall/endorsements/
+    // comments/activity loads below so a hidden profile never fetches (or
+    // exposes via timing) any of that data.
+    const viewerIsOwner = Boolean(viewerId) && viewerId === profile.id
+    const viewerIsConnection = connectState === 'connected'
+    const profileVisibility = isValidProfileVisibility(profile.profile_visibility)
+      ? profile.profile_visibility
+      : 'public'
+    if (!isProfileVisibleTo(profileVisibility, viewerIsOwner, viewerIsConnection)) {
+      notFound()
+    }
+    const openToVisibility = isValidOpenToVisibility(profile.open_to_visibility)
+      ? profile.open_to_visibility
+      : 'public'
+    openToVisible = isOpenToVisibleTo(openToVisibility, viewerIsOwner, viewerIsConnection)
+
     connect = {
       profileUserId: profile.id,
       connectionId,
@@ -228,15 +240,48 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       canConnect,
     }
 
+    const [{ data: projs }, { count }, { count: placementsCountResult }] = await Promise.all([
+      supabase
+        .from('vault_projects')
+        .select('id, title, type, cover_art_url, vault_readiness_score, release_date, is_public')
+        .eq('user_id', profile.id)
+        .order('vault_readiness_score', { ascending: false }),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('followee_id', profile.id),
+      supabase
+        .from('activity_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', profile.id)
+        .eq('kind', 'placement'),
+    ])
+    projects = (projs ?? []) as ProfileProjectRow[]
+    followerCount = count ?? 0
+    placementsCount = placementsCountResult ?? 0
+
+    let isFollowing = false
+    if (viewerId && viewerId !== profile.id) {
+      const { data: rel } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', viewerId)
+        .eq('followee_id', profile.id)
+        .maybeSingle()
+      isFollowing = Boolean(rel)
+    }
+    follow = {
+      profileUserId: profile.id,
+      isFollowing,
+      canFollow: Boolean(viewerId) && viewerId !== profile.id,
+    }
+
     wall = {
       profileUserId: profile.id,
       ownerName: profile.artist_name ?? 'this artist',
       canPost: Boolean(viewerId),
       viewerInitials: '',
-      posts: await loadWall(supabase, profile.id),
+      posts: await loadWall(supabase, profile.id, blockedIds),
     }
 
-    const endo = await loadEndorsements(supabase, profile.id, viewerId)
+    const endo = await loadEndorsements(supabase, profile.id, viewerId, blockedIds)
     endorsements = {
       profileUserId: profile.id,
       ownerName: profile.artist_name ?? 'this artist',
@@ -255,31 +300,18 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         releaseTitle: featProj.title,
         canComment: Boolean(viewerId),
         viewerInitials: '',
-        items: await loadReleaseComments(supabase, featProj.id),
+        items: await loadReleaseComments(supabase, featProj.id, blockedIds),
       }
     }
 
     activity = { items: await loadActivity(supabase, profile.id) }
-
-    const canMessage = Boolean(viewerId) && viewerId !== profile.id
-    const [dmMessages, dmThread] = canMessage && viewerId
-      ? await Promise.all([
-          loadConversation(supabase, viewerId, profile.id),
-          findThread(supabase, viewerId, profile.id),
-        ])
-      : [[], null]
-    dm = {
-      ownerId: profile.id,
-      ownerName: profile.artist_name ?? 'this artist',
-      ownerAvatarUrl: profile.avatar_url,
-      canMessage,
-      viewerId: viewerId ?? '',
-      threadId: dmThread,
-      initialMessages: dmMessages,
-    }
   }
 
-  const data = buildProfileData(profile, projects, { publicOnly: true, followerCount, placementsCount })
+  // SAFETY-04: hide `open_to` from the rendered data (not the stored value —
+  // the DB row is untouched) when open_to_visibility says this viewer
+  // shouldn't see it. A public profile can still hide its open-to status.
+  const profileForData = openToVisible ? profile : { ...profile, open_to: [] }
+  const data = buildProfileData(profileForData, projects, { publicOnly: true, followerCount, placementsCount })
   const allowResharing = Boolean(profile.allow_resharing)
   const ownerReleases = projects.map(toFeaturedPickerRelease)
   return (
@@ -296,7 +328,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       endorsements={endorsements}
       comments={comments}
       activity={activity}
-      dm={dm}
     />
   )
 }

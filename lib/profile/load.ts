@@ -47,6 +47,9 @@ export const DEMO_PROFILE: ArtistProfile = {
   allow_resharing: true,
   member_type: 'artist',
   search_vector: null,
+  profile_visibility: 'public',
+  open_to_visibility: 'public',
+  verified_at: null,
   legal_first_name: null,
   legal_middle_name: null,
   legal_last_name: null,
@@ -111,6 +114,7 @@ export function buildProfileData(
   const tags = Array.from(new Set([profile.genre, ...moodTags].filter(Boolean))) as string[]
 
   return {
+    id: profile.id,
     name: profile.artist_name || 'Unnamed artist',
     handle: profile.handle,
     pronouns: profile.pronouns,
