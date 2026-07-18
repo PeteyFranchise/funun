@@ -46,6 +46,17 @@ Follow-ups: org origin → **Funūn-admin created** (over self-serve-with-approv
 | Catalog discovery | **Filtered browse** (genre/mood/vocals/usage-cleared filters, no free-text ranking) (over curated-collections-only, full search) |
 | Request tracking | **Org dashboard with deal stages** submitted → in negotiation → terms agreed → contract → closed/declined (over simple status list, email-only) |
 
+## Deal flow model (follow-up session, plain-language walkthrough)
+
+| Question | Selected |
+|---|---|
+| Who does the buyer pay? | **Buyer pays Funūn, Funūn pays artist** (over direct-pay+fee-invoice, off-platform) |
+| Who drafts + how signed? | **Admin drafts from template, embedded e-sign** (over draft-then-sign-offline, buyer-brings-own-paper) |
+| File delivery | **Through the portal via Phase 14 Export pack** (over admin-manual, artist-direct) |
+| Commission | **Track commission % on every deal** — gross/commission/net in the data (over flat-manual, no-cut-in-beta) |
+| E-sign provider | User asked "which keeps the deal flow solely inside Funūn?" → researched: Dropbox Sign gates embedded signing behind $300/mo Standard plan (cheap tier redirects to hosted UI); SignWell embeds pay-as-you-go (25 free/mo, ~$0.85/doc) → **SignWell** |
+| Artist payout | **Stripe Connect from day one** (over manual-beta-payout — the recommendation — and balance-withdrawal) |
+
 ---
 
 Notable pattern: user consistently chose the more product-forward option on artist/buyer-facing surfaces (Deals room, pre-clearance, org dashboard) while choosing the most founder-concierge option on operations (admin-created orgs, admin-mediated comms, admin-negotiation fallback).

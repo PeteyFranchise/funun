@@ -72,6 +72,15 @@ This phase does not cover:
 - **D-16:** Catalog discovery is **filtered browse**: browsable rights-ready catalog with sync-relevant filters (genre, mood/energy, vocals, usage cleared). NO free-text search ranking (stays inside the beta-safe discovery exclusion). Admin-curated collections may layer on top but are not the only path.
 - **D-16a:** Buyer request tracking is an **org dashboard with deal stages** (submitted → in negotiation → terms agreed → contract → closed/declined), visible org-wide. This dashboard doubles as the substrate for the D-10 GTM metrics.
 
+**Deal flow model (2026-07-18 follow-up session — the end-to-end deal):**
+
+- **D-17 (money):** **Buyer pays Funūn, Funūn pays artist.** Funūn invoices the buyer via Stripe, takes its commission, and pays out the artist's net. Funūn is the merchant of record in the middle of every deal.
+- **D-17a (payout):** **Stripe Connect from day one** — artists onboard to Stripe Connect and payments auto-split (commission to Funūn, net to artist). Chosen over manual beta payouts deliberately; Connect onboarding is in scope for this phase.
+- **D-18 (contract):** **Funūn admin drafts from a standard sync-license template, executed via embedded e-sign.** Both parties sign without leaving Funūn; the signed PDF lands in Contract Locker (per D-08).
+- **D-18a (e-sign provider):** **SignWell.** Decision driver: keeping signing fully in-app — Dropbox Sign gates embedded signing behind its $300/mo Standard API plan (cheaper tiers redirect signers to Dropbox-hosted UI), while SignWell supports embedded signing pay-as-you-go (25 free API docs/mo, then ~$0.85/doc — effectively free at beta volume). Implement the SignWell adapter behind the existing lib/esign/provider.ts abstraction. This supersedes older docs leaning Dropbox Sign; update docs/e-sign-integration.md accordingly.
+- **D-19 (delivery):** **Through the portal, reusing Phase 14's Export pack.** Once the contract is signed, the buyer's dashboard unlocks the export-pack download (metadata/stems/master/MP3) for the licensed project. The deal ends inside the product; no manual file sending.
+- **D-20 (commission):** **Commission % tracked on every deal**: each deal records gross fee, Funūn commission %, and artist net — feeding both the Stripe Connect split (D-17a) and the D-10 GTM metrics (average sync fee, real economics).
+
 ### Claude's Discretion
 
 - Schema mechanics for buyer orgs/members/permissions (tables, RLS doctrine) — follow the column-privilege and server-owned-write precedents from migrations 040/056/058.
