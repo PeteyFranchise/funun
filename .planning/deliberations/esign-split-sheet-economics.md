@@ -1,8 +1,8 @@
 # Deliberation: E-Sign Economics — Split Sheets as the Real Volume Driver
 
 **Opened:** 2026-07-18 by Pete (raised during Phase 16 e-sign provider discussion)
-**Status:** OPEN — marked for serious GSD deliberation after research. No decision made.
-**Blocks:** nothing today (16-09 scope is sync-license e-sign only). Informs: e-sign provider commitment depth (D-18a), free/paid tier design, monetization roadmap.
+**Status:** DECIDED 2026-07-19 — access model resolved in deliberation session (see Decision record). Remaining open items are provider-finalization verifications, carried into the new split-sheet e-sign phase's planning.
+**Outcome:** Free-for-all with structural guardrails + $500/mo re-decision trigger; ads decoupled; split-sheet e-sign built IMMEDIATELY as its own mini-phase ahead of Phase 16.
 
 ---
 
@@ -100,4 +100,12 @@ The mobile shootout and licensing verification RAN. Summary:
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.
+
+### 2026-07-19 — ACCESS-MODEL DELIBERATION SESSION (Pete + Claude). Decisions:
+
+- **AM-1 (access):** **Free e-signed split sheets for ALL artists**, absorbed as an acquisition/growth cost, **until the re-decision trigger fires** — at which point the model goes back on the table with real usage data. Rationale: at DocuSeal's $0.20/completed-doc (multi-party = one completion), even 1,000 sheets/mo ≈ $220 — hundreds of dollars at adoption levels that would themselves be success signals; the "most convenient split-sheet solution on the market" wedge (D-18b) is worth more than the burn. Wet-sign upload remains the universal fallback.
+- **AM-2 (guardrails, structural not policy):** (a) the free e-sign envelope is ONLY Funūn's generated split-sheet template tied to a real vault project — no arbitrary-PDF path, killing "free DocuSign" abuse by construction; (b) generous per-artist monthly cap (~10 sheets/mo soft cap, admin-reviewed bump path); (c) project-readiness minimum — the project must carry the basic metadata the split sheet is generated FROM anyway (title, tracks, composer entries). **Explicitly rejected:** real-collaborator/verified-email signer checks — friction at exactly the studio moment the product exists to win.
+- **AM-3 (re-decision trigger):** **$500/month e-sign spend** (~2,500 sheets/mo). Objective, budget-framed, defined now while nobody is attached to the spend. Crossing it does not auto-gate anything — it reopens this deliberation with data.
+- **AM-4 (ad subsidy):** **Decoupled.** Green Room sponsored placements are a monetization lane pursued on its own merits when audience size makes sponsors realistic (post-beta) — NOT a funding requirement for e-sign at ~$10–200/mo burn. Keeps the e-sign promise independent of a nascent revenue lane.
+- **AM-5 (sequencing):** **Split-sheet e-sign is built IMMEDIATELY as its own mini-phase, BEFORE Phase 16.** Artist-side value and stickiness first; the buyer portal follows. Consequences: this phase — not 16-09 — becomes Funūn's first live e-sign integration (DocuSeal hosted, behind lib/esign/provider.ts); 16-09's SignWell adapter lands second and reuses the webhook/route patterns this phase establishes. The account-gated verification items (signature-certificate inspection, white-label scope/price, multi-party async 3-signer test, deliverability) become PLANNING PREREQUISITES of this phase — Pete creates the DocuSeal trial account during phase discussion/planning, before execution.
 - 2026-07-18 (later) — Pete locked two REQUIREMENTS (seamless embedding; mobile-first signing) and the DUAL-PROVIDER architecture (SignWell for sync licenses — legal defensibility worth the cost on revenue transactions; a cost-optimized embedded provider for split-sheet volume). Still open: which provider serves split sheets (DocuSeal front-runner pending mobile-UX + audit-trail + licensing verification), and the free/paid/metered access model (Options A–D) — the economics question this deliberation exists for. Mobile UX added as first-class evaluation axis to the research agenda. D-18b added to 16-CONTEXT; 16-09 must-haves updated with the mobile viewport check.

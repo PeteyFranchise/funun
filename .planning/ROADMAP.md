@@ -7,6 +7,7 @@
 - 🚧 **v1.2 — Wave 4: The Green Room** — Phases 8–13 (in progress)
 - 🚧 **v1.2 — Sound Vault: Playback Room Refinement** — Phase 14 (in progress; cross-domain addition, tracked alongside v1.2 for scheduling purposes only — this is Wave 1 Sound Vault work, not a Green Room networking feature)
 - ✅ **v1.2 — Account Capability Model** — Phase 15 (shipped 2026-07-12; cross-cutting identity change, tracked alongside v1.2 for scheduling only — not part of the Green Room feature set)
+- 📝 **v1.3-pre — Split-Sheet E-Sign** — Phase 17 (decided 2026-07-19; EXECUTES BEFORE Phase 16 — free embedded mobile-first e-signed split sheets for all artists, DocuSeal hosted; access model per `.planning/deliberations/esign-split-sheet-economics.md` AM-1..AM-5)
 - 📝 **v1.3 — GTM Beta Launch & Buyer Portal** — Phase 16 (planned 2026-07-18; integrated sync-buyer portal, license-request workflow, deal room, and GTM metrics)
 
 ## Phases
@@ -62,6 +63,18 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Milestone Goal:** Turn the external GTM/business plan into a product-backed beta launch motion. Phase 16 creates the buyer-side pathway for Hook-style sync buyers to discover rights-ready catalog, submit structured license requests, track request status, and move through a founder/admin deal workflow that links back to Sound Vault, Contract Locker, and e-sign state.
 
 - [ ] **Phase 16: GTM Beta Launch & Buyer Portal** - Specialized sync-buyer account/portal planning, first-class `license_requests`, safe "Request License" entry points, deal-room/admin workflow, Contract Locker/e-sign handoff, and GTM beta metrics.
+
+### 📝 v1.3-pre — Split-Sheet E-Sign (Planned — EXECUTES BEFORE PHASE 16)
+
+**Sequencing note:** numbered 17 but ships first (per AM-5, deliberation session 2026-07-19) — artist-side value and stickiness before the buyer portal. This becomes Funūn's FIRST live e-sign integration; 16-09's SignWell adapter lands second and reuses this phase's webhook/route patterns.
+
+**Goal:** Any artist can generate a split sheet from project metadata and get it e-signed by all collaborators without anyone leaving Funūn — embedded, mobile-first (the studio-with-only-a-phone scenario is the canonical test), free to every artist within structural guardrails.
+
+**Locked inputs (do not re-litigate in discuss-phase):** D-18b (embedded + mobile-first requirements, dual-provider architecture), AM-1..AM-5 (access model: free with guardrails, $500/mo re-decision trigger, template-only envelope, ~10/mo soft cap, readiness minimum, DocuSeal hosted ~$0.20/completed doc).
+
+**Planning prerequisites (human):** DocuSeal trial account → inspect a real Certificate of Signature, confirm white-label scope/price, run the 3-signer async multi-party test, check deliverability. Spikes 006a/006b/007 carry the verified groundwork.
+
+- [ ] **Phase 17: Split-Sheet E-Sign** - DocuSeal adapter behind lib/esign/provider.ts, split-sheet template generation from vault metadata (composers/splits/IPI already captured), multi-party embedded signing flow, signed-PDF + certificate landing in Contract Locker, per-artist cap + readiness gate, usage/cost telemetry feeding the AM-3 trigger.
 
 ## Phase Details
 
@@ -321,7 +334,7 @@ Plans:
 
 ### E-Sign Split-Sheet Economics & Green Room Ad Monetization
 
-**Status: OPEN DELIBERATION — see `.planning/deliberations/esign-split-sheet-economics.md`. Marked for serious GSD deliberation after the research agenda in that doc. Do not build from this note.**
+**Status: RESOLVED 2026-07-19 — deliberation session decided AM-1..AM-5 (free-with-guardrails access model, decoupled ads, immediate build as Phase 17 before Phase 16). See the deliberation doc's Decision record. The Green Room ad-monetization idea below remains a live future candidate on its own merits (AM-4).**
 
 **Product note added 2026-07-18:** Split sheets — not sync licenses — are Funūn's real e-sign volume driver, and they cost money at signing, potentially years before any revenue. Options captured: free e-sign for all / gate to a (not-yet-existing) paid tier / metered-or-earned e-sign with wet-sign upload as the universal floor (current shipped behavior) / subsidize via Green Room targeted advertising (guitar brands, MIDI/plugin makers — the Phase 12 admin-curated placements infra already exists and was designed for sponsored content). Likely end-state is a combination. D-18a (SignWell) stands for beta sync licensing but its provider evaluation must be re-run against split-sheet volume before any artist-facing e-sign ships.
 

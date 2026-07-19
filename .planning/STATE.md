@@ -5,7 +5,7 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: All phases 1-15 closed (10 was already UAT-passed, checkbox stale; 11/12/13/14 UAT waived by owner 2026-07-18). PR #37 merged to main (1db5fbf); migrations 058-061 live. Only Phase 16 (v1.3 GTM buyer portal) remains — planned, not started.
+stopped_at: Access-model deliberation DECIDED (AM-1..AM-5, 2026-07-19): free e-signed split sheets for all with structural guardrails, $500/mo re-decision trigger, ads decoupled. NEW Phase 17 (Split-Sheet E-Sign) added — executes BEFORE Phase 16. Next: /gsd-discuss-phase 17 (after Pete's DocuSeal trial-account verification pass).
 last_updated: "2026-07-18T22:00:00.000Z"
 last_activity: 2026-07-18
 last_activity_desc: Board cleared — phases 10/14 closed; only Phase 16 open
