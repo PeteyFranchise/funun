@@ -87,6 +87,16 @@ These are REQUIREMENTS for any e-sign mechanism Funūn ships, decided ahead of t
 - **DocuSeal-or-similar for artist split-sheet volume** (provider NOT yet final): unit cost dominates at catalog scale; candidate must meet the embedding + mobile requirements above. DocuSeal's hosted $0.20/completed-document tier (multi-party = one completion) is the front-runner on price; its mobile embedded UX and audit-trail quality are the open verification items.
 - The provider interface stays the single seam: neither the deal flow nor the split-sheet flow imports vendor code.
 
+## Spike results (2026-07-18 — spikes 006a/006b/007, see .planning/spikes/)
+
+The mobile shootout and licensing verification RAN. Summary:
+
+- **006a DocuSeal mobile (VALIDATED):** full signing flow completed at 375px on DocuSeal's live embedded demo — bottom-sheet field wizard (never hunt/zoom the PDF), one-tap Set-Today date, signature via draw / type / **camera capture of a wet signature**, zero redirects. The mobile disqualification test does NOT disqualify the front-runner; its phone ergonomics are the best seen.
+- **006b SignWell mobile (VALIDATED, caveats):** embedded flow completed at 375px on SignWell's live demo. Document-centric guided tabs rather than a wizard; first-paint horizontal overflow; small on-document tap targets; Type/Draw/Upload modal (no camera). Fine for the buyer-facing sync-license flow (16-09); notably less phone-native than DocuSeal for the studio split-sheet case. Also confirmed for 16-09: X-Api-Key auth header, completed/closed embed events, webhook HMAC scheme still unpublished (Task 1 checkpoint stands).
+- **007 licensing/audit (VALIDATED):** hosted-DocuSeal path is **AGPL-clear** — `@docuseal/react` embed SDK is MIT (verified on npm); AGPL only binds if self-hosting the server. **Correction to earlier research:** embedded signing is a PAID Pro feature even self-hosted, so the hosted ~$0.20/completed-doc tier is the realistic path (self-hosting buys little). Audit story credible: Certificate of Signature PDF, ESIGN/UETA/eIDAS positioning, cryptographic doc-hash signatures — quality of the actual certificate artifact still needs one real inspection.
+
+**Standing after spikes:** dual-provider direction (D-18b) holds and strengthens — SignWell validated for the sync-license embed, DocuSeal validated on all three desk-checkable axes for split sheets. Remaining before the split-sheet provider is FINAL (all account-gated): certificate artifact inspection, white-label scope/price, multi-party async template test, deliverability. The access-model economics (Options A–D) remain the open deliberation.
+
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.

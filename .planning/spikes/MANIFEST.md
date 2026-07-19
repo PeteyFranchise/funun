@@ -31,6 +31,9 @@ Design decisions that emerged during spiking. Non-negotiable for the real build.
 | 003 | connect-and-push-ux | standard | Given BYOK constraint, when a user connects Buffer and pushes a calendar, then connect→map→push→status flow feels coherent | VALIDATED ✓ (UX judgment is user's) | buffer, ui, ux, byok |
 | 004 | buffer-status-sync-back | standard | Given posts scheduled via createPost, when Funūn polls the Buffer `posts` query, then it reconciles Scheduled→Sent back into slot completion | VALIDATED ✓ | buffer, status, sync, graphql |
 | 005 | buffer-update-delete-repush | standard | Given an already-pushed calendar, when the user edits/re-pushes, then a create/edit/delete diff avoids duplicate Buffer posts | VALIDATED ✓ | buffer, idempotency, lifecycle |
+| 006a | docuseal-mobile-embed | comparison | Given DocuSeal's embedded signing form, when exercised at 375px viewport, then a signer completes fields + drawn signature without leaving the page | VALIDATED ✓ — bottom-sheet wizard, Set-Today, camera capture; best mobile ergonomics | esign, docuseal, mobile, embedded |
+| 006b | signwell-mobile-embed | comparison | Given SignWell embedded signing, when exercised at 375px viewport, then same completion bar | VALIDATED ✓ (with caveats: first-paint overflow, small on-doc field tabs; post-completion behavior to verify in 16-09) | esign, signwell, mobile, embedded |
+| 007 | docuseal-license-audit-trail | standard | Given DocuSeal repo/docs/terms, when licensing + self-host key + audit-trail claims are verified, then conflicts resolve with citations | VALIDATED ✓ — hosted path AGPL-clear (MIT embed SDK); embedding is Pro-paid even self-hosted; ESIGN/UETA/eIDAS certificate story credible | esign, docuseal, licensing, compliance |
 
 ## Reference
 
