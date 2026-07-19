@@ -13,3 +13,10 @@ supabase/.branches
 supabase/.temp
 .vercel
 .planning/research/.cache/
+
+# E2E (Playwright)
+.env.test
+tests/e2e/.auth/
+test-results/
+playwright-report/
+playwright/.cache/

@@ -84,6 +84,7 @@ export function MessagesIcon({ userId }: { userId: string }) {
 
       {unreadCount > 0 && (
         <span
+          data-testid="messages-unread-badge"
           className="absolute -right-[4px] -top-[4px] flex h-4 min-w-[16px] items-center justify-center rounded-full border-2 border-card bg-brandfuchsia px-[3px] text-[12px] font-bold leading-none text-white [font-variant-numeric:tabular-nums]"
         >
           {badgeLabel}

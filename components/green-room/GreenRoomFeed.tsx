@@ -117,6 +117,7 @@ export function GreenRoomFeed() {
             <button
               type="button"
               onClick={refresh}
+              data-testid="feed-new-updates"
               className="rounded-full border border-emerald-300/30 bg-emerald-300 px-5 py-2 text-sm font-black text-black shadow-[0_12px_40px_rgba(52,211,153,.28)] transition hover:-translate-y-0.5"
             >
               {pendingActivityCount === 1 ? '1 new update' : `${pendingActivityCount} new updates`} · Show latest

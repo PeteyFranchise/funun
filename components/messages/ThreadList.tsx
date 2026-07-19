@@ -25,6 +25,8 @@ function ThreadRow({
   return (
     <button
       onClick={onSelect}
+      data-testid="thread-row"
+      data-thread-id={thread.id}
       className={`flex w-full items-center gap-3 border-l-[3px] px-4 py-3 text-left ${
         active ? 'border-brandindigo bg-card2' : 'border-transparent hover:bg-card2/60'
       }`}
@@ -36,7 +38,14 @@ function ThreadRow({
         >
           {!thread.other.avatarUrl && initials(thread.other.name)}
         </span>
-        {online && <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-card bg-emerald-400" />}
+        {online && (
+          <span
+            data-testid="thread-online-dot"
+            role="img"
+            aria-label="Online"
+            className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-card bg-emerald-400"
+          />
+        )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center justify-between gap-2">
@@ -47,7 +56,14 @@ function ThreadRow({
         </span>
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-[14px] text-lavdim">{thread.lastMessage?.body ?? ''}</span>
-          {thread.hasUnread && <span className="h-2 w-2 flex-none rounded-full bg-brandfuchsia" />}
+          {thread.hasUnread && (
+            <span
+              data-testid="unread-dot"
+              role="img"
+              aria-label="Unread messages"
+              className="h-2 w-2 flex-none rounded-full bg-brandfuchsia"
+            />
+          )}
         </span>
       </span>
     </button>
