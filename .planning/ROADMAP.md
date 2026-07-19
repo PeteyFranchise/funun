@@ -319,6 +319,31 @@ Plans:
 
 ## Future Roadmap Candidates
 
+### Embedded License-ID Metadata & Licensed-File Provenance
+
+**Status: IDEA — requires a dedicated discussion + research cycle before it becomes a phase. Do not plan or execute from this note alone.**
+
+**Product note added 2026-07-18**, from competitor research into how Musicbed, Marmoset, and Artlist handle the buyer download/licensing experience (see `.planning/research/COMPETITOR-musicbed-buyer-experience.md` and `.planning/research/COMPETITOR-marmoset-artlist-buyer-experience.md`).
+
+**The gap found:** none of the three major competitors appears to embed a verifiable, unique license identifier into the delivered audio file itself. All three rely on account-side records as the source of truth — Musicbed on an account Licenses tab, Marmoset on a support-traceable Order ID printed on the invoice, Artlist on an on-demand PDF certificate carrying a visible license number. Once a clean file leaves the platform, the file alone proves nothing about which license it belongs to. The industry's "___ID" branding (Musicbed **SyncID**, Marmoset **TrackID**, Artlist **Clearlist**) refers to real-time YouTube Content ID claim-clearing services, NOT to a static identifier stamped on a track or file.
+
+**The idea:** at the moment of license issuance, generate the buyer's clean file fresh and bake a unique Funūn License ID into its metadata, so provenance travels with the audio:
+- MP3: an ID3v2 `TXXX` (custom text) or `PRIV` frame carrying the license ID, alongside standard `TCOP`/`WCOP`/`TIT2`/`TPE1` copyright/title/artist fields.
+- WAV: the BWF `<bext>` chunk (`Description`, `OriginatorReference`, or `CodingHistory`) — the archival-standard location for provenance data.
+- The ID is a foreign key into Funūn's license records (licensee, project, end client, usage/territory/term, fee, timestamp).
+- Implication: licensed downloads are **per-license generated artifacts**, not a static file served to everyone.
+
+**Why it plausibly fits Funūn specifically:** `node-id3` (0.2.9) is already a project dependency and already used for ID3 read/write in the metadata pipeline, so the MP3 path is largely existing capability pointed at a new purpose. It also reinforces the Rights & Registration Rails thesis — every delivered file provably tied to a documented, consented license.
+
+**Open questions that MUST be resolved in the discussion/research cycle before planning:**
+1. **Preview mechanism is genuinely undecided.** Competitors split: Musicbed and Artlist ship audible **watermarked** previews; Marmoset ships **un-watermarked but low-bitrate scratch tracks** and relies on terms of use rather than a technical block. Marmoset's approach is legally weaker but frictionless for real editing — and Funūn's Phase 16 deal model is otherwise Marmoset-shaped. This choice is upstream of the license-ID work and is NOT settled by this note.
+2. Does an embedded ID survive the buyer's actual workflow (transcode, DAW import/export, NLE round-trip)? An ID that dies on first re-encode buys less than it appears to. Needs empirical testing — good spike candidate.
+3. Threat model: the ID is a provenance marker, not DRM. What is it actually meant to prove, to whom, and what happens on a mismatch or a stripped tag?
+4. Privacy: embedding licensee/end-client identity into a distributed file has disclosure implications — decide what is safe to embed vs. what stays a server-side lookup behind an opaque ID.
+5. Relationship to Content ID clearance (the separate, heavier problem): direct YouTube Content ID partnership is likely unattainable at current catalog scale; the realistic path is an aggregator partnership (AdRev/Symphonic, Pex, and similar). That is a BD/partnership track, not an engineering one, and should not be bundled into this idea's phase.
+
+**Sequencing note:** this sits naturally after Phase 16's deal pipeline exists (there must be license records to reference), and pairs with whatever preview-file decision comes out of question 1 above.
+
 ### Contract Locker Intelligence & Deal Audit
 
 **Product note added 2026-07-15:** The Contract Locker should evolve from upload/status tracking into a secure legal-document intelligence layer for artists and industry members. The future version should securely store, organize, and bulk-analyze the legal documents the music industry relies on, while also helping draft simple, standard documents that do not require bespoke legal negotiation.

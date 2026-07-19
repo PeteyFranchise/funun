@@ -70,6 +70,7 @@ This phase does not cover:
 **Beta portal scope (resolves Q-05):**
 
 - **D-16:** Catalog discovery is **filtered browse**: browsable rights-ready catalog with sync-relevant filters (genre, mood/energy, vocals, usage cleared). NO free-text search ranking (stays inside the beta-safe discovery exclusion). Admin-curated collections may layer on top but are not the only path.
+- **D-16b (amended 2026-07-18 after competitor research):** Filters ALSO include **musical key and BPM**, matched against the project's tracks. Rationale: Musicbed exposes key/BPM as first-class clickable filters on every song page because editors cutting to locked picture search that way; `tracks.bpm` (INTEGER) and `tracks.key_signature` (TEXT) already exist in migration 001, and `antenna_opportunities.bpm_min/bpm_max` is an existing range-filter precedent — so this is a low-cost, high-relevance addition. Key/BPM live on TRACKS while the catalog browses PROJECTS: a project matches when ANY of its tracks matches, and projects with null key/BPM are only excluded when that specific filter is active (never silently dropped from unfiltered browse).
 - **D-16a:** Buyer request tracking is an **org dashboard with deal stages** (submitted → in negotiation → terms agreed → contract → closed/declined), visible org-wide. This dashboard doubles as the substrate for the D-10 GTM metrics.
 
 **Deal flow model (2026-07-18 follow-up session — the end-to-end deal):**
@@ -109,6 +110,8 @@ This phase does not cover:
 - `lib/capabilities/` - capability model created by Phase 15 (precedent only, see above).
 - `lib/trust-safety/` - contracts, block-check, reports, verification, visibility modules from Phase 13 (privacy doctrine to extend to buyer surfaces).
 - https://www.marmosetmusic.com/license-agreement and https://www.licenseorg.com/guide/music-audio/marmoset-music - Marmoset licensing model referenced for D-15 (quoting dimensions + representation-as-pre-clearance).
+- `.planning/research/COMPETITOR-musicbed-buyer-experience.md` - Musicbed preview/download split, real license-record fields, SyncID mechanics (added 2026-07-18).
+- `.planning/research/COMPETITOR-marmoset-artlist-buyer-experience.md` - Marmoset + Artlist buyer flows, three-way comparison, and the finding that Funūn's a-la-carte model should follow the Musicbed/Marmoset structured "license out" pattern rather than Artlist's blanket-subscription download-equals-license pattern (added 2026-07-18).
 
 </canonical_refs>
 
