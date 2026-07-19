@@ -403,6 +403,16 @@ Plans:
 
 **Guardrails:** This should be positioned as legal-document organization, summaries, issue spotting, workflow guidance, and earnings modeling — not as a substitute for counsel. Any "deal risk" or attorney-access feature needs legal/compliance review before implementation.
 
+### Phase 17: Split-Sheet E-Sign
+
+**Goal:** Any artist can take a split sheet from draft → collaborator approval → embedded, mobile-first e-signatures → a fully executed PDF + Certificate in Contract Locker that moves the readiness gate — without anyone leaving Funūn, free within structural guardrails.
+**Requirements**: TBD — registered during planning (planning source: 17-CONTEXT.md; locked inputs D-18b + AM-1..AM-5 from `.planning/deliberations/esign-split-sheet-economics.md`)
+**Depends on:** Wave 2 split-sheet/collaborator substrate (migration 018 approval pipeline, CollaboratorPicker), lib/esign/provider.ts abstraction, Phase 14 pdf precedent (lib/vault/pdf/). EXECUTES BEFORE PHASE 16 (AM-5); its migrations claim the next live numbers (062+) — Phase 16's drafted plans get a migration-number touch-up before their execution.
+**Sequencing consequence for 16-09:** this phase becomes Funūn's first live e-sign integration (DocuSeal hosted); 16-09's SignWell adapter reuses this phase's webhook/route patterns.
+**Provider verification gate (human, before plan-phase execution):** DocuSeal trial — Certificate of Signature inspection, white-label scope/price, 3-signer async test, deliverability.
+
+**Plans:** not yet planned (discuss-phase first — see the current-state map + 6-item agenda in the v1.3-pre section above)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |

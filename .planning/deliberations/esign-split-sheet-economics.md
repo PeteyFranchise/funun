@@ -97,6 +97,10 @@ The mobile shootout and licensing verification RAN. Summary:
 
 **Standing after spikes:** dual-provider direction (D-18b) holds and strengthens — SignWell validated for the sync-license embed, DocuSeal validated on all three desk-checkable axes for split sheets. Remaining before the split-sheet provider is FINAL (all account-gated): certificate artifact inspection, white-label scope/price, multi-party async template test, deliverability. The access-model economics (Options A–D) remain the open deliberation.
 
+## AM-2a amendment (2026-07-19, Phase 17 discuss-phase)
+
+The template-only guardrail is satisfied by "the Funūn split-sheet template," project OPTIONAL — standalone sheets (producer-initiated, vault_project_id null) get full e-sign. Preserves AM-2's intent (no arbitrary-PDF abuse); relaxes its letter ("tied to a real vault project"). The project-readiness minimum applies only when a project is attached at initiation. Also new provider-gate item: verify whether VOIDED envelopes bill (P17-02 void-and-restart counts toward the cap only if billed).
+
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.
