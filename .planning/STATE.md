@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Access-model deliberation DECIDED (AM-1..AM-5, 2026-07-19): free e-signed split sheets for all with structural guardrails, $500/mo re-decision trigger, ads decoupled. NEW Phase 17 (Split-Sheet E-Sign) added — executes BEFORE Phase 16. Next: /gsd-discuss-phase 17 (after Pete's DocuSeal trial-account verification pass).
+stopped_at: Phase 17 PLANNED — 7 plans / 5 waves drafted, checker PASS (2 accepted warnings). Execution gated on Pete's DocuSeal provider-verification pass (5 items incl. voided-envelope billing). Then /gsd-execute-phase 17.
 last_updated: "2026-07-18T22:00:00.000Z"
-last_activity: 2026-07-18
-last_activity_desc: Board cleared — phases 10/14 closed; only Phase 16 open
+last_activity: 2026-07-19
+last_activity_desc: Phase 17 discussed + researched + planned; checker PASS
 progress:
   # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
   total_phases: 16
