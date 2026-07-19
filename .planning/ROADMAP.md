@@ -319,6 +319,12 @@ Plans:
 
 ## Future Roadmap Candidates
 
+### E-Sign Split-Sheet Economics & Green Room Ad Monetization
+
+**Status: OPEN DELIBERATION — see `.planning/deliberations/esign-split-sheet-economics.md`. Marked for serious GSD deliberation after the research agenda in that doc. Do not build from this note.**
+
+**Product note added 2026-07-18:** Split sheets — not sync licenses — are Funūn's real e-sign volume driver, and they cost money at signing, potentially years before any revenue. Options captured: free e-sign for all / gate to a (not-yet-existing) paid tier / metered-or-earned e-sign with wet-sign upload as the universal floor (current shipped behavior) / subsidize via Green Room targeted advertising (guitar brands, MIDI/plugin makers — the Phase 12 admin-curated placements infra already exists and was designed for sponsored content). Likely end-state is a combination. D-18a (SignWell) stands for beta sync licensing but its provider evaluation must be re-run against split-sheet volume before any artist-facing e-sign ships.
+
 ### Embedded License-ID Metadata & Licensed-File Provenance
 
 **Status: IDEA — requires a dedicated discussion + research cycle before it becomes a phase. Do not plan or execute from this note alone.**

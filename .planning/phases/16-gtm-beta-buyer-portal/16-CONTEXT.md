@@ -148,6 +148,8 @@ This phase does not cover:
 <deferred>
 ## Deferred Ideas
 
+- **E-sign scope boundary (2026-07-18):** D-18a commits SignWell for **beta sync licensing only** — it is NOT Funūn's e-sign strategy decision. Artist-facing split-sheet e-sign (the real volume driver) is an open deliberation with its own research agenda: `.planning/deliberations/esign-split-sheet-economics.md`. 16-09 must build the SignWell adapter behind lib/esign/provider.ts cleanly enough that a different provider (or self-hosted engine) can serve split-sheet volume later without touching the deal flow.
+
 - **GRid issuer-code registration timing + unexplored artist value (decided 2026-07-18, Option 2):** 16-11 builds the full platform-issuance machinery but Funūn does NOT register with IFPI yet — `platform_identifier_config.grid_issuer_code` stays null (a clean "unavailable" state by design) until a real deal, DDEX delivery, or distributor conversation asks for a GRid. Before registering, Pete wants a dedicated discussion pass on how platform-issued GRids could help artists in ways not yet considered (beyond DDEX delivery — e.g. provenance/catalog-identity angles, interplay with the embedded license-ID roadmap idea). Registration is a BD/ops action gated on that discussion plus demonstrated need.
 
 - Self-serve buyer org signup (approval-queue or domain-verified) — post-beta; beta orgs are admin-created (D-12).
