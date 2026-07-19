@@ -406,12 +406,34 @@ Plans:
 ### Phase 17: Split-Sheet E-Sign
 
 **Goal:** Any artist can take a split sheet from draft → collaborator approval → embedded, mobile-first e-signatures → a fully executed PDF + Certificate in Contract Locker that moves the readiness gate — without anyone leaving Funūn, free within structural guardrails.
-**Requirements**: TBD — registered during planning (planning source: 17-CONTEXT.md; locked inputs D-18b + AM-1..AM-5 from `.planning/deliberations/esign-split-sheet-economics.md`)
+**Requirements**: ESIGN-01..ESIGN-14 (registered in REQUIREMENTS.md, mapped to Phase 17 as Pending; planning source: 17-CONTEXT.md — locked inputs D-18b + AM-1..AM-5 from `.planning/deliberations/esign-split-sheet-economics.md`)
 **Depends on:** Wave 2 split-sheet/collaborator substrate (migration 018 approval pipeline, CollaboratorPicker), lib/esign/provider.ts abstraction, Phase 14 pdf precedent (lib/vault/pdf/). EXECUTES BEFORE PHASE 16 (AM-5); its migrations claim the next live numbers (062+) — Phase 16's drafted plans get a migration-number touch-up before their execution.
 **Sequencing consequence for 16-09:** this phase becomes Funūn's first live e-sign integration (DocuSeal hosted); 16-09's SignWell adapter reuses this phase's webhook/route patterns.
 **Provider verification gate (human, before plan-phase execution):** DocuSeal trial — Certificate of Signature inspection, white-label scope/price, 3-signer async test, deliverability.
 
-**Plans:** not yet planned (discuss-phase first — see the current-state map + 6-item agenda in the v1.3-pre section above)
+**Plans:** 7/7 plans drafted (5 waves; planned 2026-07-19). Autonomous plans have no live-API or db-push dependency; the live DocuSeal surface is gated behind the provider-verification checkpoint in 17-06.
+
+**Wave 1** *(autonomous, credential-free — parallel, disjoint files)*
+
+- [ ] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
+- [ ] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
+
+**Wave 2** *(depends 17-01; human db-push checkpoint)*
+
+- [ ] 17-02-PLAN.md — Migration 062 (esign_envelopes + esign_envelope_signers, status enum widening, first_viewed_at) + 5/10/15 readiness tiering (SQL trigger + TS twin, shared fixture)
+
+**Wave 3** *(depends 17-02; autonomous, credential-free — parallel, disjoint files)*
+
+- [ ] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
+- [ ] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
+
+**Wave 4** *(depends 17-01/02/03/04; user_setup + blocking provider-verification checkpoint)*
+
+- [ ] 17-06-PLAN.md — DocuSeal adapter + cap-enforced mint + void + embedded mobile-first signing
+
+**Wave 5** *(depends 17-05/06; final UAT checkpoint)*
+
+- [ ] 17-07-PLAN.md — Verified idempotent completion webhook + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
 
 ## Progress
 
