@@ -53,7 +53,8 @@ These are not mutually exclusive: plausible end-state is C + D (metered free e-s
 
 ## Research agenda (before the GSD deliberation session)
 
-1. SignWell: per-document vs per-signer billing; template/envelope semantics; whether embedded signing for multi-party async signing (collaborators sign days apart) works cleanly; true cost curve 100/1k/10k docs/mo (get actual quote if possible).
+1. SignWell: per-document vs per-signer billing; template/envelope semantics; whether embedded signing for multi-party async signing (collaborators sign days apart) works cleanly; true cost curve 100/1k/10k docs/mo (get actual quote if possible). **Mobile: verify the embedded widget at phone viewport — thumb-signable, no redirect.**
+1b. **Mobile embedded-signing UX shootout (REQUIRED, per locked requirements):** test SignWell and DocuSeal (and Documenso if licensing clears) embedded signing on a real phone: signature capture with a thumb, field navigation, load weight on cellular, behavior inside a WebView/PWA context. The studio-with-only-a-phone scenario is the canonical test case. A provider that fails this is disqualified for split sheets regardless of price.
 2. Self-hosted alternatives (Documenso, Docuseal): compliance posture (ESIGN/UETA/eIDAS), ops burden, audit-trail quality vs hosted providers.
    **Preliminary findings (2026-07-18, web research — verify before deciding):**
    - **Both support embedded signing** with first-class SDKs, arguably more dev-friendly than Dropbox Sign's iframe model. Documenso ships `@documenso/embed-react` (+ Vue/Svelte/Solid/Angular/web-component variants) with direct-link-template and per-recipient signing-token modes. DocuSeal ships embeddable signing-form components for React/Vue/Angular/plain JS.
@@ -71,6 +72,22 @@ These are not mutually exclusive: plausible end-state is C + D (metered free e-s
 - 16-CONTEXT deferred: GRid artist-value discussion pass — same "unexplored artist value" review Pete wants; consider running these deliberations together.
 - Account-model post-beta review (memory: cross-capability + buyer unification) — if a paid tier emerges from this deliberation, it lands in the same account-model review.
 
+## Locked requirements (2026-07-18, Pete)
+
+These are REQUIREMENTS for any e-sign mechanism Funūn ships, decided ahead of the open questions below:
+
+1. **Seamless embedding** — signing happens inside the Funūn experience; the user is never taken elsewhere. This is a hard requirement, not a preference. (Rules out any provider tier that redirects to a vendor-hosted page — e.g. Dropbox Sign's sub-$300 tiers.)
+2. **Mobile-first signing** — split-sheet signing conversations happen in studios where collaborators most likely have only their phones. The embedded signing surface must be genuinely easy on a phone: tap-friendly, no pinch-zoom archaeology, signature capture that works with a thumb. This is a product-positioning bet: being the most convenient split-sheet solution on the market for artists and songwriters IS the wedge.
+3. Consequence for provider evaluation: **mobile embedded-signing UX is a first-class evaluation axis**, equal to price and audit-trail quality. Any sandbox spike must test on a phone-sized viewport (and ideally a real phone in one hand), not a desktop browser.
+
+## Architecture decision (2026-07-18, Pete)
+
+**Dual-provider behind `lib/esign/provider.ts` is the direction:**
+- **SignWell for admin-initiated sync licenses** (16-09, as planned): low volume, buyer-facing polish, and the hosted provider's legal defensibility (audit trail, completion certificates, vendor-attested signing records) is worth the per-document cost on a transaction that actually produces revenue. A real sync placement deserves paid-grade paper.
+- **DocuSeal-or-similar for artist split-sheet volume** (provider NOT yet final): unit cost dominates at catalog scale; candidate must meet the embedding + mobile requirements above. DocuSeal's hosted $0.20/completed-document tier (multi-party = one completion) is the front-runner on price; its mobile embedded UX and audit-trail quality are the open verification items.
+- The provider interface stays the single seam: neither the deal flow nor the split-sheet flow imports vendor code.
+
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.
+- 2026-07-18 (later) — Pete locked two REQUIREMENTS (seamless embedding; mobile-first signing) and the DUAL-PROVIDER architecture (SignWell for sync licenses — legal defensibility worth the cost on revenue transactions; a cost-optimized embedded provider for split-sheet volume). Still open: which provider serves split sheets (DocuSeal front-runner pending mobile-UX + audit-trail + licensing verification), and the free/paid/metered access model (Options A–D) — the economics question this deliberation exists for. Mobile UX added as first-class evaluation axis to the research agenda. D-18b added to 16-CONTEXT; 16-09 must-haves updated with the mobile viewport check.
