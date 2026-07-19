@@ -148,6 +148,8 @@ This phase does not cover:
 <deferred>
 ## Deferred Ideas
 
+- **GRid issuer-code registration timing + unexplored artist value (decided 2026-07-18, Option 2):** 16-11 builds the full platform-issuance machinery but Funūn does NOT register with IFPI yet — `platform_identifier_config.grid_issuer_code` stays null (a clean "unavailable" state by design) until a real deal, DDEX delivery, or distributor conversation asks for a GRid. Before registering, Pete wants a dedicated discussion pass on how platform-issued GRids could help artists in ways not yet considered (beyond DDEX delivery — e.g. provenance/catalog-identity angles, interplay with the embedded license-ID roadmap idea). Registration is a BD/ops action gated on that discussion plus demonstrated need.
+
 - Self-serve buyer org signup (approval-queue or domain-verified) — post-beta; beta orgs are admin-created (D-12).
 - Per-member buyer verification tiers and action-based verification escalation — beta uses org-level verification only (D-14).
 - Request-scoped buyer↔artist message threads or DM unlock on accept — beta is admin-mediated (D-14b).
