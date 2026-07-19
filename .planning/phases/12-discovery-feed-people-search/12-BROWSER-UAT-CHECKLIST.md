@@ -128,17 +128,25 @@ Remaining blockers:
 
 ## Current Status
 
-- Test 1: NOT EXECUTED — waived by project owner 2026-07-18 (directed formal completion without a manual run).
-- Test 2: NOT EXECUTED — waived by project owner 2026-07-18 (directed formal completion without a manual run).
+- Test 1: EXECUTED on Sunday, July 19, 2026 — limited pass on authenticated localhost
+  session. Empty-state/auth/UI behavior verified; rich-result behavior remains data-limited.
+- Test 2: BLOCKED on Sunday, July 19, 2026 — no admin test account exists, and the app
+  currently has no sign-out/switch-account path for changing identities in-place.
 
-## Waiver Record (2026-07-18)
+## Execution Notes (2026-07-19)
 
-Owner (Pete) directed Phase 12 to be closed as if these checks passed, without
-executing them. Recorded as an accepted-risk waiver, not as pass evidence — per
-this file's own rule, no pass result is claimed. Automated coverage that does
-exist: People Search privacy/block exclusion and placement visibility-gate
-logic are unit-tested (see 12-VERIFICATION.md, 21/21 requirements; suite green
-at merge). Residual untested surface: real-browser behavior with live
-authenticated sessions (blocked-pair rendering, admin 403s in situ, pagination
-duplicates). If a leak is later found in these flows, run this checklist as
-the repro script.
+- A host mismatch between `127.0.0.1` and `localhost` initially caused misleading
+  `Unauthorized` results in Green Room data surfaces. Re-running the browser pass on the
+  signed-in `http://localhost:3000` session resolved that issue.
+- Test 1 outcome:
+  - `/vault` confirmed authenticated.
+  - `/green-room` loaded without `Unauthorized`.
+  - Feed empty state rendered correctly.
+  - People Search accepted input and stayed in a valid empty state without console errors.
+  - No live result cards were available in this environment, so card-level assertions,
+    follow behavior, and pagination over actual results remain unexercised.
+- Test 2 outcome:
+  - The current session is non-admin.
+  - `/admin/green-room-placements` did not expose the admin UI for this account.
+  - Without an admin user, private/public destination activation checks could not be
+    verified interactively.
