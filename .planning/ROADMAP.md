@@ -76,6 +76,29 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [ ] **Phase 17: Split-Sheet E-Sign** - DocuSeal adapter behind lib/esign/provider.ts, split-sheet template generation from vault metadata (composers/splits/IPI already captured), multi-party embedded signing flow, signed-PDF + certificate landing in Contract Locker, per-artist cap + readiness gate, usage/cost telemetry feeding the AM-3 trigger.
 
+**Current-state map (read before discuss-phase — investigated 2026-07-19):**
+
+The split-sheet pipeline is further along than the Wave 2 "upload-only" story — AND fractured into three systems that never touch:
+
+1. **Approval pipeline (lives in `split_sheets` + `split_sheet_parties`, migration 018):** Any authenticated user (producer, writer, or artist — no project required; `vault_project_id` nullable) initiates via `SplitSheetBuilder` at `/split-sheets` or from Contract Locker. CollaboratorPicker pre-fills parties from Wave 2 collaborator profiles (name/email/PRO/IPI); even-split helper; hard 100.000% total gate (client + server). "Send for approval" mints a per-party 64-char crypto token (30-day expiry), flips sheet to `pending_approval`, and emails each party (Resend) the proposed split table + a link to the PUBLIC `/approve/[token]` page — no account needed, token IS the identity. Each party independently Approves or **Counters** (first-class: sheet → `countered`, initiator notified). Last approval auto-flips sheet → `approved` + `all_approved_at`. **No PDF is ever generated; nothing is signed.** Statuses: draft → pending_approval → approved/countered.
+2. **Document/readiness system (`vault_documents`, Wave 2):** readiness's 15-point "Split sheets signed" gate checks ONLY uploaded docs of type `split_sheet` (`signedOf()`: none → missing; uploaded-not-signed → warning; all marked signed → complete). The approval pipeline NEVER moves this — a unanimously approved sheet scores 0/15.
+3. **Metadata studio composer splits (`tracks.metadata.composers[]`):** a third splits representation; Contract Locker cross-checks it (flags ≠100%) but neither of the above reads or writes it.
+
+**Readiness behavior across the lifecycle — TODAY vs proposed (proposal = discussion input, NOT locked):**
+
+| Lifecycle point | Readiness today | Proposed for discussion |
+|---|---|---|
+| Sheet initiated (draft) | missing (0/15) | missing — drafting shouldn't score |
+| Sent; awaiting opens/approvals | missing | warning tier 1 (e.g. ~5/15) — "sent, awaiting responses" with per-party chips |
+| Counter received | missing | back to warning tier 1 with a visible "renegotiating" flag — a counter is progress, not regression, but must not score higher than consensus |
+| All parties approved (terms agreed), e-sign not yet sent/complete | missing (!) | warning tier 2 (e.g. ~10/15) — "terms agreed, signatures pending"; this is the moment the DocuSeal envelope mints (AM-2: only from approved data) |
+| Partially signed (some parties executed) | n/a (no e-sign exists) | stays warning tier 2 with per-party signed chips |
+| Fully executed (all signatures + Certificate) | complete ONLY via manual upload marked signed | complete (15/15) — signed PDF + Certificate auto-land in `vault_documents` as `split_sheet`/`signed`, moving the existing gate with zero readiness-schema change |
+
+**Phase 17 is therefore a CONVERGENCE phase, not an add-a-feature phase.** Natural shape: approval pipeline stays the negotiation front-end (KEEP approve-then-sign two-step — don't burn $0.20 envelopes on contested splits); unanimous approval triggers PDF generation (the missing split-sheet renderer alongside lib/vault/pdf/metadata-sheet + credits-sheet) → DocuSeal envelope; approval tokens map to signer identities; execution lands signed PDF + Certificate in vault_documents (readiness moves via the EXISTING gate); approved splits reconcile with metadata-studio composer splits instead of living beside them.
+
+**Discuss-phase agenda (beyond the locked AM-1..5 / D-18b):** (1) confirm approve-then-sign vs sign-is-approve; (2) the readiness stage-mapping above (tier scores; whether the split_sheets item description changes; NOTE any point-value change redistributes every project's score — deliberate decision, AM-2 precedent applies); (3) standalone sheets (`vault_project_id = null` — industry-initiated) have no readiness to move and no project metadata to reconcile: define their e-sign + storage story; (4) counter-after-approval and re-negotiation after envelope mint (void/reissue rules, cap interaction); (5) three-way splits reconciliation (approval parties vs composers[] vs signed PDF) — which is authoritative after execution; (6) notification surfaces for the initiator (per-party opened/approved/countered/signed chips — Phase 10 notifications + where they render).
+
 ## Phase Details
 
 ### Phase 8: Identity & Schema Foundation
