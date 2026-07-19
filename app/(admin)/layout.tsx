@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import { SignOutButton } from '@/components/auth/SignOutButton'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -61,6 +62,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           Verification
         </Link>
+        <div className="mt-auto border-t border-white/10 px-3 pt-3">
+          <SignOutButton />
+        </div>
       </nav>
       <div className="flex min-h-screen flex-1 flex-col">{children}</div>
     </div>

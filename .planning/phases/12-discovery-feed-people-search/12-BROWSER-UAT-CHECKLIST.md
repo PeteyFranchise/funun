@@ -150,3 +150,19 @@ Remaining blockers:
   - `/admin/green-room-placements` did not expose the admin UI for this account.
   - Without an admin user, private/public destination activation checks could not be
     verified interactively.
+
+## Blockers Fixed (2026-07-19, quick task 260719-uat-signout-admin-account)
+
+Both execution blockers above are resolved in code:
+
+- **Sign-out/switch-account:** the orphaned `SignOutButton` is now mounted in the
+  artist sidebar footer and the admin nav — sign out → `/signin` → sign in as the
+  next identity.
+- **Admin account:** run `node scripts/provision-test-admin.mjs --email <email>`
+  (with `.env.local` sourced) to create or promote an admin test user
+  (`app_metadata.is_admin=true`, the flag lib/admin/gate.ts checks). Password is
+  generated and printed once on create.
+
+Test 1's remaining data limitation (no rich result cards) still needs seeded
+public/private/blocked member accounts — the sign-out control now makes creating
+and switching those identities practical in one browser.

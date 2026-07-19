@@ -19,6 +19,7 @@ import {
   SettingsIcon,
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
+import { SignOutButton } from '@/components/auth/SignOutButton'
 
 type Item = {
   href: string
@@ -320,6 +321,11 @@ export function ArtistNav({
           </span>
         )}
       </Link>
+
+      {/* Sign out — kept outside the /profile link so the tap targets stay distinct */}
+      <div className={['pb-3', collapsed ? 'flex justify-center px-1' : 'px-3'].join(' ')}>
+        <SignOutButton />
+      </div>
     </nav>
   )
 }
