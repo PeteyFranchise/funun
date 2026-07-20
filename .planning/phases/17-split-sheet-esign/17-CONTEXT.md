@@ -75,6 +75,24 @@ This phase does NOT cover: sync-license e-sign (16-09, SignWell), any paid tier,
 
 </canonical_refs>
 
+<provider_gate_result>
+## Provider Gate: PASSED 2026-07-20 — see 17-PROVIDER-VERIFICATION.md
+
+All five items resolved against a live sandbox account. Key outcomes feeding the remaining plans:
+- **VOIDED_ENVELOPES_COUNT_TOWARD_CAP = false** (confirmed: DocuSeal bills per *completed* doc; archived-before-completion is free).
+- **Webhook scheme confirmed** — and a real bug fixed: timestamps are UNIX **seconds**, not ms (17-01 assumed ms; would have rejected every genuine webhook). Fixed in de9ce7f.
+- **Certificate quality exceeds the bar** (dual SHA256, per-signer IP/session/UA/timezone, email-verified flag, full event log). API-completed signers are labeled distinctly from hand-signed — good for the P17-01 fast lane's legal record.
+- **Pro plan = $20/user/mo + $0.20/completion** — matches AM-1's assumed economics exactly; white-label covers logo/sender/domain, audit-log branding undocumented.
+
+### NEW decisions from the verification review (2026-07-20)
+- **P17-08 (font):** Bundle **Noto Sans (SIL OFL)** and register it with @react-pdf/renderer. Fixes a SHIPPED bug where non-Latin-1 glyphs are silently corrupted in ALL three PDF renderers — `Nikola Jokić` renders as `Nikola Joki` (character dropped) and `Funūn` as `Funkn`. Corrupting a collaborator's legal name on the instrument governing their royalties is unacceptable for a rights-documentation product.
+- **P17-09 (legal-grade document):** Rebuild the split-sheet document from a table into an agreement: explicit **composition-vs-master scope** (today's single `SPLIT` column is dangerously ambiguous for producer rows), date of agreement, legal name + professional name, publisher (name/PRO/IPI) per writer, writer/publisher share columns, sample & interpolation disclosure, ISWC/ISRC linkage from the metadata studio, per-signature date lines, and **operative agreement language**.
+- **P17-09a (counsel gate):** The operative language is conventional split-sheet boilerplate, but it governs real royalty splits. It ships **flagged for attorney review** — Funūn's roadmap guardrail positions the product as document organization, not a substitute for counsel. Review before real artists sign against it at scale.
+- **P17-10 (de-DocuSealing):** Full white-label. Free measures first — `send_email: false` with Funūn's own Resend invites from `esign@funun.studio` (with per-submitter `reply_to` so replies reach a real mailbox), plus embedded signing so no one visits docuseal.com. Then Pro white-label for the embed. Plus a **Funūn Certificate of Completion** that cites DocuSeal as signing provider and attaches their audit log as underlying evidence — honest about provenance while making the artist-facing artifact Funūn's.
+- **Production note:** the sandbox banner ("Developer Sandbox — Upgrade to start using in Production") means the Pro upgrade is required before real artist use, not merely for white-label.
+
+</provider_gate_result>
+
 <provider_gate>
 ## Provider Verification Gate (HUMAN — before plan-phase execution)
 
