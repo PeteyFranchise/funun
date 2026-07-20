@@ -1,5 +1,5 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "Authenticated (anon key + user JWT) requests against esign_envelopes / esign_envelope_signers return HTTP 500 SQLSTATE 42P17 'infinite recursion detected in policy for relation split_sheet_parties'. Expected 42501 on writes (062 revoked INSERT/UPDATE/DELETE) and [] on a non-party SELECT."
 created: 2026-07-20
 updated: 2026-07-20
@@ -146,3 +146,22 @@ files_changed:
   - supabase/migrations/064_fix_split_sheet_rls_recursion.sql (new)
   - __tests__/migration-064.test.ts (new)
   - scripts/verify-064-split-sheet-rls.mjs (new)
+
+## Resolution (2026-07-20 — verified on the remote database)
+
+Migration 064 pushed. Verified by a live adversarial run using the anon key plus a signed-in normal user JWT (service role used ONLY to mint disposable test users, never for the probes themselves):
+
+| Probe | Result |
+|---|---|
+| POST / PATCH / DELETE `esign_envelopes` | **42501** insufficient_privilege (×3) |
+| POST / PATCH / DELETE `esign_envelope_signers` | **42501** insufficient_privilege (×3) |
+| GET `esign_envelopes` as non-party | **`[]`** — no error, no rows |
+| GET `split_sheets` (blast-radius canary) | **`[]`** — no recursion |
+| GET `split_sheet_parties` (blast-radius canary) | **`[]`** — no recursion |
+
+**The user-facing break is confirmed repaired.** A normal authenticated user created a vault project (`HTTP 201`) and then inserted a track on it (`HTTP 201`) — the exact write that returned 42P17 before 064, because the readiness trigger reads `split_sheets`. Both test rows were deleted afterward and their absence confirmed.
+
+This also closes plan 17-02's human checkpoint step 4, which had never been satisfiable: the recursion preempted the privilege check, so the expected 42501 could not surface until 064 landed. 062's REVOKE was in force the entire time — it was masked, not missing.
+
+**Deferred, deliberately not fixed here:** `calculate_vault_readiness()` remains SECURITY INVOKER while reading `split_sheets`. Any future RLS added to a table it touches re-arms this same class of failure. Making it SECURITY DEFINER would close that permanently, but it is a security decision rather than a recursion fix and belongs in its own change.
+
