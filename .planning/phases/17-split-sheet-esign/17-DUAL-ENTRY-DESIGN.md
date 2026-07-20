@@ -189,6 +189,57 @@ Steps 1–4 are the product. Step 5 is the one that changes existing scores, so 
 
 ---
 
+## 10. Contract Locker IA + per-party lockers (DECIDED 2026-07-20)
+
+Framing adopted from Pete: the Locker is Funūn's answer to an AI-native legal contract vault (Harvey-style) for musicians — a **workspace**, not a filing cabinet. Note that `.planning/ROADMAP.md`'s "Contract Locker Intelligence & Deal Audit" candidate already describes the destination; the split-sheet work is its first brick, and `lib/contracts/verify.ts` (Claude native-PDF contract verification, cross-checked against Vault splits) is its existing seed.
+
+### 10a. Locker landing = attention-first (DECIDED)
+
+Order of the page, top to bottom:
+1. **What needs your attention** — awaiting signature (with per-party progress), drafts in progress, unattached executed sheets, songs with no split sheet. **The highest-value version is pure structured queries — no AI required**, because Funūn generated the data. Deterministic and instant beats inferred.
+2. **Create** — `New split sheet` now; future contract-library types alongside it.
+3. **Browse complete** — the archive view; everything settled, filterable.
+4. **Ask** (future slot, NOT this phase) — natural-language querying across the corpus. Belongs to Contract Locker Intelligence. Leave the affordance's place in the layout, build nothing.
+
+**Design consequence:** the Locker today renders only `vault_documents` (signed artifacts). Attention-first requires it to also read in-flight `split_sheets` rows, which are not documents yet. That is a query change, not just a layout change.
+
+### 10b. Every Funūn-user party gets their own Locker (DECIDED)
+
+Funūn is **your** legal home, not the home of whoever invited you. Any collaborator with an account gets a full Locker view; two artists' lockers legitimately overlap on the documents they share.
+
+Rules that follow:
+
+- **One document, N lockers, each in the viewer's own context.** My Locker shows *"Midnight Drive — your share 30%"*; yours shows *"— your share 45%"*. Same executed PDF (P17-06's fan-out already builds per-party `vault_documents` rows), different vantage. Never duplicate the underlying agreement.
+- **Drafts stay initiator-only** until sent for approval. A working document isn't shared until its author asks for agreement. Once sent, every party sees it in their Locker at whatever stage it's in.
+- **Soft-hide, never hard-delete.** A party removing a shared agreement from their view must never delete it for the others. A signed legal record is not one party's to destroy.
+- **Attach is per-party and independent.** 17-05's party-AND-owner rule already permits this: I attach our shared sheet to *my* project, you attach it to *yours*. Both valid simultaneously — which is exactly why §2b is a join table.
+- **Co-party PII is disclosed by design.** A party sees every other party's legal name, PRO, IPI, publisher and administrator — they signed the same document. Deliberate, not a leak, but it means the Locker must never expose parties' *other* catalog data, only this agreement's.
+
+### 10c. BLOCK EXCEPTION — signed agreements survive blocks (NEW, needs confirmation)
+
+Phase 13's doctrine is that blocked pairs must not see each other's content, enforced across profile, search, feed, wall, endorsements, comments, DMs, follows and connections. **A shared executed legal agreement must be an explicit exception.**
+
+Two co-writers who later fall out and block each other still co-own a composition. Neither can un-sign it, and neither may lose access to the record of what they signed — that would be Funūn destroying someone's evidence of their own royalty entitlement because of a social action.
+
+- **Confirmed by inspection (2026-07-20):** the Contract Locker query and 17-05's fan-out apply **no** block filtering today, so the current behavior is already correct — but it is correct *by omission*, not by decision.
+- **Required:** make it deliberate. Add a comment at the Locker/document query documenting that block enforcement intentionally does NOT apply to executed shared agreements, so a future "we missed block filtering here" audit doesn't helpfully break it. Cite this section.
+- **Scope of the exception is narrow:** the agreement and its parties' details *on that agreement*. It does NOT re-open profiles, messaging, feed, or any other Phase 13 surface between the blocked pair.
+
+### 10d. Third-party uploads — the two-tier catalog (design note, build later)
+
+Uploading already works (`/api/vault/[projectId]/documents/[docId]/upload` — upload IS the signing action), and `/api/contracts/verify` already reads an uploaded PDF with Claude and cross-checks it against Vault splits.
+
+But an uploaded split sheet has **no `split_sheets` or `split_sheet_parties` rows**, so the structured-data advantage evaporates for it: "which collaborators recur across my catalog, at what average share?" silently misses every uploaded sheet. An artist with a decade of pre-Funūn catalog would get storage without reasoning — the exact failure the vault framing exists to avoid.
+
+Direction (Contract Locker Intelligence territory, NOT Phase 17):
+- Extract structured parties/splits from uploads using the existing `verify.ts` machinery.
+- **`source: 'funun' | 'uploaded'` is permanent and surfaced.** Generated data *is* the document; extracted data is a *reading of* it. Never blur them.
+- **Extraction requires confirmation before it counts** — same offered-never-silent principle as P17-07. A misread 40%→45% flowing into a PRO registration is slow, real financial harm.
+- **The PDF stays authoritative.** Extraction is a convenience index; if they disagree, the paper wins.
+- Separate the two upload cases: an *already-executed* sheet (enters at `executed`, no approval flow) versus an *unsigned third-party document* someone sent to review (not a record at all — arguably a different lane).
+
+**Phase 17 scope:** ship the `source` field so provenance exists from day one; build no extraction.
+
 ## 9. Open decisions for Pete
 
 1. **CTA naming.** My picks: **`New split sheet`** in Contract Locker (matches "New project"; "Start" implies a wizard), **`Create split sheet`** from a Vault track (it's creating a document *for this song*), **`Attach to a release`** from the Locker, **`Link an existing split sheet`** from the Vault. Deliberately *not* "Attach to Song Vault" — the product is "Sound Vault," and attaching is to a *release*, which is the artist's mental unit.
