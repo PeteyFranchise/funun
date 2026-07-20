@@ -1,7 +1,9 @@
 import Link from 'next/link'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SplitSheetBuilder } from '@/components/split-sheets/SplitSheetBuilder'
+import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
+import type { MyProfilePrefill } from '@/components/split-sheets/SplitSheetBuilder'
 
 // Force dynamic rendering — user auth state must be read per request
 export const dynamic = 'force-dynamic'
@@ -19,6 +21,30 @@ export default async function IndustrySplitSheetsPage() {
 
   if (!user) redirect('/signin')
 
+  // ── "Use my info" prefill source (decision 3a, first link in the
+  // auto-populate chain: signer is a Funūn user → artist_profiles).
+  // pro/publisher/administrator/legal_* are PRIVATE columns (migration
+  // 040) — read via the service client after the session-bound
+  // auth.getUser() above already established ownership, mirroring
+  // app/(artist)/settings/page.tsx's exact pattern. Best-effort: a
+  // missing profile row just means no prefill, never a page error.
+  const service = createServiceClient()
+  const { data: myProfileRow } = await service
+    .from('artist_profiles')
+    .select('artist_name, pro, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const myProfile: MyProfilePrefill | null = myProfileRow
+    ? {
+        legalName: composeLegalNameFromProfile(myProfileRow),
+        artistName: myProfileRow.artist_name ?? '',
+        pro: myProfileRow.pro ?? '',
+        publishingDesignee: myProfileRow.publisher ?? '',
+        administrator: myProfileRow.administrator ?? '',
+      }
+    : null
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <header className="mb-8 border-b border-white/10 pb-6">
@@ -35,7 +61,7 @@ export default async function IndustrySplitSheetsPage() {
         </p>
       </header>
 
-      <SplitSheetBuilder />
+      <SplitSheetBuilder myProfile={myProfile} />
     </div>
   )
 }
