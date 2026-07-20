@@ -101,6 +101,10 @@ The mobile shootout and licensing verification RAN. Summary:
 
 The template-only guardrail is satisfied by "the Funūn split-sheet template," project OPTIONAL — standalone sheets (producer-initiated, vault_project_id null) get full e-sign. Preserves AM-2's intent (no arbitrary-PDF abuse); relaxes its letter ("tied to a real vault project"). The project-readiness minimum applies only when a project is attached at initiation. Also new provider-gate item: verify whether VOIDED envelopes bill (P17-02 void-and-restart counts toward the cap only if billed).
 
+## AM-2b amendment (2026-07-20, contract-library direction)
+
+AM-2's guardrail reads "Funūn split-sheet template ONLY (no arbitrary PDFs)". Funūn will host a LIBRARY of contract templates (work-for-hire, producer agreements, sample clearances...). The guardrail generalizes to: **Funūn-authored templates from the contract library only — never a user-supplied PDF.** The abuse intent is unchanged (no "free DocuSign" for arbitrary documents); the letter widens from one template to N approved ones. The monthly cap and AM-3 telemetry count envelopes **across all template types**, not per-type quotas — a per-type cap would let one artist mint N×10 envelopes/month by rotating templates.
+
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.

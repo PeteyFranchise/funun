@@ -361,6 +361,20 @@ Plans:
 
 **Product note added 2026-07-18:** Split sheets — not sync licenses — are Funūn's real e-sign volume driver, and they cost money at signing, potentially years before any revenue. Options captured: free e-sign for all / gate to a (not-yet-existing) paid tier / metered-or-earned e-sign with wet-sign upload as the universal floor (current shipped behavior) / subsidize via Green Room targeted advertising (guitar brands, MIDI/plugin makers — the Phase 12 admin-curated placements infra already exists and was designed for sponsored content). Likely end-state is a combination. D-18a (SignWell) stands for beta sync licensing but its provider evaluation must be re-run against split-sheet volume before any artist-facing e-sign ships.
 
+### Contract Template Library (split sheets are instance #1)
+
+**Status: DIRECTION NOTED 2026-07-20 — not yet planned. Phase 17 ships the first template; this records what must generalize when the second arrives.**
+
+Funūn will offer a library of contract templates artists can send to collaborators — split sheets first, then work-for-hire, producer agreements, sample clearances, and others. `vault_documents.type` already anticipates this (`split_sheet`, `copyright_registration`, `hire_right`, `sample_clearance`, `distribution_agreement`), and the repo-local `.agents/skills/funun-contract-template-intake/` skill is already written for the general case (source contract → audit → approved spec → renderer). `17-SPLIT-SHEET-TEMPLATE-SPEC.md` is instance #1 of a repeatable artifact type.
+
+**Already generic (no work needed):** `lib/esign/provider.ts` and the DocuSeal adapter; `vault_documents` as destination; Contract Locker; the cross-account fan-out concept; the PDF-renderer + DocuSeal text-tag pattern.
+
+**Deliberately split-sheet-coupled today (accepted, with a documented exit):** `esign_envelopes.split_sheet_id` is a NOT NULL FK to `split_sheets`, and its RLS policies join through `split_sheet_parties`. This buys real referential integrity and simple RLS now. Going polymorphic (`subject_id` + `subject_type`) before a second template exists would trade that away for speculative flexibility. **Recommended exit when template #2 lands:** add a parallel nullable FK per contract type with a CHECK that exactly one is set — preserves FK integrity and per-type RLS — rather than a polymorphic id. Re-evaluate only if the type count passes ~4.
+
+**Must stay type-agnostic as Phase 17 builds them (cheap now, expensive later):** the completion webhook (dispatch on envelope, never assume split-sheet shape), the Funūn Certificate of Completion renderer (17-10 — takes document title/parties/timestamps, not split-specific fields), the AM-2 monthly cap and AM-3 telemetry (count envelopes across ALL template types, not per-type quotas), and the Resend invite email (parameterized template, not hardcoded split-sheet copy).
+
+**Per-template work when adding one:** run the intake skill against the source contract → approved spec → a renderer + its field/role mapping → a `vault_documents.type` value → readiness-gate mapping if the type affects release readiness.
+
 ### Embedded License-ID Metadata & Licensed-File Provenance
 
 **Status: IDEA — requires a dedicated discussion + research cycle before it becomes a phase. Do not plan or execute from this note alone.**

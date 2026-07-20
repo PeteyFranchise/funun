@@ -59,6 +59,17 @@ This phase does NOT cover: sync-license e-sign (16-09, SignWell), any paid tier,
 
 </decisions>
 
+<contract_library_note>
+## Contract Library forethought (added 2026-07-20)
+
+The split sheet is **template #1 of a planned contract library** (work-for-hire, producer agreements, sample clearances...). See the ROADMAP "Contract Template Library" candidate for the full analysis. For THIS phase's executors, only these constraints apply — do not build a generic template system:
+
+- **Keep type-agnostic** (cheap now, costly to retrofit): the completion webhook dispatches on the ENVELOPE and must not assume split-sheet payload shape; 17-10's Certificate of Completion takes generic inputs (document title, parties, timestamps, hashes) and must not hardcode split fields; the AM-2 cap and AM-3 telemetry count envelopes across ALL template types (per-type quotas would let an artist mint N×10/month by rotating templates — see AM-2b).
+- **Accepted coupling, do NOT "fix" speculatively:** `esign_envelopes.split_sheet_id` stays a NOT NULL FK to `split_sheets` with RLS joining through `split_sheet_parties`. Referential integrity and simple RLS beat speculative polymorphism before template #2 exists. The documented exit is a parallel nullable FK per type with a one-of CHECK.
+- **AM-2 reads as AM-2b now:** "Funūn-authored templates from the contract library only, never a user-supplied PDF."
+
+</contract_library_note>
+
 <canonical_refs>
 ## Canonical References
 

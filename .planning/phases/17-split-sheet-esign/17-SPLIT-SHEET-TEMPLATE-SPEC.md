@@ -4,6 +4,8 @@
 **Source contract:** `/Users/peterzora/Desktop/Music/Music Contract Templates/Split_Sheet.doc` — "SONGWRITER/PUBLISHING SPLITS AGREEMENT" (Word 97 OLE, authored 2008-09-09, 229 words, 3 fixed co-writer blocks).
 **Intake skill:** `.agents/skills/funun-contract-template-intake/` (repo-local, canonical).
 
+> **Instance #1 of a repeatable artifact type.** Funūn will host a contract-template library (work-for-hire, producer agreements, sample clearances…). Every future template follows this same pipeline: source contract → `funun-contract-template-intake` skill → approved spec file like this one → renderer + DocuSeal field/role mapping → `vault_documents.type` value. See the ROADMAP "Contract Template Library" candidate for what generalizes and what is deliberately split-sheet-coupled.
+
 ## Contract audit (per the intake rubric)
 
 **Document type:** split sheet — songwriter/publishing share confirmation.
