@@ -124,6 +124,13 @@ Decision 3a changes the field list. Migration 063 must add, all nullable/additiv
 
 **On `collaborators`** (optional, recommended): `administrator`, so non-user collaborators picked via CollaboratorPicker prefill too.
 
+**Settings UI — CONFIRMED IN SCOPE (Pete, 2026-07-20).** Adding the column is not enough; artists need somewhere to enter it once. Three coordinated edits, all following the existing `publisher` field as the exact precedent:
+- `components/profile/ProfileForm.tsx` — add an Administrator input in the same rights group as PRO / IPI / Publisher / MLC ID, with the approved helper text: `Enter your publishing administrator if you have one. If you do not have one yet, enter "None".`
+- `app/api/profile/route.ts` — add `'administrator'` to the `EDITABLE_FIELDS` allowlist (it sits directly after `'publisher'` at line ~32). Without this the field silently fails to save — the allowlist is mass-assignment protection, so an unlisted field is dropped, not rejected loudly.
+- `app/(artist)/settings/page.tsx` — surface it wherever the rights block renders.
+
+Verification for this piece: an artist can set Administrator in settings, and a new split sheet prefills it for that artist without retyping.
+
 **On `split_sheets`:** `artist_name`, `album_project_title`, `record_label` (per decision 4, all optional).
 
 **Snapshot rule:** party fields are copied onto the split sheet at creation and never re-read from the profile afterward — an executed document must not silently change because someone edited their profile later.
