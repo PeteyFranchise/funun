@@ -8,6 +8,7 @@
 - 🚧 **v1.2 — Sound Vault: Playback Room Refinement** — Phase 14 (in progress; cross-domain addition, tracked alongside v1.2 for scheduling purposes only — this is Wave 1 Sound Vault work, not a Green Room networking feature)
 - ✅ **v1.2 — Account Capability Model** — Phase 15 (shipped 2026-07-12; cross-cutting identity change, tracked alongside v1.2 for scheduling only — not part of the Green Room feature set)
 - 📝 **v1.3-pre — Split-Sheet E-Sign** — Phase 17 (decided 2026-07-19; EXECUTES BEFORE Phase 16 — free embedded mobile-first e-signed split sheets for all artists, DocuSeal hosted; access model per `.planning/deliberations/esign-split-sheet-economics.md` AM-1..AM-5)
+- 📝 **v1.3-pre — Split-Sheet Home** — Phase 18 (planned 2026-07-20; the living draft, Contract Locker as workspace, and song-level attachment — follows Phase 17, still ahead of Phase 16)
 - 📝 **v1.3 — GTM Beta Launch & Buyer Portal** — Phase 16 (planned 2026-07-18; integrated sync-buyer portal, license-request workflow, deal room, and GTM metrics)
 
 ## Phases
@@ -75,6 +76,16 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Planning prerequisites (human):** DocuSeal trial account → inspect a real Certificate of Signature, confirm white-label scope/price, run the 3-signer async multi-party test, check deliverability. Spikes 006a/006b/007 carry the verified groundwork.
 
 - [ ] **Phase 17: Split-Sheet E-Sign** - DocuSeal adapter behind lib/esign/provider.ts, split-sheet template generation from vault metadata (composers/splits/IPI already captured), multi-party embedded signing flow, signed-PDF + certificate landing in Contract Locker, per-artist cap + readiness gate, usage/cost telemetry feeding the AM-3 trigger.
+
+### 📝 v1.3-pre — Split-Sheet Home (Planned — after Phase 17, before Phase 16)
+
+**Milestone Goal:** Split sheets get a home. Phase 17 makes them signable; Phase 18 makes them *livable* — a working draft that survives the studio, a Contract Locker that behaves like a workspace rather than a filing cabinet, and song-level attachment so a sheet created before a release can bind to the right track later.
+
+**Design source of truth:** `.planning/phases/17-split-sheet-esign/17-DUAL-ENTRY-DESIGN.md` — data model, state transitions, Locker IA, per-party access, block exception + structured-actions communication, third-party uploads, edge cases, implementation order. All decisions in it are settled; do not re-litigate.
+
+**Why it exists (findings from the Phase 17 work):** `/split-sheets` is orphaned — nothing in the app links to it. A saved draft becomes unreachable (no list, no edit page); the PATCH route has no UI caller. The Locker reads only `vault_documents`, so in-flight sheets are invisible. And the readiness gate over-credits song-specific sheets — a 5-track EP with one signed sheet scores 15/15.
+
+- [ ] **Phase 18: Split-Sheet Home** - Living-draft surface (list, edit page, collaborator picker, add-and-redistribute), attention-first Contract Locker reading both documents and in-flight sheets, song-level attachment (track_id + split_sheet_attachments join table) from both directions, and coverage-based readiness scoring shipped separately.
 
 **Current-state map (read before discuss-phase — investigated 2026-07-19):**
 
