@@ -4,18 +4,22 @@
 // two functions — this file owns zero side effects so it's fully unit-
 // testable without a DocuSeal account (ESIGN-07).
 //
-// Signature scheme: DocuSeal's `X-Docuseal-Signature` header is
-// `{timestampMs}.{hexHmac}` where hexHmac = HMAC-SHA256(secret,
-// `${timestampMs}.${rawBody}`) — per RESEARCH Security Domain ("Use
-// Webhooks" doc: HMAC-SHA256 scheme, 5-minute staleness rule). Comparison
-// is always constant-time via crypto.timingSafeEqual — never a plain ===
-// on hex digests (V6 Cryptography).
+// Signature scheme (CONFIRMED against DocuSeal's official "Use Webhooks"
+// doc, 2026-07-20, during the provider-verification pass): the
+// `X-Docuseal-Signature` header is `{timestampSeconds}.{hexHmac}` where
+// hexHmac = HMAC-SHA256(secret, `${timestampSeconds}.${rawBody}`). The
+// timestamp is UNIX SECONDS (their sample uses Date.now()/1000), NOT
+// milliseconds — the provisional 17-01 implementation assumed ms, which
+// would have rejected every genuine webhook as stale. 5-minute tolerance;
+// secret is the dashboard's whsec_-prefixed value used as-is as the HMAC
+// key. Comparison is always constant-time via crypto.timingSafeEqual —
+// never a plain === on hex digests (V6 Cryptography).
 
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { EsignWebhookEvent } from './provider'
 
-/** Reject a signature whose timestamp is more than this far from "now" (ms). */
-export const WEBHOOK_STALENESS_WINDOW_MS = 5 * 60 * 1000
+/** Reject a signature whose timestamp is more than this far from "now" (seconds). */
+export const WEBHOOK_STALENESS_WINDOW_SECONDS = 5 * 60
 
 /**
  * Verifies a DocuSeal webhook signature against the raw request body.
@@ -24,15 +28,15 @@ export const WEBHOOK_STALENESS_WINDOW_MS = 5 * 60 * 1000
  *                  untouched body, never a re-serialized JSON.parse'd copy
  *                  (re-serialization can reorder keys/whitespace and break
  *                  the HMAC).
- * @param header   The `X-Docuseal-Signature` header value: `{timestampMs}.{hexHmac}`.
- * @param secret   The shared webhook secret (DOCUSEAL_WEBHOOK_SECRET).
- * @param nowMs    Injectable clock for testability; defaults to Date.now().
+ * @param header      The `X-Docuseal-Signature` header value: `{timestampSeconds}.{hexHmac}`.
+ * @param secret      The shared webhook secret (DOCUSEAL_WEBHOOK_SECRET, whsec_-prefixed, used as-is).
+ * @param nowSeconds  Injectable clock in UNIX SECONDS for testability; defaults to Date.now()/1000.
  */
 export function verifyDocusealSignature(
   rawBody: string,
   header: string | null | undefined,
   secret: string,
-  nowMs: number = Date.now()
+  nowSeconds: number = Math.floor(Date.now() / 1000)
 ): boolean {
   if (!header || typeof header !== 'string') return false
 
@@ -43,9 +47,9 @@ export function verifyDocusealSignature(
   const signaturePart = header.slice(separatorIndex + 1)
   if (!/^\d+$/.test(timestampPart) || !/^[0-9a-f]+$/i.test(signaturePart)) return false
 
-  const timestampMs = Number(timestampPart)
-  if (!Number.isFinite(timestampMs)) return false
-  if (Math.abs(nowMs - timestampMs) > WEBHOOK_STALENESS_WINDOW_MS) return false
+  const timestampSeconds = Number(timestampPart)
+  if (!Number.isFinite(timestampSeconds)) return false
+  if (Math.abs(nowSeconds - timestampSeconds) > WEBHOOK_STALENESS_WINDOW_SECONDS) return false
 
   const expectedHex = createHmac('sha256', secret).update(`${timestampPart}.${rawBody}`).digest('hex')
 

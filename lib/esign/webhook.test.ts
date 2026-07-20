@@ -3,62 +3,62 @@
 // against a fixture secret. No live DocuSeal account or network call.
 
 import { createHmac } from 'crypto'
-import { verifyDocusealSignature, parseDocusealEvent, WEBHOOK_STALENESS_WINDOW_MS } from './webhook'
+import { verifyDocusealSignature, parseDocusealEvent, WEBHOOK_STALENESS_WINDOW_SECONDS } from './webhook'
 
 const SECRET = 'fixture-webhook-secret'
 
 /** Builds a valid `{timestamp}.{hexHmac}` header for a given raw body + timestamp. */
-function sign(rawBody: string, timestampMs: number, secret = SECRET): string {
-  const hex = createHmac('sha256', secret).update(`${timestampMs}.${rawBody}`).digest('hex')
-  return `${timestampMs}.${hex}`
+function sign(rawBody: string, timestampSeconds: number, secret = SECRET): string {
+  const hex = createHmac('sha256', secret).update(`${timestampSeconds}.${rawBody}`).digest('hex')
+  return `${timestampSeconds}.${hex}`
 }
 
 describe('verifyDocusealSignature', () => {
   const rawBody = JSON.stringify({ event_type: 'submission.completed', data: { id: 'sub_123' } })
 
   it('returns true for a valid HMAC within the staleness window', () => {
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     const header = sign(rawBody, now)
     expect(verifyDocusealSignature(rawBody, header, SECRET, now)).toBe(true)
   })
 
   it('returns false when the body is tampered after signing', () => {
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     const header = sign(rawBody, now)
     const tamperedBody = JSON.stringify({ event_type: 'submission.completed', data: { id: 'sub_999' } })
     expect(verifyDocusealSignature(tamperedBody, header, SECRET, now)).toBe(false)
   })
 
   it('returns false for a stale timestamp (older than 5 minutes)', () => {
-    const now = Date.now()
-    const staleTimestamp = now - (WEBHOOK_STALENESS_WINDOW_MS + 1000)
+    const now = Math.floor(Date.now() / 1000)
+    const staleTimestamp = now - (WEBHOOK_STALENESS_WINDOW_SECONDS + 10)
     const header = sign(rawBody, staleTimestamp)
     expect(verifyDocusealSignature(rawBody, header, SECRET, now)).toBe(false)
   })
 
   it('accepts a timestamp exactly at the staleness boundary', () => {
-    const now = Date.now()
-    const boundaryTimestamp = now - WEBHOOK_STALENESS_WINDOW_MS
+    const now = Math.floor(Date.now() / 1000)
+    const boundaryTimestamp = now - WEBHOOK_STALENESS_WINDOW_SECONDS
     const header = sign(rawBody, boundaryTimestamp)
     expect(verifyDocusealSignature(rawBody, header, SECRET, now)).toBe(true)
   })
 
   it('returns false for a stale timestamp from the future too', () => {
-    const now = Date.now()
-    const futureTimestamp = now + (WEBHOOK_STALENESS_WINDOW_MS + 1000)
+    const now = Math.floor(Date.now() / 1000)
+    const futureTimestamp = now + (WEBHOOK_STALENESS_WINDOW_SECONDS + 10)
     const header = sign(rawBody, futureTimestamp)
     expect(verifyDocusealSignature(rawBody, header, SECRET, now)).toBe(false)
   })
 
   it('returns false for a missing header', () => {
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     expect(verifyDocusealSignature(rawBody, undefined, SECRET, now)).toBe(false)
     expect(verifyDocusealSignature(rawBody, null, SECRET, now)).toBe(false)
     expect(verifyDocusealSignature(rawBody, '', SECRET, now)).toBe(false)
   })
 
   it('returns false for a malformed header', () => {
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     expect(verifyDocusealSignature(rawBody, 'not-a-valid-header', SECRET, now)).toBe(false)
     expect(verifyDocusealSignature(rawBody, '.onlysignature', SECRET, now)).toBe(false)
     expect(verifyDocusealSignature(rawBody, `${now}.`, SECRET, now)).toBe(false)
@@ -66,7 +66,7 @@ describe('verifyDocusealSignature', () => {
   })
 
   it('returns false when signed with the wrong secret', () => {
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     const header = sign(rawBody, now, 'a-different-secret')
     expect(verifyDocusealSignature(rawBody, header, SECRET, now)).toBe(false)
   })
@@ -76,7 +76,7 @@ describe('verifyDocusealSignature', () => {
     // that could leak timing info — the implementation must always run a
     // full-length constant-time compare (crypto.timingSafeEqual), so an
     // almost-correct signature is rejected exactly like a wildly wrong one.
-    const now = Date.now()
+    const now = Math.floor(Date.now() / 1000)
     const validHeader = sign(rawBody, now)
     const [ts, hex] = validHeader.split('.')
     const lastChar = hex.at(-1)
