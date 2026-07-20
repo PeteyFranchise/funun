@@ -48,7 +48,7 @@ Free e-signatures need a brake, but the brake must not punish correct use.
 - **AM-2c — RECIPIENT-BASED LIMIT (decided 2026-07-20).** The original ~10 sheets/month document cap is **replaced** by a limit on **distinct NEW recipients** per month — people this artist has never sent a sheet to before. Regular collaborators stop counting after the first send, so a stable writing team is free forever.
   - **Why:** the every-track decision (P18-15) means a 12-track album needs 12 sheets. A document cap punished exactly the artist doing the right thing. Counting documents also mismeasures the risk — an album is *12 documents to 3 people*, which is not spam; *10 documents to 10 strangers* is the thing worth stopping.
   - **No binding document cap** for now. Cost is watched by AM-3's aggregate trigger rather than a per-artist number.
-  - **Proposed number: ~25 new recipients/month** — generous for genuine wide collaboration, slow for mass-blasting. NOT yet confirmed by Pete; tune before 17-06 ships.
+  - **CONFIRMED: 25 new recipients/month** (Pete, 2026-07-20) — "ok for now, adjust later if needed." Keep it a single named constant so tuning is one line.
   - **Uploads are exempt entirely.** A wet-signed sheet from years ago mints no envelope and costs nothing, so it counts toward nothing. This also solves catalog backfill with no admin queue: an artist may upload their entire history freely.
   - **Re-assess if cost becomes a problem** (Pete, 2026-07-20). AM-3's trigger is the monitor; a paid tier (§3) is the likely answer if it fires, since prolific writers would be the volume driver and are the right cohort to convert.
   - **Implementation:** `lib/split-sheets/envelopes.ts` holds the cap helpers (17-01, shipped); enforcement is at the mint route in **17-06, which is NOT yet executed** — so this change lands in an unexecuted plan, no rework.
@@ -70,7 +70,6 @@ Context: a single closed sync deal at the beta target fee covers months of e-sig
 
 ## Open financial decisions
 
-1. **Confirm the recipient-limit number** (~25/month proposed) before 17-06 executes.
 2. **Paid-tier shape** — what it includes beyond higher e-sign volume, and whether it interacts with the post-beta account-model review.
 3. **GRid registration** — gated on a real ask plus the deferred artist-value discussion.
 4. **Green Room ad sales motion** — infra exists; no pricing, inventory, or sales process defined.
