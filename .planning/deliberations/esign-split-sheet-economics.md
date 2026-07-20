@@ -105,6 +105,14 @@ The template-only guardrail is satisfied by "the Funūn split-sheet template," p
 
 AM-2's guardrail reads "Funūn split-sheet template ONLY (no arbitrary PDFs)". Funūn will host a LIBRARY of contract templates (work-for-hire, producer agreements, sample clearances...). The guardrail generalizes to: **Funūn-authored templates from the contract library only — never a user-supplied PDF.** The abuse intent is unchanged (no "free DocuSign" for arbitrary documents); the letter widens from one template to N approved ones. The monthly cap and AM-3 telemetry count envelopes **across all template types**, not per-type quotas — a per-type cap would let one artist mint N×10 envelopes/month by rotating templates.
 
+## AM-2c amendment (2026-07-20) — recipient-based limit replaces the document cap
+
+**See `.planning/FINANCIALS.md` §5 for the full rationale and numbers.** Summary: AM-2's ~10 sheets/month document cap is replaced by a limit on **distinct NEW recipients** per month (proposed ~25, unconfirmed). Uploads are exempt entirely (no envelope minted = no cost). No binding document cap; AM-3's $500/mo aggregate trigger is the cost monitor, and a paid tier for prolific writers is the likely answer if it fires.
+
+Forced by P18-15 (every track needs a split sheet): a 12-track album needs 12 sheets, so a document cap punished the artist doing exactly the right thing. Counting documents also mismeasures the risk — an album is 12 documents to 3 people (not spam); 10 documents to 10 strangers is what's worth stopping. The template-only guardrail (AM-2/AM-2b) already makes arbitrary-PDF abuse structurally impossible, which is what the number was nominally guarding.
+
+Implementation lands in **17-06** (unexecuted — no rework). `lib/split-sheets/envelopes.ts` cap helpers from 17-01 need their semantics changed from document-count to recipient-count.
+
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.
