@@ -420,7 +420,12 @@ export async function POST(request: Request) {
     })),
     sheet: { id: sheet.id, vault_project_id: sheet.vault_project_id },
     executedFileUrl: executedPath,
-    auditTrailUrl: auditLogPath ?? executedPath,
+    // Empty, NOT a fallback to the executed PDF, when no audit log landed.
+    // Pointing auditTrailUrl at the executed document would assert that the
+    // signed contract IS its own audit trail — a false evidentiary claim in
+    // exactly the artifact a royalty dispute reaches for. Absent is honest;
+    // wrong is not.
+    auditTrailUrl: auditLogPath ?? '',
     completedAt,
     requestId: event.requestId,
   })

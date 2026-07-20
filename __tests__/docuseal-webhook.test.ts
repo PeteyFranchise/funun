@@ -419,6 +419,18 @@ describe('POST /api/webhooks/docuseal — Funūn Certificate of Completion', () 
     const input = mockRenderCompletionCertificate.mock.calls[0][0]
     expect(input.providerReported.auditLogPath).toBeNull()
     expect(recorded.uploads.some(u => u.path.includes('audit-log'))).toBe(false)
+
+    // The locker row must not fall back to naming the executed PDF as its
+    // own audit trail — that would be a false evidentiary claim in the very
+    // artifact a royalty dispute reaches for.
+    const insert = recorded.inserts.find(i => i.table === 'vault_documents')
+    const rows = insert?.rows as Record<string, unknown>[]
+    const esign = (rows[0].document_data as Record<string, unknown>).esign as Record<
+      string,
+      unknown
+    >
+    expect(esign.auditTrailUrl).toBe('')
+    expect(esign.auditTrailUrl).not.toBe(esign.signedFileUrl)
   })
 })
 
