@@ -5,7 +5,43 @@ import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Mass-assignment defense: only these keys are written to split_sheet_parties.
-const PARTY_FIELDS = ['name', 'email', 'pro', 'ipi', 'role', 'split_percentage', 'collaborator_id'] as const
+// legal_name/publishing_designee/administrator (migration 063, P17-09) are
+// included here deliberately — an unlisted field is silently dropped, not
+// rejected, so without this entry the builder's captured values would
+// never reach the row even though the column exists (the exact trap
+// app/api/profile/route.ts's EDITABLE_FIELDS comment warns about).
+const PARTY_FIELDS = [
+  'name',
+  'email',
+  'pro',
+  'ipi',
+  'role',
+  'split_percentage',
+  'collaborator_id',
+  'legal_name',
+  'publishing_designee',
+  'administrator',
+] as const
+
+// ─── Sheet-level field allowlist (Work Details, P17-09) ───────────────
+// All optional (decision 4) — a missing value renders as an em-dash on
+// the document, it never blocks sheet creation.
+const SHEET_FIELDS = ['artist_name', 'album_project_title', 'record_label'] as const
+
+function sanitizeSheetFields(body: Record<string, unknown>): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  for (const key of SHEET_FIELDS) {
+    if (!(key in body)) continue
+    const value = body[key]
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      out[key] = trimmed === '' ? null : trimmed
+    } else if (value === null) {
+      out[key] = null
+    }
+  }
+  return out
+}
 
 function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
   const out: Record<string, unknown> = {}
@@ -88,6 +124,8 @@ export async function POST(request: Request) {
       ? body.vault_project_id.trim()
       : null
 
+  const sheetFields = sanitizeSheetFields(body)
+
   const { data: sheet, error: sheetError } = await supabase
     .from('split_sheets')
     .insert({
@@ -95,6 +133,7 @@ export async function POST(request: Request) {
       vault_project_id: vaultProjectId,
       song_name: songName,
       status: 'draft',
+      ...sheetFields,
     })
     .select()
     .single()
@@ -111,6 +150,9 @@ export async function POST(request: Request) {
     ipi: p.ipi ?? null,
     role: p.role ?? null,
     split_percentage: p.split_percentage,
+    legal_name: p.legal_name ?? null,
+    publishing_designee: p.publishing_designee ?? null,
+    administrator: p.administrator ?? null,
   }))
 
   const { error: partiesError } = await supabase.from('split_sheet_parties').insert(partyRows)

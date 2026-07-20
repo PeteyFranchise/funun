@@ -4,7 +4,26 @@ import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 
 // ─── Party field allowlist ────────────────────────────────────────────
-const PARTY_FIELDS = ['name', 'email', 'pro', 'ipi', 'role', 'split_percentage', 'collaborator_id'] as const
+// Kept in sync with app/api/split-sheets/route.ts's PARTY_FIELDS. This
+// route does a delete-and-reinsert of every party row on any parties[]
+// PATCH (Phase 1 edit pattern) — omitting legal_name/publishing_designee/
+// administrator here would silently WIPE those values on every edit, not
+// merely fail to save new ones (migration 063, P17-09).
+const PARTY_FIELDS = [
+  'name',
+  'email',
+  'pro',
+  'ipi',
+  'role',
+  'split_percentage',
+  'collaborator_id',
+  'legal_name',
+  'publishing_designee',
+  'administrator',
+] as const
+
+// ─── Sheet-level field allowlist (Work Details, P17-09) ───────────────
+const SHEET_FIELDS = ['artist_name', 'album_project_title', 'record_label'] as const
 
 function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
   const out: Record<string, unknown> = {}
@@ -52,6 +71,16 @@ export async function PATCH(
       typeof body.vault_project_id === 'string' && body.vault_project_id.trim()
         ? body.vault_project_id.trim()
         : null
+  }
+  for (const key of SHEET_FIELDS) {
+    if (!(key in body)) continue
+    const value = body[key]
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      update[key] = trimmed === '' ? null : trimmed
+    } else if (value === null) {
+      update[key] = null
+    }
   }
   if ('status' in body && typeof body.status === 'string') {
     // esign_pending/executed widen the pipeline (migration 062, P17-02) —
@@ -114,6 +143,9 @@ export async function PATCH(
       ipi: p.ipi ?? null,
       role: p.role ?? null,
       split_percentage: p.split_percentage,
+      legal_name: p.legal_name ?? null,
+      publishing_designee: p.publishing_designee ?? null,
+      administrator: p.administrator ?? null,
     }))
 
     const { error: insertError } = await supabase.from('split_sheet_parties').insert(partyRows)
