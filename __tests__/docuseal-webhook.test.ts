@@ -358,6 +358,154 @@ describe('POST /api/webhooks/docuseal — completion', () => {
   })
 })
 
+// ─── Certificate + cross-account fan-out (Task 2) ─────────────────────
+
+describe('POST /api/webhooks/docuseal — Funūn Certificate of Completion', () => {
+  it('renders and files Funūn’s own certificate beside the two provider artifacts', async () => {
+    const { client, recorded } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    expect(mockRenderCompletionCertificate).toHaveBeenCalledTimes(1)
+    expect(recorded.uploads.some(u => u.path.includes('certificate'))).toBe(true)
+    // All three artifacts land in the same locker bucket.
+    expect(recorded.uploads).toHaveLength(3)
+  })
+
+  it('keeps provenance separated at the type level — never flattened into one bag', async () => {
+    const { client } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    const input = mockRenderCompletionCertificate.mock.calls[0][0]
+    expect(Object.keys(input).sort()).toEqual(['funuunObserved', 'providerReported'])
+
+    // Funūn-observed facts come from Funūn's own rows.
+    expect(input.funuunObserved).toMatchObject({
+      songName: 'Test Song',
+      splitSheetId: SHEET_ID,
+    })
+    expect(input.funuunObserved.executedDocumentPath).toEqual(expect.any(String))
+    expect(input.funuunObserved.parties).toHaveLength(2)
+
+    // Provider-reported facts come from the provider, attributed to it,
+    // and cite the audit log by its STORED location (17-10's one
+    // integration invariant: the citation must resolve).
+    expect(input.providerReported.providerName).toBe('DocuSeal')
+    expect(input.providerReported.submissionId).toBe(SUBMISSION_ID)
+    expect(input.providerReported.auditLogPath).toEqual(expect.stringContaining('audit-log'))
+    expect(input.providerReported.signers).toHaveLength(2)
+
+    // The honesty constraint, asserted at the boundary this route owns: no
+    // provider-captured value may ride in on the Funūn-observed group.
+    const observed = JSON.stringify(input.funuunObserved)
+    expect(observed).not.toContain('203.0.113.7')
+    expect(observed).not.toContain('Mozilla/5.0')
+    expect(observed).not.toContain(SUBMISSION_ID)
+  })
+
+  it('cites no audit-log path when the provider reported no audit log', async () => {
+    mockFetchCompletionArtifacts.mockResolvedValue({ ...artifacts(), auditLog: null })
+    const { client, recorded } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    const input = mockRenderCompletionCertificate.mock.calls[0][0]
+    expect(input.providerReported.auditLogPath).toBeNull()
+    expect(recorded.uploads.some(u => u.path.includes('audit-log'))).toBe(false)
+  })
+})
+
+describe('POST /api/webhooks/docuseal — cross-account fan-out', () => {
+  it('files one locker row per ACCOUNT-HOLDER party, all sharing one stored file', async () => {
+    const { client, recorded } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    const insert = recorded.inserts.find(i => i.table === 'vault_documents')
+    const rows = insert?.rows as Record<string, unknown>[]
+    // party-2 has no Funūn account, so exactly one row.
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      user_id: 'user-initiator',
+      project_id: 'project-1',
+      type: 'split_sheet',
+      status: 'signed',
+    })
+    // Evidence guard (migration 045/049): status='signed' requires
+    // signed_at AND a file_url.
+    expect(rows[0].signed_at).toEqual(expect.any(String))
+    expect(rows[0].file_url).toEqual(expect.any(String))
+    // The attach affordance's join key back to the sheet (17-05).
+    expect((rows[0].document_data as Record<string, unknown>).split_sheet_id).toBe(SHEET_ID)
+  })
+
+  it('files nothing when no party holds a Funūn account', async () => {
+    const envelope = pendingEnvelope()
+    envelope.split_sheets.split_sheet_parties.forEach(p => {
+      p.user_id = null
+    })
+    const { client, recorded } = makeService(envelope)
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBe(200)
+    expect(recorded.inserts.find(i => i.table === 'vault_documents')).toBeUndefined()
+  })
+})
+
+describe('POST /api/webhooks/docuseal — notification + offered write-back', () => {
+  it('notifies each account-holder party that the sheet is executed', async () => {
+    const { client } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    expect(mockCreateNotification).toHaveBeenCalledTimes(1)
+    const args = mockCreateNotification.mock.calls[0][1]
+    expect(args).toMatchObject({ userId: 'user-initiator', type: 'split_sheet_executed' })
+    expect(args.title).toContain('Test Song')
+  })
+
+  it('OFFERS the write-back in the notification rather than applying it', async () => {
+    const { client } = makeService(pendingEnvelope())
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    const args = mockCreateNotification.mock.calls[0][1]
+    // An offer flag, not a mutation — the diff is computed on demand by
+    // GET /api/split-sheets/[id]/reconcile and applied only by an explicit
+    // POST confirm (P17-07, ESIGN-12).
+    expect(args.data).toMatchObject({ splitSheetId: SHEET_ID, reconcileOffered: true })
+  })
+
+  it('offers no reconciliation for a standalone sheet with no project attached', async () => {
+    const envelope = pendingEnvelope()
+    envelope.split_sheets.vault_project_id = null
+    const { client } = makeService(envelope)
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    await POST(request(body, sign(body)))
+
+    const args = mockCreateNotification.mock.calls[0][1]
+    expect(args.data.reconcileOffered).toBe(false)
+  })
+})
+
 // ─── Idempotency (T-17-21) ────────────────────────────────────────────
 
 describe('POST /api/webhooks/docuseal — idempotency', () => {
