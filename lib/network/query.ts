@@ -100,7 +100,7 @@ function fallbackPerson(id: string): NetworkPerson {
   return {
     id,
     handle: null,
-    displayName: 'Funun member',
+    displayName: 'Funūn member',
     avatarUrl: null,
     primaryRole: null,
     memberType: 'artist',
@@ -113,7 +113,7 @@ function toPerson(row: ProfileRow): NetworkPerson {
   return {
     id: row.id,
     handle: row.handle,
-    displayName: row.artist_name?.trim() || 'Funun member',
+    displayName: row.artist_name?.trim() || 'Funūn member',
     avatarUrl: row.avatar_url ?? null,
     primaryRole: primaryRoleLabel(row),
     memberType: row.member_type,

@@ -338,7 +338,7 @@ export function scoreFeedCard(input: GreenRoomRankInput): number {
 
 export function explainFeedCard(input: GreenRoomRankInput): string {
   if (input.placementKind === 'sponsored') return 'Sponsored placement'
-  if (input.placementKind === 'featured') return 'Featured by Funun'
+  if (input.placementKind === 'featured') return 'Featured by Funūn'
   if (input.placementKind === 'partner') return 'Partner spotlight'
   if (input.placementKind === 'program') return 'Curated program'
   if (input.relationship === 'connected') return 'From your connections'
