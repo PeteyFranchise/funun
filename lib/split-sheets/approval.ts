@@ -19,6 +19,12 @@ export type SplitSheetParty = {
   role?: string | null
   split_percentage: number
   collaborator_id?: string | null
+  // Legal-grade document fields (migration 063, P17-09). All optional —
+  // a pre-063 row has none of these and the renderer degrades gracefully
+  // (lib/vault/pdf/split-sheet.tsx).
+  legal_name?: string | null
+  publishing_designee?: string | null
+  administrator?: string | null
 }
 
 // ─── Token helpers ────────────────────────────────────────────────────
