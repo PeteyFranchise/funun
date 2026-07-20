@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Phase 17 WAVE 3 — 17-04 complete (lifecycle gating + mobile sign shell). 17-05 (parallel) still in flight.
-last_updated: "2026-07-20T06:16:53.116Z"
+stopped_at: Phase 17 WAVES 1-3 CODE-COMPLETE (17-01/03 foundation+PDF, 17-02 schema/readiness code, 17-04 gating+shell, 17-05 distribution/attach/write-back). TWO HUMAN GATES OPEN — (1) 17-02 checkpoint: supabase db push for migration 062 + adversarial checks; (2) provider-verification pass (DocuSeal trial, 5 items) unlocking waves 4-5 (17-06/17-07).
+last_updated: "2026-07-20T06:19:05.800Z"
 last_activity: 2026-07-20
-last_activity_desc: Phase 17 plan 17-04 (lifecycle gating + mobile sign shell) executed in isolated worktree
+last_activity_desc: Phase 17 waves 1-3 integrated
 progress:
   total_phases: 17
   completed_phases: 15
@@ -127,6 +127,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17 P01 | 40min | 3 tasks | 11 files |
 | Phase 17 P03 | 40min | 1 tasks | 4 files |
 | Phase 17 P04 | 35min | 2 tasks | 6 files |
+| Phase 17-split-sheet-esign P05 | 55min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -206,6 +207,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17-03]: jest.config.js + new jest.babel-plugins.js: added a scoped ESM transform (babel-jest + next/babel) and an import.meta.url shim for @react-pdf/renderer's ESM-only dependency tree (first exercised by a test in this codebase) — no new npm packages installed; full suite 47->48 suites / 455->462 tests, zero regressions
 - [Phase ?]: 17-04: resolvePartyPhase() splits /approve/[token] gating into token-validity vs. lifecycle-phase questions, fixing RESEARCH Pitfall 1 (approved parties no longer see 'expired')
 - [Phase ?]: 17-04: first_viewed_at stamp implemented in app/approve/[token]/page.tsx (GET render) rather than the POST-only approve route named in the plan, since a page-visit signal must fire on page load
+- [Phase 17-05]: document_data.split_sheet_id joins a fanned-out vault_documents row back to its split_sheets row (no FK on JSONB) — buildFanoutRows writes it, Contract Locker's standalone-row builder and the attach route read it
+- [Phase 17-05]: Attach route requires split_sheets.status='executed' before allowing attach (Rule 2 — required by the plan's own must_haves truth)
+- [Phase 17-05]: Reconcile route/UI use a GET-computes/POST-confirms split so composers[] write-back can only happen via an explicit {action:'confirm'} request, never silently
 
 ### Pending Todos
 
@@ -269,6 +273,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 Last session: 2026-07-20T06:16:53.094Z
 Stopped at: Phase 17 WAVE 3 — 17-04 complete (lifecycle gating + mobile sign shell). 17-05 (parallel) still in flight.
+Last session: 2026-07-20T06:18:22.874Z
+Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: None
 
 ## Operator Next Steps

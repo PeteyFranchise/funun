@@ -183,6 +183,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
 - [ ] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
 - [ ] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
+- [ ] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
+- [x] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
+- [x] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
+- [x] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
 - [ ] **ESIGN-13**: Server-side ~10/mo per-initiator cap enforced at envelope mint, with an admin bump path and a single void-counting config flag (AM-2)
 - [ ] **ESIGN-14**: Usage/cost telemetry — completed-envelope count + estimated spend, admin-visible, feeding the AM-3 $500/mo re-decision trigger
 
@@ -202,6 +206,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ESIGN-10 | Phase 17 | Pending |
 | ESIGN-11 | Phase 17 | Pending |
 | ESIGN-12 | Phase 17 | Pending |
+| ESIGN-09 | Phase 17 | Pending |
+| ESIGN-10 | Phase 17 | Complete |
+| ESIGN-11 | Phase 17 | Complete |
+| ESIGN-12 | Phase 17 | Complete |
 | ESIGN-13 | Phase 17 | Pending |
 | ESIGN-14 | Phase 17 | Pending |
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { VerificationCheck, VerificationStatus } from '@/types'
 
 export type ContractRow = {
@@ -19,6 +20,10 @@ export type ContractRow = {
   verificationStatus?: VerificationStatus
   verificationChecks?: VerificationCheck[]
   verificationSummary?: string | null
+  // Standalone (project_id IS NULL) split sheet — P17-05. When true, this
+  // row has no parent release and can be attached to one via splitSheetId.
+  unattached: boolean
+  splitSheetId: string | null
 }
 
 const STATUS_BADGE = {
@@ -48,7 +53,72 @@ function Check({ color = '#34D399' }: { color?: string }) {
   )
 }
 
-function VerifyPanel({ row }: { row: ContractRow | null }) {
+// ─── Attach-to-project affordance (P17-05/P17-05a) ────────────────────────
+// A standalone executed sheet lands in the locker unattached; this offers a
+// one-tap attach to a project the artist owns, hitting Task 2's route.
+function AttachPanel({ row, projects }: { row: ContractRow; projects: { id: string; title: string }[] }) {
+  const router = useRouter()
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function attach() {
+    if (!row.splitSheetId || !projectId) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/split-sheets/${row.splitSheetId}/attach`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vault_project_id: projectId }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error ?? 'Could not attach this sheet.')
+        return
+      }
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-5 rounded-[14px] border border-brandindigo/30 bg-brandindigo/5 p-4">
+      <div className="text-[13px] font-bold text-white">Attach to a release</div>
+      <p className="mt-1 text-[12.5px] text-lavdim">
+        This sheet isn&apos;t linked to a project yet — attaching moves it (and this project&apos;s readiness) into that release.
+      </p>
+      {projects.length === 0 ? (
+        <p className="mt-3 text-[12.5px] text-lavdim">Create a Vault project first to attach this sheet.</p>
+      ) : (
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={projectId}
+            onChange={e => setProjectId(e.target.value)}
+            className="min-w-0 flex-1 rounded-[10px] border border-hair bg-card2 px-3 py-2 text-[13px] text-white"
+          >
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={attach}
+            disabled={busy || !row.splitSheetId}
+            className="rounded-[10px] bg-brandindigo px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50"
+          >
+            {busy ? 'Attaching…' : 'Attach'}
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-2 text-[12px] text-rose-400">{error}</p>}
+    </div>
+  )
+}
+
+function VerifyPanel({ row, projects }: { row: ContractRow | null; projects: { id: string; title: string }[] }) {
   if (!row) {
     return (
       <div className="h-fit rounded-[18px] border border-hair bg-[#0b0a16] p-6 text-[13px] text-lavdim">
@@ -100,7 +170,7 @@ function VerifyPanel({ row }: { row: ContractRow | null }) {
       </div>
       <div className="text-[18px] font-extrabold text-white">{row.label}</div>
       <div className="mt-[5px] text-[13px] text-lavdim">
-        {row.projectTitle} · {row.source === 'uploaded' ? 'uploaded PDF' : 'generated in Funūn'} · read by Funūn AI
+        {row.unattached ? 'Unattached' : row.projectTitle} · {row.source === 'uploaded' ? 'uploaded PDF' : 'generated in Funūn'} · read by Funūn AI
       </div>
       <div className={`mt-4 inline-flex items-center gap-[9px] rounded-[11px] border px-4 py-[10px] text-[14.5px] font-extrabold ${badge.cls}`}>
         {!row.needsFixing && verStatus !== 'failed' && <Check color="currentColor" />}
@@ -139,13 +209,17 @@ function VerifyPanel({ row }: { row: ContractRow | null }) {
             <br />
           </>
         )}
-        Feeds Release Readiness · {row.needsFixing ? 'resolve to clear this release for pitching.' : 'helps clear this release for pitching.'}
+        {row.unattached
+          ? 'Not tied to a release yet — attach it below to feed that release’s readiness.'
+          : `Feeds Release Readiness · ${row.needsFixing ? 'resolve to clear this release for pitching.' : 'helps clear this release for pitching.'}`}
       </div>
+
+      {row.unattached && <AttachPanel row={row} projects={projects} />}
     </div>
   )
 }
 
-export function ContractLocker({ rows }: { rows: ContractRow[] }) {
+export function ContractLocker({ rows, projects = [] }: { rows: ContractRow[]; projects?: { id: string; title: string }[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(rows[0]?.id ?? null)
   const selected = rows.find(r => r.id === selectedId) ?? null
 
@@ -181,7 +255,14 @@ export function ContractLocker({ rows }: { rows: ContractRow[] }) {
                     <DocIcon />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[15.5px] font-bold text-white">{r.label}</span>
+                    <span className="flex items-center gap-[7px]">
+                      <span className="block truncate text-[15.5px] font-bold text-white">{r.label}</span>
+                      {r.unattached && (
+                        <span className="flex-none rounded-full border border-money/30 bg-money/10 px-[8px] py-[2px] text-[10.5px] font-bold uppercase tracking-[.08em] text-money2">
+                          Unattached
+                        </span>
+                      )}
+                    </span>
                     <span className="mt-[3px] block truncate text-[12.5px] text-lavdim">{r.detail}</span>
                   </span>
                 </span>
@@ -211,7 +292,7 @@ export function ContractLocker({ rows }: { rows: ContractRow[] }) {
         )}
       </div>
 
-      <VerifyPanel row={selected} />
+      <VerifyPanel row={selected} projects={projects} />
     </div>
   )
 }

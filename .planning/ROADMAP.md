@@ -428,6 +428,8 @@ Plans:
 
 - [x] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
 - [ ] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
+- [ ] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
+- [x] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
 
 **Wave 4** *(depends 17-01/02/03/04; user_setup + blocking provider-verification checkpoint)*
 
