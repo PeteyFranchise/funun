@@ -225,6 +225,32 @@ Two co-writers who later fall out and block each other still co-own a compositio
 - **Required:** make it deliberate. Add a comment at the Locker/document query documenting that block enforcement intentionally does NOT apply to executed shared agreements, so a future "we missed block filtering here" audit doesn't helpfully break it. Cite this section.
 - **Scope of the exception is narrow:** the agreement and its parties' details *on that agreement*. It does NOT re-open profiles, messaging, feed, or any other Phase 13 surface between the blocked pair.
 
+### 10c-ii. Communication across a block — STRUCTURED ACTIONS ONLY (DECIDED 2026-07-20)
+
+The block exception covers not only *seeing* a shared agreement but *acting on it*. Co-owners of a composition sometimes must interact after falling out — disputes are often why they fell out. But an open channel that survives a block is a harassment vector with the document as pretext, and preventing exactly that is why Phase 13 exists.
+
+**Decision: structured, document-scoped actions survive a block. Free-form messaging does not.**
+
+| Need | Mechanism | Free text |
+|---|---|---|
+| "This split is wrong — amend it" | **Propose amendment** — a new split sheet through the normal approval flow | ✗ |
+| "I need my copy of the signed sheet" | Self-serve from their own Locker | n/a |
+| "You still haven't signed" | Existing P17-04 nudge (system-generated) | ✗ |
+| "I dispute this document" | **Raise dispute** → routes to Funūn admin | ✗ |
+
+Rationale: nearly every legitimate need is structured, and free text — the one thing abuse requires — is needed least. Two people who have blocked each other are not going to resolve a split by chat.
+
+**The amendment mechanism IS the communication channel for the case that matters most.** The document's own preserved operative text requires amendment "by writing and signed by all Co-writers," so an amendment is a new sheet going through approval — inherently reaching the other party in a purposeful, auditable, non-abusable form. The contract specified its own protocol.
+
+Implementation constraints:
+- Actions emit **system-worded** notifications. No user-supplied free text crosses a block, not even in an optional note field — that field is the vector.
+- **Disputes must reach a human.** Structured actions ping-ponging between two people in conflict, with no escalation, is worse than nothing. Route to Funūn admin, consistent with Phase 16's D-14b admin-mediated posture.
+- **Notification asymmetry is correct and intended.** A blocked party still receives "the sheet you signed was amended" — that concerns their legal position, not a social relationship.
+- Scope stays narrow: these actions exist **only** on agreements the two parties genuinely share. They re-open no other Phase 13 surface.
+- The general DM block from Phase 13 remains fully in force. Nothing here is a channel outside a specific shared document.
+
+**If free-text messaging inside a shared-document scope is ever revisited**, it needs the harassment vector named explicitly, plus rate limiting and a report path — reopen it as a deliberate T&S decision, not a convenience patch.
+
 ### 10d. Third-party uploads — the two-tier catalog (design note, build later)
 
 Uploading already works (`/api/vault/[projectId]/documents/[docId]/upload` — upload IS the signing action), and `/api/contracts/verify` already reads an uploaded PDF with Claude and cross-checks it against Vault splits.
