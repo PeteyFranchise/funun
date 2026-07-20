@@ -15,6 +15,16 @@
 -- executor agent" convention). This file is authored and tested
 -- (string-assertion test in __tests__/migration-062.test.ts) but must not
 -- be applied automatically.
+--
+-- UUID DEFAULTS (2026-07-20): this migration uses gen_random_uuid(), NOT the
+-- uuid_generate_v4() used by migrations 001-058. The first push attempt failed
+-- with `function uuid_generate_v4() does not exist (SQLSTATE 42883)` — the
+-- uuid-ossp extension declared in 001 is not resolvable on the remote database
+-- from the migration session's search_path. gen_random_uuid() is PostgreSQL
+-- core since v13 (Supabase runs 15+), needs no extension, and cannot break this
+-- way. It is Supabase's current recommendation. Existing tables are unaffected;
+-- their defaults were evaluated at creation time. New migrations should use
+-- gen_random_uuid() — this includes Phase 16's drafted migrations.
 -- ============================================================
 
 -- ─── esign_envelopes ──────────────────────────────────────────────────────
@@ -22,7 +32,7 @@
 -- INSERTs a new row rather than overwriting the prior attempt, preserving
 -- audit history of every voided mint alongside the eventually-completed one.
 CREATE TABLE esign_envelopes (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   split_sheet_id         UUID REFERENCES split_sheets ON DELETE CASCADE NOT NULL,
   docuseal_submission_id TEXT,
   docuseal_template_id   TEXT,
@@ -45,7 +55,7 @@ CREATE INDEX idx_esign_envelopes_docuseal_submission_id ON esign_envelopes (docu
 -- signers; a re-mint after a void creates a fresh set of signer rows tied
 -- to the new envelope, not a mutation of the voided attempt's rows).
 CREATE TABLE esign_envelope_signers (
-  id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   envelope_id            UUID REFERENCES esign_envelopes ON DELETE CASCADE NOT NULL,
   split_sheet_party_id   UUID REFERENCES split_sheet_parties ON DELETE CASCADE NOT NULL,
   docuseal_submitter_id  TEXT,
