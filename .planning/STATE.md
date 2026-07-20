@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: "Phase 17-08 (Unicode-safe PDF rendering, ESIGN-15) COMPLETE — all three PDF renderers now use vendored Noto Sans, split-sheet dangling-label bug fixed, exact-string Unicode regression suite passing. Waves 1-3 remain CODE-COMPLETE with TWO HUMAN GATES OPEN — (1) 17-02 checkpoint: supabase db push for migration 062 + adversarial checks; (2) provider-verification pass (DocuSeal trial, 5 items — PASSED 2026-07-20, see 17-PROVIDER-VERIFICATION.md) unlocking waves 4-5 (17-06/17-07)."
-last_updated: "2026-07-20T09:26:27.487Z"
-last_activity: 2026-07-20
-last_activity_desc: Phase 17-08 (Unicode-safe PDF fix) executed — ESIGN-15 closed pending post-deploy human-check
+stopped_at: "17-09 (legal-grade split-sheet document): 3/3 automatable tasks complete (migration 063 authored, agreement module, rebuilt renderer, SplitSheetBuilder capture UI). 2 blocking-human checkpoints open: migration push, attorney review of operative language."
+last_updated: "2026-07-20T10:37:42.929Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 103
-  completed_plans: 86
-  percent: 83
+  completed_plans: 87
+  percent: 84
 ---
 
 # Project State
@@ -129,6 +129,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17 P04 | 35min | 2 tasks | 6 files |
 | Phase 17-split-sheet-esign P05 | 55min | 3 tasks | 8 files |
 | Phase 17-split-sheet-esign P08 | 22min | 3 tasks | 15 files |
+| Phase 17 P09 | 55min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17-05]: Reconcile route/UI use a GET-computes/POST-confirms split so composers[] write-back can only happen via an explicit {action:'confirm'} request, never silently
 - [Phase 17-08]: SHIPPED-BUG FIX — @react-pdf/renderer's standard-14 fonts (WinAnsi encoding) silently dropped/mangled non-Latin-1 characters in every generated PDF (ć dropped, ū mangled: "Funūn"→"Funkn"); found at the 2026-07-20 provider-verification gate. Fixed by vendoring Noto Sans (SIL OFL) behind a single registerFunuunPdfFonts() module all three renderers import; regression proven with exact-string extraction against real rendered PDF bytes (no PDF-parsing dependency — Node zlib only). No backfill of previously generated documents; they regenerate correctly on next export.
 - [Phase 17-08]: initiatorName widened to string | null | undefined on SplitSheetDocument/renderSplitSheet — the dangling "Prepared by " label bug (P17-08 bug 2) is now a representable, tested type state rather than a caller convention.
+- [Phase 17]: 17-09 followed 17-SPLIT-SHEET-TEMPLATE-SPEC.md as authoritative over the plan body: songwriting/publishing-only document, no rights_scope/master-share/sample-disclosure/ISWC-ISRC columns — Approved by Pete 2026-07-20; a fixed master-ownership Guidance Note replaces a master-split section entirely
+- [Phase 17]: Migration 063 adds administrator to artist_profiles, split_sheet_parties, split_sheets, and collaborators (6 columns total), all nullable/additive — administrator is the only decision-3a prefill source with no existing home; artist_profiles.administrator inherits migration 040's private-by-default column-privilege posture with no new REVOKE/GRANT
+- [Phase 17]: ESIGN-16/ESIGN-17 left un-marked-complete in REQUIREMENTS.md pending human review — ESIGN-16 requirement text predates the approved spec (references excluded scope/sample/ISWC-ISRC elements); ESIGN-17 requirement describes attorney review having occurred, which has not happened yet (COUNSEL_REVIEW_STATUS unreviewed)
 
 ### Pending Todos
 
@@ -228,6 +232,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - ~~[Phase 15-01] Task 3 schema push for migration 042~~ — RESOLVED: Pete ran `supabase db push` (applied 041 + 042) and all 3 DB-level checks passed: D-12 backfill (5 artist/approved/backfill rows, zero industry rows correct — no industry accounts exist yet), column lockdown (42501 permission denied as authenticated), partial unique index (duplicate pending insert rejected). See 15-01-SUMMARY.md.
 
 ~~Phase 09-01b Task 4 BLOCKING checkpoint: migration 043 (artist_profiles.allow_resharing) authored locally but not yet pushed to the remote database.~~ — RESOLVED 2026-07-12: Operator ran `supabase db push`; `npx supabase migration list` confirms 043 populated in both LOCAL and REMOTE columns, matching migrations 001-042. Plan 09-01b is complete; Plans 09-02..09-05 (which depend on this DB/API layer) are unblocked.
+
+- 17-09 checkpoint 1: migration 063 (split-sheet legal-grade fields) authored but NOT pushed — requires a human to run supabase db push and the additive/adversarial review in 17-09-PLAN.md
+- 17-09 checkpoint 2 (P17-09a): AGREEMENT_CLAUSES operative language requires licensed-attorney review before COUNSEL_REVIEW_STATUS can flip to reviewed — assertCounselReviewedForProduction() blocks production minting until then
 
 ### Quick Tasks Completed
 
@@ -274,11 +281,11 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-20T06:16:53.094Z
-Stopped at: Phase 17 WAVE 3 — 17-04 complete (lifecycle gating + mobile sign shell). 17-05 (parallel) still in flight.
+Last session: 2026-07-20T10:37:42.888Z
+Stopped at: 17-09 (legal-grade split-sheet document): 3/3 automatable tasks complete (migration 063 authored, agreement module, rebuilt renderer, SplitSheetBuilder capture UI). 2 blocking-human checkpoints open: migration push, attorney review of operative language.
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
-Resume file: None
+Resume file: 17-09-PLAN.md (checkpoint 1: migration push)
 
 ## Operator Next Steps
 
