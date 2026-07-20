@@ -73,8 +73,16 @@ CREATE INDEX idx_esign_envelope_signers_party_id ON esign_envelope_signers (spli
 -- Signing-state rows must be server-owned: no authenticated/anon client may
 -- INSERT/UPDATE/DELETE. All writes happen via service-role routes (mint,
 -- void, webhook — 17-06/17-07) after their own ownership/cap checks.
-REVOKE INSERT, UPDATE, DELETE ON esign_envelopes FROM authenticated, anon;
-REVOKE INSERT, UPDATE, DELETE ON esign_envelope_signers FROM authenticated, anon;
+-- TRUNCATE is included deliberately, which migrations 042/056/057/058 do NOT
+-- do. The 2026-07-20 push surfaced that Supabase's default grants leave
+-- TRUNCATE on authenticated+anon after a REVOKE of only INSERT/UPDATE/DELETE.
+-- TRUNCATE is NOT subject to RLS: a role holding it can empty the table
+-- regardless of policy. For esign_envelope_signers — signature audit linkage —
+-- that is the one loss the whole table exists to prevent. Not currently
+-- reachable (PostgREST emits no TRUNCATE), so this is defense in depth, and
+-- the same gap on existing tables is tracked separately as a repo-wide sweep.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON esign_envelopes FROM authenticated, anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON esign_envelope_signers FROM authenticated, anon;
 
 ALTER TABLE esign_envelopes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE esign_envelope_signers ENABLE ROW LEVEL SECURITY;

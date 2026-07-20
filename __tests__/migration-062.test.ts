@@ -65,9 +65,9 @@ describe('migration 062 — split-sheet e-sign envelopes + tiered readiness', ()
 
   describe('server-owned write doctrine (migrations 040/056/058)', () => {
     it('revokes client writes on both new tables', () => {
-      expect(migration).toContain('REVOKE INSERT, UPDATE, DELETE ON esign_envelopes FROM authenticated, anon')
+      expect(migration).toContain('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON esign_envelopes FROM authenticated, anon')
       expect(migration).toContain(
-        'REVOKE INSERT, UPDATE, DELETE ON esign_envelope_signers FROM authenticated, anon'
+        'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON esign_envelope_signers FROM authenticated, anon'
       )
     })
 
