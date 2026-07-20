@@ -16,12 +16,19 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer'
 import type { ExportManifest, ExportTrack } from '@/lib/vault/export-pack'
+import { registerFunuunPdfFonts, PDF_FONT_FAMILY } from './fonts'
+
+// Must run before any StyleSheet below is consumed by a render — see
+// lib/vault/pdf/fonts.ts header comment (ESIGN-15 / P17-08). This is the
+// ONLY font registration call in this file; do not call Font.register
+// directly here.
+registerFunuunPdfFonts()
 
 // ─── Styles (mirror credits-sheet scaffolding) ────────────────────────────
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: PDF_FONT_FAMILY,
     fontSize: 9,
     padding: 40,
     color: '#1a1a1a',
@@ -34,7 +41,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   headerArtist: {
     fontSize: 11,
@@ -56,7 +64,8 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     fontSize: 7,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
     color: '#666666',
     textTransform: 'uppercase',
   },
@@ -71,7 +80,8 @@ const styles = StyleSheet.create({
   },
   colTrack: {
     flex: 3,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   colIsrc: {
     flex: 2,

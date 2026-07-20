@@ -18,12 +18,19 @@ import {
 } from '@react-pdf/renderer'
 import { readComposers, COMPOSER_ROLE_LABELS, PRO_LABELS } from '@/lib/metadata/schema'
 import type { ExportManifest, ExportTrack } from '@/lib/vault/export-pack'
+import { registerFunuunPdfFonts, PDF_FONT_FAMILY } from './fonts'
+
+// Must run before any StyleSheet below is consumed by a render — see
+// lib/vault/pdf/fonts.ts header comment (ESIGN-15 / P17-08). This is the
+// ONLY font registration call in this file; do not call Font.register
+// directly here.
+registerFunuunPdfFonts()
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: PDF_FONT_FAMILY,
     fontSize: 9,
     padding: 40,
     color: '#1a1a1a',
@@ -36,7 +43,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   headerArtist: {
     fontSize: 11,
@@ -59,7 +67,8 @@ const styles = StyleSheet.create({
   },
   trackTitle: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
     flex: 1,
   },
   splitTotalBadge: {
@@ -84,7 +93,8 @@ const styles = StyleSheet.create({
   },
   colName: {
     flex: 2,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   colRole: {
     flex: 2,
@@ -101,7 +111,8 @@ const styles = StyleSheet.create({
   colSplit: {
     flex: 1,
     textAlign: 'right',
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -112,7 +123,8 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     fontSize: 7,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
     color: '#666666',
     textTransform: 'uppercase',
   },
@@ -157,7 +169,7 @@ function TrackCredits({ track, index: _index }: TrackCreditsProps) {
         </Text>
         {composers.length > 0 && (
           <Text style={splitOk ? styles.splitTotalBadge : styles.splitTotalWarning}>
-            {splitTotal.toFixed(1)}% total{!splitOk ? ' ⚠' : ''}
+            {splitTotal.toFixed(1)}% total{!splitOk ? ' — does not total 100%' : ''}
           </Text>
         )}
       </View>

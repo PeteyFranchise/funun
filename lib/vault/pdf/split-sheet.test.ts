@@ -119,6 +119,36 @@ describe('SplitSheetDocument', () => {
     const text = collectText(doc).join('')
     expect(text).toContain('—')
   })
+
+  // P17-08 bug 2 — a missing initiator name must not leave a dangling
+  // "Prepared by " label with nothing after it.
+  it.each([
+    { label: 'absent', initiatorName: undefined },
+    { label: 'null', initiatorName: null },
+    { label: 'empty string', initiatorName: '' },
+    { label: 'whitespace-only', initiatorName: '   ' },
+  ])('renders the header label alone with no dangling preparer clause when initiatorName is $label', ({ initiatorName }) => {
+    const doc = SplitSheetDocument({
+      songName: 'No Initiator Song',
+      projectTitle: null,
+      initiatorName,
+      parties,
+    })
+    const text = collectText(doc).join('')
+    expect(text).toContain('Split Sheet')
+    expect(text).not.toContain('Prepared by')
+  })
+
+  it('names the preparer when initiatorName is present', () => {
+    const doc = SplitSheetDocument({
+      songName: 'Neon Static',
+      projectTitle: null,
+      initiatorName: 'Aiko Rivera',
+      parties,
+    })
+    const text = collectText(doc).join('')
+    expect(text).toContain('Split Sheet · Prepared by Aiko Rivera')
+  })
 })
 
 describe('renderSplitSheet', () => {

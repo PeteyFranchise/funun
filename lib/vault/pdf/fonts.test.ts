@@ -104,7 +104,72 @@ describe('registerFunuunPdfFonts', () => {
   })
 })
 
-// Glyph-coverage guard over the three PDF renderer sources (Task 2 of
-// P17-08) is appended below this line once the renderers are switched
-// onto PDF_FONT_FAMILY. See Task 2 in
-// .planning/phases/17-split-sheet-esign/17-08-PLAN.md.
+describe('glyph coverage guard — all three PDF renderer sources', () => {
+  // Deliberately parse fontFamily VALUES and rendered string literals
+  // rather than shell-grepping raw file text, so header comments and
+  // documentation prose in these renderer files (which legitimately
+  // reference "Helvetica" and non-ASCII characters in prose) can never
+  // satisfy or break this gate — only actual StyleSheet/JSX content can.
+  const rendererFiles = [
+    path.join(__dirname, 'split-sheet.tsx'),
+    path.join(__dirname, 'credits-sheet.tsx'),
+    path.join(__dirname, 'metadata-sheet.tsx'),
+  ]
+
+  // Strip // line comments and /* */ block comments before scanning, so
+  // this guard can never be satisfied (or defeated) by prose in a
+  // comment — only real StyleSheet.create({...}) object literals count.
+  function stripComments(src: string): string {
+    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+  }
+
+  it('every fontFamily style value is the registered PDF_FONT_FAMILY', () => {
+    // Renderers express fontFamily either as the imported PDF_FONT_FAMILY
+    // identifier (preferred — single source of truth) or, if ever
+    // hardcoded again, as a quoted string literal. Catch both forms: a
+    // bare identifier must be exactly `PDF_FONT_FAMILY`, and a string
+    // literal must equal its resolved value — so a revert to a literal
+    // 'Helvetica' fails here regardless of which form is used.
+    const fontFamilyValuePattern = /fontFamily:\s*(?:'([^']*)'|(\w+))/g
+    for (const file of rendererFiles) {
+      const src = stripComments(fs.readFileSync(file, 'utf-8'))
+      let match: RegExpExecArray | null
+      let found = 0
+      while ((match = fontFamilyValuePattern.exec(src))) {
+        found += 1
+        const [, stringLiteral, identifier] = match
+        if (stringLiteral !== undefined) {
+          expect(stringLiteral).toBe(PDF_FONT_FAMILY)
+        } else {
+          expect(identifier).toBe('PDF_FONT_FAMILY')
+        }
+      }
+      // Each renderer must actually declare fontFamily somewhere — an
+      // empty match set would let this test pass vacuously.
+      expect(found).toBeGreaterThan(0)
+    }
+  })
+
+  it('every literal non-ASCII character in rendered string content has a glyph in the registered font', () => {
+    const regular = fontkit.openSync(PDF_FONT_FILES.regular)
+    const bold = fontkit.openSync(PDF_FONT_FILES.bold)
+    const nonAsciiPattern = /[^\x00-\x7F]/g
+
+    for (const file of rendererFiles) {
+      const src = stripComments(fs.readFileSync(file, 'utf-8'))
+      const chars = new Set(src.match(nonAsciiPattern) ?? [])
+      expect(chars.size).toBeGreaterThan(0)
+      for (const ch of chars) {
+        const cp = ch.codePointAt(0)!
+        const covered = regular.hasGlyphForCodePoint(cp) && bold.hasGlyphForCodePoint(cp)
+        if (!covered) {
+          throw new Error(
+            `Uncovered non-ASCII character "${ch}" (U+${cp.toString(16).toUpperCase()}) found in ${file} — ` +
+              'no glyph in the registered Noto Sans font. Replace it with covered text; ' +
+              'do not add a second font family just to carry one symbol.',
+          )
+        }
+      }
+    }
+  })
+})

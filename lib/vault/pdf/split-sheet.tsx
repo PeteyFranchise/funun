@@ -28,6 +28,13 @@ import {
 } from '@react-pdf/renderer'
 import { PRO_LABELS, COMPOSER_ROLE_LABELS, type PRO, type ComposerRole } from '@/lib/metadata/schema'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
+import { registerFunuunPdfFonts, PDF_FONT_FAMILY } from './fonts'
+
+// Must run before any StyleSheet below is consumed by a render — see
+// lib/vault/pdf/fonts.ts header comment (ESIGN-15 / P17-08). This is the
+// ONLY font registration call in this file; do not call Font.register
+// directly here.
+registerFunuunPdfFonts()
 
 // ─── Role tag helper ───────────────────────────────────────────────────
 
@@ -45,7 +52,7 @@ export function partyRoleTag(index: number): string {
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: PDF_FONT_FAMILY,
     fontSize: 9,
     padding: 40,
     color: '#1a1a1a',
@@ -58,7 +65,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   headerArtist: {
     fontSize: 11,
@@ -82,7 +90,8 @@ const styles = StyleSheet.create({
   },
   tableHeaderCell: {
     fontSize: 7,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
     color: '#666666',
     textTransform: 'uppercase',
   },
@@ -97,7 +106,8 @@ const styles = StyleSheet.create({
   },
   colName: {
     flex: 2,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   colRole: {
     flex: 2,
@@ -114,7 +124,8 @@ const styles = StyleSheet.create({
   colSplit: {
     flex: 1,
     textAlign: 'right',
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   totalRow: {
     flexDirection: 'row',
@@ -129,11 +140,13 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
   },
   totalWarning: {
     fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: PDF_FONT_FAMILY,
+    fontWeight: 700,
     color: '#cc3300',
   },
   signatureSection: {
@@ -151,7 +164,7 @@ const styles = StyleSheet.create({
   },
   signatureLine: {
     fontSize: 10,
-    fontFamily: 'Helvetica',
+    fontFamily: PDF_FONT_FAMILY,
   },
   footer: {
     position: 'absolute',
@@ -217,7 +230,7 @@ function PartySignatureBlock({ party, index }: PartyRowProps) {
 export type SplitSheetDocProps = {
   songName: string
   projectTitle?: string | null
-  initiatorName: string
+  initiatorName?: string | null
   parties: SplitSheetParty[]
 }
 
@@ -229,6 +242,12 @@ export function SplitSheetDocument({
 }: SplitSheetDocProps) {
   const splitTotal = parties.reduce((sum, p) => sum + p.split_percentage, 0)
   const splitOk = parties.length === 0 || Math.abs(splitTotal - 100) < 0.01
+  // Absent, empty, or whitespace-only initiator names must not render a
+  // dangling "Prepared by " clause with nothing after it (P17-08 bug 2).
+  const trimmedInitiator = (initiatorName ?? '').trim()
+  const headerMetaText = trimmedInitiator
+    ? `Split Sheet · Prepared by ${trimmedInitiator}`
+    : 'Split Sheet'
 
   return (
     <Document title={`${songName} — Split Sheet`} author="Funūn">
@@ -236,7 +255,7 @@ export function SplitSheetDocument({
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{songName}</Text>
           {projectTitle ? <Text style={styles.headerArtist}>{projectTitle}</Text> : null}
-          <Text style={styles.headerMeta}>Split Sheet · Prepared by {initiatorName}</Text>
+          <Text style={styles.headerMeta}>{headerMetaText}</Text>
         </View>
 
         <View style={styles.section}>
@@ -253,7 +272,7 @@ export function SplitSheetDocument({
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={splitOk ? styles.totalValue : styles.totalWarning}>
-              {splitTotal.toFixed(1)}%{!splitOk ? ' ⚠' : ''}
+              {splitTotal.toFixed(1)}%{!splitOk ? ' — does not total 100%' : ''}
             </Text>
           </View>
         </View>
