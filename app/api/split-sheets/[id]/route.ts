@@ -54,7 +54,17 @@ export async function PATCH(
         : null
   }
   if ('status' in body && typeof body.status === 'string') {
-    const VALID_STATUSES = ['draft', 'pending_approval', 'approved', 'countered']
+    // esign_pending/executed widen the pipeline (migration 062, P17-02) —
+    // without these the PATCH route silently rejects the new lifecycle
+    // statuses (RESEARCH State of the Art, T-17-11).
+    const VALID_STATUSES = [
+      'draft',
+      'pending_approval',
+      'approved',
+      'countered',
+      'esign_pending',
+      'executed',
+    ]
     if (VALID_STATUSES.includes(body.status)) {
       update.status = body.status
     }
