@@ -92,6 +92,14 @@ export type ReadinessItem = {
   status: 'complete' | 'warning' | 'missing'
   action_label?: string
   action_tool?: string
+  // Additive, optional (P17-03-impl, ESIGN-08): the split_sheets item's
+  // finer-grained 5/10/15 tier and an optional renegotiating note. The
+  // item's `points` stays 15 in READINESS_ITEMS below — this is a
+  // derivation detail surfaced for display, not a registry/points change.
+  // Other items may leave these unset; readinessItemsForProject() only
+  // populates them for 'split_sheets'.
+  earnedPoints?: number
+  note?: string
 }
 
 // Full checklist — applies_to controls which types each item gates

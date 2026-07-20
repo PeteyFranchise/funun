@@ -57,6 +57,7 @@ function GateRow({ item, projectId }: { item: ReadinessItem; projectId: string }
       <div className="flex-1">
         <div className="text-[16px] font-bold text-white">{item.label}</div>
         <div className="mt-[3px] text-[13px] text-lavdim">{item.description}</div>
+        {item.note && <div className="mt-[3px] text-[12.5px] font-semibold text-money2">{item.note}</div>}
       </div>
       {item.status === 'complete' ? (
         <span className="text-[13px] font-bold text-emerald-400">Passed</span>
@@ -91,7 +92,7 @@ async function loadProject(projectId: string): Promise<{ project: VaultProjectRo
     supabase
       .from('vault_projects')
       .select(
-        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug)`
+        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug), split_sheets (status)`
       )
       .eq('id', projectId)
       .eq('user_id', user?.id ?? '')
@@ -107,6 +108,11 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
   const { project, artist } = loaded
 
   const distributor = (project as { distributor?: string | null }).distributor ?? null
+  // Split-sheet pipeline statuses, wired in ONLY on this breakdown page
+  // (deliberate v1 scoping, 17-02-PLAN.md) — the field is optional on
+  // ReadinessInput, so every other caller (dashboard, vault list, project
+  // detail, demo-store) keeps its legacy signedOf-only display unchanged.
+  const splitSheetStatuses = (project as { split_sheets?: { status: string }[] }).split_sheets
   const items = readinessItemsForProject({
     type: project.type,
     distributor,
@@ -114,6 +120,7 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
     assets: project.vault_assets,
     documents: project.vault_documents,
     tool_outputs: project.tool_outputs,
+    split_sheets: splitSheetStatuses,
   })
   const total = items.length
   const complete = items.filter(i => i.status === 'complete').length

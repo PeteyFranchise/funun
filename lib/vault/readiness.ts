@@ -1,6 +1,7 @@
 import type { ReadinessItem, VaultProjectType } from '@/types'
 import { READINESS_ITEMS } from '@/types'
 import { readComposers } from '@/lib/metadata/schema'
+import { projectSplitTier, isRenegotiating } from '@/lib/vault/readiness-tiers'
 
 type ReadinessInput = {
   type: VaultProjectType
@@ -13,6 +14,14 @@ type ReadinessInput = {
   assets?: { type: string }[]
   documents?: { type: string; status: string }[]
   tool_outputs?: { tool_slug: string }[]
+  // Pipeline-stage statuses for the project's split sheets (P17-03-impl,
+  // ESIGN-08). OPTIONAL — an omitted field degrades to the legacy
+  // signedOf('split_sheet')-only behavior so every existing caller
+  // (dashboard, vault list, project detail, demo-store) keeps compiling
+  // and behaving exactly as before. Wired in only by the readiness
+  // breakdown page (app/(artist)/vault/[projectId]/readiness/page.tsx) —
+  // deliberate v1 scoping (see 17-02-PLAN.md).
+  split_sheets?: { status: string }[]
 }
 
 /** A track's composer splits are captured and total exactly 100%. */
@@ -65,6 +74,8 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
 
   return READINESS_ITEMS.filter(item => item.applies_to.includes(input.type)).map(item => {
     let status: ReadinessItem['status'] = 'missing'
+    let earnedPoints: number | undefined
+    let note: string | undefined
 
     switch (item.key) {
       case 'audio_files':
@@ -75,9 +86,37 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
           ? 'complete'
           : 'missing'
         break
-      case 'split_sheets':
-        status = signedOf('split_sheet')
+      case 'split_sheets': {
+        // Legacy wet-sign-upload path (AM-1 universal fallback) always wins
+        // outright — a fully signed split_sheet vault_document is worth the
+        // full 15 regardless of pipeline state.
+        const legacyStatus = signedOf('split_sheet')
+        if (legacyStatus === 'complete') {
+          status = 'complete'
+          earnedPoints = 15
+          break
+        }
+        // Pipeline-derived tier (P17-03-impl) — only when the caller
+        // supplied split_sheets data; identical derivation to the DB
+        // trigger's SELECT MIN(CASE ss.status ...) in migration 062, both
+        // consuming SPLIT_SHEET_TIER_MAP (lib/vault/readiness-tiers.ts).
+        if (input.split_sheets !== undefined) {
+          const statuses = input.split_sheets.map(s => s.status)
+          const tier = projectSplitTier(statuses)
+          if (tier !== null) {
+            earnedPoints = tier
+            status = tier === 15 ? 'complete' : tier === 0 ? 'missing' : 'warning'
+            if (statuses.some(isRenegotiating)) {
+              note = 'A collaborator countered the split — renegotiating.'
+            }
+            break
+          }
+        }
+        // No pipeline signal at all (field omitted, or supplied empty):
+        // degrade to the legacy signedOf-only status.
+        status = legacyStatus
         break
+      }
       case 'copyright':
         status = documents.some(d => d.type === 'copyright_registration') ? 'complete' : 'missing'
         break
@@ -139,7 +178,12 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         break
     }
 
-    return { ...item, status }
+    return {
+      ...item,
+      status,
+      ...(earnedPoints !== undefined ? { earnedPoints } : {}),
+      ...(note !== undefined ? { note } : {}),
+    }
   })
 }
 
