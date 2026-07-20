@@ -75,7 +75,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Planning prerequisites (human):** DocuSeal trial account → inspect a real Certificate of Signature, confirm white-label scope/price, run the 3-signer async multi-party test, check deliverability. Spikes 006a/006b/007 carry the verified groundwork.
 
-- [ ] **Phase 17: Split-Sheet E-Sign** - DocuSeal adapter behind lib/esign/provider.ts, split-sheet template generation from vault metadata (composers/splits/IPI already captured), multi-party embedded signing flow, signed-PDF + certificate landing in Contract Locker, per-artist cap + readiness gate, usage/cost telemetry feeding the AM-3 trigger.
+- [x] **Phase 17: Split-Sheet E-Sign** - DocuSeal adapter behind lib/esign/provider.ts, split-sheet template generation from vault metadata (composers/splits/IPI already captured), multi-party embedded signing flow, signed-PDF + certificate landing in Contract Locker, per-artist cap + readiness gate, usage/cost telemetry feeding the AM-3 trigger. (completed 2026-07-20)
 
 ### 📝 v1.3-pre — Split-Sheet Home (Planned — after Phase 17, before Phase 16)
 
@@ -94,6 +94,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 **Plans:** 4 plans (planned 2026-07-20)
 
 Plans:
+
 - [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with collaborator picker and add-and-redistribute, read-only share, freeze-boundary copy and consensus-reset change summaries (wave 1, autonomous)
 - [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents`, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 2, depends on 18-01, autonomous)
 - [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
@@ -453,7 +454,7 @@ Funūn will offer a library of contract templates artists can send to collaborat
 **Provider verification gate (human, before plan-phase execution):** PASSED 2026-07-20 — DocuSeal trial completed against a live sandbox (submission 9477115). Certificate quality exceeds the bar; voids do not bill; webhook timestamps are UNIX seconds (17-01 bug fixed in `de9ce7f`); Pro = $20/user/mo + $0.20/completion. Full results in `17-PROVIDER-VERIFICATION.md`.
 **Pro-plan prerequisite (human purchase, before any real artist use):** the free tier renders a sandbox banner on the signing surface, so Pro is required for production regardless of white-label. Recorded in 17-06's `user_setup`; no plan task may attempt the purchase.
 
-**Plans:** 6/10 plans executed
+**Plans:** 10/10 plans complete
 
 **Provider gate PASSED 2026-07-20** (see `17-PROVIDER-VERIFICATION.md`): all five items resolved against a live sandbox. Two bugs found and three new plans added — 17-08 (Unicode PDF bug fix, SHIPPED code), 17-09 (legal-grade document + counsel gate), 17-10 (de-DocuSealed invites + Funūn certificate). 17-06 and 17-07 were amended and re-waved as a consequence.
 
@@ -465,7 +466,7 @@ Funūn will offer a library of contract templates artists can send to collaborat
 
 **Wave 2** *(depends 17-01; human db-push checkpoint)*
 
-- [ ] 17-02-PLAN.md — Migration 062 (esign_envelopes + esign_envelope_signers, status enum widening, first_viewed_at) + 5/10/15 readiness tiering (SQL trigger + TS twin, shared fixture)
+- [x] 17-02-PLAN.md — Migration 062 (esign_envelopes + esign_envelope_signers, status enum widening, first_viewed_at) + 5/10/15 readiness tiering (SQL trigger + TS twin, shared fixture)
 
 **Wave 3** *(depends 17-02/17-08; parallel, disjoint files)*
 
@@ -475,15 +476,15 @@ Funūn will offer a library of contract templates artists can send to collaborat
 
 **Wave 4** *(depends 17-08/17-09; autonomous, credential-free)*
 
-- [ ] 17-10-PLAN.md — De-DocuSealing: Funūn-branded Resend signature invites + Funūn Certificate of Completion with structurally-attributed provider provenance
+- [x] 17-10-PLAN.md — De-DocuSealing: Funūn-branded Resend signature invites + Funūn Certificate of Completion with structurally-attributed provider provenance
 
 **Wave 5** *(depends 17-01/02/03/04/09/10; user_setup + blocking provider checkpoint + Pro-plan purchase)*
 
-- [ ] 17-06-PLAN.md — DocuSeal adapter + cap-enforced, counsel-gated mint (send_email disabled + Funūn invites) + void + embedded mobile-first signing
+- [x] 17-06-PLAN.md — DocuSeal adapter + cap-enforced, counsel-gated mint (send_email disabled + Funūn invites) + void + embedded mobile-first signing
 
 **Wave 6** *(depends 17-05/06/10; final UAT checkpoint)*
 
-- [ ] 17-07-PLAN.md — Verified idempotent completion webhook + Funūn certificate filing + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
+- [x] 17-07-PLAN.md — Verified idempotent completion webhook + Funūn certificate filing + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
 
 ## Progress
 
@@ -505,4 +506,4 @@ Funūn will offer a library of contract templates artists can send to collaborat
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |
-| 17. Split-Sheet E-Sign | v1.3-pre | 6/10 | In Progress|  |
+| 17. Split-Sheet E-Sign | v1.3-pre | 10/10 | Complete   | 2026-07-20 |

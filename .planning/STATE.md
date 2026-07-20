@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: "17-09 (legal-grade split-sheet document): 3/3 automatable tasks complete (migration 063 authored, agreement module, rebuilt renderer, SplitSheetBuilder capture UI). 2 blocking-human checkpoints open: migration push, attorney review of operative language."
-last_updated: "2026-07-20T10:37:42.929Z"
+stopped_at: Completed 17-07-PLAN.md (Tasks 1-2); Task 3 human checkpoint OUTSTANDING
+last_updated: "2026-07-20T17:31:31.838Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 13 execution started
 progress:
-  total_phases: 17
-  completed_phases: 15
-  total_plans: 103
-  completed_plans: 87
-  percent: 84
+  total_phases: 18
+  completed_phases: 16
+  total_plans: 107
+  completed_plans: 91
+  percent: 85
 ---
 
 # Project State
@@ -130,6 +130,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17-split-sheet-esign P05 | 55min | 3 tasks | 8 files |
 | Phase 17-split-sheet-esign P08 | 22min | 3 tasks | 15 files |
 | Phase 17 P09 | 55min | 3 tasks | 17 files |
+| Phase 17 P07 | 75min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 - 17-09 checkpoint 1: migration 063 (split-sheet legal-grade fields) authored but NOT pushed — requires a human to run supabase db push and the additive/adversarial review in 17-09-PLAN.md
 - 17-09 checkpoint 2 (P17-09a): AGREEMENT_CLAUSES operative language requires licensed-attorney review before COUNSEL_REVIEW_STATUS can flip to reviewed — assertCounselReviewedForProduction() blocks production minting until then
+- Phase 17 BLOCKING checkpoint outstanding (17-07 Task 3): live end-to-end 3-signer mobile signing run. Prereqs: push migration 065; fix pre-existing npm run build failure in contracts page (from 17-05); set DOCUSEAL_WEBHOOK_SECRET and ESIGN_FROM_EMAIL; DocuSeal Pro purchase; attorney review of AGREEMENT_CLAUSES.
 
 ### Quick Tasks Completed
 
@@ -281,11 +283,11 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-20T10:37:42.888Z
-Stopped at: 17-09 (legal-grade split-sheet document): 3/3 automatable tasks complete (migration 063 authored, agreement module, rebuilt renderer, SplitSheetBuilder capture UI). 2 blocking-human checkpoints open: migration push, attorney review of operative language.
+Last session: 2026-07-20T17:31:31.813Z
+Stopped at: Completed 17-07-PLAN.md (Tasks 1-2); Task 3 human checkpoint OUTSTANDING
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
-Resume file: 17-09-PLAN.md (checkpoint 1: migration push)
+Resume file: None
 
 ## Operator Next Steps
 
