@@ -85,4 +85,4 @@ BEGIN
 
   RETURN LEAST(score, 100);
 END;
-$function$
+$function$;
