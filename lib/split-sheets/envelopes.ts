@@ -14,12 +14,19 @@
 export const MONTHLY_ENVELOPE_CAP = 10
 
 /**
- * Whether a voided envelope counts toward the monthly cap. DocuSeal's
- * void/archive-billing behavior is unverified pending the human
- * provider-verification gate (RESEARCH Pitfall 5 / Open Question 1) — this
- * is the ONE named flag every cap-check call site reads, so Pete flips this
- * single value after the trial confirms whether voided submissions bill,
- * rather than a scattered hard-coded assumption living in multiple routes.
+ * Whether a voided envelope counts toward the monthly cap.
+ *
+ * RESOLVED at the provider-verification gate (2026-07-20), not a default:
+ * `DELETE /submissions/{id}` ARCHIVES a submission — `archived_at` is set,
+ * status stays `pending`, and it never reaches `completed`. DocuSeal bills
+ * per COMPLETED document, so an envelope archived before completion is
+ * free. Verified live on void test submission 9477116; see
+ * .planning/phases/17-split-sheet-esign/17-PROVIDER-VERIFICATION.md row (c).
+ *
+ * A void therefore costs nothing and must not consume anyone's allowance —
+ * charging an artist for a mistake they corrected is the wrong incentive.
+ * This is the ONE named flag every cap-check call site reads; do not
+ * re-derive the billing assumption anywhere else.
  */
 export const VOIDED_ENVELOPES_COUNT_TOWARD_CAP = false
 
