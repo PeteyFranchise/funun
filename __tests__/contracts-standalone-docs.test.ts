@@ -1,4 +1,4 @@
-import { fetchContractRows, mergeContractRows } from '@/app/(artist)/contracts/page'
+import { fetchContractRows, mergeContractRows } from '@/lib/contracts/locker-rows'
 import type { ContractRow } from '@/components/contracts/ContractLocker'
 
 // ─── Contract Locker standalone (projectless) document query ──────────────
