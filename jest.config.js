@@ -15,6 +15,35 @@ const worktreeIgnorePattern = currentWorktreeName
   ? `\\.claude/worktrees/(?!${currentWorktreeName}/)`
   : '/.claude/worktrees/'
 
+// @react-pdf/renderer (first exercised by lib/vault/pdf/split-sheet.test.ts)
+// ships pure ESM ("type": "module", no CJS build) across its whole
+// dependency tree. Jest's default transformIgnorePatterns skips
+// node_modules entirely, so `import`/`export` in these packages fails to
+// parse under ts-jest's commonjs output. Route ONLY this known ESM subtree
+// through babel-jest + the already-installed `next/babel` preset (which
+// bundles a modules-to-commonjs transform) — everything else in
+// node_modules stays untransformed, exactly as before.
+const esmPdfDeps = [
+  '@react-pdf',
+  '@noble',
+  'fontkit',
+  'jay-peg',
+  'linebreak',
+  'png-js',
+  'vite-compatible-readable-stream',
+  'yoga-layout',
+  'emoji-regex-xs',
+  'abs-svg-path',
+  'color-string',
+  'color-name',
+  'normalize-svg-path',
+  'parse-svg-path',
+  'svg-arc-to-cubic-bezier',
+  'is-url',
+  'js-md5',
+  'browserify-zlib',
+].join('|')
+
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -22,6 +51,9 @@ const config = {
     '/node_modules/',
     '/.next/',
     worktreeIgnorePattern,
+  ],
+  transformIgnorePatterns: [
+    `/node_modules/(?!(${esmPdfDeps})/)`,
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
@@ -35,10 +67,21 @@ const config = {
         esModuleInterop: true,
         strict: true,
         skipLibCheck: true,
+        // React 18 automatic JSX runtime — needed the moment a .tsx file is
+        // imported by a test (first hit: lib/vault/pdf/split-sheet.test.ts).
+        // ts-jest is the only JSX transform in this pipeline (no separate
+        // Babel step), so without this every .tsx import fails to parse.
+        jsx: 'react-jsx',
         paths: {
           '@/*': ['./*'],
         },
       },
+    }],
+    [`node_modules/(${esmPdfDeps})/.*\\.m?js$`]: ['babel-jest', {
+      presets: ['next/babel'],
+      plugins: [require.resolve('./jest.babel-plugins.js')],
+      babelrc: false,
+      configFile: false,
     }],
   },
 }

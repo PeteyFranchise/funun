@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
-last_updated: "2026-07-20T05:44:24.487Z"
-last_activity: 2026-07-18
-last_activity_desc: Phase 13 execution started
+stopped_at: Phase 17 WAVE 1 COMPLETE (17-01 foundation + 17-03 PDF renderer). Next wave 2 (17-02 schema/readiness, db-push checkpoint), then wave 3 (17-04/17-05). Waves 4-5 gated on Pete's DocuSeal provider-verification pass.
+last_updated: "2026-07-20T05:49:05.563Z"
+last_activity: 2026-07-20
+last_activity_desc: Phase 17 wave 1 integrated
 progress:
   total_phases: 17
   completed_phases: 15
@@ -125,6 +125,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P05 | 35min | 2 tasks | 18 files |
 | Phase 13 P03 | 55min | 2 tasks | 12 files |
 | Phase 17 P01 | 40min | 3 tasks | 11 files |
+| Phase 17 P03 | 40min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17]: 17-01: DocuSeal webhook signature format defined as {timestampMs}.{hexHmac} HMAC-SHA256; documented for 17-07 to verify against live payload
 - [Phase 17]: 17-01: SPLIT_SHEET_TIER_MAP is the single source of truth both the DB trigger (17-02) and TS twin must consume to prevent tier-parity drift
 - [Phase 17]: 17-01: VOIDED_ENVELOPES_COUNT_TOWARD_CAP is a single named flag (currently false) pending Pete's DocuSeal void-billing provider-verification pass
+- [Phase 17-03]: partyRoleTag(index) = Party${index+1} — deterministic, DocuSeal-safe role tag shared by the PDF's literal signature text tag and (in 17-06) the mint route's submitters[].role
+- [Phase 17-03]: jest.config.js + new jest.babel-plugins.js: added a scoped ESM transform (babel-jest + next/babel) and an import.meta.url shim for @react-pdf/renderer's ESM-only dependency tree (first exercised by a test in this codebase) — no new npm packages installed; full suite 47->48 suites / 455->462 tests, zero regressions
 
 ### Pending Todos
 

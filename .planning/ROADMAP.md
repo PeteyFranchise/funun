@@ -418,7 +418,7 @@ Plans:
 **Wave 1** *(autonomous, credential-free — parallel, disjoint files)*
 
 - [x] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
-- [ ] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
+- [x] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
 
 **Wave 2** *(depends 17-01; human db-push checkpoint)*
 
