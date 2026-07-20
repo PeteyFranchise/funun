@@ -188,7 +188,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Added 2026-07-20 (provider-verification review — see 17-PROVIDER-VERIFICATION.md):**
 
-- [ ] **ESIGN-15**: Unicode-safe PDF rendering — a bundled, embedded font (Noto Sans, SIL OFL) registered once and used by all three renderers, so a collaborator's legal name is never corrupted on a generated document (P17-08, SHIPPED bug)
+- [x] **ESIGN-15**: Unicode-safe PDF rendering — a bundled, embedded font (Noto Sans, SIL OFL) registered once and used by all three renderers, so a collaborator's legal name is never corrupted on a generated document (P17-08, SHIPPED bug)
 - [ ] **ESIGN-16**: Legal-grade split-sheet agreement — explicit composition-vs-master scope, agreement + per-signature dates, legal names distinct from professional names, publisher name/PRO/IPI per writer, separately stated writer and publisher shares, sample/interpolation disclosure, ISWC/ISRC linkage, and operative agreement language (P17-09)
 - [ ] **ESIGN-17**: Attorney review gate on the operative agreement language, enforced by a production-only mint guard — the product organizes documents, it does not substitute for counsel (P17-09a, ROADMAP guardrail)
 - [ ] **ESIGN-18**: Funūn-owned signature invitations — the provider's invite email disabled at mint, per-submitter reply-to, and a Funūn-branded Resend invite linking only to Funūn's own approve page (P17-10)
@@ -212,7 +212,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ESIGN-12 | Phase 17 | Complete |
 | ESIGN-13 | Phase 17 | Pending |
 | ESIGN-14 | Phase 17 | Pending |
-| ESIGN-15 | Phase 17 | Pending |
+| ESIGN-15 | Phase 17 | Complete |
 | ESIGN-16 | Phase 17 | Pending |
 | ESIGN-17 | Phase 17 | Pending |
 | ESIGN-18 | Phase 17 | Pending |

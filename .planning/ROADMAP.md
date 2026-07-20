@@ -428,7 +428,7 @@ Funūn will offer a library of contract templates artists can send to collaborat
 **Provider verification gate (human, before plan-phase execution):** PASSED 2026-07-20 — DocuSeal trial completed against a live sandbox (submission 9477115). Certificate quality exceeds the bar; voids do not bill; webhook timestamps are UNIX seconds (17-01 bug fixed in `de9ce7f`); Pro = $20/user/mo + $0.20/completion. Full results in `17-PROVIDER-VERIFICATION.md`.
 **Pro-plan prerequisite (human purchase, before any real artist use):** the free tier renders a sandbox banner on the signing surface, so Pro is required for production regardless of white-label. Recorded in 17-06's `user_setup`; no plan task may attempt the purchase.
 
-**Plans:** 4/10 plans executed
+**Plans:** 5/10 plans executed
 
 **Provider gate PASSED 2026-07-20** (see `17-PROVIDER-VERIFICATION.md`): all five items resolved against a live sandbox. Two bugs found and three new plans added — 17-08 (Unicode PDF bug fix, SHIPPED code), 17-09 (legal-grade document + counsel gate), 17-10 (de-DocuSealed invites + Funūn certificate). 17-06 and 17-07 were amended and re-waved as a consequence.
 
@@ -436,7 +436,7 @@ Funūn will offer a library of contract templates artists can send to collaborat
 
 - [x] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
 - [x] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
-- [ ] 17-08-PLAN.md — Unicode-safe PDF rendering: bundled Noto Sans (OFL), one shared registration module, all three renderers migrated, exact-string regression proof, dangling-label fix
+- [x] 17-08-PLAN.md — Unicode-safe PDF rendering: bundled Noto Sans (OFL), one shared registration module, all three renderers migrated, exact-string regression proof, dangling-label fix
 
 **Wave 2** *(depends 17-01; human db-push checkpoint)*
 
@@ -480,3 +480,4 @@ Funūn will offer a library of contract templates artists can send to collaborat
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |
+| 17. Split-Sheet E-Sign | v1.3-pre | 5/10 | In progress | - |

@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Phase 17 WAVES 1-3 CODE-COMPLETE (17-01/03 foundation+PDF, 17-02 schema/readiness code, 17-04 gating+shell, 17-05 distribution/attach/write-back). TWO HUMAN GATES OPEN — (1) 17-02 checkpoint: supabase db push for migration 062 + adversarial checks; (2) provider-verification pass (DocuSeal trial, 5 items) unlocking waves 4-5 (17-06/17-07).
-last_updated: "2026-07-20T06:19:05.800Z"
+stopped_at: "Phase 17-08 (Unicode-safe PDF rendering, ESIGN-15) COMPLETE — all three PDF renderers now use vendored Noto Sans, split-sheet dangling-label bug fixed, exact-string Unicode regression suite passing. Waves 1-3 remain CODE-COMPLETE with TWO HUMAN GATES OPEN — (1) 17-02 checkpoint: supabase db push for migration 062 + adversarial checks; (2) provider-verification pass (DocuSeal trial, 5 items — PASSED 2026-07-20, see 17-PROVIDER-VERIFICATION.md) unlocking waves 4-5 (17-06/17-07)."
+last_updated: "2026-07-20T09:26:27.487Z"
 last_activity: 2026-07-20
-last_activity_desc: Phase 17 waves 1-3 integrated
+last_activity_desc: Phase 17-08 (Unicode-safe PDF fix) executed — ESIGN-15 closed pending post-deploy human-check
 progress:
   total_phases: 17
   completed_phases: 15
-  total_plans: 100
-  completed_plans: 84
-  percent: 84
+  total_plans: 103
+  completed_plans: 86
+  percent: 83
 ---
 
 # Project State
@@ -128,6 +128,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17 P03 | 40min | 1 tasks | 4 files |
 | Phase 17 P04 | 35min | 2 tasks | 6 files |
 | Phase 17-split-sheet-esign P05 | 55min | 3 tasks | 8 files |
+| Phase 17-split-sheet-esign P08 | 22min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17-05]: document_data.split_sheet_id joins a fanned-out vault_documents row back to its split_sheets row (no FK on JSONB) — buildFanoutRows writes it, Contract Locker's standalone-row builder and the attach route read it
 - [Phase 17-05]: Attach route requires split_sheets.status='executed' before allowing attach (Rule 2 — required by the plan's own must_haves truth)
 - [Phase 17-05]: Reconcile route/UI use a GET-computes/POST-confirms split so composers[] write-back can only happen via an explicit {action:'confirm'} request, never silently
+- [Phase 17-08]: SHIPPED-BUG FIX — @react-pdf/renderer's standard-14 fonts (WinAnsi encoding) silently dropped/mangled non-Latin-1 characters in every generated PDF (ć dropped, ū mangled: "Funūn"→"Funkn"); found at the 2026-07-20 provider-verification gate. Fixed by vendoring Noto Sans (SIL OFL) behind a single registerFunuunPdfFonts() module all three renderers import; regression proven with exact-string extraction against real rendered PDF bytes (no PDF-parsing dependency — Node zlib only). No backfill of previously generated documents; they regenerate correctly on next export.
+- [Phase 17-08]: initiatorName widened to string | null | undefined on SplitSheetDocument/renderSplitSheet — the dangling "Prepared by " label bug (P17-08 bug 2) is now a representable, tested type state rather than a caller convention.
 
 ### Pending Todos
 
