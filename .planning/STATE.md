@@ -6,15 +6,15 @@ current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
 stopped_at: Phase 17 WAVE 1 COMPLETE (17-01 foundation + 17-03 PDF renderer). Next wave 2 (17-02 schema/readiness, db-push checkpoint), then wave 3 (17-04/17-05). Waves 4-5 gated on Pete's DocuSeal provider-verification pass.
-last_updated: "2026-07-20T05:49:05.563Z"
-last_activity: 2026-07-20
-last_activity_desc: Phase 17 wave 1 integrated
+last_updated: "2026-07-20T06:19:05.800Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 100
-  completed_plans: 82
-  percent: 82
+  completed_plans: 84
+  percent: 84
 ---
 
 # Project State
@@ -126,6 +126,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P03 | 55min | 2 tasks | 12 files |
 | Phase 17 P01 | 40min | 3 tasks | 11 files |
 | Phase 17 P03 | 40min | 1 tasks | 4 files |
+| Phase 17-split-sheet-esign P05 | 55min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17]: 17-01: VOIDED_ENVELOPES_COUNT_TOWARD_CAP is a single named flag (currently false) pending Pete's DocuSeal void-billing provider-verification pass
 - [Phase 17-03]: partyRoleTag(index) = Party${index+1} — deterministic, DocuSeal-safe role tag shared by the PDF's literal signature text tag and (in 17-06) the mint route's submitters[].role
 - [Phase 17-03]: jest.config.js + new jest.babel-plugins.js: added a scoped ESM transform (babel-jest + next/babel) and an import.meta.url shim for @react-pdf/renderer's ESM-only dependency tree (first exercised by a test in this codebase) — no new npm packages installed; full suite 47->48 suites / 455->462 tests, zero regressions
+- [Phase 17-05]: document_data.split_sheet_id joins a fanned-out vault_documents row back to its split_sheets row (no FK on JSONB) — buildFanoutRows writes it, Contract Locker's standalone-row builder and the attach route read it
+- [Phase 17-05]: Attach route requires split_sheets.status='executed' before allowing attach (Rule 2 — required by the plan's own must_haves truth)
+- [Phase 17-05]: Reconcile route/UI use a GET-computes/POST-confirms split so composers[] write-back can only happen via an explicit {action:'confirm'} request, never silently
 
 ### Pending Todos
 
@@ -264,7 +268,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-20T05:44:24.468Z
+Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: None
 

@@ -180,9 +180,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **ESIGN-07**: Signature-verified, idempotent completion webhook re-hosting the executed PDF + Certificate of Signature (Funūn's first live e-sign webhook)
 - [ ] **ESIGN-08**: 5/10/15 readiness tiering for the 15-point split-sheets item in BOTH the DB trigger and the TS twin, kept in provable parity (P17-03/P17-03-impl)
 - [ ] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
-- [ ] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
-- [ ] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
-- [ ] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
+- [x] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
+- [x] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
+- [x] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
 - [ ] **ESIGN-13**: Server-side ~10/mo per-initiator cap enforced at envelope mint, with an admin bump path and a single void-counting config flag (AM-2)
 - [ ] **ESIGN-14**: Usage/cost telemetry — completed-envelope count + estimated spend, admin-visible, feeding the AM-3 $500/mo re-decision trigger
 
@@ -199,9 +199,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ESIGN-07 | Phase 17 | Pending |
 | ESIGN-08 | Phase 17 | Pending |
 | ESIGN-09 | Phase 17 | Pending |
-| ESIGN-10 | Phase 17 | Pending |
-| ESIGN-11 | Phase 17 | Pending |
-| ESIGN-12 | Phase 17 | Pending |
+| ESIGN-10 | Phase 17 | Complete |
+| ESIGN-11 | Phase 17 | Complete |
+| ESIGN-12 | Phase 17 | Complete |
 | ESIGN-13 | Phase 17 | Pending |
 | ESIGN-14 | Phase 17 | Pending |
 

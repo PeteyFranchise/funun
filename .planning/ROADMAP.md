@@ -413,7 +413,7 @@ Plans:
 **Sequencing consequence for 16-09:** this phase becomes Funūn's first live e-sign integration (DocuSeal hosted); 16-09's SignWell adapter reuses this phase's webhook/route patterns.
 **Provider verification gate (human, before plan-phase execution):** DocuSeal trial — Certificate of Signature inspection, white-label scope/price, 3-signer async test, deliverability.
 
-**Plans:** 1/7 plans executed
+**Plans:** 3/7 plans executed
 
 **Wave 1** *(autonomous, credential-free — parallel, disjoint files)*
 
@@ -427,7 +427,7 @@ Plans:
 **Wave 3** *(depends 17-02; autonomous, credential-free — parallel, disjoint files)*
 
 - [ ] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
-- [ ] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
+- [x] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
 
 **Wave 4** *(depends 17-01/02/03/04; user_setup + blocking provider-verification checkpoint)*
 
