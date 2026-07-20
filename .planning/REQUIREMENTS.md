@@ -180,15 +180,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **ESIGN-07**: Signature-verified, idempotent completion webhook re-hosting the executed PDF + Certificate of Signature (Funūn's first live e-sign webhook)
 - [ ] **ESIGN-08**: 5/10/15 readiness tiering for the 15-point split-sheets item in BOTH the DB trigger and the TS twin, kept in provable parity (P17-03/P17-03-impl)
 - [x] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
-- [ ] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
-- [ ] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
-- [ ] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
-- [ ] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
 - [x] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
 - [x] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
 - [x] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
 - [ ] **ESIGN-13**: Server-side ~10/mo per-initiator cap enforced at envelope mint, with an admin bump path and a single void-counting config flag (AM-2)
 - [ ] **ESIGN-14**: Usage/cost telemetry — completed-envelope count + estimated spend, admin-visible, feeding the AM-3 $500/mo re-decision trigger
+
+**Added 2026-07-20 (provider-verification review — see 17-PROVIDER-VERIFICATION.md):**
+
+- [ ] **ESIGN-15**: Unicode-safe PDF rendering — a bundled, embedded font (Noto Sans, SIL OFL) registered once and used by all three renderers, so a collaborator's legal name is never corrupted on a generated document (P17-08, SHIPPED bug)
+- [ ] **ESIGN-16**: Legal-grade split-sheet agreement — explicit composition-vs-master scope, agreement + per-signature dates, legal names distinct from professional names, publisher name/PRO/IPI per writer, separately stated writer and publisher shares, sample/interpolation disclosure, ISWC/ISRC linkage, and operative agreement language (P17-09)
+- [ ] **ESIGN-17**: Attorney review gate on the operative agreement language, enforced by a production-only mint guard — the product organizes documents, it does not substitute for counsel (P17-09a, ROADMAP guardrail)
+- [ ] **ESIGN-18**: Funūn-owned signature invitations — the provider's invite email disabled at mint, per-submitter reply-to, and a Funūn-branded Resend invite linking only to Funūn's own approve page (P17-10)
+- [ ] **ESIGN-19**: Funūn Certificate of Completion — Funūn's own artist-facing completion artifact citing DocuSeal as signing provider and referencing its audit log as underlying evidence, with provider-reported facts structurally confined to an attributed provenance section (P17-10)
 
 **Traceability (Phase 17):**
 
@@ -203,16 +207,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ESIGN-07 | Phase 17 | Pending |
 | ESIGN-08 | Phase 17 | Pending |
 | ESIGN-09 | Phase 17 | Complete |
-| ESIGN-10 | Phase 17 | Pending |
-| ESIGN-11 | Phase 17 | Pending |
-| ESIGN-12 | Phase 17 | Pending |
-| ESIGN-09 | Phase 17 | Pending |
 | ESIGN-10 | Phase 17 | Complete |
 | ESIGN-11 | Phase 17 | Complete |
 | ESIGN-12 | Phase 17 | Complete |
 | ESIGN-13 | Phase 17 | Pending |
 | ESIGN-14 | Phase 17 | Pending |
+| ESIGN-15 | Phase 17 | Pending |
+| ESIGN-16 | Phase 17 | Pending |
+| ESIGN-17 | Phase 17 | Pending |
+| ESIGN-18 | Phase 17 | Pending |
+| ESIGN-19 | Phase 17 | Pending |
+
+**Data-integrity note (2026-07-20):** the ESIGN-09..12 checklist entries and traceability rows were duplicated with conflicting states, almost certainly by concurrent wave-3 executors (17-04 and 17-05) editing this file in parallel. Deduplicated here against the authoritative source — the `requirements-completed` frontmatter of 17-04-SUMMARY.md (ESIGN-04, ESIGN-06, ESIGN-09) and 17-05-SUMMARY.md (ESIGN-10, ESIGN-11, ESIGN-12). ROADMAP.md's Phase 17 plan list carried the same duplication and was repaired in the same pass.
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-19 — Phase 17 (Split-Sheet E-Sign) requirements ESIGN-01..14 registered during plan-phase*
+*Last updated: 2026-07-20 — Phase 17 requirements ESIGN-15..19 registered from the provider-verification review; ESIGN-09..12 duplication repaired*

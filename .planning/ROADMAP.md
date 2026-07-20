@@ -408,36 +408,43 @@ Plans:
 ### Phase 17: Split-Sheet E-Sign
 
 **Goal:** Any artist can take a split sheet from draft → collaborator approval → embedded, mobile-first e-signatures → a fully executed PDF + Certificate in Contract Locker that moves the readiness gate — without anyone leaving Funūn, free within structural guardrails.
-**Requirements**: ESIGN-01..ESIGN-14 (registered in REQUIREMENTS.md, mapped to Phase 17 as Pending; planning source: 17-CONTEXT.md — locked inputs D-18b + AM-1..AM-5 from `.planning/deliberations/esign-split-sheet-economics.md`)
+**Requirements**: ESIGN-01..ESIGN-19 (registered in REQUIREMENTS.md, mapped to Phase 17; planning source: 17-CONTEXT.md — locked inputs D-18b + AM-1..AM-5 from `.planning/deliberations/esign-split-sheet-economics.md`. ESIGN-15..19 added 2026-07-20 from the provider-verification review: P17-08 font bug, P17-09 legal-grade document, P17-09a counsel gate, P17-10 de-DocuSealing)
 **Depends on:** Wave 2 split-sheet/collaborator substrate (migration 018 approval pipeline, CollaboratorPicker), lib/esign/provider.ts abstraction, Phase 14 pdf precedent (lib/vault/pdf/). EXECUTES BEFORE PHASE 16 (AM-5); its migrations claim the next live numbers (062+) — Phase 16's drafted plans get a migration-number touch-up before their execution.
 **Sequencing consequence for 16-09:** this phase becomes Funūn's first live e-sign integration (DocuSeal hosted); 16-09's SignWell adapter reuses this phase's webhook/route patterns.
-**Provider verification gate (human, before plan-phase execution):** DocuSeal trial — Certificate of Signature inspection, white-label scope/price, 3-signer async test, deliverability.
+**Provider verification gate (human, before plan-phase execution):** PASSED 2026-07-20 — DocuSeal trial completed against a live sandbox (submission 9477115). Certificate quality exceeds the bar; voids do not bill; webhook timestamps are UNIX seconds (17-01 bug fixed in `de9ce7f`); Pro = $20/user/mo + $0.20/completion. Full results in `17-PROVIDER-VERIFICATION.md`.
+**Pro-plan prerequisite (human purchase, before any real artist use):** the free tier renders a sandbox banner on the signing surface, so Pro is required for production regardless of white-label. Recorded in 17-06's `user_setup`; no plan task may attempt the purchase.
 
-**Plans:** 3/7 plans executed
+**Plans:** 4/10 plans executed
+
+**Provider gate PASSED 2026-07-20** (see `17-PROVIDER-VERIFICATION.md`): all five items resolved against a live sandbox. Two bugs found and three new plans added — 17-08 (Unicode PDF bug fix, SHIPPED code), 17-09 (legal-grade document + counsel gate), 17-10 (de-DocuSealed invites + Funūn certificate). 17-06 and 17-07 were amended and re-waved as a consequence.
 
 **Wave 1** *(autonomous, credential-free — parallel, disjoint files)*
 
 - [x] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
 - [x] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
+- [ ] 17-08-PLAN.md — Unicode-safe PDF rendering: bundled Noto Sans (OFL), one shared registration module, all three renderers migrated, exact-string regression proof, dangling-label fix
 
 **Wave 2** *(depends 17-01; human db-push checkpoint)*
 
 - [ ] 17-02-PLAN.md — Migration 062 (esign_envelopes + esign_envelope_signers, status enum widening, first_viewed_at) + 5/10/15 readiness tiering (SQL trigger + TS twin, shared fixture)
 
-**Wave 3** *(depends 17-02; autonomous, credential-free — parallel, disjoint files)*
+**Wave 3** *(depends 17-02/17-08; parallel, disjoint files)*
 
 - [x] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
-- [ ] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
-- [ ] 17-04-PLAN.md — Approve→sign gating fix (link reuse) + sign-phase mobile shell + page-visit nudge + status allowlist
 - [x] 17-05-PLAN.md — Contract Locker standalone-doc fix + cross-account fan-out + attach-later + offered reconciliation write-back
+- [ ] 17-09-PLAN.md — Legal-grade split-sheet agreement: additive migration 063, scope/publisher/share model, operative language, per-signature dates, capture UI + blocking counsel-review checkpoint
 
-**Wave 4** *(depends 17-01/02/03/04; user_setup + blocking provider-verification checkpoint)*
+**Wave 4** *(depends 17-08/17-09; autonomous, credential-free)*
 
-- [ ] 17-06-PLAN.md — DocuSeal adapter + cap-enforced mint + void + embedded mobile-first signing
+- [ ] 17-10-PLAN.md — De-DocuSealing: Funūn-branded Resend signature invites + Funūn Certificate of Completion with structurally-attributed provider provenance
 
-**Wave 5** *(depends 17-05/06; final UAT checkpoint)*
+**Wave 5** *(depends 17-01/02/03/04/09/10; user_setup + blocking provider checkpoint + Pro-plan purchase)*
 
-- [ ] 17-07-PLAN.md — Verified idempotent completion webhook + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
+- [ ] 17-06-PLAN.md — DocuSeal adapter + cap-enforced, counsel-gated mint (send_email disabled + Funūn invites) + void + embedded mobile-first signing
+
+**Wave 6** *(depends 17-05/06/10; final UAT checkpoint)*
+
+- [ ] 17-07-PLAN.md — Verified idempotent completion webhook + Funūn certificate filing + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
 
 ## Progress
 
