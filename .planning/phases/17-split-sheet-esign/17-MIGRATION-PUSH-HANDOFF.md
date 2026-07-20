@@ -194,3 +194,37 @@ query results.
 
 - 17-06 (mint route, recipient-cap enforcement) and 17-07 (webhook) are unblocked.
 - The `billed` column on `esign_envelopes` is intentionally nullable — it stays null until DocuSeal's void-billing behavior is confirmed live. The provider gate already verified voided envelopes do not bill (`VOIDED_ENVELOPES_COUNT_TOWARD_CAP = false`), so this is a belt-and-braces audit field, not an open question.
+
+---
+
+## Push outcome (2026-07-20) — both applied
+
+**062 applied** after two aborted attempts. Three findings, all now fixed or tracked:
+
+1. `uuid_generate_v4()` failed to resolve — uuid-ossp lives in the `extensions` schema, not on the migration session's search_path. Fixed by switching to `gen_random_uuid()` (core, `pg_catalog`). Commit `3c5484b`.
+2. `TRUNCATE` remained granted to authenticated+anon after `REVOKE INSERT, UPDATE, DELETE`. Fixed in 062 (commit `482a1b8`); repo-wide sweep tracked separately.
+3. Rollback left the `schema_migrations` ledger row in place, so `db push` reported "Remote database is up to date" and refused to re-apply. Fixed by `supabase migration repair --status reverted 062`; both rollback blocks above now require this step. Commit `89134f4`.
+
+Final 062 state: both tables present with RLS, 4 SELECT policies, no INSERT/UPDATE/DELETE/TRUNCATE for authenticated/anon, constraint widened, readiness deltas all 0 (expected — no split sheets attached), 19/19 tests pass.
+
+**063 applied** cleanly on the first attempt. All 8 columns nullable, 10/10 tests pass.
+
+### Finding: migration 040's doctrine is narrower than 063's comment claims
+
+063's header asserts `artist_profiles.administrator` inherits "zero privileges" from 040's REVOKE-then-column-GRANT pattern. The live check disproves the strong form of that claim. Actual grants on `administrator` (identical to `publisher`, the existing PII benchmark):
+
+| Role | Privileges on `administrator` |
+|---|---|
+| `authenticated` | INSERT, REFERENCES |
+| `anon` | INSERT, UPDATE, REFERENCES |
+
+**The protection that matters did hold:** no SELECT for either role (client cannot read it), and no UPDATE for `authenticated` (logged-in user cannot write it). That is the full extent of what 040 revokes:
+
+```sql
+REVOKE SELECT ON artist_profiles FROM authenticated, anon;  -- then per-column GRANT
+REVOKE UPDATE ON artist_profiles FROM authenticated;        -- then per-column GRANT
+```
+
+UPDATE is never revoked from `anon`, and INSERT is never revoked from anyone. Those are Supabase table-level defaults 040 does not address. Currently gated by RLS (`anon` has no `auth.uid()`), so not exploitable — but "private by construction" overstates it.
+
+**Not a 063 regression.** `administrator` is exactly as protected as `publisher` and every other ungranted column on the table. This is the same class of gap as the TRUNCATE finding and belongs to the same repo-wide sweep: extend it to cover `REVOKE INSERT ... FROM authenticated, anon` and `REVOKE UPDATE ... FROM anon` on `artist_profiles`, and correct the doctrine comment wording wherever it claims columns are private by construction.
