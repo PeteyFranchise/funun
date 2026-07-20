@@ -121,8 +121,10 @@ const styles = StyleSheet.create({
   // without orphaning — do not rebalance without re-checking a 3+ party
   // sheet with long legal names and p/k/a suffixes.
   colName: { flex: 3.4, paddingRight: 8 },
-  colSplit: { flex: 0.9, textAlign: 'right' },
-  colPro: { flex: 1.3 },
+  // paddingRight keeps the right-aligned split % off the PRO column —
+  // without it the money column reads as "45%ASCAP (US)" (approved preview).
+  colSplit: { flex: 0.9, textAlign: 'right', paddingRight: 12 },
+  colPro: { flex: 1.45 },
   colDesignee: { flex: 2 },
   colAdmin: { flex: 1.8 },
   tableHeader: {
