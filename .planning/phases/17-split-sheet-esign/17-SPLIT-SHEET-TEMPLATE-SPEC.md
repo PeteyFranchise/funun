@@ -101,11 +101,29 @@ The seven approved helper strings (Artist Name, Album/Project Title, Record Labe
 1. **FONT — hard blocker.** The title `Split Sheet powered by Funūn` contains `ū`, which today renders as `Funkn` (the shipped Unicode bug). **Plan 17-08 must land before this document can be rendered correctly.** Same applies to any writer with a non-Latin-1 legal name — precisely the field this document exists to state accurately.
 2. **Migration 063** — the six new fields above; human-gated push.
 
-## Open decisions (need Pete)
+## Resolved decisions (Pete, 2026-07-20) — all six closed
 
-1. **"Prepared by" line** — the approved structure omits it; 17-03's renderer has `Split Sheet · Prepared by {initiator}`. The initiator is not necessarily a writer (a manager or producer may prepare it). Drop it, or keep a discreet preparer line?
-2. **"Confirmation" vs "Agreement"** — the subtitle says *Confirmation* while the preserved operative text says "the agreement between the Co-writers" and "executing this contract". Legally it remains an agreement; the softer subtitle is presentation. Confirm intentional.
-3. **Signature-block fields static or editable** — see the flagged assumption above. Static is recommended (protects the approval→sign model).
-4. **Work-detail capture for standalone sheets** — Artist / Album / Label have no source when there's no project. Required fields in the builder, or optional with a printed em-dash?
-5. **Date semantics** — is the Work Details `Date` the date the sheet was created, the date terms were agreed, or the execution date? Recommend: date of execution, stamped on completion, so the document cannot show a date earlier than the last signature.
-6. **Legal vs professional name** — the table shows `Writer Legal Name`. Should the professional/stage name also appear (e.g. `Legal Name (p/k/a Stage Name)`)? PRO registration keys on legal name, but collaborators recognise each other by stage name.
+1. **Prepared-by line: YES.** Print `Prepared by: {initiator name} · sent through Funūn` in Work Details. Rationale: the document is the artifact that survives into a chain-of-title review years later; the email does not. "sent through Funūn" preserves the platform-not-a-party guardrail. Pete's note: the splits themselves are settled by the approve/counter process, so the preparer line is provenance, not authorship of the numbers — it must not read as "this person decided the splits."
+2. **Subtitle stays `Confirmation`.** The operative text retains "agreement"/"contract" verbatim, so the binding language is unchanged; the softer subtitle is presentation and accurate (parties confirm shares already agreed).
+3. **Signature-block fields are LOCKED TEXT — with two additions:**
+   - **(3a) Auto-populate from Funūn data.** PRO / Society, Publishing Designee, and Administrator prefill from the signer's existing Funūn data rather than being retyped. Prefill chain: signer is a Funūn user → `artist_profiles`; else matched collaborator → `collaborators`; else manual entry in the builder. **Availability check performed:** `pro` ✅ and `publisher` ✅ (→ Publishing Designee) exist on BOTH `artist_profiles` (migration 020) and `collaborators` (migration 018). **`administrator` exists on NEITHER** — see the new-field requirement below. Legal name: `artist_profiles` stores `legal_first_name`/`legal_middle_name`/`legal_last_name`/`legal_name_suffix` (migration 021), so Writer Legal Name composes from those; `collaborators` has no legal-name column.
+   - **(3b) Pre-signature review prompt.** Display copy near the signature action telling the signer to verify their own details before completing. Suggested wording (adjust in build): `Check that your legal name, PRO, publishing designee, and administrator are correct before you sign. If anything is wrong, decline and let the sender know — these details flow into your PRO and publisher registrations.` It must point at the objection/void path (P17-02), NOT offer inline editing — editing mid-execution is exactly what locked text prevents.
+4. **Standalone work details are OPTIONAL.** Print an em-dash when absent. Never block a signature over an album title that may not exist yet; the approved helper text already tolerates "TBD". Values backfill if the sheet is later attached to a project.
+5. **Date = execution date**, stamped when the final signature lands. Guarantees the document is never dated earlier than the signatures beneath it, and matches the legally meaningful date (when the agreement took effect). Per-signer date lines still record individual signing dates.
+6. **Legal name + p/k/a.** Render `Jessica Ramirez (p/k/a Nova)` when a professional name exists and differs; legal name alone otherwise. `p/k/a` is standard industry notation — registration accuracy plus human recognizability.
+
+## Revised new-field requirement (migration 063)
+
+Decision 3a changes the field list. Migration 063 must add, all nullable/additive:
+
+**On `split_sheet_parties`** (the values as agreed for THIS sheet — snapshotted, since profile data can change after signing):
+`legal_name`, `publishing_designee`, `administrator`
+
+**On `artist_profiles`** (so the prefill in 3a is possible at all):
+`administrator` — **the only prefill source that does not exist today.** Without it, "auto-populate from Funūn settings" is impossible for that field and every signer would retype it. Also surface it in the artist's rights/settings UI alongside the existing `pro` / `ipi` / `publisher` / `mlc_id` fields, and follow migration 040's column-privilege doctrine for the new column.
+
+**On `collaborators`** (optional, recommended): `administrator`, so non-user collaborators picked via CollaboratorPicker prefill too.
+
+**On `split_sheets`:** `artist_name`, `album_project_title`, `record_label` (per decision 4, all optional).
+
+**Snapshot rule:** party fields are copied onto the split sheet at creation and never re-read from the profile afterward — an executed document must not silently change because someone edited their profile later.
