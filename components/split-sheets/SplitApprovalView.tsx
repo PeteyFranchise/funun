@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { PartyPhase } from '@/lib/split-sheets/phase'
+import { SplitSheetSigningEmbed } from '@/components/split-sheets/SplitSheetSigningEmbed'
 
 // ─── SplitApprovalView ──────────────────────────────────────────────────
 // Public approval UI rendered on /approve/[token]. The same durable link
@@ -31,6 +32,15 @@ type Props = {
   /** Server-resolved lifecycle phase for this party (lib/split-sheets/phase.ts). */
   phase: PartyPhase
   parties: Party[]
+  /**
+   * This party's own `/s/{slug}` embed source from their
+   * esign_envelope_signers row. Resolved server-side and scoped to ONE
+   * signer — never a template URL and never the API key (T-17-15,
+   * T-17-19). Null until the envelope is minted.
+   */
+  signingSrc?: string | null
+  /** This party's email, pre-filling the embed's signer step. */
+  partyEmail?: string | null
 }
 
 type SubmitStatus = 'idle' | 'submitting' | 'approved' | 'countered' | 'error'
@@ -130,9 +140,20 @@ function StateCard({
 }
 
 // ─── Sign-phase shell ────────────────────────────────────────────────────
-// Self-contained mount point for 17-06's live @docuseal/react embed. This
-// plan (17-04) is credential-free — do NOT import @docuseal/react here.
-function SigningRegion({ artistName }: { artistName: string }) {
+// 17-06 replaced 17-04's placeholder mount point with the live
+// @docuseal/react embed. The container stays full-width and vertically
+// stacked so it remains thumb-signable at a 375px viewport (D-18b).
+function SigningRegion({
+  artistName,
+  signingSrc,
+  signerEmail,
+  partyName,
+}: {
+  artistName: string
+  signingSrc: string | null
+  signerEmail: string | null
+  partyName: string
+}) {
   return (
     <div className="w-full space-y-3">
       <StateCard
@@ -140,19 +161,29 @@ function SigningRegion({ artistName }: { artistName: string }) {
         title="Ready to sign"
         body="Everyone has approved the split — you're up to sign the split sheet."
       />
-      {/* docuseal-sign-mount: 17-06 replaces this placeholder region with the
-          live @docuseal/react embed. Keep this container full-width and
-          vertically stacked so it stays legible at a 375px viewport. */}
-      <div
-        id="docuseal-sign-mount"
-        data-testid="docuseal-sign-mount"
-        className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-white/15 bg-white/5 px-4 py-8 text-center"
-      >
-        <p className="text-sm font-semibold text-white">Signing document loading…</p>
-        <p className="text-xs text-white/40">
-          The signature embed for {artistName}&rsquo;s split sheet mounts here.
-        </p>
-      </div>
+      {signingSrc ? (
+        <SplitSheetSigningEmbed
+          src={signingSrc}
+          signerEmail={signerEmail ?? undefined}
+          signerName={partyName}
+        />
+      ) : (
+        // The sheet has reached the sign phase but this party has no
+        // signer row yet (mint still in flight, or a re-mint after a
+        // void). A waiting state is correct here — rendering an empty
+        // embed would read as a broken signing form.
+        <div
+          id="docuseal-sign-mount"
+          data-testid="docuseal-sign-mount"
+          className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-[18px] border border-dashed border-white/15 bg-white/5 px-4 py-8 text-center"
+        >
+          <p className="text-sm font-semibold text-white">Preparing your document…</p>
+          <p className="text-xs text-white/40">
+            {artistName}&rsquo;s split sheet is being prepared for signature. Refresh in a
+            moment.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -165,11 +196,18 @@ export function SplitApprovalView({
   artistName,
   phase,
   parties,
+  signingSrc,
+  partyEmail,
 }: Props) {
   if (phase === 'sign') {
     return (
       <PageShell artistName={artistName} songName={songName} parties={parties} partyId={partyId}>
-        <SigningRegion artistName={artistName} />
+        <SigningRegion
+          artistName={artistName}
+          signingSrc={signingSrc ?? null}
+          signerEmail={partyEmail ?? null}
+          partyName={partyName}
+        />
       </PageShell>
     )
   }

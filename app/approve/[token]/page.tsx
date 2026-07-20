@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { SplitApprovalView } from '@/components/split-sheets/SplitApprovalView'
 import { resolvePartyPhase } from '@/lib/split-sheets/phase'
 import type { PartyPhase, SplitSheetStatus } from '@/lib/split-sheets/phase'
+import { DOCUSEAL_EMBED_BASE } from '@/lib/esign/docuseal'
 
 // Public page — no auth required. /approve is intentionally absent from
 // middleware isProtected (D-15, Plan 01 comment). Force-dynamic because
@@ -51,13 +52,18 @@ export default async function ApprovePage({ params }: Props) {
     let artistName = 'the initiating artist'
 
     if (sheet?.initiator_user_id) {
+      // artist_profiles is keyed by `id` (= auth.users.id) and has no
+      // user_id or display_name column — display_name lives on
+      // industry_profiles. The previous select/filter referenced both and
+      // therefore always errored, silently degrading every collaborator's
+      // page to the "the initiating artist" fallback.
       const { data: profile } = await service
         .from('artist_profiles')
-        .select('artist_name, display_name')
-        .eq('user_id', sheet.initiator_user_id)
+        .select('artist_name')
+        .eq('id', sheet.initiator_user_id)
         .maybeSingle()
-      if (profile) {
-        artistName = (profile.artist_name || profile.display_name || artistName) as string
+      if (profile?.artist_name) {
+        artistName = profile.artist_name as string
       }
     }
 
@@ -104,14 +110,35 @@ export default async function ApprovePage({ params }: Props) {
     .eq('split_sheet_id', resolvedSheet.id)
 
   // ── Fetch initiator name for the header ──────────────────────────────
+  // Keyed by `id` — see the note on the token_invalid branch above.
   const { data: initiatorProfile } = await service
     .from('artist_profiles')
-    .select('artist_name, display_name')
-    .eq('user_id', resolvedSheet.initiator_user_id)
+    .select('artist_name')
+    .eq('id', resolvedSheet.initiator_user_id)
     .maybeSingle()
 
-  const artistName =
-    (initiatorProfile?.artist_name || initiatorProfile?.display_name || 'An artist') as string
+  const artistName = (initiatorProfile?.artist_name || 'An artist') as string
+
+  // ── This party's own signing source (17-06, ESIGN-06) ────────────────
+  // Resolved SERVER-SIDE and scoped to this party's signer row on the
+  // live envelope: the browser receives one signer's `/s/{slug}` and
+  // nothing else — never the API key, never another party's slug
+  // (T-17-15, T-17-19). Deliberately NOT derived from the approval token,
+  // so possessing one party's link cannot yield another's signing form.
+  let signingSrc: string | null = null
+
+  if (phase === 'sign') {
+    const { data: signerRow } = await service
+      .from('esign_envelope_signers')
+      .select('signer_slug, esign_envelopes!inner(split_sheet_id, status)')
+      .eq('split_sheet_party_id', party!.id as string)
+      .eq('esign_envelopes.split_sheet_id', resolvedSheet.id)
+      .eq('esign_envelopes.status', 'pending')
+      .maybeSingle()
+
+    const slug = (signerRow?.signer_slug ?? null) as string | null
+    signingSrc = slug ? `${DOCUSEAL_EMBED_BASE}/s/${slug}` : null
+  }
 
   return (
     <SplitApprovalView
@@ -119,9 +146,11 @@ export default async function ApprovePage({ params }: Props) {
       partyId={party!.id as string}
       partyName={party!.name as string}
       partyRole={(party!.role ?? null) as string | null}
+      partyEmail={(party!.email ?? null) as string | null}
       songName={resolvedSheet.song_name}
       artistName={artistName}
       phase={phase}
+      signingSrc={signingSrc}
       parties={(allParties ?? []) as { id: string; name: string; role: string | null; split_percentage: number }[]}
     />
   )
