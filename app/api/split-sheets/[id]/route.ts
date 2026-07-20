@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server'
+import {
+  assertEditable,
+  isAllowedStatusTransition,
+  type SplitSheetStatus,
+} from '@/lib/split-sheets/lifecycle'
 import { createApiClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
@@ -59,6 +64,27 @@ export async function PATCH(
   const { id } = await params
   const body = (await request.json()) as Record<string, unknown>
 
+  // ─── Freeze boundary (see lib/split-sheets/lifecycle.ts) ────────────────
+  // Load current status BEFORE building any update. A split sheet is a
+  // living draft only up to the point terms are put to the other parties;
+  // past that, edits either invalidate consensus or corrupt a legal record.
+  const { data: current, error: currentError } = await supabase
+    .from('split_sheets')
+    .select('id, status')
+    .eq('id', id)
+    .eq('initiator_user_id', user.id)
+    .maybeSingle()
+
+  if (currentError || !current) {
+    return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
+  }
+
+  const editsParties = Array.isArray(body.parties) && body.parties.length > 0
+  const gate = assertEditable(current.status as SplitSheetStatus, editsParties)
+  if (!gate.ok) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+
   // Build allowed update fields
   const update: Record<string, unknown> = {}
 
@@ -94,9 +120,21 @@ export async function PATCH(
       'esign_pending',
       'executed',
     ]
-    if (VALID_STATUSES.includes(body.status)) {
+    if (
+      VALID_STATUSES.includes(body.status) &&
+      isAllowedStatusTransition(current.status as SplitSheetStatus, body.status as SplitSheetStatus)
+    ) {
       update.status = body.status
     }
+  }
+
+  // Consensus reset (freeze boundary): replacing the party set on a sheet
+  // that is already out for approval invalidates every prior approval — the
+  // delete-and-reinsert below drops each party's approval_token anyway, so
+  // the status MUST follow it back to draft rather than falsely claiming
+  // pending_approval with dead links.
+  if (gate.ok && gate.resetsConsensus) {
+    update.status = 'draft'
   }
 
   // Handle party replacement (delete-and-reinsert for Phase 1)
