@@ -6,16 +6,15 @@ current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
 stopped_at: Phase 17 PLANNED — 7 plans / 5 waves drafted, checker PASS (2 accepted warnings). Execution gated on Pete's DocuSeal provider-verification pass (5 items incl. voided-envelope billing). Then /gsd-execute-phase 17.
-last_updated: "2026-07-18T22:00:00.000Z"
-last_activity: 2026-07-19
-last_activity_desc: Phase 17 discussed + researched + planned; checker PASS
+last_updated: "2026-07-20T05:49:05.563Z"
+last_activity: 2026-07-20
+last_activity_desc: Phase 17 execution started — 17-03 (Split-Sheet PDF Renderer) complete
 progress:
-  # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
-  total_phases: 16
+  total_phases: 17
   completed_phases: 15
-  total_plans: 44
-  completed_plans: 39
-  percent: 89
+  total_plans: 100
+  completed_plans: 82
+  percent: 82
 ---
 
 # Project State
@@ -125,6 +124,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P04 | 50min | 2 tasks | 12 files |
 | Phase 13 P05 | 35min | 2 tasks | 18 files |
 | Phase 13 P03 | 55min | 2 tasks | 12 files |
+| Phase 17 P03 | 40min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -197,6 +197,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 13]: 13-05: hidden open_to blanks the rendered/returned data only; the stored setting is never touched, so re-enabling visibility restores prior selections exactly
 - [Phase ?]: 13-03: release_comments (rc_insert_author) had no no_block() DB wiring at all — mitigated at the app layer (isBlockedRelativeTo pre-check); a migration to close the DB-layer gap is a follow-up, not applied by this executor (live db push is human-gated)
 - [Phase ?]: 13-03: existing follows/connections rows are not severed when a block is placed afterward — no precedent trigger exists; every content-read surface re-derives no_block() independently, so this is a data-hygiene deferral, not a leak
+- [Phase 17-03]: partyRoleTag(index) = Party${index+1} — deterministic, DocuSeal-safe role tag shared by the PDF's literal signature text tag and (in 17-06) the mint route's submitters[].role
+- [Phase 17-03]: jest.config.js + new jest.babel-plugins.js: added a scoped ESM transform (babel-jest + next/babel) and an import.meta.url shim for @react-pdf/renderer's ESM-only dependency tree (first exercised by a test in this codebase) — no new npm packages installed; full suite 47->48 suites / 455->462 tests, zero regressions
 
 ### Pending Todos
 

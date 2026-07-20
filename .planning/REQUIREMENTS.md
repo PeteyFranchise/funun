@@ -172,7 +172,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Defined:** 2026-07-19 (registered during plan-phase). **Source:** 17-CONTEXT.md locked inputs D-18b + AM-1..AM-5 (`.planning/deliberations/esign-split-sheet-economics.md`). Phase 17 executes before Phase 16 (AM-5). All Pending. These are tracked separately from the v1.2 coverage math above.
 
 - [ ] **ESIGN-01**: DocuSeal implemented behind the existing `lib/esign/provider.ts` seam (hosted API + MIT `@docuseal/react` embed), dual-provider architecture (D-18b)
-- [ ] **ESIGN-02**: Split-sheet PDF renderer generating the Funūn template from captured composers/splits/PRO/IPI, with per-party DocuSeal signature fields (AM-2 template-only)
+- [x] **ESIGN-02**: Split-sheet PDF renderer generating the Funūn template from captured composers/splits/PRO/IPI, with per-party DocuSeal signature fields (AM-2 template-only)
 - [ ] **ESIGN-03**: Two-table envelope schema (`esign_envelopes` + `esign_envelope_signers`) preserving void→re-mint audit history (P17-02)
 - [ ] **ESIGN-04**: Two-step approve→sign default reusing the party's `/approve/[token]` link, plus an initiator fast lane that backfills approval from signature (P17-01)
 - [ ] **ESIGN-05**: Any-party objection voids a minted envelope and returns the sheet to negotiation; re-consensus mints a new one (P17-02)
@@ -191,7 +191,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ESIGN-01 | Phase 17 | Pending |
-| ESIGN-02 | Phase 17 | Pending |
+| ESIGN-02 | Phase 17 | Complete |
 | ESIGN-03 | Phase 17 | Pending |
 | ESIGN-04 | Phase 17 | Pending |
 | ESIGN-05 | Phase 17 | Pending |
