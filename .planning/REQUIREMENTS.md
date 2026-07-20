@@ -220,6 +220,53 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Data-integrity note (2026-07-20):** the ESIGN-09..12 checklist entries and traceability rows were duplicated with conflicting states, almost certainly by concurrent wave-3 executors (17-04 and 17-05) editing this file in parallel. Deduplicated here against the authoritative source — the `requirements-completed` frontmatter of 17-04-SUMMARY.md (ESIGN-04, ESIGN-06, ESIGN-09) and 17-05-SUMMARY.md (ESIGN-10, ESIGN-11, ESIGN-12). ROADMAP.md's Phase 17 plan list carried the same duplication and was repaired in the same pass.
 
+## v1.3-pre — Phase 18: Split-Sheet Home Requirements
+
+**Defined:** 2026-07-20 (registered during plan-phase). **Source:** 18-CONTEXT.md locked decisions P18-01..P18-14, whose authoritative design is `.planning/phases/17-split-sheet-esign/17-DUAL-ENTRY-DESIGN.md`. Phase 18 executes after Phase 17, before Phase 16. All Pending.
+
+**Living-draft surface (18-01):**
+
+- [ ] **HOME-01**: A split-sheet list — every sheet the user initiated, plus every sheet they are a party to — reachable from navigation, closing the orphaned-`/split-sheets` finding
+- [ ] **HOME-02**: `/split-sheets/[id]` detail page with `SplitSheetBuilder` in edit mode, loading persisted parties and PATCHing them — the first UI caller `PATCH /api/split-sheets/[id]` has ever had
+- [ ] **HOME-03**: `CollaboratorPicker` available on an existing draft plus add-and-redistribute (proportional or even), so adding a fourth writer never destroys three negotiated percentages (P18-07)
+- [ ] **HOME-04**: Read-only draft share — a collaborator sees proposed splits without the sheet becoming a formal signing request; the sheet stays in draft and the shared view offers no approve or counter action (P18-08)
+- [ ] **HOME-05**: The freeze boundary surfaced in its own words, and consensus resets summarized as named from/to changes rather than a bare re-approval request (P18-06, P18-09)
+
+**Contract Locker as workspace (18-02):**
+
+- [ ] **HOME-06**: Attention-first Locker landing reading BOTH `vault_documents` and in-flight `split_sheets` — awaiting signature with per-party progress, drafts in progress, unattached executed sheets, songs with no sheet — derived by structured query with no model call, plus create actions, the settled archive, and a reserved-but-unbuilt `ask` slot (P18-10)
+- [ ] **HOME-07**: Per-party Locker views — one document, N lockers, each in the viewer's own context; drafts initiator-only until sent; removal is a per-viewer soft hide that never deletes a shared legal record (P18-11)
+- [ ] **HOME-08**: The block exception made deliberate — an in-source note at the Locker and attachment queries recording that block filtering intentionally does NOT apply to shared executed agreements, with its narrow scope and a citation, so a later audit does not "fix" correct behavior; and no cross-party action anywhere in the phase accepts user-supplied free text (P18-12, P18-13)
+
+**Song-level attachment (18-03):**
+
+- [ ] **HOME-09**: `split_sheets.track_id` (nullable, `ON DELETE SET NULL`), the `split_sheet_attachments` join table with a backfill from existing `vault_project_id` values, and the `source` provenance field — field only, no extraction (P18-02, P18-03, P18-05)
+- [ ] **HOME-10**: Attach route v2 accepting an optional track, extending 17-05's route under its unchanged party-AND-owner double check, with the executed-only gate relaxed because attachment is orthogonal to the signing lifecycle; plus detach (P18-04)
+- [ ] **HOME-11**: Attach from both directions — Locker-side and Vault-side with fuzzy title matching that suggests without preselecting — plus the conflict flag for two sheets on one song and explicit handling of rename-after-signing, deleted track, deleted project, and multi-project attachment, with no PDF regeneration path anywhere
+
+**Coverage-based readiness (18-04):**
+
+- [ ] **HOME-12**: Coverage-based split-sheet scoring replacing the all-or-nothing gate — `covered / needing` across the project's tracks, MINIMUM tier across the needing set, implemented in BOTH `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared scenario fixture, preserving the legacy wet-sign path (P18-14)
+
+**Traceability (Phase 18):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| HOME-01 | Phase 18 | 18-01 | Pending |
+| HOME-02 | Phase 18 | 18-01 | Pending |
+| HOME-03 | Phase 18 | 18-01 | Pending |
+| HOME-04 | Phase 18 | 18-01 | Pending |
+| HOME-05 | Phase 18 | 18-01 | Pending |
+| HOME-06 | Phase 18 | 18-02 | Pending |
+| HOME-07 | Phase 18 | 18-02 | Pending |
+| HOME-08 | Phase 18 | 18-02 | Pending |
+| HOME-09 | Phase 18 | 18-03 | Pending |
+| HOME-10 | Phase 18 | 18-03 | Pending |
+| HOME-11 | Phase 18 | 18-03 | Pending |
+| HOME-12 | Phase 18 | 18-04 | Pending |
+
+**Concurrency note:** Phase 17's wave-3 executors duplicated entries in this file by editing it in parallel. Phase 18's plans are assigned non-overlapping files per wave, but this file is shared by every executor — a plan updating its own requirement statuses should re-read this section immediately before writing.
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-20 — Phase 17 requirements ESIGN-15..19 registered from the provider-verification review; ESIGN-09..12 duplication repaired*
+*Last updated: 2026-07-20 — Phase 18 requirements HOME-01..12 registered during plan-phase and mapped across the four Phase 18 plans; Phase 17 requirements ESIGN-15..19 registered from the provider-verification review; ESIGN-09..12 duplication repaired*

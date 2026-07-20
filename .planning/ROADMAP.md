@@ -87,6 +87,20 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [ ] **Phase 18: Split-Sheet Home** - Living-draft surface (list, edit page, collaborator picker, add-and-redistribute), attention-first Contract Locker reading both documents and in-flight sheets, song-level attachment (track_id + split_sheet_attachments join table) from both directions, and coverage-based readiness scoring shipped separately.
 
+**Goal:** A split sheet written at 2am survives the studio — it can be found, edited, grown by one more writer, shown to a collaborator without being a formal ask, bound to the right song months later, and scored honestly against every track it does and does not cover.
+
+**Requirements:** HOME-01, HOME-02, HOME-03, HOME-04, HOME-05, HOME-06, HOME-07, HOME-08, HOME-09, HOME-10, HOME-11, HOME-12
+
+**Plans:** 4 plans (planned 2026-07-20)
+
+Plans:
+- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with collaborator picker and add-and-redistribute, read-only share, freeze-boundary copy and consensus-reset change summaries (wave 1, autonomous)
+- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents`, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 2, depends on 18-01, autonomous)
+- [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
+- [ ] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
+
+**Execution shape:** wave 1 → 18-01; wave 2 → 18-02 and 18-03 in parallel (zero shared files); wave 3 → 18-04. 18-03 has no dependency and is placed in wave 2 to serialize migration numbering ahead of 18-04's 065. 18-03 and 18-04 each end with a human-gated `supabase db push`; 18-04 additionally gates on sign-off for a user-visible score drop — projects reading `complete` today may read `warning` after coverage lands.
+
 **Current-state map (read before discuss-phase — investigated 2026-07-19):**
 
 The split-sheet pipeline is further along than the Wave 2 "upload-only" story — AND fractured into three systems that never touch:
