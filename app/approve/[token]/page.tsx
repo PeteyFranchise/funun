@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { SplitApprovalView } from '@/components/split-sheets/SplitApprovalView'
+import { resolvePartyPhase } from '@/lib/split-sheets/phase'
+import type { PartyPhase, SplitSheetStatus } from '@/lib/split-sheets/phase'
 
 // Public page — no auth required. /approve is intentionally absent from
 // middleware isProtected (D-15, Plan 01 comment). Force-dynamic because
@@ -15,29 +17,44 @@ export default async function ApprovePage({ params }: Props) {
   const service = createServiceClient()
   const now = new Date().toISOString()
 
-  // ── Token lookup (T-01-13 expiry guard) ─────────────────────────────
+  // ── Token lookup — select sheet.status so phase resolution has it
+  // available (RESEARCH Pitfall 1 / gap fix 1). ────────────────────────
   const { data: party } = await service
     .from('split_sheet_parties')
-    .select('*, split_sheets(id, song_name, initiator_user_id)')
+    .select('*, split_sheets(id, song_name, status, initiator_user_id)')
     .eq('approval_token', token)
     .maybeSingle()
 
-  // Expired / used / missing token states
-  const isExpired =
-    !party ||
-    (party.token_expires_at && party.token_expires_at < now) ||
-    (party.approval_status !== 'pending')
+  const sheet = (party?.split_sheets ?? null) as {
+    id: string
+    song_name: string
+    status: SplitSheetStatus
+    initiator_user_id: string
+  } | null
 
-  if (isExpired) {
+  // ── Two-question gating (RESEARCH Pitfall 1): token validity vs party
+  // lifecycle phase — replaces the old single isExpired boolean that
+  // treated any non-'pending' approval_status as an expired link. ─────
+  const phase: PartyPhase = resolvePartyPhase({
+    party: party
+      ? {
+          approval_status: party.approval_status as 'pending' | 'approved' | 'countered',
+          token_expires_at: (party.token_expires_at as string | null) ?? null,
+        }
+      : null,
+    sheet: sheet ? { status: sheet.status } : null,
+    nowIso: now,
+  })
+
+  if (phase === 'token_invalid') {
     // Attempt to surface the initiator name for the expired copy
-    const sheetData = party?.split_sheets as { initiator_user_id?: string } | null
     let artistName = 'the initiating artist'
 
-    if (sheetData?.initiator_user_id) {
+    if (sheet?.initiator_user_id) {
       const { data: profile } = await service
         .from('artist_profiles')
         .select('artist_name, display_name')
-        .eq('user_id', sheetData.initiator_user_id)
+        .eq('user_id', sheet.initiator_user_id)
         .maybeSingle()
       if (profile) {
         artistName = (profile.artist_name || profile.display_name || artistName) as string
@@ -59,9 +76,24 @@ export default async function ApprovePage({ params }: Props) {
     )
   }
 
-  const sheet = party.split_sheets as {
+  // ── Stamp the page-visit signal once (P17-04 nudge tracking) ─────────
+  // Idempotent — only the first visit with a valid token sets it. This is
+  // a page-visit stamp only (no email-open tracking, T-17-10). Done here
+  // rather than in the POST-only approve/[token] API route, since that
+  // route only ever fires on the client's approve/counter submission and
+  // never runs on the GET page load this signal is meant to capture.
+  if (!party!.first_viewed_at) {
+    await service
+      .from('split_sheet_parties')
+      .update({ first_viewed_at: now })
+      .eq('id', party!.id as string)
+      .is('first_viewed_at', null)
+  }
+
+  const resolvedSheet = sheet as {
     id: string
     song_name: string
+    status: SplitSheetStatus
     initiator_user_id: string
   }
 
@@ -69,13 +101,13 @@ export default async function ApprovePage({ params }: Props) {
   const { data: allParties } = await service
     .from('split_sheet_parties')
     .select('id, name, role, split_percentage')
-    .eq('split_sheet_id', sheet.id)
+    .eq('split_sheet_id', resolvedSheet.id)
 
   // ── Fetch initiator name for the header ──────────────────────────────
   const { data: initiatorProfile } = await service
     .from('artist_profiles')
     .select('artist_name, display_name')
-    .eq('user_id', sheet.initiator_user_id)
+    .eq('user_id', resolvedSheet.initiator_user_id)
     .maybeSingle()
 
   const artistName =
@@ -84,11 +116,12 @@ export default async function ApprovePage({ params }: Props) {
   return (
     <SplitApprovalView
       token={token}
-      partyId={party.id as string}
-      partyName={party.name as string}
-      partyRole={(party.role ?? null) as string | null}
-      songName={sheet.song_name}
+      partyId={party!.id as string}
+      partyName={party!.name as string}
+      partyRole={(party!.role ?? null) as string | null}
+      songName={resolvedSheet.song_name}
       artistName={artistName}
+      phase={phase}
       parties={(allParties ?? []) as { id: string; name: string; role: string | null; split_percentage: number }[]}
     />
   )
