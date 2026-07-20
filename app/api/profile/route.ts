@@ -30,6 +30,7 @@ const EDITABLE_FIELDS = [
   'pro',
   'ipi',
   'publisher',
+  'administrator',
   'mlc_id',
   'soundexchange_id',
   'legal_first_name',

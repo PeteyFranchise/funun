@@ -129,3 +129,27 @@ export function displayLegalName(
   if (legal === professional) return legal
   return `${legal} (p/k/a ${professional})`
 }
+
+/**
+ * Composes a legal name from artist_profiles' structured legal-name
+ * fields (migration 021) — the first link in decision 3a's auto-populate
+ * chain ("signer is a Funūn user → artist_profiles"). Mirrors
+ * lib/collaborators/index.ts's assembleDisplayName suffix convention
+ * (", Suffix"). Returns an empty string when no legal name parts are on
+ * file, so callers can fall back to manual entry rather than rendering a
+ * bare comma.
+ */
+export function composeLegalNameFromProfile(profile: {
+  legal_first_name?: string | null
+  legal_middle_name?: string | null
+  legal_last_name?: string | null
+  legal_name_suffix?: string | null
+}): string {
+  const parts = [profile.legal_first_name, profile.legal_middle_name, profile.legal_last_name]
+    .map(p => (p ?? '').trim())
+    .filter(Boolean)
+  if (parts.length === 0) return ''
+  const base = parts.join(' ')
+  const suffix = (profile.legal_name_suffix ?? '').trim()
+  return suffix ? `${base}, ${suffix}` : base
+}

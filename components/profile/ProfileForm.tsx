@@ -84,6 +84,7 @@ type FormState = {
   pro: string
   ipi: string
   publisher: string
+  administrator: string
   mlc_id: string
   soundexchange_id: string
   legal_first_name: string
@@ -126,6 +127,7 @@ function toForm(p: ArtistProfile): FormState {
     pro: p.pro ?? '',
     ipi: p.ipi ?? '',
     publisher: p.publisher ?? '',
+    administrator: p.administrator ?? '',
     mlc_id: p.mlc_id ?? '',
     soundexchange_id: p.soundexchange_id ?? '',
     legal_first_name: p.legal_first_name ?? '',
@@ -969,6 +971,18 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
                 placeholder="Publisher name"
                 className={`mt-1 ${inputClass}`}
               />
+            </div>
+            <div>
+              <label className={labelClass}>Administrator</label>
+              <input
+                value={form.administrator}
+                onChange={e => set('administrator', e.target.value)}
+                placeholder="Publishing administrator"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">
+                Enter your publishing administrator if you have one. If you do not have one yet, enter &quot;None&quot;.
+              </p>
             </div>
             <div>
               <label className={labelClass}>MLC member ID</label>

@@ -49,6 +49,7 @@ const DEMO_PROFILE: ArtistProfile = {
   pro: null,
   ipi: null,
   publisher: null,
+  administrator: null,
   mlc_id: null,
   soundexchange_id: null,
   created_at: '2026-01-01T00:00:00Z',

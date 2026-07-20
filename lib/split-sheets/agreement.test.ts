@@ -11,6 +11,7 @@ import {
   assertCounselReviewedForProduction,
   displayValue,
   displayLegalName,
+  composeLegalNameFromProfile,
 } from './agreement'
 
 describe('AGREEMENT_CLAUSES', () => {
@@ -100,5 +101,44 @@ describe('displayLegalName', () => {
     expect(displayLegalName(null, 'Marco Belan')).toBe('Marco Belan')
     expect(displayLegalName(undefined, 'Marco Belan')).toBe('Marco Belan')
     expect(displayLegalName('   ', 'Marco Belan')).toBe('Marco Belan')
+  })
+})
+
+describe('composeLegalNameFromProfile', () => {
+  it('joins first/middle/last name parts', () => {
+    expect(
+      composeLegalNameFromProfile({
+        legal_first_name: 'Maya',
+        legal_middle_name: 'Elise',
+        legal_last_name: 'Carter',
+      })
+    ).toBe('Maya Elise Carter')
+  })
+
+  it('omits a blank middle name without a double space', () => {
+    expect(
+      composeLegalNameFromProfile({
+        legal_first_name: 'André',
+        legal_middle_name: null,
+        legal_last_name: 'Beaumont',
+      })
+    ).toBe('André Beaumont')
+  })
+
+  it('appends the suffix with a comma, mirroring assembleDisplayName', () => {
+    expect(
+      composeLegalNameFromProfile({
+        legal_first_name: 'Jane',
+        legal_last_name: 'Smith',
+        legal_name_suffix: 'Jr.',
+      })
+    ).toBe('Jane Smith, Jr.')
+  })
+
+  it('returns an empty string when no legal name parts are on file', () => {
+    expect(composeLegalNameFromProfile({})).toBe('')
+    expect(
+      composeLegalNameFromProfile({ legal_first_name: null, legal_last_name: undefined })
+    ).toBe('')
   })
 })

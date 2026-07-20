@@ -388,6 +388,10 @@ export type ArtistProfile = {
   pro: string | null
   ipi: string | null
   publisher: string | null
+  // Publishing administrator (migration 063, P17-09) — the split-sheet
+  // Administrator prefill source with no prior home; PRIVATE column
+  // (migration 040 doctrine — same posture as publisher/pro/ipi).
+  administrator: string | null
   mlc_id: string | null
   soundexchange_id: string | null
   // Public showcase profile (migration 010). is_public is the app-level

@@ -14,6 +14,7 @@ export const COLLABORATOR_EDITABLE_FIELDS = [
   'pro',
   'ipi',
   'publisher',
+  'administrator', // split-sheet Administrator prefill (migration 063, P17-09)
   'mlc_id',
   'soundexchange_id',
   'mailing_address',
@@ -35,6 +36,7 @@ export type CollaboratorProfile = {
   pro?: string | null
   ipi?: string | null
   publisher?: string | null
+  administrator?: string | null // split-sheet Administrator prefill (migration 063, P17-09)
   mlc_id?: string | null
   soundexchange_id?: string | null
   mailing_address?: Record<string, string> | null
