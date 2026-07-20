@@ -9,6 +9,13 @@
 // lands once DROPBOX_SIGN_API_KEY is configured (it's an env-gated, server-only
 // module). Signing state rides vault_documents.document_data.esign (JSONB), so no
 // migration is needed.
+//
+// Phase 17 (D-18b, dual-provider): DocuSeal is Funūn's first LIVE e-sign
+// integration, used for split sheets — added to the provider union below
+// without changing the interface shape, so this seam stays vendor-agnostic
+// for 16-09's SignWell sync-license adapter too. The concrete DocuSeal
+// provider + the PDF/mint/webhook wiring land in later Phase 17 plans; this
+// file only carries the contract + state round-trip (ESIGN-01).
 
 export type EsignSignerStatus = 'pending' | 'signed' | 'declined'
 
@@ -22,7 +29,7 @@ export type EsignSigner = {
 
 /** Persisted on `vault_documents.document_data.esign`. */
 export type EsignState = {
-  provider: 'dropbox_sign' | 'docusign'
+  provider: 'dropbox_sign' | 'docusign' | 'docuseal'
   /** The provider's signature-request / envelope id. */
   requestId: string
   signers: EsignSigner[]
@@ -69,7 +76,8 @@ export function readEsignState(
 ): EsignState | null {
   const raw = documentData?.esign as Record<string, unknown> | undefined
   if (!raw || typeof raw.requestId !== 'string' || !raw.requestId) return null
-  const provider = raw.provider === 'docusign' ? 'docusign' : 'dropbox_sign'
+  const provider =
+    raw.provider === 'docuseal' ? 'docuseal' : raw.provider === 'docusign' ? 'docusign' : 'dropbox_sign'
   const signers: EsignSigner[] = Array.isArray(raw.signers)
     ? raw.signers.map(s => {
         const o = (s ?? {}) as Record<string, unknown>
