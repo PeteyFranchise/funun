@@ -174,12 +174,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **ESIGN-01**: DocuSeal implemented behind the existing `lib/esign/provider.ts` seam (hosted API + MIT `@docuseal/react` embed), dual-provider architecture (D-18b)
 - [x] **ESIGN-02**: Split-sheet PDF renderer generating the Funūn template from captured composers/splits/PRO/IPI, with per-party DocuSeal signature fields (AM-2 template-only)
 - [ ] **ESIGN-03**: Two-table envelope schema (`esign_envelopes` + `esign_envelope_signers`) preserving void→re-mint audit history (P17-02)
-- [ ] **ESIGN-04**: Two-step approve→sign default reusing the party's `/approve/[token]` link, plus an initiator fast lane that backfills approval from signature (P17-01)
+- [x] **ESIGN-04**: Two-step approve→sign default reusing the party's `/approve/[token]` link, plus an initiator fast lane that backfills approval from signature (P17-01)
 - [ ] **ESIGN-05**: Any-party objection voids a minted envelope and returns the sheet to negotiation; re-consensus mints a new one (P17-02)
-- [ ] **ESIGN-06**: Embedded, mobile-first signing surface verified at a 375px viewport — the signer is never redirected (D-18b)
+- [x] **ESIGN-06**: Embedded, mobile-first signing surface verified at a 375px viewport — the signer is never redirected (D-18b)
 - [ ] **ESIGN-07**: Signature-verified, idempotent completion webhook re-hosting the executed PDF + Certificate of Signature (Funūn's first live e-sign webhook)
 - [ ] **ESIGN-08**: 5/10/15 readiness tiering for the 15-point split-sheets item in BOTH the DB trigger and the TS twin, kept in provable parity (P17-03/P17-03-impl)
-- [ ] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
+- [x] **ESIGN-09**: Initiator notifications — party approved/signed, counter received (highest urgency), fully executed, and a viewed-but-no-action nudge (P17-04)
 - [ ] **ESIGN-10**: Executed-document cross-account distribution to every account-holder party's Contract Locker, including the standalone (projectless) query path (P17-06)
 - [ ] **ESIGN-11**: Standalone sheets get full e-sign and are attachable to a matching vault project later, moving that project's readiness (P17-05/P17-05a)
 - [ ] **ESIGN-12**: Offered (never silent) write-back of executed splits into `tracks.metadata.composers[]` via a confirmable diff (P17-07)
@@ -193,12 +193,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ESIGN-01 | Phase 17 | Pending |
 | ESIGN-02 | Phase 17 | Complete |
 | ESIGN-03 | Phase 17 | Pending |
-| ESIGN-04 | Phase 17 | Pending |
+| ESIGN-04 | Phase 17 | Complete |
 | ESIGN-05 | Phase 17 | Pending |
-| ESIGN-06 | Phase 17 | Pending |
+| ESIGN-06 | Phase 17 | Complete |
 | ESIGN-07 | Phase 17 | Pending |
 | ESIGN-08 | Phase 17 | Pending |
-| ESIGN-09 | Phase 17 | Pending |
+| ESIGN-09 | Phase 17 | Complete |
 | ESIGN-10 | Phase 17 | Pending |
 | ESIGN-11 | Phase 17 | Pending |
 | ESIGN-12 | Phase 17 | Pending |
