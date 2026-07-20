@@ -5,17 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Phase 17 PLANNED — 7 plans / 5 waves drafted, checker PASS (2 accepted warnings). Execution gated on Pete's DocuSeal provider-verification pass (5 items incl. voided-envelope billing). Then /gsd-execute-phase 17.
-last_updated: "2026-07-18T22:00:00.000Z"
-last_activity: 2026-07-19
-last_activity_desc: Phase 17 discussed + researched + planned; checker PASS
+stopped_at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
+last_updated: "2026-07-20T05:44:24.487Z"
+last_activity: 2026-07-18
+last_activity_desc: Phase 13 execution started
 progress:
-  # Recomputed 2026-07-18 from ROADMAP.md checkboxes (phases 1-16; plan lists cover phases 8-16)
-  total_phases: 16
+  total_phases: 17
   completed_phases: 15
-  total_plans: 44
-  completed_plans: 39
-  percent: 89
+  total_plans: 100
+  completed_plans: 82
+  percent: 82
 ---
 
 # Project State
@@ -125,6 +124,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 13 P04 | 50min | 2 tasks | 12 files |
 | Phase 13 P05 | 35min | 2 tasks | 18 files |
 | Phase 13 P03 | 55min | 2 tasks | 12 files |
+| Phase 17 P01 | 40min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -197,6 +197,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 13]: 13-05: hidden open_to blanks the rendered/returned data only; the stored setting is never touched, so re-enabling visibility restores prior selections exactly
 - [Phase ?]: 13-03: release_comments (rc_insert_author) had no no_block() DB wiring at all — mitigated at the app layer (isBlockedRelativeTo pre-check); a migration to close the DB-layer gap is a follow-up, not applied by this executor (live db push is human-gated)
 - [Phase ?]: 13-03: existing follows/connections rows are not severed when a block is placed afterward — no precedent trigger exists; every content-read surface re-derives no_block() independently, so this is a data-hygiene deferral, not a leak
+- [Phase 17]: 17-01: DocuSeal webhook signature format defined as {timestampMs}.{hexHmac} HMAC-SHA256; documented for 17-07 to verify against live payload
+- [Phase 17]: 17-01: SPLIT_SHEET_TIER_MAP is the single source of truth both the DB trigger (17-02) and TS twin must consume to prevent tier-parity drift
+- [Phase 17]: 17-01: VOIDED_ENVELOPES_COUNT_TOWARD_CAP is a single named flag (currently false) pending Pete's DocuSeal void-billing provider-verification pass
 
 ### Pending Todos
 
@@ -258,8 +261,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:06:15.918Z
-Stopped at: Completed 13-03-PLAN.md (Hard Block Enforcement Audit) — last plan of Phase 13, ready for phase verification
+Last session: 2026-07-20T05:44:24.468Z
+Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: None
 
 ## Operator Next Steps

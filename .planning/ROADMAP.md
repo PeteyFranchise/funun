@@ -370,6 +370,7 @@ Plans:
 **The gap found:** none of the three major competitors appears to embed a verifiable, unique license identifier into the delivered audio file itself. All three rely on account-side records as the source of truth — Musicbed on an account Licenses tab, Marmoset on a support-traceable Order ID printed on the invoice, Artlist on an on-demand PDF certificate carrying a visible license number. Once a clean file leaves the platform, the file alone proves nothing about which license it belongs to. The industry's "___ID" branding (Musicbed **SyncID**, Marmoset **TrackID**, Artlist **Clearlist**) refers to real-time YouTube Content ID claim-clearing services, NOT to a static identifier stamped on a track or file.
 
 **The idea:** at the moment of license issuance, generate the buyer's clean file fresh and bake a unique Funūn License ID into its metadata, so provenance travels with the audio:
+
 - MP3: an ID3v2 `TXXX` (custom text) or `PRIV` frame carrying the license ID, alongside standard `TCOP`/`WCOP`/`TIT2`/`TPE1` copyright/title/artist fields.
 - WAV: the BWF `<bext>` chunk (`Description`, `OriginatorReference`, or `CodingHistory`) — the archival-standard location for provenance data.
 - The ID is a foreign key into Funūn's license records (licensee, project, end client, usage/territory/term, fee, timestamp).
@@ -378,6 +379,7 @@ Plans:
 **Why it plausibly fits Funūn specifically:** `node-id3` (0.2.9) is already a project dependency and already used for ID3 read/write in the metadata pipeline, so the MP3 path is largely existing capability pointed at a new purpose. It also reinforces the Rights & Registration Rails thesis — every delivered file provably tied to a documented, consented license.
 
 **Open questions that MUST be resolved in the discussion/research cycle before planning:**
+
 1. **Preview mechanism is genuinely undecided.** Competitors split: Musicbed and Artlist ship audible **watermarked** previews; Marmoset ships **un-watermarked but low-bitrate scratch tracks** and relies on terms of use rather than a technical block. Marmoset's approach is legally weaker but frictionless for real editing — and Funūn's Phase 16 deal model is otherwise Marmoset-shaped. This choice is upstream of the license-ID work and is NOT settled by this note.
 2. Does an embedded ID survive the buyer's actual workflow (transcode, DAW import/export, NLE round-trip)? An ID that dies on first re-encode buys less than it appears to. Needs empirical testing — good spike candidate.
 3. Threat model: the ID is a provenance marker, not DRM. What is it actually meant to prove, to whom, and what happens on a mismatch or a stripped tag?
@@ -411,11 +413,11 @@ Plans:
 **Sequencing consequence for 16-09:** this phase becomes Funūn's first live e-sign integration (DocuSeal hosted); 16-09's SignWell adapter reuses this phase's webhook/route patterns.
 **Provider verification gate (human, before plan-phase execution):** DocuSeal trial — Certificate of Signature inspection, white-label scope/price, 3-signer async test, deliverability.
 
-**Plans:** 7/7 plans drafted (5 waves; planned 2026-07-19). Autonomous plans have no live-API or db-push dependency; the live DocuSeal surface is gated behind the provider-verification checkpoint in 17-06.
+**Plans:** 1/7 plans executed
 
 **Wave 1** *(autonomous, credential-free — parallel, disjoint files)*
 
-- [ ] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
+- [x] 17-01-PLAN.md — E-sign contract extension + pure helpers (webhook HMAC, tier map, envelope/cap/fast-lane/void, reconciliation diff) + notification builders
 - [ ] 17-03-PLAN.md — Split-sheet PDF renderer (per-party PRO/IPI + DocuSeal signature text-tags)
 
 **Wave 2** *(depends 17-01; human db-push checkpoint)*
