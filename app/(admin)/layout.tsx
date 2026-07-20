@@ -62,6 +62,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           Verification
         </Link>
+        <Link
+          href="/admin/esign-usage"
+          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+        >
+          E-Sign Usage
+        </Link>
         <div className="mt-auto border-t border-white/10 px-3 pt-3">
           <SignOutButton />
         </div>

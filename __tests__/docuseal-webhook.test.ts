@@ -493,8 +493,10 @@ describe('POST /api/webhooks/docuseal — notification + offered write-back', ()
   })
 
   it('offers no reconciliation for a standalone sheet with no project attached', async () => {
+    // A standalone sheet (P17-05) — no project, so no composers[] to
+    // reconcile against.
     const envelope = pendingEnvelope()
-    envelope.split_sheets.vault_project_id = null
+    envelope.split_sheets.vault_project_id = null as unknown as string
     const { client } = makeService(envelope)
     mockCreateServiceClient.mockReturnValue(client)
     const body = JSON.stringify(completionPayload())
