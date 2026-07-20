@@ -59,9 +59,18 @@ This phase does NOT cover: extraction of structured data from uploaded PDFs (Con
 **Readiness:**
 - **P18-14:** Coverage-based scoring replaces the current gate: `covered / needing` across the project's tracks, taking the MINIMUM tier across tracks. Ships as **its own plan** — it is a user-visible score change (projects reading `complete` today may drop to `warning`), and it touches BOTH `readinessItemsForProject()` and `calculate_vault_readiness()` with a shared parity fixture, same dual-implementation pattern as 17-02.
 
+## Resolved after planning (2026-07-20)
+
+- **P18-15 — EVERY track needs a split sheet. No exceptions, no acknowledgment escape hatch.** `tracksNeedingSheet()` returns all of a project's tracks; there is no "solo-written, no sheet needed" marker. Pete's rationale, which supersedes the design doc's softer lean: a solo-written song still needs the document, because **the absence of a split sheet is not proof of sole authorship — it is absence of proof.** A sync licensor running chain-of-title cannot distinguish "solo-written" from "undocumented," and that ambiguity is what kills placements. A one-party sheet is a dated, executed declaration of 100% ownership with an audit trail — precisely the "no loose ends" artifact a licensor wants. This REMOVES 18-04's Task 1 decision checkpoint; the answer is settled.
+- **P18-16 — Readiness points are PROPORTIONAL; status requires ALL.** The design doc contained a contradiction (§6 said both "proportional partial credit" and "minimum across tracks"); the planner correctly flagged that MIN alone scores a 5-track EP with 4 executed sheets at **0/15**, which cannot distinguish "done nothing" from "nearly done." Resolution uses structure that already exists: `ReadinessItem.earnedPoints` is proportional (4/5 → 12/15) while `ReadinessItem.status` stays `warning` until every track is covered. `canSubmit` keys off status, so the ship-gate stays strict while the progress signal stays informative.
+
+### Consequences of P18-15 that this phase must handle
+
+- **One-party sheets must work end to end.** `validateApprovalTotal` already passes a single party at 100%. The signing flow should default solo sheets to P17-01's fast lane — sending yourself a formal signature request is absurd UX. The DocuSeal certificate is what makes a self-signed declaration credible (timestamp + audit trail), so it still goes through e-sign rather than being marked complete locally.
+- **AM-2 cap interaction — FLAGGED, needs Pete's decision.** If every track needs a sheet, volume scales with catalog size: a 12-track album needs 12 sheets, which exceeds the ~10/month soft cap. The cap was set assuming sheets are occasional, not per-track. Options: raise the cap, exempt or discount one-party sheets, or add bulk creation ("create sheets for all 12 tracks") that counts as one intent. **Do not silently block an artist doing exactly the right thing.** Resolve before 18-04 ships; record the outcome in the AM-series in `.planning/deliberations/esign-split-sheet-economics.md`.
+
 ## Open (resolve during planning)
 
-- Does *every* track need a split sheet for full coverage, or only tracks with >1 composer? Design doc leans strict-with-acknowledgment (a per-track "solo-written, no sheet needed" marker). Planner should propose; Pete confirms at the checkpoint.
 - May a sheet attach before execution? 17-05's route currently requires `executed`; P18-04 says attachment is lifecycle-orthogonal. Design doc leans relax. Resolve in the attachment plan.
 - Does attaching notify the other parties? Design doc leans no for v1 (organizational, not legal).
 
