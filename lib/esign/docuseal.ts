@@ -152,6 +152,80 @@ function readSubmitters(payload: unknown): Record<string, unknown>[] {
   return []
 }
 
+function readOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null
+}
+
+/**
+ * Downloads a pre-signed provider URL. These carry their own auth in the
+ * query string and must NOT receive the X-Auth-Token header, so this
+ * deliberately does not go through docusealFetch.
+ */
+async function downloadPresigned(url: string, operation: string): Promise<Uint8Array> {
+  const response = await fetch(url)
+  await assertOk(response, operation)
+  return new Uint8Array(await response.arrayBuffer())
+}
+
+/**
+ * One signer exactly as the provider reported them. Field-for-field
+ * compatible with ProviderReportedSigner (lib/vault/pdf/completion-
+ * certificate.tsx) so the webhook can hand this straight into the
+ * certificate's `providerReported` group without reshaping — reshaping is
+ * how a provider-reported fact ends up presented as a Funūn-observed one.
+ */
+export type EsignReportedSigner = {
+  submitterId: string
+  name: string
+  email: string
+  completedAt: string | null
+  /**
+   * 'api' when the provider recorded no interactive signing session — the
+   * P17-01 fast lane produces these, and a party who never sat in front of
+   * a form must not be presented identically to one who did.
+   */
+  completionMethod: 'interactive' | 'api'
+  emailVerified: boolean | null
+  ipAddress: string | null
+  sessionId: string | null
+  userAgent: string | null
+  timezone: string | null
+}
+
+/** What the completion webhook needs from the provider, in one shape. */
+export type EsignCompletionArtifacts = {
+  executedPdf: Uint8Array
+  /** null when the submission reported no audit-log URL. */
+  auditLog: Uint8Array | null
+  originalDocumentSha256: string | null
+  resultDocumentSha256: string | null
+  signers: EsignReportedSigner[]
+}
+
+function toReportedSigner(raw: Record<string, unknown>): EsignReportedSigner {
+  const values = (raw.values ?? {}) as Record<string, unknown>
+  // DocuSeal reports the browser-captured facts only for an interactive
+  // session. Absent an IP and a user agent there was no signing session to
+  // observe, which is what an API completion looks like on the wire.
+  const ipAddress = readOptionalString(raw.ip)
+  const userAgent = readOptionalString(raw.ua)
+  const completionMethod: EsignReportedSigner['completionMethod'] =
+    ipAddress || userAgent ? 'interactive' : 'api'
+
+  return {
+    submitterId: String(raw.id ?? ''),
+    name: String(raw.name ?? ''),
+    email: String(raw.email ?? ''),
+    completedAt: readOptionalString(raw.completed_at),
+    completionMethod,
+    emailVerified: typeof values.email_verified === 'boolean' ? values.email_verified : null,
+    ipAddress,
+    sessionId: readOptionalString(raw.external_id) ?? readOptionalString(raw.uuid),
+    userAgent,
+    timezone: readOptionalString(raw.timezone),
+  }
+}
+
 function toSigner(raw: Record<string, unknown>): EsignCreatedSigner {
   const slug = String(raw.slug ?? '')
   const embedSrc =
@@ -301,6 +375,65 @@ export class DocuSealProvider implements EsignProvider {
     const fileResponse = await fetch(url)
     await assertOk(fileResponse, 'document download')
     return new Uint8Array(await fileResponse.arrayBuffer())
+  }
+
+  /**
+   * Everything the completion webhook (17-07) needs from the provider, in
+   * ONE call site: both executed artifacts as bytes, plus the per-signer
+   * facts DocuSeal reported.
+   *
+   * WHY THIS EXISTS RATHER THAN THE ROUTE CALLING THE API ITSELF: the
+   * webhook must re-host the executed PDF and the audit log within the
+   * handler because both URLs expire in ~40 minutes. Leaving the two-hop
+   * resolve-then-download dance in the route would put provider response
+   * shapes (documents[], audit_log_url, submitters[]) inside an app route,
+   * which is exactly the vendor coupling lib/esign/provider.ts exists to
+   * prevent. The route gets bytes and normalized facts; it never sees a
+   * DocuSeal JSON key.
+   *
+   * The returned `signers` group is deliberately shaped to match
+   * ProviderReportedSigner (17-10) field for field. Every value in it was
+   * reported BY THE PROVIDER — Funūn observed none of it — and the
+   * certificate renderer's type boundary depends on it staying separable
+   * from Funūn's own facts. Do not merge these into a sheet-derived shape.
+   *
+   * `auditLog` is null when the submission carries no audit-log URL rather
+   * than throwing: a missing audit log must not strand an otherwise
+   * complete execution, and the certificate cites the log by stored path
+   * only when one actually landed.
+   */
+  async fetchCompletionArtifacts(requestId: string): Promise<EsignCompletionArtifacts> {
+    const submission = (await docusealFetch(
+      `/submissions/${encodeURIComponent(requestId)}`,
+      { method: 'GET' },
+      'submission fetch'
+    )) as Record<string, unknown>
+
+    const documents = (await docusealFetch(
+      `/submissions/${encodeURIComponent(requestId)}/documents`,
+      { method: 'GET' },
+      'document listing'
+    )) as { documents?: { name?: string; url?: string }[] }
+
+    const executedUrl = documents.documents?.find(d => typeof d.url === 'string' && d.url)?.url
+    if (!executedUrl) {
+      throw new Error(`DocuSeal submission ${requestId} has no signed document available yet`)
+    }
+
+    const executedPdf = await downloadPresigned(executedUrl, 'executed document download')
+
+    const auditLogUrl = typeof submission.audit_log_url === 'string' ? submission.audit_log_url : ''
+    const auditLog = auditLogUrl
+      ? await downloadPresigned(auditLogUrl, 'audit log download')
+      : null
+
+    return {
+      executedPdf,
+      auditLog,
+      originalDocumentSha256: readOptionalString(submission.original_document_sha256),
+      resultDocumentSha256: readOptionalString(submission.result_document_sha256),
+      signers: readSubmitters(submission.submitters).map(toReportedSigner),
+    }
   }
 
   /**
