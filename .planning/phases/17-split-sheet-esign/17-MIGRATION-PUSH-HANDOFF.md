@@ -93,6 +93,16 @@ ROLLBACK if anything above fails:
   UPDATE vault_projects SET vault_readiness_score = calculate_vault_readiness(id);
   -- first_viewed_at may be left in place; it is nullable and harmless.
 
+  -- MANDATORY FINAL STEP — clear the migration ledger. Dropping the objects
+  -- does NOT remove the schema_migrations row. If it is left behind, the
+  -- ledger claims 062 is applied while the schema says otherwise, and
+  -- `supabase db push` silently reports "Remote database is up to date" and
+  -- refuses to re-apply. This happened on 2026-07-20. Run:
+  supabase migration repair --status reverted 062
+  -- then confirm the row is gone:
+  SELECT version FROM supabase_migrations.schema_migrations WHERE version = '062';
+  -- Expect zero rows.
+
 Do not proceed to migration 063 until every check above passes. Report results
 before continuing.
 ```
@@ -168,6 +178,11 @@ ROLLBACK (safe — these columns hold no data yet):
     DROP COLUMN IF EXISTS album_project_title, DROP COLUMN IF EXISTS record_label;
   ALTER TABLE artist_profiles DROP COLUMN IF EXISTS administrator;
   ALTER TABLE collaborators DROP COLUMN IF EXISTS administrator;
+
+  -- MANDATORY FINAL STEP — clear the migration ledger, same as 062:
+  supabase migration repair --status reverted 063
+  SELECT version FROM supabase_migrations.schema_migrations WHERE version = '063';
+  -- Expect zero rows. Skipping this blocks any future re-push.
 
 Report the output of every check. Do not summarize as "verified" — paste actual
 query results.
