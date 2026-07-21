@@ -55,13 +55,17 @@ describe('counsel gate (P17-09a)', () => {
     Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, configurable: true })
   })
 
-  it('COUNSEL_REVIEW_STATUS starts unreviewed', () => {
-    expect(COUNSEL_REVIEW_STATUS).toBe('unreviewed')
+  // P17-09a: counsel reviewed and approved AGREEMENT_CLAUSES (Pete, 2026-07-21).
+  // These two tests guard the flip itself — they must invert the moment the
+  // constant does, so a future accidental revert to 'unreviewed' is caught
+  // here rather than silently reopening the production gate.
+  it('COUNSEL_REVIEW_STATUS is reviewed', () => {
+    expect(COUNSEL_REVIEW_STATUS).toBe('reviewed')
   })
 
-  it('throws in production while unreviewed', () => {
+  it('does not throw in production now that it is reviewed', () => {
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true })
-    expect(() => assertCounselReviewedForProduction()).toThrow(/attorney review|counsel/i)
+    expect(() => assertCounselReviewedForProduction()).not.toThrow()
   })
 
   it('is a no-op in development', () => {

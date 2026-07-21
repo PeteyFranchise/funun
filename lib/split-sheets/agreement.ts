@@ -70,11 +70,14 @@ export type CounselReviewStatus = 'unreviewed' | 'reviewed'
  * below records who reviewed it and when, so the flip itself is the audit
  * trail.
  *
- * Reviewing attorney: (unreviewed — pending P17-09a)
+ * Reviewing attorney: PENDING — Pete confirmed 2026-07-21 that counsel has
+ *   reviewed and approved AGREEMENT_CLAUSES for use, with the attorney to
+ *   direct any future wording changes directly. Name/firm not yet on file;
+ *   fill in below when available so this record is complete.
  * Firm: —
- * Review date: —
+ * Review date: 2026-07-21 (approval date; review may have preceded this)
  */
-export const COUNSEL_REVIEW_STATUS: CounselReviewStatus = 'unreviewed'
+export const COUNSEL_REVIEW_STATUS: CounselReviewStatus = 'reviewed'
 
 /**
  * Throws a descriptive Error when the runtime environment is production
