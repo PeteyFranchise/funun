@@ -76,7 +76,7 @@ These are not mutually exclusive: plausible end-state is C + D (metered free e-s
 
 These are REQUIREMENTS for any e-sign mechanism Funūn ships, decided ahead of the open questions below:
 
-1. **Seamless embedding** — signing happens inside the Funūn experience; the user is never taken elsewhere. This is a hard requirement, not a preference. (Rules out any provider tier that redirects to a vendor-hosted page — e.g. Dropbox Sign's sub-$300 tiers.)
+1. **Seamless embedding** — signing happens inside the Funūn experience; the user is never taken elsewhere. This is a hard requirement, not a preference. (Rules out any provider tier that redirects to a vendor-hosted page — e.g. Dropbox Sign's app-only tiers, which carry no API/embedding at any price. See the "Dropbox Sign pricing — verified" entry below in Decision record: the "$300/mo" figure originally recorded here was imprecise; embedding requires a separate API product line, cheapest embedding-capable tier $250/mo.)
 2. **Mobile-first signing** — split-sheet signing conversations happen in studios where collaborators most likely have only their phones. The embedded signing surface must be genuinely easy on a phone: tap-friendly, no pinch-zoom archaeology, signature capture that works with a thumb. This is a product-positioning bet: being the most convenient split-sheet solution on the market for artists and songwriters IS the wedge.
 3. Consequence for provider evaluation: **mobile embedded-signing UX is a first-class evaluation axis**, equal to price and audit-trail quality. Any sandbox spike must test on a phone-sized viewport (and ideally a real phone in one hand), not a desktop browser.
 
@@ -116,6 +116,23 @@ Implementation lands in **17-06** (unexecuted — no rework). `lib/split-sheets/
 ## Decision record
 
 - 2026-07-18 — Deliberation opened; NO decision. 16-09 (sync-license e-sign, SignWell) proceeds unchanged. Wave 2 upload-only flow remains the split-sheet path for now.
+
+### 2026-07-21 — Dropbox Sign pricing, verified directly (research-only, no decision affected)
+
+Pete asked which competitor charged "$0.20 like DocuSeal, but only after a free bucket" — no such provider appears anywhere in this deliberation's research. Prompted a direct re-check of Dropbox Sign's actual pricing pages, since the figure recorded here (`sub-$300 tiers`, Locked requirement #1) turned out to be imprecise.
+
+**Two separate Dropbox Sign products, easy to conflate:**
+
+| Product | Tiers | Signature requests | API / embedding |
+|---|---|---|---|
+| **The app** (sign.dropbox.com/products/dropbox-sign) | Essentials $15/mo · Standard $25/user/mo · Premium custom | **Unlimited**, all tiers | **None** — no API, no embedding at any price |
+| **The API** (sign.dropbox.com/products/dropbox-sign-api) | Essentials $75/mo · **Standard $250/mo** · Premium custom quote | 50/mo · **100/mo** · custom | Embedded signing requires **Standard or above** |
+
+So the disqualifying tier for Funūn's "seamless embedding" requirement is the **API Standard plan: $250/mo for 100 requests**, not $300/mo for 250 — the original figure conflated the two product lines. Directionally the same conclusion (still ruled out on the embedding-redirect requirement regardless of exact price), but the number itself was wrong and is corrected in Locked requirement #1 above.
+
+**What happens past the included quota — genuinely unresolved, and this is the interesting finding:** Dropbox Sign's own API pricing page states overage is "additional cost add-on, contact sales for details." No per-request rate, no published cap behavior, no self-serve answer. This is a real asymmetry against DocuSeal, whose $0.20/completed-document rate is flat, published, and self-serve at any volume (confirmed live at the Phase 17 provider-verification gate). Not decision-relevant here — Dropbox Sign was already ruled out on the embedding requirement — but worth having on record if Dropbox Sign is ever reconsidered for a different lane (e.g. a future enterprise/buyer-facing product where its opacity might trade against other strengths).
+
+Sources: [Dropbox Sign pricing](https://sign.dropbox.com/products/dropbox-sign/pricing), [Dropbox Sign API pricing](https://sign.dropbox.com/products/dropbox-sign-api/pricing), [Dropbox Help — API cost](https://help.dropbox.com/plans/how-much-does-the-dropbox-sign-api-cost).
 
 ### 2026-07-19 — ACCESS-MODEL DELIBERATION SESSION (Pete + Claude). Decisions:
 
