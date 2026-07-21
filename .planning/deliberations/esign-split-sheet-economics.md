@@ -145,6 +145,8 @@ Sources: [Dropbox Sign pricing](https://sign.dropbox.com/products/dropbox-sign/p
 
 ### 2026-07-21 — GAP identified during live checkpoint: recipient has no self-correction path (P17-07 Task 3, in progress)
 
+**SUPERSEDED 2026-07-21 — see `.planning/deliberations/split-sheet-identity-and-collaborator-model.md` §7.** What started as "widen the recipient's edit options" grew into a full identity/collaborator/Groups redesign across that same session. §7 of that document is the resolved design for this exact gap; treat this entry as historical context for how the gap was found, not as the active spec.
+
 While running Phase 17's live signing checkpoint, Pete asked what happens if the sender mistypes a recipient's data. Answer, confirmed against the shipped code: `/approve/[token]` (`components/split-sheets/SplitApprovalView.tsx`, `app/api/approve/[token]/route.ts`) gives a recipient exactly two actions — **approve** or **counter-propose a different split percentage**. Nothing lets a recipient correct their OWN legal name, PRO, IPI, publishing designee, or administrator. Email is worse: if it's wrong, the recipient never receives the invite at all, so there is no path for them to notice or fix it — only the sender, by realizing nobody signed, can catch it.
 
 **Pete's directive: widen this, for financial and legal reasons, both real:**
