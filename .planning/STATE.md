@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Completed 17-07-PLAN.md (Tasks 1-2); Task 3 human checkpoint OUTSTANDING
-last_updated: "2026-07-20T17:31:31.838Z"
+stopped_at: Phase 18 context reconciled against identity/collaborator redesign; 18-01..18-04 stale, need replan
+last_updated: "2026-07-21T16:13:26.398Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 13 execution started
 progress:
@@ -283,11 +283,11 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-20T17:31:31.813Z
-Stopped at: Completed 17-07-PLAN.md (Tasks 1-2); Task 3 human checkpoint OUTSTANDING
+Last session: 2026-07-21T16:13:26.378Z
+Stopped at: Phase 18 context reconciled against identity/collaborator redesign; 18-01..18-04 stale, need replan
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
-Resume file: None
+Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
 ## Operator Next Steps
 
