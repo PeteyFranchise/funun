@@ -1,16 +1,32 @@
 # Phase 17 — Resume Here
 
-**Paused:** 2026-07-20 · **Branch:** `codex/phase-11-presence-messaging` · **Head at pause:** `2482e66`
+**Paused:** 2026-07-20, updated 2026-07-21 · **Branch:** `codex/phase-11-presence-messaging`
 
 **Phase 17 code is COMPLETE.** All ten plans have SUMMARYs; `gsd-tools` reports zero incomplete plans. Migrations 062–065 are applied and verified on the remote database. Gates green: `npm run build` succeeds, `npx tsc --noEmit` clean (before *and* after a build), `npm run lint` clean, **71 suites / 831 tests**.
 
-Everything below is human-gated work. Nothing is half-finished in the codebase — no partial edits, no uncommitted state, no broken intermediate.
+**Deploy and webhook wiring are DONE, as of 2026-07-21.** Env vars are set in Vercel production (Pete added `DOCUSEAL_API_KEY`, `DOCUSEAL_WEBHOOK_SECRET`, `ESIGN_FROM_EMAIL` personally), production is deployed, and the webhook probe confirmed **401 on an unsigned payload** — the route is live and verification is active. Section "1. Deploy + wire the webhook" below is historical record, not a pending task.
 
 ---
 
-## THE BLOCKER — start here
+## THE ACTUAL BLOCKER NOW — a deliberate sequencing decision, not a technical one
 
-Three environment variables are **missing from the Vercel production target** (`funun`, scope `peteyfranchises-projects`, prod URL `https://www.funun.studio`). Codex inspected and correctly stopped rather than deploying with partial config.
+**The live checkpoint (§2 below) is intentionally ON HOLD.** Not because anything is broken in Phase 17's code — because attempting the checkpoint surfaced a real product problem worth fixing *before* testing against it, and Pete decided to fix that first rather than test a flow already known to be confusing.
+
+**What happened:** while preparing to run the checkpoint, a live reproduction (Maya Rayes account, `funun.studio/split-sheets`, screenshotted step-by-step) turned up what looked like a state-corruption bug — adding a second party appeared to overwrite the first party's data. A careful, deliberate re-reproduction proved **the underlying code is not broken**: two independently-added parties rendered correctly and split cleanly to 50/50. The real cause was the *flow itself* — the initiator has to manually add-and-fill their own row (via "+ Add party" then "Use my info") before they can even add a real collaborator, and that confusion is compounded by a genuinely broken, cramped collaborator-picker popup. Full trace: `.planning/deliberations/split-sheet-identity-and-collaborator-model.md`, "Originating bug" section.
+
+**That investigation grew into a full redesign**, captured in the same document: the initiator should be party 1 automatically (legal name locked, PRO/IPI live-linked from Settings, no manual add-yourself step); collaborators get added via email/phone only; a real structured Groups feature; SMS invites; and a symmetrical "advanced info" pattern on both the initiator's and the recipient's side. Eight decisions, fully reasoned, in that document.
+
+**Pete's call: build this redesign before running the live checkpoint**, rather than test the current, known-confusing flow and then redo the test once the redesign ships. This is deliberate, not a stall.
+
+**Concrete conflict this surfaced:** Phase 18's `18-01-PLAN.md` (drafted, unexecuted) explicitly says *"CollaboratorPicker is rendered on every party row exactly as it is in create mode"* — meaning it's written to extend the current picker onto the living-draft surface unchanged. Executing 18-01 as drafted before the redesign would bake the same confusing pattern into a second surface. **So this isn't a separate new phase — the redesign needs to fold into and reshape Phase 18's existing drafts.** `/gsd-discuss-phase 18` is the next step, reconciling `split-sheet-identity-and-collaborator-model.md` against 18-01 through 18-04 before any of them execute.
+
+**Sequencing from here:** `/gsd-discuss-phase 18` → replan 18-01..18-04 against the new identity model → execute → *then* resume the live checkpoint (§2) against the improved flow, not the current one.
+
+---
+
+## Reference — env var setup (DONE, kept for the record)
+
+Three environment variables were missing from the Vercel production target (`funun`, scope `peteyfranchises-projects`, prod URL `https://www.funun.studio`). Codex inspected and correctly stopped rather than deploying with partial config; Pete then added them personally, since two are live API credentials that shouldn't pass through a chat transcript or agent hands.
 
 ```bash
 npx vercel env add DOCUSEAL_API_KEY production --scope peteyfranchises-projects --project funun
@@ -18,46 +34,22 @@ npx vercel env add DOCUSEAL_WEBHOOK_SECRET production --scope peteyfranchises-pr
 npx vercel env add ESIGN_FROM_EMAIL production --scope peteyfranchises-projects --project funun
 ```
 
-Each prompts interactively, so nothing lands in shell history.
-
-**Pete must do this personally.** Two of the three are live API credentials — not delegable to Claude or Codex, and they must not pass through a chat transcript. `.env.local` is permission-guarded for the same reason.
-
-Getting these right matters:
-
-| Var | Watch out for |
-|---|---|
-| `DOCUSEAL_WEBHOOK_SECRET` | Must be **byte-identical** to the DocuSeal dashboard secret, `whsec_` prefix included. Do not strip it, do not base64-decode it. A mismatch rejects every genuine webhook as forged — and it fails *silently*, looking exactly like DocuSeal never delivered. |
-| `DOCUSEAL_API_KEY` | The `X-Auth-Token` from the **Pro** account (upgraded 2026-07-20), not a leftover trial token. |
-| `ESIGN_FROM_EMAIL` | `esign@funun.studio`. **Not a secret** — this one is delegable. But the mailbox must exist, be monitored, and sit on a Resend-verified domain. It is both sender AND reply-to, so a collaborator hitting reply on a split-sheet invite lands there. Likely the first inbound message any collaborator ever sends Funūn. |
-
-Verify by name only when done:
-```bash
-npx vercel env ls production --scope peteyfranchises-projects --project funun
-```
-
-Already set in production: Supabase (URL/anon/service-role), Anthropic, all Stripe keys, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `NEXT_PUBLIC_APP_URL`, Google Places, `NEXT_PUBLIC_VAULT_DEMO`.
+All three confirmed present via `vercel env ls` — Encrypted, Production. Already set alongside them: Supabase (URL/anon/service-role), Anthropic, all Stripe keys, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `NEXT_PUBLIC_APP_URL`, Google Places, `NEXT_PUBLIC_VAULT_DEMO`.
 
 ---
 
-## Then, in order
+## 1. Deploy + wire the webhook — DONE, 2026-07-21
 
-### 1. Deploy + wire the webhook — delegable to Codex
+Completed by Codex. Pre-deploy gates all passed, production deployed and auto-promoted to `https://www.funun.studio`, webhook probe confirmed:
 
-The full prompt is in this folder's git history and can be regenerated; the substance:
+```bash
+curl -i -X POST https://funun.studio/api/webhooks/docuseal -H 'Content-Type: application/json' -d '{}'
+# -> 401 {"error":"Webhook verification failed"}
+```
 
-- Pre-deploy gates (build / tsc / lint / test) — **already passing as of `2482e66`**, but re-run them; a failing build is what blocked this entire path for most of 2026-07-20.
-- Deploy to production (Pete already approved production in-session on 2026-07-20; re-confirm if that has gone stale).
-- Report the deployed URL.
-- **Probe the webhook — this is a real security test, not a smoke test:**
-  ```bash
-  curl -i -X POST https://<deployed-url>/api/webhooks/docuseal \
-    -H 'Content-Type: application/json' -d '{}'
-  ```
-  Expect **401** (verification failed) with the secret set, or **503** (not configured) without it. **A 200 or 500 is a problem — stop.** A webhook that accepts unsigned payloads lets anyone forge a "document executed" event, which files contracts into lockers and moves readiness scores.
-- Point the DocuSeal dashboard webhook at `https://<deployed-url>/api/webhooks/docuseal`, subscribed to submission-completion events.
-- Confirm the dashboard secret matches the Vercel value — report **match/mismatch only**, never print either.
+That's the correct, expected result — the route exists, the secret is loaded, and an unsigned/forged payload is rejected. DocuSeal dashboard webhook events subscribed: `form.viewed`, `form.started`, `form.completed`, `form.declined`, `submission.completed`. No dashboard change needed — the route only acts on `submission.completed`; everything else is acknowledged and ignored.
 
-### 2. The 10-step live checkpoint (17-07 Task 3) — SPLIT
+## 2. The 10-step live checkpoint (17-07 Task 3) — SPLIT, ON HOLD (see blocker above)
 
 Full text: `.planning/phases/17-split-sheet-esign/17-07-PLAN.md`, the `checkpoint:human-verify` task.
 
@@ -72,7 +64,7 @@ Full text: `.planning/phases/17-split-sheet-esign/17-07-PLAN.md`, the `checkpoin
 
 **Expect step 3 to fail, and it is not a new bug:** `ReconcileDiff` is mounted on no page. 17-05 built the component and both routes but wired no surface. `reconcileOffered` fires correctly and links to `/split-sheets/{id}`, where there may be nothing to render it. This is the `/split-sheets` orphaning that **Phase 18 exists to fix**.
 
-### 3. Attorney review — the long-lead item
+## 3. Attorney review — the long-lead item, independent of the sequencing decision above
 
 Package ready and unchanged: `~/Desktop/Funun-Split-Sheet-Attorney-Review/` (also in `counsel-review/` here).
 
@@ -106,6 +98,6 @@ The two questions that matter most, from the package's §3:
 - `.planning/FINANCIALS.md` — AM-2c recipient cap, AM-3 spend trigger, D-18c single-provider decision
 - `counsel-review/COUNSEL-REVIEW-PACKAGE.md` — §6 holds notes for Pete that were stripped from the attorney-facing copy
 
-## After Phase 17 closes
+## After Phase 17's checkpoint (deliberately deferred — see blocker above)
 
-**Phase 18** (Split-Sheet Home) has four plans drafted and unexecuted: waves 18-01 → 18-03 → 18-02 ∥ 18-04. It fixes the `/split-sheets` orphaning, the living draft, the Contract Locker workspace, and coverage-based readiness — including the `ReconcileDiff` surface that the checkpoint will expose as missing.
+**Phase 18** (Split-Sheet Home) has four plans drafted and unexecuted: waves 18-01 → 18-03 → 18-02 ∥ 18-04. It fixes the `/split-sheets` orphaning, the living draft, the Contract Locker workspace, and coverage-based readiness — including the `ReconcileDiff` surface that the checkpoint will expose as missing. **These plans are now stale against `split-sheet-identity-and-collaborator-model.md` and need a discuss/replan pass before executing** — see the blocker section at the top of this document.
