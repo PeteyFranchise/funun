@@ -8,7 +8,7 @@
 
 ## Why this exists
 
-While running Phase 17's live signing checkpoint, Pete hit a real, reproducible bug: adding a second party to a split sheet corrupted the first party's data instead of creating a new row (tracked separately — see "Known open bug" at the bottom; NOT resolved by this deliberation). Investigating it surfaced a much bigger question: the split-sheet builder asks every user — initiator and collaborator alike — to manually re-type identity data (legal name, PRO, IPI, publisher, administrator) that, for a Funūn user, already exists in their own Settings. That observation grew into a full redesign of how identity flows through split sheets, collaborators, and a new Groups concept. This document is the full, decided shape of that redesign.
+While running Phase 17's live signing checkpoint, Pete hit what looked like a bug: adding a second party to a split sheet appeared to corrupt the first party's data instead of creating a new row. A live, step-by-step reproduction (see "Originating bug" at the bottom) later confirmed the underlying state logic is correct — the real cause was confusion from the current flow itself, and is resolved by this redesign rather than needing a separate fix. Investigating it surfaced a much bigger question: the split-sheet builder asks every user — initiator and collaborator alike — to manually re-type identity data (legal name, PRO, IPI, publisher, administrator) that, for a Funūn user, already exists in their own Settings. That observation grew into a full redesign of how identity flows through split sheets, collaborators, and a new Groups concept. This document is the full, decided shape of that redesign.
 
 **Relationship to the earlier-captured gap:** `esign-split-sheet-economics.md`'s 2026-07-21 entry ("recipient has no self-correction path") is **superseded by §7 of this document**. That entry should be marked resolved-by-reference once this deliberation is scoped into a real plan.
 
@@ -116,9 +116,13 @@ While running Phase 17's live signing checkpoint, Pete hit a real, reproducible 
 
 ---
 
-## Known open bug — NOT resolved by this deliberation
+## Originating bug — investigated live, resolved by this redesign (not a separate code defect)
 
-The production bug that started this investigation (adding a second party corrupts the first party's `professionalName` field instead of creating a new row, observed live during the Phase 17 checkpoint with a phantom-party split-percentage symptom — Total showing 50% with only one visible row) is **still open**. This deliberation describes the target design, not a fix for the current defect. That bug needs its own debugging pass, independent of when this redesign gets scheduled.
+The bug that started this investigation (adding a second party appeared to corrupt the first party's `professionalName` field instead of creating a new row) was reproduced step-by-step, screenshotting at each stage, on 2026-07-21. **The underlying state logic is not broken:** a clean, deliberate reproduction (type song name → "+ Add party" once → screenshot → "+ Add party" again → screenshot) produced two correctly independent rows, each with its own Legal Name/Role/PRO/IPI fields, splitting cleanly to 50%/50%. No corruption occurred.
+
+**Root cause: not a code defect, but confusion caused by the current flow itself.** Today, the initiator has to manually click "+ Add party" and then "Use my info" to populate *their own* row before they can add a real collaborator — there is no auto-included first party. Combined with the cramped, badly-positioned collaborator-picker popup (already flagged elsewhere in this document), it's easy to lose track of which row is being edited, producing exactly the "my info landed on the wrong row" symptom originally reported.
+
+**This is fully addressed by §9 as already specified** — the initiator should never have to manually add or fill in their own row at all; they're party 1 automatically, with legal name locked and identity live-linked from Settings. Once that ships, the confusing manual "add yourself first" step this bug depended on no longer exists. **No separate debugging pass or interim patch is needed** — building §9 (and the identity-locking in §1/§2 it depends on) resolves this bug as a side effect, not a parallel task.
 
 ## Next step
 
