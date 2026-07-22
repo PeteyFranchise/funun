@@ -1,6 +1,6 @@
 # Phase 17 — Resume Here
 
-**Paused:** 2026-07-20, updated 2026-07-21 · **Branch:** `codex/phase-11-presence-messaging`
+**Paused:** 2026-07-20, updated 2026-07-22 (Phase 18 now shipped — see STATUS below) · **Branch:** `codex/phase-11-presence-messaging`
 
 **Phase 17 code is COMPLETE.** All ten plans have SUMMARYs; `gsd-tools` reports zero incomplete plans. Migrations 062–065 are applied and verified on the remote database. Gates green: `npm run build` succeeds, `npx tsc --noEmit` clean (before *and* after a build), `npm run lint` clean, **71 suites / 831 tests**.
 
@@ -8,19 +8,21 @@
 
 ---
 
-## THE ACTUAL BLOCKER NOW — a deliberate sequencing decision, not a technical one
+## STATUS 2026-07-22 — Phase 18 SHIPPED; the sequencing blocker is CLEARED
 
-**The live checkpoint (§2 below) is intentionally ON HOLD.** Not because anything is broken in Phase 17's code — because attempting the checkpoint surfaced a real product problem worth fixing *before* testing against it, and Pete decided to fix that first rather than test a flow already known to be confusing.
+**The redesign that put this checkpoint on hold is done.** Phase 18 (Split-Sheet Home) was replanned against `split-sheet-identity-and-collaborator-model.md` and fully executed on 2026-07-22 — 5 plans / 3 waves, migrations 066/067/068 live (LOCAL=REMOTE through 068), verifier `passed_with_human_checks`, security audit **34/35 threats closed, 0 high/critical** (`18-SECURITY.md`), and 3 of 4 code-review findings fixed (`18-REVIEW.md`; suite 84 suites / 1043 tests, `npm run build` re-run clean exit 0 post-fix on 2026-07-22).
 
-**What happened:** while preparing to run the checkpoint, a live reproduction (Maya Rayes account, `funun.studio/split-sheets`, screenshotted step-by-step) turned up what looked like a state-corruption bug — adding a second party appeared to overwrite the first party's data. A careful, deliberate re-reproduction proved **the underlying code is not broken**: two independently-added parties rendered correctly and split cleanly to 50/50. The real cause was the *flow itself* — the initiator has to manually add-and-fill their own row (via "+ Add party" then "Use my info") before they can even add a real collaborator, and that confusion is compounded by a genuinely broken, cramped collaborator-picker popup. Full trace: `.planning/deliberations/split-sheet-identity-and-collaborator-model.md`, "Originating bug" section.
+**What shipped** (the exact things this checkpoint was waiting on): the initiator is now party 1 automatically — legal name locked from Settings, PRO/IPI/publisher/administrator live-linked (migration 066 + `resolvePartyIdentity()`); collaborators are added via the new email/phone-first **PartyPicker** (the cramped popup is gone, and `CollaboratorPicker` was left byte-for-byte untouched so MetadataStudio is unaffected); the living draft exists (`/split-sheets` list + `/split-sheets/[id]` edit — the orphaning §2/step-3 relied on is fixed); the attention-first Contract Locker; song-level attachment (migration 067); and coverage-based readiness (migration 068). **Groups and SMS were explicitly deferred** to future phases — they are NOT in Phase 18.
 
-**That investigation grew into a full redesign**, captured in the same document: the initiator should be party 1 automatically (legal name locked, PRO/IPI live-linked from Settings, no manual add-yourself step); collaborators get added via email/phone only; a real structured Groups feature; SMS invites; and a symmetrical "advanced info" pattern on both the initiator's and the recipient's side. Eight decisions, fully reasoned, in that document.
+**So the live checkpoint (§2) is no longer blocked on a redesign.** Remaining real prerequisites before running it:
 
-**Pete's call: build this redesign before running the live checkpoint**, rather than test the current, known-confusing flow and then redo the test once the redesign ships. This is deliberate, not a stall.
+1. **Mint-envelope legal-name gate (NEW — surfaced by Phase 18; fix in progress).** A party fast-added by email/phone has a blank `legal_name`, and `app/api/split-sheets/[id]/mint-envelope/route.ts` does not require one before minting — so a fast-added party can be minted onto the legal PDF as a bare em-dash. Confirmed by the Phase 18 security audit (open item, medium, attributed here to Phase 17) and code review. A fix (guard blocking mint until every party has a real legal name) is being applied in a separate session. **This is the exact mint path the checkpoint exercises — land it first.**
+2. **Confirm the counsel-review flip is genuine.** Commit `1e3aac5` (17-09a) set `COUNSEL_REVIEW_STATUS = 'reviewed'`, unblocking production minting. §3 below previously said *"do not flip it to test the flow."* Before minting real documents, confirm an actual attorney review (or a deliberate, recorded owner decision) backs that flip — reviewer/firm/date in the comment above the constant.
+3. **The Pete-only live steps (§2).** Mobile 375px signing, inbox confirmation (arrival, from-address, no provider-branded mail), and certificate/glyph rendering — none honestly delegable. Real money ($0.20/completed doc) and real email; use three addresses you control.
 
-**Concrete conflict this surfaced:** Phase 18's `18-01-PLAN.md` (drafted, unexecuted) explicitly says *"CollaboratorPicker is rendered on every party row exactly as it is in create mode"* — meaning it's written to extend the current picker onto the living-draft surface unchanged. Executing 18-01 as drafted before the redesign would bake the same confusing pattern into a second surface. **So this isn't a separate new phase — the redesign needs to fold into and reshape Phase 18's existing drafts.** `/gsd-discuss-phase 18` is the next step, reconciling `split-sheet-identity-and-collaborator-model.md` against 18-01 through 18-04 before any of them execute.
+DocuSeal API + webhook wiring is already DONE (env vars set in Vercel prod, webhook probe returns 401 on an unsigned payload — see the record below).
 
-**Sequencing from here:** `/gsd-discuss-phase 18` → replan 18-01..18-04 against the new identity model → execute → *then* resume the live checkpoint (§2) against the improved flow, not the current one.
+**Sequencing from here:** land the mint-gate fix → confirm the counsel-review backing → run the §2 live checkpoint against the improved flow.
 
 ---
 
@@ -62,7 +64,7 @@ Full text: `.planning/phases/17-split-sheet-esign/17-07-PLAN.md`, the `checkpoin
 
 **This run costs real money** ($0.20 per completed document) and **sends real email**. Use three email addresses you control.
 
-**Expect step 3 to fail, and it is not a new bug:** `ReconcileDiff` is mounted on no page. 17-05 built the component and both routes but wired no surface. `reconcileOffered` fires correctly and links to `/split-sheets/{id}`, where there may be nothing to render it. This is the `/split-sheets` orphaning that **Phase 18 exists to fix**.
+**Step 3 (was "expect it to fail"): re-verify — Phase 18 shipped the surface.** `reconcileOffered` links to `/split-sheets/{id}`, which was orphaned when this was written (17-05 built `ReconcileDiff` + both routes but wired no page). **Phase 18's 18-01 shipped `/split-sheets/[id]`**, so the orphaning is fixed. Before assuming step 3 still fails, confirm whether `ReconcileDiff` (or the reconcile affordance) is actually mounted on the new `[id]` page — if 18-01 wired it, this expected failure is resolved; if not, it's a small remaining gap to close before the checkpoint, not the wholesale orphaning it used to be.
 
 ## 3. Attorney review — the long-lead item, independent of the sequencing decision above
 
@@ -100,4 +102,4 @@ The two questions that matter most, from the package's §3:
 
 ## After Phase 17's checkpoint (deliberately deferred — see blocker above)
 
-**Phase 18** (Split-Sheet Home) has four plans drafted and unexecuted: waves 18-01 → 18-03 → 18-02 ∥ 18-04. It fixes the `/split-sheets` orphaning, the living draft, the Contract Locker workspace, and coverage-based readiness — including the `ReconcileDiff` surface that the checkpoint will expose as missing. **These plans are now stale against `split-sheet-identity-and-collaborator-model.md` and need a discuss/replan pass before executing** — see the blocker section at the top of this document.
+**Phase 18** (Split-Sheet Home) is **DONE** — executed 2026-07-22 (5 plans / 3 waves: 18-05 identity foundation, 18-03 song attachment, 18-01 living draft, 18-04 coverage readiness, 18-02 Contract Locker). The `split-sheet-identity-and-collaborator-model.md` redesign was folded in via a replan (18-05 added; 18-01/18-02 rewritten; 18-03/18-04 unchanged) and shipped. It fixed the `/split-sheets` orphaning, the living draft, the Locker workspace, coverage-based readiness, and the identity/collaborator flow. See the STATUS section at the top of this document for the current state and the remaining checkpoint prerequisites.
