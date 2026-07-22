@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 13
 current_phase_name: network-trust-safety
 status: board-clear
-stopped_at: Phase 18 context reconciled against identity/collaborator redesign; 18-01..18-04 stale, need replan
-last_updated: "2026-07-21T16:13:26.398Z"
-last_activity: 2026-07-18
-last_activity_desc: Phase 13 execution started
+stopped_at: Phase 18 replanned (identity/collaborator redesign) — 5 plans / 3 waves, plan-checker PASSED; ready to execute
+last_updated: "2026-07-22T00:00:00.000Z"
+last_activity: 2026-07-22
+last_activity_desc: Phase 18 identity/collaborator replan (18-05 foundation added; 18-01/18-02 rewritten)
 progress:
   total_phases: 18
   completed_phases: 16
@@ -283,8 +283,29 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-21T16:13:26.378Z
-Stopped at: Phase 18 context reconciled against identity/collaborator redesign; 18-01..18-04 stale, need replan
+Last session: 2026-07-22
+Stopped at: Phase 18 REPLANNED for the identity/collaborator redesign. Fixed a
+malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
+detail section; Phase 17's detail block was also misplaced inside Future
+Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
+session: the live-link chain in the deliberation points at `user_profiles` which
+lacks legal_name/administrator (must read `artist_profiles`); `CollaboratorPicker`
+has an untested third caller (MetadataStudio's ComposerEditor); §9 auto-party-1 +
+relaxed validation are shared create/edit logic; and three schema gaps
+(collaborators.legal_name, collaborators.status, artist_profiles.legal_name_locked_at)
+had no owner. Result: added a wave-1 identity-foundation plan (18-05: migration 066
++ live-identity resolver + Settings legal-name lock, human-gated push) that
+living-draft depends on; rewrote 18-01 (living-draft — new separate PartyPicker,
+auto-party-1, §7 recipient advanced-info) and 18-02 (Locker — 3-state
+invited/opened/signed derived from existing columns, zero new schema). 18-03/18-04
+left byte-identical. Plan set: 5 plans / 3 waves. plan-checker PASSED (no revision
+loop). Requirements 12/12 covered. Decision-coverage gate returned could-not-parse
+(project uses P18-NN IDs, gate expects D-NN) with uncovered:[] — a parser mismatch,
+not a real gap; proceeded with override, verify-phase may re-surface. Session-locked
+decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
+flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
+non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
+Resume file: .planning/phases/18-split-sheet-home/18-01-PLAN.md
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
