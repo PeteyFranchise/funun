@@ -33,7 +33,7 @@ export default async function NewSplitSheetPage() {
   const { data: myProfileRow } = await service
     .from('artist_profiles')
     .select(
-      'artist_name, pro, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix'
+      'artist_name, pro, ipi, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix'
     )
     .eq('id', user.id)
     .maybeSingle()
@@ -43,6 +43,7 @@ export default async function NewSplitSheetPage() {
         legalName: composeLegalNameFromProfile(myProfileRow),
         artistName: myProfileRow.artist_name ?? '',
         pro: myProfileRow.pro ?? '',
+        ipi: myProfileRow.ipi ?? '',
         publishingDesignee: myProfileRow.publisher ?? '',
         administrator: myProfileRow.administrator ?? '',
       }
