@@ -22,6 +22,17 @@ type Party = {
   split_percentage: number
 }
 
+/** This party's own current identity fields (§7) — prefills the optional
+ * advanced-information disclosure so the recipient corrects rather than
+ * retypes from scratch. */
+export type PartyIdentity = {
+  legalName: string | null
+  pro: string | null
+  ipi: string | null
+  publishingDesignee: string | null
+  administrator: string | null
+}
+
 type Props = {
   token: string
   partyId: string
@@ -41,6 +52,8 @@ type Props = {
   signingSrc?: string | null
   /** This party's email, pre-filling the embed's signer step. */
   partyEmail?: string | null
+  /** §7 — this party's own current identity, for the advanced-info disclosure. */
+  partyIdentity?: PartyIdentity | null
 }
 
 type SubmitStatus = 'idle' | 'submitting' | 'approved' | 'countered' | 'error'
@@ -188,6 +201,143 @@ function SigningRegion({
   )
 }
 
+// ─── IdentityDisclosure (§7) ─────────────────────────────────────────
+// An optional, collapsed-by-default disclosure where the recipient can
+// fill in or correct their OWN legal name/PRO/IPI/publishing designee/
+// administrator. Never required to approve, counter, or sign — submitting
+// it is a distinct action (POST .../update_identity) from approve/counter.
+// No free-text field, ever (P18-13) — every field here is a structured
+// rights-registry value the initiator already asks for on the builder.
+function IdentityDisclosure({ token, initial }: { token: string; initial: PartyIdentity }) {
+  const [open, setOpen] = useState(false)
+  const [legalName, setLegalName] = useState(initial.legalName ?? '')
+  const [pro, setPro] = useState(initial.pro ?? '')
+  const [ipi, setIpi] = useState(initial.ipi ?? '')
+  const [publishingDesignee, setPublishingDesignee] = useState(initial.publishingDesignee ?? '')
+  const [administrator, setAdministrator] = useState(initial.administrator ?? '')
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  async function handleSave() {
+    setStatus('saving')
+    setErrorMsg('')
+    try {
+      const res = await fetch(`/api/approve/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_identity',
+          legal_name: legalName,
+          pro,
+          ipi,
+          publishing_designee: publishingDesignee,
+          administrator,
+        }),
+      })
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: string }
+        throw new Error(json.error ?? 'Could not save your details.')
+      }
+      setStatus('saved')
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Could not save your details.')
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="w-full rounded-[18px] border border-white/10 bg-card p-5">
+      <button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        className="text-sm font-medium text-brandindigo hover:text-white"
+      >
+        {open ? '– Hide advanced information' : '+ Advanced information'}
+      </button>
+      {!open && (
+        <p className="mt-1 text-xs text-white/40">
+          Fix your own legal name, PRO, IPI, publisher, or administrator — never
+          required to approve or sign.
+        </p>
+      )}
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className={labelClass}>Legal name</label>
+            <input
+              value={legalName}
+              onChange={e => setLegalName(e.target.value)}
+              placeholder="Full legal name, as registered with PRO"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>PRO</label>
+              <input
+                value={pro}
+                onChange={e => setPro(e.target.value)}
+                placeholder="ASCAP, BMI, SESAC…"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>IPI #</label>
+              <input
+                value={ipi}
+                onChange={e => setIpi(e.target.value)}
+                placeholder="IPI #"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Publishing designee</label>
+              <input
+                value={publishingDesignee}
+                onChange={e => setPublishingDesignee(e.target.value)}
+                placeholder="Publisher name, or None"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Administrator</label>
+              <input
+                value={administrator}
+                onChange={e => setAdministrator(e.target.value)}
+                placeholder="Publishing administrator, or None"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+          </div>
+
+          {status === 'error' && <p className="text-sm text-rose-400">{errorMsg}</p>}
+          {status === 'saved' && <p className="text-sm text-emerald-300">Saved.</p>}
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={status === 'saving'}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-sm font-medium text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-40"
+          >
+            {status === 'saving' ? 'Saving…' : 'Save my details'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const EMPTY_IDENTITY: PartyIdentity = {
+  legalName: null,
+  pro: null,
+  ipi: null,
+  publishingDesignee: null,
+  administrator: null,
+}
+
 export function SplitApprovalView({
   token,
   partyId,
@@ -198,6 +348,7 @@ export function SplitApprovalView({
   parties,
   signingSrc,
   partyEmail,
+  partyIdentity,
 }: Props) {
   if (phase === 'preview') {
     // P18-08: a draft share is explicitly NOT a formal ask. No approve
@@ -224,6 +375,7 @@ export function SplitApprovalView({
           signerEmail={partyEmail ?? null}
           partyName={partyName}
         />
+        <IdentityDisclosure token={token} initial={partyIdentity ?? EMPTY_IDENTITY} />
       </PageShell>
     )
   }
@@ -272,6 +424,7 @@ export function SplitApprovalView({
       songName={songName}
       artistName={artistName}
       parties={parties}
+      partyIdentity={partyIdentity ?? EMPTY_IDENTITY}
     />
   )
 }
@@ -284,6 +437,7 @@ type ApprovePhaseProps = {
   songName: string
   artistName: string
   parties: Party[]
+  partyIdentity: PartyIdentity
 }
 
 function ApprovePhase({
@@ -293,6 +447,7 @@ function ApprovePhase({
   songName,
   artistName,
   parties,
+  partyIdentity,
 }: ApprovePhaseProps) {
   const [showCounter, setShowCounter] = useState(false)
   const [counterInput, setCounterInput] = useState('')
@@ -467,6 +622,9 @@ function ApprovePhase({
           )}
         </>
       )}
+
+      {/* §7 — optional, collapsed, distinct from approve/counter above */}
+      <IdentityDisclosure token={token} initial={partyIdentity} />
     </PageShell>
   )
 }

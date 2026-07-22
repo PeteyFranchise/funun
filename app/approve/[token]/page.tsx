@@ -152,6 +152,13 @@ export default async function ApprovePage({ params }: Props) {
       phase={phase}
       signingSrc={signingSrc}
       parties={(allParties ?? []) as { id: string; name: string; role: string | null; split_percentage: number }[]}
+      partyIdentity={{
+        legalName: (party!.legal_name as string | null) ?? null,
+        pro: (party!.pro as string | null) ?? null,
+        ipi: (party!.ipi as string | null) ?? null,
+        publishingDesignee: (party!.publishing_designee as string | null) ?? null,
+        administrator: (party!.administrator as string | null) ?? null,
+      }}
     />
   )
 }

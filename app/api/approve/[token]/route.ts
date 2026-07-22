@@ -2,9 +2,18 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 
+// ─── §7 identity-update allowlist ──────────────────────────────────────
+// Mass-assignment defense (V5): only these fields may be written by the
+// identity action, to the token's OWN party row (and, when linked, the
+// initiator's collaborators row). No free-text field — legal_name/pro/
+// ipi/publishing_designee/administrator are all structured rights-registry
+// values, never a caller-supplied note (P18-13).
+const IDENTITY_FIELDS = ['legal_name', 'pro', 'ipi', 'publishing_designee', 'administrator'] as const
+
 // ─── POST /api/approve/[token] ─────────────────────────────────────────
 // Public endpoint — no auth required. The 256-bit token is the authorization
-// secret (T-01-10). Handles approve or counter-proposal actions.
+// secret (T-01-10). Handles approve, counter-proposal, and (§7) a
+// recipient's own identity-correction action.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -13,14 +22,16 @@ export async function POST(
   const body = (await request.json()) as Record<string, unknown>
 
   const action = typeof body.action === 'string' ? body.action : ''
-  if (action !== 'approve' && action !== 'counter') {
+  if (action !== 'approve' && action !== 'counter' && action !== 'update_identity') {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   }
 
   const service = createServiceClient()
   const now = new Date().toISOString()
 
-  // ── 1. Look up party by token (T-01-13 stale token guard) ─────────
+  // ── 1. Look up party by token (T-01-13 stale token guard) — the token
+  // is the identity; the write/update target below is NEVER client-
+  // selected by any other means (V4). ─────────────────────────────────
   const { data: party, error: partyError } = await service
     .from('split_sheet_parties')
     .select('*, split_sheets(id, song_name, status, initiator_user_id)')
@@ -36,12 +47,6 @@ export async function POST(
     return NextResponse.json({ error: 'This link has expired' }, { status: 410 })
   }
 
-  // Reject if already in a final state (already-used guard)
-  const finalStatuses = ['approved', 'countered']
-  if (finalStatuses.includes(party.approval_status)) {
-    return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })
-  }
-
   const sheet = party.split_sheets as {
     id: string
     song_name: string
@@ -51,6 +56,65 @@ export async function POST(
 
   if (!sheet) {
     return NextResponse.json({ error: 'Split sheet not found' }, { status: 404 })
+  }
+
+  // ── §7 identity-update action — a distinct action from approve/counter,
+  // never gated by the "already used" approval_status check below (a
+  // party who already approved may still correct their own identity). ──
+  if (action === 'update_identity') {
+    // Freeze boundary (lib/split-sheets/lifecycle.ts): a minted or
+    // executed document's party identity is frozen — refuse rather than
+    // silently re-animating a signed/minting document's identity.
+    if (sheet.status === 'esign_pending' || sheet.status === 'executed') {
+      return NextResponse.json({ error: 'This split sheet can no longer be edited.' }, { status: 409 })
+    }
+
+    const update: Record<string, string | null> = {}
+    for (const key of IDENTITY_FIELDS) {
+      if (!(key in body)) continue
+      const value = body[key]
+      if (typeof value === 'string') {
+        const trimmed = value.trim()
+        update[key] = trimmed === '' ? null : trimmed
+      } else if (value === null) {
+        update[key] = null
+      }
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: 'No identity fields provided' }, { status: 400 })
+    }
+
+    // Write target resolved strictly from the token-matched party row
+    // above — never a client-supplied party id (T-18-01b).
+    const { error: updateError } = await service
+      .from('split_sheet_parties')
+      .update(update)
+      .eq('id', party.id)
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    // Reuse on future sheets (deliberation §7): OVERWRITE the linked
+    // collaborators row too, when this party is linked to one — this is
+    // the person's own verified data correcting itself (deliberation §1),
+    // never a call into or mutation of backfill_claimed_collaborators()
+    // (research Pitfall 5; that function stays additive/COALESCE for its
+    // own unrelated callers).
+    if (party.collaborator_id) {
+      await service.from('collaborators').update(update).eq('id', party.collaborator_id)
+    }
+
+    return NextResponse.json({ ok: true })
+  }
+
+  // Reject if already in a final state (already-used guard) — applies to
+  // approve/counter only; an identity correction is handled above and
+  // never reaches this gate.
+  const finalStatuses = ['approved', 'countered']
+  if (finalStatuses.includes(party.approval_status)) {
+    return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })
   }
 
   // ── 2. Apply action ───────────────────────────────────────────────
