@@ -47,8 +47,15 @@ export type ReconciliationResult = {
   needsWriteBack: boolean
 }
 
-/** trim + case-fold — the only identity signal available across the two systems. */
-function normalizeName(name: string): string {
+/**
+ * trim + case-fold — the only identity signal available across the two
+ * systems. Exported so lib/split-sheets/attachment.ts's title matcher
+ * builds on this SAME base normalization rather than inventing a second,
+ * competing notion of "the same string" (18-03 plan instruction) — two
+ * different foldings inside one feature is how the fuzzy matcher and this
+ * reconciler could come to disagree about the same sheet.
+ */
+export function normalizeName(name: string): string {
   return name.trim().toLowerCase()
 }
 

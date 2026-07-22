@@ -1,11 +1,4 @@
 import { buildFanoutRows, type BuildFanoutRowsInput } from '@/lib/split-sheets/distribution'
-import { POST as attachPOST } from '@/app/api/split-sheets/[id]/attach/route'
-import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-
-jest.mock('@/lib/supabase/server', () => ({
-  createApiClient: jest.fn(),
-  createServiceClient: jest.fn(),
-}))
 
 const BASE: BuildFanoutRowsInput = {
   parties: [
@@ -76,133 +69,10 @@ describe('buildFanoutRows — cross-account distribution (P17-06)', () => {
   })
 })
 
-// ─── Attach route authorization matrix ─────────────────────────────────
-function jsonRequest(body: unknown) {
-  return new Request('http://test.local/api/split-sheets/sheet-1/attach', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-}
-
-function buildApiClient({
-  userId,
-  sheet,
-  ownsProject,
-  ownDocs = [],
-}: {
-  userId: string | null
-  sheet: Record<string, unknown> | null
-  ownsProject: boolean
-  ownDocs?: { id: string; document_data: Record<string, unknown> | null }[]
-}) {
-  const sheetQuery = {
-    select: jest.fn(function (this: unknown) { return this }),
-    eq: jest.fn(function (this: unknown) { return this }),
-    maybeSingle: jest.fn(async () => ({ data: sheet, error: null })),
-  }
-  const projectQuery = {
-    select: jest.fn(function (this: unknown) { return this }),
-    eq: jest.fn(function (this: unknown) { return this }),
-    maybeSingle: jest.fn(async () => ({ data: ownsProject ? { id: 'project-1' } : null, error: null })),
-  }
-  const docsQuery = {
-    select: jest.fn(function (this: unknown) { return this }),
-    eq: jest.fn(function (this: unknown) { return this }),
-    is: jest.fn(async () => ({ data: ownDocs, error: null })),
-  }
-
-  const from = jest.fn((table: string) => {
-    if (table === 'split_sheets') return sheetQuery
-    if (table === 'vault_projects') return projectQuery
-    if (table === 'vault_documents') return docsQuery
-    throw new Error(`Unexpected table: ${table}`)
-  })
-
-  return {
-    auth: { getUser: jest.fn(async () => ({ data: { user: userId ? { id: userId } : null } })) },
-    from,
-  }
-}
-
-function buildServiceClient() {
-  const sheetsUpdateEq = jest.fn(async () => ({ data: null, error: null }))
-  const docsUpdateEq = jest.fn(async () => ({ data: null, error: null }))
-  const from = jest.fn((table: string) => {
-    if (table === 'split_sheets') return { update: jest.fn(() => ({ eq: sheetsUpdateEq })) }
-    if (table === 'vault_documents') return { update: jest.fn(() => ({ eq: docsUpdateEq })) }
-    throw new Error(`Unexpected table: ${table}`)
-  })
-  return { client: { from }, sheetsUpdateEq, docsUpdateEq }
-}
-
-beforeEach(() => {
-  jest.clearAllMocks()
-})
-
-describe('POST /api/split-sheets/[id]/attach — authorization matrix (V4, T-17-12)', () => {
-  it('401s without a session', async () => {
-    ;(createApiClient as jest.Mock).mockResolvedValue(buildApiClient({ userId: null, sheet: null, ownsProject: false }))
-    const res = await attachPOST(jsonRequest({ vault_project_id: 'project-1' }), { params: Promise.resolve({ id: 'sheet-1' }) })
-    expect(res.status).toBe(401)
-    expect(createServiceClient).not.toHaveBeenCalled()
-  })
-
-  it('403s when the caller is not a party on the sheet', async () => {
-    ;(createApiClient as jest.Mock).mockResolvedValue(
-      buildApiClient({
-        userId: 'stranger',
-        sheet: { id: 'sheet-1', initiator_user_id: 'initiator-1', status: 'executed', split_sheet_parties: [{ user_id: 'user-a' }] },
-        ownsProject: true,
-      })
-    )
-    const res = await attachPOST(jsonRequest({ vault_project_id: 'project-1' }), { params: Promise.resolve({ id: 'sheet-1' }) })
-    expect(res.status).toBe(403)
-    expect(createServiceClient).not.toHaveBeenCalled()
-  })
-
-  it('403s when the caller is a party but does not own the destination project', async () => {
-    ;(createApiClient as jest.Mock).mockResolvedValue(
-      buildApiClient({
-        userId: 'user-a',
-        sheet: { id: 'sheet-1', initiator_user_id: 'initiator-1', status: 'executed', split_sheet_parties: [{ user_id: 'user-a' }] },
-        ownsProject: false,
-      })
-    )
-    const res = await attachPOST(jsonRequest({ vault_project_id: 'project-1' }), { params: Promise.resolve({ id: 'sheet-1' }) })
-    expect(res.status).toBe(403)
-    expect(createServiceClient).not.toHaveBeenCalled()
-  })
-
-  it('400s when the sheet is not yet fully executed', async () => {
-    ;(createApiClient as jest.Mock).mockResolvedValue(
-      buildApiClient({
-        userId: 'initiator-1',
-        sheet: { id: 'sheet-1', initiator_user_id: 'initiator-1', status: 'esign_pending', split_sheet_parties: [] },
-        ownsProject: true,
-      })
-    )
-    const res = await attachPOST(jsonRequest({ vault_project_id: 'project-1' }), { params: Promise.resolve({ id: 'sheet-1' }) })
-    expect(res.status).toBe(400)
-    expect(createServiceClient).not.toHaveBeenCalled()
-  })
-
-  it('attaches the sheet and the caller’s own document when both checks pass', async () => {
-    ;(createApiClient as jest.Mock).mockResolvedValue(
-      buildApiClient({
-        userId: 'initiator-1',
-        sheet: { id: 'sheet-1', initiator_user_id: 'initiator-1', status: 'executed', split_sheet_parties: [] },
-        ownsProject: true,
-        ownDocs: [{ id: 'doc-1', document_data: { split_sheet_id: 'sheet-1' } }],
-      })
-    )
-    const service = buildServiceClient()
-    ;(createServiceClient as jest.Mock).mockReturnValue(service.client)
-
-    const res = await attachPOST(jsonRequest({ vault_project_id: 'project-1' }), { params: Promise.resolve({ id: 'sheet-1' }) })
-
-    expect(res.status).toBe(200)
-    expect(service.sheetsUpdateEq).toHaveBeenCalledWith('id', 'sheet-1')
-    expect(service.docsUpdateEq).toHaveBeenCalledWith('id', 'doc-1')
-  })
-})
+// NOTE (18-03): the POST /api/split-sheets/[id]/attach authorization-matrix
+// tests that used to live in this file moved to
+// lib/split-sheets/attachment.test.ts, alongside the new detach and
+// track-verification tests — the route's behavior changed (the
+// executed-only gate is removed per P18-04, and it now accepts an optional
+// track_id), so its tests now live next to the attachment module they
+// exercise rather than beside the unrelated fan-out builder.
