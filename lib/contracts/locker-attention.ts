@@ -85,6 +85,11 @@ export function resolveViewerContext(
   }
 }
 
+export type AttentionSheetAttachmentInput = {
+  vaultProjectId: string
+  trackId: string | null
+}
+
 export type AttentionSheetInput = {
   id: string
   songName: string
@@ -92,6 +97,13 @@ export type AttentionSheetInput = {
   initiatorUserId: string
   vaultProjectId: string | null
   trackId: string | null
+  /** Additional coverage via split_sheet_attachments (migration 067) — the
+   * SAME sheet attached to a second release (e.g. a single AND an album).
+   * Origin fields above cover the sheet's own track_id/vault_project_id
+   * only; a track reached ONLY through this array must still count as
+   * covered (WR-01). Optional so existing callers/fixtures that predate
+   * this field keep compiling and behaving as "no additional coverage". */
+  attachments?: AttentionSheetAttachmentInput[]
   parties: AttentionPartyInput[]
 }
 
@@ -246,13 +258,21 @@ export function buildAttentionSections({
   // track is "covered" by either a sheet whose own track_id matches it, or
   // a project-level "covers the whole release" sheet (track_id null,
   // migration 067's explicitly-marked exception) attached to the same
-  // project. A non-initiator's invisible draft covers nothing, per P18-11.
+  // project, OR any split_sheet_attachments row that reaches it (WR-01) —
+  // the join table migration 067 built specifically so one sheet can cover
+  // the same composition on a second release. A non-initiator's invisible
+  // draft covers nothing, per P18-11.
   const songsWithNoSheet: SongWithNoSheetRow[] = []
   for (const project of projects) {
     for (const track of project.tracks) {
-      const covered = visibleSheets.some(
-        s => s.trackId === track.id || (s.vaultProjectId === project.id && s.trackId === null)
-      )
+      const covered = visibleSheets.some(s => {
+        if (s.trackId === track.id || (s.vaultProjectId === project.id && s.trackId === null)) {
+          return true
+        }
+        return (s.attachments ?? []).some(
+          a => a.trackId === track.id || (a.vaultProjectId === project.id && a.trackId === null)
+        )
+      })
       if (!covered) {
         songsWithNoSheet.push({
           projectId: project.id,

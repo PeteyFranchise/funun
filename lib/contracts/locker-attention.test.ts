@@ -255,6 +255,50 @@ describe('buildAttentionSections — songs with no sheet', () => {
     })
     expect(result.songsWithNoSheet).toEqual([])
   })
+
+  // WR-01: a sheet originated on a DIFFERENT project (e.g. a Single) but
+  // attached to this project's track via split_sheet_attachments (the
+  // migration-067 join table, e.g. the same song also on an EP) must count
+  // as covered — not just the sheet's own origin trackId/vaultProjectId.
+  it('does not flag a track covered ONLY via split_sheet_attachments (second-release attach)', () => {
+    const result = buildAttentionSections({
+      viewerUserId: 'user-1',
+      sheets: [
+        sheet({
+          id: 'sheet-1',
+          status: 'executed',
+          initiatorUserId: 'user-1',
+          vaultProjectId: 'other-proj', // originated elsewhere (the Single)
+          trackId: 'other-track',
+          attachments: [{ vaultProjectId: 'proj-1', trackId: 'track-1' }],
+        }),
+      ],
+      documents: [],
+      projects,
+      hiddenDocumentIds: [],
+    })
+    expect(result.songsWithNoSheet.map(r => r.trackId)).toEqual(['track-2'])
+  })
+
+  it('a whole-release attachment (null track_id in split_sheet_attachments) covers every track in that project', () => {
+    const result = buildAttentionSections({
+      viewerUserId: 'user-1',
+      sheets: [
+        sheet({
+          id: 'sheet-1',
+          status: 'executed',
+          initiatorUserId: 'user-1',
+          vaultProjectId: 'other-proj',
+          trackId: null,
+          attachments: [{ vaultProjectId: 'proj-1', trackId: null }],
+        }),
+      ],
+      documents: [],
+      projects,
+      hiddenDocumentIds: [],
+    })
+    expect(result.songsWithNoSheet).toEqual([])
+  })
 })
 
 describe('buildAttentionSections — hidden documents (per-viewer only)', () => {

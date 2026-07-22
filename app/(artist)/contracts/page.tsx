@@ -41,6 +41,14 @@ function toAttentionSheets(sheets: SplitSheetRow[]): AttentionSheetInput[] {
     initiatorUserId: s.initiator_user_id,
     vaultProjectId: (s.vault_project_id as string | null) ?? null,
     trackId: (s.track_id as string | null) ?? null,
+    // Additional coverage via split_sheet_attachments (WR-01) — a track
+    // reached ONLY through this join table (e.g. the same sheet attached
+    // to a second release) still counts as covered, not just the sheet's
+    // own origin trackId/vaultProjectId above.
+    attachments: (s.split_sheet_attachments ?? []).map(a => ({
+      vaultProjectId: a.vault_project_id,
+      trackId: a.track_id,
+    })),
     parties: (s.split_sheet_parties ?? []).map(p => ({
       userId: p.user_id,
       name: p.name,

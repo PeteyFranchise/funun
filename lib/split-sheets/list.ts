@@ -25,6 +25,11 @@ export type SplitSheetPartyRow = {
   [key: string]: unknown
 }
 
+export type SplitSheetAttachmentRow = {
+  vault_project_id: string
+  track_id: string | null
+}
+
 export type SplitSheetRow = {
   id: string
   song_name: string
@@ -32,6 +37,7 @@ export type SplitSheetRow = {
   initiator_user_id: string
   created_at: string
   split_sheet_parties: SplitSheetPartyRow[]
+  split_sheet_attachments?: SplitSheetAttachmentRow[]
   [key: string]: unknown
 }
 
@@ -74,7 +80,7 @@ export async function fetchSplitSheetsForUser(
 ): Promise<SplitSheetRow[]> {
   const { data: initiatedData } = await supabase
     .from('split_sheets')
-    .select('*, split_sheet_parties(*)')
+    .select('*, split_sheet_parties(*), split_sheet_attachments(vault_project_id, track_id)')
     .eq('initiator_user_id', userId)
     .order('created_at', { ascending: false })
   const initiated = (initiatedData ?? []) as SplitSheetRow[]
@@ -93,7 +99,7 @@ export async function fetchSplitSheetsForUser(
   if (partySheetIds.length > 0) {
     const { data: partyOfData } = await supabase
       .from('split_sheets')
-      .select('*, split_sheet_parties(*)')
+      .select('*, split_sheet_parties(*), split_sheet_attachments(vault_project_id, track_id)')
       .in('id', partySheetIds)
       .neq('status', 'draft')
     partyOf = (partyOfData ?? []) as SplitSheetRow[]
