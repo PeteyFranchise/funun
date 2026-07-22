@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import {
   assertEditable,
   isAllowedStatusTransition,
+  partiesActuallyChanged,
   type SplitSheetStatus,
 } from '@/lib/split-sheets/lifecycle'
 import { createApiClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
+import type { PartyChangeSnapshot } from '@/lib/split-sheets/change-summary'
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Kept in sync with app/api/split-sheets/route.ts's PARTY_FIELDS. This
@@ -79,7 +81,30 @@ export async function PATCH(
     return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
   }
 
-  const editsParties = Array.isArray(body.parties) && body.parties.length > 0
+  // WR-04: "editsParties" means the incoming party set MATERIALLY differs
+  // from what's persisted (a real add/remove/split-percentage change,
+  // lib/split-sheets/lifecycle.ts's partiesActuallyChanged) — not merely
+  // "a parties[] array was present in the body." Every builder save
+  // includes the full parties[] array, so the old presence-only check
+  // forced a consensus reset (and the delete-and-reinsert below, which
+  // destroys every approval_token) on saves that changed nothing about
+  // who's on the sheet or what they're owed.
+  const partiesSubmitted = Array.isArray(body.parties) && body.parties.length > 0
+  let editsParties = false
+  if (partiesSubmitted) {
+    const { data: existingPartyRows } = await supabase
+      .from('split_sheet_parties')
+      .select('name, split_percentage')
+      .eq('split_sheet_id', id)
+    const before: PartyChangeSnapshot[] = (
+      (existingPartyRows ?? []) as { name: string; split_percentage: number }[]
+    ).map(p => ({ name: p.name, split_percentage: p.split_percentage }))
+    const after: PartyChangeSnapshot[] = (body.parties as Record<string, unknown>[]).map(p => ({
+      name: String(p.name ?? ''),
+      split_percentage: Number(p.split_percentage) || 0,
+    }))
+    editsParties = partiesActuallyChanged(before, after)
+  }
   const gate = assertEditable(current.status as SplitSheetStatus, editsParties)
   if (!gate.ok) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
@@ -137,8 +162,12 @@ export async function PATCH(
     update.status = 'draft'
   }
 
-  // Handle party replacement (delete-and-reinsert for Phase 1)
-  if (Array.isArray(body.parties) && body.parties.length > 0) {
+  // Handle party replacement (delete-and-reinsert for Phase 1). Gated on
+  // editsParties (an ACTUAL diff), not merely "parties[] present" (WR-04)
+  // — a value-for-value resubmission of the same parties/splits skips
+  // this entirely, so it never destroys approval_tokens for approvals
+  // that remain perfectly valid.
+  if (editsParties) {
     const rawParties = body.parties as Record<string, unknown>[]
     const parties = rawParties.map(sanitizeParty)
 

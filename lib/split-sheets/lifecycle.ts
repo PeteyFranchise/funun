@@ -20,6 +20,21 @@
 // an EXECUTED sheet it cascade-deleted esign_envelope_signers rows
 // (ON DELETE CASCADE, migration 062) — destroying the audit linkage between
 // a signed document and who signed it. Pure module: no I/O, fully testable.
+//
+// WR-04 (18-REVIEW.md): "does the PATCH body merely CONTAIN a parties[]
+// array" is not the same question as "does it change anything that
+// matters" — the builder always includes the full parties[] on every
+// save, so that first question was true on every edit, forcing a
+// consensus reset (and destroying every approval_token via the route's
+// delete-and-reinsert) even when nobody touched the party set or a split.
+// partiesActuallyChanged() answers the real question via a genuine
+// before/after diff, reusing summarizePartyChanges() (change-summary.ts)
+// rather than hand-rolling a second comparison — a value-for-value
+// resubmission (or a live-identity-only refresh, which that module is
+// structurally incapable of seeing per its own P18-09 contract) reports
+// no change, exactly like the diff the initiator already sees on save.
+
+import { summarizePartyChanges, type PartyChangeSnapshot } from './change-summary'
 
 export type SplitSheetStatus =
   | 'draft'
@@ -38,6 +53,24 @@ export const CONSENSUS_RESET_STATUSES: SplitSheetStatus[] = ['pending_approval',
 export type EditGate =
   | { ok: true; resetsConsensus: boolean }
   | { ok: false; status: number; error: string }
+
+/**
+ * Whether the incoming party set materially differs from what's
+ * persisted — a real add/remove/split-percentage change, per
+ * summarizePartyChanges()'s own P18-09 contract (identity fields are
+ * never part of this comparison; a value-for-value resubmission of the
+ * same parties/splits produces no records). Used to derive `editsParties`
+ * for assertEditable() below, so a PATCH that includes the full
+ * parties[] array (as every builder save does) but changes nothing about
+ * who's on the sheet or what they're owed does not force a consensus
+ * reset (WR-04).
+ */
+export function partiesActuallyChanged(
+  before: PartyChangeSnapshot[],
+  after: PartyChangeSnapshot[]
+): boolean {
+  return summarizePartyChanges(before, after).length > 0
+}
 
 /**
  * Decides whether a PATCH may proceed against a sheet in `status`.

@@ -1,10 +1,12 @@
 import {
   assertEditable,
   isAllowedStatusTransition,
+  partiesActuallyChanged,
   LIVING_DRAFT_STATUSES,
   CONSENSUS_RESET_STATUSES,
   type SplitSheetStatus,
 } from './lifecycle'
+import type { PartyChangeSnapshot } from './change-summary'
 
 describe('assertEditable — the freeze boundary', () => {
   describe('living-draft states stay freely editable', () => {
@@ -59,6 +61,59 @@ describe('assertEditable — the freeze boundary', () => {
     it('blocks sheet-level edits under a live envelope', () => {
       expect(assertEditable('esign_pending', false).ok).toBe(false)
     })
+  })
+})
+
+describe('partiesActuallyChanged — WR-04 real diff, not "was parties[] present"', () => {
+  it('reports false for a value-for-value resubmission of the same parties/splits', () => {
+    const before: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 60 },
+      { name: 'Jamie', split_percentage: 40 },
+    ]
+    const after: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 60 },
+      { name: 'Jamie', split_percentage: 40 },
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(false)
+  })
+
+  it('reports false for a live-identity-only change (never part of the diff at all)', () => {
+    // Identity fields (pro/ipi/legal_name/etc.) are never read by
+    // summarizePartyChanges — a party's Settings update live-resolving
+    // into these snapshots must not register as a party change.
+    const before: PartyChangeSnapshot[] = [{ name: 'Jamie', split_percentage: 40, pro: 'ASCAP' }]
+    const after: PartyChangeSnapshot[] = [{ name: 'Jamie', split_percentage: 40, pro: 'BMI' }]
+    expect(partiesActuallyChanged(before, after)).toBe(false)
+  })
+
+  it('reports true when a split percentage actually moved', () => {
+    const before: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 60 },
+      { name: 'Jamie', split_percentage: 40 },
+    ]
+    const after: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 50 },
+      { name: 'Jamie', split_percentage: 50 },
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(true)
+  })
+
+  it('reports true when a party was added', () => {
+    const before: PartyChangeSnapshot[] = [{ name: 'You', split_percentage: 100 }]
+    const after: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 60 },
+      { name: 'Rapper', split_percentage: 40 },
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(true)
+  })
+
+  it('reports true when a party was removed', () => {
+    const before: PartyChangeSnapshot[] = [
+      { name: 'You', split_percentage: 60 },
+      { name: 'Rapper', split_percentage: 40 },
+    ]
+    const after: PartyChangeSnapshot[] = [{ name: 'You', split_percentage: 100 }]
+    expect(partiesActuallyChanged(before, after)).toBe(true)
   })
 })
 
