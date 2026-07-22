@@ -486,6 +486,34 @@ Funūn will offer a library of contract templates artists can send to collaborat
 
 - [x] 17-07-PLAN.md — Verified idempotent completion webhook + Funūn certificate filing + cross-account distribution + readiness move + write-back offer + AM-3 usage telemetry
 
+### Phase 18: Split-Sheet Home
+
+**Goal:** A split sheet written at 2am survives the studio — it can be found, edited, grown by one more writer, shown to a collaborator without being a formal ask, bound to the right song months later, and scored honestly against every track it does and does not cover.
+**Depends on:** Phase 17 (split-sheet substrate: `split_sheets`/`split_sheet_parties`, `CollaboratorPicker`, e-sign lifecycle in `lib/split-sheets/lifecycle.ts`)
+**Requirements**: HOME-01, HOME-02, HOME-03, HOME-04, HOME-05, HOME-06, HOME-07, HOME-08, HOME-09, HOME-10, HOME-11, HOME-12
+**Success Criteria** (what must be TRUE):
+
+  1. A user can find every split sheet they initiated or are a party to from navigation, open `/split-sheets/[id]`, and edit a draft in place via `SplitSheetBuilder` — the first UI caller `PATCH /api/split-sheets/[id]` has ever had
+  2. Adding a collaborator to an existing draft is a fast, redesigned add flow (live-linked identity, legal-name locking, email/phone-first) with add-and-redistribute, so a fourth writer never destroys three already-negotiated percentages; the initiator is party 1 automatically, never a manual "add yourself" step
+  3. A collaborator can see proposed splits via a read-only share before any formal signing request, and the freeze boundary plus any consensus-reset change are explained in plain language, not left as a bare re-approval prompt
+  4. Contract Locker's landing view is attention-first and reads BOTH `vault_documents` and in-flight `split_sheets` — awaiting-signature per-party progress (including pending/confirmed/opened/signed status), drafts in progress, unattached executed sheets, and songs with no sheet — via structured queries, no model call
+  5. Every Funūn-user party on a sheet gets their own Locker view scoped to their own share; drafts stay initiator-only until sent; removal is a per-viewer soft hide that never deletes a shared legal record; the block exception for shared executed agreements is documented in-source, and no cross-party surface accepts user-supplied free text
+  6. A split sheet can attach to a specific track (`split_sheets.track_id` + `split_sheet_attachments` join table, backfilled from existing `vault_project_id` values) from both the Locker and Vault sides with fuzzy-match suggestions, detach, and a conflict flag when two sheets target one song — attachment works at any lifecycle stage, not just after execution
+  7. Split-sheet readiness is coverage-based — `covered / needing` across a project's tracks, minimum tier across the needing set — implemented identically in `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared fixture, replacing the current all-or-nothing gate that lets one signed sheet fully credit a multi-track release
+
+**Plans**: 4 plans drafted 2026-07-20; **STALE as of 2026-07-21** — 18-01 through 18-04 were drafted against the pre-redesign `CollaboratorPicker` and require a replan pass incorporating the identity/collaborator redesign (see `18-CONTEXT.md`) before execution.
+
+Plans:
+
+- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with collaborator picker and add-and-redistribute, read-only share, freeze-boundary copy and consensus-reset change summaries (wave 1, autonomous)
+- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents`, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 2, depends on 18-01, autonomous)
+- [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
+- [ ] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
+
+**Execution shape**: wave 1 → 18-01; wave 2 → 18-02 and 18-03 in parallel (zero shared files); wave 3 → 18-04.
+
+**Design references**: `.planning/phases/17-split-sheet-esign/17-DUAL-ENTRY-DESIGN.md` (living-draft/Locker/attachment model, authoritative), `.planning/deliberations/split-sheet-identity-and-collaborator-model.md` (identity/collaborator redesign, §1/§2/§4/§6/§7/§9 in scope). Full detail in `18-CONTEXT.md`.
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
