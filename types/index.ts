@@ -100,6 +100,15 @@ export type ReadinessItem = {
   // populates them for 'split_sheets'.
   earnedPoints?: number
   note?: string
+  // Which branch of readinessItemsForProject()'s split_sheets derivation
+  // actually produced this item's status (WR-01/WR-02 fix, 18-REVIEW.md).
+  // Only populated for 'split_sheets' — every other item leaves this
+  // unset. Callers (the readiness breakdown page) use this to decide
+  // whether the coverage widget is safe to render alongside the gate: a
+  // 'legacy' source means the wet-signed-document fallback won outright,
+  // so a coverage-incomplete widget must NOT render next to a "Passed"
+  // gate it would otherwise contradict.
+  splitSheetSource?: 'legacy' | 'coverage' | 'pipeline' | 'none'
 }
 
 // Full checklist — applies_to controls which types each item gates

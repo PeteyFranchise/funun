@@ -247,7 +247,12 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
           {items.map(item => (
             <div key={item.key}>
               <GateRow item={item} projectId={projectId} />
-              {item.key === 'split_sheets' && coverage && (
+              {/* WR-02: only render the coverage widget when the coverage
+                  branch is what actually produced this item's status — a
+                  legacy-signed-document "Passed" gate must never sit next
+                  to a widget claiming the release is "not fully
+                  documented" (18-REVIEW.md WR-02). */}
+              {item.key === 'split_sheets' && item.splitSheetSource === 'coverage' && coverage && (
                 <SplitSheetCoverage
                   covered={coverage.covered}
                   needing={coverage.needing}

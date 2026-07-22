@@ -89,6 +89,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
     let status: ReadinessItem['status'] = 'missing'
     let earnedPoints: number | undefined
     let note: string | undefined
+    let splitSheetSource: ReadinessItem['splitSheetSource']
 
     switch (item.key) {
       case 'audio_files':
@@ -107,6 +108,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         if (legacyStatus === 'complete') {
           status = 'complete'
           earnedPoints = 15
+          splitSheetSource = 'legacy'
           break
         }
         // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04) — only
@@ -129,6 +131,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
           if (coverage) {
             earnedPoints = coverage.earnedPoints
             status = coverage.status
+            splitSheetSource = 'coverage'
             break
           }
         }
@@ -142,6 +145,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
           if (tier !== null) {
             earnedPoints = tier
             status = tier === 15 ? 'complete' : tier === 0 ? 'missing' : 'warning'
+            splitSheetSource = 'pipeline'
             if (statuses.some(isRenegotiating)) {
               note = 'A collaborator countered the split — renegotiating.'
             }
@@ -151,6 +155,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         // No pipeline signal at all (field omitted, or supplied empty):
         // degrade to the legacy signedOf-only status.
         status = legacyStatus
+        splitSheetSource = 'none'
         break
       }
       case 'copyright':
@@ -219,6 +224,7 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
       status,
       ...(earnedPoints !== undefined ? { earnedPoints } : {}),
       ...(note !== undefined ? { note } : {}),
+      ...(splitSheetSource !== undefined ? { splitSheetSource } : {}),
     }
   })
 }

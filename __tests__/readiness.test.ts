@@ -162,4 +162,59 @@ describe('readinessItemsForProject — split_sheets tiering', () => {
       expect(item.status).toBe(scenario.expected.status)
     })
   })
+
+  // WR-02 (18-REVIEW.md): the readiness breakdown page decides whether to
+  // render the coverage widget based on which branch produced the status.
+  // A legacy-signed-document "Passed" gate must never be reported as
+  // 'coverage' — the page's contradiction bug came from rendering the
+  // widget without checking this discriminant at all.
+  describe('splitSheetSource discriminant (WR-02) — which branch produced the status', () => {
+    it("'legacy' when the wet-signed-document fallback wins outright, even with zero attachment coverage", () => {
+      const item = splitSheetItem({
+        type: 'ep',
+        tracks: [{ id: 'track-1' }, { id: 'track-2' }],
+        documents: [{ type: 'split_sheet', status: 'signed' }],
+        track_split_sheet_attachments: [
+          { track_id: 'track-1', statuses: [] },
+          { track_id: 'track-2', statuses: [] },
+        ],
+      })
+      expect(item.status).toBe('complete')
+      expect(item.splitSheetSource).toBe('legacy')
+    })
+
+    it("'coverage' when per-track attachment data drove the status", () => {
+      const item = splitSheetItem({
+        type: 'ep',
+        tracks: [{ id: 'track-1' }],
+        documents: [],
+        track_split_sheet_attachments: [{ track_id: 'track-1', statuses: ['executed'] }],
+      })
+      expect(item.splitSheetSource).toBe('coverage')
+    })
+
+    it("'pipeline' when project-level split_sheets data drove the status (no attachment field supplied)", () => {
+      const item = splitSheetItem({
+        type: 'single',
+        documents: [],
+        split_sheets: [{ status: 'executed' }],
+      })
+      expect(item.splitSheetSource).toBe('pipeline')
+    })
+
+    it("'none' when no pipeline signal is present at all (legacy-only, non-complete)", () => {
+      const item = splitSheetItem({
+        type: 'single',
+        documents: [],
+      })
+      expect(item.status).toBe('missing')
+      expect(item.splitSheetSource).toBe('none')
+    })
+
+    it('is left unset on every non-split_sheets item', () => {
+      const items = readinessItemsForProject({ type: 'single', documents: [] })
+      const others = items.filter(i => i.key !== 'split_sheets')
+      expect(others.every(i => i.splitSheetSource === undefined)).toBe(true)
+    })
+  })
 })
