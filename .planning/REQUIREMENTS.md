@@ -224,6 +224,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Defined:** 2026-07-20 (registered during plan-phase). **Source:** 18-CONTEXT.md locked decisions P18-01..P18-14, whose authoritative design is `.planning/phases/17-split-sheet-esign/17-DUAL-ENTRY-DESIGN.md`. Phase 18 executes after Phase 17, before Phase 16. All Pending.
 
+**Identity/collaborator replan (2026-07-22):** a new wave-1 plan **18-05 (Identity Foundation)** was added and 18-01/18-02 rewritten to incorporate the identity/collaborator redesign (`split-sheet-identity-and-collaborator-model.md` §1/§2/§4/§6/§7/§9). 18-05 is infrastructure — migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the `resolvePartyIdentity()` live-link resolver, and the Settings legal-name confirm-and-lock — that ENABLES the HOME-02 (locked legal name for the read-only party-1 row) and HOME-03 (live-linked identity, fast collaborator add, pending/confirmed roster status) surfaces built in 18-01. No HOME requirement moved out of 18-01/18-02; 18-05 is the enabling layer. HOME-09..12 remain owned by the untouched 18-03/18-04.
+
 **Living-draft surface (18-01):**
 
 - [ ] **HOME-01**: A split-sheet list — every sheet the user initiated, plus every sheet they are a party to — reachable from navigation, closing the orphaned-`/split-sheets` finding
@@ -253,8 +255,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
 | HOME-01 | Phase 18 | 18-01 | Pending |
-| HOME-02 | Phase 18 | 18-01 | Pending |
-| HOME-03 | Phase 18 | 18-01 | Pending |
+| HOME-02 | Phase 18 | 18-05, 18-01 | Pending |
+| HOME-03 | Phase 18 | 18-05, 18-01 | Pending |
 | HOME-04 | Phase 18 | 18-01 | Pending |
 | HOME-05 | Phase 18 | 18-01 | Pending |
 | HOME-06 | Phase 18 | 18-02 | Pending |

@@ -91,16 +91,17 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Requirements:** HOME-01, HOME-02, HOME-03, HOME-04, HOME-05, HOME-06, HOME-07, HOME-08, HOME-09, HOME-10, HOME-11, HOME-12
 
-**Plans:** 4 plans (planned 2026-07-20)
+**Plans:** 5 plans (identity/collaborator replan 2026-07-22 — 18-05 added, 18-01/18-02 rewritten; 18-03/18-04 unchanged)
 
 Plans:
 
-- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with collaborator picker and add-and-redistribute, read-only share, freeze-boundary copy and consensus-reset change summaries (wave 1, autonomous)
-- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents`, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 2, depends on 18-01, autonomous)
+- [ ] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver, and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
+- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row, the new email/phone-first PartyPicker, add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
+- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
 - [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
 - [ ] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
 
-**Execution shape:** wave 1 → 18-01; wave 2 → 18-02 and 18-03 in parallel (zero shared files); wave 3 → 18-04. 18-03 has no dependency and is placed in wave 2 to serialize migration numbering ahead of 18-04's 065. 18-03 and 18-04 each end with a human-gated `supabase db push`; 18-04 additionally gates on sign-off for a user-visible score drop — projects reading `complete` today may read `warning` after coverage lands.
+**Execution shape:** wave 1 → 18-05 (identity foundation, migration 066 human push); wave 2 → 18-01 (depends 18-05) and 18-03 (unchanged, independent) in parallel (zero shared files); wave 3 → 18-02 (depends 18-01+18-03) and 18-04 (unchanged, depends 18-03) in parallel. 18-05/18-03/18-04 each end with a human-gated `supabase db push` (migrations 066/064/065); 18-04 additionally gates on sign-off for a user-visible score drop — projects reading `complete` today may read `warning` after coverage lands. The 18-05 number is higher than its wave-1 position on purpose — it avoids renumbering the untouched 18-03/18-04; wave frontmatter is authoritative for execution order.
 
 **Current-state map (read before discuss-phase — investigated 2026-07-19):**
 
@@ -501,16 +502,17 @@ Funūn will offer a library of contract templates artists can send to collaborat
   6. A split sheet can attach to a specific track (`split_sheets.track_id` + `split_sheet_attachments` join table, backfilled from existing `vault_project_id` values) from both the Locker and Vault sides with fuzzy-match suggestions, detach, and a conflict flag when two sheets target one song — attachment works at any lifecycle stage, not just after execution
   7. Split-sheet readiness is coverage-based — `covered / needing` across a project's tracks, minimum tier across the needing set — implemented identically in `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared fixture, replacing the current all-or-nothing gate that lets one signed sheet fully credit a multi-track release
 
-**Plans**: 4 plans drafted 2026-07-20; **STALE as of 2026-07-21** — 18-01 through 18-04 were drafted against the pre-redesign `CollaboratorPicker` and require a replan pass incorporating the identity/collaborator redesign (see `18-CONTEXT.md`) before execution.
+**Plans**: 5 plans — identity/collaborator replan completed 2026-07-22. 18-05 (identity foundation) added and 18-01/18-02 rewritten against the identity/collaborator redesign (`18-CONTEXT.md`, `split-sheet-identity-and-collaborator-model.md`); 18-03/18-04 were not touched by the redesign and remain as drafted 2026-07-20.
 
 Plans:
 
-- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with collaborator picker and add-and-redistribute, read-only share, freeze-boundary copy and consensus-reset change summaries (wave 1, autonomous)
-- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents`, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 2, depends on 18-01, autonomous)
+- [ ] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver (`resolvePartyIdentity`), and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
+- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row (§9), the new email/phone-first `PartyPicker` (§4/§6, `CollaboratorPicker` left untouched), add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
+- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label (zero new schema), per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
 - [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
 - [ ] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
 
-**Execution shape**: wave 1 → 18-01; wave 2 → 18-02 and 18-03 in parallel (zero shared files); wave 3 → 18-04.
+**Execution shape**: wave 1 → 18-05; wave 2 → 18-01 (depends 18-05) and 18-03 (unchanged) in parallel; wave 3 → 18-02 (depends 18-01+18-03) and 18-04 (unchanged, depends 18-03) in parallel. 18-05/18-03/18-04 each end with a human-gated `supabase db push` (migrations 066/064/065). The 18-05 number is intentionally higher than its wave-1 position to avoid renumbering the untouched 18-03/18-04 — wave frontmatter is authoritative for execution order.
 
 **Design references**: `.planning/phases/17-split-sheet-esign/17-DUAL-ENTRY-DESIGN.md` (living-draft/Locker/attachment model, authoritative), `.planning/deliberations/split-sheet-identity-and-collaborator-model.md` (identity/collaborator redesign, §1/§2/§4/§6/§7/§9 in scope). Full detail in `18-CONTEXT.md`.
 
