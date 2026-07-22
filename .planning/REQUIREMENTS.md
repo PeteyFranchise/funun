@@ -228,11 +228,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Living-draft surface (18-01):**
 
-- [ ] **HOME-01**: A split-sheet list — every sheet the user initiated, plus every sheet they are a party to — reachable from navigation, closing the orphaned-`/split-sheets` finding
-- [ ] **HOME-02**: `/split-sheets/[id]` detail page with `SplitSheetBuilder` in edit mode, loading persisted parties and PATCHing them — the first UI caller `PATCH /api/split-sheets/[id]` has ever had
-- [ ] **HOME-03**: `CollaboratorPicker` available on an existing draft plus add-and-redistribute (proportional or even), so adding a fourth writer never destroys three negotiated percentages (P18-07)
-- [ ] **HOME-04**: Read-only draft share — a collaborator sees proposed splits without the sheet becoming a formal signing request; the sheet stays in draft and the shared view offers no approve or counter action (P18-08)
-- [ ] **HOME-05**: The freeze boundary surfaced in its own words, and consensus resets summarized as named from/to changes rather than a bare re-approval request (P18-06, P18-09)
+- [x] **HOME-01**: A split-sheet list — every sheet the user initiated, plus every sheet they are a party to — reachable from navigation, closing the orphaned-`/split-sheets` finding
+- [x] **HOME-02**: `/split-sheets/[id]` detail page with `SplitSheetBuilder` in edit mode, loading persisted parties and PATCHing them — the first UI caller `PATCH /api/split-sheets/[id]` has ever had
+- [x] **HOME-03**: `CollaboratorPicker` available on an existing draft plus add-and-redistribute (proportional or even), so adding a fourth writer never destroys three negotiated percentages (P18-07)
+- [x] **HOME-04**: Read-only draft share — a collaborator sees proposed splits without the sheet becoming a formal signing request; the sheet stays in draft and the shared view offers no approve or counter action (P18-08)
+- [x] **HOME-05**: The freeze boundary surfaced in its own words, and consensus resets summarized as named from/to changes rather than a bare re-approval request (P18-06, P18-09)
 
 **Contract Locker as workspace (18-02):**
 

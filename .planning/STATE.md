@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Completed 18-04-PLAN.md -- coverage-based readiness (migration 068 live, proportional coverage scoring). Wave 3's checkpoint plan closed; only 18-01 (living draft) remains in Phase 18.
-last_updated: "2026-07-22T21:51:59.089Z"
+stopped_at: "Completed 18-01-PLAN.md -- living-draft surface (list, edit, PartyPicker, share, §7 identity correction). Phase 18: only 18-02 remains."
+last_updated: "2026-07-22T22:29:21.393Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 Plan 04 (Coverage-Based Readiness) complete — migration 068 live
+last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 108
-  completed_plans: 94
-  percent: 87
+  completed_plans: 95
+  percent: 88
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 18 (split-sheet-home) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -134,6 +134,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 18 P05 | ~35min+checkpoint | 4 tasks | 9 files |
 | Phase 18 P03 | ~25min+checkpoint+gate | 4 tasks | 12 files |
 | Phase 18-split-sheet-home P04 | 40min+checkpoint+gate | 4 tasks | 11 files |
+| Phase 18 P01 | 25min | 4 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 18-04: coverage-based readiness replaces all-or-nothing split-sheet gate — proportional points (ROUND(AVG)), strict ALL-covered status (P18-16 supersedes MIN-for-points); migration 068 live, LOCAL=REMOTE 001-068
 - [Phase ?]: 18-04: tracksNeedingSheet() returns every track, no solo-written exemption (P18-15) — no acknowledgment field/route/UI anywhere in the codebase
 - [Phase ?]: 18-04: shared coverage-fixtures.ts scenario table is the parity anchor for the TypeScript derivation and migration 068's SQL twin, structurally proxy-tested since Jest cannot execute PL/pgSQL
+- [Phase 18]: PartyPicker is a wholly separate component from CollaboratorPicker.tsx (option b) -- zero risk to MetadataStudio's untested ComposerEditor caller
+- [Phase 18]: The initiator's self-row identity in edit mode is always re-derived fresh from current artist_profiles, never matched against a persisted party-1 row by heuristic
+- [Phase 18]: A non-initiator account-holding party visiting /split-sheets/[id] gets a read-only summary, not the full interactive builder -- only the initiator can PATCH server-side
 
 ### Pending Todos
 
@@ -294,8 +298,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22T21:51:59.075Z
-Stopped at: Completed 18-04-PLAN.md -- coverage-based readiness (migration 068 live, proportional coverage scoring). Wave 3's checkpoint plan closed; only 18-01 (living draft) remains in Phase 18.
+Last session: 2026-07-22T22:29:21.370Z
+Stopped at: Completed 18-01-PLAN.md -- living-draft surface (list, edit, PartyPicker, share, §7 identity correction). Phase 18: only 18-02 remains.
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
