@@ -248,7 +248,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage-based readiness (18-04):**
 
-- [ ] **HOME-12**: Coverage-based split-sheet scoring replacing the all-or-nothing gate — `covered / needing` across the project's tracks, MINIMUM tier across the needing set, implemented in BOTH `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared scenario fixture, preserving the legacy wet-sign path (P18-14)
+- [x] **HOME-12**: Coverage-based split-sheet scoring replacing the all-or-nothing gate — `covered / needing` across the project's tracks, MINIMUM tier across the needing set, implemented in BOTH `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared scenario fixture, preserving the legacy wet-sign path (P18-14)
 
 **Traceability (Phase 18):**
 

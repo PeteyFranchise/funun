@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Completed 18-03-PLAN.md -- song-level attachment (migration 067 live, attach v2/detach, attach UI from both directions). Wave 1 (18-05) and 18-03's schema-serialization role done; 18-04 (depends on 18-03) unblocked.
-last_updated: "2026-07-22T21:11:37.311Z"
+stopped_at: Completed 18-04-PLAN.md -- coverage-based readiness (migration 068 live, proportional coverage scoring). Wave 3's checkpoint plan closed; only 18-01 (living draft) remains in Phase 18.
+last_updated: "2026-07-22T21:51:59.089Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 Plan 03 (Song-Level Attachment) complete — migration 067 live
+last_activity_desc: Phase 18 Plan 04 (Coverage-Based Readiness) complete — migration 068 live
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 108
-  completed_plans: 93
-  percent: 86
+  completed_plans: 94
+  percent: 87
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 18 (split-sheet-home) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -133,6 +133,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17 P07 | 75min | 2 tasks | 10 files |
 | Phase 18 P05 | ~35min+checkpoint | 4 tasks | 9 files |
 | Phase 18 P03 | ~25min+checkpoint+gate | 4 tasks | 12 files |
+| Phase 18-split-sheet-home P04 | 40min+checkpoint+gate | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -225,6 +226,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 18]: 18-03: Migration 067 (split_sheets.track_id/source, split_sheet_attachments join table with two NULL-comparison-safe partial unique indexes, opposite-cascade FKs) applied live via supabase db push; LOCAL=REMOTE migration-list parity confirmed for 001-067
 - [Phase 18]: 18-03: attach v2 removes the executed-only status gate entirely (P18-04) and, on a second/third project attach, updates the caller's primary vault_documents row only when it is unattached or unchanged -- a repeat attach never moves or duplicates that document
 - [Phase 18]: 18-03: fuzzy suggestTrackMatches() reuses reconciliation.ts's normalizeName rather than a second normalization, and marks a leading candidate only above a confidence threshold so a renamed track never produces a confident wrong suggestion
+- [Phase ?]: 18-04: coverage-based readiness replaces all-or-nothing split-sheet gate — proportional points (ROUND(AVG)), strict ALL-covered status (P18-16 supersedes MIN-for-points); migration 068 live, LOCAL=REMOTE 001-068
+- [Phase ?]: 18-04: tracksNeedingSheet() returns every track, no solo-written exemption (P18-15) — no acknowledgment field/route/UI anywhere in the codebase
+- [Phase ?]: 18-04: shared coverage-fixtures.ts scenario table is the parity anchor for the TypeScript derivation and migration 068's SQL twin, structurally proxy-tested since Jest cannot execute PL/pgSQL
 
 ### Pending Todos
 
@@ -290,8 +294,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22T21:11:37.291Z
-Stopped at: Completed 18-03-PLAN.md -- song-level attachment (migration 067 live, attach v2/detach, attach UI from both directions). Wave 1 (18-05) and 18-03's schema-serialization role done; 18-04 (depends on 18-03) unblocked.
+Last session: 2026-07-22T21:51:59.075Z
+Stopped at: Completed 18-04-PLAN.md -- coverage-based readiness (migration 068 live, proportional coverage scoring). Wave 3's checkpoint plan closed; only 18-01 (living draft) remains in Phase 18.
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
