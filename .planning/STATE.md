@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Completed 18-02-PLAN.md
+stopped_at: Phase 18 (split-sheet-home) EXECUTED — 5/5 plans, migrations 066/067/068 live, verifier status passed_with_human_checks (16/16 must-haves in code; 8 human_needed browser/SQL UAT items deferred). Recommended before ship — advisory, non-blocking — /gsd-secure-phase 18 and /gsd-code-review 18. Follow-up: Phase 17 mint-envelope legal_name gate (research A4).
 last_updated: "2026-07-22T22:47:25.668Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 execution started
+last_activity_desc: Phase 18 executed — living draft, Locker workspace, song attachment, coverage readiness, identity foundation
 progress:
   total_phases: 18
   completed_phases: 17
