@@ -46,11 +46,14 @@ describe('resolvePartyPhase', () => {
     ).toBe('approve')
   })
 
-  it('returns approve for a pending party regardless of sheet status', () => {
+  it('returns approve for a pending party regardless of (non-draft) sheet status', () => {
+    // 18-01: 'draft' now resolves to 'preview' (see the dedicated describe
+    // block below) — this case uses a non-draft status to keep testing
+    // the original "any status but draft" intent unmodified.
     expect(
       resolvePartyPhase({
         party: { approval_status: 'pending', token_expires_at: null },
-        sheet: { status: 'draft' },
+        sheet: { status: 'pending_approval' },
         nowIso: NOW,
       })
     ).toBe('approve')
@@ -104,6 +107,30 @@ describe('resolvePartyPhase', () => {
       resolvePartyPhase({
         party: { approval_status: 'approved', token_expires_at: '2026-01-01T00:00:00.000Z' },
         sheet: { status: 'executed' },
+        nowIso: NOW,
+      })
+    ).toBe('token_invalid')
+  })
+
+  // ── 18-01: 'preview' branch (P18-08 read-only draft share) ──────────
+  it.each(['pending', 'approved', 'countered'] as const)(
+    'returns preview for a draft sheet regardless of the party approval_status (%s)',
+    approvalStatus => {
+      expect(
+        resolvePartyPhase({
+          party: { approval_status: approvalStatus, token_expires_at: null },
+          sheet: { status: 'draft' },
+          nowIso: NOW,
+        })
+      ).toBe('preview')
+    }
+  )
+
+  it('token_invalid still takes priority over a draft sheet when the token itself is expired', () => {
+    expect(
+      resolvePartyPhase({
+        party: { approval_status: 'pending', token_expires_at: '2026-01-01T00:00:00.000Z' },
+        sheet: { status: 'draft' },
         nowIso: NOW,
       })
     ).toBe('token_invalid')

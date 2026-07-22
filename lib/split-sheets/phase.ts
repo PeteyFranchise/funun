@@ -28,6 +28,7 @@ export type SplitSheetStatus =
 
 export type PartyPhase =
   | 'token_invalid'
+  | 'preview'
   | 'approve'
   | 'sign'
   | 'waiting'
@@ -48,10 +49,13 @@ export type ResolvePartyPhaseInput = {
 /**
  * Resolves which lifecycle branch a party is in for a given /approve/[token]
  * visit. Order of checks matters: token validity is always decided first
- * (an expired token is invalid no matter how far the sheet has progressed),
- * then the sheet reaching 'executed' is a terminal state that overrides
- * whatever the individual party's own approval_status says, then the
- * party's own approval_status drives the remaining branches.
+ * (an expired token is invalid no matter how far the sheet has progressed);
+ * next, a DRAFT sheet always resolves to 'preview' (P18-08) regardless of
+ * the party's own approval_status — a draft's party has by definition
+ * approved nothing, and must never see an approve/counter control, only a
+ * read-only proposal; then the sheet reaching 'executed' is a terminal
+ * state that overrides whatever the individual party's own approval_status
+ * says, then the party's own approval_status drives the remaining branches.
  */
 export function resolvePartyPhase({ party, sheet, nowIso }: ResolvePartyPhaseInput): PartyPhase {
   // Question 1: is the token itself invalid/expired?
@@ -59,6 +63,10 @@ export function resolvePartyPhase({ party, sheet, nowIso }: ResolvePartyPhaseInp
   if (party.token_expires_at && party.token_expires_at < nowIso) return 'token_invalid'
 
   // Question 2: what phase is this party in, given a valid token?
+  // A draft sheet is a read-only preview share (P18-08) — this check must
+  // come before every other lifecycle branch below, since a draft's party
+  // approval_status is meaningless (nothing has been asked of them yet).
+  if (sheet.status === 'draft') return 'preview'
   if (sheet.status === 'executed') return 'done'
   if (party.approval_status === 'countered') return 'countered'
   if (party.approval_status === 'pending') return 'approve'
