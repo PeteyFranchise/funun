@@ -160,7 +160,11 @@ export async function fetchContractRows(
   const { data: projectData } = await supabase
     .from('vault_projects')
     .select(
-      `id, title, tracks (id, metadata),
+      // `tracks.title` is additive (18-02): the Locker's "songs with no
+      // sheet" attention section needs a name to show for each uncovered
+      // track — `id, metadata` alone (the pre-18-02 select) can't display
+      // one.
+      `id, title, tracks (id, title, metadata),
        vault_documents (id, type, status, signed_at, source, verification_status, verification_checks, verification_summary)`
     )
     .eq('user_id', userId)
