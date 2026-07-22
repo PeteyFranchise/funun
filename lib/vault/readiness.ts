@@ -2,11 +2,13 @@ import type { ReadinessItem, VaultProjectType } from '@/types'
 import { READINESS_ITEMS } from '@/types'
 import { readComposers } from '@/lib/metadata/schema'
 import { projectSplitTier, isRenegotiating } from '@/lib/vault/readiness-tiers'
+import { coverageTier } from '@/lib/vault/readiness-coverage'
 
 type ReadinessInput = {
   type: VaultProjectType
   distributor?: string | null
   tracks?: {
+    id?: string
     isrc?: string | null
     iswc?: string | null
     metadata?: Record<string, unknown> | null
@@ -22,6 +24,17 @@ type ReadinessInput = {
   // breakdown page (app/(artist)/vault/[projectId]/readiness/page.tsx) —
   // deliberate v1 scoping (see 17-02-PLAN.md).
   split_sheets?: { status: string }[]
+  // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04). Per-track
+  // split-sheet attachment statuses via split_sheet_attachments (18-03) —
+  // OPTIONAL, alongside the split_sheets field above. When supplied,
+  // coverage across EVERY one of the project's tracks (P18-15: no
+  // solo-written exemption) replaces the project-level projectSplitTier
+  // call for this branch. Omitted entirely, behavior degrades to exactly
+  // what it did before this field existed, so every existing caller
+  // (dashboard, vault list, project detail, demo-store) keeps compiling
+  // and behaving unchanged — the same optional-input discipline 17-02
+  // used for split_sheets itself.
+  track_split_sheet_attachments?: { track_id: string; statuses: string[] }[]
 }
 
 /** A track's composer splits are captured and total exactly 100%. */
@@ -95,6 +108,29 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
           status = 'complete'
           earnedPoints = 15
           break
+        }
+        // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04) — only
+        // when the caller supplied per-track attachment data. Replaces
+        // the project-level projectSplitTier call below with a per-track
+        // rule: every track needs its own sheet (P18-15), and the
+        // identical derivation lives in migration 068's SQL, both
+        // asserted against lib/vault/coverage-fixtures.ts.
+        if (input.track_split_sheet_attachments !== undefined) {
+          const attachmentsByTrack = new Map(
+            input.track_split_sheet_attachments.map(a => [a.track_id, a.statuses])
+          )
+          const coverageTracks = tracks
+            .filter((t): t is typeof t & { id: string } => typeof t.id === 'string')
+            .map(t => ({
+              id: t.id,
+              attachedStatuses: attachmentsByTrack.get(t.id) ?? [],
+            }))
+          const coverage = coverageTier(coverageTracks)
+          if (coverage) {
+            earnedPoints = coverage.earnedPoints
+            status = coverage.status
+            break
+          }
         }
         // Pipeline-derived tier (P17-03-impl) — only when the caller
         // supplied split_sheets data; identical derivation to the DB

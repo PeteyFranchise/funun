@@ -6,6 +6,7 @@
 // is the DB trigger and this TS mirror drifting apart).
 
 import { readinessItemsForProject } from '@/lib/vault/readiness'
+import { COVERAGE_FIXTURES, type CoverageFixtureScenario } from '@/lib/vault/coverage-fixtures'
 
 function splitSheetItem(input: Parameters<typeof readinessItemsForProject>[0]) {
   const items = readinessItemsForProject(input)
@@ -131,6 +132,34 @@ describe('readinessItemsForProject — split_sheets tiering', () => {
         documents: [{ type: 'split_sheet', status: 'pending' }],
       })
       expect(item.status).toBe('warning')
+    })
+  })
+
+  describe('coverage-based derivation (P18-14/P18-15/P18-16, 18-04) — the shared fixture', () => {
+    // The parity anchor: lib/vault/coverage-fixtures.ts also drives
+    // lib/vault/readiness-coverage.test.ts (the pure module) and
+    // __tests__/migration-068.test.ts (the SQL structural proxy). Every
+    // row here exercises the FULL readinessItemsForProject() surface,
+    // including the legacy-wins-outright ordering the pure module does
+    // not see.
+    function inputFromScenario(scenario: CoverageFixtureScenario) {
+      return {
+        type: 'ep' as const,
+        tracks: scenario.tracks.map(t => ({ id: t.id })),
+        documents: scenario.hasLegacySignedDocument
+          ? [{ type: 'split_sheet', status: 'signed' }]
+          : [],
+        track_split_sheet_attachments: scenario.tracks.map(t => ({
+          track_id: t.id,
+          statuses: t.attachedStatuses,
+        })),
+      }
+    }
+
+    it.each(COVERAGE_FIXTURES)('$name', scenario => {
+      const item = splitSheetItem(inputFromScenario(scenario))
+      expect(item.earnedPoints).toBe(scenario.expected.earnedPoints)
+      expect(item.status).toBe(scenario.expected.status)
     })
   })
 })
