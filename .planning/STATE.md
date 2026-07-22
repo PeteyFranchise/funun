@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Completed 18-05-PLAN.md — identity foundation (migration 066 live, resolvePartyIdentity, Settings legal-name lock). 18-01 (wave 2, depends on 18-05) unblocked.
-last_updated: "2026-07-22T20:43:46.254Z"
+stopped_at: Completed 18-03-PLAN.md -- song-level attachment (migration 067 live, attach v2/detach, attach UI from both directions). Wave 1 (18-05) and 18-03's schema-serialization role done; 18-04 (depends on 18-03) unblocked.
+last_updated: "2026-07-22T21:11:37.311Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 Plan 05 (Identity Foundation) complete — migration 066 live
+last_activity_desc: Phase 18 Plan 03 (Song-Level Attachment) complete — migration 067 live
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 108
-  completed_plans: 92
-  percent: 85
+  completed_plans: 93
+  percent: 86
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 18 (split-sheet-home) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -132,6 +132,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17 P09 | 55min | 3 tasks | 17 files |
 | Phase 17 P07 | 75min | 2 tasks | 10 files |
 | Phase 18 P05 | ~35min+checkpoint | 4 tasks | 9 files |
+| Phase 18 P03 | ~25min+checkpoint+gate | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17]: ESIGN-16/ESIGN-17 left un-marked-complete in REQUIREMENTS.md pending human review — ESIGN-16 requirement text predates the approved spec (references excluded scope/sample/ISWC-ISRC elements); ESIGN-17 requirement describes attorney review having occurred, which has not happened yet (COUNSEL_REVIEW_STATUS unreviewed)
 - [Phase 18]: [Phase 18-05]: Migration 066 (collaborators.legal_name/status, artist_profiles.legal_name_locked_at, two status-confirmation triggers) pushed live and DB-verified via npx supabase migration list (LOCAL=REMOTE 001-066); direct SQL introspection unavailable in push environment, migration-list parity used as recorded evidence per established convention
 - [Phase 18]: [Phase 18-05]: resolvePartyIdentity() overwrite semantics (not COALESCE) live only in the new lib/split-sheets/live-identity.ts module -- backfill_claimed_collaborators()/claim_collaborators() (026) stay untouched and additive for their own callers
+- [Phase 18]: 18-03: Migration 067 (split_sheets.track_id/source, split_sheet_attachments join table with two NULL-comparison-safe partial unique indexes, opposite-cascade FKs) applied live via supabase db push; LOCAL=REMOTE migration-list parity confirmed for 001-067
+- [Phase 18]: 18-03: attach v2 removes the executed-only status gate entirely (P18-04) and, on a second/third project attach, updates the caller's primary vault_documents row only when it is unattached or unchanged -- a repeat attach never moves or duplicates that document
+- [Phase 18]: 18-03: fuzzy suggestTrackMatches() reuses reconciliation.ts's normalizeName rather than a second normalization, and marks a leading candidate only above a confidence threshold so a renamed track never produces a confident wrong suggestion
 
 ### Pending Todos
 
@@ -286,8 +290,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22T20:43:46.234Z
-Stopped at: Completed 18-05-PLAN.md — identity foundation (migration 066 live, resolvePartyIdentity, Settings legal-name lock). 18-01 (wave 2, depends on 18-05) unblocked.
+Last session: 2026-07-22T21:11:37.291Z
+Stopped at: Completed 18-03-PLAN.md -- song-level attachment (migration 067 live, attach v2/detach, attach UI from both directions). Wave 1 (18-05) and 18-03's schema-serialization role done; 18-04 (depends on 18-03) unblocked.
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -310,7 +314,7 @@ not a real gap; proceeded with override, verify-phase may re-surface. Session-lo
 decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
-Resume file: .planning/phases/18-split-sheet-home/18-01-PLAN.md
+Resume file: None
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md

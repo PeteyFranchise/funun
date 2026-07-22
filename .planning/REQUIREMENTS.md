@@ -242,9 +242,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Song-level attachment (18-03):**
 
-- [ ] **HOME-09**: `split_sheets.track_id` (nullable, `ON DELETE SET NULL`), the `split_sheet_attachments` join table with a backfill from existing `vault_project_id` values, and the `source` provenance field — field only, no extraction (P18-02, P18-03, P18-05)
-- [ ] **HOME-10**: Attach route v2 accepting an optional track, extending 17-05's route under its unchanged party-AND-owner double check, with the executed-only gate relaxed because attachment is orthogonal to the signing lifecycle; plus detach (P18-04)
-- [ ] **HOME-11**: Attach from both directions — Locker-side and Vault-side with fuzzy title matching that suggests without preselecting — plus the conflict flag for two sheets on one song and explicit handling of rename-after-signing, deleted track, deleted project, and multi-project attachment, with no PDF regeneration path anywhere
+- [x] **HOME-09**: `split_sheets.track_id` (nullable, `ON DELETE SET NULL`), the `split_sheet_attachments` join table with a backfill from existing `vault_project_id` values, and the `source` provenance field — field only, no extraction (P18-02, P18-03, P18-05)
+- [x] **HOME-10**: Attach route v2 accepting an optional track, extending 17-05's route under its unchanged party-AND-owner double check, with the executed-only gate relaxed because attachment is orthogonal to the signing lifecycle; plus detach (P18-04)
+- [x] **HOME-11**: Attach from both directions — Locker-side and Vault-side with fuzzy title matching that suggests without preselecting — plus the conflict flag for two sheets on one song and explicit handling of rename-after-signing, deleted track, deleted project, and multi-project attachment, with no PDF regeneration path anywhere
 
 **Coverage-based readiness (18-04):**
 
