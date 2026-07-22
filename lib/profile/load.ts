@@ -54,6 +54,7 @@ export const DEMO_PROFILE: ArtistProfile = {
   legal_middle_name: null,
   legal_last_name: null,
   legal_name_suffix: null,
+  legal_name_locked_at: null,
   contact_phone: null,
   mailing_address: null,
   industry_roles: [],

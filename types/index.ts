@@ -377,6 +377,12 @@ export type ArtistProfile = {
   legal_middle_name: string | null
   legal_last_name: string | null
   legal_name_suffix: string | null
+  // One-time confirm-and-lock stamp on the composed legal name (migration
+  // 066, deliberation section 2). IS NOT NULL means the legal name is
+  // confirmed-and-locked; server-owned, never client-valued, no unlock
+  // path. PRIVATE column (migration 040 doctrine) — read/written only via
+  // createServiceClient() after a session-verified ownership check.
+  legal_name_locked_at: string | null
   // Contact for contracts and split sheets (migration 021).
   contact_phone: string | null
   mailing_address: Record<string, string> | null
