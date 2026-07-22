@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 13
-current_phase_name: network-trust-safety
+current_phase: 18
+current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Phase 18 replanned (identity/collaborator redesign) — 5 plans / 3 waves, plan-checker PASSED; ready to execute
-last_updated: "2026-07-22T00:00:00.000Z"
+stopped_at: Completed 18-05-PLAN.md — identity foundation (migration 066 live, resolvePartyIdentity, Settings legal-name lock). 18-01 (wave 2, depends on 18-05) unblocked.
+last_updated: "2026-07-22T20:43:46.254Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 identity/collaborator replan (18-05 foundation added; 18-01/18-02 rewritten)
+last_activity_desc: Phase 18 Plan 05 (Identity Foundation) complete — migration 066 live
 progress:
   total_phases: 18
   completed_phases: 16
-  total_plans: 107
-  completed_plans: 91
+  total_plans: 108
+  completed_plans: 92
   percent: 85
 ---
 
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 13 — network-trust-safety
+**Current focus:** Phase 18 — split-sheet-home
 
 ## Current Position
 
-Phase: 13 (network-trust-safety) — COMPLETE (owner UAT waiver)
-Plan: 5 of 5 done (13-01 → 13-02 → 13-04 → 13-05 → 13-03). All requirements
+Phase: 18 (split-sheet-home) — EXECUTING
+Plan: 2 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-07-18 — Phase 13 execution started
+Last activity: 2026-07-22 — Phase 18 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -131,6 +131,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 17-split-sheet-esign P08 | 22min | 3 tasks | 15 files |
 | Phase 17 P09 | 55min | 3 tasks | 17 files |
 | Phase 17 P07 | 75min | 2 tasks | 10 files |
+| Phase 18 P05 | ~35min+checkpoint | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -218,6 +219,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 17]: 17-09 followed 17-SPLIT-SHEET-TEMPLATE-SPEC.md as authoritative over the plan body: songwriting/publishing-only document, no rights_scope/master-share/sample-disclosure/ISWC-ISRC columns — Approved by Pete 2026-07-20; a fixed master-ownership Guidance Note replaces a master-split section entirely
 - [Phase 17]: Migration 063 adds administrator to artist_profiles, split_sheet_parties, split_sheets, and collaborators (6 columns total), all nullable/additive — administrator is the only decision-3a prefill source with no existing home; artist_profiles.administrator inherits migration 040's private-by-default column-privilege posture with no new REVOKE/GRANT
 - [Phase 17]: ESIGN-16/ESIGN-17 left un-marked-complete in REQUIREMENTS.md pending human review — ESIGN-16 requirement text predates the approved spec (references excluded scope/sample/ISWC-ISRC elements); ESIGN-17 requirement describes attorney review having occurred, which has not happened yet (COUNSEL_REVIEW_STATUS unreviewed)
+- [Phase 18]: [Phase 18-05]: Migration 066 (collaborators.legal_name/status, artist_profiles.legal_name_locked_at, two status-confirmation triggers) pushed live and DB-verified via npx supabase migration list (LOCAL=REMOTE 001-066); direct SQL introspection unavailable in push environment, migration-list parity used as recorded evidence per established convention
+- [Phase 18]: [Phase 18-05]: resolvePartyIdentity() overwrite semantics (not COALESCE) live only in the new lib/split-sheets/live-identity.ts module -- backfill_claimed_collaborators()/claim_collaborators() (026) stay untouched and additive for their own callers
 
 ### Pending Todos
 
@@ -283,8 +286,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22
-Stopped at: Phase 18 REPLANNED for the identity/collaborator redesign. Fixed a
+Last session: 2026-07-22T20:43:46.234Z
+Stopped at: Completed 18-05-PLAN.md — identity foundation (migration 066 live, resolvePartyIdentity, Settings legal-name lock). 18-01 (wave 2, depends on 18-05) unblocked.
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -294,7 +297,9 @@ has an untested third caller (MetadataStudio's ComposerEditor); §9 auto-party-1
 relaxed validation are shared create/edit logic; and three schema gaps
 (collaborators.legal_name, collaborators.status, artist_profiles.legal_name_locked_at)
 had no owner. Result: added a wave-1 identity-foundation plan (18-05: migration 066
+
 + live-identity resolver + Settings legal-name lock, human-gated push) that
+
 living-draft depends on; rewrote 18-01 (living-draft — new separate PartyPicker,
 auto-party-1, §7 recipient advanced-info) and 18-02 (Locker — 3-state
 invited/opened/signed derived from existing columns, zero new schema). 18-03/18-04

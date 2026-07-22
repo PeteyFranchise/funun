@@ -95,7 +95,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 Plans:
 
-- [ ] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver, and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
+- [x] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver, and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
 - [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row, the new email/phone-first PartyPicker, add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
 - [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
 - [ ] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
@@ -502,12 +502,12 @@ Funūn will offer a library of contract templates artists can send to collaborat
   6. A split sheet can attach to a specific track (`split_sheets.track_id` + `split_sheet_attachments` join table, backfilled from existing `vault_project_id` values) from both the Locker and Vault sides with fuzzy-match suggestions, detach, and a conflict flag when two sheets target one song — attachment works at any lifecycle stage, not just after execution
   7. Split-sheet readiness is coverage-based — `covered / needing` across a project's tracks, minimum tier across the needing set — implemented identically in `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared fixture, replacing the current all-or-nothing gate that lets one signed sheet fully credit a multi-track release
 
-**Plans**: 5 plans — identity/collaborator replan completed 2026-07-22. 18-05 (identity foundation) added and 18-01/18-02 rewritten against the identity/collaborator redesign (`18-CONTEXT.md`, `split-sheet-identity-and-collaborator-model.md`); 18-03/18-04 were not touched by the redesign and remain as drafted 2026-07-20.
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver (`resolvePartyIdentity`), and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
+- [x] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver (`resolvePartyIdentity`), and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
