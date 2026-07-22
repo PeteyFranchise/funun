@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
+import { fetchSplitSheetsForUser } from '@/lib/split-sheets/list'
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Mass-assignment defense: only these keys are written to split_sheet_parties.
@@ -64,7 +65,9 @@ function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
   return out as SplitSheetParty
 }
 
-// GET /api/split-sheets — list split sheets initiated by the current user
+// GET /api/split-sheets — list split sheets the caller initiated OR is a
+// party on (HOME-01). A draft is returned ONLY to its initiator (P18-11) —
+// see lib/split-sheets/list.ts for the merge that enforces this server-side.
 export async function GET() {
   const supabase = await createApiClient()
   const {
@@ -72,13 +75,7 @@ export async function GET() {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('split_sheets')
-    .select('*, split_sheet_parties(*)')
-    .eq('initiator_user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const data = await fetchSplitSheetsForUser(supabase, user.id)
   return NextResponse.json({ data })
 }
 

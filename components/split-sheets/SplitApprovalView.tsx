@@ -199,6 +199,22 @@ export function SplitApprovalView({
   signingSrc,
   partyEmail,
 }: Props) {
+  if (phase === 'preview') {
+    // P18-08: a draft share is explicitly NOT a formal ask. No approve
+    // control, no counter control, no submit path — and, per §7, no
+    // identity-correction section either (that belongs to the approve/sign
+    // phases, where the recipient is genuinely being asked to act).
+    return (
+      <PageShell artistName={artistName} songName={songName} parties={parties} partyId={partyId}>
+        <StateCard
+          tone="info"
+          title="Proposed split — shared for review"
+          body={`${artistName} is sharing this proposed split for your review. No approval or signature is being requested yet.`}
+        />
+      </PageShell>
+    )
+  }
+
   if (phase === 'sign') {
     return (
       <PageShell artistName={artistName} songName={songName} parties={parties} partyId={partyId}>
