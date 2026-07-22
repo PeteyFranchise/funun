@@ -236,9 +236,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Contract Locker as workspace (18-02):**
 
-- [ ] **HOME-06**: Attention-first Locker landing reading BOTH `vault_documents` and in-flight `split_sheets` — awaiting signature with per-party progress, drafts in progress, unattached executed sheets, songs with no sheet — derived by structured query with no model call, plus create actions, the settled archive, and a reserved-but-unbuilt `ask` slot (P18-10)
-- [ ] **HOME-07**: Per-party Locker views — one document, N lockers, each in the viewer's own context; drafts initiator-only until sent; removal is a per-viewer soft hide that never deletes a shared legal record (P18-11)
-- [ ] **HOME-08**: The block exception made deliberate — an in-source note at the Locker and attachment queries recording that block filtering intentionally does NOT apply to shared executed agreements, with its narrow scope and a citation, so a later audit does not "fix" correct behavior; and no cross-party action anywhere in the phase accepts user-supplied free text (P18-12, P18-13)
+- [x] **HOME-06**: Attention-first Locker landing reading BOTH `vault_documents` and in-flight `split_sheets` — awaiting signature with per-party progress, drafts in progress, unattached executed sheets, songs with no sheet — derived by structured query with no model call, plus create actions, the settled archive, and a reserved-but-unbuilt `ask` slot (P18-10)
+- [x] **HOME-07**: Per-party Locker views — one document, N lockers, each in the viewer's own context; drafts initiator-only until sent; removal is a per-viewer soft hide that never deletes a shared legal record (P18-11)
+- [x] **HOME-08**: The block exception made deliberate — an in-source note at the Locker and attachment queries recording that block filtering intentionally does NOT apply to shared executed agreements, with its narrow scope and a citation, so a later audit does not "fix" correct behavior; and no cross-party action anywhere in the phase accepts user-supplied free text (P18-12, P18-13)
 
 **Song-level attachment (18-03):**
 

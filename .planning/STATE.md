@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: "Completed 18-01-PLAN.md -- living-draft surface (list, edit, PartyPicker, share, §7 identity correction). Phase 18: only 18-02 remains."
-last_updated: "2026-07-22T22:29:21.393Z"
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-07-22T22:47:25.668Z"
 last_activity: 2026-07-22
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 18
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 108
-  completed_plans: 95
-  percent: 88
+  completed_plans: 96
+  percent: 89
 ---
 
 # Project State
@@ -135,6 +135,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 18 P03 | ~25min+checkpoint+gate | 4 tasks | 12 files |
 | Phase 18-split-sheet-home P04 | 40min+checkpoint+gate | 4 tasks | 11 files |
 | Phase 18 P01 | 25min | 4 tasks | 22 files |
+| Phase 18 P02 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -233,6 +234,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 18]: PartyPicker is a wholly separate component from CollaboratorPicker.tsx (option b) -- zero risk to MetadataStudio's untested ComposerEditor caller
 - [Phase 18]: The initiator's self-row identity in edit mode is always re-derived fresh from current artist_profiles, never matched against a persisted party-1 row by heuristic
 - [Phase 18]: A non-initiator account-holding party visiting /split-sheets/[id] gets a read-only summary, not the full interactive builder -- only the initiator can PATCH server-side
+- [Phase ?]: buildAttentionSections() reuses 18-01's fetchSplitSheetsForUser() merge directly rather than re-implementing the initiated+party-of query a second time in lib/contracts/locker-rows.ts
+- [Phase ?]: 'Songs with no sheet' and 'unattached executed' are computed from the fetched sheets' own track_id/vault_project_id origin fields, not a second split_sheet_attachments join, keeping the pure attention module simple
 
 ### Pending Todos
 
@@ -298,8 +301,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22T22:29:21.370Z
-Stopped at: Completed 18-01-PLAN.md -- living-draft surface (list, edit, PartyPicker, share, §7 identity correction). Phase 18: only 18-02 remains.
+Last session: 2026-07-22T22:47:25.652Z
+Stopped at: Completed 18-02-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation

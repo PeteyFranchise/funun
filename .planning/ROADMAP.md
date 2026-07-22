@@ -85,7 +85,7 @@ Full detail: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Why it exists (findings from the Phase 17 work):** `/split-sheets` is orphaned — nothing in the app links to it. A saved draft becomes unreachable (no list, no edit page); the PATCH route has no UI caller. The Locker reads only `vault_documents`, so in-flight sheets are invisible. And the readiness gate over-credits song-specific sheets — a 5-track EP with one signed sheet scores 15/15.
 
-- [ ] **Phase 18: Split-Sheet Home** - Living-draft surface (list, edit page, collaborator picker, add-and-redistribute), attention-first Contract Locker reading both documents and in-flight sheets, song-level attachment (track_id + split_sheet_attachments join table) from both directions, and coverage-based readiness scoring shipped separately.
+- [x] **Phase 18: Split-Sheet Home** - Living-draft surface (list, edit page, collaborator picker, add-and-redistribute), attention-first Contract Locker reading both documents and in-flight sheets, song-level attachment (track_id + split_sheet_attachments join table) from both directions, and coverage-based readiness scoring shipped separately. (completed 2026-07-22)
 
 **Goal:** A split sheet written at 2am survives the studio — it can be found, edited, grown by one more writer, shown to a collaborator without being a formal ask, bound to the right song months later, and scored honestly against every track it does and does not cover.
 
@@ -97,7 +97,7 @@ Plans:
 
 - [x] 18-05-PLAN.md — Identity foundation: migration 066 (`collaborators.legal_name`/`status`, `artist_profiles.legal_name_locked_at`), the pure live-identity resolver, and the Settings legal-name confirm-and-lock (wave 1, migration checkpoint)
 - [x] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row, the new email/phone-first PartyPicker, add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
-- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
+- [x] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label, per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
 - [x] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
 - [x] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
 
@@ -502,7 +502,7 @@ Funūn will offer a library of contract templates artists can send to collaborat
   6. A split sheet can attach to a specific track (`split_sheets.track_id` + `split_sheet_attachments` join table, backfilled from existing `vault_project_id` values) from both the Locker and Vault sides with fuzzy-match suggestions, detach, and a conflict flag when two sheets target one song — attachment works at any lifecycle stage, not just after execution
   7. Split-sheet readiness is coverage-based — `covered / needing` across a project's tracks, minimum tier across the needing set — implemented identically in `readinessItemsForProject()` and `calculate_vault_readiness()` against one shared fixture, replacing the current all-or-nothing gate that lets one signed sheet fully credit a multi-track release
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -511,7 +511,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row (§9), the new email/phone-first `PartyPicker` (§4/§6, `CollaboratorPicker` left untouched), add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
+- [x] 18-01-PLAN.md — Living-draft surface: sheet list, `/split-sheets/[id]` detail/edit, builder edit mode with the auto-included live-linked party-1 self row (§9), the new email/phone-first `PartyPicker` (§4/§6, `CollaboratorPicker` left untouched), add-and-redistribute, read-only share, §7 recipient self-correction, freeze-boundary copy and consensus-reset change summaries (wave 2, depends on 18-05, autonomous)
 - [x] 18-03-PLAN.md — Song-level attachment: migration 064 (`track_id`, `source`, `split_sheet_attachments` + backfill), attach v2 with the executed-only gate relaxed, detach, attach UI from both directions with fuzzy matching and conflict flags (wave 2, migration checkpoint)
 
 **Wave 3** *(blocked on Wave 2 completion)*
