@@ -1,23 +1,37 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { SplitSheetBuilder } from '@/components/split-sheets/SplitSheetBuilder'
+import { fetchSplitSheetsForUser } from '@/lib/split-sheets/list'
+import { SplitSheetList, type SplitSheetListItem } from '@/components/split-sheets/SplitSheetList'
 
 // Force dynamic rendering — user auth state must be read per request
 export const dynamic = 'force-dynamic'
 
-// Industry split sheet entry point (D-20).
-// No subscription gate — any authenticated user can create a split sheet
-// (RESEARCH Open Question 2 recommendation). Industry users have no vault
-// projects, so SplitSheetBuilder receives no `projects` prop and the sheet
-// is always standalone (vault_project_id = null, D-18).
-export default async function IndustrySplitSheetsPage() {
+// The living-draft list surface (HOME-01) — closes two 18-CONTEXT
+// findings: /split-sheets was orphaned (no nav entry reached it), and a
+// saved draft was write-only (no list, no detail page, no edit mode).
+// Creation moved to /split-sheets/new (Task 2). No subscription/capability
+// gate — split sheets are open to industry accounts too (D-20).
+export default async function SplitSheetsListPage() {
   const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/signin')
+
+  const rows = await fetchSplitSheetsForUser(supabase, user.id)
+  const sheets: SplitSheetListItem[] = rows.map(r => ({
+    id: r.id,
+    song_name: r.song_name,
+    status: r.status as SplitSheetListItem['status'],
+    created_at: r.created_at,
+    parties: (r.split_sheet_parties ?? []).map(p => ({
+      id: p.id,
+      name: p.name,
+      approval_status: p.approval_status,
+    })),
+  }))
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -28,14 +42,13 @@ export default async function IndustrySplitSheetsPage() {
             Contract Locker
           </Link>
         </p>
-        <h1 className="text-[22px] font-extrabold text-white">Create Split Sheet</h1>
+        <h1 className="text-[22px] font-extrabold text-white">Split Sheets</h1>
         <p className="mt-1 text-sm text-white/50">
-          Set up split percentages for your collaborators — everyone receives an
-          email approval link once you send.
+          Every split sheet you&rsquo;ve started, sent, or signed — song by song.
         </p>
       </header>
 
-      <SplitSheetBuilder />
+      <SplitSheetList sheets={sheets} />
     </div>
   )
 }

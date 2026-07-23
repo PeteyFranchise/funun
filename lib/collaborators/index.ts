@@ -14,13 +14,26 @@ export const COLLABORATOR_EDITABLE_FIELDS = [
   'pro',
   'ipi',
   'publisher',
+  'administrator', // split-sheet Administrator prefill (migration 063, P17-09)
   'mlc_id',
   'soundexchange_id',
   'mailing_address',
   'is_favorite',  // star toggle (D-12)
   'archived_at',  // soft-delete timestamp; set to ISO string or null (D-11)
+  // legal_name (migration 066, deliberation §7): distinct from `name`
+  // (the professional/display name) — the persisted home for a
+  // self-corrected legal name, reused on future sheets without re-entry.
+  'legal_name',
+  // status (migration 066, deliberation §6): 'pending' | 'confirmed'
+  // roster engagement state — validated against the enum below, never
+  // accepted as an arbitrary string (mass-assignment defense).
+  'status',
   // Note: claimed_by is intentionally excluded — never client-settable (T-04-02)
 ] as const
+
+/** The only two values collaborators.status may hold (migration 066 CHECK). */
+const COLLABORATOR_STATUS_VALUES = ['pending', 'confirmed'] as const
+type CollaboratorStatus = (typeof COLLABORATOR_STATUS_VALUES)[number]
 
 export type CollaboratorProfile = {
   id: string
@@ -35,6 +48,7 @@ export type CollaboratorProfile = {
   pro?: string | null
   ipi?: string | null
   publisher?: string | null
+  administrator?: string | null // split-sheet Administrator prefill (migration 063, P17-09)
   mlc_id?: string | null
   soundexchange_id?: string | null
   mailing_address?: Record<string, string> | null
@@ -42,6 +56,13 @@ export type CollaboratorProfile = {
   claimed_by?: string | null   // auth.users.id of the Funūn member who claimed this row
   archived_at?: string | null  // soft-delete timestamp; null = active in roster (D-11)
   is_favorite?: boolean        // pinned in picker Favorites group (D-12)
+  // legal_name (migration 066, deliberation §7) — distinct from `name`,
+  // the persisted home for a self-corrected legal name.
+  legal_name?: string | null
+  // status (migration 066, deliberation §6) — 'pending' until the
+  // collaborator claims their account or responds to a sheet; 'confirmed'
+  // otherwise (DB DEFAULT). Flips server-side via migration 066's triggers.
+  status?: CollaboratorStatus
   created_at: string
   updated_at: string
 }
@@ -76,6 +97,15 @@ export function sanitizeCollaborator(
     if (key === 'is_favorite') {
       // Accept boolean only — ignore other types to prevent mass-assignment
       if (typeof value === 'boolean') {
+        update[key] = value
+      }
+      continue
+    }
+    if (key === 'status') {
+      // Enum allowlist (ASVS V5) — an invalid value is silently dropped
+      // rather than written, so the DB's DEFAULT 'confirmed' backstops an
+      // absent/invalid value instead of a CHECK-constraint 500.
+      if (typeof value === 'string' && COLLABORATOR_STATUS_VALUES.includes(value as CollaboratorStatus)) {
         update[key] = value
       }
       continue

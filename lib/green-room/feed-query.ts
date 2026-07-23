@@ -438,7 +438,7 @@ function toPostCard(
 function toActor(author: AuthorRow | undefined, authorId: string): GreenRoomFeedActor {
   return {
     id: authorId,
-    name: author?.artist_name?.trim() || 'Funun member',
+    name: author?.artist_name?.trim() || 'Funūn member',
     handle: author?.handle ?? null,
     avatarUrl: author?.avatar_url ?? null,
     primaryRole: primaryRoleLabel(author),
@@ -455,7 +455,7 @@ function primaryRoleLabel(author: AuthorRow | undefined): string | null {
 
 function placementExplanation(kind: GreenRoomPlacementCard['placementKind']): string {
   if (kind === 'sponsored') return 'Sponsored placement'
-  if (kind === 'featured') return 'Featured by Funun'
+  if (kind === 'featured') return 'Featured by Funūn'
   if (kind === 'partner') return 'Partner spotlight'
   if (kind === 'program') return 'Curated program'
   return 'Featured opportunity'

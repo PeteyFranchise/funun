@@ -336,7 +336,7 @@ export function toPersonResult(
   return {
     id: row.id,
     handle: row.handle,
-    displayName: row.artist_name?.trim() || 'Funun member',
+    displayName: row.artist_name?.trim() || 'Funūn member',
     avatarUrl: row.avatar_url ?? null,
     headline,
     roles: roleLabels,

@@ -2,10 +2,47 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
+import { fetchSplitSheetsForUser } from '@/lib/split-sheets/list'
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Mass-assignment defense: only these keys are written to split_sheet_parties.
-const PARTY_FIELDS = ['name', 'email', 'pro', 'ipi', 'role', 'split_percentage', 'collaborator_id'] as const
+// legal_name/publishing_designee/administrator (migration 063, P17-09) are
+// included here deliberately — an unlisted field is silently dropped, not
+// rejected, so without this entry the builder's captured values would
+// never reach the row even though the column exists (the exact trap
+// app/api/profile/route.ts's EDITABLE_FIELDS comment warns about).
+const PARTY_FIELDS = [
+  'name',
+  'email',
+  'pro',
+  'ipi',
+  'role',
+  'split_percentage',
+  'collaborator_id',
+  'legal_name',
+  'publishing_designee',
+  'administrator',
+] as const
+
+// ─── Sheet-level field allowlist (Work Details, P17-09) ───────────────
+// All optional (decision 4) — a missing value renders as an em-dash on
+// the document, it never blocks sheet creation.
+const SHEET_FIELDS = ['artist_name', 'album_project_title', 'record_label'] as const
+
+function sanitizeSheetFields(body: Record<string, unknown>): Record<string, string | null> {
+  const out: Record<string, string | null> = {}
+  for (const key of SHEET_FIELDS) {
+    if (!(key in body)) continue
+    const value = body[key]
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      out[key] = trimmed === '' ? null : trimmed
+    } else if (value === null) {
+      out[key] = null
+    }
+  }
+  return out
+}
 
 function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
   const out: Record<string, unknown> = {}
@@ -28,7 +65,9 @@ function sanitizeParty(raw: Record<string, unknown>): SplitSheetParty {
   return out as SplitSheetParty
 }
 
-// GET /api/split-sheets — list split sheets initiated by the current user
+// GET /api/split-sheets — list split sheets the caller initiated OR is a
+// party on (HOME-01). A draft is returned ONLY to its initiator (P18-11) —
+// see lib/split-sheets/list.ts for the merge that enforces this server-side.
 export async function GET() {
   const supabase = await createApiClient()
   const {
@@ -36,13 +75,7 @@ export async function GET() {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('split_sheets')
-    .select('*, split_sheet_parties(*)')
-    .eq('initiator_user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const data = await fetchSplitSheetsForUser(supabase, user.id)
   return NextResponse.json({ data })
 }
 
@@ -88,6 +121,8 @@ export async function POST(request: Request) {
       ? body.vault_project_id.trim()
       : null
 
+  const sheetFields = sanitizeSheetFields(body)
+
   const { data: sheet, error: sheetError } = await supabase
     .from('split_sheets')
     .insert({
@@ -95,6 +130,7 @@ export async function POST(request: Request) {
       vault_project_id: vaultProjectId,
       song_name: songName,
       status: 'draft',
+      ...sheetFields,
     })
     .select()
     .single()
@@ -111,6 +147,9 @@ export async function POST(request: Request) {
     ipi: p.ipi ?? null,
     role: p.role ?? null,
     split_percentage: p.split_percentage,
+    legal_name: p.legal_name ?? null,
+    publishing_designee: p.publishing_designee ?? null,
+    administrator: p.administrator ?? null,
   }))
 
   const { error: partiesError } = await supabase.from('split_sheet_parties').insert(partyRows)

@@ -32,6 +32,12 @@ export const NOTIFICATION_TYPES = {
   // Phase 11 — message-request flow (CONNECT-03) and direct-message notification
   message_request: { icon: 'message-circle', inlineAction: 'message_request_respond' },
   new_dm: { icon: 'message-square', inlineAction: null },
+  // Phase 17 — split-sheet e-sign lifecycle, initiator-facing (P17-04)
+  split_sheet_party_approved: { icon: 'check-circle', inlineAction: null },
+  split_sheet_party_signed: { icon: 'pen-tool', inlineAction: null },
+  split_sheet_countered: { icon: 'alert-triangle', inlineAction: 'split_sheet_review' },
+  split_sheet_executed: { icon: 'file-check', inlineAction: null },
+  split_sheet_view_nudge: { icon: 'eye', inlineAction: 'split_sheet_resend' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -241,5 +247,110 @@ export function buildNewDmNotification(args: {
     actorId: args.actorId,
     actorName: args.actorName,
     actorAvatarUrl: args.actorAvatarUrl,
+  }
+}
+
+// ─── Phase 17 — split-sheet e-sign lifecycle (P17-04) ───────────────────
+// Every builder below targets the SHEET INITIATOR as recipient (`recipientId`)
+// — the party taking the approve/sign/counter action is the "actor" even
+// though they're a collaborator, not necessarily a Funūn account holder;
+// `partyId` stands in for `actorId` since split_sheet_parties rows aren't
+// guaranteed a user_id (P17-06). Link target is the future per-sheet detail
+// route (`/split-sheets/[id]`, built in a later Phase 17 plan).
+
+type SplitSheetNotificationArgs = {
+  recipientId: string
+  partyId: string
+  partyName: string
+  songName: string
+  splitSheetId: string
+}
+
+/** A party approved the split sheet's terms during the approve/counter loop. */
+export function buildSplitPartyApprovedNotification(
+  args: SplitSheetNotificationArgs
+): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_party_approved',
+    title: `${args.partyName} approved the split sheet for "${args.songName}"`,
+    link: `/split-sheets/${args.splitSheetId}`,
+    data: { splitSheetId: args.splitSheetId, partyId: args.partyId },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+/** A party completed their e-signature on the minted envelope. */
+export function buildSplitPartySignedNotification(
+  args: SplitSheetNotificationArgs
+): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_party_signed',
+    title: `${args.partyName} signed the split sheet for "${args.songName}"`,
+    link: `/split-sheets/${args.splitSheetId}`,
+    data: { splitSheetId: args.splitSheetId, partyId: args.partyId },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+/**
+ * A party countered instead of approving — this voids any minted envelope
+ * (P17-02) and needs the initiator's attention before signing can resume,
+ * so it carries the highest-urgency framing of the five builders.
+ */
+export function buildSplitSheetCounteredNotification(
+  args: SplitSheetNotificationArgs
+): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_countered',
+    title: `${args.partyName} countered the split sheet for "${args.songName}" — action needed`,
+    link: `/split-sheets/${args.splitSheetId}`,
+    data: { splitSheetId: args.splitSheetId, partyId: args.partyId, urgency: 'high' },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+/** Every party has signed — the sheet is fully executed (readiness tier 15). */
+export function buildSplitSheetExecutedNotification(
+  args: SplitSheetNotificationArgs
+): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_executed',
+    title: `The split sheet for "${args.songName}" is fully executed`,
+    link: `/split-sheets/${args.splitSheetId}`,
+    data: { splitSheetId: args.splitSheetId, partyId: args.partyId },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+/**
+ * A party opened their signing link (page-visit tracking, not email-open
+ * tracking) but hasn't acted within the nudge window — carries a one-tap
+ * re-send affordance (`resendTarget`) in its data so the bell can offer it
+ * inline.
+ */
+export function buildSplitSheetViewNudgeNotification(
+  args: SplitSheetNotificationArgs
+): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_view_nudge',
+    title: `${args.partyName} viewed the split sheet for "${args.songName}" but hasn't acted yet`,
+    link: `/split-sheets/${args.splitSheetId}`,
+    data: { splitSheetId: args.splitSheetId, partyId: args.partyId, resendTarget: args.partyId },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
   }
 }

@@ -92,6 +92,23 @@ export type ReadinessItem = {
   status: 'complete' | 'warning' | 'missing'
   action_label?: string
   action_tool?: string
+  // Additive, optional (P17-03-impl, ESIGN-08): the split_sheets item's
+  // finer-grained 5/10/15 tier and an optional renegotiating note. The
+  // item's `points` stays 15 in READINESS_ITEMS below — this is a
+  // derivation detail surfaced for display, not a registry/points change.
+  // Other items may leave these unset; readinessItemsForProject() only
+  // populates them for 'split_sheets'.
+  earnedPoints?: number
+  note?: string
+  // Which branch of readinessItemsForProject()'s split_sheets derivation
+  // actually produced this item's status (WR-01/WR-02 fix, 18-REVIEW.md).
+  // Only populated for 'split_sheets' — every other item leaves this
+  // unset. Callers (the readiness breakdown page) use this to decide
+  // whether the coverage widget is safe to render alongside the gate: a
+  // 'legacy' source means the wet-signed-document fallback won outright,
+  // so a coverage-incomplete widget must NOT render next to a "Passed"
+  // gate it would otherwise contradict.
+  splitSheetSource?: 'legacy' | 'coverage' | 'pipeline' | 'none'
 }
 
 // Full checklist — applies_to controls which types each item gates
@@ -369,6 +386,12 @@ export type ArtistProfile = {
   legal_middle_name: string | null
   legal_last_name: string | null
   legal_name_suffix: string | null
+  // One-time confirm-and-lock stamp on the composed legal name (migration
+  // 066, deliberation section 2). IS NOT NULL means the legal name is
+  // confirmed-and-locked; server-owned, never client-valued, no unlock
+  // path. PRIVATE column (migration 040 doctrine) — read/written only via
+  // createServiceClient() after a session-verified ownership check.
+  legal_name_locked_at: string | null
   // Contact for contracts and split sheets (migration 021).
   contact_phone: string | null
   mailing_address: Record<string, string> | null
@@ -380,6 +403,10 @@ export type ArtistProfile = {
   pro: string | null
   ipi: string | null
   publisher: string | null
+  // Publishing administrator (migration 063, P17-09) — the split-sheet
+  // Administrator prefill source with no prior home; PRIVATE column
+  // (migration 040 doctrine — same posture as publisher/pro/ipi).
+  administrator: string | null
   mlc_id: string | null
   soundexchange_id: string | null
   // Public showcase profile (migration 010). is_public is the app-level

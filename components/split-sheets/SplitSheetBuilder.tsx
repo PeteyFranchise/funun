@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CollaboratorPicker } from '@/components/collaborators/CollaboratorPicker'
+import { PartyPicker, type PartyPickerSelection } from '@/components/split-sheets/PartyPicker'
 import {
   COMPOSER_ROLE_LABELS,
   COMPOSER_ROLE_VALUES,
@@ -10,61 +11,203 @@ import {
   PRO_VALUES,
   type ComposerRole,
 } from '@/lib/metadata/schema'
-import { evenSplit, validateApprovalTotal } from '@/lib/split-sheets/approval'
-import type { CollaboratorProfile } from '@/lib/collaborators'
+import { validateApprovalTotal } from '@/lib/split-sheets/approval'
+import { redistribute, type RedistributeMode } from '@/lib/split-sheets/redistribute'
+import { summarizePartyChanges, formatPartyChanges, type PartyChangeSnapshot } from '@/lib/split-sheets/change-summary'
+import { assertEditable, type SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
 import type { PRO } from '@/lib/metadata/schema'
 
 // ─── SplitSheetBuilder ───────────────────────────────────────────────
-// Standalone split sheet creation form with per-party CollaboratorPicker
-// auto-fill, even-split pre-fill, live 100% total validation, and CRUD
-// persistence via POST /api/split-sheets.
+// Split sheet creation AND edit form (18-01, HOME-02/HOME-03). The
+// initiator is auto-included as party 1 on BOTH create and edit — no
+// manual "+ Add party → Use my info" step (deliberation §9). This is a
+// change to the builder's SHARED baseline behavior, not an edit-mode-only
+// addition (research Pitfall 4): create mode's first render now shows a
+// single, locked, 100%-split self row instead of an empty list.
 //
-// Props:
-//   projects — artist's vault projects for the optional linked-project
-//              select. Omit (or pass empty) for industry users — the sheet
-//              will always be standalone (vault_project_id = null, D-18).
+// PartyRow carries a `kind` discriminant so the render layer knows the
+// shape of each row:
+//   - 'self'    — the initiator, party 1. Legal name is READ-ONLY, sourced
+//                 from Settings (locked per deliberation §2); PRO/IPI/
+//                 publishing designee/administrator are shown live but
+//                 never manually re-entered (§1). No remove control, no
+//                 picker on this row — the initiator isn't picking a
+//                 collaborator, they ARE the party. Incomplete Settings
+//                 data is a soft nudge, never a blocker.
+//   - 'fastAdd' — a party added via PartyPicker's email/phone-only flow
+//                 (§4), not yet responded. Advanced information (legal
+//                 name, PRO, IPI, publishing designee, administrator) is
+//                 collapsed by default, with a pending/confirmed badge.
+//   - 'full'    — an existing roster collaborator, prefilled as today.
+//
+// Adding a party goes through PartyPicker (a NEW, separate component —
+// components/collaborators/CollaboratorPicker.tsx is never imported here;
+// it has a third caller, MetadataStudio's ComposerEditor, with no
+// automated coverage — research Pitfall 2) and calls redistribute()
+// (lib/split-sheets/redistribute.ts) so the other rows' percentages
+// update without being retyped (P18-07).
+//
+// Edit mode is driven by an optional `existingSheet` prop: when present,
+// saving issues PATCH /api/split-sheets/[id] instead of POST
+// /api/split-sheets (HOME-02 — PATCH's first UI caller ever). The freeze
+// boundary (lib/split-sheets/lifecycle.ts) renders its OWN refusal text
+// when the sheet cannot be edited, and a consensus-reset save shows the
+// P18-09 change summary (lib/split-sheets/change-summary.ts) diffed on
+// the FROZEN pre-edit party set the server handed down.
 
-type PartyRow = {
+export type MyProfilePrefill = {
+  legalName: string
+  artistName: string
+  pro: string
+  ipi: string
+  publishingDesignee: string
+  administrator: string
+}
+
+/** A single persisted party as loaded for edit mode — identity fields are
+ * ALREADY live-resolved server-side (lib/split-sheets/live-identity.ts) for
+ * a claimed party; `kind` is precomputed by the server from that resolved
+ * legal name (empty ⇒ 'fastAdd', present ⇒ 'full'). */
+export type ExistingSheetParty = {
+  partyId: string
   collaboratorId: string | null
   name: string
+  legalName: string
   email: string
   pro: string
   ipi: string
   role: ComposerRole
+  publishingDesignee: string
+  administrator: string
+  split: number
+  kind: 'full' | 'fastAdd'
+}
+
+export type ExistingSheet = {
+  id: string
+  status: SplitSheetStatus
+  songName: string
+  artistName: string
+  albumProjectTitle: string
+  recordLabel: string
+  vaultProjectId: string | null
+  selfPartyId: string | null
+  selfSplit: number
+  selfRole: ComposerRole
+  otherParties: ExistingSheetParty[]
+  /** ALL originally-persisted parties, untouched — the P18-09 "before"
+   * snapshot for summarizePartyChanges(); never live-resolved. */
+  frozenParties: PartyChangeSnapshot[]
+}
+
+type PartyRow = {
+  kind: 'self' | 'fastAdd' | 'full'
+  /** The persisted split_sheet_parties.id, when loaded from an existing sheet. */
+  partyId: string | null
+  collaboratorId: string | null
+  legalName: string
+  professionalName: string
+  email: string
+  phone: string
+  pro: string
+  ipi: string
+  role: ComposerRole
+  publishingDesignee: string
+  administrator: string
   split: number
 }
 
-function blankParty(count: number): PartyRow {
-  return {
+function partyDisplayName(p: PartyRow): string {
+  return (
+    p.professionalName.trim() ||
+    p.legalName.trim() ||
+    p.email.trim() ||
+    p.phone.trim() ||
+    (p.kind === 'self' ? 'You' : 'Unnamed collaborator')
+  )
+}
+
+function buildInitialParties(
+  myProfile: MyProfilePrefill | null,
+  existingSheet: ExistingSheet | null
+): PartyRow[] {
+  const selfRow: PartyRow = {
+    kind: 'self',
+    partyId: existingSheet?.selfPartyId ?? null,
     collaboratorId: null,
-    name: '',
+    legalName: myProfile?.legalName ?? '',
+    professionalName: myProfile?.artistName ?? '',
     email: '',
-    pro: 'none',
-    ipi: '',
-    role: 'composer_lyricist',
-    split: evenSplit(count),
+    phone: '',
+    pro: myProfile?.pro || 'none',
+    ipi: myProfile?.ipi ?? '',
+    role: existingSheet?.selfRole ?? 'composer_lyricist',
+    publishingDesignee: myProfile?.publishingDesignee ?? '',
+    administrator: myProfile?.administrator ?? '',
+    split: existingSheet ? existingSheet.selfSplit : 100,
   }
+
+  if (!existingSheet) return [selfRow]
+
+  const others: PartyRow[] = existingSheet.otherParties.map(p => ({
+    kind: p.kind,
+    partyId: p.partyId,
+    collaboratorId: p.collaboratorId,
+    legalName: p.legalName,
+    professionalName: p.name,
+    email: p.email,
+    phone: '',
+    pro: p.pro || 'none',
+    ipi: p.ipi,
+    role: p.role,
+    publishingDesignee: p.publishingDesignee,
+    administrator: p.administrator,
+    split: p.split,
+  }))
+
+  return [selfRow, ...others]
 }
 
 // ─── Shared input / label classes (established project conventions) ───
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30'
+const disabledInputClass =
+  'w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-sm text-white/60'
 
 const labelClass = 'block text-xs font-medium uppercase tracking-wide text-white/40'
+const miniLabelClass = 'block text-[10px] font-medium uppercase tracking-wide text-white/30'
 
 type Props = {
   projects?: { id: string; title: string }[]
+  myProfile?: MyProfilePrefill | null
+  existingSheet?: ExistingSheet | null
 }
 
-export function SplitSheetBuilder({ projects = [] }: Props) {
+export function SplitSheetBuilder({ projects = [], myProfile = null, existingSheet = null }: Props) {
   const router = useRouter()
 
-  const [songName, setSongName] = useState('')
-  const [vaultProjectId, setVaultProjectId] = useState<string | null>(null)
-  const [parties, setParties] = useState<PartyRow[]>([])
+  const [songName, setSongName] = useState(existingSheet?.songName ?? '')
+  const [vaultProjectId, setVaultProjectId] = useState<string | null>(
+    existingSheet?.vaultProjectId ?? null
+  )
+  const [artistName, setArtistName] = useState(
+    existingSheet?.artistName ?? myProfile?.artistName ?? ''
+  )
+  const [albumProjectTitle, setAlbumProjectTitle] = useState(existingSheet?.albumProjectTitle ?? '')
+  const [recordLabel, setRecordLabel] = useState(existingSheet?.recordLabel ?? '')
+  const [parties, setParties] = useState<PartyRow[]>(() =>
+    buildInitialParties(myProfile, existingSheet)
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [changeSummary, setChangeSummary] = useState<string[] | null>(null)
+
+  // ─── Freeze boundary (P18-06) ─────────────────────────────────────────
+  // The PATCH route always replaces the party set on this builder's saves,
+  // so editsParties is always true here — the gate is computed once from
+  // the sheet's CURRENT persisted status and drives the whole surface.
+  const gate = existingSheet ? assertEditable(existingSheet.status, true) : { ok: true as const, resetsConsensus: false }
 
   // ─── Derived totals ──────────────────────────────────────────────────
   const liveSplitSum =
@@ -75,49 +218,52 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
 
   // ─── Party management ─────────────────────────────────────────────────
 
-  function addParty() {
-    const newCount = parties.length + 1
-    // Pre-fill even split for all existing + new party (D-14)
-    const even = evenSplit(newCount)
-    setParties(prev =>
-      [...prev.map(p => ({ ...p, split: even })), { ...blankParty(newCount), split: even }]
-    )
+  function applyRedistribution(next: PartyRow[], mode: RedistributeMode) {
+    const splits = redistribute(next.map(p => p.split), mode)
+    return next.map((p, i) => ({ ...p, split: splits[i] ?? p.split }))
+  }
+
+  function handleAddParty(selection: PartyPickerSelection) {
+    const { collaborator } = selection
+    const newRow: PartyRow = {
+      kind: selection.kind === 'fastAdd' ? 'fastAdd' : 'full',
+      partyId: null,
+      collaboratorId: collaborator.id,
+      legalName: collaborator.legal_name ?? '',
+      professionalName: collaborator.name,
+      email: collaborator.email ?? '',
+      phone: collaborator.phone ?? '',
+      pro: collaborator.pro || 'none',
+      ipi: collaborator.ipi ?? '',
+      role: 'composer_lyricist',
+      publishingDesignee: collaborator.publisher ?? '',
+      administrator: collaborator.administrator ?? '',
+      // Placeholder — redistribute() below (proportional mode) reads a
+      // zero split as "a party with no prior weight" and assigns it an
+      // even share while scaling the rest to preserve their ratio (P18-07).
+      split: 0,
+    }
+    setParties(prev => applyRedistribution([...prev, newRow], 'proportional'))
   }
 
   function removeParty(i: number) {
+    // The initiator's own row can never be removed (locked decision 4,
+    // research Open Question 2) — the UI never renders a remove control
+    // on it, but this guard keeps the invariant even if that changes.
+    if (parties[i].kind === 'self') return
     const next = parties.filter((_, idx) => idx !== i)
-    const even = next.length > 0 ? evenSplit(next.length) : 0
-    setParties(next.map(p => ({ ...p, split: even })))
+    if (next.length === 0) return
+    setParties(applyRedistribution(next, 'proportional'))
   }
 
   function setPartyField<K extends keyof PartyRow>(i: number, field: K, value: PartyRow[K]) {
     setParties(prev => prev.map((p, idx) => (idx === i ? { ...p, [field]: value } : p)))
   }
 
-  // CollaboratorPicker.onSelect: auto-fills name/email/PRO/IPI only — NOT role or split (D-13)
-  function handlePick(i: number, collab: CollaboratorProfile) {
-    setParties(prev =>
-      prev.map((p, idx) =>
-        idx === i
-          ? {
-              ...p,
-              collaboratorId: collab.id,
-              name: collab.name,
-              email: collab.email ?? '',
-              pro: collab.pro ?? 'none',
-              ipi: collab.ipi ?? '',
-              // role and split intentionally not modified
-            }
-          : p
-      )
-    )
-  }
-
-  // Re-compute even split for all parties
+  // Re-compute even split for all parties (the explicit "Split evenly" path).
   function splitEvenly() {
     if (parties.length === 0) return
-    const even = evenSplit(parties.length)
-    setParties(prev => prev.map(p => ({ ...p, split: even })))
+    setParties(prev => applyRedistribution(prev, 'even'))
   }
 
   // ─── Save handlers ────────────────────────────────────────────────────
@@ -125,13 +271,17 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
   async function saveSheet(sendForApproval: boolean) {
     setError(null)
     setSuccess(false)
+    setChangeSummary(null)
 
     if (!songName.trim()) {
       setError('Song name is required.')
       return
     }
-    if (parties.length === 0) {
-      setError('Add at least one party.')
+    // §4/§9: a legal name is required only for a 'full' row — the self
+    // row is satisfied automatically (soft nudge, never a blocker) and a
+    // freshly fast-added, not-yet-responded party is exempt.
+    if (parties.some(p => p.kind === 'full' && !p.legalName.trim())) {
+      setError('Every party needs a legal name.')
       return
     }
     if (!totalValid) {
@@ -144,19 +294,28 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
       const payload = {
         song_name: songName.trim(),
         vault_project_id: vaultProjectId,
+        artist_name: artistName.trim() || null,
+        album_project_title: albumProjectTitle.trim() || null,
+        record_label: recordLabel.trim() || null,
         parties: parties.map(p => ({
           collaborator_id: p.collaboratorId,
-          name: p.name,
-          email: p.email || null,
+          name: partyDisplayName(p),
+          legal_name: p.legalName.trim() || null,
+          email: p.email.trim() || null,
           pro: p.pro || null,
           ipi: p.ipi || null,
           role: p.role || null,
           split_percentage: p.split,
+          publishing_designee: p.publishingDesignee.trim() || null,
+          administrator: p.administrator.trim() || null,
         })),
       }
 
-      const res = await fetch('/api/split-sheets', {
-        method: 'POST',
+      const url = existingSheet ? `/api/split-sheets/${existingSheet.id}` : '/api/split-sheets'
+      const method = existingSheet ? 'PATCH' : 'POST'
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
@@ -167,20 +326,29 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
         return
       }
 
-      // Plan 04 will wire the send-for-approval email flow.
-      // For now, if sendForApproval was clicked we save as draft and note that.
+      // P18-09: show what changed, diffed on the FROZEN pre-edit snapshot
+      // the server handed down — never on live-resolved values, so a
+      // party's own Settings update never appears as a spurious change.
+      if (existingSheet && gate.ok && gate.resetsConsensus) {
+        const after: PartyChangeSnapshot[] = parties.map(p => ({
+          id: p.partyId ?? undefined,
+          name: partyDisplayName(p),
+          split_percentage: p.split,
+        }))
+        const diff = summarizePartyChanges(existingSheet.frozenParties, after)
+        setChangeSummary(formatPartyChanges(diff))
+      }
+
       if (sendForApproval) {
         setSuccess(true)
         setError(null)
-        // Attempt to hit the send-for-approval route if it exists (Plan 04)
-        const sheetId = json.data?.id
+        const sheetId = existingSheet?.id ?? json.data?.id
         if (sheetId) {
           const sendRes = await fetch(`/api/split-sheets/${sheetId}/send-for-approval`, {
             method: 'POST',
           })
           if (!sendRes.ok) {
-            // Route not yet wired — surface a note, not an error
-            setError('Sheet saved as draft. Approval email dispatch will be available in the next update.')
+            setError('Sheet saved. Sending for approval will be available shortly — try again from the sheet page.')
           }
         }
       } else {
@@ -193,6 +361,32 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ─── Freeze boundary: fully read-only render ──────────────────────────
+  // executed/esign_pending — the gate's OWN words, not a paraphrase.
+  if (existingSheet && !gate.ok) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          {gate.error}
+        </div>
+        <div className="space-y-2">
+          {parties.map((p, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] p-3 text-sm"
+            >
+              <div>
+                <span className="font-medium text-white">{partyDisplayName(p)}</span>
+                {p.kind === 'self' && <span className="ml-2 text-xs text-brandindigo">(you)</span>}
+              </div>
+              <span className="font-semibold text-white/70">{p.split}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   // ─── Render ───────────────────────────────────────────────────────────
@@ -230,7 +424,46 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
         </div>
       )}
 
-      {/* ── Section 3: Parties ── */}
+      {/* ── Section 3: Work Details (standalone, optional — decision 4) ── */}
+      <div>
+        <span className={labelClass}>Work Details</span>
+        <p className="mt-1 text-xs text-white/30">
+          Optional. Enter the release title if known; if not final, use the current
+          working project title. If self-releasing, the label may be entered as
+          &quot;Independent&quot;.
+        </p>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div>
+            <label className={miniLabelClass}>Artist name</label>
+            <input
+              value={artistName}
+              onChange={e => setArtistName(e.target.value)}
+              placeholder="Artist name"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className={miniLabelClass}>Album / project title</label>
+            <input
+              value={albumProjectTitle}
+              onChange={e => setAlbumProjectTitle(e.target.value)}
+              placeholder="Album / project title"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className={miniLabelClass}>Record label</label>
+            <input
+              value={recordLabel}
+              onChange={e => setRecordLabel(e.target.value)}
+              placeholder="Independent"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section 4: Parties ── */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <span className={labelClass}>Writers &amp; Split</span>
@@ -245,105 +478,22 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {parties.map((party, i) => (
-            <div
+            <PartyRowCard
               key={i}
-              className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2 sm:grid-cols-12"
-            >
-              {/* Name + picker */}
-              <div className="flex items-center gap-1.5 sm:col-span-3">
-                <input
-                  value={party.name}
-                  onChange={e => setPartyField(i, 'name', e.target.value)}
-                  placeholder="Full legal name"
-                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-                />
-                <CollaboratorPicker onSelect={collab => handlePick(i, collab)} />
-              </div>
-
-              {/* Role */}
-              <select
-                value={party.role}
-                onChange={e => setPartyField(i, 'role', e.target.value as ComposerRole)}
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-2"
-              >
-                {COMPOSER_ROLE_VALUES.map(r => (
-                  <option key={r} value={r} className="bg-[#0a0a0f]">
-                    {COMPOSER_ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </select>
-
-              {/* PRO */}
-              <select
-                value={party.pro}
-                onChange={e => setPartyField(i, 'pro', e.target.value as PRO)}
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-2"
-              >
-                {PRO_VALUES.map(p => (
-                  <option key={p} value={p} className="bg-[#0a0a0f]">
-                    {PRO_LABELS[p]}
-                  </option>
-                ))}
-              </select>
-
-              {/* IPI */}
-              <input
-                value={party.ipi}
-                onChange={e => setPartyField(i, 'ipi', e.target.value)}
-                placeholder="IPI #"
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-2"
-              />
-
-              {/* Split % + remove */}
-              <div className="flex items-center gap-1 sm:col-span-3">
-                <div className="relative flex-1">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.001}
-                    value={party.split || ''}
-                    onChange={e =>
-                      setPartyField(i, 'split', Number(e.target.value) || 0)
-                    }
-                    placeholder="0"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 pr-6 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-                  />
-                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/40">
-                    %
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeParty(i)}
-                  className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
-                  aria-label="Remove party"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+              party={party}
+              index={i}
+              onField={setPartyField}
+              onRemove={removeParty}
+            />
           ))}
         </div>
 
-        {/* Add party */}
-        <button
-          type="button"
-          onClick={addParty}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/15 py-2 text-sm text-white/40 transition hover:border-white/30 hover:text-white/70"
-        >
-          <span className="text-base leading-none">+</span> Add party
-        </button>
+        {/* Add party — opens PartyPicker (roster pick or fast-add) */}
+        <div className="mt-3">
+          <PartyPicker onSelect={handleAddParty} />
+        </div>
       </div>
 
       {/* ── Running total ── */}
@@ -360,10 +510,30 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
         </div>
       )}
 
+      {/* ── Consensus-reset warning (P18-06/P18-09) ── */}
+      {existingSheet && gate.ok && gate.resetsConsensus && (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          Saving will reset approvals collected so far — every party will need to
+          re-approve, and they&rsquo;ll be shown exactly what changed.
+        </div>
+      )}
+
       {/* ── Error / success feedback ── */}
       {error && <p className="text-sm text-rose-300">{error}</p>}
       {success && !error && (
         <p className="text-sm text-emerald-300">Split sheet saved successfully.</p>
+      )}
+
+      {/* ── Change summary (P18-09), shown after a consensus-resetting save ── */}
+      {changeSummary && changeSummary.length > 0 && (
+        <div className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white/70">
+          <p className="mb-1 font-semibold text-white">What changed</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {changeSummary.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* ── Action row ── */}
@@ -394,5 +564,360 @@ export function SplitSheetBuilder({ projects = [] }: Props) {
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── PartyRowCard ─────────────────────────────────────────────────────
+// Branches render entirely on `party.kind` — see the module header for
+// what each kind means.
+function PartyRowCard({
+  party,
+  index,
+  onField,
+  onRemove,
+}: {
+  party: PartyRow
+  index: number
+  onField: <K extends keyof PartyRow>(i: number, field: K, value: PartyRow[K]) => void
+  onRemove: (i: number) => void
+}) {
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const roleAndSplitRow = (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div>
+        <label className={miniLabelClass}>Role</label>
+        <select
+          value={party.role}
+          onChange={e => onField(index, 'role', e.target.value as ComposerRole)}
+          className={`mt-1 ${inputClass}`}
+        >
+          {COMPOSER_ROLE_VALUES.map(r => (
+            <option key={r} value={r} className="bg-[#0a0a0f]">
+              {COMPOSER_ROLE_LABELS[r]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={miniLabelClass}>Split %</label>
+        <div className="relative mt-1">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.001}
+            value={party.split || ''}
+            onChange={e => onField(index, 'split', Number(e.target.value) || 0)}
+            placeholder="0"
+            className={`${inputClass} pr-6`}
+          />
+          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/40">
+            %
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+
+  if (party.kind === 'self') {
+    return (
+      <div className="space-y-2 rounded-lg border border-brandindigo/20 bg-brandindigo/[0.04] p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wide text-brandindigo">
+            You (party 1)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <label className={miniLabelClass}>Legal name</label>
+            <input
+              value={party.legalName || 'Not set'}
+              disabled
+              className={`mt-1 ${disabledInputClass}`}
+            />
+            {!party.legalName && (
+              <p className="mt-1 text-[11px] text-amber-300/80">
+                Add your legal name in{' '}
+                <Link href="/settings" className="underline underline-offset-2">
+                  Settings
+                </Link>{' '}
+                so it appears here — this won&rsquo;t block saving.
+              </p>
+            )}
+          </div>
+          <div>
+            <label className={miniLabelClass}>Professional name (p/k/a, optional)</label>
+            <input
+              value={party.professionalName}
+              onChange={e => onField(index, 'professionalName', e.target.value)}
+              placeholder="Stage name"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div>
+            <label className={miniLabelClass}>PRO / Society (live from Settings)</label>
+            <input
+              value={party.pro === 'none' ? 'None' : (PRO_LABELS[party.pro as PRO] ?? party.pro)}
+              disabled
+              className={`mt-1 ${disabledInputClass}`}
+            />
+          </div>
+          <div>
+            <label className={miniLabelClass}>IPI # (live from Settings)</label>
+            <input value={party.ipi || '—'} disabled className={`mt-1 ${disabledInputClass}`} />
+          </div>
+          <div>
+            <label className={miniLabelClass}>Publishing designee (live)</label>
+            <input
+              value={party.publishingDesignee || '—'}
+              disabled
+              className={`mt-1 ${disabledInputClass}`}
+            />
+          </div>
+        </div>
+
+        {roleAndSplitRow}
+      </div>
+    )
+  }
+
+  if (party.kind === 'fastAdd') {
+    return (
+      <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+            Pending
+          </span>
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
+            aria-label="Remove party"
+          >
+            <RemoveIcon />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div>
+            <label className={miniLabelClass}>Email</label>
+            <input
+              type="email"
+              value={party.email}
+              onChange={e => onField(index, 'email', e.target.value)}
+              placeholder="jane@example.com"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+          <div>
+            <label className={miniLabelClass}>Phone</label>
+            <input
+              type="tel"
+              value={party.phone}
+              onChange={e => onField(index, 'phone', e.target.value)}
+              placeholder="+1 555 000 0000"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(prev => !prev)}
+          className="text-xs font-medium text-brandindigo hover:text-white"
+        >
+          {showAdvanced ? '– Hide advanced information' : '+ Advanced information'}
+        </button>
+
+        {showAdvanced && (
+          <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+            <div>
+              <label className={miniLabelClass}>Legal name</label>
+              <input
+                value={party.legalName}
+                onChange={e => onField(index, 'legalName', e.target.value)}
+                placeholder="Full legal name, as registered with PRO"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <label className={miniLabelClass}>PRO / Society</label>
+                <select
+                  value={party.pro}
+                  onChange={e => onField(index, 'pro', e.target.value as PRO)}
+                  className={`mt-1 ${inputClass}`}
+                >
+                  {PRO_VALUES.map(p => (
+                    <option key={p} value={p} className="bg-[#0a0a0f]">
+                      {PRO_LABELS[p]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={miniLabelClass}>IPI #</label>
+                <input
+                  value={party.ipi}
+                  onChange={e => onField(index, 'ipi', e.target.value)}
+                  placeholder="IPI #"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <label className={miniLabelClass}>Publishing designee</label>
+                <input
+                  value={party.publishingDesignee}
+                  onChange={e => onField(index, 'publishingDesignee', e.target.value)}
+                  placeholder="Publisher name, or None"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className={miniLabelClass}>Administrator</label>
+                <input
+                  value={party.administrator}
+                  onChange={e => onField(index, 'administrator', e.target.value)}
+                  placeholder="Publishing administrator, or None"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {roleAndSplitRow}
+      </div>
+    )
+  }
+
+  // kind === 'full'
+  return (
+    <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
+        <div className="sm:col-span-5">
+          <label className={miniLabelClass}>Legal name *</label>
+          <input
+            value={party.legalName}
+            onChange={e => onField(index, 'legalName', e.target.value)}
+            placeholder="Full legal name, as registered with PRO"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+        <div className="sm:col-span-5">
+          <label className={miniLabelClass}>Professional name (p/k/a, optional)</label>
+          <input
+            value={party.professionalName}
+            onChange={e => onField(index, 'professionalName', e.target.value)}
+            placeholder="Stage name"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+        <div className="flex items-end justify-end sm:col-span-2">
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="shrink-0 rounded-lg border border-white/10 p-1.5 text-white/40 transition hover:border-rose-400/40 hover:text-rose-300"
+            aria-label="Remove party"
+          >
+            <RemoveIcon />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
+        <div className="sm:col-span-3">
+          <label className={miniLabelClass}>Role</label>
+          <select
+            value={party.role}
+            onChange={e => onField(index, 'role', e.target.value as ComposerRole)}
+            className={`mt-1 ${inputClass}`}
+          >
+            {COMPOSER_ROLE_VALUES.map(r => (
+              <option key={r} value={r} className="bg-[#0a0a0f]">
+                {COMPOSER_ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-3">
+          <label className={miniLabelClass}>PRO / Society</label>
+          <select
+            value={party.pro}
+            onChange={e => onField(index, 'pro', e.target.value as PRO)}
+            className={`mt-1 ${inputClass}`}
+          >
+            {PRO_VALUES.map(p => (
+              <option key={p} value={p} className="bg-[#0a0a0f]">
+                {PRO_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="sm:col-span-3">
+          <label className={miniLabelClass}>IPI #</label>
+          <input
+            value={party.ipi}
+            onChange={e => onField(index, 'ipi', e.target.value)}
+            placeholder="IPI #"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+        <div className="sm:col-span-3">
+          <label className={miniLabelClass}>Split %</label>
+          <div className="relative mt-1">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.001}
+              value={party.split || ''}
+              onChange={e => onField(index, 'split', Number(e.target.value) || 0)}
+              placeholder="0"
+              className={`${inputClass} pr-6`}
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-white/40">
+              %
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={miniLabelClass}>Publishing designee</label>
+          <input
+            value={party.publishingDesignee}
+            onChange={e => onField(index, 'publishingDesignee', e.target.value)}
+            placeholder="Publisher name, or None"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+        <div>
+          <label className={miniLabelClass}>Administrator</label>
+          <input
+            value={party.administrator}
+            onChange={e => onField(index, 'administrator', e.target.value)}
+            placeholder="Publishing administrator, or None"
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RemoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+    </svg>
   )
 }
