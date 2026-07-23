@@ -31,7 +31,7 @@ export async function POST(
   // ── 2. Initiator-only authorization (T-18-03) ──────────────────────
   const { data: sheet, error: sheetError } = await apiClient
     .from('split_sheets')
-    .select('id, status, split_sheet_parties(id, name)')
+    .select('id, status, split_sheet_parties(id, name, approval_token, token_expires_at)')
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()
@@ -52,7 +52,12 @@ export async function POST(
     )
   }
 
-  const parties = (sheet.split_sheet_parties ?? []) as { id: string; name: string }[]
+  const parties = (sheet.split_sheet_parties ?? []) as {
+    id: string
+    name: string
+    approval_token: string | null
+    token_expires_at: string | null
+  }[]
   if (parties.length === 0) {
     return NextResponse.json({ error: 'Split sheet has no parties to share with' }, { status: 400 })
   }
@@ -60,23 +65,40 @@ export async function POST(
   // ── 4. Mint/refresh tokens — service client for the cross-user party
   // rows, ownership already verified above (mirrors send-for-approval). ──
   const service = createServiceClient()
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
+  const nowMs = Date.now()
+  const freshExpires = new Date()
+  freshExpires.setDate(freshExpires.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   const shares: { partyId: string; name: string; url: string }[] = []
 
   for (const party of parties) {
-    const token = generateApprovalToken()
-    await service
-      .from('split_sheet_parties')
-      .update({
-        approval_token: token,
-        token_expires_at: expiresAt.toISOString(),
-        // Deliberately NOT touching approval_status or split_sheets.status
-        // — a share is a preview, not a formal ask (P18-08).
-      })
-      .eq('id', party.id)
+    // WR-05: reuse an existing, unexpired token so re-sharing does NOT burn a
+    // second link (P17-01 reuse) — the same durable /approve/[token] stays
+    // valid and later serves as the formal approval link too. Mint a new token
+    // only when the party has none or the previous one has expired. Mirrors
+    // mint-envelope's reuse pattern; adds expiry-awareness since share links
+    // are handed out early and may outlive the original window.
+    const existingValid =
+      party.approval_token &&
+      party.token_expires_at &&
+      Date.parse(party.token_expires_at) > nowMs
+
+    let token: string
+    if (existingValid) {
+      token = party.approval_token as string
+    } else {
+      token = generateApprovalToken()
+      await service
+        .from('split_sheet_parties')
+        .update({
+          approval_token: token,
+          token_expires_at: freshExpires.toISOString(),
+          // Deliberately NOT touching approval_status or split_sheets.status
+          // — a share is a preview, not a formal ask (P18-08).
+        })
+        .eq('id', party.id)
+    }
     shares.push({ partyId: party.id, name: party.name, url: `${appUrl}/approve/${token}` })
   }
 
