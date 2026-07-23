@@ -4,7 +4,7 @@ import { renderSplitSheet, partyRoleTag } from '@/lib/vault/pdf/split-sheet'
 import type { SplitSheetAgreementInput } from '@/lib/vault/pdf/split-sheet'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
-import { assertCounselReviewedForProduction } from '@/lib/split-sheets/agreement'
+import { assertCounselReviewedForProduction, partiesMissingLegalName } from '@/lib/split-sheets/agreement'
 import {
   MONTHLY_NEW_RECIPIENT_CAP,
   checkNewRecipientCap,
@@ -148,6 +148,26 @@ export async function POST(
   if (signableParties.length !== parties.length) {
     return NextResponse.json(
       { error: 'Every party needs an email address before the sheet can be sent for signature' },
+      { status: 400 }
+    )
+  }
+
+  // A split sheet is a legally-binding record of WHO owns what. A party
+  // fast-added by email/phone carries a placeholder `name` but an empty
+  // `legal_name`, which would bind them to the executed instrument under a
+  // non-legal (or em-dash) name. Block the mint until every party has a real
+  // legal name — the initiator's own row is populated + locked from Settings,
+  // so this targets not-yet-completed recipients. Runs with the email gate,
+  // BEFORE any DocuSeal spend. (Phase 18 review WR / research A4.)
+  const missingLegalName = partiesMissingLegalName(parties)
+  if (missingLegalName.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          'Every party needs a legal name before the sheet can be sent for signature. ' +
+          `Still missing for: ${missingLegalName.map(p => p.name).join(', ')}.`,
+        missingLegalName: missingLegalName.map(p => p.id),
+      },
       { status: 400 }
     )
   }

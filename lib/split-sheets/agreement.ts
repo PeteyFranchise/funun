@@ -102,6 +102,30 @@ export function assertCounselReviewedForProduction(): void {
   )
 }
 
+// ─── Mint-readiness gate: every party needs a real legal name ──────────
+
+/**
+ * Returns the parties that lack a usable legal name — the check the mint
+ * route runs BEFORE a sheet becomes a signable, legally-binding document,
+ * alongside the existing "every party needs an email" gate.
+ *
+ * This is deliberately stricter than the *rendering* helpers below:
+ * displayValue/displayLegalName tolerate a missing legal name on the
+ * printed document (em-dash, or a fall-back to the professional name),
+ * because an absent optional detail must never render blank. Minting is
+ * different — a split sheet exists to record WHO owns what, so a party
+ * bound to the instrument under a placeholder name (a fast-added,
+ * email/phone-only collaborator whose legal_name is still empty) is a
+ * defective legal record. The initiator's own row is populated + locked
+ * from Settings (migration 066), so this gate targets not-yet-completed
+ * recipient parties. (Phase 18 review WR / research A4.)
+ */
+export function partiesMissingLegalName<T extends { legal_name?: string | null }>(
+  parties: readonly T[]
+): T[] {
+  return parties.filter(p => (p.legal_name ?? '').trim() === '')
+}
+
 // ─── Display helpers ─────────────────────────────────────────────────────
 
 /**

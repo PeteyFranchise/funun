@@ -9,6 +9,7 @@ import {
   PRE_SIGNATURE_REVIEW_PROMPT,
   COUNSEL_REVIEW_STATUS,
   assertCounselReviewedForProduction,
+  partiesMissingLegalName,
   displayValue,
   displayLegalName,
   composeLegalNameFromProfile,
@@ -76,6 +77,38 @@ describe('counsel gate (P17-09a)', () => {
   it('is a no-op in test', () => {
     Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', configurable: true })
     expect(() => assertCounselReviewedForProduction()).not.toThrow()
+  })
+})
+
+describe('partiesMissingLegalName (mint gate — Phase 18 review WR / A4)', () => {
+  it('flags a fast-added party whose legal_name is empty, null, undefined, or whitespace', () => {
+    const parties = [
+      { id: '1', name: 'Jessica Ramirez', legal_name: 'Jessica Ramirez' }, // ok
+      { id: '2', name: 'alex@example.com', legal_name: '' }, // fast-add, blank
+      { id: '3', name: 'sam@example.com', legal_name: null }, // fast-add, null
+      { id: '4', name: 'jo@example.com', legal_name: undefined }, // absent
+      { id: '5', name: 'ray@example.com', legal_name: '   ' }, // whitespace-only
+    ]
+    const missing = partiesMissingLegalName(parties)
+    expect(missing.map(p => p.id)).toEqual(['2', '3', '4', '5'])
+    // Returns the party objects intact so the route can name who is missing.
+    expect(missing[0].name).toBe('alex@example.com')
+  })
+
+  it('returns an empty array when every party has a real legal name', () => {
+    const parties = [
+      { id: '1', name: 'Nova', legal_name: 'Jessica Ramirez' },
+      { id: '2', name: 'André Beaumont', legal_name: 'André Beaumont' },
+    ]
+    expect(partiesMissingLegalName(parties)).toEqual([])
+  })
+
+  it('passes the initiator (legal name locked from Settings) while catching an incomplete recipient', () => {
+    const parties = [
+      { id: 'self', name: 'Maya Carter', legal_name: 'Maya Elise Carter' }, // locked from Settings
+      { id: 'guest', name: 'newwriter@example.com', legal_name: '' }, // not yet completed
+    ]
+    expect(partiesMissingLegalName(parties).map(p => p.id)).toEqual(['guest'])
   })
 })
 
