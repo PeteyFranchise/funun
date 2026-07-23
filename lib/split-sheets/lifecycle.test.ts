@@ -115,6 +115,43 @@ describe('partiesActuallyChanged — WR-04 real diff, not "was parties[] present
     const after: PartyChangeSnapshot[] = [{ name: 'You', split_percentage: 100 }]
     expect(partiesActuallyChanged(before, after)).toBe(true)
   })
+
+  // BL-01 (PR #39 review): the PATCH route now threads the persisted party id
+  // into both snapshots. A pure rename (same id, same split) must NOT read as
+  // removed+added — otherwise a cosmetic name fix wrongly resets consensus and
+  // destroys every party's approval token.
+  it('reports false for a pure rename when the party id is preserved (BL-01)', () => {
+    const before: PartyChangeSnapshot[] = [
+      { id: 'p-alex', name: 'Alex', split_percentage: 60 },
+      { id: 'p-jon', name: 'Jon', split_percentage: 40 },
+    ]
+    const after: PartyChangeSnapshot[] = [
+      { id: 'p-alex', name: 'Alex', split_percentage: 60 },
+      { id: 'p-jon', name: 'Jonathan', split_percentage: 40 }, // renamed, same id + split
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(false)
+  })
+
+  it('still reports true when a same-id party actually moves splits', () => {
+    const before: PartyChangeSnapshot[] = [
+      { id: 'p-a', name: 'A', split_percentage: 60 },
+      { id: 'p-b', name: 'B', split_percentage: 40 },
+    ]
+    const after: PartyChangeSnapshot[] = [
+      { id: 'p-a', name: 'A', split_percentage: 50 },
+      { id: 'p-b', name: 'B', split_percentage: 50 },
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(true)
+  })
+
+  it('reports true for a genuinely new party (null id ⇒ name fallback, not absorbed)', () => {
+    const before: PartyChangeSnapshot[] = [{ id: 'p-you', name: 'You', split_percentage: 100 }]
+    const after: PartyChangeSnapshot[] = [
+      { id: 'p-you', name: 'You', split_percentage: 60 },
+      { id: undefined, name: 'Rapper', split_percentage: 40 }, // new row, no persisted id
+    ]
+    expect(partiesActuallyChanged(before, after)).toBe(true)
+  })
 })
 
 describe('isAllowedStatusTransition — closes the status back-door', () => {
