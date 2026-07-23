@@ -547,11 +547,30 @@ Plans:
 
 ### Phase 19: Profile & Identity Model Cleanup
 
-**Goal:** Collapse Funūn's three overlapping "you" tables into one canonical account profile and formalize the collaborator-becomes-user reconciliation — fixing the Phase 18 duplicate-rights bug (a saved PRO reads "None" on split sheets because two Settings sections write two different tables), while keeping signed documents immutable.
-**Requirements**: TBD (see 19-SPEC.md)
+**Goal:** Collapse Funūn's three overlapping "you" tables into one canonical account profile and formalize the collaborator-becomes-user reconciliation — fixing the Phase 18 duplicate-rights bug (a saved PRO reads "None" on split sheets because two Settings sections write two different tables), while keeping signed documents immutable. The relation's honest rename (`artist_profiles`→`user_profiles`) is split out as Phase 20.
+**Requirements**: 5 (see 19-SPEC.md — R1 delete duplicate + re-point readers, R2 confirmable pre-fill, R3 preserve live-link, R4 flag-for-fix, R5 licensee note)
 **Depends on:** Phase 18 (split-sheet identity/live-link), Phase 08 (identity schema), Phase 04 (collaborator identity reconciliation)
 **Plans:** 0 plans
 
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 19 to break down)
+
+### Phase 20: Profile Table Rename (artist_profiles to user_profiles)
+
+**Goal:** Rename the canonical profile relation `artist_profiles` → `user_profiles` (its honest name — every member has one, not just artists) across all runtime code and effective DB objects, with no downtime and no data change. Split out of Phase 19 (2026-07-23, owner decision) because the blast radius is a different risk class from the bug fix.
+**Requirements**: TBD (see 20-SPEC.md) — carries Phase 19's former R6
+**Depends on:** Phase 19 (which deletes the duplicate `user_profiles`, freeing the target name)
+
+**Locked inputs (verified via Codex sweep 2026-07-23 — do not re-litigate scope):**
+- Blast radius: ~79 runtime files reference `artist_profiles` (incl. public-profile `app/u/` + `app/r/`, approve/invite pages, presence, Green Room, trust/safety, capability grants, split-sheet mint, and the manual `ArtistProfile` type in `types/index.ts`) plus ~23 historical migrations.
+- Effective DB objects to update in a NEW migration: `handle_new_user()` (curator/industry branches), search-vector + `clear_featured` triggers, `capability_grants` + `verification_audit_log` FKs, Green Room SQL functions, RLS policies, grants, indexes, and the re-pointed `claim_collaborators()`/`backfill_claimed_collaborators()`.
+- Historical migrations are IMMUTABLE — the rename lands as a new migration; acceptance is "no runtime/effective-schema references," historical files exempt.
+- Deployment race is real: needs a coordinated strategy (transitional compatibility view OR dual-name window OR controlled deploy window) + `NOTIFY pgrst` schema-cache reload + signup / public-profile / split-sheet smoke tests.
+- The `/api/profile` route URL does NOT change (only its target table); renaming the route is a separate decision.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 20 to break down)

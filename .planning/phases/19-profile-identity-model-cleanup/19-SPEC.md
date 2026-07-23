@@ -1,13 +1,13 @@
 # Phase 19: Profile & Identity Model Cleanup — Specification
 
 **Created:** 2026-07-23
-**Revised:** 2026-07-23 (corrected against Codex verification — see Interview Log)
-**Ambiguity score:** 0.14 (gate: ≤ 0.20)
-**Requirements:** 6 locked
+**Revised:** 2026-07-23 (corrected against Codex verification; R6 rename split to Phase 20 — see Interview Log)
+**Ambiguity score:** 0.13 (gate: ≤ 0.20)
+**Requirements:** 5 locked
 
 ## Goal
 
-Collapse Funūn's overlapping "you" tables into **one canonical account profile**, delete the duplicate that silently breaks split-sheet rights, and formalize the collaborator-becomes-user reconciliation — while preserving the existing live-identity behavior and keeping signed documents immutable.
+Collapse Funūn's overlapping "you" tables into **one canonical account profile**, delete the duplicate that silently breaks split-sheet rights, and formalize the collaborator-becomes-user reconciliation — while preserving the existing live-identity behavior and keeping signed documents immutable. *(The relation's honest rename `artist_profiles`→`user_profiles` is Phase 20.)*
 
 ## Background
 
@@ -22,11 +22,11 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 
 **The bug (Phase 18 UAT):** Settings has *two* rights inputs — "Rights & Royalties" (`PATCH /api/profile` → `artist_profiles`, which the split-sheet party-1 row reads) and "Rights Identity" (`PATCH /api/user-profiles` → `user_profiles`, which it does **not**). A user who fills the wrong one saves a PRO that then reads "None" on their split sheet. Worse: because `user_profiles` is rarely populated, the claim/backfill functions that read it usually fill nothing, so the "your PRO auto-fills onto credits others added you to" feature is quietly half-broken.
 
-**Live-identity already exists (corrects a prior draft of this spec):** `resolvePartyIdentity` ([lib/split-sheets/live-identity.ts](lib/split-sheets/live-identity.ts)) already live-links **both** the initiator (party 1) **and every claimed collaborator** to their CURRENT `artist_profiles` values — resolved live for `draft`/`pending_approval`/`approved`/`countered`, and frozen only at `esign_pending`/`executed`. The [split-sheets/[id]/page.tsx](app/(artist)/split-sheets/[id]/page.tsx) server component batch-loads claimed users' profiles by server-verified `collaborators.claimed_by`. The freeze boundary is owned by [lifecycle.ts](lib/split-sheets/lifecycle.ts) (`LIVING_DRAFT_STATUSES`/`CONSENSUS_RESET_STATUSES`; `esign_pending`/`executed` blocked). This phase must **preserve** that, not rebuild it.
+**Live-identity already exists (corrects a prior draft of this spec):** `resolvePartyIdentity` ([lib/split-sheets/live-identity.ts](lib/split-sheets/live-identity.ts)) already live-links **both** the initiator (party 1) **and every claimed collaborator** to their CURRENT `artist_profiles` values — resolved live for `draft`/`pending_approval`/`approved`/`countered`, and frozen only at `esign_pending`/`executed`. The [split-sheets/[id]/page.tsx](app/(artist)/split-sheets/[id]/page.tsx) server component batch-loads claimed users' profiles by server-verified `collaborators.claimed_by`. The freeze boundary is owned by [lifecycle.ts](lib/split-sheets/lifecycle.ts). This phase must **preserve** that, not rebuild it.
 
 **Reconciliation flow (`claim_collaborators`, 026/051):** on signup and via the middleware-triggered `/api/claim-collaborators` route (which runs only while `artist_profiles.claimed_at` is null, and sets `claimed_at` after a successful run — so it does **not** re-run on every later login), it stamps `claimed_by` on unclaimed `collaborators` rows matching the user's email, copies the user's rights from `user_profiles` into blank collaborator fields (COALESCE — never overwrites), and grants the claimed user SELECT visibility ("Claimed users see own credits", 026/052 — SELECT-only). It is one-way (profile→credit), and email-dependent.
 
-**Fragility flag:** both `user_profiles` (053) and `collaborators.claimed_by` (052) were each defensively re-created after live-schema drift. Any deletion/rename must be preceded by a full reference sweep, and must add a NEW migration (never edit historical ones — a fresh DB replays them).
+**Fragility flag:** both `user_profiles` (053) and `collaborators.claimed_by` (052) were each defensively re-created after live-schema drift. Any deletion must be preceded by a full reference sweep, and must add a NEW migration (never edit historical ones — a fresh DB replays them).
 
 ## Requirements
 
@@ -42,7 +42,7 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 
 3. **Preserve live-linked party identity through the consolidation (Q2)**: The existing live-link + freeze behavior survives the table changes unchanged.
    - Current: `resolvePartyIdentity` already live-links the initiator AND every claimed collaborator from `artist_profiles`, live for `draft`/`pending_approval`/`approved`/`countered` and frozen at `esign_pending`/`executed`. This is exactly the Q2 intent — it is already implemented.
-   - Target: after R1 (and R6's rename), the resolver and the `[id]/page.tsx` batch read resolve from the **canonical** profile (renamed target) with the **same freeze boundary** — `esign_pending`/`executed` only. The freeze boundary is NOT moved earlier; `pending_approval`/`approved`/`countered` remain live.
+   - Target: after R1 (dropping the duplicate), the resolver and the `[id]/page.tsx` batch read resolve from the canonical `artist_profiles` with the **same freeze boundary** — `esign_pending`/`executed` only. The freeze boundary is NOT moved earlier; `pending_approval`/`approved`/`countered` remain live. *(When Phase 20 renames the relation, these reads move with it.)*
    - Acceptance: editing a claimed collaborator's canonical profile updates their identity on a `draft`/`pending_approval`/`approved`/`countered` sheet, and does NOT change an `esign_pending` or `executed` sheet; an executed sheet's signed PDF/Certificate is byte-unchanged; a regression test asserts the freeze boundary is unchanged from today.
 
 4. **Flag-for-fix on frozen sheets; no cross-user edits (Q3)**: A claimed user can propose a correction to their own identity on a *frozen* sheet, but never edits another user's sheet or the deal terms.
@@ -55,11 +55,6 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
    - Target: the split-sheet PDF **generated going forward** includes a standard note advising recipients (e.g. music supervisors) that ownership shares are fixed as of the signing date but each writer's current PRO/publisher/administrator/payee must be re-verified at license time — framed as informational guidance, **not** a Funūn warranty. Already-executed PDFs/Certificates are never regenerated or altered.
    - Acceptance: a newly generated split-sheet PDF contains the note framed as guidance (no accuracy guarantee); no already-executed document is regenerated. *(Whether the note also renders on read-only share/export surfaces is deferred to discuss-phase.)*
 
-6. **Rename `artist_profiles` → `user_profiles` (canonical name, staged last, deployment-coordinated)**: The one true profile carries an honest name so this confusion cannot recur. **Strong candidate to split into its own phase — see Boundaries.**
-   - Current: `artist_profiles` is the universal profile but misnamed and referenced by ~79 runtime files + ~23 historical migrations (with FKs, triggers incl. `handle_new_user`/search-vector/`clear_featured`, `capability_grants` + `verification_audit_log` FKs, Green Room SQL functions, RLS, grants, indexes); the name `user_profiles` is occupied by the duplicate (removed in R1).
-   - Target: after R1 frees the name, a NEW migration renames the relation and updates every **effective** (post-rename) DB object (RLS, triggers, function bodies, `claim_collaborators`/`backfill_claimed_collaborators`) with a `NOTIFY pgrst` schema-cache reload; all runtime references (`from('artist_profiles')`, server components, the manual `ArtistProfile` type in `types/index.ts`, public-profile pages `app/u/`, `app/r/`, the approve/invite pages) are updated in lockstep; a **coordinated deployment strategy** (transitional compatibility view OR dual-name window OR a controlled deploy window) prevents a live instance querying a name that no longer exists. Historical migrations are NEVER edited. The `/api/profile` route URL does not change (only its target table); renaming the route is a separate decision out of scope here.
-   - Acceptance: no **runtime application code** and no **effective (post-rename) DB object** references the old `artist_profiles` relation (historical migrations are exempt and remain byte-unchanged); `tsc --noEmit`, lint, and production build pass; `handle_new_user()` inserts a `user_profiles` row for a new artist AND a new industry account, and a curator signup still creates none; public-profile, split-sheet, metadata, and registration smoke tests pass; the deployment plan names its compatibility mechanism and includes the `pgrst` reload.
-
 ## Boundaries
 
 **In scope:**
@@ -69,19 +64,16 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 - Preserve the existing claimed-collaborator live-link + `esign_pending`/`executed` freeze boundary (R3)
 - Flag-for-fix path for a claimed user's own identity on frozen sheets, executed→amendment-only (R4)
 - "Note to licensees" on newly-generated split-sheet PDFs (R5)
-- Rename `artist_profiles`→`user_profiles`, staged last, deployment-coordinated (R6)
 
 **Out of scope:**
+- **The relation rename `artist_profiles`→`user_profiles` — split to Phase 20** (owner decision 2026-07-23; ~79 runtime files + ~23 migrations + a live deploy race = a different risk class). R1 (dropping the duplicate) is Phase 20's prerequisite, since it frees the target name.
 - `industry_profiles` vs `member_type='industry'` reconciliation — separate follow-up; touches Antenna/marketplace + signup trigger, higher risk, unrelated to the rights bug
 - Tier-2 live "current payee snapshot" companion surfaced at sync/license time — larger feature; after core cleanup
 - `curators` table — unaffected
 - Changing ownership/`split_percentage`/`role` semantics, the approval/counter/e-sign flow, or the freeze boundary itself — untouched
 - Regenerating or altering any already-executed split-sheet PDF/Certificate — prohibited (immutability)
-- Renaming the `/api/profile` route URL — separate compatibility/product decision
 - Fixing the email-mismatch limitation of claiming (sign-up email ≠ collaborator email) — documented limitation
 - Songtrust / PRO / MLC / SoundExchange API integrations — deferred items
-
-**Recommendation (open decision):** given R6's blast radius (~79 runtime files, ~23 migrations with FK/trigger/function dependencies, and a live deployment race), **R6 should likely be its own phase (Phase 20)**, leaving Phase 19 = R1–R5 (the bug fix + reconciliation, which deliver all user value without the rename risk). Pending owner decision.
 
 ## Constraints
 
@@ -89,9 +81,9 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 - **Historical migrations are immutable.** All changes land as NEW migrations; no historical migration is edited (a fresh DB must replay history).
 - **Signed documents are immutable.** No requirement may mutate an `executed` split sheet or regenerate/replace its signed PDF/Certificate. Executed corrections are amendment-only; `esign_pending` corrections require voiding first.
 - **No data loss.** The `user_profiles` drop (R1) is preceded, in order, by the data-rescue migration; rescue uses **semantic-blank** detection (NULL, trimmed-empty text, empty-JSON `{}`) with "meaningful canonical value wins," maps `phone`→`contact_phone`, and handles `display_name`/`bio`.
-- **Sweep before delete/rename.** All readers of `user_profiles` (3 runtime + `claim_collaborators` + `backfill_claimed_collaborators` + RLS/trigger defs) and `artist_profiles` (~79 runtime + ~23 migrations) are enumerated before change.
-- **Rename ordering + deployment (R6).** Drop the duplicate (R1) before renaming `artist_profiles`→`user_profiles`. RLS, FKs, triggers (`handle_new_user` + curator/industry branches, search-vector, `clear_featured`), Green Room functions, and the public-profile read path must survive. Ship with a coordinated deploy (compatibility view / dual-name / deploy window) + `NOTIFY pgrst` reload to avoid the rename/deploy race.
-- **Staging order:** R1 (bug fix) → R2/R4/R5 (reconciliation + note) + R3 (preserve) → R6 (rename). R1 ships standalone value.
+- **Sweep before delete.** All readers of `user_profiles` (3 runtime + `claim_collaborators` + `backfill_claimed_collaborators` + RLS/trigger defs) are enumerated before the drop. *(The ~79-file `artist_profiles` sweep belongs to Phase 20's rename.)*
+- **Name-freeing for Phase 20.** R1's drop of the duplicate `user_profiles` is what frees the target name for Phase 20's rename — do not recreate `user_profiles` for any other purpose here.
+- **Staging order:** R1 (bug fix) → R2/R4/R5 (reconciliation + note) + R3 (preserve). R1 ships standalone value; Phase 20 (rename) follows.
 
 ## Acceptance Criteria
 
@@ -104,13 +96,12 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 - [ ] No non-owner code path can write another user's `split_sheet_parties` row or edit `split_percentage`/`role`
 - [ ] A claimed user can flag an identity correction on an esign_pending/executed sheet; the owner is notified; applying to an executed sheet creates an amendment and leaves the signed PDF/Certificate byte-unchanged
 - [ ] A newly generated split-sheet PDF contains the "note to licensees" framed as guidance; no already-executed document is regenerated
-- [ ] After R6, no runtime code and no effective post-rename DB object references `artist_profiles` (historical migrations exempt/unchanged); tsc/lint/build pass; `handle_new_user()` creates a `user_profiles` row for new artist + industry accounts, none for curators; the deploy plan names its compatibility mechanism + `pgrst` reload
 
 ## Edge Coverage
 
-**Coverage:** 10/10 applicable edges resolved · 0 unresolved
+**Coverage:** 8/8 applicable edges resolved · 0 unresolved
 
-> Derived from the design discussion's Failure-Analyst pass + Codex verification (this is a schema/identity-refactor spec — edges are data-state, lifecycle, and deployment boundaries, resolved inline).
+> Derived from the design discussion's Failure-Analyst pass + Codex verification (this is a schema/identity-refactor spec — edges are data-state and lifecycle boundaries, resolved inline).
 
 | Category | Requirement | Status | Resolution / Reason |
 |----------|-------------|--------|---------------------|
@@ -122,8 +113,6 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 | Freeze-boundary regression | R3 | ✅ covered | Boundary stays `esign_pending`/`executed`; regression test asserts unchanged; AC line 6 |
 | Legal immutability | R3/R4/R5 | ✅ covered | Executed → amendment-only; PDF/Certificate byte-unchanged; never regenerated; AC lines 6/8/9 |
 | Cross-user authority | R4 | ✅ covered | No non-owner write path to another party row/terms; AC line 7 |
-| Account-type branch | R6 | ✅ covered | Rename preserves curator early-return + industry `member_type` insert; AC line 10 |
-| Rename/deploy race | R6 | ✅ covered | Coordinated deploy (compat view / dual-name / window) + `pgrst` reload; Constraints + AC line 10 |
 | Email mismatch | R2 | ⛔ dismissed | Claiming is email-keyed; a different signup email means no claim — documented limitation, explicitly out of scope |
 
 ## Prohibitions (must-NOT)
@@ -137,7 +126,7 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 | MUST NOT lose non-NULL-but-blank (`{}` / `''`) or unmapped (`phone`, `display_name`, `bio`) data in the rescue | R1 | resolved | verification: test — semantic-blank rescue over `{}`-address and `''`-text fixtures |
 | MUST NOT let a non-owner write another user's `split_sheet_parties` row or edit `split_percentage`/`role` | R4 | resolved | verification: test — RLS + route authorization negative test |
 | MUST NOT present claim-pre-filled data as authoritative without the confirm step (locking a stranger's typo as identity) | R2 | resolved | verification: judgment — unconfirmed flag + confirm-and-edit prompt required before values are owned |
-| MUST NOT edit historical migrations to accomplish the rename | R6 | resolved | verification: test — rename lands as a new migration; historical files byte-unchanged in the diff |
+| MUST NOT accomplish the consolidation by editing historical migrations | R1 | resolved | verification: test — changes land as new migrations; historical files byte-unchanged in the diff |
 | Cross-user rights-data exposure beyond the intended claim-fill | R2/R4 | — | canon — owned by RLS + /gsd-secure-phase; not minted here |
 
 ## Ambiguity Report
@@ -145,10 +134,10 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 | Dimension          | Score | Min  | Status | Notes                                              |
 |--------------------|-------|------|--------|----------------------------------------------------|
 | Goal Clarity       | 0.90  | 0.75 | ✓      | Precise, staged goal; canonical table decided       |
-| Boundary Clarity   | 0.86  | 0.70 | ✓      | Explicit out-of-scope; R6-as-own-phase left open    |
-| Constraint Clarity | 0.86  | 0.65 | ✓      | Human-gated, immutability, semantic-blank, deploy    |
-| Acceptance Criteria| 0.80  | 0.70 | ✓      | 10 pass/fail; R2 flag-schema + R4 notify → planning  |
-| **Ambiguity**      | 0.14  | ≤0.20| ✓      | Corrected against Codex verification                 |
+| Boundary Clarity   | 0.90  | 0.70 | ✓      | Rename split to Phase 20; out-of-scope explicit      |
+| Constraint Clarity | 0.86  | 0.65 | ✓      | Human-gated, immutability, semantic-blank rescue     |
+| Acceptance Criteria| 0.80  | 0.70 | ✓      | 9 pass/fail; R2 flag-schema + R4 notify → planning    |
+| **Ambiguity**      | 0.13  | ≤0.20| ✓      | Corrected against Codex verification                 |
 
 Status: ✓ = met minimum, ⚠ = below minimum (planner treats as assumption)
 
@@ -162,13 +151,14 @@ Requirements were clarified across an extended design conversation (2026-07-23),
 | 2     | Researcher      | Where do phone/address/PRO actually live?          | `artist_profiles` already has all of them (020/021/063) — canonical is complete |
 | 2     | Simplifier      | Irreducible core?                                  | Delete the duplicate + re-point BOTH DB readers (R1) — fixes the bug and the half-broken claim |
 | 3     | Boundary Keeper | What's explicitly NOT this phase?                  | `industry_profiles`/`member_type` deferred; Tier-2 deferred; terms/approval/freeze-boundary untouched; curators untouched |
-| 4     | Failure Analyst | What breaks if we get it wrong?                    | Stranded `{}`/`''`/unmapped data; missed `backfill_*`; signed-doc mutation; rename/deploy race — all resolved in Edge Coverage |
+| 4     | Failure Analyst | What breaks if we get it wrong?                    | Stranded `{}`/`''`/unmapped data; missed `backfill_*`; signed-doc mutation — all resolved in Edge Coverage |
 | 5     | Seed Closer     | Reconciliation intent?                             | Q1=C confirmable pre-fill; Q2=preserve existing live-link; Q3=B flag-for-fix (frozen sheets, executed→amendment) |
 | 6     | Seed Closer     | Sync/licensing tension?                            | Signed split = frozen ownership; current payee = live profile; Tier-1 "note to licensees" on newly-generated PDFs |
-| V     | Verification (Codex) | Are the spec's factual claims true?          | CORRECTED: claimed collaborators already live-linked (R3 was wrong); freeze = esign_pending/executed (not pending_approval); `backfill_claimed_collaborators()` added; semantic-blank + display_name/bio rescue; `claimed_at`-guarded claim (not every login); executed→amendment-only (R4); historical-migration exemption + deploy strategy (R6); column provenance 020/021/063 |
+| V     | Verification (Codex) | Are the spec's factual claims true?          | CORRECTED: claimed collaborators already live-linked (R3 was wrong); freeze = esign_pending/executed; `backfill_claimed_collaborators()` added; semantic-blank + display_name/bio rescue; `claimed_at`-guarded claim; executed→amendment-only (R4); column provenance 020/021/063 |
+| S     | Scope (owner)   | Keep the rename in-phase or split it?              | R6 rename SPLIT to Phase 20 (~79 files + deploy race = different risk class); Phase 19 = R1–R5 |
 
 ---
 
 *Phase: 19-profile-identity-model-cleanup*
-*Spec created: 2026-07-23 · Revised: 2026-07-23 (Codex verification)*
-*Next step: /gsd-discuss-phase 19 — implementation decisions (migration sequencing, semantic-blank rescue, claim pre-fill state, flag surface, rename mechanics + deploy)*
+*Spec created: 2026-07-23 · Revised: 2026-07-23 (Codex verification + R6 split to Phase 20)*
+*Next step: /gsd-discuss-phase 19 — implementation decisions (migration sequencing, semantic-blank rescue, claim pre-fill state, flag surface)*

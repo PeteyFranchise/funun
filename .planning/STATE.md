@@ -269,7 +269,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 ### Roadmap Evolution
 
 - Phase 15 added: Account Capability Model — cross-cutting identity change (member_type single value -> capability grants), scheduled after Phase 13, deferred until after beta testing begins
-- Phase 19 added: Profile & Identity Model Cleanup — consolidate the three overlapping "you" tables (rename artist_profiles→user_profiles, delete the duplicate user_profiles, re-point claim_collaborators to the canonical profile) and formalize collaborator-becomes-user reconciliation (confirmable pre-fill, live-link+freeze, flag-for-fix). Surfaced by the Phase 18 duplicate-rights bug (saved PRO reads "None"). Full decisions locked in 19-SPEC.md.
+- Phase 19 added: Profile & Identity Model Cleanup — delete the duplicate user_profiles + re-point both DB readers (claim_collaborators + backfill_claimed_collaborators) to the canonical artist_profiles, and formalize collaborator-becomes-user reconciliation (confirmable pre-fill, preserve existing live-link, flag-for-fix). Surfaced by the Phase 18 duplicate-rights bug (saved PRO reads "None"). Decisions locked in 19-SPEC.md; corrected against a Codex verification sweep.
+- Phase 20 added: Profile Table Rename (artist_profiles → user_profiles) — split out of Phase 19 (2026-07-23) after the Codex sweep showed the rename is ~79 runtime files + ~23 migrations + a live deploy race (a different risk class). Phase 19 keeps R1–R5; Phase 20 carries the rename and depends on Phase 19 freeing the user_profiles name. Verified scope captured in the ROADMAP Phase 20 locked-inputs block.
 
 ## Deferred Items
 
