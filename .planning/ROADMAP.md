@@ -544,3 +544,14 @@ Plans:
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 0/5 | Planned | Docs-only plan set drafted 2026-07-18 |
 | 17. Split-Sheet E-Sign | v1.3-pre | 10/10 | Complete   | 2026-07-20 |
+
+### Phase 19: Profile & Identity Model Cleanup
+
+**Goal:** Collapse Funūn's three overlapping "you" tables into one canonical account profile and formalize the collaborator-becomes-user reconciliation — fixing the Phase 18 duplicate-rights bug (a saved PRO reads "None" on split sheets because two Settings sections write two different tables), while keeping signed documents immutable.
+**Requirements**: TBD (see 19-SPEC.md)
+**Depends on:** Phase 18 (split-sheet identity/live-link), Phase 08 (identity schema), Phase 04 (collaborator identity reconciliation)
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 19 to break down)

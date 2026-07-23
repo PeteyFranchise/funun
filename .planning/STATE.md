@@ -269,6 +269,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 ### Roadmap Evolution
 
 - Phase 15 added: Account Capability Model — cross-cutting identity change (member_type single value -> capability grants), scheduled after Phase 13, deferred until after beta testing begins
+- Phase 19 added: Profile & Identity Model Cleanup — consolidate the three overlapping "you" tables (rename artist_profiles→user_profiles, delete the duplicate user_profiles, re-point claim_collaborators to the canonical profile) and formalize collaborator-becomes-user reconciliation (confirmable pre-fill, live-link+freeze, flag-for-fix). Surfaced by the Phase 18 duplicate-rights bug (saved PRO reads "None"). Full decisions locked in 19-SPEC.md.
 
 ## Deferred Items
 
