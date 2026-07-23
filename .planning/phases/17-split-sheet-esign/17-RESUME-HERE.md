@@ -24,6 +24,12 @@ DocuSeal API + webhook wiring is already DONE (env vars set in Vercel prod, webh
 
 **Sequencing from here:** land the mint-gate fix → confirm the counsel-review backing → run the §2 live checkpoint against the improved flow.
 
+### 2026-07-23 — verification findings (Codex live check)
+
+**Prod DB is ahead of prod code (mild hazard).** Migrations 066/067/068 are applied to the production Supabase, but the Phase 17/18 UI code is NOT deployed — funun.studio still serves the pre-17/18 build (even-split redistribution, legacy party form, legacy `vault_documents` Locker). So on prod, saving a split-sheet draft currently errors with `new row violates row-level security policy for split_sheet_parties` (old code vs. new RLS). Likely low-impact — `/split-sheets` was orphaned/unlinked — but prod DB and prod code are out of sync until the branch ships. **The real Phase 18 UAT cannot run against funun.studio; it needs a deploy of THIS branch** — a `vercel` preview of the current tree gives new code against the live new schema (the correct test env). The RLS error must be re-verified against the new code (live-RLS behavior is untested by unit tests).
+
+**Counsel-review audit trail is incomplete.** The `1e3aac5` flip to `COUNSEL_REVIEW_STATUS='reviewed'` was made on Pete's verbal confirmation; the commit and the comment above the constant both mark reviewer name/firm **PENDING**, and `counsel-review/` holds only the outbound request + sample PDF (no written attorney response). Pete confirmed the reviewing attorney is his brother — a family relationship doesn't invalidate a licensed review, but it's unrecorded. **Before minting real documents, record in the comment above `COUNSEL_REVIEW_STATUS`:** reviewer full name, bar jurisdiction/licensing status, firm or "independent counsel," review date, a written approval (email suffices), and the exact scope reviewed (AGREEMENT_CLAUSES + guidance notes).
+
 ---
 
 ## Reference — env var setup (DONE, kept for the record)
