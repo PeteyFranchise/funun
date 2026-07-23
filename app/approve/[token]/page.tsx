@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { SplitApprovalView } from '@/components/split-sheets/SplitApprovalView'
 import { resolvePartyPhase } from '@/lib/split-sheets/phase'
 import type { PartyPhase, SplitSheetStatus } from '@/lib/split-sheets/phase'
+import type { PartyChangeRecord } from '@/lib/split-sheets/change-summary'
 import { DOCUSEAL_EMBED_BASE } from '@/lib/esign/docuseal'
 
 // Public page — no auth required. /approve is intentionally absent from
@@ -22,7 +23,7 @@ export default async function ApprovePage({ params }: Props) {
   // available (RESEARCH Pitfall 1 / gap fix 1). ────────────────────────
   const { data: party } = await service
     .from('split_sheet_parties')
-    .select('*, split_sheets(id, song_name, status, initiator_user_id)')
+    .select('*, split_sheets(id, song_name, status, initiator_user_id, last_change_summary)')
     .eq('approval_token', token)
     .maybeSingle()
 
@@ -31,6 +32,7 @@ export default async function ApprovePage({ params }: Props) {
     song_name: string
     status: SplitSheetStatus
     initiator_user_id: string
+    last_change_summary: PartyChangeRecord[] | null
   } | null
 
   // ── Two-question gating (RESEARCH Pitfall 1): token validity vs party
@@ -101,6 +103,7 @@ export default async function ApprovePage({ params }: Props) {
     song_name: string
     status: SplitSheetStatus
     initiator_user_id: string
+    last_change_summary: PartyChangeRecord[] | null
   }
 
   // ── Fetch all sibling parties (names + splits only, T-01-14) ─────────
@@ -150,6 +153,7 @@ export default async function ApprovePage({ params }: Props) {
       songName={resolvedSheet.song_name}
       artistName={artistName}
       phase={phase}
+      changeSummary={resolvedSheet.last_change_summary}
       signingSrc={signingSrc}
       parties={(allParties ?? []) as { id: string; name: string; role: string | null; split_percentage: number }[]}
       partyIdentity={{

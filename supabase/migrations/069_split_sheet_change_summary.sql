@@ -1,0 +1,45 @@
+-- ============================================================
+-- Funūn — Wave 4: The Green Room (Phase 18: Split-Sheet Home)
+-- Migration 069: persist the consensus-reset change summary (WR-03, P18-09)
+--
+-- P18-09 says: when editing a sheet already out for approval resets
+-- consensus back to draft, each party must be told WHAT changed — who
+-- joined, whose share moved and from what to what — before they re-approve.
+-- lib/split-sheets/change-summary.ts computes that diff correctly, but code
+-- review WR-03 found it was only ever rendered in the INITIATOR's own
+-- builder; the parties who actually re-approve on /approve/[token] never saw
+-- it. The fix needs the diff to survive the request that computed it, so the
+-- public approval page can read it back — hence this column.
+--
+-- Shape: a jsonb array of the structured PartyChangeRecord values
+-- (lib/split-sheets/change-summary.ts) — e.g.
+--   [{"kind":"added","name":"Rapper","to":20},
+--    {"kind":"moved","name":"Jamie","from":40,"to":32}]
+-- The renderer (formatPartyChanges) turns these into system-worded English.
+--
+-- P18-13 SAFETY — why no free-text and no column-lockdown is needed:
+-- This is NOT the optional free-text "note" field P18-13 forbids. Every
+-- value here is DERIVED server-side from party names + split percentages —
+-- data the same parties already see on the sheet and on /approve — by
+-- summarizePartyChanges(), which has no free-text parameter by construction
+-- (see that module's header). The application never accepts a client-supplied
+-- last_change_summary: the PATCH route omits it from its party/sheet field
+-- allowlists and writes only the server-computed records. split_sheets is
+-- governed by row-level RLS (not migration 040's column-grant model), so a
+-- column-level REVOKE would be inert against the table-level grant; it is
+-- unnecessary here because forging this column via direct PostgREST grants
+-- no capability an initiator lacks already — they can only name a party (a
+-- value parties already see), never open a new prose channel.
+--
+-- Strictly additive: one nullable column, no existing column/constraint
+-- altered, matching migrations 018/062/063/066/067's convention. A pre-069
+-- row keeps working — a null summary simply renders no "what changed" banner.
+--
+-- An executor agent must NEVER run `supabase db push` for this migration.
+-- The live push against the remote database is a human-gated checkpoint
+-- (mirrors migrations 058/062/063/066/067/068's "do not push from an
+-- executor agent" convention).
+-- ============================================================
+
+ALTER TABLE split_sheets
+  ADD COLUMN IF NOT EXISTS last_change_summary jsonb;

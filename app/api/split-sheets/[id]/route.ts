@@ -8,7 +8,8 @@ import {
 import { createApiClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
-import type { PartyChangeSnapshot } from '@/lib/split-sheets/change-summary'
+import { summarizePartyChanges } from '@/lib/split-sheets/change-summary'
+import type { PartyChangeSnapshot, PartyChangeRecord } from '@/lib/split-sheets/change-summary'
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Kept in sync with app/api/split-sheets/route.ts's PARTY_FIELDS. This
@@ -91,6 +92,10 @@ export async function PATCH(
   // who's on the sheet or what they're owed.
   const partiesSubmitted = Array.isArray(body.parties) && body.parties.length > 0
   let editsParties = false
+  // Server-computed consensus-reset diff (WR-03 / P18-09) — derived from the
+  // SAME frozen before/after snapshots the edit gate uses, and persisted only
+  // when consensus actually resets (below). Never sourced from client input.
+  let changeRecords: PartyChangeRecord[] = []
   if (partiesSubmitted) {
     const { data: existingPartyRows } = await supabase
       .from('split_sheet_parties')
@@ -104,6 +109,7 @@ export async function PATCH(
       split_percentage: Number(p.split_percentage) || 0,
     }))
     editsParties = partiesActuallyChanged(before, after)
+    changeRecords = summarizePartyChanges(before, after)
   }
   const gate = assertEditable(current.status as SplitSheetStatus, editsParties)
   if (!gate.ok) {
@@ -160,6 +166,15 @@ export async function PATCH(
   // pending_approval with dead links.
   if (gate.ok && gate.resetsConsensus) {
     update.status = 'draft'
+    // WR-03 / P18-09: persist the server-computed diff so each party is told
+    // WHAT changed on /approve/[token] before re-approving — not merely
+    // "please re-approve." Structured records from summarizePartyChanges (no
+    // free text — P18-13), computed above from the frozen before/after party
+    // rows; never client-supplied and deliberately absent from the field
+    // allowlists. Overwrites any prior reset's summary. (A later pure-draft
+    // edit before re-sending is not re-captured — the approved→edit→reset flow
+    // this serves is exact; a follow-on draft tweak is the accepted v1 edge.)
+    update.last_change_summary = changeRecords
   }
 
   // Handle party replacement (delete-and-reinsert for Phase 1). Gated on

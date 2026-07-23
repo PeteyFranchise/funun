@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import type { PartyPhase } from '@/lib/split-sheets/phase'
 import { SplitSheetSigningEmbed } from '@/components/split-sheets/SplitSheetSigningEmbed'
+import { formatPartyChanges } from '@/lib/split-sheets/change-summary'
+import type { PartyChangeRecord } from '@/lib/split-sheets/change-summary'
 
 // ─── SplitApprovalView ──────────────────────────────────────────────────
 // Public approval UI rendered on /approve/[token]. The same durable link
@@ -54,6 +56,12 @@ type Props = {
   partyEmail?: string | null
   /** §7 — this party's own current identity, for the advanced-info disclosure. */
   partyIdentity?: PartyIdentity | null
+  /**
+   * WR-03 / P18-09 — the server-computed diff of what changed when consensus
+   * was last reset, shown to this party before they re-approve. Structured
+   * records only (no free text — P18-13). Null or empty ⇒ no banner.
+   */
+  changeSummary?: PartyChangeRecord[] | null
 }
 
 type SubmitStatus = 'idle' | 'submitting' | 'approved' | 'countered' | 'error'
@@ -349,6 +357,7 @@ export function SplitApprovalView({
   signingSrc,
   partyEmail,
   partyIdentity,
+  changeSummary,
 }: Props) {
   if (phase === 'preview') {
     // P18-08: a draft share is explicitly NOT a formal ask. No approve
@@ -425,6 +434,7 @@ export function SplitApprovalView({
       artistName={artistName}
       parties={parties}
       partyIdentity={partyIdentity ?? EMPTY_IDENTITY}
+      changeSummary={changeSummary ?? null}
     />
   )
 }
@@ -438,6 +448,7 @@ type ApprovePhaseProps = {
   artistName: string
   parties: Party[]
   partyIdentity: PartyIdentity
+  changeSummary: PartyChangeRecord[] | null
 }
 
 function ApprovePhase({
@@ -448,6 +459,7 @@ function ApprovePhase({
   artistName,
   parties,
   partyIdentity,
+  changeSummary,
 }: ApprovePhaseProps) {
   const [showCounter, setShowCounter] = useState(false)
   const [counterInput, setCounterInput] = useState('')
@@ -531,6 +543,27 @@ function ApprovePhase({
 
       {status !== 'approved' && status !== 'countered' && (
         <>
+          {/* WR-03 / P18-09 — what changed since consensus was last broken.
+              System-worded, structured records only; no user free text ever
+              reaches this banner (P18-13). */}
+          {changeSummary && changeSummary.length > 0 && (
+            <div className="w-full rounded-[18px] border border-amber-400/30 bg-amber-400/10 px-5 py-4">
+              <p className="text-sm font-semibold text-amber-300">
+                What changed since you last saw this
+              </p>
+              <ul className="mt-2 space-y-1">
+                {formatPartyChanges(changeSummary).map((line, i) => (
+                  <li key={i} className="text-sm text-white/70">
+                    • {line}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-white/40">
+                Review the updated split above before approving.
+              </p>
+            </div>
+          )}
+
           {/* Error message */}
           {(status === 'error' || errorMsg) && (
             <p className="text-sm text-rose-400">{errorMsg}</p>
