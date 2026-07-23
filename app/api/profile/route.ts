@@ -6,6 +6,7 @@ import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifier
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { sanitizeProfileRoles, filterOpenTo, isFeaturableProjectRow } from '@/lib/profile/validate'
+import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 
 // Mass-assignment allowlist. Deliberately EXCLUDES `verified`, `verified_at`,
 // `verified_by` (SAFETY-03 — admin-only, see app/api/admin/verification/
@@ -30,6 +31,7 @@ const EDITABLE_FIELDS = [
   'pro',
   'ipi',
   'publisher',
+  'administrator',
   'mlc_id',
   'soundexchange_id',
   'legal_first_name',
@@ -179,6 +181,39 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
   const update = result.update
+
+  // ── Legal-name confirm-and-lock (migration 066, deliberation section 2) ──
+  // lock_legal_name is a one-time SIGNAL, never a mass-assignable field —
+  // legal_name_locked_at itself is deliberately absent from EDITABLE_FIELDS
+  // above, so it can never be set to an arbitrary client-supplied value via
+  // the sanitize() allowlist loop. The server stamps its own now() here,
+  // only when the row is not already locked (a one-time confirm) and only
+  // alongside a non-empty composed legal name, mirroring
+  // sanitizeCollaborator's archived_at server-forced-timestamp pattern
+  // (lib/collaborators/index.ts) — the client signals intent, the server
+  // owns the actual instant. There is no unlock path: once set, this value
+  // is never cleared or overwritten by this route.
+  if (body.lock_legal_name === true) {
+    const { data: current } = await service
+      .from('artist_profiles')
+      .select('legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix, legal_name_locked_at')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const alreadyLocked = Boolean(current?.legal_name_locked_at)
+    if (!alreadyLocked) {
+      const composedName = composeLegalNameFromProfile({
+        legal_first_name: update.legal_first_name ?? current?.legal_first_name ?? null,
+        legal_middle_name: update.legal_middle_name ?? current?.legal_middle_name ?? null,
+        legal_last_name: update.legal_last_name ?? current?.legal_last_name ?? null,
+        legal_name_suffix: update.legal_name_suffix ?? current?.legal_name_suffix ?? null,
+      })
+      if (composedName.trim() !== '') {
+        update.legal_name_locked_at = new Date().toISOString()
+      }
+    }
+  }
+
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }

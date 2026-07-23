@@ -1,11 +1,14 @@
 import type { ReadinessItem, VaultProjectType } from '@/types'
 import { READINESS_ITEMS } from '@/types'
 import { readComposers } from '@/lib/metadata/schema'
+import { projectSplitTier, isRenegotiating } from '@/lib/vault/readiness-tiers'
+import { coverageTier } from '@/lib/vault/readiness-coverage'
 
 type ReadinessInput = {
   type: VaultProjectType
   distributor?: string | null
   tracks?: {
+    id?: string
     isrc?: string | null
     iswc?: string | null
     metadata?: Record<string, unknown> | null
@@ -13,6 +16,25 @@ type ReadinessInput = {
   assets?: { type: string }[]
   documents?: { type: string; status: string }[]
   tool_outputs?: { tool_slug: string }[]
+  // Pipeline-stage statuses for the project's split sheets (P17-03-impl,
+  // ESIGN-08). OPTIONAL — an omitted field degrades to the legacy
+  // signedOf('split_sheet')-only behavior so every existing caller
+  // (dashboard, vault list, project detail, demo-store) keeps compiling
+  // and behaving exactly as before. Wired in only by the readiness
+  // breakdown page (app/(artist)/vault/[projectId]/readiness/page.tsx) —
+  // deliberate v1 scoping (see 17-02-PLAN.md).
+  split_sheets?: { status: string }[]
+  // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04). Per-track
+  // split-sheet attachment statuses via split_sheet_attachments (18-03) —
+  // OPTIONAL, alongside the split_sheets field above. When supplied,
+  // coverage across EVERY one of the project's tracks (P18-15: no
+  // solo-written exemption) replaces the project-level projectSplitTier
+  // call for this branch. Omitted entirely, behavior degrades to exactly
+  // what it did before this field existed, so every existing caller
+  // (dashboard, vault list, project detail, demo-store) keeps compiling
+  // and behaving unchanged — the same optional-input discipline 17-02
+  // used for split_sheets itself.
+  track_split_sheet_attachments?: { track_id: string; statuses: string[] }[]
 }
 
 /** A track's composer splits are captured and total exactly 100%. */
@@ -65,6 +87,9 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
 
   return READINESS_ITEMS.filter(item => item.applies_to.includes(input.type)).map(item => {
     let status: ReadinessItem['status'] = 'missing'
+    let earnedPoints: number | undefined
+    let note: string | undefined
+    let splitSheetSource: ReadinessItem['splitSheetSource']
 
     switch (item.key) {
       case 'audio_files':
@@ -75,9 +100,64 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
           ? 'complete'
           : 'missing'
         break
-      case 'split_sheets':
-        status = signedOf('split_sheet')
+      case 'split_sheets': {
+        // Legacy wet-sign-upload path (AM-1 universal fallback) always wins
+        // outright — a fully signed split_sheet vault_document is worth the
+        // full 15 regardless of pipeline state.
+        const legacyStatus = signedOf('split_sheet')
+        if (legacyStatus === 'complete') {
+          status = 'complete'
+          earnedPoints = 15
+          splitSheetSource = 'legacy'
+          break
+        }
+        // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04) — only
+        // when the caller supplied per-track attachment data. Replaces
+        // the project-level projectSplitTier call below with a per-track
+        // rule: every track needs its own sheet (P18-15), and the
+        // identical derivation lives in migration 068's SQL, both
+        // asserted against lib/vault/coverage-fixtures.ts.
+        if (input.track_split_sheet_attachments !== undefined) {
+          const attachmentsByTrack = new Map(
+            input.track_split_sheet_attachments.map(a => [a.track_id, a.statuses])
+          )
+          const coverageTracks = tracks
+            .filter((t): t is typeof t & { id: string } => typeof t.id === 'string')
+            .map(t => ({
+              id: t.id,
+              attachedStatuses: attachmentsByTrack.get(t.id) ?? [],
+            }))
+          const coverage = coverageTier(coverageTracks)
+          if (coverage) {
+            earnedPoints = coverage.earnedPoints
+            status = coverage.status
+            splitSheetSource = 'coverage'
+            break
+          }
+        }
+        // Pipeline-derived tier (P17-03-impl) — only when the caller
+        // supplied split_sheets data; identical derivation to the DB
+        // trigger's SELECT MIN(CASE ss.status ...) in migration 062, both
+        // consuming SPLIT_SHEET_TIER_MAP (lib/vault/readiness-tiers.ts).
+        if (input.split_sheets !== undefined) {
+          const statuses = input.split_sheets.map(s => s.status)
+          const tier = projectSplitTier(statuses)
+          if (tier !== null) {
+            earnedPoints = tier
+            status = tier === 15 ? 'complete' : tier === 0 ? 'missing' : 'warning'
+            splitSheetSource = 'pipeline'
+            if (statuses.some(isRenegotiating)) {
+              note = 'A collaborator countered the split — renegotiating.'
+            }
+            break
+          }
+        }
+        // No pipeline signal at all (field omitted, or supplied empty):
+        // degrade to the legacy signedOf-only status.
+        status = legacyStatus
+        splitSheetSource = 'none'
         break
+      }
       case 'copyright':
         status = documents.some(d => d.type === 'copyright_registration') ? 'complete' : 'missing'
         break
@@ -139,7 +219,13 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
         break
     }
 
-    return { ...item, status }
+    return {
+      ...item,
+      status,
+      ...(earnedPoints !== undefined ? { earnedPoints } : {}),
+      ...(note !== undefined ? { note } : {}),
+      ...(splitSheetSource !== undefined ? { splitSheetSource } : {}),
+    }
   })
 }
 

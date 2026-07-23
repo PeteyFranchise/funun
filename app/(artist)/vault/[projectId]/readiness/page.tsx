@@ -4,12 +4,14 @@ import { createServerClient } from '@/lib/supabase/server'
 import type { ReadinessItem } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { readinessItemsForProject, readinessLabel } from '@/lib/vault/readiness'
+import { coverageTier } from '@/lib/vault/readiness-coverage'
 import { readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
 import { assessRdrReadiness, type RdrTrackInput } from '@/lib/metadata/rdr'
 import { getDemoProject } from '@/lib/vault/demo-store'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { Topbar } from '@/components/layout/Topbar'
 import { DistributorPicker } from '@/components/vault/DistributorPicker'
+import { SplitSheetCoverage } from '@/components/vault/SplitSheetCoverage'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +59,7 @@ function GateRow({ item, projectId }: { item: ReadinessItem; projectId: string }
       <div className="flex-1">
         <div className="text-[16px] font-bold text-white">{item.label}</div>
         <div className="mt-[3px] text-[13px] text-lavdim">{item.description}</div>
+        {item.note && <div className="mt-[3px] text-[12.5px] font-semibold text-money2">{item.note}</div>}
       </div>
       {item.status === 'complete' ? (
         <span className="text-[13px] font-bold text-emerald-400">Passed</span>
@@ -91,7 +94,7 @@ async function loadProject(projectId: string): Promise<{ project: VaultProjectRo
     supabase
       .from('vault_projects')
       .select(
-        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug)`
+        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug), split_sheets (status), split_sheet_attachments (track_id, split_sheets (status))`
       )
       .eq('id', projectId)
       .eq('user_id', user?.id ?? '')
@@ -107,6 +110,43 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
   const { project, artist } = loaded
 
   const distributor = (project as { distributor?: string | null }).distributor ?? null
+  // Split-sheet pipeline statuses, wired in ONLY on this breakdown page
+  // (deliberate v1 scoping, 17-02-PLAN.md) — the field is optional on
+  // ReadinessInput, so every other caller (dashboard, vault list, project
+  // detail, demo-store) keeps its legacy signedOf-only display unchanged.
+  const splitSheetStatuses = (project as { split_sheets?: { status: string }[] }).split_sheets
+
+  // Coverage-based derivation (P18-14/P18-15/P18-16, 18-04) — per-track
+  // split-sheet attachment statuses via split_sheet_attachments (18-03).
+  // Only track-specific attachments count toward a track's OWN coverage;
+  // a whole-release (track_id null) attachment is a separate fact and is
+  // ignored here, matching migration 068's SQL.
+  const attachmentRows =
+    (
+      project as {
+        split_sheet_attachments?: { track_id: string | null; split_sheets: { status: string } | null }[]
+      }
+    ).split_sheet_attachments ?? []
+  const attachmentsByTrack = new Map<string, string[]>()
+  for (const row of attachmentRows) {
+    if (!row.track_id || !row.split_sheets) continue
+    const existing = attachmentsByTrack.get(row.track_id) ?? []
+    existing.push(row.split_sheets.status)
+    attachmentsByTrack.set(row.track_id, existing)
+  }
+  const trackSplitSheetAttachments = (project.tracks ?? []).map(t => ({
+    track_id: t.id,
+    statuses: attachmentsByTrack.get(t.id) ?? [],
+  }))
+  const coverage = coverageTier(
+    (project.tracks ?? []).map(t => ({ id: t.id, attachedStatuses: attachmentsByTrack.get(t.id) ?? [] }))
+  )
+  const uncoveredTracks = coverage
+    ? (project.tracks ?? [])
+        .filter(t => coverage.uncoveredTrackIds.includes(t.id))
+        .map(t => ({ id: t.id, title: t.title ?? 'Untitled track' }))
+    : []
+
   const items = readinessItemsForProject({
     type: project.type,
     distributor,
@@ -114,6 +154,8 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
     assets: project.vault_assets,
     documents: project.vault_documents,
     tool_outputs: project.tool_outputs,
+    split_sheets: splitSheetStatuses,
+    track_split_sheet_attachments: trackSplitSheetAttachments,
   })
   const total = items.length
   const complete = items.filter(i => i.status === 'complete').length
@@ -203,7 +245,21 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
             What unlocks money &amp; opportunities
           </div>
           {items.map(item => (
-            <GateRow key={item.key} item={item} projectId={projectId} />
+            <div key={item.key}>
+              <GateRow item={item} projectId={projectId} />
+              {/* WR-02: only render the coverage widget when the coverage
+                  branch is what actually produced this item's status — a
+                  legacy-signed-document "Passed" gate must never sit next
+                  to a widget claiming the release is "not fully
+                  documented" (18-REVIEW.md WR-02). */}
+              {item.key === 'split_sheets' && item.splitSheetSource === 'coverage' && coverage && (
+                <SplitSheetCoverage
+                  covered={coverage.covered}
+                  needing={coverage.needing}
+                  uncoveredTracks={uncoveredTracks}
+                />
+              )}
+            </div>
           ))}
 
           {/* Neighbouring rights (DDEX RDR — SoundExchange / PPL) */}

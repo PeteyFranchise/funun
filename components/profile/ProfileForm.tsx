@@ -15,6 +15,7 @@ import {
   type ProfileVisibility,
   type OpenToVisibility,
 } from '@/lib/trust-safety/contracts'
+import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 
 const MAX_PROFILE_ROLES = 6
 const MAX_CUSTOM_ROLE_LEN = 40
@@ -84,6 +85,7 @@ type FormState = {
   pro: string
   ipi: string
   publisher: string
+  administrator: string
   mlc_id: string
   soundexchange_id: string
   legal_first_name: string
@@ -126,6 +128,7 @@ function toForm(p: ArtistProfile): FormState {
     pro: p.pro ?? '',
     ipi: p.ipi ?? '',
     publisher: p.publisher ?? '',
+    administrator: p.administrator ?? '',
     mlc_id: p.mlc_id ?? '',
     soundexchange_id: p.soundexchange_id ?? '',
     legal_first_name: p.legal_first_name ?? '',
@@ -231,6 +234,13 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  // Legal-name confirm-and-lock (migration 066, deliberation section 2).
+  // profile.legal_name_locked_at is read directly from the prop (not
+  // mirrored into FormState) so a router.refresh() after locking picks up
+  // the server-stamped value on the next render without extra local state.
+  const [lockSubmitting, setLockSubmitting] = useState(false)
+  const [lockError, setLockError] = useState<string | null>(null)
+
   // Rights Identity section state — saved to /api/user-profiles
   const [rightsForm, setRightsForm] = useState<RightsIdentityState>(
     toRightsIdentity(userProfile, profile)
@@ -252,6 +262,16 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
   const [visibilitySubmitting, setVisibilitySubmitting] = useState(false)
   const [visibilityError, setVisibilityError] = useState<string | null>(null)
   const [visibilitySaved, setVisibilitySaved] = useState(false)
+
+  // Live preview for the confirm-and-lock control — composed the same way
+  // agreement.ts composes it for the split-sheet document (first/middle/last
+  // plus ", suffix"), from the current (possibly unsaved) form field values.
+  const composedLegalNamePreview = composeLegalNameFromProfile({
+    legal_first_name: form.legal_first_name,
+    legal_middle_name: form.legal_middle_name,
+    legal_last_name: form.legal_last_name,
+    legal_name_suffix: form.legal_name_suffix,
+  })
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }))
@@ -396,6 +416,36 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
     router.refresh()
   }
 
+  // Legal-name confirm-and-lock — saves the current legal-name field
+  // values AND signals lock_legal_name: true in one gesture. The server
+  // owns the actual lock timestamp (app/api/profile/route.ts); this is a
+  // one-time action — no unlock is ever offered here.
+  async function handleLockLegalName() {
+    setLockSubmitting(true)
+    setLockError(null)
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        legal_first_name: form.legal_first_name,
+        legal_middle_name: form.legal_middle_name,
+        legal_last_name: form.legal_last_name,
+        legal_name_suffix: form.legal_name_suffix,
+        lock_legal_name: true,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setLockError(json.error ?? 'Could not lock legal name')
+      setLockSubmitting(false)
+      return
+    }
+
+    setLockSubmitting(false)
+    router.refresh()
+  }
+
   // Rights Identity save — to /api/user-profiles; triggers back-fill of claimed rows
   async function handleRightsSave(e: React.FormEvent) {
     e.preventDefault()
@@ -537,6 +587,50 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
               </div>
             )}
           </div>
+
+          {/* ── Confirm & lock legal name (deliberation section 2) ────────
+              One-time attestation, not a field freeze — the name fields
+              above stay editable even after locking. Without this, a
+              first-time user's read-only party-1 legal name (built in
+              18-01) can never be set, blocking split-sheet creation
+              entirely for new users. */}
+          {profile.legal_name_locked_at ? (
+            <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-xs">
+              <p className="font-semibold text-emerald-300">
+                Legal name confirmed on {new Date(profile.legal_name_locked_at).toLocaleDateString()}
+              </p>
+              <p className="mt-1 text-white/50">
+                This locked name is what appears read-only as party 1 on your split sheets.
+                You can still edit and save corrections above at any time.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs font-semibold text-white/80">Confirm &amp; lock your legal name</p>
+              <p className="text-xs text-white/40">
+                Locking your legal name lets it appear automatically, read-only, on every
+                split sheet you create — no manual re-entry, no &quot;Use my info&quot; click.
+              </p>
+              {composedLegalNamePreview ? (
+                <p className="text-sm text-white/70">
+                  Preview: <span className="font-medium text-white">{composedLegalNamePreview}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-white/30 italic">
+                  Enter your legal name above, then confirm and lock it.
+                </p>
+              )}
+              {lockError && <p className="text-xs text-rose-300">{lockError}</p>}
+              <button
+                type="button"
+                disabled={!composedLegalNamePreview || lockSubmitting}
+                onClick={handleLockLegalName}
+                className="rounded-lg bg-grad px-3 py-1.5 text-xs font-semibold text-white shadow-cta disabled:opacity-40"
+              >
+                {lockSubmitting ? 'Locking…' : 'Confirm & lock your legal name'}
+              </button>
+            </div>
+          )}
         </section>
 
         {/* ── Public Profile ─────────────────────────────────────── */}
@@ -969,6 +1063,18 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
                 placeholder="Publisher name"
                 className={`mt-1 ${inputClass}`}
               />
+            </div>
+            <div>
+              <label className={labelClass}>Administrator</label>
+              <input
+                value={form.administrator}
+                onChange={e => set('administrator', e.target.value)}
+                placeholder="Publishing administrator"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">
+                Enter your publishing administrator if you have one. If you do not have one yet, enter &quot;None&quot;.
+              </p>
             </div>
             <div>
               <label className={labelClass}>MLC member ID</label>

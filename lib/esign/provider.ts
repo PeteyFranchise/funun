@@ -9,6 +9,13 @@
 // lands once DROPBOX_SIGN_API_KEY is configured (it's an env-gated, server-only
 // module). Signing state rides vault_documents.document_data.esign (JSONB), so no
 // migration is needed.
+//
+// Phase 17 (D-18b, dual-provider): DocuSeal is Funūn's first LIVE e-sign
+// integration, used for split sheets — added to the provider union below
+// without changing the interface shape, so this seam stays vendor-agnostic
+// for 16-09's SignWell sync-license adapter too. The concrete DocuSeal
+// provider + the PDF/mint/webhook wiring land in later Phase 17 plans; this
+// file only carries the contract + state round-trip (ESIGN-01).
 
 export type EsignSignerStatus = 'pending' | 'signed' | 'declined'
 
@@ -22,7 +29,7 @@ export type EsignSigner = {
 
 /** Persisted on `vault_documents.document_data.esign`. */
 export type EsignState = {
-  provider: 'dropbox_sign' | 'docusign'
+  provider: 'dropbox_sign' | 'docusign' | 'docuseal'
   /** The provider's signature-request / envelope id. */
   requestId: string
   signers: EsignSigner[]
@@ -37,15 +44,53 @@ export type EsignRequestInput = {
   title: string
   /** The document to sign (split sheet / contract), rendered to PDF. */
   pdf: { filename: string; bytes: Uint8Array }
-  signers: { name: string; email: string; phone?: string }[]
+  signers: {
+    name: string
+    email: string
+    phone?: string
+    /**
+     * Signing role, matched against the role tags embedded in the rendered
+     * PDF (partyRoleTag() — "Party1", "Party2", …). Every provider in this
+     * union binds a signer to their fields by role name, so this is a
+     * contract-level concept, not a DocuSeal detail. Optional for
+     * single-signer documents where no binding is needed.
+     */
+    role?: string
+    /** Caller's own stable id for this signer, round-tripped by the provider. */
+    externalId?: string
+  }[]
   /** Embedded → signer signs in an iframe inside Funūn (no signer account). */
   embedded: boolean
+  /**
+   * Reply-to for the provider's own transactional mail (completion copies).
+   * Funūn sends its own invites (P17-10, ESIGN-18), but a collaborator who
+   * replies to any provider-sent mail must still reach a monitored mailbox.
+   * Omitted entirely when unset — never defaulted to a no-reply address.
+   */
+  replyTo?: string
+}
+
+/** One signer as the provider registered them — the row shape the mint route persists. */
+export type EsignCreatedSigner = {
+  email: string
+  role?: string
+  externalId?: string
+  /** The provider's own submitter/signer id. */
+  submitterId: string
+  /** Per-signer scoped slug — the only credential the browser embed receives. */
+  slug: string
+  /** Fully-qualified per-signer embed URL. */
+  embedSrc: string
 }
 
 export type EsignCreateResult = {
   requestId: string
+  /** The one-off template the document was uploaded as, when the provider uses one. */
+  templateId?: string
   /** Per-signer embedded signing URLs (embedded flow only). */
   signingUrls?: { email: string; url: string }[]
+  /** Full per-signer detail for persistence (embedded flow only). */
+  signers?: EsignCreatedSigner[]
 }
 
 export type EsignWebhookEvent = {
@@ -69,7 +114,8 @@ export function readEsignState(
 ): EsignState | null {
   const raw = documentData?.esign as Record<string, unknown> | undefined
   if (!raw || typeof raw.requestId !== 'string' || !raw.requestId) return null
-  const provider = raw.provider === 'docusign' ? 'docusign' : 'dropbox_sign'
+  const provider =
+    raw.provider === 'docuseal' ? 'docuseal' : raw.provider === 'docusign' ? 'docusign' : 'dropbox_sign'
   const signers: EsignSigner[] = Array.isArray(raw.signers)
     ? raw.signers.map(s => {
         const o = (s ?? {}) as Record<string, unknown>

@@ -19,6 +19,7 @@ import {
   SettingsIcon,
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
+import { SignOutButton } from '@/components/auth/SignOutButton'
 
 type Item = {
   href: string
@@ -34,6 +35,10 @@ type Item = {
 const ITEMS: Item[] = [
   { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
   { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
+  // No requiresCapability — split sheets are open to industry accounts by
+  // design (D-20); gating this on 'artist' would re-orphan the route for
+  // exactly the producers/writers who create sheets most (18-01 finding 1).
+  { href: '/split-sheets', label: 'Split Sheets', match: '/split-sheets', Icon: LockerIcon },
   { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon, requiresCapability: 'artist' },
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
   { href: '/green-room', label: 'The Green Room', match: '/green-room', Icon: GreenRoomIcon },
@@ -320,6 +325,11 @@ export function ArtistNav({
           </span>
         )}
       </Link>
+
+      {/* Sign out — kept outside the /profile link so the tap targets stay distinct */}
+      <div className={['pb-3', collapsed ? 'flex justify-center px-1' : 'px-3'].join(' ')}>
+        <SignOutButton />
+      </div>
     </nav>
   )
 }
