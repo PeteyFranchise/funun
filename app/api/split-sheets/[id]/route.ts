@@ -99,12 +99,19 @@ export async function PATCH(
   if (partiesSubmitted) {
     const { data: existingPartyRows } = await supabase
       .from('split_sheet_parties')
-      .select('name, split_percentage')
+      .select('id, name, split_percentage')
       .eq('split_sheet_id', id)
     const before: PartyChangeSnapshot[] = (
-      (existingPartyRows ?? []) as { name: string; split_percentage: number }[]
-    ).map(p => ({ name: p.name, split_percentage: p.split_percentage }))
+      (existingPartyRows ?? []) as { id: string; name: string; split_percentage: number }[]
+    ).map(p => ({ id: p.id, name: p.name, split_percentage: p.split_percentage }))
     const after: PartyChangeSnapshot[] = (body.parties as Record<string, unknown>[]).map(p => ({
+      // BL-01: match by persisted id when present. A renamed party keeps its
+      // id, so a rename with an unchanged split is NOT a spurious removed+added
+      // (which would wrongly reset consensus, destroy approval tokens, and
+      // persist a false change summary). party_id is null for a genuinely new
+      // row, correctly falling back to name matching. Sent by SplitSheetBuilder;
+      // used ONLY for this diff, never for the reinsert below.
+      id: typeof p.party_id === 'string' ? p.party_id : undefined,
       name: String(p.name ?? ''),
       split_percentage: Number(p.split_percentage) || 0,
     }))

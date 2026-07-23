@@ -298,6 +298,12 @@ export function SplitSheetBuilder({ projects = [], myProfile = null, existingShe
         album_project_title: albumProjectTitle.trim() || null,
         record_label: recordLabel.trim() || null,
         parties: parties.map(p => ({
+          // BL-01: the persisted party id (null for a genuinely new row). Used
+          // server-side ONLY to match before/after for the consensus-reset diff
+          // (summarizePartyChanges) so a rename with no split change isn't seen
+          // as removed+added — it is NOT a reinsert column. Mirrors the id the
+          // client-side change summary below already threads through.
+          party_id: p.partyId,
           collaborator_id: p.collaboratorId,
           name: partyDisplayName(p),
           legal_name: p.legalName.trim() || null,
