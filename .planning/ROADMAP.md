@@ -558,8 +558,8 @@ Plans:
 
 ### Phase 20: Profile Table Rename (artist_profiles to user_profiles)
 
-**Goal:** Rename the canonical profile relation `artist_profiles` → `user_profiles` (its honest name — every member has one, not just artists) across all runtime code and effective DB objects, with no downtime and no data change. Split out of Phase 19 (2026-07-23, owner decision) because the blast radius is a different risk class from the bug fix.
-**Requirements**: TBD (see 20-SPEC.md) — carries Phase 19's former R6
+**Goal:** Rename the canonical profile relation `artist_profiles` → `user_profiles` (its honest name — every non-curator member has one, not just artists) across all runtime code and effective DB objects, with no downtime and no data change. Split out of Phase 19 (2026-07-23, owner decision) because the blast radius is a different risk class from the bug fix.
+**Requirements**: TBD (20-SPEC.md to be created) — carries Phase 19's former R6
 **Depends on:** Phase 19 (which deletes the duplicate `user_profiles`, freeing the target name)
 
 **Locked inputs (verified via Codex sweep 2026-07-23 — do not re-litigate scope):**
