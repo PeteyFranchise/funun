@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 19
 current_phase_name: profile-identity-model-cleanup
 status: board-clear
-stopped_at: Completed 19-05-PLAN.md (Rights Settings consolidation + R2 confirm UI)
-last_updated: "2026-07-24T05:26:59.557Z"
+stopped_at: "Completed 19-06-PLAN.md (R4 frontend: Locker flag entry + owner guided apply)"
+last_updated: "2026-07-24T05:44:34.872Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 20
   completed_phases: 17
   total_plans: 115
-  completed_plans: 101
+  completed_plans: 102
   percent: 85
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 19 (profile-identity-model-cleanup) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -141,6 +141,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 19 P03 | 25min | 3 tasks | 4 files |
 | Phase 19 P04 | 12min | 3 tasks | 3 files |
 | Phase 19 P05 | 25min | 3 tasks | 8 files |
+| Phase 19 P06 | 15min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 19]: 19-04: backfill_claimed_collaborators() re-pointed to artist_profiles but does NOT receive the R2 reverse pre-fill -- that logic lives exclusively in claim_collaborators(), matching the plan/SPEC's claim-path-only scope
 - [Phase ?]: 19-05: claim_prefill imports ClaimPrefillEntry from lib/profile/claim-prefill.ts rather than re-declaring the shape, keeping migration 072 and the confirm UI from drifting
 - [Phase ?]: 19-05: CLAIM_PREFILL_FIELDS covers pro/ipi/publisher/administrator/contact_phone/mailing_address in both ProfileForm.tsx and api/profile/route.ts, even though migration 072's reverse pre-fill only populates 5 of the 6 today -- forward-compatible, no badge renders for administrator until/if 072 is extended
+- [Phase 19]: 19-06: Locker flag entry targets the viewer's own resolved party id once per sheet card (not per-party-row) -- functionally satisfies R4's own-row-only scoping without a second client lookup
+- [Phase 19]: 19-06: A non-owner claimed party's document row for an ATTACHED executed sheet is not currently reachable in Contract Locker (pre-existing project-nested query gap, not fixed by this plan) -- executed-sheet flag coverage is scoped to standalone/reachable rows
 
 ### Pending Todos
 
@@ -319,8 +322,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:26:59.537Z
-Stopped at: Completed 19-05-PLAN.md (Rights Settings consolidation + R2 confirm UI)
+Last session: 2026-07-24T05:44:34.851Z
+Stopped at: Completed 19-06-PLAN.md (R4 frontend: Locker flag entry + owner guided apply)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
