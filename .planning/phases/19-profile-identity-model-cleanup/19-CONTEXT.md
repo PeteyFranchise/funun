@@ -43,14 +43,14 @@ Downstream agents MUST read `19-SPEC.md` before planning or implementing. Requir
 ### Claim pre-fill confirmation (R2)
 - **D-01:** Confirmation surface = **Settings, reusing Phase 18's legal-name confirm-and-lock pattern** — pre-filled fields render in an "unconfirmed — review" state, with a gentle first-login nudge pointing there. No new modal or onboarding-step flow.
 - **D-02:** **Per-field** confirm/edit (matches the legal-name lock granularity) — the user can fix one wrong value without rejecting the rest.
-- **D-03:** Provenance is **named** — e.g. "We filled this from a credit [collaborator] added you to." Not a new disclosure: a claimed user can already see the sheets they're credited on.
+- **D-03:** Provenance is **named** — e.g. "We filled this from a credit Maya added you to," where the name is **the person who added you** (the `collaborators.user_id` owner's display name), NOT the song (owner decision 2026-07-24). Not a new disclosure: a claimed user can already see the sheets they're credited on.
 - **D-04:** Pre-filled values are **live-but-flagged** — they populate the profile immediately (so a new split sheet isn't blank) but carry an "unconfirmed" flag until reviewed. Confirming clears the flag; the flag never gates the value out of the user's own new drafts. (Consistent with SPEC R2's "never present as authoritative without the confirm step" — the flag IS the not-yet-owned marker.)
 
 ### Correction flag flow (R4)
 - **D-05:** Flag entry point = the **Contract Locker credit view** (Phase 18 per-party view) — a "this info is wrong" action on the claimed user's own row, on a frozen (`esign_pending`/`executed`) sheet.
 - **D-06:** Owner notified via **both** the Phase 10 in-app notification bell **and** email (Resend).
 - **D-07:** Flag payload is a **structured field + suggested value** (P18-13 — no free-text channel).
-- **D-08:** **Guided apply** — the notification deep-links to the sheet with the suggested change staged and the correct lifecycle step offered: **void-first** for `esign_pending`, **start-amendment** for `executed`. Never mutates the signed document or regenerates the PDF/Certificate directly.
+- **D-08:** **Guided apply** — the notification deep-links to the sheet with the suggested change staged and the correct next step: **void-first** for `esign_pending`; for `executed`, a **guided pointer to start a correction** (a first-class amendment mechanism — lineage/re-sign — is **deferred to a follow-up phase**, owner decision 2026-07-24). Never mutates the signed document or regenerates the PDF/Certificate.
 
 ### Licensee note (R5)
 - **D-09:** Placement = a **boxed callout beside the parties/rights block** on the split-sheet PDF (where the stale-able payee info is).
@@ -113,7 +113,7 @@ Downstream agents MUST read `19-SPEC.md` before planning or implementing. Requir
 > "Used on your split sheets, metadata, and registrations."
 
 **Pre-fill provenance phrasing (D-03), pattern:**
-> "We filled this from a credit [collaborator name] added you to."
+> "We filled this from a credit [the person who added you — the `collaborators.user_id` owner's display name] added you to."
 
 </specifics>
 

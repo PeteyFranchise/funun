@@ -47,8 +47,8 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 
 4. **Flag-for-fix on frozen sheets; no cross-user edits (Q3)**: A claimed user can propose a correction to their own identity on a *frozen* sheet, but never edits another user's sheet or the deal terms.
    - Current: for live states, a claimed user's profile edits already flow (R3). For frozen states (`esign_pending`/`executed`) they cannot, and they have no in-app path to request a fix; they can only SEE their credits.
-   - Target: a claimed user can submit a persisted flag ("this is wrong" + suggested value) against the identity fields of a frozen sheet (`esign_pending`/`executed`) they appear on; the owner is notified. Applying is the owner's action and routes to the correct lifecycle path — **`esign_pending` requires voiding the envelope first; `executed` requires a new amendment sheet (the signed PDF/Certificate is never edited or regenerated)**. No non-owner may write another user's `split_sheet_parties` row. Deal terms (`split_percentage`, `role`) are never editable by a collaborator — that stays the approve/counter flow.
-   - Acceptance: a claimed user can submit an identity-correction flag on an `esign_pending`/`executed` sheet; the owner receives a notification carrying the suggested value; there is no code path by which a non-owner mutates another user's `split_sheet_parties` row or any term; applying a fix to an executed sheet produces an amendment sheet and leaves the original signed PDF/Certificate byte-unchanged.
+   - Target: a claimed user can submit a persisted flag ("this is wrong" + suggested value) against the identity fields of a frozen sheet (`esign_pending`/`executed`) they appear on; the owner is notified. Applying is the owner's action and routes to the correct lifecycle path — **`esign_pending` requires voiding the envelope first; `executed` directs the owner to start a correction via a guided pointer (a first-class amendment mechanism — lineage + re-sign — is DEFERRED to a follow-up phase, owner decision 2026-07-24); the signed PDF/Certificate is never edited or regenerated**. No non-owner may write another user's `split_sheet_parties` row. Deal terms (`split_percentage`, `role`) are never editable by a collaborator — that stays the approve/counter flow.
+   - Acceptance: a claimed user can submit an identity-correction flag on an `esign_pending`/`executed` sheet; the owner receives a notification carrying the suggested value; there is no code path by which a non-owner mutates another user's `split_sheet_parties` row or any term; applying a fix to an executed sheet directs the owner to start a correction (guided pointer only — no auto-generated amendment this phase) and leaves the original signed PDF/Certificate byte-unchanged.
 
 5. **"Note to licensees" on newly-generated split-sheet PDFs (Tier 1)**: Recipients are told the contact/payment data may be stale.
    - Current: generated split-sheet PDFs carry party rights/contact info with no staleness guidance.
@@ -70,6 +70,7 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 - `industry_profiles` vs `member_type='industry'` reconciliation — separate follow-up; touches Antenna/marketplace + signup trigger, higher risk, unrelated to the rights bug
 - Tier-2 live "current payee snapshot" companion surfaced at sync/license time — larger feature; after core cleanup
 - `curators` table — unaffected
+- A **first-class amendment mechanism** for executed split sheets (lineage, re-sign) — deferred to a follow-up phase; R4 stops at flag + notify + void-first + a guided pointer for executed sheets (owner decision 2026-07-24)
 - Changing ownership/`split_percentage`/`role` semantics, the approval/counter/e-sign flow, or the freeze boundary itself — untouched
 - Regenerating or altering any already-executed split-sheet PDF/Certificate — prohibited (immutability)
 - Fixing the email-mismatch limitation of claiming (sign-up email ≠ collaborator email) — documented limitation
@@ -79,7 +80,7 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 
 - **Human-gated migrations.** Every schema change is a migration Pete pushes via Codex; executors NEVER run `supabase db push`. LOCAL=REMOTE verified via `supabase migration list`. Next migration number is **071+** (070 is latest).
 - **Historical migrations are immutable.** All changes land as NEW migrations; no historical migration is edited (a fresh DB must replay history).
-- **Signed documents are immutable.** No requirement may mutate an `executed` split sheet or regenerate/replace its signed PDF/Certificate. Executed corrections are amendment-only; `esign_pending` corrections require voiding first.
+- **Signed documents are immutable.** No requirement may mutate an `executed` split sheet or regenerate/replace its signed PDF/Certificate. For `executed` sheets, R4's guided apply points the owner to start a correction (a first-class amendment mechanism is deferred); `esign_pending` corrections require voiding first.
 - **No data loss.** The `user_profiles` drop (R1) is preceded, in order, by the data-rescue migration; rescue uses **semantic-blank** detection (NULL, trimmed-empty text, empty-JSON `{}`) with "meaningful canonical value wins," maps `phone`→`contact_phone`, and handles `display_name`/`bio`.
 - **Sweep before delete.** All readers of `user_profiles` (3 runtime + `claim_collaborators` + `backfill_claimed_collaborators` + RLS/trigger defs) are enumerated before the drop. *(The ~79-file `artist_profiles` sweep belongs to Phase 20's rename.)*
 - **Name-freeing for Phase 20.** R1's drop of the duplicate `user_profiles` is what frees the target name for Phase 20's rename — do not recreate `user_profiles` for any other purpose here.
@@ -111,7 +112,7 @@ Grounded in the live schema + the Phase 18 UAT bug, corrected against a Codex re
 | Idempotency / re-run | R2 | ✅ covered | Claim is `claimed_at`-guarded; pre-fill never overwrites confirmed/edited/non-blank; AC line 5 |
 | Source conflict | R2 | ✅ covered | Most-recent by `collaborators.updated_at` wins; R2 target |
 | Freeze-boundary regression | R3 | ✅ covered | Boundary stays `esign_pending`/`executed`; regression test asserts unchanged; AC line 6 |
-| Legal immutability | R3/R4/R5 | ✅ covered | Executed → amendment-only; PDF/Certificate byte-unchanged; never regenerated; AC lines 6/8/9 |
+| Legal immutability | R3/R4/R5 | ✅ covered | No executed-sheet mutation (guided pointer only; amendment deferred); PDF/Certificate byte-unchanged, never regenerated; AC lines 6/8/9 |
 | Cross-user authority | R4 | ✅ covered | No non-owner write path to another party row/terms; AC line 7 |
 | Email mismatch | R2 | ⛔ dismissed | Claiming is email-keyed; a different signup email means no claim — documented limitation, explicitly out of scope |
 
