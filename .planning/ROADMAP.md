@@ -583,8 +583,11 @@ Plans:
 - Deployment race is real: needs a coordinated strategy (transitional compatibility view OR dual-name window OR controlled deploy window) + `NOTIFY pgrst` schema-cache reload + signup / public-profile / split-sheet smoke tests.
 - The `/api/profile` route URL does NOT change (only its target table); renaming the route is a separate decision.
 
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 20 to break down)
+- [ ] 20-01-PLAN.md — Author migrations 076 (rename + security_invoker compat view + 6 function repoints + column-scoped grants) and 077 (drop view) [autonomous]
+- [ ] 20-02-PLAN.md — Mechanical code rename: ~87 `artist_profiles` query strings → `user_profiles` + `ArtistProfile` type → `UserProfile` + grep regression guard [autonomous]
+- [ ] 20-03-PLAN.md — Cutover stage 1: human push #1 (076) + live-DB verification → deploy renamed code → D-04 smoke gate [human-gated]
+- [ ] 20-04-PLAN.md — Cutover stage 2: D-05 soak → human push #2 (077, drop view) + verify [human-gated]
