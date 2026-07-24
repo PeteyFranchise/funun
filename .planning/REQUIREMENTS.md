@@ -273,11 +273,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Defined:** 2026-07-23 (registered during plan-phase, retroactively logged at 19-01 execution). **Source:** `.planning/phases/19-profile-identity-model-cleanup/19-SPEC.md` — 5 locked requirements, Ambiguity 0.13. Each requirement spans multiple plans across Phase 19's 3 waves; a requirement is only complete once ALL of its owning plans have landed (R1/R2/R3 specifically require the human-gated migration checkpoint in 19-07, not just the pure-logic foundation built in 19-01).
 
-- [ ] **R1**: Delete the duplicate `user_profiles`, re-point `claim_collaborators()` + `backfill_claimed_collaborators()` to `artist_profiles`, with a semantic-blank data-rescue migration before the drop (the "saved PRO reads None" bug fix)
-- [ ] **R2**: Confirmable reverse profile pre-fill on claim — per-field provenance + unconfirmed flag, idempotent, most-recent-wins on conflict
-- [ ] **R3**: Preserve the existing claimed-collaborator live-link + `esign_pending`/`executed` freeze boundary through the table consolidation
-- [ ] **R4**: Flag-for-fix path for a claimed user's own identity on frozen sheets; no cross-user edits; guided apply (void-first for `esign_pending`, guided pointer for `executed`)
-- [x] **R5**: "Note to licensees" callout on newly-generated split-sheet PDFs and read-only share/export views
+- [x] **R1**: Delete the duplicate `user_profiles`, re-point `claim_collaborators()` + `backfill_claimed_collaborators()` to `artist_profiles`, with a semantic-blank data-rescue migration before the drop (the "saved PRO reads None" bug fix) — **verified; migrations 071–073 live**
+- [x] **R2**: Confirmable reverse profile pre-fill on claim — per-field provenance + unconfirmed flag, idempotent, most-recent-wins on conflict — **implementation verified; live claim round-trip UAT pending (19-UAT.md #1)**
+- [x] **R3**: Preserve the existing claimed-collaborator live-link + `esign_pending`/`executed` freeze boundary through the table consolidation — **verified: `live-identity.ts` byte-unchanged since Phase 18**
+- [x] **R4**: Flag-for-fix path for a claimed user's own identity on frozen sheets; no cross-user edits; guided apply (void-first for `esign_pending`, guided pointer for `executed`) — **implementation verified; live flag/notify/void UAT pending (19-UAT.md #2)**
+- [x] **R5**: "Note to licensees" callout on newly-generated split-sheet PDFs and read-only share/export views — **verified in the rendered PDF byte stream + share view; visual-breakpoint UAT pending (19-UAT.md #3)**
 
 **19-01 (foundation, wave 1, complete 2026-07-24):** built the pure-TypeScript SQL-parity twins `lib/profile/semantic-blank.ts` (R1) and `lib/profile/claim-prefill.ts` (R2), and confirmed R3's freeze-boundary regression coverage (pre-existing from Phase 18-05) is unchanged. This is the machine-checked contract 19-04/19-05's migrations and UI build against — it does not itself touch the database, so R1/R2/R3 stay unchecked here until 19-04/19-05/19-07 land.
 
@@ -287,16 +287,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **19-06 (wave 2, complete 2026-07-24):** built R4's frontend surfaces on top of 19-03's backend — the Contract Locker's "this info is wrong" flag entry (claimed user's own row, `esign_pending`/`executed` only, structured field + suggested-value, no free text/term control) and the owner's `?stagedFlag=` staged-correction panel (void-first for `esign_pending`, guided-pointer-only Link to a new sheet for `executed`, no amendment mechanism). R4 stays unchecked here — it requires the 19-07 human-gated live push of migration 074 (`split_sheet_identity_flags`) before the live flag → notify → staged-panel round trip is actually exercisable end-to-end.
 
+**19-07 (wave 3, human-gated checkpoint, complete 2026-07-24):** Pete pushed migrations 071→075 via Codex; `supabase migration list` confirms LOCAL=REMOTE for 001–075. Migration 075 was added during the preflight (Codex found two privilege gaps in 072/074 — SECURITY DEFINER EXECUTE not revoked; weak flags INSERT policy — fixed as a new migration, 071–074 untouched). The schema cutover is live: `user_profiles` dropped; `artist_profiles.claim_prefill` live; both claim functions read `artist_profiles`; `split_sheet_identity_flags` live with hardened privileges. Phase verification (19-VERIFICATION.md) scored 9/9 must-haves at the code/test level; status is `human_needed` for 3 live-app UAT items (19-UAT.md).
+
 **Traceability (Phase 19):**
 
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
-| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04, 19-05 done) |
-| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04, 19-05 done) |
-| R3 | Phase 19 | 19-01, 19-04 | In Progress (19-01, 19-04 done) |
-| R4 | Phase 19 | 19-03, 19-06, 19-07 | In Progress (19-03, 19-06 done) |
-| R5 | Phase 19 | 19-02 | Pending |
+| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | Complete (migrations live; verified) |
+| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | Impl complete; live claim UAT pending (19-UAT.md #1) |
+| R3 | Phase 19 | 19-01, 19-04 | Complete (preserve verified; byte-unchanged) |
+| R4 | Phase 19 | 19-03, 19-06, 19-07 | Impl complete; live flag/notify/void UAT pending (19-UAT.md #2) |
+| R5 | Phase 19 | 19-02 | Impl complete; visual-breakpoint UAT pending (19-UAT.md #3) |
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-24 — 19-06's R4 frontend (Locker flag entry + owner guided-apply panel) landed; R4 checkbox corrected to unchecked (was prematurely marked complete) pending 19-07's live push of migration 074*
+*Last updated: 2026-07-24 — Phase 19 executed (7/7 plans); migrations 071–075 live (LOCAL=REMOTE 001–075); verifier 9/9 code-level, status human_needed (3 live-UAT items in 19-UAT.md)*
