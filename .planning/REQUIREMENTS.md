@@ -281,16 +281,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **19-01 (foundation, wave 1, complete 2026-07-24):** built the pure-TypeScript SQL-parity twins `lib/profile/semantic-blank.ts` (R1) and `lib/profile/claim-prefill.ts` (R2), and confirmed R3's freeze-boundary regression coverage (pre-existing from Phase 18-05) is unchanged. This is the machine-checked contract 19-04/19-05's migrations and UI build against — it does not itself touch the database, so R1/R2/R3 stay unchecked here until 19-04/19-05/19-07 land.
 
+**19-04 (wave 2, complete 2026-07-24):** authored migrations 071 (semantic-blank rescue, R1), 072 (both DB readers re-pointed + `claim_prefill` column + R2 reverse pre-fill), and 073 (drop `user_profiles`, strictly last) — all three structurally verified and twin-tested green, but NOT pushed to the remote database. R1/R2/R3 stay unchecked here until 19-05 (runtime removal + confirm UI) and 19-07 (the human-gated live push) also land.
+
 **Traceability (Phase 19):**
 
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
-| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01 done) |
-| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01 done) |
-| R3 | Phase 19 | 19-01, 19-04 | In Progress (19-01 done) |
+| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04 done) |
+| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04 done) |
+| R3 | Phase 19 | 19-01, 19-04 | In Progress (19-01, 19-04 done) |
 | R4 | Phase 19 | 19-03, 19-06, 19-07 | Pending |
 | R5 | Phase 19 | 19-02 | Pending |
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-24 — Phase 19 requirements R1-R5 registered (retroactively, at 19-01 execution) and mapped across the phase's 7 plans; 19-01's foundation twins (R1/R2 parity modules, R3 regression re-verification) landed*
+*Last updated: 2026-07-24 — Phase 19 requirements R1-R5 registered (retroactively, at 19-01 execution) and mapped across the phase's 7 plans; 19-01's foundation twins (R1/R2 parity modules, R3 regression re-verification) and 19-04's migrations 071/072/073 (authored, not pushed) landed*
