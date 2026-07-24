@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 19
 current_phase_name: profile-identity-model-cleanup
 status: board-clear
-stopped_at: Phase 19 context gathered — ready to plan
-last_updated: "2026-07-24T04:48:17.504Z"
+stopped_at: Completed 19-02-PLAN.md (R5 licensee note)
+last_updated: "2026-07-24T04:55:38.210Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 20
   completed_phases: 17
   total_plans: 115
-  completed_plans: 97
-  percent: 84
+  completed_plans: 98
+  percent: 85
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 19 (profile-identity-model-cleanup) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -137,6 +137,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 18 P01 | 25min | 4 tasks | 22 files |
 | Phase 18 P02 | 20min | 3 tasks | 7 files |
 | Phase 19 P01 | 5min | 3 tasks | 4 files |
+| Phase 19 P02 | 35min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 'Songs with no sheet' and 'unattached executed' are computed from the fetched sheets' own track_id/vault_project_id origin fields, not a second split_sheet_attachments join, keeping the pure attention module simple
 - [Phase ?]: [Phase 19]: 19-01: lib/split-sheets/live-identity.test.ts already existed (Phase 18-05) and already fully covers R3's freeze-boundary acceptance criteria -- no new file/commit needed for Task 3, re-verified green with zero source changes
 - [Phase ?]: [Phase 19]: 19-01: semantic-blank.ts and claim-prefill.ts twins take an explicit RescueKind ('text'|'json') parameter rather than runtime type-detection, so one predicate pair serves both plain-text fields and the JSONB mailing_address field without a generic isEmpty() utility
+- [Phase ?]: [Phase 19]: 19-02: Cloned licenseeNoteBox/licenseeNote with long-hand border props instead of reusing guidanceBox's borderLeft shorthand, to avoid colliding with the existing Guidance Notes test's style-based View selector
+- [Phase ?]: [Phase 19]: 19-02: Rendered NOTE_TO_LICENSEES inside SplitApprovalView's PageShell (single choke point across all phase branches) rather than threading a new prop through app/approve/[token]/page.tsx, since the note is a static constant, not request-scoped data
 
 ### Pending Todos
 
@@ -306,8 +309,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-24T04:46:12.451Z
-Stopped at: Phase 19 context gathered — ready to plan
+Last session: 2026-07-24T04:55:38.189Z
+Stopped at: Completed 19-02-PLAN.md (R5 licensee note)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation

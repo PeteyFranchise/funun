@@ -277,7 +277,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **R2**: Confirmable reverse profile pre-fill on claim — per-field provenance + unconfirmed flag, idempotent, most-recent-wins on conflict
 - [ ] **R3**: Preserve the existing claimed-collaborator live-link + `esign_pending`/`executed` freeze boundary through the table consolidation
 - [ ] **R4**: Flag-for-fix path for a claimed user's own identity on frozen sheets; no cross-user edits; guided apply (void-first for `esign_pending`, guided pointer for `executed`)
-- [ ] **R5**: "Note to licensees" callout on newly-generated split-sheet PDFs and read-only share/export views
+- [x] **R5**: "Note to licensees" callout on newly-generated split-sheet PDFs and read-only share/export views
 
 **19-01 (foundation, wave 1, complete 2026-07-24):** built the pure-TypeScript SQL-parity twins `lib/profile/semantic-blank.ts` (R1) and `lib/profile/claim-prefill.ts` (R2), and confirmed R3's freeze-boundary regression coverage (pre-existing from Phase 18-05) is unchanged. This is the machine-checked contract 19-04/19-05's migrations and UI build against — it does not itself touch the database, so R1/R2/R3 stay unchecked here until 19-04/19-05/19-07 land.
 
