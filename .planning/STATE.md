@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 19
 current_phase_name: profile-identity-model-cleanup
 status: board-clear
-stopped_at: "Completed 19-06-PLAN.md (R4 frontend: Locker flag entry + owner guided apply)"
-last_updated: "2026-07-24T05:44:34.872Z"
+stopped_at: Phase 20 context gathered — ready to plan (compat-view rename)
+last_updated: "2026-07-24T19:44:14.404Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 20
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 115
-  completed_plans: 102
-  percent: 85
+  completed_plans: 103
+  percent: 90
 ---
 
 # Project State
@@ -322,8 +322,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:44:34.851Z
-Stopped at: Completed 19-06-PLAN.md (R4 frontend: Locker flag entry + owner guided apply)
+Last session: 2026-07-24T19:44:14.388Z
+Stopped at: Phase 20 context gathered — ready to plan (compat-view rename)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -346,7 +346,7 @@ not a real gap; proceeded with override, verify-phase may re-surface. Session-lo
 decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
-Resume file: None
+Resume file: .planning/phases/20-profile-table-rename-artist-profiles-to-user-profiles/20-CONTEXT.md
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
