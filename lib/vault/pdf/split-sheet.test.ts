@@ -6,7 +6,8 @@
 // backwards-compatible degradation for a pre-063 legacy row.
 
 import { renderSplitSheet, SplitSheetDocument, partyRoleTag } from './split-sheet'
-import { AGREEMENT_CLAUSES, GUIDANCE_NOTES } from '@/lib/split-sheets/agreement'
+import { AGREEMENT_CLAUSES, GUIDANCE_NOTES, NOTE_TO_LICENSEES } from '@/lib/split-sheets/agreement'
+import { extractPdfText } from '@/lib/vault/pdf/test-utils/extract-pdf-text'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 
 // ─── Tree-walk helpers ───────────────────────────────────────────────────
@@ -303,6 +304,30 @@ describe('SplitSheetDocument', () => {
     expect(String(style.borderLeft)).toContain('#818CF8')
   })
 
+  it('renders the R5 licensee note verbatim, in its own boxed callout beside the parties/rights block (not appended to Guidance Notes)', () => {
+    const doc = SplitSheetDocument({ songName: 'Neon Static', parties: fullParties })
+    const text = collectText(expand(doc)).join('')
+    expect(text).toContain(NOTE_TO_LICENSEES)
+    // no-warranty framing must be present, not paraphrased away
+    expect(text).toContain('does not warrant the current accuracy')
+    // beside the Split Breakdown table, before the Agreement section —
+    // not appended to the foot-of-document Guidance Notes.
+    expect(text.indexOf(NOTE_TO_LICENSEES)).toBeLessThan(text.indexOf(AGREEMENT_CLAUSES[0]))
+    expect(GUIDANCE_NOTES).not.toContain(NOTE_TO_LICENSEES)
+
+    const tree = expand(doc)
+    const views = findAll(tree, 'VIEW')
+    // A distinct callout from the Guidance Notes box — selected by its own
+    // border tint (long-hand borderLeftColor, not the `borderLeft`
+    // shorthand the Guidance Notes callout above is selected by).
+    const licenseeBox = views.find(v => {
+      const style = v.props.style as Record<string, unknown> | undefined
+      return style?.borderLeftColor === '#D97706'
+    })
+    expect(licenseeBox).toBeDefined()
+    expect(licenseeBox!.text).toContain(NOTE_TO_LICENSEES)
+  })
+
   it('renders the confidential-use footer', () => {
     const doc = SplitSheetDocument({ songName: 'Neon Static', parties: fullParties })
     const text = collectText(expand(doc)).join('')
@@ -362,5 +387,14 @@ describe('renderSplitSheet', () => {
     })
     const text = collectText(expand(doc)).join('')
     expect(text).toContain('Neon Static EP')
+  })
+
+  it('embeds the R5 licensee note in the rendered PDF bytes, extracted from the real content stream (not just the React tree)', async () => {
+    const buffer = await renderSplitSheet({ songName: 'Neon Static', parties: fullParties })
+    const text = extractPdfText(buffer)
+    // A stable, unmistakable substring of NOTE_TO_LICENSEES — proves the
+    // note reaches the actual PDF a recipient opens, not just the
+    // pre-render component tree.
+    expect(text).toContain('fixed as of the date signed')
   })
 })

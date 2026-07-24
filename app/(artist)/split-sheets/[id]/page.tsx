@@ -7,10 +7,17 @@ import {
   type ExistingSheetParty,
   type MyProfilePrefill,
 } from '@/components/split-sheets/SplitSheetBuilder'
+import { StagedFlagPanel } from '@/components/split-sheets/StagedFlagPanel'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 import { resolvePartyIdentity, type LivePartyIdentitySource } from '@/lib/split-sheets/live-identity'
 import type { SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
 import type { ComposerRole } from '@/lib/metadata/schema'
+import {
+  FLAGGABLE_FIELDS,
+  FLAGGABLE_FIELD_LABELS,
+  currentValueForFlaggedField,
+  type FlaggableField,
+} from '@/lib/split-sheets/identity-flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,10 +68,16 @@ const STATUS_COPY: Record<SplitSheetStatus, string> = {
 // party gets a read-only summary of the same data.
 export default async function SplitSheetDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  // R4 guided apply (19-SPEC.md D-08): ?stagedFlag=<split_sheet_identity_flags.id>
+  // is the deep-link target buildIdentityCorrectionFlagNotification builds
+  // (lib/social/notifications.ts) — consumed below, owner-view only.
+  searchParams: Promise<{ stagedFlag?: string }>
 }) {
   const { id } = await params
+  const { stagedFlag } = await searchParams
   const supabase = await createServerClient()
   const {
     data: { user },
@@ -108,6 +121,32 @@ export default async function SplitSheetDetailPage({
         viewerUserId={user.id}
       />
     )
+  }
+
+  // ── R4 guided apply (§19-SPEC.md D-08), owner-only: resolve the staged
+  // flag from the ?stagedFlag= deep-link. Defense in depth beyond the
+  // flags table's own RLS ("Flagger or sheet owner can view flag",
+  // migration 074): the flag's party must belong to THIS sheet and its
+  // field must be in the closed allowlist before anything renders. This
+  // NEVER writes split_sheet_parties or any term — read-only display
+  // support for the void-first / guided-pointer next step below. ────────
+  let stagedFlagView: { fieldLabel: string; currentValue: string | null; suggestedValue: string } | null = null
+  if (stagedFlag) {
+    const { data: flagRow } = await service
+      .from('split_sheet_identity_flags')
+      .select('id, split_sheet_party_id, field, suggested_value')
+      .eq('id', stagedFlag)
+      .maybeSingle()
+
+    const flaggedParty = flagRow ? parties.find(p => p.id === flagRow.split_sheet_party_id) : undefined
+    if (flagRow && flaggedParty && (FLAGGABLE_FIELDS as readonly string[]).includes(flagRow.field)) {
+      const field = flagRow.field as FlaggableField
+      stagedFlagView = {
+        fieldLabel: FLAGGABLE_FIELD_LABELS[field],
+        currentValue: currentValueForFlaggedField(field, flaggedParty),
+        suggestedValue: flagRow.suggested_value as string,
+      }
+    }
   }
 
   // ── Self row seed (§9): the initiator's own CURRENT rights-registry
@@ -247,6 +286,16 @@ export default async function SplitSheetDetailPage({
         <h1 className="text-[22px] font-extrabold text-white">{sheet.song_name}</h1>
         <p className="mt-1 text-sm text-white/50">{STATUS_COPY[sheet.status]}</p>
       </header>
+
+      {stagedFlagView && (
+        <StagedFlagPanel
+          sheetId={sheet.id}
+          sheetStatus={sheet.status}
+          fieldLabel={stagedFlagView.fieldLabel}
+          currentValue={stagedFlagView.currentValue}
+          suggestedValue={stagedFlagView.suggestedValue}
+        />
+      )}
 
       <SplitSheetBuilder myProfile={myProfile} existingSheet={existingSheet} />
     </div>

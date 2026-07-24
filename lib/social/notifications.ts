@@ -38,6 +38,8 @@ export const NOTIFICATION_TYPES = {
   split_sheet_countered: { icon: 'alert-triangle', inlineAction: 'split_sheet_review' },
   split_sheet_executed: { icon: 'file-check', inlineAction: null },
   split_sheet_view_nudge: { icon: 'eye', inlineAction: 'split_sheet_resend' },
+  // Phase 19 — R4 flag-for-fix on frozen sheets (D-05/D-06/D-08)
+  split_sheet_identity_flagged: { icon: 'flag', inlineAction: 'split_sheet_review' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -349,6 +351,40 @@ export function buildSplitSheetViewNudgeNotification(
     title: `${args.partyName} viewed the split sheet for "${args.songName}" but hasn't acted yet`,
     link: `/split-sheets/${args.splitSheetId}`,
     data: { splitSheetId: args.splitSheetId, partyId: args.partyId, resendTarget: args.partyId },
+    actorId: args.partyId,
+    actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+// ─── Phase 19 — R4 flag-for-fix on frozen sheets (D-05/D-06/D-07/D-08) ──
+// Recipient is always the SHEET OWNER (initiator); the "actor" is the
+// claimed collaborator who submitted the correction flag. `link` deep-links
+// to the D-08 guided-apply staging target (?stagedFlag=) that plan 19-06
+// consumes to route the owner into void-first (esign_pending) or a guided
+// pointer to start a correction (executed) — never a direct document edit.
+
+export function buildIdentityCorrectionFlagNotification(args: {
+  recipientId: string
+  partyId: string
+  partyName: string
+  splitSheetId: string
+  flagId: string
+  field: string
+  suggestedValue: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'split_sheet_identity_flagged',
+    title: `${args.partyName} flagged their ${args.field} as wrong on your split sheet`,
+    body: `Suggested value: ${args.suggestedValue}`,
+    link: `/split-sheets/${args.splitSheetId}?stagedFlag=${args.flagId}`,
+    data: {
+      splitSheetId: args.splitSheetId,
+      partyId: args.partyId,
+      field: args.field,
+      suggestedValue: args.suggestedValue,
+    },
     actorId: args.partyId,
     actorName: args.partyName,
     actorAvatarUrl: null,
