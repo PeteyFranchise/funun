@@ -43,6 +43,30 @@ export const GUIDANCE_NOTES: readonly string[] = [
   'This split sheet confirms songwriting and publishing shares only. Master ownership and master revenue splits, if any, are not determined by this split sheet unless expressly stated in a separate written agreement.',
 ]
 
+// ─── Licensee note (VERBATIM — printed beside the parties/rights block) ─
+
+/**
+ * Phase 19 R5 "note to licensees" (D-09/D-10, working draft pending
+ * counsel) — a standard advisory that ownership shares are fixed as of
+ * signing but each writer's current PRO/publisher/administrator/payee
+ * must be re-verified at license time. Framed as informational guidance
+ * for the recipient (e.g. a music supervisor) — explicitly NOT a Funūn
+ * accuracy warranty.
+ *
+ * Deliberately NOT appended to GUIDANCE_NOTES above: D-09 places this
+ * note as its own boxed callout beside the parties/rights block
+ * (lib/vault/pdf/split-sheet.tsx), not at the document foot with the
+ * general Guidance Notes. It is also rendered verbatim on the read-only
+ * /approve/[token] share view (D-11, components/split-sheets/
+ * SplitApprovalView.tsx) via this same constant, so wording can never
+ * drift between the PDF and the share surface. It is added to the
+ * forward render path only — an already-executed split-sheet PDF/
+ * Certificate is never regenerated or altered to add it (SPEC R5
+ * prohibition, T-19-09).
+ */
+export const NOTE_TO_LICENSEES =
+  "Ownership shares in this split sheet are fixed as of the date signed. A songwriter's PRO, publisher, or administrator may change over time — before licensing this work or remitting payment, confirm each writer's current affiliation and payee details with the writer or via their PRO / the MLC. Funūn provides this record but does not warrant the current accuracy of contact or payment information."
+
 // ─── Pre-signature review prompt (decision 3b) ──────────────────────────
 
 /**

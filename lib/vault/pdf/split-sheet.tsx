@@ -34,7 +34,12 @@ import {
 } from '@react-pdf/renderer'
 import { PRO_LABELS, type PRO } from '@/lib/metadata/schema'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
-import { AGREEMENT_CLAUSES, GUIDANCE_NOTES, displayValue } from '@/lib/split-sheets/agreement'
+import {
+  AGREEMENT_CLAUSES,
+  GUIDANCE_NOTES,
+  NOTE_TO_LICENSEES,
+  displayValue,
+} from '@/lib/split-sheets/agreement'
 import { registerFunuunPdfFonts, PDF_FONT_FAMILY } from './fonts'
 
 // Must run before any StyleSheet below is consumed by a render — see
@@ -251,6 +256,27 @@ const styles = StyleSheet.create({
     color: '#555555',
     lineHeight: 1.4,
     marginBottom: 8,
+  },
+  // ─── Licensee Note (R5, D-09) ────────────────────────────────────────
+  // A distinct callout from guidanceBox above (own border tint, long-hand
+  // border props rather than the `borderLeft` shorthand) — it sits beside
+  // the Split Breakdown table, not at the document foot with the general
+  // Guidance Notes, and existing tests select the foot-of-document callout
+  // by its `borderLeft` shorthand string, so this box must not collide
+  // with that selector.
+  licenseeNoteBox: {
+    marginTop: 8,
+    marginBottom: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: '#D97706',
+    borderLeftStyle: 'solid',
+    paddingLeft: 10,
+    paddingVertical: 4,
+  },
+  licenseeNote: {
+    fontSize: 8,
+    color: '#555555',
+    lineHeight: 1.4,
   },
   footer: {
     position: 'absolute',
@@ -476,6 +502,11 @@ export function SplitSheetDocument({
             <Text style={splitOk ? styles.totalValue : styles.totalWarning}>
               {splitTotal.toFixed(1)}%{!splitOk ? ' — does not total 100%' : ''}
             </Text>
+          </View>
+          {/* R5 (D-09) — the licensee note sits beside the parties/rights
+              block it concerns, not at the document foot. */}
+          <View style={styles.licenseeNoteBox}>
+            <Text style={styles.licenseeNote}>{NOTE_TO_LICENSEES}</Text>
           </View>
         </View>
 
