@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 19
 current_phase_name: profile-identity-model-cleanup
 status: board-clear
-stopped_at: Completed 19-03-PLAN.md (R4 correction-flag backend)
-last_updated: "2026-07-24T05:11:13.484Z"
+stopped_at: Completed 19-05-PLAN.md (Rights Settings consolidation + R2 confirm UI)
+last_updated: "2026-07-24T05:26:59.557Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 20
   completed_phases: 17
   total_plans: 115
-  completed_plans: 100
+  completed_plans: 101
   percent: 85
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 19 (profile-identity-model-cleanup) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -140,6 +140,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 19 P02 | 35min | 2 tasks | 4 files |
 | Phase 19 P03 | 25min | 3 tasks | 4 files |
 | Phase 19 P04 | 12min | 3 tasks | 3 files |
+| Phase 19 P05 | 25min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 19]: 19-04: Migration 071's stranded-value audit count is computed BEFORE the rescue UPDATE runs (not after, as RESEARCH.md's illustrative snippet's literal statement order would produce a misleading ~0 post-rescue count)
 - [Phase ?]: [Phase 19]: 19-04: R2 reverse pre-fill (migration 072) scoped to the 5 fields shared by artist_profiles and collaborators (pro/ipi/publisher/contact_phone/mailing_address) -- bio/artist_name stay rescue-only (071), never claim-pre-filled
 - [Phase ?]: [Phase 19]: 19-04: backfill_claimed_collaborators() re-pointed to artist_profiles but does NOT receive the R2 reverse pre-fill -- that logic lives exclusively in claim_collaborators(), matching the plan/SPEC's claim-path-only scope
+- [Phase ?]: 19-05: claim_prefill imports ClaimPrefillEntry from lib/profile/claim-prefill.ts rather than re-declaring the shape, keeping migration 072 and the confirm UI from drifting
+- [Phase ?]: 19-05: CLAIM_PREFILL_FIELDS covers pro/ipi/publisher/administrator/contact_phone/mailing_address in both ProfileForm.tsx and api/profile/route.ts, even though migration 072's reverse pre-fill only populates 5 of the 6 today -- forward-compatible, no badge renders for administrator until/if 072 is extended
 
 ### Pending Todos
 
@@ -316,8 +319,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:10:39.653Z
-Stopped at: Completed 19-03-PLAN.md (R4 correction-flag backend)
+Last session: 2026-07-24T05:26:59.537Z
+Stopped at: Completed 19-05-PLAN.md (Rights Settings consolidation + R2 confirm UI)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation

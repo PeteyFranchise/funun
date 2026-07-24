@@ -283,16 +283,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **19-04 (wave 2, complete 2026-07-24):** authored migrations 071 (semantic-blank rescue, R1), 072 (both DB readers re-pointed + `claim_prefill` column + R2 reverse pre-fill), and 073 (drop `user_profiles`, strictly last) — all three structurally verified and twin-tested green, but NOT pushed to the remote database. R1/R2/R3 stay unchecked here until 19-05 (runtime removal + confirm UI) and 19-07 (the human-gated live push) also land.
 
+**19-05 (wave 2, complete 2026-07-24):** deleted the duplicate "Rights Identity" Settings section + `/api/user-profiles` route (R1 runtime removal, done ahead of the human-gated migration 073 drop per the ordering safety design) and added the D-12 help line; built the per-field claim pre-fill confirm UI in `ProfileForm.tsx` + the `confirm_prefill_fields` server signal in `/api/profile` (R2), plus a companion migration-content test anchoring 072/073's current state. R1/R2 still stay unchecked here — both require the 19-07 human-gated live push (migrations 071-074) before the runtime code they now assume (single rights input; `claim_prefill` populated) is actually exercisable end-to-end.
+
 **Traceability (Phase 19):**
 
 | Requirement | Phase | Plan | Status |
 |-------------|-------|------|--------|
-| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04 done) |
-| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04 done) |
+| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04, 19-05 done) |
+| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01, 19-04, 19-05 done) |
 | R3 | Phase 19 | 19-01, 19-04 | In Progress (19-01, 19-04 done) |
 | R4 | Phase 19 | 19-03, 19-06, 19-07 | Pending |
 | R5 | Phase 19 | 19-02 | Pending |
 
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-24 — Phase 19 requirements R1-R5 registered (retroactively, at 19-01 execution) and mapped across the phase's 7 plans; 19-01's foundation twins (R1/R2 parity modules, R3 regression re-verification) and 19-04's migrations 071/072/073 (authored, not pushed) landed*
+*Last updated: 2026-07-24 — Phase 19 requirements R1-R5 registered (retroactively, at 19-01 execution) and mapped across the phase's 7 plans; 19-01's foundation twins, 19-04's migrations 071/072/073 (authored, not pushed), and 19-05's runtime removal + R2 confirm UI landed*
