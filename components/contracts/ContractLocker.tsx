@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { VerificationCheck, VerificationStatus } from '@/types'
 import type { AttentionSections, PartyProgressState } from '@/lib/contracts/locker-attention'
+import { FLAGGABLE_FIELDS, FLAGGABLE_FIELD_LABELS, type FlaggableField } from '@/lib/split-sheets/identity-flags'
 
 export type ContractRow = {
   id: string
@@ -26,6 +27,13 @@ export type ContractRow = {
   // row has no parent release and can be attached to one via splitSheetId.
   unattached: boolean
   splitSheetId: string | null
+  // R4 (19-SPEC.md D-05): the viewer's OWN split_sheet_parties.id on an
+  // executed sheet's underlying split_sheets record — populated only for
+  // type==='split_sheet' rows where the viewer is resolvable as a named
+  // party (app/(artist)/contracts/page.tsx). Powers the frozen-sheet "this
+  // info is wrong" flag entry below. Optional so existing construction
+  // sites/fixtures that predate this field keep compiling.
+  ownPartyId?: string | null
 }
 
 const STATUS_BADGE = {
@@ -101,36 +109,145 @@ function AttentionCard({
   )
 }
 
+// ─── R4 "this info is wrong" flag entry (19-SPEC.md D-05/D-07) ────────────
+// Renders ONLY for the viewer's OWN party row on a FROZEN sheet
+// (esign_pending here; the executed case lives in VerifyPanel below) —
+// callers gate that; this component adds no further scoping of its own.
+// Structured field + suggested-value only, no free-text channel (P18-13):
+// the field is the closed allowlist shared with the correction-flag route
+// via lib/split-sheets/identity-flags.ts. Posts to the 19-03 route and
+// never touches split_sheet_parties or any term directly.
+function FlagWrongIdentityForm({ sheetId, partyId }: { sheetId: string; partyId: string }) {
+  const [open, setOpen] = useState(false)
+  const [field, setField] = useState<FlaggableField>(FLAGGABLE_FIELDS[0])
+  const [suggestedValue, setSuggestedValue] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    if (!suggestedValue.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/split-sheets/${sheetId}/correction-flag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partyId, field, suggestedValue: suggestedValue.trim() }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error ?? 'Could not send this correction.')
+        return
+      }
+      setSent(true)
+      setOpen(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (sent) {
+    return <p className="mt-3 text-[12px] font-semibold text-emerald-400">Sent to the sheet owner.</p>
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 text-[12px] font-semibold text-lavdim underline decoration-dotted underline-offset-4 hover:text-lav"
+      >
+        This info is wrong
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-3 rounded-[12px] border border-hair bg-card p-3">
+      <p className="text-[12px] font-semibold text-white">Flag your identity as wrong</p>
+      <p className="mt-1 text-[11.5px] text-lavdim">
+        This sheet is signed — the owner applies the fix, not a direct edit here.
+      </p>
+      <div className="mt-2 flex flex-col gap-2">
+        <select
+          value={field}
+          onChange={e => setField(e.target.value as FlaggableField)}
+          className="rounded-[8px] border border-hair bg-card2 px-2 py-1.5 text-[12.5px] text-white"
+        >
+          {FLAGGABLE_FIELDS.map(f => (
+            <option key={f} value={f}>
+              {FLAGGABLE_FIELD_LABELS[f]}
+            </option>
+          ))}
+        </select>
+        <input
+          value={suggestedValue}
+          onChange={e => setSuggestedValue(e.target.value)}
+          placeholder="What it should be"
+          className="rounded-[8px] border border-hair bg-card2 px-2 py-1.5 text-[12.5px] text-white"
+        />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !suggestedValue.trim()}
+            className="rounded-[8px] bg-brandindigo px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-50"
+          >
+            {busy ? 'Sending…' : 'Send to owner'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="text-[12px] font-semibold text-lavdim hover:text-lav"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <p className="text-[11.5px] text-rose-400">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
 function AwaitingSignatureSection({ rows }: { rows: AttentionSections['awaitingSignature'] }) {
   if (rows.length === 0) return null
   return (
     <AttentionCard title="Awaiting signature" tone="warn">
       <div className="flex flex-col gap-4">
         {rows.map(row => (
-          <Link
+          // Wrapping div (not the Link itself) carries the card chrome —
+          // the flag form below renders interactive controls, and nesting
+          // those inside an <a> is both invalid HTML and would hijack
+          // every click as a navigation.
+          <div
             key={row.sheetId}
-            href={`/split-sheets/${row.sheetId}`}
-            className="block rounded-[12px] border border-hair bg-card2 p-4 transition hover:border-hairstrong"
+            className="rounded-[12px] border border-hair bg-card2 p-4 transition hover:border-hairstrong"
           >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[15px] font-bold text-white">{row.songName}</span>
-              <span className="text-[12.5px] font-semibold text-lavdim">
-                {row.signedCount} of {row.totalCount} signed
-              </span>
-            </div>
-            <div className="mt-3 flex flex-col gap-[6px]">
-              {row.parties.map(p => (
-                <div key={`${row.sheetId}-${p.userId ?? p.name}`} className="flex items-center gap-[9px] text-[13px]">
-                  <PartyStateDot state={p.state} />
-                  <span className="text-lav">{p.name}</span>
-                  <span className="text-lavdim">— {PARTY_STATE_LABEL[p.state]}</span>
-                </div>
-              ))}
-            </div>
-            {row.viewerSharePercentage != null && (
-              <div className="mt-3 text-[12px] text-lavdim">Your share: {row.viewerSharePercentage}%</div>
+            <Link href={`/split-sheets/${row.sheetId}`} className="block">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[15px] font-bold text-white">{row.songName}</span>
+                <span className="text-[12.5px] font-semibold text-lavdim">
+                  {row.signedCount} of {row.totalCount} signed
+                </span>
+              </div>
+              <div className="mt-3 flex flex-col gap-[6px]">
+                {row.parties.map(p => (
+                  <div key={`${row.sheetId}-${p.userId ?? p.name}`} className="flex items-center gap-[9px] text-[13px]">
+                    <PartyStateDot state={p.state} />
+                    <span className="text-lav">{p.name}</span>
+                    <span className="text-lavdim">— {PARTY_STATE_LABEL[p.state]}</span>
+                  </div>
+                ))}
+              </div>
+              {row.viewerSharePercentage != null && (
+                <div className="mt-3 text-[12px] text-lavdim">Your share: {row.viewerSharePercentage}%</div>
+              )}
+            </Link>
+            {row.status === 'esign_pending' && row.viewerPartyId && (
+              <FlagWrongIdentityForm sheetId={row.sheetId} partyId={row.viewerPartyId} />
             )}
-          </Link>
+          </div>
         ))}
       </div>
     </AttentionCard>
@@ -432,6 +549,9 @@ function VerifyPanel({ row, projects }: { row: ContractRow | null; projects: { i
       </div>
 
       {row.unattached && <AttachPanel row={row} projects={projects} />}
+      {row.type === 'split_sheet' && row.ownPartyId && row.splitSheetId && (
+        <FlagWrongIdentityForm sheetId={row.splitSheetId} partyId={row.ownPartyId} />
+      )}
       <HideFromViewButton row={row} />
     </div>
   )

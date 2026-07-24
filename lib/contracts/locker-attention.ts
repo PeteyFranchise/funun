@@ -52,6 +52,11 @@ export type AttentionPartyInput = {
   approvalStatus: string
   firstViewedAt: string | null
   splitPercentage: number
+  /** split_sheet_parties.id — optional so existing callers/fixtures that
+   * predate this field keep compiling. Threaded through to ViewerContext
+   * (R4, 19-SPEC.md D-05) so the Locker's "this info is wrong" flag entry
+   * can target the viewer's OWN row without a second query. */
+  partyId?: string | null
 }
 
 export type PartyProgressRow = {
@@ -71,6 +76,9 @@ export type PartyProgressRow = {
 export type ViewerContext = {
   sharePercentage: number | null
   state: PartyProgressState | null
+  /** The viewer's OWN split_sheet_parties.id, or null when the viewer is
+   * not a named party (R4, 19-SPEC.md D-05). */
+  partyId: string | null
 }
 
 export function resolveViewerContext(
@@ -78,10 +86,11 @@ export function resolveViewerContext(
   viewerUserId: string
 ): ViewerContext {
   const viewerParty = parties.find(p => p.userId === viewerUserId)
-  if (!viewerParty) return { sharePercentage: null, state: null }
+  if (!viewerParty) return { sharePercentage: null, state: null, partyId: null }
   return {
     sharePercentage: viewerParty.splitPercentage,
     state: derivePartyProgressState(viewerParty.approvalStatus, viewerParty.firstViewedAt),
+    partyId: viewerParty.partyId ?? null,
   }
 }
 
@@ -133,6 +142,10 @@ export type AwaitingSignatureRow = {
   parties: PartyProgressRow[]
   viewerSharePercentage: number | null
   viewerState: PartyProgressState | null
+  /** The viewer's OWN party id on this sheet, or null when they are not a
+   * named party — powers R4's frozen-sheet "this info is wrong" flag entry
+   * (19-SPEC.md D-05), scoped to esign_pending by the caller. */
+  viewerPartyId: string | null
 }
 
 export type DraftInProgressRow = {
@@ -235,6 +248,7 @@ export function buildAttentionSections({
         parties,
         viewerSharePercentage: viewer.sharePercentage,
         viewerState: viewer.state,
+        viewerPartyId: viewer.partyId,
       })
       continue
     }

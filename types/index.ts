@@ -1,3 +1,5 @@
+import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
+
 // ─── User & Access ────────────────────────────────────────────────────
 export type UserRole = 'artist' | 'industry' | 'admin'
 export type Tier = 'free' | 'pro' | 'studio' | 'founding'
@@ -392,6 +394,15 @@ export type ArtistProfile = {
   // path. PRIVATE column (migration 040 doctrine) — read/written only via
   // createServiceClient() after a session-verified ownership check.
   legal_name_locked_at: string | null
+  // Per-field claim pre-fill provenance (migration 072, R2) — populated by
+  // claim_collaborators()'s reverse pre-fill when a semantically-blank
+  // rights field is seeded from a claimed collaborator record. Keyed by
+  // canonical field name (currently pro/ipi/publisher/contact_phone/
+  // mailing_address); shape reused from lib/profile/claim-prefill.ts's
+  // ClaimPrefillEntry so migration 072 (19-04) and this confirm UI (19-05)
+  // never drift. PRIVATE column (migration 040 doctrine) — server-owned,
+  // read into ProfileForm props only.
+  claim_prefill: Record<string, ClaimPrefillEntry> | null
   // Contact for contracts and split sheets (migration 021).
   contact_phone: string | null
   mailing_address: Record<string, string> | null

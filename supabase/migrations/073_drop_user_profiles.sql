@@ -1,0 +1,38 @@
+-- ============================================================
+-- Funūn — Wave 2: Rights & Registration Rails (Phase 19: Profile &
+-- Identity Model Cleanup)
+-- Migration 073: drop user_profiles (R1, step 3 of 3 — strictly last)
+--
+-- Destructive removal of the duplicate `user_profiles` table (added in
+-- 026, defensively re-created in 053 after live-schema drift) now that
+-- migration 071 has rescued every stranded value into the canonical
+-- `artist_profiles` table and migration 072 has re-pointed BOTH
+-- claim_collaborators() and backfill_claimed_collaborators() to read
+-- artist_profiles instead. DROP TABLE ... CASCADE also removes
+-- user_profiles' own RLS policies and updated_at trigger (026/027/053)
+-- — nothing else references this table by name.
+--
+-- PRECONDITIONS — this file MUST be pushed only after:
+--   1. Migration 071 (data rescue) has applied successfully against the
+--      live remote database, and its RAISE NOTICE row-count output has
+--      been reviewed.
+--   2. Migration 072 (function re-point) has applied successfully, and
+--      `supabase migration list` shows LOCAL=REMOTE through 072.
+--   3. A repo-wide grep for `user_profiles` outside historical migration
+--      files (026/027/053 and this phase's own 071/072) returns ZERO
+--      runtime hits — enforced by this phase's runtime removal (Settings
+--      page, /api/user-profiles route, ProfileForm.tsx) and re-verified
+--      at the 19-07 human-gated checkpoint.
+--
+-- Do NOT recreate user_profiles for any purpose — the freed relation
+-- name is reserved for Phase 20's artist_profiles -> user_profiles
+-- rename.
+--
+-- An executor agent must NEVER run `supabase db push` for this
+-- migration. The live push against the remote database is this
+-- phase's blocking human checkpoint (plan 19-07), mirroring migrations
+-- 058/062/063/065/066/074's "do not push from an executor agent"
+-- convention.
+-- ============================================================
+
+DROP TABLE IF EXISTS public.user_profiles CASCADE;

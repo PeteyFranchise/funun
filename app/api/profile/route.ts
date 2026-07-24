@@ -7,6 +7,23 @@ import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { sanitizeProfileRoles, filterOpenTo, isFeaturableProjectRow } from '@/lib/profile/validate'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
+import { isSemanticBlankText, isSemanticBlankJson } from '@/lib/profile/semantic-blank'
+import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
+
+// ── Claim pre-fill fields (R2, migration 072) ───────────────────────────
+// The canonical rights fields claim_collaborators()'s reverse pre-fill can
+// seed on artist_profiles.claim_prefill. Kept in sync with
+// lib/profile/claim-prefill.ts's ClaimPrefillEntry shape and the
+// ProfileForm.tsx confirm UI's CLAIM_PREFILL_FIELDS — do not let these
+// drift.
+const CLAIM_PREFILL_FIELDS = [
+  'pro',
+  'ipi',
+  'publisher',
+  'administrator',
+  'contact_phone',
+  'mailing_address',
+] as const
 
 // Mass-assignment allowlist. Deliberately EXCLUDES `verified`, `verified_at`,
 // `verified_by` (SAFETY-03 — admin-only, see app/api/admin/verification/
@@ -211,6 +228,63 @@ export async function PATCH(request: Request) {
       if (composedName.trim() !== '') {
         update.legal_name_locked_at = new Date().toISOString()
       }
+    }
+  }
+
+  // ── Claim pre-fill confirm + edit-clear (R2, migration 072) ──────────────
+  // claim_prefill is a PRIVATE, server-owned JSONB map — deliberately
+  // absent from EDITABLE_FIELDS above, so it can never be mass-assigned.
+  // Two ways a field's unconfirmed flag clears, mirroring lock_legal_name's
+  // server-owned-signal pattern above:
+  //   1. confirm_prefill_fields: the client signals intent (field names
+  //      only); the server sets confirmed:true, filtered strictly against
+  //      Object.keys(current.claim_prefill) — never trust a client-supplied
+  //      field name blindly (V5).
+  //   2. Editing the field itself to a new non-blank value through the
+  //      normal allowlist path above is treated as ownership (R2
+  //      idempotency at the API layer, must_haves truth 5) — the stale
+  //      provenance entry is dropped entirely, since the value is no
+  //      longer "pre-filled from someone else" once the user has typed
+  //      and saved their own.
+  const confirmSignalPresent = Array.isArray(body.confirm_prefill_fields)
+  const editedPrefillField = CLAIM_PREFILL_FIELDS.some(f => f in update)
+
+  if (confirmSignalPresent || editedPrefillField) {
+    const { data: current } = await service
+      .from('artist_profiles')
+      .select('claim_prefill')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const prefillMap: Record<string, ClaimPrefillEntry> = {
+      ...((current?.claim_prefill as Record<string, ClaimPrefillEntry> | null) ?? {}),
+    }
+    let prefillChanged = false
+
+    if (confirmSignalPresent) {
+      for (const field of body.confirm_prefill_fields as unknown[]) {
+        if (typeof field === 'string' && field in prefillMap) {
+          prefillMap[field] = { ...prefillMap[field], confirmed: true }
+          prefillChanged = true
+        }
+      }
+    }
+
+    for (const field of CLAIM_PREFILL_FIELDS) {
+      if (!(field in update) || !(field in prefillMap)) continue
+      const value = update[field]
+      const isNonBlank =
+        field === 'mailing_address'
+          ? !isSemanticBlankJson(value as Record<string, unknown> | null | undefined)
+          : !isSemanticBlankText(value as string | null | undefined)
+      if (isNonBlank) {
+        delete prefillMap[field]
+        prefillChanged = true
+      }
+    }
+
+    if (prefillChanged) {
+      update.claim_prefill = prefillMap
     }
   }
 

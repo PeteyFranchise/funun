@@ -44,6 +44,7 @@ const DEMO_PROFILE: ArtistProfile = {
   legal_last_name: null,
   legal_name_suffix: null,
   legal_name_locked_at: null,
+  claim_prefill: null,
   contact_phone: null,
   mailing_address: null,
   industry_roles: [],
@@ -57,23 +58,8 @@ const DEMO_PROFILE: ArtistProfile = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
-// Shape of user_profiles row returned from GET /api/user-profiles
-export type UserProfile = {
-  id: string
-  pro: string | null
-  ipi: string | null
-  publisher: string | null
-  phone: string | null
-  mailing_address: Record<string, unknown> | null
-  display_name: string | null
-  bio: string | null
-  created_at: string
-  updated_at: string
-}
-
 export default async function SettingsPage() {
   let profile: ArtistProfile | null = null
-  let userProfile: UserProfile | null = null
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -97,17 +83,6 @@ export default async function SettingsPage() {
         .eq('id', user.id)
         .maybeSingle()
       profile = (data as ArtistProfile | null) ?? null
-
-      // user_profiles is a separate table (migration 026) — not touched by
-      // migration 040's column-privilege lockdown, so this session-bound
-      // select is unaffected by D-19. Its RLS policy already scopes reads
-      // to auth.uid() = id, so no service-client swap is required here.
-      const { data: userProfileData } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle()
-      userProfile = (userProfileData as UserProfile | null) ?? null
     }
   }
 
@@ -118,7 +93,7 @@ export default async function SettingsPage() {
 
       <div className="mt-8">
         {profile ? (
-          <ProfileForm profile={profile} userProfile={userProfile} />
+          <ProfileForm profile={profile} />
         ) : (
           <p className="text-sm text-white/50">
             We couldn't load your profile. Try signing out and back in.
