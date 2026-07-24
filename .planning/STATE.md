@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 18
 current_phase_name: split-sheet-home
 status: board-clear
-stopped_at: Phase 18 (split-sheet-home) EXECUTED — 5/5 plans, migrations 066/067/068 live, verifier status passed_with_human_checks (16/16 must-haves in code; 8 human_needed browser/SQL UAT items deferred). Recommended before ship — advisory, non-blocking — /gsd-secure-phase 18 and /gsd-code-review 18. Follow-up: Phase 17 mint-envelope legal_name gate (research A4).
-last_updated: "2026-07-22T22:47:25.668Z"
+stopped_at: Phase 19 context gathered — ready to plan
+last_updated: "2026-07-24T02:37:02.445Z"
 last_activity: 2026-07-22
-last_activity_desc: Phase 18 executed — living draft, Locker workspace, song attachment, coverage readiness, identity foundation
+last_activity_desc: Phase 18 execution started
 progress:
-  total_phases: 18
+  total_phases: 20
   completed_phases: 17
   total_plans: 108
   completed_plans: 96
-  percent: 89
+  percent: 85
 ---
 
 # Project State
@@ -303,8 +303,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-22T22:47:25.652Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-07-24T02:37:02.421Z
+Stopped at: Phase 19 context gathered — ready to plan
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -327,7 +327,7 @@ not a real gap; proceeded with override, verify-phase may re-surface. Session-lo
 decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
-Resume file: None
+Resume file: .planning/phases/19-profile-identity-model-cleanup/19-CONTEXT.md
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
