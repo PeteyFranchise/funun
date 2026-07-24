@@ -550,14 +550,14 @@ Plans:
 **Goal:** Collapse Funūn's three overlapping "you" tables into one canonical account profile and formalize the collaborator-becomes-user reconciliation — fixing the Phase 18 duplicate-rights bug (a saved PRO reads "None" on split sheets because two Settings sections write two different tables), while keeping signed documents immutable. The relation's honest rename (`artist_profiles`→`user_profiles`) is split out as Phase 20.
 **Requirements**: 5 (see 19-SPEC.md — R1 delete duplicate + re-point readers, R2 confirmable pre-fill, R3 preserve live-link, R4 flag-for-fix, R5 licensee note)
 **Depends on:** Phase 18 (split-sheet identity/live-link), Phase 08 (identity schema), Phase 04 (collaborator identity reconciliation)
-**Plans:** 2/7 plans executed
+**Plans:** 3/7 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 19-01-PLAN.md — Parity-twin logic (semantic-blank, claim-prefill) + R3 freeze-boundary regression tests
 - [x] 19-02-PLAN.md — R5 "note to licensees" on newly-generated PDFs + read-only share view
-- [ ] 19-03-PLAN.md — R4 correction-flag backend: migration 074 flags table + RLS, POST route, dual notification
+- [x] 19-03-PLAN.md — R4 correction-flag backend: migration 074 flags table + RLS, POST route, dual notification
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
