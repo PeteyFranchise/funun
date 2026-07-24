@@ -15,6 +15,7 @@ import {
   type OpenToVisibility,
 } from '@/lib/trust-safety/contracts'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
+import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
 
 const MAX_PROFILE_ROLES = 6
 const MAX_CUSTOM_ROLE_LEN = 40
@@ -188,6 +189,57 @@ function IsrcLearnMore() {
   )
 }
 
+// ── Claim pre-fill confirm UI (R2) ─────────────────────────────────────
+// Parametrizes the legal-name confirm-and-lock two-state block per rights
+// field (D-01/D-02): a field the claim path pre-filled from a claimed
+// collaborator record renders this "unconfirmed — review" notice, with
+// named provenance (D-03 — the person who added you, NOT the song) and a
+// per-field Confirm control, until the user confirms or edits the value.
+// A field absent from profile.claim_prefill (user-entered, or still
+// blank) renders nothing here.
+const CLAIM_PREFILL_FIELDS = [
+  'pro',
+  'ipi',
+  'publisher',
+  'administrator',
+  'contact_phone',
+  'mailing_address',
+] as const
+type ClaimPrefillField = (typeof CLAIM_PREFILL_FIELDS)[number]
+
+function ClaimPrefillNotice({
+  field,
+  entry,
+  submitting,
+  error,
+  onConfirm,
+}: {
+  field: ClaimPrefillField
+  entry: ClaimPrefillEntry
+  submitting: boolean
+  error: string | null
+  onConfirm: (field: ClaimPrefillField) => void
+}) {
+  return (
+    <div className="mt-2 space-y-1.5 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2">
+      <p className="text-xs font-semibold text-amber-300">Unconfirmed — review this value</p>
+      <p className="text-xs text-white/50">
+        We filled this from a credit {entry.source_name || 'someone'} added you to. Confirm
+        it&apos;s correct, or just edit and save above.
+      </p>
+      {error && <p className="text-xs text-rose-300">{error}</p>}
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={() => onConfirm(field)}
+        className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/20 disabled:opacity-40"
+      >
+        {submitting ? 'Confirming…' : 'Confirm this value'}
+      </button>
+    </div>
+  )
+}
+
 type ProfileFormProps = {
   profile: ArtistProfile
 }
@@ -206,6 +258,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   // the server-stamped value on the next render without extra local state.
   const [lockSubmitting, setLockSubmitting] = useState(false)
   const [lockError, setLockError] = useState<string | null>(null)
+
+  // Claim pre-fill confirm (R2, migration 072). profile.claim_prefill is
+  // read directly from the prop (same pattern as legal_name_locked_at
+  // above) — a router.refresh() after confirming picks up the
+  // server-computed confirmed:true on the next render.
+  const [confirmingField, setConfirmingField] = useState<ClaimPrefillField | null>(null)
+  const [confirmFieldError, setConfirmFieldError] = useState<string | null>(null)
 
   // Privacy settings — saved to /api/profile/visibility (SAFETY-04). These
   // two columns have no authenticated UPDATE grant at all (migration 058),
@@ -387,6 +446,31 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     }
 
     setLockSubmitting(false)
+    router.refresh()
+  }
+
+  // Claim pre-fill confirm (R2) — signals confirm_prefill_fields: [field]
+  // to /api/profile. The server owns setting claim_prefill[field].confirmed
+  // (mirrors lock_legal_name's server-owned-signal pattern above); this
+  // does not save any other unsaved form edits, matching the legal-name
+  // lock's scoped-signal behavior.
+  async function handleConfirmPrefillField(field: ClaimPrefillField) {
+    setConfirmingField(field)
+    setConfirmFieldError(null)
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm_prefill_fields: [field] }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setConfirmFieldError(json.error ?? 'Could not confirm this value')
+      setConfirmingField(null)
+      return
+    }
+
+    setConfirmingField(null)
     router.refresh()
   }
 
@@ -871,6 +955,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 placeholder="+1 555 000 0000"
                 className={`mt-1 ${inputClass}`}
               />
+              {profile.claim_prefill?.contact_phone && !profile.claim_prefill.contact_phone.confirmed && (
+                <ClaimPrefillNotice
+                  field="contact_phone"
+                  entry={profile.claim_prefill.contact_phone}
+                  submitting={confirmingField === 'contact_phone'}
+                  error={confirmingField === 'contact_phone' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className={labelClass}>Mailing address</label>
@@ -883,6 +976,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 <p className="mt-1 text-xs text-white/30">
                   Address verified via Google
                 </p>
+              )}
+              {profile.claim_prefill?.mailing_address && !profile.claim_prefill.mailing_address.confirmed && (
+                <ClaimPrefillNotice
+                  field="mailing_address"
+                  entry={profile.claim_prefill.mailing_address}
+                  submitting={confirmingField === 'mailing_address'}
+                  error={confirmingField === 'mailing_address' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
               )}
             </div>
           </div>
@@ -961,6 +1063,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   </option>
                 ))}
               </select>
+              {profile.claim_prefill?.pro && !profile.claim_prefill.pro.confirmed && (
+                <ClaimPrefillNotice
+                  field="pro"
+                  entry={profile.claim_prefill.pro}
+                  submitting={confirmingField === 'pro'}
+                  error={confirmingField === 'pro' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
             </div>
             <div>
               <label className={labelClass}>IPI / CAE number</label>
@@ -971,6 +1082,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 className={`mt-1 ${inputClass}`}
               />
               <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
+              {profile.claim_prefill?.ipi && !profile.claim_prefill.ipi.confirmed && (
+                <ClaimPrefillNotice
+                  field="ipi"
+                  entry={profile.claim_prefill.ipi}
+                  submitting={confirmingField === 'ipi'}
+                  error={confirmingField === 'ipi' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
             </div>
             <div>
               <label className={labelClass}>Publisher</label>
@@ -980,6 +1100,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 placeholder="Publisher name"
                 className={`mt-1 ${inputClass}`}
               />
+              {profile.claim_prefill?.publisher && !profile.claim_prefill.publisher.confirmed && (
+                <ClaimPrefillNotice
+                  field="publisher"
+                  entry={profile.claim_prefill.publisher}
+                  submitting={confirmingField === 'publisher'}
+                  error={confirmingField === 'publisher' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
             </div>
             <div>
               <label className={labelClass}>Administrator</label>
@@ -992,6 +1121,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <p className="mt-1 text-xs text-white/30">
                 Enter your publishing administrator if you have one. If you do not have one yet, enter &quot;None&quot;.
               </p>
+              {profile.claim_prefill?.administrator && !profile.claim_prefill.administrator.confirmed && (
+                <ClaimPrefillNotice
+                  field="administrator"
+                  entry={profile.claim_prefill.administrator}
+                  submitting={confirmingField === 'administrator'}
+                  error={confirmingField === 'administrator' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
             </div>
             <div>
               <label className={labelClass}>MLC member ID</label>
