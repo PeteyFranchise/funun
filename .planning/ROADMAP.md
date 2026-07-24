@@ -586,8 +586,15 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 20-01-PLAN.md — Author migrations 076 (rename + security_invoker compat view + 6 function repoints + column-scoped grants) and 077 (drop view) [autonomous]
 - [ ] 20-02-PLAN.md — Mechanical code rename: ~87 `artist_profiles` query strings → `user_profiles` + `ArtistProfile` type → `UserProfile` + grep regression guard [autonomous]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 20-03-PLAN.md — Cutover stage 1: human push #1 (076) + live-DB verification → deploy renamed code → D-04 smoke gate [human-gated]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 20-04-PLAN.md — Cutover stage 2: D-05 soak → human push #2 (077, drop view) + verify [human-gated]
