@@ -57,6 +57,9 @@ function toAttentionSheets(sheets: SplitSheetRow[]): AttentionSheetInput[] {
       // the 3-state per-party label is derived from (research §4).
       firstViewedAt: (p.first_viewed_at as string | null) ?? null,
       splitPercentage: p.split_percentage,
+      // R4 (19-SPEC.md D-05): the viewer's own party id, so the Locker's
+      // "this info is wrong" flag entry can target it directly.
+      partyId: p.id,
     })),
   }))
 }
@@ -116,6 +119,34 @@ export default async function ContractsPage() {
     )
       .filter(d => d.document_data?.hidden === true)
       .map(d => d.id)
+
+    // R4 (19-SPEC.md D-05): resolve the viewer's own split_sheet_parties.id
+    // for every split-sheet document row already reachable here — today
+    // that's rows carrying a splitSheetId (standalone/unattached executed
+    // sheets; an ATTACHED sheet's document row is reachable in this query
+    // only when the viewer also owns the parent project — a pre-existing
+    // Locker visibility gap for non-owner parties, not introduced or fixed
+    // by this plan). Powers ContractLocker's executed-sheet "this info is
+    // wrong" flag entry.
+    const splitSheetIds = Array.from(
+      new Set(rows.filter(r => r.type === 'split_sheet' && r.splitSheetId).map(r => r.splitSheetId as string))
+    )
+    if (splitSheetIds.length > 0 && viewerUserId) {
+      const { data: ownPartyRows } = await supabase
+        .from('split_sheet_parties')
+        .select('id, split_sheet_id')
+        .in('split_sheet_id', splitSheetIds)
+        .eq('user_id', viewerUserId)
+      const ownPartyBySheetId = new Map<string, string>()
+      for (const row of (ownPartyRows ?? []) as { id: string; split_sheet_id: string }[]) {
+        ownPartyBySheetId.set(row.split_sheet_id, row.id)
+      }
+      rows = rows.map(r =>
+        r.type === 'split_sheet' && r.splitSheetId
+          ? { ...r, ownPartyId: ownPartyBySheetId.get(r.splitSheetId) ?? null }
+          : r
+      )
+    }
   }
 
   // Hidden documents never render in the browse list either — the hide
