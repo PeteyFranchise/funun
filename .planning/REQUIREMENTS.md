@@ -269,6 +269,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Concurrency note:** Phase 17's wave-3 executors duplicated entries in this file by editing it in parallel. Phase 18's plans are assigned non-overlapping files per wave, but this file is shared by every executor — a plan updating its own requirement statuses should re-read this section immediately before writing.
 
+## v1.3-pre — Phase 19: Profile & Identity Model Cleanup Requirements
+
+**Defined:** 2026-07-23 (registered during plan-phase, retroactively logged at 19-01 execution). **Source:** `.planning/phases/19-profile-identity-model-cleanup/19-SPEC.md` — 5 locked requirements, Ambiguity 0.13. Each requirement spans multiple plans across Phase 19's 3 waves; a requirement is only complete once ALL of its owning plans have landed (R1/R2/R3 specifically require the human-gated migration checkpoint in 19-07, not just the pure-logic foundation built in 19-01).
+
+- [ ] **R1**: Delete the duplicate `user_profiles`, re-point `claim_collaborators()` + `backfill_claimed_collaborators()` to `artist_profiles`, with a semantic-blank data-rescue migration before the drop (the "saved PRO reads None" bug fix)
+- [ ] **R2**: Confirmable reverse profile pre-fill on claim — per-field provenance + unconfirmed flag, idempotent, most-recent-wins on conflict
+- [ ] **R3**: Preserve the existing claimed-collaborator live-link + `esign_pending`/`executed` freeze boundary through the table consolidation
+- [ ] **R4**: Flag-for-fix path for a claimed user's own identity on frozen sheets; no cross-user edits; guided apply (void-first for `esign_pending`, guided pointer for `executed`)
+- [ ] **R5**: "Note to licensees" callout on newly-generated split-sheet PDFs and read-only share/export views
+
+**19-01 (foundation, wave 1, complete 2026-07-24):** built the pure-TypeScript SQL-parity twins `lib/profile/semantic-blank.ts` (R1) and `lib/profile/claim-prefill.ts` (R2), and confirmed R3's freeze-boundary regression coverage (pre-existing from Phase 18-05) is unchanged. This is the machine-checked contract 19-04/19-05's migrations and UI build against — it does not itself touch the database, so R1/R2/R3 stay unchecked here until 19-04/19-05/19-07 land.
+
+**Traceability (Phase 19):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| R1 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01 done) |
+| R2 | Phase 19 | 19-01, 19-04, 19-05, 19-07 | In Progress (19-01 done) |
+| R3 | Phase 19 | 19-01, 19-04 | In Progress (19-01 done) |
+| R4 | Phase 19 | 19-03, 19-06, 19-07 | Pending |
+| R5 | Phase 19 | 19-02 | Pending |
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-20 — Phase 18 requirements HOME-01..12 registered during plan-phase and mapped across the four Phase 18 plans; Phase 17 requirements ESIGN-15..19 registered from the provider-verification review; ESIGN-09..12 duplication repaired*
+*Last updated: 2026-07-24 — Phase 19 requirements R1-R5 registered (retroactively, at 19-01 execution) and mapped across the phase's 7 plans; 19-01's foundation twins (R1/R2 parity modules, R3 regression re-verification) landed*
