@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ArtistProfile, OpenTo, ProfileRole, ProfileRoleSlug } from '@/types'
 import { PROFILE_ROLES, PROFILE_ROLE_LABELS } from '@/types'
-import type { UserProfile } from '@/app/(artist)/settings/page'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { GENRES } from '@/lib/genres'
@@ -101,16 +100,6 @@ type FormState = {
   allow_resharing: boolean
 }
 
-// State for the Rights Identity section — saved to /api/user-profiles
-type RightsIdentityState = {
-  pro: string
-  ipi: string
-  publisher: string
-  phone: string
-  mailing_address: string
-  mailing_address_structured: Record<string, string> | null
-}
-
 function toForm(p: ArtistProfile): FormState {
   return {
     artist_name: p.artist_name ?? '',
@@ -142,28 +131,6 @@ function toForm(p: ArtistProfile): FormState {
     roles: Array.isArray(p.roles) ? p.roles : [],
     open_to: Array.isArray(p.open_to) ? p.open_to : [],
     allow_resharing: p.allow_resharing ?? true,
-  }
-}
-
-// Seed Rights Identity state from userProfile, falling back to artist_profile values
-function toRightsIdentity(
-  userProfile: UserProfile | null,
-  artistProfile: ArtistProfile
-): RightsIdentityState {
-  const address = (userProfile?.mailing_address as { raw?: string } | null)?.raw
-    ?? (artistProfile.mailing_address as { raw?: string } | null)?.raw
-    ?? ''
-  const addressStructured =
-    (userProfile?.mailing_address as Record<string, string> | null)
-    ?? (artistProfile.mailing_address as Record<string, string> | null)
-    ?? null
-  return {
-    pro: userProfile?.pro ?? artistProfile.pro ?? '',
-    ipi: userProfile?.ipi ?? artistProfile.ipi ?? '',
-    publisher: userProfile?.publisher ?? artistProfile.publisher ?? '',
-    phone: userProfile?.phone ?? artistProfile.contact_phone ?? '',
-    mailing_address: address,
-    mailing_address_structured: addressStructured,
   }
 }
 
@@ -223,10 +190,9 @@ function IsrcLearnMore() {
 
 type ProfileFormProps = {
   profile: ArtistProfile
-  userProfile?: UserProfile | null
 }
 
-export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
+export function ProfileForm({ profile }: ProfileFormProps) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(toForm(profile))
   const [showSuffix, setShowSuffix] = useState(Boolean(profile.legal_name_suffix))
@@ -240,14 +206,6 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
   // the server-stamped value on the next render without extra local state.
   const [lockSubmitting, setLockSubmitting] = useState(false)
   const [lockError, setLockError] = useState<string | null>(null)
-
-  // Rights Identity section state — saved to /api/user-profiles
-  const [rightsForm, setRightsForm] = useState<RightsIdentityState>(
-    toRightsIdentity(userProfile, profile)
-  )
-  const [rightsSubmitting, setRightsSubmitting] = useState(false)
-  const [rightsError, setRightsError] = useState<string | null>(null)
-  const [rightsSaved, setRightsSaved] = useState(false)
 
   // Privacy settings — saved to /api/profile/visibility (SAFETY-04). These
   // two columns have no authenticated UPDATE grant at all (migration 058),
@@ -278,11 +236,6 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
     setSaved(false)
   }
 
-  function setRights<K extends keyof RightsIdentityState>(key: K, value: RightsIdentityState[K]) {
-    setRightsForm(f => ({ ...f, [key]: value }))
-    setRightsSaved(false)
-  }
-
   function toggleGenre(slug: string) {
     setForm(f => {
       const genres = f.genres.includes(slug)
@@ -300,15 +253,6 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
       mailing_address_structured: structured ?? f.mailing_address_structured,
     }))
     setSaved(false)
-  }, [])
-
-  const handleRightsAddressChange = useCallback((display: string, structured: Record<string, string> | null) => {
-    setRightsForm(f => ({
-      ...f,
-      mailing_address: display,
-      mailing_address_structured: structured ?? f.mailing_address_structured,
-    }))
-    setRightsSaved(false)
   }, [])
 
   function toggleRole(slug: string) {
@@ -443,39 +387,6 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
     }
 
     setLockSubmitting(false)
-    router.refresh()
-  }
-
-  // Rights Identity save — to /api/user-profiles; triggers back-fill of claimed rows
-  async function handleRightsSave(e: React.FormEvent) {
-    e.preventDefault()
-    setRightsSubmitting(true)
-    setRightsError(null)
-
-    const mailingAddress = rightsForm.mailing_address.trim()
-      ? (rightsForm.mailing_address_structured ?? { raw: rightsForm.mailing_address.trim() })
-      : null
-
-    const res = await fetch('/api/user-profiles', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pro: rightsForm.pro || null,
-        ipi: rightsForm.ipi || null,
-        publisher: rightsForm.publisher || null,
-        phone: rightsForm.phone || null,
-        mailing_address: mailingAddress,
-      }),
-    })
-    const json = await res.json()
-    if (!res.ok) {
-      setRightsError(json.error ?? 'Could not save rights identity')
-      setRightsSubmitting(false)
-      return
-    }
-
-    setRightsSubmitting(false)
-    setRightsSaved(true)
     router.refresh()
   }
 
@@ -1028,6 +939,12 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
               Your rights registry information. Flows automatically into split sheets,
               metadata, and registration checklists.
             </p>
+            {/* D-12 (19-CONTEXT.md) — verbatim help line, single canonical
+                rights input now that the duplicate "Rights Identity"
+                section and its API route are removed (R1). */}
+            <p className="mt-1 text-xs text-white/40">
+              Used on your split sheets, metadata, and registrations.
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -1147,91 +1064,6 @@ export function ProfileForm({ profile, userProfile = null }: ProfileFormProps) {
             {submitting ? 'Saving…' : 'Save changes'}
           </button>
           {saved && <span className="text-sm text-emerald-300">Saved</span>}
-        </div>
-      </form>
-
-      {/* ── Rights Identity ─────────────────────────────────────────
-          Separate section — saves to /api/user-profiles and fires an additive
-          back-fill of every collaborator row this user has claimed (D-08).
-          Seeded from user_profiles, falling back to artist_profile values.
-      ────────────────────────────────────────────────────────────── */}
-      <form onSubmit={handleRightsSave} className="space-y-6">
-        <div className="border-t border-white/10 mt-8 pt-8">
-          <h2 className="text-lg font-semibold text-white">Rights Identity</h2>
-          <p className="text-sm text-lavdim mt-1">Saved here, auto-filled into every split sheet and contract.</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>PRO affiliation</label>
-            <select
-              value={rightsForm.pro}
-              onChange={e => setRights('pro', e.target.value)}
-              className={`mt-1 ${inputClass}`}
-            >
-              <option value="" className="bg-neutral-900">Select PRO (optional)</option>
-              {PRO_VALUES.map(v => (
-                <option key={v} value={v} className="bg-neutral-900">
-                  {PRO_LABELS[v]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>IPI / CAE number</label>
-            <input
-              value={rightsForm.ipi}
-              onChange={e => setRights('ipi', e.target.value)}
-              placeholder="00000000000"
-              className={`mt-1 ${inputClass}`}
-            />
-            <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
-          </div>
-          <div>
-            <label className={labelClass}>Publisher</label>
-            <input
-              value={rightsForm.publisher}
-              onChange={e => setRights('publisher', e.target.value)}
-              placeholder="Publisher name"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Phone</label>
-            <input
-              type="tel"
-              value={rightsForm.phone}
-              onChange={e => setRights('phone', e.target.value)}
-              placeholder="+1 555 000 0000"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Mailing address</label>
-            <AddressAutocomplete
-              value={rightsForm.mailing_address}
-              onChange={handleRightsAddressChange}
-              inputClass={`mt-1 ${inputClass}`}
-            />
-            {rightsForm.mailing_address_structured && (
-              <p className="mt-1 text-xs text-white/30">
-                Address verified via Google
-              </p>
-            )}
-          </div>
-        </div>
-
-        {rightsError && <p className="text-sm text-rose-300">{rightsError}</p>}
-
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={rightsSubmitting}
-            className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta disabled:opacity-40"
-          >
-            {rightsSubmitting ? 'Saving…' : 'Save rights identity'}
-          </button>
-          {rightsSaved && <span className="text-sm text-emerald-300">Saved</span>}
         </div>
       </form>
 

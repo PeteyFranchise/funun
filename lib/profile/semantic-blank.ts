@@ -3,10 +3,11 @@
 // Jest cannot execute PL/pgSQL, so this module is the machine-checked
 // contract migration 071's SQL mirrors exactly (19-RESEARCH.md Pattern 1
 // + Pitfall 6): what "blank" means (NULL, trimmed-empty text, or
-// empty-JSON `{}`), which value wins when rescuing a stranded
-// user_profiles value into the canonical artist_profiles column
-// (canonical-wins — a meaningful canonical value always beats a stranded
-// one), and the exact source -> target column mapping. No I/O, no
+// empty-JSON `{}`), which value wins when rescuing a stranded value from
+// the (now-dropped, migration 073) duplicate rights table into the
+// canonical artist_profiles column (canonical-wins — a meaningful
+// canonical value always beats a stranded one), and the exact source ->
+// target column mapping. No I/O, no
 // Supabase import — this module's only consumers are its own test and,
 // by mirroring, migration 071.
 //
@@ -49,7 +50,7 @@ export function rescueValue<T>(canonical: T, stranded: T, kind: RescueKind): T {
 }
 
 export type RescueFieldMapping = {
-  /** user_profiles source column name */
+  /** source column name on the (now-dropped) duplicate rights table */
   source: string
   /** artist_profiles target column name */
   target: string
