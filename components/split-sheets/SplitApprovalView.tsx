@@ -5,6 +5,7 @@ import type { PartyPhase } from '@/lib/split-sheets/phase'
 import { SplitSheetSigningEmbed } from '@/components/split-sheets/SplitSheetSigningEmbed'
 import { formatPartyChanges } from '@/lib/split-sheets/change-summary'
 import type { PartyChangeRecord } from '@/lib/split-sheets/change-summary'
+import { NOTE_TO_LICENSEES } from '@/lib/split-sheets/agreement'
 
 // ─── SplitApprovalView ──────────────────────────────────────────────────
 // Public approval UI rendered on /approve/[token]. The same durable link
@@ -93,6 +94,21 @@ function PartyRows({ parties, partyId }: { parties: Party[]; partyId: string }) 
   )
 }
 
+// R5 (D-11) — the note travels with the record wherever a recipient sees
+// it: the same NOTE_TO_LICENSEES string used on the generated PDF
+// (lib/vault/pdf/split-sheet.tsx), imported from the shared constant so
+// wording can never drift between the two surfaces. Rendered inside
+// PageShell (below) so it appears beside the parties/rights block on
+// every phase this read-only share/export surface renders — display-only,
+// no effect on approve/counter/sign logic.
+function LicenseeNote() {
+  return (
+    <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs leading-relaxed text-white/50">
+      {NOTE_TO_LICENSEES}
+    </div>
+  )
+}
+
 function PageShell({
   artistName,
   songName,
@@ -124,6 +140,7 @@ function PageShell({
             <span className="font-bold text-emerald-300">100%</span>
           </div>
         </div>
+        <LicenseeNote />
       </div>
 
       <div className="mt-6 w-full max-w-[480px] space-y-4">{children}</div>
