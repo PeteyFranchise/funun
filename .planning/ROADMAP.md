@@ -550,11 +550,17 @@ Plans:
 **Goal:** Collapse Funūn's three overlapping "you" tables into one canonical account profile and formalize the collaborator-becomes-user reconciliation — fixing the Phase 18 duplicate-rights bug (a saved PRO reads "None" on split sheets because two Settings sections write two different tables), while keeping signed documents immutable. The relation's honest rename (`artist_profiles`→`user_profiles`) is split out as Phase 20.
 **Requirements**: 5 (see 19-SPEC.md — R1 delete duplicate + re-point readers, R2 confirmable pre-fill, R3 preserve live-link, R4 flag-for-fix, R5 licensee note)
 **Depends on:** Phase 18 (split-sheet identity/live-link), Phase 08 (identity schema), Phase 04 (collaborator identity reconciliation)
-**Plans:** 0 plans
+**Plans:** 7 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 19 to break down)
+- [ ] 19-01-PLAN.md — Parity-twin logic (semantic-blank, claim-prefill) + R3 freeze-boundary regression tests
+- [ ] 19-02-PLAN.md — R5 "note to licensees" on newly-generated PDFs + read-only share view
+- [ ] 19-03-PLAN.md — R4 correction-flag backend: migration 074 flags table + RLS, POST route, dual notification
+- [ ] 19-04-PLAN.md — R1/R2 migrations 071 (rescue) / 072 (re-point both readers + claim_prefill + reverse pre-fill) / 073 (drop)
+- [ ] 19-05-PLAN.md — R1/R2 Settings consolidation: remove duplicate rights input + per-field confirm UI + companion test
+- [ ] 19-06-PLAN.md — R4 correction-flag frontend: Locker "this is wrong" affordance + owner guided apply (void-first / executed pointer)
+- [ ] 19-07-PLAN.md — Human-gated migration push checkpoint (071→072→073→074, LOCAL=REMOTE)
 
 ### Phase 20: Profile Table Rename (artist_profiles to user_profiles)
 
