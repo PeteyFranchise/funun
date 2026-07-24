@@ -553,13 +553,20 @@ Plans:
 **Plans:** 7 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 19-01-PLAN.md — Parity-twin logic (semantic-blank, claim-prefill) + R3 freeze-boundary regression tests
 - [ ] 19-02-PLAN.md — R5 "note to licensees" on newly-generated PDFs + read-only share view
 - [ ] 19-03-PLAN.md — R4 correction-flag backend: migration 074 flags table + RLS, POST route, dual notification
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 19-04-PLAN.md — R1/R2 migrations 071 (rescue) / 072 (re-point both readers + claim_prefill + reverse pre-fill) / 073 (drop)
 - [ ] 19-05-PLAN.md — R1/R2 Settings consolidation: remove duplicate rights input + per-field confirm UI + companion test
 - [ ] 19-06-PLAN.md — R4 correction-flag frontend: Locker "this is wrong" affordance + owner guided apply (void-first / executed pointer)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 19-07-PLAN.md — Human-gated migration push checkpoint (071→072→073→074, LOCAL=REMOTE)
 
 ### Phase 20: Profile Table Rename (artist_profiles to user_profiles)
@@ -569,6 +576,7 @@ Plans:
 **Depends on:** Phase 19 (which deletes the duplicate `user_profiles`, freeing the target name)
 
 **Locked inputs (verified via Codex sweep 2026-07-23 — do not re-litigate scope):**
+
 - Blast radius: ~79 runtime files reference `artist_profiles` (incl. public-profile `app/u/` + `app/r/`, approve/invite pages, presence, Green Room, trust/safety, capability grants, split-sheet mint, and the manual `ArtistProfile` type in `types/index.ts`) plus ~23 historical migrations.
 - Effective DB objects to update in a NEW migration: `handle_new_user()` (curator/industry branches), search-vector + `clear_featured` triggers, `capability_grants` + `verification_audit_log` FKs, Green Room SQL functions, RLS policies, grants, indexes, and the re-pointed `claim_collaborators()`/`backfill_claimed_collaborators()`.
 - Historical migrations are IMMUTABLE — the rename lands as a new migration; acceptance is "no runtime/effective-schema references," historical files exempt.
