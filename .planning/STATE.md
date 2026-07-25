@@ -6,15 +6,15 @@ current_phase: 20
 current_phase_name: profile-table-rename-artist-profiles-to-user-profiles
 status: board-clear
 stopped_at: Phase 20 context gathered — ready to plan (compat-view rename)
-last_updated: "2026-07-25T04:25:47.811Z"
+last_updated: "2026-07-25T04:35:00.148Z"
 last_activity: 2026-07-25
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 20
   completed_phases: 18
   total_plans: 119
-  completed_plans: 104
-  percent: 87
+  completed_plans: 105
+  percent: 88
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 20 (profile-table-rename-artist-profiles-to-user-profiles) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -143,6 +143,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 19 P05 | 25min | 3 tasks | 8 files |
 | Phase 19 P06 | 15min | 2 tasks | 6 files |
 | Phase 20 P01 | 20min | 2 tasks | 2 files |
+| Phase 20 P02 | 6min | 3 tasks | 89 files |
 
 ## Accumulated Context
 
@@ -257,6 +258,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 19]: 19-06: Locker flag entry targets the viewer's own resolved party id once per sheet card (not per-party-row) -- functionally satisfies R4's own-row-only scoping without a second client lookup
 - [Phase 19]: 19-06: A non-owner claimed party's document row for an ATTACHED executed sheet is not currently reachable in Contract Locker (pre-existing project-nested query gap, not fixed by this plan) -- executed-sheet flag coverage is scoped to standalone/reachable rows
 - [Phase ?]: Included migration 058's profile_visibility/open_to_visibility columns in the 076 view's SELECT grant list, beyond the plan's literal 040/043/054 wording, after direct grep confirmed 058 is a real 4th grant-extending migration
+- [Phase ?]: Left prose comments mentioning artist_profiles unchanged per plan instruction, even where they document a since-renamed call site — D-03 explicitly scopes the rename to query strings and the type identifier, not documentation prose
+- [Phase ?]: Left migration-content assertion tests (migration-054/055/057/058/063/066, claim-collaborators-rpc) unchanged — They assert against the literal text of immutable historical migration files, which legitimately still say artist_profiles
+- [Phase ?]: Left lib/trust-safety/reports.ts's local ArtistProfileVisRow type name unchanged — Incidental local identifier unrelated to the imported types/index.ts type; word-boundary rename correctly did not touch it
 
 ### Pending Todos
 
@@ -324,7 +328,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-25T04:25:15.751Z
+Last session: 2026-07-25T04:34:34.521Z
 Stopped at: Phase 20 context gathered — ready to plan (compat-view rename)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
