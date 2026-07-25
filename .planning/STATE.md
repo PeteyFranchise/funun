@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 19
-current_phase_name: profile-identity-model-cleanup
+current_phase: 20
+current_phase_name: profile-table-rename-artist-profiles-to-user-profiles
 status: board-clear
 stopped_at: Phase 20 context gathered — ready to plan (compat-view rename)
-last_updated: "2026-07-24T19:44:14.404Z"
-last_activity: 2026-07-24
-last_activity_desc: Phase 19 execution started
+last_updated: "2026-07-25T04:25:47.811Z"
+last_activity: 2026-07-25
+last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 20
   completed_phases: 18
-  total_plans: 115
-  completed_plans: 103
-  percent: 90
+  total_plans: 119
+  completed_plans: 104
+  percent: 87
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 19 — profile-identity-model-cleanup
+**Current focus:** Phase 20 — profile-table-rename-artist-profiles-to-user-profiles
 
 ## Current Position
 
-Phase: 19 (profile-identity-model-cleanup) — EXECUTING
-Plan: 7 of 7
+Phase: 20 (profile-table-rename-artist-profiles-to-user-profiles) — EXECUTING
+Plan: 2 of 4
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-07-24 — Phase 19 execution started
+Last activity: 2026-07-25 — Phase 20 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -142,6 +142,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 19 P04 | 12min | 3 tasks | 3 files |
 | Phase 19 P05 | 25min | 3 tasks | 8 files |
 | Phase 19 P06 | 15min | 2 tasks | 6 files |
+| Phase 20 P01 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -255,6 +256,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 19-05: CLAIM_PREFILL_FIELDS covers pro/ipi/publisher/administrator/contact_phone/mailing_address in both ProfileForm.tsx and api/profile/route.ts, even though migration 072's reverse pre-fill only populates 5 of the 6 today -- forward-compatible, no badge renders for administrator until/if 072 is extended
 - [Phase 19]: 19-06: Locker flag entry targets the viewer's own resolved party id once per sheet card (not per-party-row) -- functionally satisfies R4's own-row-only scoping without a second client lookup
 - [Phase 19]: 19-06: A non-owner claimed party's document row for an ATTACHED executed sheet is not currently reachable in Contract Locker (pre-existing project-nested query gap, not fixed by this plan) -- executed-sheet flag coverage is scoped to standalone/reachable rows
+- [Phase ?]: Included migration 058's profile_visibility/open_to_visibility columns in the 076 view's SELECT grant list, beyond the plan's literal 040/043/054 wording, after direct grep confirmed 058 is a real 4th grant-extending migration
 
 ### Pending Todos
 
@@ -322,7 +324,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-24T19:44:14.388Z
+Last session: 2026-07-25T04:25:15.751Z
 Stopped at: Phase 20 context gathered — ready to plan (compat-view rename)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
