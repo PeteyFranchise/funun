@@ -27,7 +27,7 @@ async function loadActor(
   userId: string
 ): Promise<{ name: string; avatarUrl: string | null; handle: string }> {
   const { data } = await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name, avatar_url, handle')
     .eq('id', userId)
     .maybeSingle()
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
   let verified = false
   if (!existingPendingByMe) {
     const { data: profileRow } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('verified')
       .eq('id', user.id)
       .maybeSingle()

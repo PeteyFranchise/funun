@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import type { Stage3ToolSlug } from '@/lib/vault/stage3'
 import { TOOL_DOC_TYPE, TOOL_NAME, buildDocPrompt } from '@/lib/tools/documents'
 import { buildSplitSheet } from '@/lib/tools/splitsheet'
@@ -104,12 +104,12 @@ export async function POST(
   // to the verified user.id (D-19 companion pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
-  const prompt = buildDocPrompt(tool, (profile ?? { artist_name: null }) as ArtistProfile, input)
+  const prompt = buildDocPrompt(tool, (profile ?? { artist_name: null }) as UserProfile, input)
   if (!prompt) return NextResponse.json({ error: 'Tool not generatable' }, { status: 400 })
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })

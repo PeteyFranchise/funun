@@ -189,7 +189,7 @@ export async function loadNetworkData(supabase: SupabaseClient, viewerId: string
   const profileById = new Map<string, ProfileRow>()
   if (allIds.size > 0) {
     const { data: profileRows } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select(DISCOVER_PUBLIC_COLUMNS)
       .in('id', Array.from(allIds))
     for (const row of (profileRows ?? []) as unknown as ProfileRow[]) {

@@ -20,7 +20,7 @@ export async function GET() {
 
   const service = createServiceClient()
   const { data, error } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select(MEMBER_COLUMNS)
     .eq('member_type', 'industry')
     .order('created_at', { ascending: false })
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
     const service = createServiceClient()
     const { data: profile } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select(MEMBER_COLUMNS)
       .eq('id', userId)
       .maybeSingle()

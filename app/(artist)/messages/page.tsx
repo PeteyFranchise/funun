@@ -41,7 +41,7 @@ export default async function MessagesPage({
     buildThreadViews(supabase, user.id),
     // Explicit column list — never select('*') on artist_profiles (migration
     // 040 column lockdown returns 42501 otherwise).
-    supabase.from('artist_profiles').select('verified').eq('id', user.id).maybeSingle(),
+    supabase.from('user_profiles').select('verified').eq('id', user.id).maybeSingle(),
   ])
 
   const viewerVerified = !!(viewerRes.data as { verified?: boolean | null } | null)?.verified
@@ -49,7 +49,7 @@ export default async function MessagesPage({
   let initialWith: { id: string; name: string; avatarUrl: string | null; handle: string; lastSeenAt: string | null } | null = null
   if (params.with && params.with !== user.id && !threads.some(t => t.other.id === params.with)) {
     const { data: otherProfile } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('artist_name, avatar_url, handle, last_seen_at')
       .eq('id', params.with)
       .maybeSingle()

@@ -40,7 +40,7 @@ export async function loadEndorsements(
 
   const authorIds = Array.from(new Set(rows.map(r => r.author_id)))
   const { data: authors } = await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('id, artist_name, avatar_url, roles')
     .in('id', authorIds)
 

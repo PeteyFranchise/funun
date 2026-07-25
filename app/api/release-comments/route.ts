@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   try {
     if (project && project.user_id !== user.id) {
       const { data: actor } = await supabase
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('artist_name, avatar_url')
         .eq('id', user.id)
         .maybeSingle()

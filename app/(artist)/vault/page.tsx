@@ -33,7 +33,7 @@ export default async function VaultPage() {
     } = await supabase.auth.getUser()
 
     const [{ data: profile }, res] = await Promise.all([
-      supabase.from('artist_profiles').select('artist_name').eq('id', user?.id ?? '').maybeSingle(),
+      supabase.from('user_profiles').select('artist_name').eq('id', user?.id ?? '').maybeSingle(),
       supabase
         .from('vault_projects')
         .select(

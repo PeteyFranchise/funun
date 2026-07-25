@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ArtistProfile, OpenTo, ProfileRole, ProfileRoleSlug } from '@/types'
+import type { UserProfile, OpenTo, ProfileRole, ProfileRoleSlug } from '@/types'
 import { PROFILE_ROLES, PROFILE_ROLE_LABELS } from '@/types'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
@@ -101,7 +101,7 @@ type FormState = {
   allow_resharing: boolean
 }
 
-function toForm(p: ArtistProfile): FormState {
+function toForm(p: UserProfile): FormState {
   return {
     artist_name: p.artist_name ?? '',
     genre: p.genre ?? '',
@@ -241,7 +241,7 @@ function ClaimPrefillNotice({
 }
 
 type ProfileFormProps = {
-  profile: ArtistProfile
+  profile: UserProfile
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {

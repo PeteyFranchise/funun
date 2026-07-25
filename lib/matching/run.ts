@@ -45,7 +45,7 @@ export async function runMatchingForOpportunity(
 
   const [{ data: artists }, { data: projects }] = await Promise.all([
     service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('id, genre, monthly_listeners, career_stage, location, sound_identity'),
     service
       .from('vault_projects')

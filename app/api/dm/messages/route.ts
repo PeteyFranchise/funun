@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     isConnected(supabase, user.id, otherId),
     // Explicit column list — never select('*') on artist_profiles
     // (migration 040 column lockdown returns 42501 otherwise).
-    supabase.from('artist_profiles').select('last_seen_at').eq('id', otherId).maybeSingle(),
+    supabase.from('user_profiles').select('last_seen_at').eq('id', otherId).maybeSingle(),
   ])
   const otherLastSeenAt = (otherProfileRes.data as { last_seen_at?: string | null } | null)?.last_seen_at ?? null
 

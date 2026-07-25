@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import {
   buildPitchPlugPrompt,
   getCurator,
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   // scoped to the verified user.id (D-19 companion pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
   }
 
   const prompt = buildPitchPlugPrompt(
-    (profile ?? { artist_name: null }) as ArtistProfile,
+    (profile ?? { artist_name: null }) as UserProfile,
     ctx,
     curatorTypes
   )

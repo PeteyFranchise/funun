@@ -1,4 +1,4 @@
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type ToolSlug =
   | 'epkfyi'
@@ -95,7 +95,7 @@ export type EpkOutput = {
 }
 
 export function buildEpkPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -148,7 +148,7 @@ export type DropReadyOutput = {
 }
 
 export function buildDropReadyPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -199,7 +199,7 @@ export type SoundBaitOutput = {
 }
 
 export function buildSoundBaitPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -245,7 +245,7 @@ export type DistroAdvisorOutput = {
 }
 
 export function buildDistroAdvisorPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -292,7 +292,7 @@ export type RoyaltyAuditOutput = {
 }
 
 export function buildRoyaltyAuditPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -337,7 +337,7 @@ export type SpotifyPitchOutput = {
 }
 
 export function buildSpotifyPitchPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string {
   const artist = profile.artist_name || 'this artist'
@@ -390,7 +390,7 @@ export const PLATFORM_CONSTRAINTS = `PLATFORM CONSTRAINTS (fixed — do not devi
 - Threads: post under 500 characters; content types: text, static image`
 
 export function buildCalendarPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext,
   collaboratorNames: string[],
   activePlatforms: string[]
@@ -429,7 +429,7 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 export type SlotCaptionOutput = { caption: string }
 
 export function buildSlotCaptionPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext,
   slot: { platform: string; week: number; content_type: string; existingCaption: string }
 ): string {
@@ -459,7 +459,7 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 }
 
 export function buildSlotHookPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext,
   slot: { platform: string; week: number; content_type: string; existingCaption: string }
 ): string {
@@ -491,7 +491,7 @@ Respond with ONLY a JSON object (no markdown, no preamble) matching exactly this
 // ─── Prompt dispatcher ────────────────────────────────────────────────
 export function buildToolPrompt(
   slug: ToolSlug,
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: ToolProjectContext
 ): string | null {
   switch (slug) {

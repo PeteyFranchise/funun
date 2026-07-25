@@ -60,7 +60,7 @@ export default async function ApprovePage({ params }: Props) {
       // therefore always errored, silently degrading every collaborator's
       // page to the "the initiating artist" fallback.
       const { data: profile } = await service
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('artist_name')
         .eq('id', sheet.initiator_user_id)
         .maybeSingle()
@@ -115,7 +115,7 @@ export default async function ApprovePage({ params }: Props) {
   // ── Fetch initiator name for the header ──────────────────────────────
   // Keyed by `id` — see the note on the token_invalid branch above.
   const { data: initiatorProfile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name')
     .eq('id', resolvedSheet.initiator_user_id)
     .maybeSingle()

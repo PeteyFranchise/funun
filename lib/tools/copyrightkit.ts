@@ -1,7 +1,7 @@
 // ─── CopyrightKit ────────────────────────────────────────────────────
 // Generates a step-by-step US Copyright Office (eCO) registration
 // walkthrough pre-filled with the project's metadata. Project level.
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type CopyrightKitOutput = {
   registration_type: string
@@ -27,7 +27,7 @@ export type CopyrightKitInput = {
 }
 
 export function buildCopyrightKitPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   input: CopyrightKitInput
 ): string {
   const artist = profile.artist_name || 'the artist'

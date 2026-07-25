@@ -265,7 +265,7 @@ export async function isDestinationVisible(
 
   if (destinationType === 'profile') {
     const { data } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('id')
       .eq('id', destinationId)
       .eq('is_public', true)
@@ -331,7 +331,7 @@ export async function isDestinationVisible(
     if (!authorId) return false
 
     const { data: author } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('id')
       .eq('id', authorId)
       .eq('is_public', true)
