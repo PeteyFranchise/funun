@@ -43,20 +43,28 @@
 --      for Postgres's automatically-updatable-view mechanism: INSERT/
 --      UPDATE/DELETE against the view rewrite transparently onto
 --      user_profiles with no INSTEAD OF triggers needed.
---   4. Grants on the view. Privileges on a view are INDEPENDENT of its base
---      table (views do not inherit table grants) — skipping this means old
---      code hitting the view gets `42501 permission denied` the instant this
---      migration lands, the opposite of the zero-downtime goal. Rather than
---      hand-list columns (the 20-03 preflight proved a hand-listed set STALE
---      — it had drifted past every Phase 19 rights column), this copies the
---      base table's effective grants onto the view programmatically (see the
---      DO block in step 4 below), so the view mirrors whatever user_profiles
---      actually grants and cannot go stale as columns are added. Copies only
---      DML privileges (SELECT/INSERT/UPDATE/DELETE); REFERENCES/TRIGGER/
---      TRUNCATE are no-ops on a view. service_role gets a defensive
---      `GRANT ALL`. security_invoker = on means RLS still gates every row as
---      the invoker, so copying the (permissive) grants copies posture, never
---      widens it.
+--   4. Explicit column-scoped GRANTs on the view. Privileges on a view are
+--      INDEPENDENT of privileges on its base table (views do not inherit
+--      table grants) — skipping this step means old code hitting the view
+--      gets `42501 permission denied` the instant this migration lands,
+--      the opposite of the zero-downtime goal. The SELECT (33 cols, to
+--      authenticated + anon) and UPDATE (17 cols, to authenticated) lists
+--      below were VERIFIED at the 20-03 preflight against
+--      information_schema.role_column_grants on the live table: anon and
+--      authenticated each SELECT exactly these 33 columns, and authenticated
+--      UPDATEs exactly these 17 — both an exact match (zero diff either
+--      direction). Deployed code only ever reads or updates this relation
+--      (verified on origin/main: 74 .select() + 11 .update() sites against
+--      artist_profiles, zero .insert()/.upsert()/.delete()), so the view is
+--      granted ONLY SELECT + UPDATE. NOTE: the live table ALSO grants
+--      anon/authenticated table-level INSERT/DELETE (and anon UPDATE) under
+--      the standard Supabase grant-plus-RLS model — the view intentionally
+--      does NOT mirror those. No code path exercises them through this name,
+--      and least privilege is the right default for a temporary shim (RLS on
+--      user_profiles still gates every row via security_invoker regardless).
+--      A defensive `GRANT ALL ... TO service_role` is added — service_role
+--      reads the Rights columns (legal_*, contact_phone, pro, …) server-side
+--      and already has equivalent-or-greater access via other paths.
 --   5. NOTIFY pgrst, 'reload schema' — forces PostgREST to pick up the
 --      renamed relation + the new view; without this, requests can
 --      404/500 against a stale schema cache (established convention,
@@ -66,11 +74,11 @@
 -- The live push is this phase's first human-gated checkpoint (plan 20-03),
 -- applied strictly before the code deploy, mirroring migrations
 -- 058/062/063/065/066/070/072/073/074/075's "do not push from an executor
--- agent" convention. The view's grants are copied from the live base table
--- at apply time (step 4's DO block), so they need no static re-verification;
--- the live grant model was confirmed at the 20-03 preflight (anon/authenticated
--- SELECT and authenticated UPDATE are column-scoped; anon UPDATE and both
--- roles' INSERT/DELETE are table-level; RLS enabled; 51 columns).
+-- agent" convention. The column-scoped grant lists below were VERIFIED at
+-- the 20-03 preflight against `information_schema.role_column_grants` on the
+-- live table (anon/authenticated SELECT = exactly the 33 listed; authenticated
+-- UPDATE = exactly the 17 listed; both zero-diff), and service_role holds
+-- table-level ALL — so no further live re-verification is required.
 -- ============================================================
 
 -- ─── 1. Rename (OID-preserving; RLS/triggers/FKs/indexes/grants on the
@@ -517,76 +525,53 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 CREATE VIEW artist_profiles WITH (security_invoker = on) AS
   SELECT * FROM user_profiles;
 
--- ─── 4. Replicate the base table's grants onto the compat view ─────────────
--- Views do NOT inherit a table's privileges, and the artist_profiles grant
--- surface is large (51 columns) and mixed (verified against the live catalog
--- at the 20-03 preflight, Role postgres):
---   • anon         — table-level DELETE/INSERT/UPDATE/REFERENCES/TRIGGER/TRUNCATE;
---                    SELECT is COLUMN-scoped (no table-level SELECT).
---   • authenticated— table-level DELETE/INSERT/REFERENCES/TRIGGER/TRUNCATE;
---                    SELECT and UPDATE are both COLUMN-scoped.
---   • service_role — all privileges.
--- RLS is enabled on the table, so these permissive grants are the standard
--- Supabase grant-plus-RLS posture, not an exposure.
---
--- The earlier static column list was transcribed from migrations 040/043/054/058
--- and the preflight proved it STALE — it was missing every Phase 19 rights
--- column (legal_first_name/last/middle/suffix, legal_name_locked_at,
--- contact_phone, mailing_address, pro, publisher, ipi, mlc_id, soundexchange_id,
--- isrc_*, claim_prefill, administrator, verified_at). Shipping it would have
--- thrown "permission denied for column" on the Rights Identity reads that old
--- deployed code performs through this view during the cutover.
---
--- So rather than re-transcribe 51 columns (fragile — drifts every time a column
--- is added), copy the base table's EFFECTIVE grants (now on user_profiles,
--- preserved through the rename) onto the view programmatically. Restricted to
--- the DML privileges meaningful on a view (SELECT/INSERT/UPDATE/DELETE —
--- REFERENCES/TRIGGER/TRUNCATE are no-ops on a view). security_invoker = on
--- means RLS on user_profiles gates every operation as the invoking role, so
--- this copies the existing posture and can never widen it.
-REVOKE ALL ON public.artist_profiles FROM PUBLIC, anon, authenticated;
-GRANT ALL ON public.artist_profiles TO service_role;
+-- ─── 4. Explicit column-scoped GRANTs on the view (views do NOT inherit
+--         the base table's privileges — must be re-issued verbatim,
+--         matching the cumulative column lists from migrations
+--         040/043/054/058) ─────────────────────────────────────────────────
+REVOKE ALL ON artist_profiles FROM PUBLIC, authenticated, anon;
 
-DO $$
-DECLARE
-  r record;
-BEGIN
-  -- Table-level DML grants (anon UPDATE, anon + authenticated INSERT/DELETE).
-  FOR r IN
-    SELECT grantee, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE table_schema = 'public'
-      AND table_name   = 'user_profiles'
-      AND grantee IN ('anon', 'authenticated')
-      AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
-  LOOP
-    EXECUTE format('GRANT %s ON public.artist_profiles TO %I',
-                   r.privilege_type, r.grantee);
-  END LOOP;
+-- SELECT list — VERIFIED at the 20-03 preflight against the live catalog:
+-- role_column_grants shows anon and authenticated each hold SELECT on
+-- EXACTLY these 33 columns (zero diff either direction). These are the
+-- public/own-profile columns; the Rights columns (legal_*, contact_phone,
+-- mailing_address, pro, publisher, ipi, mlc_id, soundexchange_id, isrc_*)
+-- are deliberately absent — they are service_role-only reads on the table,
+-- so they must NOT be exposed to anon/authenticated on the view either.
+GRANT SELECT (
+  id, artist_name, genre, genres, sound_identity, location, bio, career_stage,
+  instagram_handle, threads_handle, tiktok_handle, spotify_url,
+  monthly_listeners, total_streams, industry_roles, handle,
+  member_type, pronouns, banner_url, open_to, featured_project_id,
+  search_vector, avatar_url, verified, roles, is_public,
+  created_at, updated_at,
+  claimed_at,
+  allow_resharing,
+  last_seen_at,
+  profile_visibility, open_to_visibility
+) ON artist_profiles TO authenticated, anon;
 
-  -- Column-scoped DML grants not already covered by a table-level grant above.
-  -- This is where anon/authenticated SELECT and authenticated UPDATE live — and
-  -- where the stale static list was silently dropping the Phase 19 columns.
-  FOR r IN
-    SELECT c.grantee, c.privilege_type, c.column_name
-    FROM information_schema.role_column_grants c
-    WHERE c.table_schema = 'public'
-      AND c.table_name   = 'user_profiles'
-      AND c.grantee IN ('anon', 'authenticated')
-      AND c.privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
-      AND NOT EXISTS (
-        SELECT 1
-        FROM information_schema.role_table_grants t
-        WHERE t.table_schema   = c.table_schema
-          AND t.table_name     = c.table_name
-          AND t.grantee        = c.grantee
-          AND t.privilege_type = c.privilege_type
-      )
-  LOOP
-    EXECUTE format('GRANT %s (%I) ON public.artist_profiles TO %I',
-                   r.privilege_type, r.column_name, r.grantee);
-  END LOOP;
-END $$;
+-- UPDATE list — VERIFIED at the 20-03 preflight against the live catalog:
+-- authenticated holds column-scoped UPDATE on EXACTLY these 17 columns
+-- (zero diff). authenticated has NO table-level UPDATE, and the columns
+-- omitted here (allow_resharing, last_seen_at, profile_visibility,
+-- open_to_visibility, verified/verified_at, and all Rights columns) are
+-- SELECT-only or ungranted to authenticated on the table — owner writes to
+-- those go through createServiceClient(), which bypasses column grants.
+GRANT UPDATE (
+  artist_name, genres, location, bio, career_stage,
+  instagram_handle, threads_handle, tiktok_handle, spotify_url,
+  monthly_listeners, industry_roles, handle, pronouns, banner_url,
+  open_to, featured_project_id, roles
+) ON artist_profiles TO authenticated;
+
+-- service_role grant. Verified at the 20-03 preflight: service_role holds
+-- table-level ALL on the live table (incl. SELECT/UPDATE). Views do not
+-- inherit that, and Supabase's default-privilege bootstrap for new relations
+-- is not guaranteed to cover views the way it covers tables — so grant it
+-- explicitly. This is what lets old server-side code read the Rights columns
+-- through the view during the cutover.
+GRANT ALL ON artist_profiles TO service_role;
 
 -- ─── 5. Force PostgREST to see the renamed table + new view ────────────────
 NOTIFY pgrst, 'reload schema';
