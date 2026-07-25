@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
@@ -69,7 +69,7 @@ const EDITABLE_FIELDS = [
 ] as const
 
 type SanitizeResult =
-  | { update: Partial<ArtistProfile> }
+  | { update: Partial<UserProfile> }
   | { error: string; status: number }
 
 async function sanitize(
@@ -171,7 +171,7 @@ async function sanitize(
       update[key] = null
     }
   }
-  return { update: update as Partial<ArtistProfile> }
+  return { update: update as Partial<UserProfile> }
 }
 
 export async function PATCH(request: Request) {

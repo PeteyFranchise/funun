@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
@@ -61,7 +61,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   }
   const profileUrl = `${appUrl}/u/${handle}`
 
-  let profile: ArtistProfile | null = null
+  let profile: UserProfile | null = null
   let projects: ProfileProjectRow[] = []
   let followerCount: number | null = null
   let placementsCount: number | null = null
@@ -152,8 +152,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       .maybeSingle()
 
     // App-level gate: only public profiles render.
-    if (!prof || !(prof as ArtistProfile).is_public) notFound()
-    profile = prof as ArtistProfile
+    if (!prof || !(prof as UserProfile).is_public) notFound()
+    profile = prof as UserProfile
 
     const {
       data: { user: viewerUser },

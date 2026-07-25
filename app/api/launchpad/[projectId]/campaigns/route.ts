@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { buildCalendarPrompt, type ToolProjectContext } from '@/lib/tools/registry'
 import {
   readCalendarPosts,
@@ -87,7 +87,7 @@ export async function POST(
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
-  const profile = (profileRow ?? { artist_name: null }) as ArtistProfile
+  const profile = (profileRow ?? { artist_name: null }) as UserProfile
 
   const ctx: ToolProjectContext = {
     title: project.title,

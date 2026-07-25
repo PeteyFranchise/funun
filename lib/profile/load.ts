@@ -1,4 +1,4 @@
-import type { ArtistProfile, OpenTo, ProfileRole } from '@/types'
+import type { UserProfile, OpenTo, ProfileRole } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS, type VaultProjectType } from '@/types'
 import type { ProfileData, ProfileRelease } from '@/components/profile/ProfileView'
 
@@ -14,7 +14,7 @@ export type ProfileProjectRow = {
 
 // Shared demo profile used by the owner (/profile) and public (/u/[handle])
 // pages when NEXT_PUBLIC_VAULT_DEMO is on.
-export const DEMO_PROFILE: ArtistProfile = {
+export const DEMO_PROFILE: UserProfile = {
   id: '00000000-0000-0000-0000-000000000000',
   artist_name: 'Maya Reyes',
   genre: 'R&B',
@@ -27,7 +27,7 @@ export const DEMO_PROFILE: ArtistProfile = {
   spotify_url: null,
   monthly_listeners: 248000,
   total_streams: 4200000,
-  sound_identity: { mood_tags: ['Cinematic', 'Moody electronic'] } as ArtistProfile['sound_identity'],
+  sound_identity: { mood_tags: ['Cinematic', 'Moody electronic'] } as UserProfile['sound_identity'],
   isrc_country_code: null,
   isrc_registrant_code: null,
   isrc_year_counters: null,
@@ -92,7 +92,7 @@ function toRelease(p: ProfileProjectRow): ProfileRelease {
  * `publicOnly` filters releases to is_public ones (for the public page).
  */
 export function buildProfileData(
-  profile: ArtistProfile,
+  profile: UserProfile,
   projects: ProfileProjectRow[],
   {
     publicOnly,

@@ -1,4 +1,4 @@
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 /**
  * PitchPlug — artist-initiated cold-pitch email generator.
@@ -107,7 +107,7 @@ Hard rules:
 - Make one clear, low-pressure ask appropriate to the recipient type.`
 
 export function buildPitchPlugPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   project: PitchPlugProjectContext,
   curatorTypes: CuratorType[]
 ): string {

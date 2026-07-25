@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { buildProfileData, DEMO_PROFILE, type ProfileProjectRow } from '@/lib/profile/load'
 import { ProfileView } from '@/components/profile/ProfileView'
@@ -42,7 +42,7 @@ function toFeaturedPickerRelease(p: ProfileProjectRow): FeaturedPickerRelease {
 }
 
 export default async function OwnerProfilePage() {
-  let profile: ArtistProfile | null = null
+  let profile: UserProfile | null = null
   let projects: ProfileProjectRow[] = []
   let followerCount: number | null = null
   let wall: WallState | undefined
@@ -125,7 +125,7 @@ export default async function OwnerProfilePage() {
         .order('vault_readiness_score', { ascending: false }),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('followee_id', user.id),
     ])
-    profile = (prof as ArtistProfile) ?? null
+    profile = (prof as UserProfile) ?? null
     projects = (projs ?? []) as ProfileProjectRow[]
     followerCount = count ?? 0
 

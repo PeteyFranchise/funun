@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import {
   buildSlotCaptionPrompt,
   buildSlotHookPrompt,
@@ -85,7 +85,7 @@ export async function POST(
       .filter((t): t is string => Boolean(t)),
   }
 
-  const artistProfile = (profile ?? { artist_name: null }) as ArtistProfile
+  const artistProfile = (profile ?? { artist_name: null }) as UserProfile
 
   // Step 4: choose prompt builder by content_type
   // short_form_video + stories → hook framing; static_image, lyric_graphic, text → caption framing

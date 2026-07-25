@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import {
   buildPitchPlugPrompt,
   getCurator,
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
   }
 
   const prompt = buildPitchPlugPrompt(
-    (profile ?? { artist_name: null }) as ArtistProfile,
+    (profile ?? { artist_name: null }) as UserProfile,
     ctx,
     curatorTypes
   )
