@@ -56,7 +56,7 @@ export async function POST(
   // the service-role client (D-19 pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('isrc_country_code, isrc_registrant_code, isrc_year_counters')
     .eq('id', user.id)
     .maybeSingle()
@@ -93,7 +93,7 @@ export async function POST(
   // isrc_year_counters has no authenticated UPDATE grant (migration 040);
   // the service client write is safe because ownership is already confirmed.
   const { error: counterErr } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ isrc_year_counters: nextCounters })
     .eq('id', user.id)
   if (counterErr) {

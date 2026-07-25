@@ -75,7 +75,7 @@ export default async function OpportunityInboxPage({
 
       const [{ data: profiles }, { data: subs }] = await Promise.all([
         userIds.length
-          ? supabase.from('artist_profiles').select('id, artist_name').in('id', userIds)
+          ? supabase.from('user_profiles').select('id, artist_name').in('id', userIds)
           : Promise.resolve({ data: [] as { id: string; artist_name: string | null }[] }),
         projectTitles.length
           ? supabase

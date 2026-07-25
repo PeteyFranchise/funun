@@ -56,7 +56,7 @@ export async function loadMembersForVerification(
   q: string | null
 ): Promise<VerificationMemberRow[]> {
   let query = service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select(VERIFICATION_MEMBER_COLUMNS)
     .order('verified', { ascending: true })
     .order('updated_at', { ascending: false })
@@ -91,7 +91,7 @@ export async function grantOrRevokeVerification(
   actorId: string
 ): Promise<VerificationActionResult> {
   const { data: existing, error: fetchError } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('id')
     .eq('id', profileId)
     .maybeSingle()
@@ -102,7 +102,7 @@ export async function grantOrRevokeVerification(
   const verifiedAt = new Date().toISOString()
 
   const { error: updateError } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ verified: action === 'grant', verified_at: verifiedAt })
     .eq('id', profileId)
 
@@ -115,7 +115,7 @@ export async function grantOrRevokeVerification(
   if (auditError) return { ok: false, error: auditError.message, status: 500 }
 
   const { data: updated, error: reloadError } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select(VERIFICATION_MEMBER_COLUMNS)
     .eq('id', profileId)
     .maybeSingle()

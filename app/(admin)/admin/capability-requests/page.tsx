@@ -29,7 +29,7 @@ export default async function AdminCapabilityRequestsPage() {
   const requests: CapabilityRequest[] = await Promise.all(
     (grants ?? []).map(async row => {
       const [{ data: profile }, { data: userData }] = await Promise.all([
-        service.from('artist_profiles').select('artist_name').eq('id', row.profile_id).maybeSingle(),
+        service.from('user_profiles').select('artist_name').eq('id', row.profile_id).maybeSingle(),
         service.auth.admin.getUserById(row.profile_id),
       ])
       return {

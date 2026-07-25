@@ -23,11 +23,11 @@ export async function POST(_request: Request) {
   const throttleCutoff = new Date(Date.now() - HEARTBEAT_THROTTLE_MS).toISOString()
 
   // Throttled write: only update when the existing value is stale.
-  await service.from('artist_profiles').update({ last_seen_at: now }).eq('id', user.id).lt('last_seen_at', throttleCutoff)
+  await service.from('user_profiles').update({ last_seen_at: now }).eq('id', user.id).lt('last_seen_at', throttleCutoff)
 
   // First-ever heartbeat: `.lt()` never matches a NULL last_seen_at, so a
   // brand-new member's first heartbeat needs its own conditional branch.
-  await service.from('artist_profiles').update({ last_seen_at: now }).eq('id', user.id).is('last_seen_at', null)
+  await service.from('user_profiles').update({ last_seen_at: now }).eq('id', user.id).is('last_seen_at', null)
 
   return NextResponse.json({ ok: true })
 }

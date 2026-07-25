@@ -35,7 +35,7 @@ export default async function BenchmarksPage() {
       data: { user },
     } = await supabase.auth.getUser()
     const { data: profile } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('genre, monthly_listeners, sound_identity')
       .eq('id', user?.id ?? '')
       .maybeSingle()

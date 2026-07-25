@@ -53,8 +53,8 @@ export async function POST(request: Request) {
   // owner's, resolved from artist_profiles keyed by profileId.
   try {
     const [{ data: actor }, { data: owner }] = await Promise.all([
-      supabase.from('artist_profiles').select('artist_name, avatar_url').eq('id', user.id).maybeSingle(),
-      supabase.from('artist_profiles').select('handle').eq('id', profileId).maybeSingle(),
+      supabase.from('user_profiles').select('artist_name, avatar_url').eq('id', user.id).maybeSingle(),
+      supabase.from('user_profiles').select('handle').eq('id', profileId).maybeSingle(),
     ])
     await createNotification(
       service,

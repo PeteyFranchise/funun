@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
   // once claim has been confirmed — avoids repeated DB work on hot path (D-02).
   if (user && !isAuthRoute) {
     const { data: ap } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('claimed_at')
       .eq('id', user.id)
       .maybeSingle()

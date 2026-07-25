@@ -18,7 +18,7 @@ export default async function AdminMembersPage() {
 
   const service = createServiceClient()
   const { data: profiles } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('id, artist_name, member_type, industry_roles, roles, created_at')
     .eq('member_type', 'industry')
     .order('created_at', { ascending: false })

@@ -153,7 +153,7 @@ export default async function SplitSheetDetailPage({
   // snapshot — same source/shape as create mode, never the frozen party
   // row, so it always reflects what's currently in Settings. ──────────
   const { data: myProfileRow } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select(
       'artist_name, pro, ipi, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix'
     )
@@ -197,7 +197,7 @@ export default async function SplitSheetDetailPage({
   const claimedProfileByUserId = new Map<string, LivePartyIdentitySource>()
   if (claimedUserIds.length > 0) {
     const { data: profileRows } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select(
         'id, pro, ipi, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix'
       )

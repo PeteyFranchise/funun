@@ -21,7 +21,7 @@ const mockUpdate = jest.fn(() => ({ eq: mockEq }))
 
 const mockFrom = jest.fn((table: string) => {
   if (table === 'capability_grants') return { insert: mockInsert }
-  if (table === 'artist_profiles') return { update: mockUpdate }
+  if (table === 'user_profiles') return { update: mockUpdate }
   throw new Error(`Unexpected table in mock: ${table}`)
 })
 
@@ -69,7 +69,7 @@ describe('grantCapability', () => {
       source: 'admin_approved',
     })
 
-    expect(mockFrom).toHaveBeenCalledWith('artist_profiles')
+    expect(mockFrom).toHaveBeenCalledWith('user_profiles')
     expect(mockUpdate).toHaveBeenCalledWith({
       roles: mapSlugsToProfileRoles(['music_supervisor']),
     })
@@ -127,7 +127,7 @@ describe('requestCapability', () => {
         expect.objectContaining({ status: 'approved', capability: 'artist' })
       )
       // D-02 instant path still goes through the badge auto-attach.
-      expect(mockFrom).toHaveBeenCalledWith('artist_profiles')
+      expect(mockFrom).toHaveBeenCalledWith('user_profiles')
     })
   })
 

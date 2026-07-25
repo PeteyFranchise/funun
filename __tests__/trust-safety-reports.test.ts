@@ -84,22 +84,22 @@ function selectEqMaybeSingle(data: unknown) {
 
 describe('isReportTargetVisible — profile', () => {
   it('is false when the profile does not exist', async () => {
-    const service = fakeService({ artist_profiles: selectEqMaybeSingle(null) })
+    const service = fakeService({ user_profiles: selectEqMaybeSingle(null) })
     expect(await isReportTargetVisible(service, 'profile', UUID_A, UUID_B)).toBe(false)
   })
 
   it('is true for the profile owner even if not public', async () => {
-    const service = fakeService({ artist_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: false }) })
+    const service = fakeService({ user_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: false }) })
     expect(await isReportTargetVisible(service, 'profile', UUID_A, UUID_A)).toBe(true)
   })
 
   it('is false for a private profile viewed by someone else', async () => {
-    const service = fakeService({ artist_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: false }) })
+    const service = fakeService({ user_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: false }) })
     expect(await isReportTargetVisible(service, 'profile', UUID_A, UUID_B)).toBe(false)
   })
 
   it('is true for a public profile viewed by anyone', async () => {
-    const service = fakeService({ artist_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: true }) })
+    const service = fakeService({ user_profiles: selectEqMaybeSingle({ id: UUID_A, is_public: true }) })
     expect(await isReportTargetVisible(service, 'profile', UUID_A, UUID_B)).toBe(true)
   })
 })

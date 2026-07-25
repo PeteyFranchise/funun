@@ -212,7 +212,7 @@ export async function PATCH(request: Request) {
   // is never cleared or overwritten by this route.
   if (body.lock_legal_name === true) {
     const { data: current } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix, legal_name_locked_at')
       .eq('id', user.id)
       .maybeSingle()
@@ -251,7 +251,7 @@ export async function PATCH(request: Request) {
 
   if (confirmSignalPresent || editedPrefillField) {
     const { data: current } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('claim_prefill')
       .eq('id', user.id)
       .maybeSingle()
@@ -293,7 +293,7 @@ export async function PATCH(request: Request) {
   }
 
   const { data, error } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update(update)
     .eq('id', user.id)
     .select()

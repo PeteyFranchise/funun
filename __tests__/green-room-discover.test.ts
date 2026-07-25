@@ -238,7 +238,7 @@ describe('loadDiscoverResults', () => {
       from: jest.fn((table: string) => {
         if (table === 'follows') return tableBuilder(opts.follows ?? []).builder
         if (table === 'connections') return tableBuilder(opts.connections ?? []).builder
-        if (table === 'artist_profiles') return main.builder
+        if (table === 'user_profiles') return main.builder
         return tableBuilder([]).builder
       }),
     }

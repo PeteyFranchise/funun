@@ -204,7 +204,7 @@ describe('loadDiscoverResults — SAFETY-04 visibility filtering', () => {
       from: jest.fn((table: string) => {
         if (table === 'connections') return tableBuilder(opts.connections ?? [])
         if (table === 'follows') return tableBuilder([])
-        if (table === 'artist_profiles') return tableBuilder(mainRows)
+        if (table === 'user_profiles') return tableBuilder(mainRows)
         return tableBuilder([])
       }),
     }

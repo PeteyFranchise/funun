@@ -90,7 +90,7 @@ export async function isReportTargetVisible(
 ): Promise<boolean> {
   if (targetType === 'profile') {
     const { data } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('id, is_public')
       .eq('id', targetId)
       .maybeSingle()

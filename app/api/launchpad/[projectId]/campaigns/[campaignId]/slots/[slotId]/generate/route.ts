@@ -68,7 +68,7 @@ export async function POST(
   // service-role client scoped to the verified user.id (D-19 pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()

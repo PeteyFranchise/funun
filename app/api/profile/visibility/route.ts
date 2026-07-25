@@ -23,7 +23,7 @@ export async function PATCH(request: Request) {
 
   const service = createServiceClient()
   const { data, error } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update(validated.value)
     .eq('id', user.id)
     .select('id, profile_visibility, open_to_visibility')

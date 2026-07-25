@@ -90,7 +90,7 @@ export async function POST(
     const roleSlugs: string[] = Array.isArray(grant.role_slugs) ? grant.role_slugs : []
     if (roleSlugs.length > 0) {
       await service
-        .from('artist_profiles')
+        .from('user_profiles')
         .update({ roles: mapSlugsToProfileRoles(roleSlugs) })
         .eq('id', grant.profile_id)
     }

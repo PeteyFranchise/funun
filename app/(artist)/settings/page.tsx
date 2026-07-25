@@ -78,7 +78,7 @@ export default async function SettingsPage() {
       // server-side" pattern, applied here to self-service ownership (D-19).
       const service = createServiceClient()
       const { data } = await service
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle()

@@ -117,7 +117,7 @@ export default async function OwnerProfilePage() {
     // filtered by the verified user.id (D-19 companion fix).
     const service = createServiceClient()
     const [{ data: prof }, { data: projs }, { count }] = await Promise.all([
-      service.from('artist_profiles').select('*').eq('id', user.id).maybeSingle(),
+      service.from('user_profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase
         .from('vault_projects')
         .select('id, title, type, cover_art_url, vault_readiness_score, release_date, is_public')

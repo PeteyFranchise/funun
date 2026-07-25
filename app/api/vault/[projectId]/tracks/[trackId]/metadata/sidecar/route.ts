@@ -44,7 +44,7 @@ export async function GET(
   if (!track) return new Response('Track not found', { status: 404 })
 
   const { data: profile } = await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name')
     .eq('id', user.id)
     .maybeSingle()

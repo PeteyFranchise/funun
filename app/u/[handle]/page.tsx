@@ -146,7 +146,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // their own explicit column-level SELECT grant to authenticated/anon —
     // needed here to decide what to render, enforced below.
     const { data: prof } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, allow_resharing, search_vector, avatar_url, verified, roles, is_public, profile_visibility, open_to_visibility, created_at, updated_at')
       .eq('handle', handle)
       .maybeSingle()

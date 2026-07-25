@@ -198,7 +198,7 @@ describe('isDestinationVisible', () => {
       isDestinationVisible(
         routedService({
           green_room_posts: { id: UUID, author_id: 'author-1' },
-          artist_profiles: { id: 'author-1' },
+          user_profiles: { id: 'author-1' },
         }) as never,
         'post',
         UUID,
@@ -216,7 +216,7 @@ describe('isDestinationVisible', () => {
   })
 
   it('fails for a visible destination when the viewer is blocked by that owner', async () => {
-    const service = routedService({ artist_profiles: { id: UUID } })
+    const service = routedService({ user_profiles: { id: UUID } })
     service.rpc = jest.fn(async () => ({ data: false, error: null }))
 
     await expect(

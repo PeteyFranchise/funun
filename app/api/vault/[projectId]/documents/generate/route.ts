@@ -104,7 +104,7 @@ export async function POST(
   // to the verified user.id (D-19 companion pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()

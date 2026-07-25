@@ -30,7 +30,7 @@ export async function POST() {
 
   // Step 3: set claimed_at sentinel so middleware stops firing (D-02)
   await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ claimed_at: new Date().toISOString() })
     .eq('id', user.id)
 

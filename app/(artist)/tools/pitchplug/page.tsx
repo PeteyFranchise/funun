@@ -20,7 +20,7 @@ export default async function PitchPlugPage() {
       data: { user },
     } = await supabase.auth.getUser()
     const [{ data: profile }, { data }] = await Promise.all([
-      supabase.from('artist_profiles').select('handle, is_public').eq('id', user?.id ?? '').maybeSingle(),
+      supabase.from('user_profiles').select('handle, is_public').eq('id', user?.id ?? '').maybeSingle(),
       supabase
         .from('vault_projects')
         .select('id, title, type, is_public')
