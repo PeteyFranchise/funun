@@ -96,6 +96,14 @@ ALTER TABLE artist_profiles RENAME TO user_profiles;
 -- branches must change or one member type's signup silently breaks; the
 -- curator early-return branch performs no insert and needs no change).
 -- Body otherwise byte-for-byte identical to migration 039's live version.
+-- NOTE (preflight false-positive guard): unlike the other 5 functions below,
+-- this one intentionally carries NO `SET search_path = ''`. It faithfully
+-- matches canonical migration 039, which never had it. Safe because every
+-- object reference in the body is fully public-qualified (public.user_profiles,
+-- public.subscriptions, public.claim_collaborators) and only pg_catalog
+-- built-ins are otherwise used, so nothing resolves through search_path.
+-- Adding the clause here would be an out-of-scope security-semantics change on
+-- a rename migration; harden it separately if ever desired.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
