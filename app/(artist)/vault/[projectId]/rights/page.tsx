@@ -81,7 +81,7 @@ export default async function RightsPage({
   // user.id (D-19 companion pattern).
   const service = createServiceClient()
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('id, artist_name, pro, ipi, soundexchange_id')
     .eq('id', user.id)
     .maybeSingle()

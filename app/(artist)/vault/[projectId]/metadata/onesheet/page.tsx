@@ -66,7 +66,7 @@ export default async function OneSheetPage({
 
       if (user) {
         const { data: profile } = await supabase
-          .from('artist_profiles')
+          .from('user_profiles')
           .select('artist_name')
           .eq('id', user.id)
           .maybeSingle()

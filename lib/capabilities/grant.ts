@@ -53,7 +53,7 @@ export async function grantCapability(input: {
   }
 
   await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ roles: mapSlugsToProfileRoles(input.roleSlugs) })
     .eq('id', input.profileId)
 

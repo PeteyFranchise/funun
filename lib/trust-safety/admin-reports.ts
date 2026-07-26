@@ -260,7 +260,7 @@ export async function loadReportsForAdmin(
   const reporterIds = Array.from(new Set(rows.map(r => r.reporter_id)))
   const reporterMap = new Map<string, ReporterProjection>()
   if (reporterIds.length > 0) {
-    const { data: reporters } = await service.from('artist_profiles').select(REPORTER_COLUMNS).in('id', reporterIds)
+    const { data: reporters } = await service.from('user_profiles').select(REPORTER_COLUMNS).in('id', reporterIds)
     for (const r of (reporters ?? []) as ReporterProjection[]) {
       reporterMap.set(r.id, r)
     }

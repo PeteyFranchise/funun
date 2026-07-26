@@ -117,7 +117,7 @@ describe('app/api/follows/route.ts — block gate', () => {
         auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'me' } } }) },
         from: jest.fn((table: string) => {
           if (table === 'follows') return { upsert }
-          if (table === 'artist_profiles') return tableBuilder([])
+          if (table === 'user_profiles') return tableBuilder([])
           throw new Error(`Unexpected table: ${table}`)
         }),
       }),
@@ -305,7 +305,7 @@ describe('lib/social/wall.ts loadWall — read-side block filter', () => {
             { id: 'w2', body: 'hello', created_at: '2026-01-02T00:00:00Z', author_id: 'friend' },
           ])
         }
-        if (table === 'artist_profiles') {
+        if (table === 'user_profiles') {
           return tableBuilder([{ id: 'friend', artist_name: 'Friend', avatar_url: null, roles: [] }])
         }
         throw new Error(`Unexpected table: ${table}`)
@@ -322,7 +322,7 @@ describe('lib/social/wall.ts loadWall — read-side block filter', () => {
         if (table === 'wall_posts') {
           return tableBuilder([{ id: 'w1', body: 'hi', created_at: '2026-01-01T00:00:00Z', author_id: 'them' }])
         }
-        if (table === 'artist_profiles') return tableBuilder([])
+        if (table === 'user_profiles') return tableBuilder([])
         throw new Error(`Unexpected table: ${table}`)
       }),
     }
@@ -341,7 +341,7 @@ describe('lib/social/endorsements.ts loadEndorsements — read-side block filter
             { id: 'e2', body: 'nice work', created_at: '2026-01-02T00:00:00Z', author_id: 'me' },
           ])
         }
-        if (table === 'artist_profiles') {
+        if (table === 'user_profiles') {
           return tableBuilder([{ id: 'me', artist_name: 'Me', avatar_url: null, roles: [] }])
         }
         throw new Error(`Unexpected table: ${table}`)
@@ -364,7 +364,7 @@ describe('lib/social/comments.ts loadReleaseComments — read-side block filter'
             { id: 'c2', parent_id: null, body: 'thanks', created_at: '2026-01-02T00:00:00Z', author_id: 'friend' },
           ])
         }
-        if (table === 'artist_profiles') {
+        if (table === 'user_profiles') {
           return tableBuilder([{ id: 'friend', artist_name: 'Friend', avatar_url: null, roles: [] }])
         }
         throw new Error(`Unexpected table: ${table}`)

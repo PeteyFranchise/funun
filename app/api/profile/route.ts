@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
@@ -69,7 +69,7 @@ const EDITABLE_FIELDS = [
 ] as const
 
 type SanitizeResult =
-  | { update: Partial<ArtistProfile> }
+  | { update: Partial<UserProfile> }
   | { error: string; status: number }
 
 async function sanitize(
@@ -171,7 +171,7 @@ async function sanitize(
       update[key] = null
     }
   }
-  return { update: update as Partial<ArtistProfile> }
+  return { update: update as Partial<UserProfile> }
 }
 
 export async function PATCH(request: Request) {
@@ -212,7 +212,7 @@ export async function PATCH(request: Request) {
   // is never cleared or overwritten by this route.
   if (body.lock_legal_name === true) {
     const { data: current } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix, legal_name_locked_at')
       .eq('id', user.id)
       .maybeSingle()
@@ -251,7 +251,7 @@ export async function PATCH(request: Request) {
 
   if (confirmSignalPresent || editedPrefillField) {
     const { data: current } = await service
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('claim_prefill')
       .eq('id', user.id)
       .maybeSingle()
@@ -293,7 +293,7 @@ export async function PATCH(request: Request) {
   }
 
   const { data, error } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update(update)
     .eq('id', user.id)
     .select()

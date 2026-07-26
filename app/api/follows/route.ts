@@ -43,7 +43,7 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
     // no suppression logic is needed here (RESEARCH Open Question #1).
     try {
       const { data: actor } = await supabase
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('artist_name, avatar_url, handle')
         .eq('id', user.id)
         .maybeSingle()

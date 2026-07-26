@@ -105,7 +105,7 @@ export default async function LaunchpadProjectPage({
       .order('sent_at', { ascending: false }),
     // Artist profile genres for platform nudge badges (D-09 — user-scoped RLS read).
     supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('genres')
       .eq('id', user.id)
       .maybeSingle(),

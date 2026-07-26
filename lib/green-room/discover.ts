@@ -414,7 +414,7 @@ export async function loadDiscoverResults(
 
   const queryLimit = filters.role ? Math.min(200, limit * 5 + 1) : limit + 1
   let query = supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select(DISCOVER_PUBLIC_COLUMNS)
     .eq('is_public', true)
     .neq('id', viewerId)

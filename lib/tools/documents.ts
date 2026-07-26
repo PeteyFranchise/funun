@@ -3,7 +3,7 @@
 // form-only (handled inline by the route); the other AI tools build a
 // prompt here. Each tool maps to a vault_documents type, except ContentID
 // which is tracked on the project.
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import type { Stage3ToolSlug } from '@/lib/vault/stage3'
 import { buildHireRightPrompt, type HireRightInput } from '@/lib/tools/hireright'
 import { buildCopyrightKitPrompt, type CopyrightKitInput } from '@/lib/tools/copyrightkit'
@@ -44,7 +44,7 @@ export function isAiDocTool(tool: Stage3ToolSlug): boolean {
  */
 export function buildDocPrompt(
   tool: Stage3ToolSlug,
-  profile: ArtistProfile,
+  profile: UserProfile,
   input: Record<string, unknown>
 ): string | null {
   switch (tool) {

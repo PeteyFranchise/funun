@@ -2,7 +2,7 @@
 // Personalized YouTube Content ID setup guide based on the artist's
 // distributor, plus a ready-to-use DMCA takedown template. Recommended
 // (not a hard gate); confirming setup flips project.content_id_registered.
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type ContentIdOutput = {
   distributor: string
@@ -24,7 +24,7 @@ export type ContentIdInput = {
   distributor: string | null
 }
 
-export function buildContentIdPrompt(profile: ArtistProfile, input: ContentIdInput): string {
+export function buildContentIdPrompt(profile: UserProfile, input: ContentIdInput): string {
   const artist = profile.artist_name || 'the artist'
   const distributor = input.distributor || 'their distributor'
   return `You are a YouTube rights and monetization expert helping an independent artist set up Content ID for a release.

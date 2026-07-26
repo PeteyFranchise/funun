@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   // Merge into the existing sound_identity so other fields are preserved.
   const { data: profile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('sound_identity')
     .eq('id', user.id)
     .maybeSingle()
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   const { error } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ sound_identity, monthly_listeners: Math.round(metrics.monthlyListeners) })
     .eq('id', user.id)
 

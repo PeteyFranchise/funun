@@ -46,7 +46,7 @@ export default async function AntennaPage() {
         .eq('user_id', user?.id ?? '')
         .order('match_score', { ascending: false }),
       supabase
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('genre, monthly_listeners, sound_identity')
         .eq('id', user?.id ?? '')
         .maybeSingle(),

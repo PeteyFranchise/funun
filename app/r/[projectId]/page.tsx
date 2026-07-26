@@ -68,7 +68,7 @@ export default async function NowPlayingPage({ params }: { params: Promise<{ pro
     project = data as unknown as { title: string; cover_art_url: string | null; tracks?: TrackRow[] }
 
     const { data: prof } = await supabase
-      .from('artist_profiles')
+      .from('user_profiles')
       .select('artist_name, allow_resharing')
       .eq('id', (data as { user_id: string }).user_id)
       .maybeSingle()

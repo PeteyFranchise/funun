@@ -13,7 +13,7 @@ async function loadActor(
   userId: string
 ): Promise<{ name: string; avatarUrl: string | null; handle: string }> {
   const { data } = await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name, avatar_url, handle')
     .eq('id', userId)
     .maybeSingle()

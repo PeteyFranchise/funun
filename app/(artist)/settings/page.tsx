@@ -1,12 +1,12 @@
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 import { ProfileForm } from '@/components/profile/ProfileForm'
 
 export const dynamic = 'force-dynamic'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
-const DEMO_PROFILE: ArtistProfile = {
+const DEMO_PROFILE: UserProfile = {
   id: '00000000-0000-0000-0000-000000000000',
   artist_name: 'Demo Artist',
   genre: 'R&B',
@@ -59,7 +59,7 @@ const DEMO_PROFILE: ArtistProfile = {
 }
 
 export default async function SettingsPage() {
-  let profile: ArtistProfile | null = null
+  let profile: UserProfile | null = null
 
   if (DEMO) {
     profile = DEMO_PROFILE
@@ -78,11 +78,11 @@ export default async function SettingsPage() {
       // server-side" pattern, applied here to self-service ownership (D-19).
       const service = createServiceClient()
       const { data } = await service
-        .from('artist_profiles')
+        .from('user_profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle()
-      profile = (data as ArtistProfile | null) ?? null
+      profile = (data as UserProfile | null) ?? null
     }
   }
 

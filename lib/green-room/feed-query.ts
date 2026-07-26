@@ -281,7 +281,7 @@ async function loadAuthors(supabase: SupabaseClient, authorIds: string[]): Promi
   if (ids.length === 0) return new Map()
 
   const { data, error } = await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('id, artist_name, handle, avatar_url, roles, industry_roles, is_public')
     .in('id', ids)
     .eq('is_public', true)

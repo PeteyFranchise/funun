@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   } = supabase.storage.from(BUCKET).getPublicUrl(path)
 
   await supabase
-    .from('artist_profiles')
+    .from('user_profiles')
     .update({ [type === 'avatar' ? 'avatar_url' : 'banner_url']: publicUrl })
     .eq('id', user.id)
 

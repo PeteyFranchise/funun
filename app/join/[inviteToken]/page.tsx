@@ -69,7 +69,7 @@ export default async function JoinPage({ params }: Props) {
 
   // ── Look up inviting artist's name + email for mailto ────────────────
   const { data: artistProfile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name, display_name, contact_email')
     .eq('user_id', invite.inviting_user_id)
     .maybeSingle()

@@ -230,7 +230,7 @@ export async function buildThreadViews(supabase: SupabaseClient, userId: string)
     supabase.from('dm_thread_reads').select('thread_id, last_read_at').eq('user_id', userId).in('thread_id', threadIds),
     // Explicit column list — never select('*') on artist_profiles
     // (migration 040 column lockdown returns 42501 otherwise).
-    supabase.from('artist_profiles').select('id, artist_name, avatar_url, handle, last_seen_at').in('id', otherIds),
+    supabase.from('user_profiles').select('id, artist_name, avatar_url, handle, last_seen_at').in('id', otherIds),
   ])
 
   const latestByThread = new Map<string, { body: string; createdAt: string }>()

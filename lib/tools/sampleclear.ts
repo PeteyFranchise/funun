@@ -2,7 +2,7 @@
 // Assesses a sampled track: identifies master vs publishing rights
 // holders (usually different), drafts a clearance request to each, and
 // offers legal alternatives if clearance is unlikely. Per track.
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type SampleClearOutput = {
   assessment: string
@@ -27,7 +27,7 @@ export type SampleClearInput = {
 }
 
 export function buildSampleClearPrompt(
-  profile: ArtistProfile,
+  profile: UserProfile,
   input: SampleClearInput
 ): string {
   const artist = profile.artist_name || 'the artist'

@@ -288,7 +288,7 @@ function feedService({ posts, authors }: { posts: unknown[]; authors: unknown[] 
   return {
     from: jest.fn((table: string) => {
       if (table === 'green_room_posts') return terminal(posts)
-      if (table === 'artist_profiles') return terminal(authors)
+      if (table === 'user_profiles') return terminal(authors)
       if (table === 'follows') return terminal([])
       if (table === 'connections') return terminal([])
       if (table === 'green_room_comments') return terminal([])

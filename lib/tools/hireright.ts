@@ -2,7 +2,7 @@
 // Generates a work-for-hire agreement tailored to the collaborator type.
 // Producer, mixing-engineer, and mastering-engineer agreements transfer
 // different rights, so the prompt branches on role.
-import type { ArtistProfile } from '@/types'
+import type { UserProfile } from '@/types'
 
 export type HireRightOutput = {
   agreement_title: string
@@ -25,7 +25,7 @@ export type HireRightInput = {
   project_title: string
 }
 
-export function buildHireRightPrompt(profile: ArtistProfile, input: HireRightInput): string {
+export function buildHireRightPrompt(profile: UserProfile, input: HireRightInput): string {
   const artist = profile.artist_name || 'the Artist'
   return `You are a music-business attorney drafting a plain-English work-for-hire agreement for an independent artist to send to a hired collaborator.
 

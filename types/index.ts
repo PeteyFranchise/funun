@@ -364,7 +364,7 @@ export type DmMessage = {
   created_at: string
 }
 
-export type ArtistProfile = {
+export type UserProfile = {
   id: string
   artist_name: string | null
   genre: string | null
@@ -627,7 +627,7 @@ export type Pitch = {
   responded_at: string | null
   response_message: string | null
   project?: VaultProject
-  artist?: ArtistProfile
+  artist?: UserProfile
   recipient?: IndustryProfile
 }
 
@@ -742,7 +742,7 @@ export type CommunityPost = {
   likes: number
   comment_count: number
   created_at: string
-  author?: ArtistProfile
+  author?: UserProfile
   project?: VaultProject
 }
 

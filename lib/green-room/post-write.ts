@@ -228,7 +228,7 @@ async function validateLinkedObjectForPublish(
     if (linkedObject.id !== userId) {
       return { ok: false, error: 'Linked profile must be your own profile', status: 403 }
     }
-    const { data } = await supabase.from('artist_profiles').select('id').eq('id', userId).maybeSingle()
+    const { data } = await supabase.from('user_profiles').select('id').eq('id', userId).maybeSingle()
     return data ? { ok: true } : { ok: false, error: 'Linked profile not found', status: 404 }
   }
 

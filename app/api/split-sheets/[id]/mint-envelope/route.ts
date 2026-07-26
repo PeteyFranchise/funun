@@ -259,7 +259,7 @@ export async function POST(
   }))
 
   const { data: initiatorProfile } = await service
-    .from('artist_profiles')
+    .from('user_profiles')
     .select('artist_name')
     .eq('id', user.id)
     .maybeSingle()

@@ -239,7 +239,7 @@ describe('POST /api/dm/send — gate call order', () => {
     const fakeSupabase = {
       auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } }) },
       from: jest.fn((table: string) => {
-        if (table === 'artist_profiles') return profileChain
+        if (table === 'user_profiles') return profileChain
         return profileChain
       }),
     }
