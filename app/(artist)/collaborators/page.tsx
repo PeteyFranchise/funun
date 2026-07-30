@@ -27,6 +27,25 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
 
   const collaborators = (data ?? []) as CollaboratorProfile[]
 
+  // Resolve the Funūn handle for each claimed collaborator so member cards can
+  // link to that member's profile. RLS-scoped read — members whose handle isn't
+  // visible to this user simply won't get a profile link (graceful).
+  const claimedIds = Array.from(
+    new Set(collaborators.map(c => c.claimed_by).filter((v): v is string => Boolean(v)))
+  )
+  let memberHandles: Record<string, string> = {}
+  if (claimedIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, handle')
+      .in('id', claimedIds)
+    memberHandles = Object.fromEntries(
+      (profiles ?? [])
+        .filter((p): p is { id: string; handle: string } => Boolean(p.handle))
+        .map(p => [p.id, p.handle])
+    )
+  }
+
   // My Credits: collaborator rows where this user is the claimed party.
   // Cross-user read authorized by "Claimed users see own credits" RLS policy
   // (migration 026) — no service role client needed.
@@ -62,6 +81,7 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
           collaborators={collaborators}
           credits={credits}
           initialTab={initialTab}
+          memberHandles={memberHandles}
         />
       </div>
     </>
