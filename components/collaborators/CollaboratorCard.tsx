@@ -87,7 +87,7 @@ export function CollaboratorCard({
   if (isArchived) {
     return (
       <div className="relative flex flex-col items-center gap-2 rounded-[16px] border border-hair bg-card p-4 text-center opacity-50">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card2 text-lg font-bold text-lavdim">
+        <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-card2 text-[21px] font-bold text-lavdim">
           {initialsOf(name)}
         </div>
         <p className="text-[14.5px] font-bold italic text-white">{name}</p>
@@ -193,12 +193,12 @@ export function CollaboratorCard({
       {/* Avatar — brand-gradient initials (links to profile for members) */}
       {profileHref ? (
         <Link href={profileHref} className="mt-2" aria-label={`View ${name}'s profile`}>
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-grad text-lg font-bold text-white">
+          <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-grad text-[21px] font-bold text-white">
             {initialsOf(name)}
           </span>
         </Link>
       ) : (
-        <span className="mt-2 flex h-16 w-16 items-center justify-center rounded-full bg-grad text-lg font-bold text-white">
+        <span className="mt-2 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-grad text-[21px] font-bold text-white">
           {initialsOf(name)}
         </span>
       )}
