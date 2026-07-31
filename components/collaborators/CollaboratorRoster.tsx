@@ -215,7 +215,7 @@ export function CollaboratorRoster({
             </button>
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(184px,1fr))]">
+          <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
             {list.map(collab =>
               editingId === collab.id ? (
                 <div key={collab.id} className="sm:col-span-2 lg:col-span-3">
