@@ -86,7 +86,7 @@ export function CollaboratorCard({
   // Archived rows render read-only at reduced opacity — no controls.
   if (isArchived) {
     return (
-      <div className="relative flex flex-col items-center gap-2 rounded-[18px] border border-hair bg-card p-5 text-center opacity-50">
+      <div className="relative flex flex-col items-center gap-2 rounded-[16px] border border-hair bg-card p-4 text-center opacity-50">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card2 text-lg font-bold text-lavdim">
           {initialsOf(name)}
         </div>
@@ -104,7 +104,7 @@ export function CollaboratorCard({
     'block w-full px-3 py-2 text-left text-[13px] text-lav transition hover:bg-white/5 hover:text-white'
 
   return (
-    <div className="relative flex flex-col items-center gap-2 rounded-[18px] border border-hair bg-card p-5 text-center">
+    <div className="relative flex flex-col items-center gap-2 rounded-[16px] border border-hair bg-card p-4 text-center">
       {/* Favorite star — top-left, subtle until active/hovered */}
       <button
         type="button"
