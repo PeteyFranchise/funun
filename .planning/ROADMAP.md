@@ -598,3 +598,30 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 20-04-PLAN.md — Cutover stage 2: D-05 soak → human push #2 (077, drop view) + verify [human-gated]
+
+---
+
+### Phase 21: Cross-Account Collaboration & Split-Sheet ↔ Project Sync
+
+**Goal:** Make a song a single source of truth shared by the people on it. A split sheet and its Sound Vault project stay linked (writers/roles/splits) while the sheet is a draft, and every collaborator with a Funūn account sees the shared project + the tasks waiting on them, from their own account, with no data re-entry. First concrete slice of the post-beta access model (owner-confirmed: build now).
+**Requirements**: see `.planning/phases/21-cross-account-collaboration-sheet-sync/21-SPEC.md` (decision record from `/gsd-explore` 2026-08-01)
+**Depends on:** Phase 18 (split-sheet home / dual-entry attach, migration 067), Phase 20 (profile rename — RLS surface stable)
+
+**Locked decisions (from 21-SPEC.md — do not re-litigate):**
+
+- **Access model:** shared visibility, owner-controlled editing; splits negotiated only via the sheet's approve/counter flow.
+- **Foundation:** new `project_members` guest-list table + RLS rewrite on `vault_projects` ("own it OR on its guest list"). Four roles day one: owner / co-owner / editor / viewer. Writers on a linked sheet auto-added as viewer.
+- **Vault:** separate "Shared with me" lane + badged shared cards; shared projects excluded from personal scoreboard math.
+- **Dashboard:** remove "Avg readiness" (vanity metric); add "Closest to ready"; add "Your next moves" action feed — inclusion = "is this waiting on you?", money & signatures pinned on top; configurability deferred to fast-follow.
+- **Identity:** roster dedupe (per-owner, typed email) distinct from claim (cross-owner, verified email at signup). Cross-account access keys off VERIFIED identity only.
+
+**Sequencing:** Wave 1 = `project_members` + RLS foundation (soaks first, security-critical). Wave 2 = auto-membership + shared lane + sheet↔project sync. Wave 3 = dashboard action feed + identity wiring.
+
+**Plans:** 5 plans (3 waves)
+
+Plans:
+- [ ] 21-01-PLAN.md — Wave 1: `project_members` table + RLS rewrite on `vault_projects` + 4 child tables (migration 078, human-gated; soaks first) [①②]
+- [ ] 21-02-PLAN.md — Wave 2: auto-membership trigger keyed off verified `collaborators.claimed_by` (migration 079, human-gated) [② identity-dedupe-claim]
+- [ ] 21-03-PLAN.md — Wave 2: "Shared with me" vault lane + shared-card badge [③]
+- [ ] 21-04-PLAN.md — Wave 2: sheet↔project bidirectional sync while draft, link snaps on send-for-signature [sheet-project-sync ①]
+- [ ] 21-05-PLAN.md — Wave 3: dashboard rework — remove Avg readiness, add "Closest to ready" + "Your next moves" feed [④③]
