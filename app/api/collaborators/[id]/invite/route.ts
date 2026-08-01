@@ -40,8 +40,11 @@ export async function POST(
     )
   }
 
-  // ── 4. 24h cooldown — suppress duplicate invites (T-01-15, Pitfall 4) ─
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  // ── 4. Short cooldown — a light guard against accidental double-sends only.
+  //      A deliberate "Resend invite" (>60s later) DOES re-send: artists
+  //      legitimately need to nudge a collaborator who missed the first email
+  //      (was a 24h silent block — T-01-15/Pitfall 4 — relaxed for resend UX).
+  const since = new Date(Date.now() - 60 * 1000).toISOString()
   const { data: recentInvite } = await supabase
     .from('collaborator_invites')
     .select('id')
