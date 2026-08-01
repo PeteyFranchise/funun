@@ -267,8 +267,12 @@ export async function PATCH(
   return NextResponse.json({ data })
 }
 
-// DELETE /api/split-sheets/[id] — delete a split sheet (initiator only, T-01-08)
-// Parties cascade via FK on split_sheet_parties.split_sheet_id
+// DELETE /api/split-sheets/[id] — hard-delete a DRAFT split sheet (initiator
+// only, T-01-08). Parties cascade via FK on split_sheet_parties.split_sheet_id.
+// Only drafts are deletable: once a sheet is sent for approval or signature (or
+// executed) it's an in-flight / legal record and is voided, never deleted (see
+// the /void route). Enforced server-side even though the UI only surfaces
+// delete on drafts.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -280,6 +284,27 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+
+  // Gate on status — load it first (RLS + explicit owner scope).
+  const { data: sheet, error: loadError } = await supabase
+    .from('split_sheets')
+    .select('id, status')
+    .eq('id', id)
+    .eq('initiator_user_id', user.id)
+    .maybeSingle()
+
+  if (loadError || !sheet) {
+    return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
+  }
+  if (sheet.status !== 'draft') {
+    return NextResponse.json(
+      {
+        error:
+          'Only draft split sheets can be deleted. A sheet sent for approval or signature can be voided instead.',
+      },
+      { status: 409 }
+    )
+  }
 
   const { error } = await supabase
     .from('split_sheets')

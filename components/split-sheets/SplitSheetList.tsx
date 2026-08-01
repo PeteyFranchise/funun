@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DeleteDraftButton } from '@/components/split-sheets/DeleteDraftButton'
 
 // ─── SplitSheetList ──────────────────────────────────────────────────
 // The living-draft surface's list view (HOME-01/HOME-02) — closes the
@@ -91,24 +92,28 @@ export function SplitSheetList({ sheets }: { sheets: SplitSheetListItem[] }) {
             </h2>
             <div className="space-y-2">
               {rows.map(sheet => (
-                <Link
-                  key={sheet.id}
-                  href={`/split-sheets/${sheet.id}`}
-                  className="block rounded-lg border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-white">{sheet.song_name}</span>
-                    <span className="shrink-0 text-xs text-white/40">
-                      {STATUS_LABELS[sheet.status]}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-white/40">
-                    {sheet.parties.length} {sheet.parties.length === 1 ? 'party' : 'parties'}
-                    {sheet.status !== 'draft' && sheet.status !== 'executed'
-                      ? ` · ${progressLabel(sheet.parties)}`
-                      : ''}
-                  </p>
-                </Link>
+                <div key={sheet.id} className="flex items-center gap-2">
+                  <Link
+                    href={`/split-sheets/${sheet.id}`}
+                    className="block flex-1 rounded-lg border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-white">{sheet.song_name}</span>
+                      <span className="shrink-0 text-xs text-white/40">
+                        {STATUS_LABELS[sheet.status]}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-white/40">
+                      {sheet.parties.length} {sheet.parties.length === 1 ? 'party' : 'parties'}
+                      {sheet.status !== 'draft' && sheet.status !== 'executed'
+                        ? ` · ${progressLabel(sheet.parties)}`
+                        : ''}
+                    </p>
+                  </Link>
+                  {sheet.status === 'draft' && (
+                    <DeleteDraftButton sheetId={sheet.id} songName={sheet.song_name} />
+                  )}
+                </div>
               ))}
             </div>
           </div>
