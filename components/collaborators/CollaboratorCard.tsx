@@ -25,7 +25,7 @@ type Props = {
   onDelete?: () => void          // for unclaimed rows
   onFavoriteToggle?: () => void  // star button
   onInvite?: () => Promise<{ ok: boolean; error?: string }>
-  invited?: boolean              // invite already sent (or on cooldown)
+  invite?: { sentAt: string; status: string } | null  // latest invite on record — drives "Invited …" + Resend
   memberHandle?: string | null   // handle of the claimed Funūn member, for the profile link
 }
 
@@ -36,6 +36,23 @@ function initialsOf(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
+// Compact relative time for the "Invited …" status line.
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (!Number.isFinite(then)) return 'recently'
+  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000))
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}w ago`
+  return new Date(iso).toLocaleDateString()
+}
+
 export function CollaboratorCard({
   collaborator,
   onEdit,
@@ -43,7 +60,7 @@ export function CollaboratorCard({
   onDelete,
   onFavoriteToggle,
   onInvite,
-  invited,
+  invite,
   memberHandle,
 }: Props) {
   const { pro, ipi } = collaborator
@@ -52,11 +69,12 @@ export function CollaboratorCard({
   const hasIpi = Boolean(ipi && ipi.trim())
   const isClaimed = isClaimedCollaborator(collaborator)
   const isArchived = Boolean(collaborator.archived_at)
+  // A non-member who already has an invite on record (from a prior session).
+  const hasBeenInvited = !isClaimed && Boolean(invite)
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const [inviteState, setInviteState] = useState<'idle' | 'sending' | 'sent' | 'error'>(
-    invited ? 'sent' : 'idle'
-  )
+  const [inviteState, setInviteState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [didResend, setDidResend] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -70,8 +88,10 @@ export function CollaboratorCard({
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [menuOpen])
 
-  async function handleInviteClick() {
-    if (!onInvite || inviteState === 'sending' || inviteState === 'sent') return
+  // First invite (loud button) and resend (⋯ menu) share the same endpoint.
+  async function runInvite(isResend: boolean) {
+    if (!onInvite || inviteState === 'sending') return
+    setDidResend(isResend)
     setInviteState('sending')
     setInviteError(null)
     const res = await onInvite()
@@ -159,6 +179,16 @@ export function CollaboratorCard({
                 Message
               </Link>
             )}
+            {!isClaimed && (hasBeenInvited || inviteState === 'sent') && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { setMenuOpen(false); runInvite(true) }}
+                className={menuItemClass}
+              >
+                Resend invite
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -222,26 +252,40 @@ export function CollaboratorCard({
         </span>
       )}
 
-      {/* Primary action — state-driven */}
+      {/* Primary action — state-driven. member → quiet ✓; just sent → quiet
+          confirmation; already invited → quiet status (Resend lives in the ⋯
+          menu); never invited → loud Invite. */}
       <div className="mt-3 w-full">
         {isClaimed ? (
           <p className="flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-brandindigo">
             <span aria-hidden>✓</span> Funūn member
           </p>
+        ) : inviteState === 'sent' ? (
+          <p className="text-[12.5px] font-semibold text-brandindigo">
+            {didResend ? 'Invite resent ✓' : 'Invite sent ✓'}
+          </p>
+        ) : hasBeenInvited ? (
+          <div>
+            <p className="text-[12.5px] text-lavdim">
+              {inviteState === 'sending'
+                ? 'Resending…'
+                : invite
+                  ? `Invited ${timeAgo(invite.sentAt)}`
+                  : 'Invited'}
+            </p>
+            {inviteState === 'error' && inviteError && (
+              <p className="mt-1.5 text-[11px] text-red-300">{inviteError}</p>
+            )}
+          </div>
         ) : (
           <>
             <button
               type="button"
-              onClick={handleInviteClick}
-              disabled={inviteState === 'sending' || inviteState === 'sent'}
-              className={[
-                'w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition',
-                inviteState === 'sent'
-                  ? 'cursor-default bg-white/5 text-lavdim'
-                  : 'bg-grad text-white shadow-cta hover:opacity-90 disabled:opacity-60',
-              ].join(' ')}
+              onClick={() => runInvite(false)}
+              disabled={inviteState === 'sending'}
+              className="w-full rounded-xl bg-grad px-4 py-2.5 text-sm font-semibold text-white shadow-cta transition hover:opacity-90 disabled:opacity-60"
             >
-              {inviteState === 'sending' ? 'Sending…' : inviteState === 'sent' ? 'Invited ✓' : 'Invite'}
+              {inviteState === 'sending' ? 'Sending…' : 'Invite'}
             </button>
             {inviteState === 'error' && inviteError && (
               <p className="mt-1.5 text-[11px] text-red-300">{inviteError}</p>

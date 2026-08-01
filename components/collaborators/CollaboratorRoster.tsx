@@ -32,6 +32,7 @@ type Props = {
   credits: CreditRow[]
   initialTab?: 'roster' | 'credits'
   memberHandles?: Record<string, string>
+  inviteStatus?: Record<string, { sentAt: string; status: string }>
 }
 
 export function CollaboratorRoster({
@@ -39,6 +40,7 @@ export function CollaboratorRoster({
   credits,
   initialTab = 'roster',
   memberHandles = {},
+  inviteStatus = {},
 }: Props) {
   const [activeTab, setActiveTab] = useState<'roster' | 'credits'>(initialTab)
   const [creating, setCreating] = useState(false)
@@ -237,6 +239,7 @@ export function CollaboratorRoster({
                   onDelete={() => handleDelete(collab.id)}
                   onFavoriteToggle={() => handleFavoriteToggle(collab)}
                   onInvite={() => handleInvite(collab.id)}
+                  invite={inviteStatus[collab.id] ?? null}
                   memberHandle={collab.claimed_by ? memberHandles[collab.claimed_by] ?? null : null}
                 />
               )

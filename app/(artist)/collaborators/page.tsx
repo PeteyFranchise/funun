@@ -46,6 +46,22 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
     )
   }
 
+  // Latest invite per collaborator — drives each card's "Invited …" status and
+  // the Resend affordance. RLS "Inviting user manages invites" (migration 018)
+  // authorizes reading one's own invites; ordered newest-first so the first
+  // row seen per collaborator is the latest.
+  const inviteStatus: Record<string, { sentAt: string; status: string }> = {}
+  const { data: inviteRows } = await supabase
+    .from('collaborator_invites')
+    .select('collaborator_id, sent_at, status')
+    .eq('inviting_user_id', user?.id ?? '')
+    .order('sent_at', { ascending: false })
+  for (const row of inviteRows ?? []) {
+    if (row.collaborator_id && row.sent_at && !inviteStatus[row.collaborator_id]) {
+      inviteStatus[row.collaborator_id] = { sentAt: row.sent_at, status: row.status }
+    }
+  }
+
   // My Credits: collaborator rows where this user is the claimed party.
   // Cross-user read authorized by "Claimed users see own credits" RLS policy
   // (migration 026) — no service role client needed.
@@ -82,6 +98,7 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
           credits={credits}
           initialTab={initialTab}
           memberHandles={memberHandles}
+          inviteStatus={inviteStatus}
         />
       </div>
     </>
