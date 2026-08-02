@@ -81,11 +81,31 @@ export default async function DashboardPage() {
   const creditsCount = creditsPreview.length
 
   const total = projects.length
-  const avgScore =
-    total > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.vault_readiness_score, 0) / total)
-      : 0
   const readyCount = projects.filter(p => readinessLabel(p.vault_readiness_score).canSubmit).length
+
+  // "Closest to ready" (④, replaces the vanity "Avg readiness" stat):
+  // among OWNED projects only (this `projects` array is fed exclusively by
+  // the owner-scoped `.eq('user_id', me)` query above — ③'s scoreboard
+  // exclusion depends on this staying owner-only) that are not yet
+  // deal-ready, the highest-scoring one, with its gates-left count (same
+  // totalItems − completeItems math VaultProjectCard's rightLabel uses).
+  const notYetReady = projects.filter(p => !readinessLabel(p.vault_readiness_score).canSubmit)
+  const closestToReady = notYetReady.length > 0
+    ? notYetReady.reduce((best, p) => (p.vault_readiness_score > best.vault_readiness_score ? p : best))
+    : null
+  const closestToReadyGatesLeft = closestToReady
+    ? (() => {
+        const items = readinessItemsForProject({
+          type: closestToReady.type,
+          distributor: (closestToReady as { distributor?: string | null }).distributor ?? null,
+          tracks: closestToReady.tracks,
+          assets: closestToReady.vault_assets,
+          documents: closestToReady.vault_documents,
+          tool_outputs: closestToReady.tool_outputs,
+        })
+        return items.length - items.filter(i => i.status === 'complete').length
+      })()
+    : 0
 
   // Upcoming releases: dated, not yet released, soonest first.
   const today = new Date().toISOString().slice(0, 10)
@@ -134,7 +154,25 @@ export default async function DashboardPage() {
           {/* Stats */}
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Projects" value={total} />
-            <StatCard label="Avg readiness" value={`${avgScore}`} sub="out of 100" />
+            {closestToReady ? (
+              <Link href={`/vault/${closestToReady.id}`} className="block">
+                <StatCard
+                  label="Closest to ready"
+                  value={closestToReady.title}
+                  sub={
+                    closestToReadyGatesLeft > 0
+                      ? `${closestToReadyGatesLeft} gate${closestToReadyGatesLeft === 1 ? '' : 's'} left`
+                      : 'Almost there'
+                  }
+                />
+              </Link>
+            ) : (
+              <StatCard
+                label="Closest to ready"
+                value={total > 0 ? 'All caught up' : '—'}
+                sub={total > 0 ? 'Every project is deal-ready' : undefined}
+              />
+            )}
             <StatCard label="Ready to submit" value={readyCount} sub="score 80+" />
             <StatCard label="Upcoming" value={upcoming.length} sub="scheduled releases" />
           </div>
