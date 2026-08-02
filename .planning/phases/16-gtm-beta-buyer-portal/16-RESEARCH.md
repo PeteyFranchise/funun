@@ -6,7 +6,7 @@
 
 ## Summary
 
-Phase 16 is large but not architecturally novel — Funūn has already solved every hard sub-problem this phase needs, just for different account types. The buyer/org account model is a direct re-application of two existing precedents: the Wave 3 **curator** account (`app_metadata.role`-gated, magic-link, `handle_new_user()` **early-return** — no `artist_profiles` row) and the Wave 4 **industry member** admin-invite flow (`admin.createUser()` with atomic `app_metadata`/`user_metadata`, custom Resend email, no post-insert role UPDATE). Buyers should follow the **curator** pattern for `handle_new_user()` (early return, zero `artist_profiles` row — D-11's "fully separate" only holds if this is true) and the **industry-invite** pattern for the admin-creates-first-org-admin flow. Server-owned-write RLS doctrine (migrations 040/056/058: row RLS restricts rows, column GRANT restricts columns, service-role owns all state transitions) applies unchanged to `buyer_orgs`, `buyer_members`, and `license_requests`.
+Phase 16 is large but not architecturally novel — Funūn has already solved every hard sub-problem this phase needs, just for different account types. The buyer/org account model is a direct re-application of two existing precedents: the Wave 3 **curator** account (`app_metadata.role`-gated, magic-link, `handle_new_user()` **early-return** — no `user_profiles` row) and the Wave 4 **industry member** admin-invite flow (`admin.createUser()` with atomic `app_metadata`/`user_metadata`, custom Resend email, no post-insert role UPDATE). Buyers should follow the **curator** pattern for `handle_new_user()` (early return, zero `user_profiles` row — D-11's "fully separate" only holds if this is true) and the **industry-invite** pattern for the admin-creates-first-org-admin flow. Server-owned-write RLS doctrine (migrations 040/056/058: row RLS restricts rows, column GRANT restricts columns, service-role owns all state transitions) applies unchanged to `buyer_orgs`, `buyer_members`, and `license_requests`.
 
 The two genuinely new external integrations are Stripe Connect (first payment-splitting code in this repo — today's `lib/stripe/index.ts` is a bare client singleton with no Connect, no webhook route, no checkout route at all) and SignWell (first live e-sign provider behind the already-built `lib/esign/provider.ts` abstraction, which today has zero vendor implementations). Both are well-documented, standard integrations, but two mechanics are **not conclusively resolved** by available documentation and are flagged as open questions rather than guessed at: (1) SignWell's exact webhook signature-verification header/scheme, and (2) whether to bill the buyer via a Stripe Invoice object or a Checkout Session — both achieve D-17/D-17a's split, they differ in buyer-facing UX and build surface.
 
@@ -32,7 +32,7 @@ The two genuinely new external integrations are Stripe Connect (first payment-sp
 - TypeScript strict mode, `@/*` path aliases only (no relative `../` imports in shared code), 2-space indentation, no semicolons, named exports, `export type` for type exports.
 - API routes: `export async function POST/GET/PATCH`, always `NextResponse.json(...)`, explicit field allowlists (never raw request-body assignment).
 - Error handling: throw descriptive `Error` instances; no silent failures; best-effort side effects (notifications) wrapped in try/catch at the call site (see `lib/social/activity-emit.ts` convention) — new `lib/deals/notifications.ts` builders must follow this.
-- Never `select('*')` against `artist_profiles` or any column-privilege-locked table from a session-bound client — this phase adds at least one more such table (`license_requests`) and must follow the same explicit-column-list discipline from day one, not retrofit it later like migration 040 had to.
+- Never `select('*')` against `user_profiles` or any column-privilege-locked table from a session-bound client — this phase adds at least one more such table (`license_requests`) and must follow the same explicit-column-list discipline from day one, not retrofit it later like migration 040 had to.
 - GSD workflow enforcement: no direct repo edits outside a GSD workflow — this is a planning research doc only, the actual build happens under `/gsd-execute-phase 16`.
 
 <user_constraints>
@@ -265,30 +265,34 @@ app/
 
 ### Pattern 1: Curator-style early-return account (buyer identity, D-11)
 
-**What:** A wholly separate `app_metadata.role`-gated account type that never receives an `artist_profiles` row.
+**What:** A wholly separate `app_metadata.role`-gated account type that never receives an `user_profiles` row.
 **When to use:** Any account type whose data model must be fully isolated from the artist/industry identity table — exactly D-11's requirement.
 **Example:**
 ```sql
--- Source: supabase/migrations/030_curators_pitch_history.sql + 039_handle_new_user_industry_branch.sql (in-repo precedent)
+-- Source: the CURRENT LIVE handle_new_user is migration 076
+-- (076_rename_artist_profiles_to_user_profiles.sql) — it inserts into user_profiles
+-- and SUPERSEDES migration 039 (C1). Do NOT copy 039: its body still names the
+-- pre-rename `artist_profiles` table (dropped by 077). Curator early-return precedent:
+-- 030_curators_pitch_history.sql. Rebase the buyer branch on 076's live body.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   IF (NEW.raw_app_meta_data->>'role') = 'curator' THEN
-    RETURN NEW;  -- early return, no artist_profiles row
+    RETURN NEW;  -- early return, no user_profiles row
   END IF;
 
   -- NEW buyer branch (Phase 16) — same early-return shape as curator,
-  -- NOT the industry branch's artist_profiles insert (D-11: fully separate).
+  -- NOT the industry branch's user_profiles insert (D-11: fully separate).
   IF (NEW.raw_app_meta_data->>'role') = 'buyer' THEN
     RETURN NEW;
   END IF;
 
   IF (NEW.raw_app_meta_data->>'role') = 'industry' THEN
-    INSERT INTO public.artist_profiles (id, member_type, ...) VALUES (...);
+    INSERT INTO public.user_profiles (id, member_type, ...) VALUES (...);
     RETURN NEW;
   END IF;
 
-  INSERT INTO public.artist_profiles (id) VALUES (NEW.id);
+  INSERT INTO public.user_profiles (id) VALUES (NEW.id);
   ...
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -397,7 +401,7 @@ const res = await fetch('https://api.signwell.com/api/v1/documents', {
 
 ### Anti-Patterns to Avoid
 
-- **Buyer accounts getting an `artist_profiles` row:** if `handle_new_user()`'s buyer branch is placed *after* the default artist-insert fallback, or omitted entirely, every buyer signup silently creates a bogus `artist_profiles` row — the exact bug class this codebase has already fixed twice (curator branch, industry branch). D-11's "fully separate" is not real unless this early return exists.
+- **Buyer accounts getting an `user_profiles` row:** if `handle_new_user()`'s buyer branch is placed *after* the default artist-insert fallback, or omitted entirely, every buyer signup silently creates a bogus `user_profiles` row — the exact bug class this codebase has already fixed twice (curator branch, industry branch). D-11's "fully separate" is not real unless this early return exists.
 - **Trusting a client-supplied Stripe `application_fee_amount`:** always recompute from the server-stored `commission_pct` at charge-creation time.
 - **Reusing `svix` for Stripe or SignWell webhook verification:** `svix` is already installed but is Resend-specific (Resend delivers webhooks via svix's infrastructure). Stripe has its own `stripe.webhooks.constructEvent()`; SignWell uses its own HMAC scheme. Applying `svix`'s `Webhook` class to either would silently misparse headers.
 - **Parsing a webhook body with `.json()` before signature verification:** every webhook route in this phase must read the raw request body as text FIRST (mirrors `app/api/webhooks/resend/route.ts`), verify, then parse — a parsed-then-reserialized body will not byte-match what was signed.
@@ -417,11 +421,11 @@ const res = await fetch('https://api.signwell.com/api/v1/documents', {
 
 ## Common Pitfalls
 
-### Pitfall 1: Phantom `artist_profiles` row for buyer accounts
-**What goes wrong:** A buyer signs up (or is admin-invited) and silently gets a real `artist_profiles` row with `member_type` unset/wrong, polluting every artist-facing query (readiness dashboards, People Search, Discover) with junk buyer rows.
+### Pitfall 1: Phantom `user_profiles` row for buyer accounts
+**What goes wrong:** A buyer signs up (or is admin-invited) and silently gets a real `user_profiles` row with `member_type` unset/wrong, polluting every artist-facing query (readiness dashboards, People Search, Discover) with junk buyer rows.
 **Why it happens:** `handle_new_user()`'s buyer branch is missing, placed after the default fallback, or the role isn't set atomically at `admin.createUser()` time.
 **How to avoid:** Add the buyer branch as an early return, positioned before the curator/industry/default branches (order doesn't strictly matter since each is a distinct `IF` with `RETURN NEW`, but mirror the curator branch's exact shape). Set `app_metadata: { role: 'buyer' }` inside the same `admin.createUser()` call — never a post-insert `UPDATE`.
-**Warning signs:** `SELECT COUNT(*) FROM artist_profiles WHERE id IN (SELECT id FROM auth.users WHERE raw_app_meta_data->>'role'='buyer')` returns > 0.
+**Warning signs:** `SELECT COUNT(*) FROM user_profiles WHERE id IN (SELECT id FROM auth.users WHERE raw_app_meta_data->>'role'='buyer')` returns > 0.
 
 ### Pitfall 2: Column-level grants forgotten on `license_requests`
 **What goes wrong:** A buyer with valid API access can read internal admin fields (admin notes, owner assignment, raw negotiation history) on their own org's requests via direct PostgREST, even though the UI never displays them.
@@ -578,7 +582,7 @@ No formal `REQUIREMENTS.md` IDs exist yet for Phase 16 (ROADMAP.md marks "Requir
 
 | Decision | Behavior | Test Type | Automated Command | File Exists? |
 |----------|----------|-----------|-------------------|--------------|
-| D-11 | `handle_new_user()` buyer branch never creates an `artist_profiles` row | unit (SQL fixture) / integration | new — `supabase/tests/` or a Jest integration harness against a local Supabase instance | ❌ Wave 0 |
+| D-11 | `handle_new_user()` buyer branch never creates an `user_profiles` row | unit (SQL fixture) / integration | new — `supabase/tests/` or a Jest integration harness against a local Supabase instance | ❌ Wave 0 |
 | D-15/D-15a | `matchesPreclearedTerms()` correctly routes matched vs. unmatched requests | unit | `npx jest lib/deals/matching.test.ts` | ❌ Wave 0 |
 | D-20 | `computeNetFee()` commission math is exact (no floating-point drift on cents) | unit | `npx jest lib/deals/commission.test.ts` | ❌ Wave 0 |
 | D-13/D-14a | requester-tier accounts can browse/save but not approve/sign-off | integration (API route) | `npx jest app/api/buyer` | ❌ Wave 0 |
