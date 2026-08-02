@@ -617,7 +617,7 @@ Plans:
 
 **Sequencing:** Wave 1 = `project_members` + RLS foundation (soaks first, security-critical). Wave 2 = auto-membership + shared lane + sheet↔project sync. Wave 3 = dashboard action feed + identity wiring.
 
-**Plans:** 5/5 plans complete
+**Plans:** 5/5 plans complete · **Status:** Complete (merged to main via PR #52; migrations 077/078/079 live). Verification: owner-accepted 2026-08-02 with the behavioral RLS access-matrix smoke **DEFERRED** (21-VERIFICATION.md `owner_acceptance`; 21-RLS-SMOKE-CHECKLIST.md 0/31 — a conscious risk acceptance, still an open follow-up).
 
 Plans:
 

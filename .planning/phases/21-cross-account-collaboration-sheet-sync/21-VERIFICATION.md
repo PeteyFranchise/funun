@@ -1,10 +1,14 @@
 ---
 phase: 21-cross-account-collaboration-sheet-sync
 verified: 2026-08-02T06:13:44Z
-status: human_needed
+status: passed # owner-accepted 2026-08-02 with the behavioral RLS smoke DEFERRED (not executed) — see owner_acceptance
 score: 12/20 must-haves verified
 behavior_unverified: 8 # present + wired (migrations pushed live, structurally tested), live behavior not exercised — see behavior_unverified_items
 overrides_applied: 0
+owner_acceptance:
+  by: owner (Pete)
+  date: 2026-08-02
+  decision: "Accept the phase and mark it passed for now, WAIVING/DEFERRING the behavioral RLS + auto-membership smoke — an explicit, conscious risk acceptance, not evidence the smoke ran. The 8 behavior_unverified_items below remain OPEN and unexecuted (21-RLS-SMOKE-CHECKLIST.md still 0/31). This is NOT a claim that RLS enforcement was proven; it is a decision to proceed without proving it yet. The smoke stays a tracked follow-up to run before relying on the access-control guarantees in earnest."
 behavior_unverified_items:
   - truth: "Owner SELECTs their own vault_projects and all four child rows exactly as before (migration 078)"
     test: "As Account A (owner), SELECT own vault_projects row and its tracks/vault_assets/vault_documents/tool_outputs rows against the LIVE database"
