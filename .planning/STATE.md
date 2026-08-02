@@ -6,15 +6,15 @@ current_phase: 21
 current_phase_name: cross-account-collaboration-sheet-sync
 status: board-clear
 stopped_at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
-last_updated: "2026-08-02T04:47:24.432Z"
+last_updated: "2026-08-02T04:57:04.233Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 21
   completed_phases: 18
   total_plans: 124
-  completed_plans: 106
-  percent: 85
+  completed_plans: 107
+  percent: 86
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (cross-account-collaboration-sheet-sync) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -145,6 +145,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 20 P01 | 20min | 2 tasks | 2 files |
 | Phase 20 P02 | 6min | 3 tasks | 89 files |
 | Phase 21 P01 | checkpoint-spanning | 3 tasks | 5 files |
+| Phase 21 P03 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -265,6 +266,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 21]: 21-01: Editor/co-owner write scope permitted at RLS layer but the app/api/vault/** ownership-check API-route audit is DEFERRED to a later phase -- v1 functional edit affordances ship owner-path only
 - [Phase 21]: 21-01: Guest-list management API (app/api/vault/[projectId]/members/route.ts) DEFERRED -- only membership write path in v1 is the SECURITY DEFINER auto-membership trigger (Plan 21-02) plus migration 078's owner backfill
 - [Phase 21]: 21-01: Migration 078 (project_members + RLS rewrite) pushed live and human-approved 2026-08-02 -- LOCAL=REMOTE through 078, PostgREST schema reloaded, full RLS access-matrix smoke passed
+- [Phase ?]: [Phase 21]: 21-03: SharedProjectBadge is rendered from the opposite corner (top-right) of the existing status chip (top-left) so neither idiom collides with the readiness ring (bottom-right); shared lane excludes memberships by both role='owner' filter and an ownedProjectIds set-difference
+- [Phase ?]: [Phase 21]: 21-03: First .test.tsx in the repo — no jsdom/testing-library installed (jest testEnvironment is node); used react-dom/server renderToStaticMarkup + string assertions instead of adding a new test dependency
 
 ### Pending Todos
 
@@ -332,7 +335,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-02T04:47:24.413Z
+Last session: 2026-08-02T04:56:19.448Z
 Stopped at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
