@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 21
 current_phase_name: cross-account-collaboration-sheet-sync
 status: board-clear
-stopped_at: Completed 21-02-PLAN.md -- migration 079 auto-membership trigger authored, tested, pushed live (LOCAL=REMOTE through 079); behavioral RLS smoke against real second accounts still OUTSTANDING
-last_updated: "2026-08-02T05:50:25.978Z"
+stopped_at: Completed 21-05-PLAN.md -- dashboard reworked (Avg readiness removed, Closest to ready + Your next moves added); phase 21 fully executed
+last_updated: "2026-08-02T06:02:25.725Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 21
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 124
-  completed_plans: 109
-  percent: 86
+  completed_plans: 110
+  percent: 89
 ---
 
 # Project State
@@ -148,6 +148,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 21 P03 | 8min | 2 tasks | 4 files |
 | Phase 21-cross-account-collaboration-sheet-sync P04 | 15min | 3 tasks | 5 files |
 | Phase 21-cross-account-collaboration-sheet-sync P02 | checkpoint-spanning | 3 tasks | 2 files |
+| Phase 21 P05 | 27min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 21]: 21-04: mapComposersToParties excludes role='producer' composer rows -- a producer credit added directly in Metadata Studio (never negotiated on the sheet) is the project-only case; a producer who IS a sheet party still syncs via name match
 - [Phase ?]: [Phase 21]: 21-04: reverse sync only refreshes an already name-matched party (role/pro/ipi/split) -- never inserts a new party from a project-side composer edit, so no new money-mutation path is created
 - [Phase ?]: [Phase 21]: 21-02: Migration 079 (auto-membership SECURITY DEFINER trigger keyed off collaborators.claimed_by, gated to linked non-draft sheets, viewer-only, idempotent via ON CONFLICT DO NOTHING) pushed live 2026-08-02 alongside 077/078 -- LOCAL=REMOTE through 079, PostgREST schema-cache recognizes project_members (200 OK read); full behavioral RLS/auto-membership smoke (three orderings + draft-gate + idempotency vs real second accounts) is OUTSTANDING, not yet executed
+- [Phase 21]: buildNextMoves() classifies pinned rows by sheet.status (mirroring buildAttentionSections' AWAITING_SIGNATURE_STATUSES bucket), gated on viewer being initiator/named party
+- [Phase 21]: Your next moves feed renders regardless of owned-project count since the inclusion rule is cross-account waiting-on-you, not ownership
 
 ### Pending Todos
 
@@ -341,8 +344,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-02T05:50:25.959Z
-Stopped at: Completed 21-02-PLAN.md -- migration 079 auto-membership trigger authored, tested, pushed live (LOCAL=REMOTE through 079); behavioral RLS smoke against real second accounts still OUTSTANDING
+Last session: 2026-08-02T06:02:25.705Z
+Stopped at: Completed 21-05-PLAN.md -- dashboard reworked (Avg readiness removed, Closest to ready + Your next moves added); phase 21 fully executed
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation

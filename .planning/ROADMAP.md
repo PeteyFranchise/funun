@@ -617,7 +617,7 @@ Plans:
 
 **Sequencing:** Wave 1 = `project_members` + RLS foundation (soaks first, security-critical). Wave 2 = auto-membership + shared lane + sheet↔project sync. Wave 3 = dashboard action feed + identity wiring.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 
@@ -625,4 +625,4 @@ Plans:
 - [x] 21-02-PLAN.md — Wave 2: auto-membership trigger keyed off verified `collaborators.claimed_by` (migration 079, human-gated) [② identity-dedupe-claim]
 - [x] 21-03-PLAN.md — Wave 2: "Shared with me" vault lane + shared-card badge [③]
 - [x] 21-04-PLAN.md — Wave 2: sheet↔project bidirectional sync while draft, link snaps on send-for-signature [sheet-project-sync ①]
-- [ ] 21-05-PLAN.md — Wave 3: dashboard rework — remove Avg readiness, add "Closest to ready" + "Your next moves" feed [④③]
+- [x] 21-05-PLAN.md — Wave 3: dashboard rework — remove Avg readiness, add "Closest to ready" + "Your next moves" feed [④③]
