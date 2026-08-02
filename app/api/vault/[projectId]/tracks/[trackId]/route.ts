@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { sanitizeComposers, sanitizeLyrics, sanitizePerformers, sanitizeRecordingInfo } from '@/lib/metadata/schema'
+import {
+  readComposers,
+  sanitizeComposers,
+  sanitizeLyrics,
+  sanitizePerformers,
+  sanitizeRecordingInfo,
+} from '@/lib/metadata/schema'
+import { isSyncActive, type SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
+import { mapComposersToParties } from '@/lib/split-sheets/project-sync'
+import { normalizeName } from '@/lib/split-sheets/reconciliation'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -92,6 +101,11 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
+  // Captured BEFORE the metadata merge below folds in the pre-existing
+  // JSONB — after that merge, 'composers' can appear in update.metadata
+  // even when THIS PATCH never touched it (the reverse-sync gate below
+  // must fire only on an actual composer edit).
+  const touchesComposers = !!(update.metadata && 'composers' in update.metadata)
 
   const supabase = await createApiClient()
   const {
@@ -125,5 +139,73 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
+
+  // ─── Reverse sync: project composers → linked living-draft sheet parties ──
+  // (sheet-project-sync decision) — single-account guard (①, T-21-10):
+  // fires only when the editor IS the sheet's own initiator, never a
+  // cross-account split edit. Only REFRESHES an already-matched writer
+  // party's role/pro/ipi/split — it never inserts a new party or
+  // fabricates a percentage for a project-only credit, so a manually-added
+  // producer/performer can never silently become a signature party on a
+  // legal document (splits stay the sheet's job, ①). Does not widen this
+  // route's owner-scoped ownership check (21-01 deferral). Best-effort
+  // relative to the primary track save above: a sync failure must never
+  // roll it back.
+  if (touchesComposers) {
+    try {
+      const { data: candidateSheets } = await supabase
+        .from('split_sheets')
+        .select('id, status, track_id')
+        .eq('vault_project_id', projectId)
+        .eq('initiator_user_id', user.id)
+
+      const syncable = (
+        (candidateSheets ?? []) as { id: string; status: SplitSheetStatus; track_id: string | null }[]
+      ).filter(s => isSyncActive(s.status))
+
+      let targetSheet = syncable.find(s => s.track_id === trackId) ?? null
+      if (!targetSheet) {
+        // A sheet with no track_id covers "the whole release" — only safe
+        // to treat as THIS track's sheet when the project has exactly one
+        // track (mirrors the forward-sync route's pickSyncTrack fallback).
+        const wholeProjectSheet = syncable.find(s => s.track_id === null)
+        if (wholeProjectSheet) {
+          const { count } = await supabase
+            .from('tracks')
+            .select('id', { count: 'exact', head: true })
+            .eq('project_id', projectId)
+          if (count === 1) targetSheet = wholeProjectSheet
+        }
+      }
+
+      if (targetSheet) {
+        const writerComposers = readComposers((data.metadata as Record<string, unknown> | null) ?? null)
+        const writerParties = mapComposersToParties(writerComposers)
+        const { data: existingPartyRows } = await supabase
+          .from('split_sheet_parties')
+          .select('id, name')
+          .eq('split_sheet_id', targetSheet.id)
+        const existingParties = (existingPartyRows ?? []) as { id: string; name: string }[]
+
+        for (const wp of writerParties) {
+          const match = existingParties.find(ep => normalizeName(ep.name) === normalizeName(wp.name))
+          if (!match) continue // never invent a new party from a project-side edit
+          await supabase
+            .from('split_sheet_parties')
+            .update({
+              role: wp.role ?? null,
+              pro: wp.pro ?? null,
+              ipi: wp.ipi ?? null,
+              split_percentage: wp.split_percentage,
+            })
+            .eq('id', match.id)
+            .eq('split_sheet_id', targetSheet.id)
+        }
+      }
+    } catch {
+      // best-effort — never corrupt or roll back the track save above
+    }
+  }
+
   return NextResponse.json({ data })
 }
