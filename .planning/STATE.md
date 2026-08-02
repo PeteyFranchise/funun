@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 20
-current_phase_name: profile-table-rename-artist-profiles-to-user-profiles
+current_phase: 21
+current_phase_name: cross-account-collaboration-sheet-sync
 status: board-clear
-stopped_at: Phase 20 context gathered — ready to plan (compat-view rename)
-last_updated: "2026-07-25T04:35:00.148Z"
-last_activity: 2026-07-25
-last_activity_desc: Phase 20 execution started
+stopped_at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
+last_updated: "2026-08-02T04:47:24.432Z"
+last_activity: 2026-08-01
+last_activity_desc: Phase 21 execution started
 progress:
-  total_phases: 20
+  total_phases: 21
   completed_phases: 18
-  total_plans: 119
-  completed_plans: 105
-  percent: 88
+  total_plans: 124
+  completed_plans: 106
+  percent: 85
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 20 — profile-table-rename-artist-profiles-to-user-profiles
+**Current focus:** Phase 21 — cross-account-collaboration-sheet-sync
 
 ## Current Position
 
-Phase: 20 (profile-table-rename-artist-profiles-to-user-profiles) — EXECUTING
-Plan: 3 of 4
+Phase: 21 (cross-account-collaboration-sheet-sync) — EXECUTING
+Plan: 2 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-07-25 — Phase 20 execution started
+Last activity: 2026-08-01 — Phase 21 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -144,6 +144,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 19 P06 | 15min | 2 tasks | 6 files |
 | Phase 20 P01 | 20min | 2 tasks | 2 files |
 | Phase 20 P02 | 6min | 3 tasks | 89 files |
+| Phase 21 P01 | checkpoint-spanning | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: Left prose comments mentioning artist_profiles unchanged per plan instruction, even where they document a since-renamed call site — D-03 explicitly scopes the rename to query strings and the type identifier, not documentation prose
 - [Phase ?]: Left migration-content assertion tests (migration-054/055/057/058/063/066, claim-collaborators-rpc) unchanged — They assert against the literal text of immutable historical migration files, which legitimately still say artist_profiles
 - [Phase ?]: Left lib/trust-safety/reports.ts's local ArtistProfileVisRow type name unchanged — Incidental local identifier unrelated to the imported types/index.ts type; word-boundary rename correctly did not touch it
+- [Phase 21]: 21-01: Editor/co-owner write scope permitted at RLS layer but the app/api/vault/** ownership-check API-route audit is DEFERRED to a later phase -- v1 functional edit affordances ship owner-path only
+- [Phase 21]: 21-01: Guest-list management API (app/api/vault/[projectId]/members/route.ts) DEFERRED -- only membership write path in v1 is the SECURITY DEFINER auto-membership trigger (Plan 21-02) plus migration 078's owner backfill
+- [Phase 21]: 21-01: Migration 078 (project_members + RLS rewrite) pushed live and human-approved 2026-08-02 -- LOCAL=REMOTE through 078, PostgREST schema reloaded, full RLS access-matrix smoke passed
 
 ### Pending Todos
 
@@ -328,8 +332,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-07-25T04:34:34.521Z
-Stopped at: Phase 20 context gathered — ready to plan (compat-view rename)
+Last session: 2026-08-02T04:47:24.413Z
+Stopped at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -352,7 +356,7 @@ not a real gap; proceeded with override, verify-phase may re-surface. Session-lo
 decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
-Resume file: .planning/phases/20-profile-table-rename-artist-profiles-to-user-profiles/20-CONTEXT.md
+Resume file: None
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
