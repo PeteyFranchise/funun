@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 21
 current_phase_name: cross-account-collaboration-sheet-sync
 status: board-clear
-stopped_at: Completed 21-04-PLAN.md -- forward/reverse split-sheet<->project sync live, isSyncActive freeze boundary wired, tsc/full suite green (94/94 suites, 1173/1173 tests)
-last_updated: "2026-08-02T05:08:57.107Z"
+stopped_at: Completed 21-02-PLAN.md -- migration 079 auto-membership trigger authored, tested, pushed live (LOCAL=REMOTE through 079); behavioral RLS smoke against real second accounts still OUTSTANDING
+last_updated: "2026-08-02T05:50:25.978Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 21
   completed_phases: 18
   total_plans: 124
-  completed_plans: 108
+  completed_plans: 109
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (cross-account-collaboration-sheet-sync) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -147,6 +147,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 21 P01 | checkpoint-spanning | 3 tasks | 5 files |
 | Phase 21 P03 | 8min | 2 tasks | 4 files |
 | Phase 21-cross-account-collaboration-sheet-sync P04 | 15min | 3 tasks | 5 files |
+| Phase 21-cross-account-collaboration-sheet-sync P02 | checkpoint-spanning | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -271,6 +272,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 21]: 21-03: First .test.tsx in the repo — no jsdom/testing-library installed (jest testEnvironment is node); used react-dom/server renderToStaticMarkup + string assertions instead of adding a new test dependency
 - [Phase ?]: [Phase 21]: 21-04: mapComposersToParties excludes role='producer' composer rows -- a producer credit added directly in Metadata Studio (never negotiated on the sheet) is the project-only case; a producer who IS a sheet party still syncs via name match
 - [Phase ?]: [Phase 21]: 21-04: reverse sync only refreshes an already name-matched party (role/pro/ipi/split) -- never inserts a new party from a project-side composer edit, so no new money-mutation path is created
+- [Phase ?]: [Phase 21]: 21-02: Migration 079 (auto-membership SECURITY DEFINER trigger keyed off collaborators.claimed_by, gated to linked non-draft sheets, viewer-only, idempotent via ON CONFLICT DO NOTHING) pushed live 2026-08-02 alongside 077/078 -- LOCAL=REMOTE through 079, PostgREST schema-cache recognizes project_members (200 OK read); full behavioral RLS/auto-membership smoke (three orderings + draft-gate + idempotency vs real second accounts) is OUTSTANDING, not yet executed
 
 ### Pending Todos
 
@@ -290,6 +292,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 17-09 checkpoint 1: migration 063 (split-sheet legal-grade fields) authored but NOT pushed — requires a human to run supabase db push and the additive/adversarial review in 17-09-PLAN.md
 - 17-09 checkpoint 2 (P17-09a): AGREEMENT_CLAUSES operative language requires licensed-attorney review before COUNSEL_REVIEW_STATUS can flip to reviewed — assertCounselReviewedForProduction() blocks production minting until then
 - Phase 17 BLOCKING checkpoint outstanding (17-07 Task 3): live end-to-end 3-signer mobile signing run. Prereqs: push migration 065; fix pre-existing npm run build failure in contracts page (from 17-05); set DOCUSEAL_WEBHOOK_SECRET and ESIGN_FROM_EMAIL; DocuSeal Pro purchase; attorney review of AGREEMENT_CLAUSES.
+- 21-02 checkpoint: migration 079 (auto-membership trigger) pushed live and schema-verified 2026-08-02, but the full behavioral RLS/auto-membership access-matrix smoke (three event orderings + draft-gate + idempotency, against real second accounts, per 21-02-PLAN.md Task 3 how-to-verify steps 3-4) has NOT been executed -- outstanding human verification
 
 ### Quick Tasks Completed
 
@@ -338,8 +341,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-02T05:08:57.087Z
-Stopped at: Completed 21-04-PLAN.md -- forward/reverse split-sheet<->project sync live, isSyncActive freeze boundary wired, tsc/full suite green (94/94 suites, 1173/1173 tests)
+Last session: 2026-08-02T05:50:25.959Z
+Stopped at: Completed 21-02-PLAN.md -- migration 079 auto-membership trigger authored, tested, pushed live (LOCAL=REMOTE through 079); behavioral RLS smoke against real second accounts still OUTSTANDING
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -363,7 +366,7 @@ decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.sta
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
 Resume file: 
-Last session: 2026-07-20T06:18:22.874Z
+None
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
