@@ -5,7 +5,8 @@ import { readinessItemsForProject } from '@/lib/vault/readiness'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { VaultBrowser } from '@/components/vault/VaultBrowser'
-import type { VaultCard } from '@/components/vault/VaultProjectCard'
+import { VaultProjectCard, type VaultCard } from '@/components/vault/VaultProjectCard'
+import type { ProjectRole } from '@/lib/vault/membership'
 import { Topbar, TopbarSearch } from '@/components/layout/Topbar'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +23,12 @@ export default async function VaultPage() {
   let projects: VaultProjectRow[] = []
   let artist: string | null = null
   let error: { message: string } | null = null
+  // "Shared with me" lane (③) — populated only in the live (non-demo) path
+  // below. Kept as a wholly separate array from `projects`/`cards`; never
+  // merged into the owned grid or its counts.
+  let sharedProjects: VaultProjectRow[] = []
+  let sharedOwnerNameById = new Map<string, string | null>()
+  let sharedRoleByProjectId = new Map<string, ProjectRole>()
 
   if (DEMO) {
     projects = await getDemoProjects()
@@ -32,7 +39,11 @@ export default async function VaultPage() {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const [{ data: profile }, res] = await Promise.all([
+    // NOTE: this owned query stays exactly `.eq('user_id', me)` — it must
+    // keep excluding shared rows by construction so ③'s scoreboard
+    // exclusion is satisfied "for free". Do not widen it for the shared
+    // lane below; that is a wholly separate, parallel query.
+    const [{ data: profile }, res, membershipRes] = await Promise.all([
       supabase.from('user_profiles').select('artist_name').eq('id', user?.id ?? '').maybeSingle(),
       supabase
         .from('vault_projects')
@@ -47,11 +58,56 @@ export default async function VaultPage() {
         )
         .eq('user_id', user?.id ?? '')
         .order('created_at', { ascending: false }),
+      // "Shared with me": rows RLS (migration 078) already makes visible.
+      // A project you also own is not "shared with you" — the role='owner'
+      // filter here plus the ownedProjectIds filter below both guard
+      // against that (belt-and-suspenders per 21-03-PLAN.md).
+      supabase
+        .from('project_members')
+        .select('project_id, role')
+        .eq('user_id', user?.id ?? '')
+        .neq('role', 'owner'),
     ])
 
     artist = profile?.artist_name ?? null
     projects = (res.data ?? []) as VaultProjectRow[]
     error = res.error
+
+    const ownedProjectIds = new Set(projects.map(p => p.id))
+    const sharedMemberships = ((membershipRes.data ?? []) as { project_id: string; role: string }[]).filter(
+      m => m.role !== 'owner' && !ownedProjectIds.has(m.project_id)
+    )
+    sharedRoleByProjectId = new Map(sharedMemberships.map(m => [m.project_id, m.role as ProjectRole]))
+    const sharedProjectIds = sharedMemberships.map(m => m.project_id)
+
+    if (sharedProjectIds.length > 0) {
+      const { data: sharedData } = await supabase
+        .from('vault_projects')
+        .select(
+          `
+        *,
+        tracks (id, isrc, iswc, metadata),
+        vault_assets (id, type),
+        vault_documents (id, type, status),
+        tool_outputs (id, tool_slug)
+      `
+        )
+        .in('id', sharedProjectIds)
+        .order('created_at', { ascending: false })
+
+      sharedProjects = (sharedData ?? []) as VaultProjectRow[]
+
+      const ownerIds = Array.from(new Set(sharedProjects.map(p => p.user_id)))
+      if (ownerIds.length > 0) {
+        const { data: owners } = await supabase
+          .from('user_profiles')
+          .select('id, artist_name')
+          .in('id', ownerIds)
+        sharedOwnerNameById = new Map(
+          ((owners ?? []) as { id: string; artist_name: string | null }[]).map(o => [o.id, o.artist_name])
+        )
+      }
+    }
   }
 
   const cards: VaultCard[] = projects.map(project => {
@@ -76,6 +132,38 @@ export default async function VaultPage() {
       releaseDate: project.release_date,
       coverUrl: project.cover_art_url,
       lane: laneFor(project.status, project.release_date),
+    }
+  })
+
+  // Shared cards: same readiness derivation as the owned cards above, but
+  // `artist` resolves to the OWNER's name (not the viewer's), and the card
+  // carries `sharedBy`/`viewerRole` so VaultProjectCard renders the ③
+  // badge instead of an owner-only edit affordance.
+  const sharedCards: VaultCard[] = sharedProjects.map(project => {
+    const items = readinessItemsForProject({
+      type: project.type,
+      distributor: (project as { distributor?: string | null }).distributor ?? null,
+      tracks: project.tracks,
+      assets: project.vault_assets,
+      documents: project.vault_documents,
+      tool_outputs: project.tool_outputs,
+    })
+    const ownerName = sharedOwnerNameById.get(project.user_id) ?? null
+    return {
+      id: project.id,
+      title: project.title,
+      type: project.type,
+      artist: ownerName,
+      status: project.status,
+      score: project.vault_readiness_score,
+      completeItems: items.filter(i => i.status === 'complete').length,
+      totalItems: items.length,
+      trackCount: project.tracks?.length ?? 0,
+      releaseDate: project.release_date,
+      coverUrl: project.cover_art_url,
+      lane: laneFor(project.status, project.release_date),
+      sharedBy: { ownerName },
+      viewerRole: sharedRoleByProjectId.get(project.id) ?? 'viewer',
     }
   })
 
@@ -117,6 +205,17 @@ export default async function VaultPage() {
           </div>
         ) : (
           <VaultBrowser cards={cards} />
+        )}
+
+        {sharedCards.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-6 text-[19px] font-bold tracking-[-.01em] text-white">Shared with me</h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {sharedCards.map(card => (
+                <VaultProjectCard key={card.id} card={card} />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </>
