@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 21
 current_phase_name: cross-account-collaboration-sheet-sync
 status: board-clear
-stopped_at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
-last_updated: "2026-08-02T04:57:04.233Z"
+stopped_at: Completed 21-04-PLAN.md -- forward/reverse split-sheet<->project sync live, isSyncActive freeze boundary wired, tsc/full suite green (94/94 suites, 1173/1173 tests)
+last_updated: "2026-08-02T05:08:57.107Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 21
   completed_phases: 18
   total_plans: 124
-  completed_plans: 107
+  completed_plans: 108
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 21 (cross-account-collaboration-sheet-sync) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -146,6 +146,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 20 P02 | 6min | 3 tasks | 89 files |
 | Phase 21 P01 | checkpoint-spanning | 3 tasks | 5 files |
 | Phase 21 P03 | 8min | 2 tasks | 4 files |
+| Phase 21-cross-account-collaboration-sheet-sync P04 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 21]: 21-01: Migration 078 (project_members + RLS rewrite) pushed live and human-approved 2026-08-02 -- LOCAL=REMOTE through 078, PostgREST schema reloaded, full RLS access-matrix smoke passed
 - [Phase ?]: [Phase 21]: 21-03: SharedProjectBadge is rendered from the opposite corner (top-right) of the existing status chip (top-left) so neither idiom collides with the readiness ring (bottom-right); shared lane excludes memberships by both role='owner' filter and an ownedProjectIds set-difference
 - [Phase ?]: [Phase 21]: 21-03: First .test.tsx in the repo — no jsdom/testing-library installed (jest testEnvironment is node); used react-dom/server renderToStaticMarkup + string assertions instead of adding a new test dependency
+- [Phase ?]: [Phase 21]: 21-04: mapComposersToParties excludes role='producer' composer rows -- a producer credit added directly in Metadata Studio (never negotiated on the sheet) is the project-only case; a producer who IS a sheet party still syncs via name match
+- [Phase ?]: [Phase 21]: 21-04: reverse sync only refreshes an already name-matched party (role/pro/ipi/split) -- never inserts a new party from a project-side composer edit, so no new money-mutation path is created
 
 ### Pending Todos
 
@@ -335,8 +338,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-02T04:56:19.448Z
-Stopped at: Completed 21-01-PLAN.md -- migration 078 human-approved push confirmed live, RLS smoke passed
+Last session: 2026-08-02T05:08:57.087Z
+Stopped at: Completed 21-04-PLAN.md -- forward/reverse split-sheet<->project sync live, isSyncActive freeze boundary wired, tsc/full suite green (94/94 suites, 1173/1173 tests)
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -359,7 +362,7 @@ not a real gap; proceeded with override, verify-phase may re-surface. Session-lo
 decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.status
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
-Resume file: None
+Resume file: 
 Last session: 2026-07-20T06:18:22.874Z
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
