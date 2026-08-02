@@ -107,6 +107,26 @@ export function assertEditable(status: SplitSheetStatus, editsParties: boolean):
 }
 
 /**
+ * SYNC_FROZEN_STATUSES / isSyncActive — the sheet↔project sync boundary
+ * (Phase 21, sheet-project-sync decision; RESEARCH Pitfall 5). CONTEXT.md's
+ * shorthand ("stays linked while status = draft") undersells the real
+ * boundary: sync must keep running through pending_approval / approved /
+ * countered — states where the sheet is still editable, just with a
+ * consensus reset attached — and stop ONLY once the sheet is frozen
+ * (esign_pending / executed, the same two statuses assertEditable() above
+ * already blocks outright). Sourced from this module's OWN vocabulary
+ * rather than a fresh `=== 'draft'` literal, so a future freeze-boundary
+ * change (e.g. a new terminal status) cannot leave sync silently stale.
+ */
+export const SYNC_FROZEN_STATUSES: SplitSheetStatus[] = ['esign_pending', 'executed']
+
+/** True while a linked sheet's writers/roles/splits should keep syncing
+ * with its project; false once the sheet is frozen (signature out / signed). */
+export function isSyncActive(status: SplitSheetStatus): boolean {
+  return !SYNC_FROZEN_STATUSES.includes(status)
+}
+
+/**
  * Whether a requested status transition is allowed via PATCH.
  * Guards the back-door: without this, a client could PATCH an executed sheet
  * back to 'draft' and then edit it freely, defeating assertEditable().
