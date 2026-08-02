@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import {
   assertEditable,
   isAllowedStatusTransition,
+  isSyncActive,
   partiesActuallyChanged,
   type SplitSheetStatus,
 } from '@/lib/split-sheets/lifecycle'
@@ -10,6 +11,26 @@ import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 import { summarizePartyChanges } from '@/lib/split-sheets/change-summary'
 import type { PartyChangeSnapshot, PartyChangeRecord } from '@/lib/split-sheets/change-summary'
+import { mapPartiesToComposers, mergeComposers } from '@/lib/split-sheets/project-sync'
+import { readComposers } from '@/lib/metadata/schema'
+
+// ─── Forward-sync track resolution (Phase 21, sheet-project-sync) ─────
+// Mirrors app/api/split-sheets/[id]/reconcile/route.ts's pickTrack: prefer
+// an exact normalized song_name<->title match, else the project's single
+// track when unambiguous. split_sheets.track_id (migration 067) is the
+// origin field and, when set, is authoritative — no matching needed.
+function normalizeSongTitle(s: string): string {
+  return s.trim().toLowerCase()
+}
+
+type SyncTrack = { id: string; title: string; metadata: Record<string, unknown> | null }
+
+function pickSyncTrack(tracks: SyncTrack[], songName: string): SyncTrack | null {
+  if (tracks.length === 0) return null
+  const bySongName = tracks.find(t => normalizeSongTitle(t.title) === normalizeSongTitle(songName))
+  if (bySongName) return bySongName
+  return tracks.length === 1 ? tracks[0] : null
+}
 
 // ─── Party field allowlist ────────────────────────────────────────────
 // Kept in sync with app/api/split-sheets/route.ts's PARTY_FIELDS. This
@@ -73,7 +94,7 @@ export async function PATCH(
   // past that, edits either invalidate consensus or corrupt a legal record.
   const { data: current, error: currentError } = await supabase
     .from('split_sheets')
-    .select('id, status')
+    .select('id, status, vault_project_id, track_id, song_name')
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()
@@ -239,6 +260,52 @@ export async function PATCH(
 
     const { error: insertError } = await supabase.from('split_sheet_parties').insert(partyRows)
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+    // ─── Forward sync: sheet parties → linked project's track composers ──
+    // (sheet-project-sync decision) — reuses the editsParties diff already
+    // computed above (no second diff, RESEARCH Don't-Hand-Roll), gated on
+    // the sheet being linked (vault_project_id) AND still syncing
+    // (isSyncActive — the freeze boundary lives in lifecycle.ts, not a
+    // fresh literal here, RESEARCH Pitfall 5). Writes through the SAME
+    // session client that just wrote the party rows, so 21-01's
+    // membership-aware RLS governs the write — an initiator who has since
+    // lost write access to the linked project is RLS-blocked here, never
+    // force-elevated (T-21-11). Best-effort relative to the primary sheet
+    // save: a sync failure must never corrupt or roll back it (T-21-18).
+    const vaultProjectId = current.vault_project_id as string | null
+    if (vaultProjectId && isSyncActive(current.status as SplitSheetStatus)) {
+      try {
+        const writerComposers = mapPartiesToComposers(
+          parties.map(p => ({
+            name: p.name,
+            role: p.role,
+            split_percentage: p.split_percentage,
+            pro: p.pro,
+            ipi: p.ipi,
+          }))
+        )
+        const { data: syncTracks } = await supabase
+          .from('tracks')
+          .select('id, title, metadata')
+          .eq('project_id', vaultProjectId)
+        const tracks = (syncTracks ?? []) as SyncTrack[]
+        const trackId = current.track_id as string | null
+        const track = trackId
+          ? (tracks.find(t => t.id === trackId) ?? null)
+          : pickSyncTrack(tracks, (current.song_name as string | null) ?? '')
+        if (track) {
+          const mergedComposers = mergeComposers(readComposers(track.metadata), writerComposers)
+          const mergedMetadata = { ...(track.metadata ?? {}), composers: mergedComposers }
+          await supabase
+            .from('tracks')
+            .update({ metadata: mergedMetadata })
+            .eq('id', track.id)
+            .eq('project_id', vaultProjectId)
+        }
+      } catch {
+        // best-effort — never corrupt or roll back the sheet edit above
+      }
+    }
   }
 
   // Update split_sheets row (scoped to initiator, T-01-08)
