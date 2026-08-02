@@ -6,6 +6,12 @@ import { readinessItemsForProject, readinessLabel } from '@/lib/vault/readiness'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { VaultProjectCard } from '@/components/vault/VaultProjectCard'
+import { fetchSplitSheetsForUser, type SplitSheetRow } from '@/lib/split-sheets/list'
+import {
+  buildNextMoves,
+  type NextMoveSections,
+  type NextMoveSheetInput,
+} from '@/lib/dashboard/next-moves'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +32,23 @@ type CreditPreviewRow = {
 
 const TYPE_ORDER: VaultProjectType[] = ['single', 'snippet', 'ep', 'album', 'unreleased']
 
+// ─── "Your next moves" feed input mapping ────────────────────────────
+// Maps fetchSplitSheetsForUser's initiated+party-of merge (the SAME
+// cross-account reachability set /contracts uses for its own attention
+// derivation) into buildNextMoves' plain input shape. Deliberately a
+// SEPARATE query and a SEPARATE array from the owner-scoped `projects`
+// stat query above — shared-reachable sheets must never feed the personal
+// scoreboard math (③).
+function toNextMoveSheets(sheets: SplitSheetRow[]): NextMoveSheetInput[] {
+  return sheets.map(s => ({
+    id: s.id,
+    songName: s.song_name,
+    status: s.status,
+    initiatorUserId: s.initiator_user_id,
+    parties: (s.split_sheet_parties ?? []).map(p => ({ userId: p.user_id })),
+  }))
+}
+
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -39,15 +62,19 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 export default async function DashboardPage() {
   let projects: VaultProjectRow[] = []
   let creditsPreview: CreditPreviewRow[] = []
+  let nextMoves: NextMoveSections = { pinned: [], flexible: [] }
 
   if (DEMO) {
     projects = await getDemoProjects()
-    // DEMO branch renders no credits preview (D-05)
+    // DEMO branch renders no credits preview (D-05) and no next-moves feed
+    // — no split_sheets emulation exists in the demo store, mirroring
+    // /contracts' DEMO branch for attentionSheets.
   } else {
     const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
+    const viewerUserId = user?.id ?? ''
 
     const { data } = await supabase
       .from('vault_projects')
@@ -60,7 +87,7 @@ export default async function DashboardPage() {
         tool_outputs (id, tool_slug)
       `
       )
-      .eq('user_id', user?.id ?? '')
+      .eq('user_id', viewerUserId)
       .order('created_at', { ascending: false })
 
     projects = (data ?? []) as VaultProjectRow[]
@@ -70,22 +97,53 @@ export default async function DashboardPage() {
     const { data: creditsData } = await supabase
       .from('collaborators')
       .select('id, name, split_sheet_parties(role, split_sheets(song_name))')
-      .eq('claimed_by', user?.id ?? '')
+      .eq('claimed_by', viewerUserId)
       .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(3)
 
     creditsPreview = (creditsData ?? []) as unknown as CreditPreviewRow[]
+
+    // "Your next moves" (④) — a SEPARATE query from the owner-scoped
+    // `vault_projects` stat query above. Reuses fetchSplitSheetsForUser's
+    // initiated+party-of merge (18-01), which now also surfaces
+    // shared-reachable rows since 21-01's RLS makes them visible — the
+    // inclusion rule is "is this waiting on you?", never ownership, so
+    // this must reach sheets on someone else's project too. Shared rows
+    // from this query never feed the scoreboard math above (③).
+    const sheets = await fetchSplitSheetsForUser(supabase, viewerUserId)
+    nextMoves = buildNextMoves({ viewerUserId, sheets: toNextMoveSheets(sheets) })
   }
 
   const creditsCount = creditsPreview.length
+  const hasNextMoves = nextMoves.pinned.length > 0 || nextMoves.flexible.length > 0
 
   const total = projects.length
-  const avgScore =
-    total > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.vault_readiness_score, 0) / total)
-      : 0
   const readyCount = projects.filter(p => readinessLabel(p.vault_readiness_score).canSubmit).length
+
+  // "Closest to ready" (④, replaces the vanity "Avg readiness" stat):
+  // among OWNED projects only (this `projects` array is fed exclusively by
+  // the owner-scoped `.eq('user_id', me)` query above — ③'s scoreboard
+  // exclusion depends on this staying owner-only) that are not yet
+  // deal-ready, the highest-scoring one, with its gates-left count (same
+  // totalItems − completeItems math VaultProjectCard's rightLabel uses).
+  const notYetReady = projects.filter(p => !readinessLabel(p.vault_readiness_score).canSubmit)
+  const closestToReady = notYetReady.length > 0
+    ? notYetReady.reduce((best, p) => (p.vault_readiness_score > best.vault_readiness_score ? p : best))
+    : null
+  const closestToReadyGatesLeft = closestToReady
+    ? (() => {
+        const items = readinessItemsForProject({
+          type: closestToReady.type,
+          distributor: (closestToReady as { distributor?: string | null }).distributor ?? null,
+          tracks: closestToReady.tracks,
+          assets: closestToReady.vault_assets,
+          documents: closestToReady.vault_documents,
+          tool_outputs: closestToReady.tool_outputs,
+        })
+        return items.length - items.filter(i => i.status === 'complete').length
+      })()
+    : 0
 
   // Upcoming releases: dated, not yet released, soonest first.
   const today = new Date().toISOString().slice(0, 10)
@@ -116,6 +174,47 @@ export default async function DashboardPage() {
         </Link>
       </header>
 
+      {/* Your next moves — cross-account action feed (④). Inclusion rule is
+          "is this waiting on you?", never ownership, so this renders
+          regardless of whether the viewer owns any project (a brand-new
+          user added only as a shared collaborator still needs to see this).
+          Money & signature items (pinned) render in a locked, visually
+          distinct tier above the softer flexible tier — never reordered. */}
+      {hasNextMoves && (
+        <section className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">
+              Your next moves
+            </h2>
+          </div>
+          <ul className="space-y-2">
+            {nextMoves.pinned.map(row => (
+              <li key={`${row.kind}-${row.sheetId}`}>
+                <Link
+                  href={row.href}
+                  className="flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3 transition hover:border-amber-400/50"
+                >
+                  <span className="text-sm text-white">{row.label}</span>
+                  <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                    Signature
+                  </span>
+                </Link>
+              </li>
+            ))}
+            {nextMoves.flexible.map(row => (
+              <li key={`${row.kind}-${row.sheetId}`}>
+                <Link
+                  href={row.href}
+                  className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:border-white/25"
+                >
+                  <span className="text-sm text-white">{row.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {total === 0 ? (
         <div className="mt-16 flex flex-col items-center text-center">
           <p className="text-lg font-medium text-white">Welcome to Funūn</p>
@@ -134,7 +233,25 @@ export default async function DashboardPage() {
           {/* Stats */}
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Projects" value={total} />
-            <StatCard label="Avg readiness" value={`${avgScore}`} sub="out of 100" />
+            {closestToReady ? (
+              <Link href={`/vault/${closestToReady.id}`} className="block">
+                <StatCard
+                  label="Closest to ready"
+                  value={closestToReady.title}
+                  sub={
+                    closestToReadyGatesLeft > 0
+                      ? `${closestToReadyGatesLeft} gate${closestToReadyGatesLeft === 1 ? '' : 's'} left`
+                      : 'Almost there'
+                  }
+                />
+              </Link>
+            ) : (
+              <StatCard
+                label="Closest to ready"
+                value={total > 0 ? 'All caught up' : '—'}
+                sub={total > 0 ? 'Every project is deal-ready' : undefined}
+              />
+            )}
             <StatCard label="Ready to submit" value={readyCount} sub="score 80+" />
             <StatCard label="Upcoming" value={upcoming.length} sub="scheduled releases" />
           </div>

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { VaultProjectStatus, VaultProjectType } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
+import type { ProjectRole } from '@/lib/vault/membership'
+import { SharedProjectBadge } from './SharedProjectBadge'
 
 // ─── Release card (.rcard) ───────────────────────────────────────────
 // Full-bleed cover (gloss scrim + status chip + readiness ring) over a
@@ -20,6 +22,12 @@ export type VaultCard = {
   releaseDate: string | null
   coverUrl: string | null
   lane: 'live' | 'scheduled' | 'draft'
+  // ─── Shared-with-me fields (③) — OPTIONAL so every existing owned-card
+  // caller keeps compiling unchanged. When `sharedBy` is present, the card
+  // renders SharedProjectBadge showing the owner's name + the VIEWER'S OWN
+  // role only; no owner-only edit affordance is ever added here.
+  sharedBy?: { ownerName: string | null }
+  viewerRole?: ProjectRole
 }
 
 type Band = { arc: string; value: string }
@@ -97,6 +105,10 @@ export function VaultProjectCard({ card }: { card: VaultCard }) {
           <span className="h-[7px] w-[7px] rounded-full bg-current" />
           {chip.text}
         </span>
+        {/* shared badge (③) — opposite corner from the status chip, never disturbs it */}
+        {card.sharedBy && (
+          <SharedProjectBadge ownerName={card.sharedBy.ownerName} role={card.viewerRole ?? 'viewer'} />
+        )}
         {/* readiness ring */}
         <div
           className="absolute -bottom-[26px] right-[18px] z-[3] flex h-[66px] w-[66px] items-center justify-center rounded-full shadow-[0_8px_22px_rgba(0,0,0,.5)]"
