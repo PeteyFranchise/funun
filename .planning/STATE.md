@@ -6,14 +6,14 @@ current_phase: 16
 current_phase_name: gtm-beta-buyer-portal
 status: board-clear
 stopped_at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
-last_updated: "2026-08-03T04:37:57.917Z"
+last_updated: "2026-08-03T05:45:58.208Z"
 last_activity: 2026-08-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 111
+  completed_plans: 114
   percent: 90
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
-Plan: 2 of 12
+Plan: 5 of 12
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -279,6 +279,10 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 21]: Your next moves feed renders regardless of owned-project count since the inclusion rule is cross-account waiting-on-you, not ownership
 - [Phase ?]: 16-00: built the first controlled mood vocabulary in the codebase (MOOD_VALUES, 40 terms) — antenna_opportunities.mood_tags and SoundIdentity.mood_tags stay free-form string[] until 16-05/Antenna converge onto it
 - [Phase ?]: 16-00: descriptorEnergy/descriptorVocal stored as plain string on StudioTrack (matching the existing originalPurpose convention), not the narrow EnergyLevel/VocalType union — server sanitizeDescriptors() is the single validation authority
+- [Phase ?]: 16-01/02/11: Operator approved live push of migrations 080-082 together (LOCAL=REMOTE through 082, buyer_orgs schema recognized via service-role read) — Wave 0 (16-00/01/02/11) is now complete; behavioral adversarial checks (buyer stage-UPDATE denial, admin-column exclusion, phantom-row guard, UPC/GRid generation safety) are DEFERRED pending a real buyer account from Wave 2 buyer signup
+- [Phase ?]: 16-01: added is_buyer_org_member() SECURITY DEFINER helper (Rule 2) to buyer_members/buyer_orgs RLS, avoiding a 42P17 self-referential-recursion class already fixed at migrations 064/078
+- [Phase ?]: 16-02: license_requests SELECT column-grant excludes admin_notes/owner_id/commission_pct/artist_net_cents; artist-visibility arm scoped by explicit vault_projects.user_id match (C4), not a bare RLS-visible subquery, since migration 078 widened vault_projects SELECT to owner-OR-member
+- [Phase ?]: 16-11: user_profiles.isni kept PRIVATE (consistent with pro/ipi/mlc_id); platform_identifier_config.grid_issuer_code seeded NULL since Funun is not yet IFPI-registered -- platform GRid generation is structurally unavailable until that registration lands
 
 ### Pending Todos
 
@@ -300,6 +304,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Phase 17 BLOCKING checkpoint outstanding (17-07 Task 3): live end-to-end 3-signer mobile signing run. Prereqs: push migration 065; fix pre-existing npm run build failure in contracts page (from 17-05); set DOCUSEAL_WEBHOOK_SECRET and ESIGN_FROM_EMAIL; DocuSeal Pro purchase; attorney review of AGREEMENT_CLAUSES.
 - 21-02 checkpoint: migration 079 (auto-membership trigger) pushed live and schema-verified 2026-08-02, but the full behavioral RLS/auto-membership access-matrix smoke (three event orderings + draft-gate + idempotency, against real second accounts, per 21-02-PLAN.md Task 3 how-to-verify steps 3-4) has NOT been executed -- outstanding human verification
 - 16-00: plan frontmatter references requirements META-01/META-02 but REQUIREMENTS.md has no Phase 16 section registering them yet (requirements.mark-complete returned not_found) -- pre-existing documentation gap, not fixed by this executor; a future plan or /gsd-docs-update pass should register Phase 16's requirement IDs in REQUIREMENTS.md
+- 16-01/02/11: same pre-existing gap extends to BUYER-01/02/05/07, DEAL-01..07, and META-03/04/05 (requirements.mark-complete returned not_found for all 14) -- REQUIREMENTS.md still has no Phase 16 section; deferred to the same future /gsd-docs-update pass, not fixed by this finalization
+- Wave 0 of Phase 16 (16-00/01/02/11) is code-complete and migrations 080/081/082 are approved-and-live (LOCAL=REMOTE through 082, confirmed by operator via `supabase migration list` + a service-role PostgREST read on buyer_orgs returning 200). This confirms schema-level correctness only. Each of 16-01/16-02/16-11's own listed behavioral adversarial checks (buyer cannot UPDATE license_requests.stage -- 42501; admin_notes/owner_id/commission_pct/artist_net_cents not selectable by a buyer; phantom-row guard `SELECT COUNT(*) FROM user_profiles WHERE buyer role = 0`; UPC/GRid generation safety and the platform GRid global-counter check) remain OUTSTANDING -- they require a live buyer account, which Wave 2 buyer signup has not yet shipped. Track these in the phase verifier before Phase 16 is marked passed.
 
 ### Quick Tasks Completed
 
@@ -348,7 +354,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T04:37:27.982Z
+Last session: 2026-08-03T05:45:01.506Z
 Stopped at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
@@ -374,7 +380,7 @@ flips confirmed on signup OR sheet-response whichever first; initiator's party-1
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
 Resume file: 
 
-Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
+None
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
 ## Operator Next Steps
