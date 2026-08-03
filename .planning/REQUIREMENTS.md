@@ -299,6 +299,121 @@ Which phases cover which requirements. Updated during roadmap creation.
 | R4 | Phase 19 | 19-03, 19-06, 19-07 | Impl complete; live flag/notify/void UAT pending (19-UAT.md #2) |
 | R5 | Phase 19 | 19-02 | Impl complete; visual-breakpoint UAT pending (19-UAT.md #3) |
 
+## v1.3 — Phase 16: GTM Beta Launch & Buyer Portal Requirements
+
+**Defined:** 2026-08-03 (registered by plan 16-10, per the plan's own task instruction). **Source:** `.planning/phases/16-gtm-beta-buyer-portal/16-CONTEXT.md` locked decisions D-01 through D-20. 34 IDs across nine families — BUYER, DEAL, PORTAL, ARTIST, ADMIN, MONEY, PAPER, DELIVERY, METRICS. Registered here as an additive section; the v1.2 Green Room sections above (and their coverage counts) are untouched by this edit.
+
+**Naming note:** these use the `METRICS-` prefix, not `GTM-`. `GTM-01` through `GTM-07` are already taken — they are the GTM validation metric IDs defined in `16-VALIDATION.md`'s GTM Validation table, not requirement IDs. Where a description below cites `GTM-0N`, that is a citation of the validation doc's metric definition, not a requirement ID.
+
+**Registration is traceability, not completion.** IDs whose implementing plan is deferred or partial (`DELIVERY-01`, `PAPER-01..04`, `MONEY-01..03`) are registered with a `Pending`/`Deferred` status below and are intentionally left unmarked in the top-of-file requirement checkboxes convention this milestone doesn't use (Phase 16 requirements live only in this section's traceability table, mirroring Phase 17/18/19's format).
+
+### Buyer identity (D-04, D-11..D-14, D-13a)
+
+- **BUYER-01**: Separate buyer account type with no `user_profiles` row (D-04/D-11)
+- **BUYER-02**: Buyer org and member schema with two permission tiers (D-11/D-13)
+- **BUYER-03**: Admin-created org plus first org-admin invite (D-12)
+- **BUYER-04**: Org-admin employee invites with scoped tiers (D-13)
+- **BUYER-05**: Org-level verification inherited by members (D-14)
+- **BUYER-06**: Dedicated buyer access landing and portal gate (D-11)
+- **BUYER-07**: Dual-level individual and company attribution (D-13a)
+
+### Deal substrate (D-07, D-15, D-15a, D-16a, D-20)
+
+- **DEAL-01**: First-class license-request schema (D-07)
+- **DEAL-02**: Multi-track requests via join table
+- **DEAL-03**: Deal-stage pipeline (D-16a)
+- **DEAL-04**: Per-project pre-cleared terms, the Marmoset five (D-15)
+- **DEAL-05**: Pre-cleared matching with admin-negotiation routing (D-15a)
+- **DEAL-06**: Commission economics on every deal (D-20)
+- **DEAL-07**: Server-owned writes and column-privilege doctrine on all deal tables
+
+### Buyer portal (D-02, D-07, D-14c, D-16, D-16a)
+
+- **PORTAL-01**: Filtered rights-ready catalog browse with no free-text search (D-16)
+- **PORTAL-02**: The single tunable rights-ready helper
+- **PORTAL-03**: Org-shared shortlists (D-14c)
+- **PORTAL-04**: Structured request composer (D-02/D-07)
+- **PORTAL-05**: Org request dashboard with stages (D-16a)
+
+### Artist-facing (D-15, D-15b)
+
+- **ARTIST-01**: Artist Deals room across all projects (D-15b)
+- **ARTIST-02**: Per-project pre-cleared terms settings (D-15)
+
+### Admin workflow (D-03, D-06, D-15a)
+
+- **ADMIN-01**: Admin negotiation queue (D-15a/D-06)
+- **ADMIN-02**: Server-owned stage, owner, and commission transitions
+- **ADMIN-03**: Manual intake writing to the same tables (D-03)
+
+### Money (D-17, D-17a, D-20)
+
+- **MONEY-01**: Stripe Connect Express onboarding, transfers-only (D-17a)
+- **MONEY-02**: Buyer Checkout payment with destination split (D-17/D-20)
+- **MONEY-03**: Signature-verified Stripe webhook
+
+### Paper — e-sign (D-08, D-18, D-18c)
+
+- **PAPER-01**: Sync-license signing on Phase 17's reused DocuSeal adapter behind the e-sign interface — no new adapter, no new credentials (D-18c, supersedes the SignWell framing of D-18a/D-18b)
+- **PAPER-02**: Admin-drafted sync license sent for embedded signature (D-18)
+- **PAPER-03**: Signed contract filed into Contract Locker (D-08)
+- **PAPER-04**: E-sign integration doc updated to the single-provider DocuSeal decision (D-18c)
+
+### Delivery (D-19)
+
+- **DELIVERY-01**: Portal export-pack delivery unlock after signature and payment (D-19)
+
+### Metrics (D-06, D-10)
+
+- **METRICS-01**: GTM beta metrics dashboard over real deal data (D-10)
+- **METRICS-02**: Founder-led sales instrumentation including support burden (D-10/D-06)
+
+**Traceability (Phase 16):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| BUYER-01 | Phase 16 | 16-01 | Complete |
+| BUYER-02 | Phase 16 | 16-01 | Complete |
+| BUYER-03 | Phase 16 | 16-03 | Complete |
+| BUYER-04 | Phase 16 | 16-03 | Complete |
+| BUYER-05 | Phase 16 | 16-01 | Complete |
+| BUYER-06 | Phase 16 | 16-03 | Complete |
+| BUYER-07 | Phase 16 | 16-01, 16-02 | Complete |
+| DEAL-01 | Phase 16 | 16-02 | Complete |
+| DEAL-02 | Phase 16 | 16-02 | Complete |
+| DEAL-03 | Phase 16 | 16-02, 16-07 | Complete |
+| DEAL-04 | Phase 16 | 16-02, 16-04 | Complete |
+| DEAL-05 | Phase 16 | 16-02, 16-06 | Complete |
+| DEAL-06 | Phase 16 | 16-02, 16-07 | Complete |
+| DEAL-07 | Phase 16 | 16-02 | Complete |
+| PORTAL-01 | Phase 16 | 16-05 | Complete |
+| PORTAL-02 | Phase 16 | 16-05 | Complete |
+| PORTAL-03 | Phase 16 | 16-05 | Complete |
+| PORTAL-04 | Phase 16 | 16-06 | Complete |
+| PORTAL-05 | Phase 16 | 16-06 | Complete |
+| ARTIST-01 | Phase 16 | 16-04 | Complete |
+| ARTIST-02 | Phase 16 | 16-04 | Complete |
+| ADMIN-01 | Phase 16 | 16-07 | Complete |
+| ADMIN-02 | Phase 16 | 16-07 | Complete |
+| ADMIN-03 | Phase 16 | 16-07 | Complete |
+| MONEY-01 | Phase 16 | 16-08 | Pending (code + migration 084 authored; awaiting owner Stripe setup + live push) |
+| MONEY-02 | Phase 16 | 16-08 | Pending (code + migration 084 authored; awaiting owner Stripe setup + live push) |
+| MONEY-03 | Phase 16 | 16-08 | Pending (code authored; awaiting owner Stripe setup + live push) |
+| PAPER-01 | Phase 16 | 16-09 | Deferred — sync-license signing model undecided, see `.planning/deliberations/sync-license-signing-model.md` |
+| PAPER-02 | Phase 16 | 16-09 | Deferred (same blocker as PAPER-01) |
+| PAPER-03 | Phase 16 | 16-09 | Deferred (same blocker as PAPER-01) |
+| PAPER-04 | Phase 16 | 16-09 | Deferred (same blocker as PAPER-01) |
+| DELIVERY-01 | Phase 16 | 16-10 | Deferred — depends on 16-09 (signed contract) and 16-08 (paid deal), both pending/deferred; explicitly not built in 16-10's partial execution |
+| METRICS-01 | Phase 16 | 16-10 | Complete |
+| METRICS-02 | Phase 16 | 16-10 | Complete |
+
+**Coverage (Phase 16):**
+
+- Phase 16 requirement IDs: 34 total
+- Complete: 27
+- Pending (awaiting owner Stripe setup + live push): 3 (MONEY-01..03)
+- Deferred (blocked on signing-model decision): 5 (PAPER-01..04, DELIVERY-01)
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-07-24 — Phase 19 executed (7/7 plans); migrations 071–075 live (LOCAL=REMOTE 001–075); verifier 9/9 code-level, status human_needed (3 live-UAT items in 19-UAT.md)*
+*Last updated: 2026-08-03 — Phase 16 plan 16-10 registered all 34 Phase 16 requirement IDs (BUYER/DEAL/PORTAL/ARTIST/ADMIN/MONEY/PAPER/DELIVERY/METRICS) with decision traceability; METRICS-01/02 marked complete (GTM metrics module + admin dashboard shipped this plan); MONEY-01..03 pending live Stripe push; PAPER-01..04 and DELIVERY-01 deferred pending the sync-license signing-model decision*
