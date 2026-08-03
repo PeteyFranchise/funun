@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { buildCatalogFilter } from '@/lib/deals/catalog'
-import { loadCatalogPage } from '@/app/api/buyer/catalog/route'
+import { loadCatalogPage } from '@/lib/deals/catalog-query'
 import { CatalogBrowser } from '@/components/buyer/CatalogBrowser'
 
 export const dynamic = 'force-dynamic'
