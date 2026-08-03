@@ -286,7 +286,8 @@ export type TrackMetadata = {
 }
 
 // Release-level rights & contact — shared across the project. Mirrors the
-// columns added in migration 006.
+// columns added in migration 006, plus the DDEX release-level identifiers
+// added in migration 082 (grid, catalog_number — see 16-11).
 export type ReleaseRights = {
   label: string | null
   publisher: string | null
@@ -297,6 +298,11 @@ export type ReleaseRights = {
   contact_name: string | null
   contact_email: string | null
   contact_phone: string | null
+  // Optional (migration 082): populated once lib/metadata/bundle.ts's
+  // rightsOf() is extended to carry them through (16-11 Task 3) — kept
+  // optional here so this type change lands independently of that wiring.
+  grid?: string | null
+  catalog_number?: string | null
 }
 
 // A common, non-exhaustive language list for the dropdown (ISO 639-1).
