@@ -376,7 +376,7 @@ Plans:
 
 **Wave 5** *(delivery + instrumentation)*
 
-- [ ] 16-10-PLAN.md — export-pack delivery unlock, GTM beta metrics dashboard, requirements registration
+- [~] 16-10-PLAN.md — **PARTIAL (2026-08-03):** GTM beta metrics module + admin dashboard built (Task 2) and all 34 Phase 16 requirement IDs registered in REQUIREMENTS.md with decision traceability (Task 3). Task 1 (export-pack delivery unlock + buyer export route + DeliveryPanel) deliberately deferred — `isDeliveryUnlocked` needs a signed-AND-paid deal, and 16-09 (signing) is deferred while 16-08 (payment) awaits the owner's Stripe setup + migration 084 push. See `16-10-SUMMARY.md`.
 
 **Planning note:** The external GTM plan's Tally/Typeform bridge is intentionally reframed here. Manual intake may exist only as a temporary founder/admin fallback that writes into the same product tables and workflows. The default product direction is an integrated buyer portal with specialized sync-buyer accounts, not a long-lived external form sidecar.
 

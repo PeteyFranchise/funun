@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 16
 current_phase_name: gtm-beta-buyer-portal
 status: board-clear
-stopped_at: Completed 16-06-PLAN.md -- buyer request pathway (POST /api/buyer/requests with server-side pre-cleared-terms matching, authorizeRequestTarget shared gate, GET /api/buyer/requests/[id]) and org request dashboard (RequestComposer, OrgRequestDashboard, requests/new/[id] pages under app/(buyer-portal)/buyers/requests); 103 suites / 1299 tests green, tsc/lint/build clean
-last_updated: "2026-08-03T08:36:38.479Z"
+stopped_at: "16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md"
+last_updated: "2026-08-03T10:04:22.009Z"
 last_activity: 2026-08-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 119
+  completed_plans: 120
   percent: 90
 ---
 
@@ -155,6 +155,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 16 P06 | 30min | 3 tasks | 8 files |
 | Phase 16 P07 | 14min | 3 tasks | 9 files |
 | Phase 16 P05 | ~12min | 3 tasks | 11 files |
+| Phase 16 P10 | ~25min (partial) | 2/3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -301,6 +302,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 16]: 16-05: isRightsReady/buildCatalogFilter (lib/deals/catalog.ts) is the single tunable rights-ready + filter-vocabulary helper; buyer_shortlists RLS reuses is_buyer_org_member().
 - [Phase ?]: [Phase 16]: 16-05: Catalog/shortlists pages built under app/(buyer-portal)/buyers/* (Rule 1) matching BuyerPortalNav's URL contract; catalog query I/O extracted to lib/deals/catalog-query.ts (Rule 3) after a route.ts non-handler-export build failure.
 - [Phase ?]: [Phase 16]: 16-05: Migration 083 (buyer_shortlists + tracks.metadata GIN index) approved and live -- LOCAL=REMOTE through 083, service-role read 200 -- schema-level only; buyer-session adversarial RLS check (42501 write denial, cross-org zero-rows) is OUTSTANDING/DEFERRED pending a real buyer account.
+- [Phase 16]: 16-10 executed as a deliberate PARTIAL: Task 2 (GTM metrics module + admin dashboard) and Task 3 (REQUIREMENTS.md registration of all 34 Phase 16 IDs) built and committed; Task 1 (export-pack delivery unlock) explicitly deferred alongside 16-09's undecided signing model. — isDeliveryUnlocked requires a signed-AND-paid deal; 16-09 (signing) is deferred and 16-08 (payment) awaits the owner's Stripe setup + migration 084 push, so no real signed-contract state exists yet to build or test delivery against.
 
 ### Pending Todos
 
@@ -372,8 +374,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T08:36:23.029Z
-Stopped at: Completed 16-06-PLAN.md -- buyer request pathway (POST /api/buyer/requests with server-side pre-cleared-terms matching, authorizeRequestTarget shared gate, GET /api/buyer/requests/[id]) and org request dashboard (RequestComposer, OrgRequestDashboard, requests/new/[id] pages under app/(buyer-portal)/buyers/requests); 103 suites / 1299 tests green, tsc/lint/build clean
+Last session: 2026-08-03T10:04:21.987Z
+Stopped at: 16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -398,7 +400,7 @@ flips confirmed on signup OR sheet-response whichever first; initiator's party-1
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
 Resume file: 
 
-None
+.planning/phases/16-gtm-beta-buyer-portal/16-10-PLAN.md (Task 1 only)
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
 ## Operator Next Steps
