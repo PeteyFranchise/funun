@@ -200,7 +200,7 @@ const CSV_HEADERS = [
   'contact_phone',
 ]
 
-function csvCell(v: unknown): string {
+export function csvCell(v: unknown): string {
   const s = v == null ? '' : String(v)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
