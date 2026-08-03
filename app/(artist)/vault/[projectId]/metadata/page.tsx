@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
-import { readComposers, readLyrics, readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
+import { readComposers, readLyrics, readPerformers, readRecordingInfo, readDescriptors } from '@/lib/metadata/schema'
 import { MetadataStudio } from '@/components/vault/MetadataStudio'
 
 export const dynamic = 'force-dynamic'
@@ -117,23 +117,29 @@ export default async function MetadataPage({
 
   const initialTracks = [...(project.tracks ?? [])]
     .sort((a, b) => (a.track_number ?? 0) - (b.track_number ?? 0))
-    .map(t => ({
-      id: t.id,
-      title: t.title ?? 'Untitled track',
-      track_number: t.track_number ?? null,
-      isrc: str(t.isrc),
-      iswc: str(t.iswc),
-      language: str(t.language),
-      audio_file_url: t.audio_file_url ?? null,
-      composers: readComposers(t.metadata),
-      lyrics: readLyrics(t.metadata)?.text ?? '',
-      lyricsExplicit: readLyrics(t.metadata)?.explicit ?? false,
-      performers: readPerformers(t.metadata),
-      recordingDate: readRecordingInfo(t.metadata)?.recordingDate ?? '',
-      recordingCountry: readRecordingInfo(t.metadata)?.recordingCountry ?? '',
-      originalPurpose: readRecordingInfo(t.metadata)?.originalPurpose ?? '',
-      commerciallyAvailable: readRecordingInfo(t.metadata)?.commerciallyAvailable ?? false,
-    }))
+    .map(t => {
+      const descriptors = readDescriptors(t.metadata)
+      return {
+        id: t.id,
+        title: t.title ?? 'Untitled track',
+        track_number: t.track_number ?? null,
+        isrc: str(t.isrc),
+        iswc: str(t.iswc),
+        language: str(t.language),
+        audio_file_url: t.audio_file_url ?? null,
+        composers: readComposers(t.metadata),
+        lyrics: readLyrics(t.metadata)?.text ?? '',
+        lyricsExplicit: readLyrics(t.metadata)?.explicit ?? false,
+        performers: readPerformers(t.metadata),
+        recordingDate: readRecordingInfo(t.metadata)?.recordingDate ?? '',
+        recordingCountry: readRecordingInfo(t.metadata)?.recordingCountry ?? '',
+        originalPurpose: readRecordingInfo(t.metadata)?.originalPurpose ?? '',
+        commerciallyAvailable: readRecordingInfo(t.metadata)?.commerciallyAvailable ?? false,
+        descriptorMoods: descriptors?.moods ?? [],
+        descriptorEnergy: descriptors?.energy ?? '',
+        descriptorVocal: descriptors?.vocal ?? '',
+      }
+    })
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">

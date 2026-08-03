@@ -15,8 +15,18 @@ import {
   PERFORMER_ROLE_LABELS,
   ORIGINAL_PURPOSES,
   ORIGINAL_PURPOSE_LABELS,
+  MOOD_LABELS,
+  MOOD_VALUES,
+  MOODS_MAX,
+  ENERGY_LABELS,
+  ENERGY_VALUES,
+  VOCAL_LABELS,
+  VOCAL_VALUES,
   type Composer,
   type Performer,
+  type Mood,
+  type EnergyLevel,
+  type VocalType,
 } from '@/lib/metadata/schema'
 import { validateRelease, type ValidationReport } from '@/lib/metadata/validate'
 import { isValidIswc, isValidIswcShape } from '@/lib/metadata/identifiers'
@@ -43,6 +53,11 @@ type StudioTrack = {
   recordingCountry: string
   originalPurpose: string
   commerciallyAvailable: boolean
+  descriptorMoods: Mood[]
+  // Stored loosely as strings (mirroring originalPurpose above) — the
+  // server's sanitizeDescriptors() is the source of validation truth.
+  descriptorEnergy: string
+  descriptorVocal: string
 }
 
 type ReleaseState = {
@@ -212,6 +227,18 @@ export function MetadataStudio({
                     commerciallyAvailable: t.commerciallyAvailable,
                   }
                 : null,
+            // Descriptors are optional creative-discovery metadata (mood/
+            // energy/vocal) — omitting all three sends null, which the
+            // route's sanitizeDescriptors() treats as "untagged", not an
+            // empty object.
+            descriptors:
+              t.descriptorMoods.length > 0 || t.descriptorEnergy || t.descriptorVocal
+                ? {
+                    moods: t.descriptorMoods,
+                    energy: t.descriptorEnergy || undefined,
+                    vocal: t.descriptorVocal || undefined,
+                  }
+                : null,
           },
         }),
       })
@@ -338,6 +365,26 @@ export function MetadataStudio({
                 />
                 <IswcField value={t.iswc} onChange={v => setTrack(t.id, { iswc: v.toUpperCase() })} />
                 <SelectField label="Language" value={t.language} onChange={v => setTrack(t.id, { language: v })} options={[{ value: '', label: 'Use release default' }, ...LANGUAGES.map(l => ({ value: l.code, label: l.label }))]} />
+              </div>
+
+              {/* Descriptors — mood, energy, vocal/instrumental. Creative-
+                  discovery metadata for sync buyers/supervisors, kept next
+                  to the other musical-detail fields rather than inside the
+                  rights/credits sections below. Optional — never gates
+                  saving or affects readiness scoring. */}
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Descriptors</p>
+                <p className="mt-0.5 text-[11px] text-white/40">
+                  How sync buyers and music supervisors find this track — mood, energy, and vocal type.
+                </p>
+                <DescriptorsEditor
+                  moods={t.descriptorMoods}
+                  energy={t.descriptorEnergy}
+                  vocal={t.descriptorVocal}
+                  onMoodsChange={moods => setTrack(t.id, { descriptorMoods: moods })}
+                  onEnergyChange={energy => setTrack(t.id, { descriptorEnergy: energy })}
+                  onVocalChange={vocal => setTrack(t.id, { descriptorVocal: vocal })}
+                />
               </div>
 
               {/* Composers */}
@@ -987,6 +1034,113 @@ function PerformerEditor({
       >
         + Add performer
       </button>
+    </div>
+  )
+}
+
+// ─── Descriptors editor (mood / energy / vocal-instrumental) ─────────
+// Chip-picker interaction mirrors the genre/role pickers in
+// components/profile/ProfileForm.tsx (selected = filled lav pill,
+// unselected = ghost border). Vocal/instrumental is a two-way toggle,
+// never inferred from lyrics presence or the zxx language code.
+function DescriptorsEditor({
+  moods,
+  energy,
+  vocal,
+  onMoodsChange,
+  onEnergyChange,
+  onVocalChange,
+}: {
+  moods: Mood[]
+  energy: string
+  vocal: string
+  onMoodsChange: (next: Mood[]) => void
+  onEnergyChange: (next: EnergyLevel | '') => void
+  onVocalChange: (next: VocalType | '') => void
+}) {
+  function toggleMood(mood: Mood) {
+    if (moods.includes(mood)) {
+      onMoodsChange(moods.filter(m => m !== mood))
+      return
+    }
+    if (moods.length >= MOODS_MAX) return // cap enforced — disabled state below
+    onMoodsChange([...moods, mood])
+  }
+
+  const chipCls = (selected: boolean, disabled: boolean) =>
+    [
+      'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+      selected
+        ? 'border-lav/50 bg-lav/20 text-white'
+        : disabled
+          ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20'
+          : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+    ].join(' ')
+
+  const toggleCls = (selected: boolean) =>
+    [
+      'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+      selected
+        ? 'border-lav/50 bg-lav/20 text-white'
+        : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+    ].join(' ')
+
+  return (
+    <div className="mt-2 space-y-3">
+      <div>
+        <div className="flex flex-wrap gap-2">
+          {MOOD_VALUES.map(mood => {
+            const selected = moods.includes(mood)
+            const atCap = !selected && moods.length >= MOODS_MAX
+            return (
+              <button
+                key={mood}
+                type="button"
+                disabled={atCap}
+                onClick={() => toggleMood(mood)}
+                className={chipCls(selected, atCap)}
+              >
+                {MOOD_LABELS[mood]}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-1.5 text-[11px] text-white/30">
+          {moods.length}/{MOODS_MAX} moods selected
+        </p>
+      </div>
+      <div className="flex flex-wrap items-start gap-5">
+        <div>
+          <span className="text-xs text-white/40">Energy</span>
+          <div className="mt-1 flex gap-1.5">
+            {ENERGY_VALUES.map(e => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => onEnergyChange(energy === e ? '' : e)}
+                className={toggleCls(energy === e)}
+              >
+                {ENERGY_LABELS[e]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <span className="text-xs text-white/40">Vocal / instrumental</span>
+          <div className="mt-1 flex gap-1.5">
+            {VOCAL_VALUES.map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => onVocalChange(vocal === v ? '' : v)}
+                className={toggleCls(vocal === v)}
+              >
+                {VOCAL_LABELS[v]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
