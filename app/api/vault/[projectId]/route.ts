@@ -38,6 +38,10 @@ type ProjectUpdate = {
   contact_email?: string | null
   contact_phone?: string | null
   distributor?: string | null
+  // DDEX release-level identifiers (migration 082, 16-11) — no column
+  // privilege restriction in force on vault_projects.
+  grid?: string | null
+  catalog_number?: string | null
 }
 
 function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: string } {
@@ -75,6 +79,8 @@ function sanitize(body: Record<string, unknown>): ProjectUpdate | { error: strin
     'contact_email',
     'contact_phone',
     'distributor',
+    'grid',
+    'catalog_number',
   ] as const) {
     if (!(key in body)) continue
     const value = body[key]

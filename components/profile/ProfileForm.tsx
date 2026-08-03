@@ -88,6 +88,13 @@ type FormState = {
   administrator: string
   mlc_id: string
   soundexchange_id: string
+  isni: string
+  // Generation prefixes (migration 082, 16-11) — self-assign_with_prefix
+  // schemes draw from these; placed with the ISRC registrant fields per
+  // the same edit surface, not a separate screen.
+  gs1_company_prefix: string
+  grid_issuer_code: string
+  catalog_number_prefix: string
   legal_first_name: string
   legal_middle_name: string
   legal_last_name: string
@@ -121,6 +128,10 @@ function toForm(p: UserProfile): FormState {
     administrator: p.administrator ?? '',
     mlc_id: p.mlc_id ?? '',
     soundexchange_id: p.soundexchange_id ?? '',
+    isni: p.isni ?? '',
+    gs1_company_prefix: p.gs1_company_prefix ?? '',
+    grid_issuer_code: p.grid_issuer_code ?? '',
+    catalog_number_prefix: p.catalog_number_prefix ?? '',
     legal_first_name: p.legal_first_name ?? '',
     legal_middle_name: p.legal_middle_name ?? '',
     legal_last_name: p.legal_last_name ?? '',
@@ -1149,6 +1160,19 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 className={`mt-1 ${inputClass}`}
               />
             </div>
+            <div>
+              <label className={labelClass}>ISNI</label>
+              <input
+                value={form.isni}
+                onChange={e => set('isni', e.target.value)}
+                placeholder="0000 0001 2103 2683"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">
+                Your own International Standard Name Identifier, if you have one. Funūn never
+                generates an ISNI — it's allocated by the ISNI International Agency.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -1189,6 +1213,53 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
           {/* ── ISRC learn more ─────────────────────────────────────── */}
           <IsrcLearnMore />
+        </section>
+
+        {/* ── Release-identifier prefixes (migration 082, 16-11) ───── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Release identifier prefixes</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Only fill these in if you hold your own prefix. Funūn mints GRids for every
+              release by default under its own platform issuer code — no prefix or cost to
+              you — unless you enter your own here. Funūn never issues UPCs — a GS1 prefix
+              here is the only way to generate one; most artists get a UPC free from their
+              distributor instead.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>GS1 company prefix</label>
+              <input
+                value={form.gs1_company_prefix}
+                onChange={e => set('gs1_company_prefix', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                placeholder="060123"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">Only if you hold your own GS1 prefix — required to generate a UPC.</p>
+            </div>
+            <div>
+              <label className={labelClass}>GRid issuer code (optional override)</label>
+              <input
+                value={form.grid_issuer_code}
+                onChange={e => set('grid_issuer_code', e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5))}
+                placeholder="Leave blank to use Funūn's platform code"
+                maxLength={5}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">Only if your label already holds its own GRid issuer code.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Catalog number prefix</label>
+              <input
+                value={form.catalog_number_prefix}
+                onChange={e => set('catalog_number_prefix', e.target.value.toUpperCase().slice(0, 12))}
+                placeholder="FUN"
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">Your own internal label prefix — no issuing body involved.</p>
+            </div>
+          </div>
         </section>
 
         {error && <p className="text-sm text-rose-300">{error}</p>}
