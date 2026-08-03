@@ -6,6 +6,8 @@ import { CopyrightFiling } from '@/components/vault/CopyrightFiling'
 import { RightsStatusPatch } from '@/components/vault/RightsStatusPatch'
 import { SongtrustGuideCard } from '@/components/vault/SongtrustGuideCard'
 import { MlcGuideCard } from '@/components/vault/MlcGuideCard'
+import { PreclearedTermsForm } from '@/components/vault/PreclearedTermsForm'
+import type { ProjectLicenseTerms } from '@/lib/deals/schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -153,6 +155,18 @@ export default async function RightsPage({
       .map(c => String(c.name ?? '').trim())
       .filter(Boolean)
   })()
+
+  // 6. Pre-cleared licensing terms (D-15, the "Marmoset five"). Session
+  // client is fine here — project_license_terms' owner-arm RLS policy
+  // already scopes this read to the caller, and ownership was independently
+  // confirmed by step 1's project fetch above.
+  const { data: licenseTerms } = await supabase
+    .from('project_license_terms')
+    .select(
+      'vault_project_id, min_fee_cents, allowed_usage_types, territories, exclusivity_allowed, max_term_months, updated_at'
+    )
+    .eq('vault_project_id', projectId)
+    .maybeSingle()
 
   // ── Derived badge values ──────────────────────────────────────────────────
   const copyrightStatus = project.copyright_status ?? 'not_filed'
@@ -431,6 +445,22 @@ export default async function RightsPage({
             value={true}
             label="Mark as registered"
             disabled={!!project.mlc_registered}
+          />
+        </div>
+      </section>
+
+      {/* ── 6. Pre-Cleared Licensing Terms ───────────────────────────────── */}
+      <section className="mt-8">
+        <h2 className="text-base font-semibold text-white">Pre-Cleared Licensing Terms</h2>
+        <p className="mt-1 text-xs text-white/50">
+          Set the minimum fee, allowed usage, territories, exclusivity, and term length a sync
+          buyer&apos;s request needs to clear on this project. Matching requests skip straight to
+          contract; everything else goes through Funūn first.
+        </p>
+        <div className="mt-3">
+          <PreclearedTermsForm
+            projectId={projectId}
+            terms={(licenseTerms as ProjectLicenseTerms | null) ?? null}
           />
         </div>
       </section>
