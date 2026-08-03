@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 21
-current_phase_name: cross-account-collaboration-sheet-sync
+current_phase: 16
+current_phase_name: gtm-beta-buyer-portal
 status: board-clear
-stopped_at: Completed 21-05-PLAN.md -- dashboard reworked (Avg readiness removed, Closest to ready + Your next moves added); phase 21 fully executed
-last_updated: "2026-08-02T06:02:25.725Z"
-last_activity: 2026-08-01
-last_activity_desc: Phase 21 execution started
+stopped_at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
+last_updated: "2026-08-03T04:37:57.917Z"
+last_activity: 2026-08-03
+last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 110
-  percent: 89
+  completed_plans: 111
+  percent: 90
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 21 — cross-account-collaboration-sheet-sync
+**Current focus:** Phase 16 — gtm-beta-buyer-portal
 
 ## Current Position
 
-Phase: 21 (cross-account-collaboration-sheet-sync) — EXECUTING
-Plan: 5 of 5
+Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
+Plan: 2 of 12
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-01 — Phase 21 execution started
+Last activity: 2026-08-03 — Phase 16 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -149,6 +149,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 21-cross-account-collaboration-sheet-sync P04 | 15min | 3 tasks | 5 files |
 | Phase 21-cross-account-collaboration-sheet-sync P02 | checkpoint-spanning | 3 tasks | 2 files |
 | Phase 21 P05 | 27min | 3 tasks | 3 files |
+| Phase 16 P00 | 20min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -276,6 +277,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 21]: 21-02: Migration 079 (auto-membership SECURITY DEFINER trigger keyed off collaborators.claimed_by, gated to linked non-draft sheets, viewer-only, idempotent via ON CONFLICT DO NOTHING) pushed live 2026-08-02 alongside 077/078 -- LOCAL=REMOTE through 079, PostgREST schema-cache recognizes project_members (200 OK read); full behavioral RLS/auto-membership smoke (three orderings + draft-gate + idempotency vs real second accounts) is OUTSTANDING, not yet executed
 - [Phase 21]: buildNextMoves() classifies pinned rows by sheet.status (mirroring buildAttentionSections' AWAITING_SIGNATURE_STATUSES bucket), gated on viewer being initiator/named party
 - [Phase 21]: Your next moves feed renders regardless of owned-project count since the inclusion rule is cross-account waiting-on-you, not ownership
+- [Phase ?]: 16-00: built the first controlled mood vocabulary in the codebase (MOOD_VALUES, 40 terms) — antenna_opportunities.mood_tags and SoundIdentity.mood_tags stay free-form string[] until 16-05/Antenna converge onto it
+- [Phase ?]: 16-00: descriptorEnergy/descriptorVocal stored as plain string on StudioTrack (matching the existing originalPurpose convention), not the narrow EnergyLevel/VocalType union — server sanitizeDescriptors() is the single validation authority
 
 ### Pending Todos
 
@@ -296,6 +299,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 17-09 checkpoint 2 (P17-09a): AGREEMENT_CLAUSES operative language requires licensed-attorney review before COUNSEL_REVIEW_STATUS can flip to reviewed — assertCounselReviewedForProduction() blocks production minting until then
 - Phase 17 BLOCKING checkpoint outstanding (17-07 Task 3): live end-to-end 3-signer mobile signing run. Prereqs: push migration 065; fix pre-existing npm run build failure in contracts page (from 17-05); set DOCUSEAL_WEBHOOK_SECRET and ESIGN_FROM_EMAIL; DocuSeal Pro purchase; attorney review of AGREEMENT_CLAUSES.
 - 21-02 checkpoint: migration 079 (auto-membership trigger) pushed live and schema-verified 2026-08-02, but the full behavioral RLS/auto-membership access-matrix smoke (three event orderings + draft-gate + idempotency, against real second accounts, per 21-02-PLAN.md Task 3 how-to-verify steps 3-4) has NOT been executed -- outstanding human verification
+- 16-00: plan frontmatter references requirements META-01/META-02 but REQUIREMENTS.md has no Phase 16 section registering them yet (requirements.mark-complete returned not_found) -- pre-existing documentation gap, not fixed by this executor; a future plan or /gsd-docs-update pass should register Phase 16's requirement IDs in REQUIREMENTS.md
 
 ### Quick Tasks Completed
 
@@ -344,8 +348,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-02T06:02:25.705Z
-Stopped at: Completed 21-05-PLAN.md -- dashboard reworked (Avg readiness removed, Closest to ready + Your next moves added); phase 21 fully executed
+Last session: 2026-08-03T04:37:27.982Z
+Stopped at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -369,7 +373,7 @@ decisions: separate PartyPicker (not a shared-picker rewrite); collaborators.sta
 flips confirmed on signup OR sheet-response whichever first; initiator's party-1 row
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
 Resume file: 
-None
+
 Stopped at: Phase 17 Plan 01 (E-Sign Foundation) COMPLETE — DocuSeal provider contract extended, webhook HMAC verification, readiness tier map, envelope lifecycle helpers, splits reconciliation, 5 new notification builders. 58 new tests, full suite 52/52 suites 513/513 tests green, tsc/lint clean. Plans 02-07 remain gated on Pete's DocuSeal provider-verification pass.
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
