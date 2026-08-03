@@ -371,8 +371,8 @@ Plans:
 
 **Wave 4** *(external integrations — credential-gated)*
 
-- [ ] 16-08-PLAN.md — Stripe Connect Express payouts, buyer Checkout destination split, Stripe webhook (migration 065, human-gated push)
-- [ ] 16-09-PLAN.md — SignWell embedded e-sign adapter, sync-license PDF, Contract Locker handoff, docs rewrite
+- [~] 16-08-PLAN.md — Stripe Connect Express payouts, buyer Checkout destination split, Stripe webhook (migration 084, human-gated push) — code + migration authored; awaiting owner Stripe setup + 084 push + test-mode payment
+- [ ] 16-09-PLAN.md — **DEFERRED (2026-08-03):** sync-license e-signing (DocuSeal reuse per D-18c). Blocked on the sync-license signing MODEL (blanket pre-auth vs per-deal vs hybrid), pending owner decision + music/IP counsel — see `.planning/deliberations/sync-license-signing-model.md`. Re-scope before building.
 
 **Wave 5** *(delivery + instrumentation)*
 
