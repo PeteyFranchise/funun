@@ -6,14 +6,14 @@ current_phase: 16
 current_phase_name: gtm-beta-buyer-portal
 status: board-clear
 stopped_at: Completed 16-03-PLAN.md -- buyer account/org machinery (createBuyerAccount, admin buyer-orgs API+UI, org-admin member invites, buyer portal shell/nav/access page); 103 suites / 1299 tests green, tsc/lint/build clean
-last_updated: "2026-08-03T06:24:42.820Z"
+last_updated: "2026-08-03T06:38:10.474Z"
 last_activity: 2026-08-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 115
+  completed_plans: 116
   percent: 90
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -151,6 +151,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 21 P05 | 27min | 3 tasks | 3 files |
 | Phase 16 P00 | 20min | 3 tasks | 5 files |
 | Phase 16 P03 | 15min | 3 tasks | 10 files |
+| Phase 16 P04 | 35min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -287,6 +288,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 16-03: Added GET /api/admin/buyer-orgs/[id]/members (Rule 2) so the admin per-org member list has a real data source; POST was the only handler explicitly named in the plan.
 - [Phase ?]: 16-03: Deliberately left app/(admin)/layout.tsx untouched -- 16-07 (wave 3, depends_on 16-03) is the declared sole owner of that file this wave and adds the Buyer orgs sidebar link together with its own Deals entry.
 - [Phase ?]: 16-03: plan frontmatter references requirements BUYER-03/BUYER-04/BUYER-06 but REQUIREMENTS.md still has no Phase 16 section registering them (requirements.mark-complete returned not_found for all 3) -- same pre-existing gap noted at 16-00/16-01/16-02/16-11, deferred to the same future /gsd-docs-update pass, not fixed by this executor.
+- [Phase 16]: 16-04: Deals room artist-visibility scoping resolves owned vault_projects id set first, then filters license_requests to that set (never a bare vault_projects-visible subquery) -- migration 078 widened vault_projects SELECT to owner-OR-member (C4)
+- [Phase 16]: 16-04: Requester individual display name resolved via service.auth.admin.getUserById().user_metadata.display_name (not a table read) -- buyer accounts have no user_profiles row (D-11 fully-separate-account model)
+- [Phase 16]: 16-04: licensing route ownership check returns 404 (not 403) for a non-owned/nonexistent project, mirroring the app/api/connections PATCH 404-on-zero-rows precedent (10-03)
 
 ### Pending Todos
 
@@ -358,7 +362,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T06:24:31.354Z
+Last session: 2026-08-03T06:38:10.450Z
 Stopped at: Completed 16-03-PLAN.md -- buyer account/org machinery (createBuyerAccount, admin buyer-orgs API+UI, org-admin member invites, buyer portal shell/nav/access page); 103 suites / 1299 tests green, tsc/lint/build clean
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
