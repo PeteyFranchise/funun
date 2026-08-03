@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 16
 current_phase_name: gtm-beta-buyer-portal
 status: board-clear
-stopped_at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
-last_updated: "2026-08-03T05:45:58.208Z"
+stopped_at: Completed 16-03-PLAN.md -- buyer account/org machinery (createBuyerAccount, admin buyer-orgs API+UI, org-admin member invites, buyer portal shell/nav/access page); 103 suites / 1299 tests green, tsc/lint/build clean
+last_updated: "2026-08-03T06:24:42.820Z"
 last_activity: 2026-08-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 114
+  completed_plans: 115
   percent: 90
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -150,6 +150,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 21-cross-account-collaboration-sheet-sync P02 | checkpoint-spanning | 3 tasks | 2 files |
 | Phase 21 P05 | 27min | 3 tasks | 3 files |
 | Phase 16 P00 | 20min | 3 tasks | 5 files |
+| Phase 16 P03 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -283,6 +284,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 16-01: added is_buyer_org_member() SECURITY DEFINER helper (Rule 2) to buyer_members/buyer_orgs RLS, avoiding a 42P17 self-referential-recursion class already fixed at migrations 064/078
 - [Phase ?]: 16-02: license_requests SELECT column-grant excludes admin_notes/owner_id/commission_pct/artist_net_cents; artist-visibility arm scoped by explicit vault_projects.user_id match (C4), not a bare RLS-visible subquery, since migration 078 widened vault_projects SELECT to owner-OR-member
 - [Phase ?]: 16-11: user_profiles.isni kept PRIVATE (consistent with pro/ipi/mlc_id); platform_identifier_config.grid_issuer_code seeded NULL since Funun is not yet IFPI-registered -- platform GRid generation is structurally unavailable until that registration lands
+- [Phase ?]: 16-03: Added GET /api/admin/buyer-orgs/[id]/members (Rule 2) so the admin per-org member list has a real data source; POST was the only handler explicitly named in the plan.
+- [Phase ?]: 16-03: Deliberately left app/(admin)/layout.tsx untouched -- 16-07 (wave 3, depends_on 16-03) is the declared sole owner of that file this wave and adds the Buyer orgs sidebar link together with its own Deals entry.
+- [Phase ?]: 16-03: plan frontmatter references requirements BUYER-03/BUYER-04/BUYER-06 but REQUIREMENTS.md still has no Phase 16 section registering them (requirements.mark-complete returned not_found for all 3) -- same pre-existing gap noted at 16-00/16-01/16-02/16-11, deferred to the same future /gsd-docs-update pass, not fixed by this executor.
 
 ### Pending Todos
 
@@ -354,8 +358,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T05:45:01.506Z
-Stopped at: Completed 16-00-PLAN.md -- descriptor vocabulary, PATCH route, and Metadata Studio tagging UI shipped; 1219/1219 tests green
+Last session: 2026-08-03T06:24:31.354Z
+Stopped at: Completed 16-03-PLAN.md -- buyer account/org machinery (createBuyerAccount, admin buyer-orgs API+UI, org-admin member invites, buyer portal shell/nav/access page); 103 suites / 1299 tests green, tsc/lint/build clean
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
