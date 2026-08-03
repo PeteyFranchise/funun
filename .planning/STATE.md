@@ -6,14 +6,14 @@ current_phase: 16
 current_phase_name: gtm-beta-buyer-portal
 status: board-clear
 stopped_at: Completed 16-06-PLAN.md -- buyer request pathway (POST /api/buyer/requests with server-side pre-cleared-terms matching, authorizeRequestTarget shared gate, GET /api/buyer/requests/[id]) and org request dashboard (RequestComposer, OrgRequestDashboard, requests/new/[id] pages under app/(buyer-portal)/buyers/requests); 103 suites / 1299 tests green, tsc/lint/build clean
-last_updated: "2026-08-03T07:00:22.472Z"
+last_updated: "2026-08-03T07:19:36.564Z"
 last_activity: 2026-08-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 21
   completed_phases: 19
   total_plans: 124
-  completed_plans: 117
+  completed_plans: 118
   percent: 90
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -153,6 +153,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 16 P03 | 15min | 3 tasks | 10 files |
 | Phase 16 P04 | 35min | 3 tasks | 7 files |
 | Phase 16 P06 | 30min | 3 tasks | 8 files |
+| Phase 16 P07 | 14min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -294,6 +295,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 16]: 16-04: licensing route ownership check returns 404 (not 403) for a non-owned/nonexistent project, mirroring the app/api/connections PATCH 404-on-zero-rows precedent (10-03)
 - [Phase 16]: 16-06: Routes built under app/(buyer-portal)/buyers/requests/* (not the plan's literal path) to match BuyerPortalNav's established /buyers/requests URL contract from 16-03. — Rule 1 routing bug fix — the literal plan path would have shipped a dead nav link.
 - [Phase 16]: 16-06: Added lib/deals/request-target.ts (authorizeRequestTarget) shared by the POST route and the composer, standing in for 16-05's not-yet-built isRightsReady. — Rule 2 — avoids duplicating the security-critical rights-ready/visibility/block gate across two call sites.
+- [Phase 16]: No migration for admin-created manual-intake provenance — recorded as a tagged line inside admin_notes rather than a new column.
+- [Phase 16]: Manual intake (POST /api/admin/deals) deliberately re-implemented rather than sharing code with POST /api/buyer/requests, mirroring the existing admin-route-mirrors-member-route precedent.
 
 ### Pending Todos
 
@@ -365,7 +368,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T07:00:22.452Z
+Last session: 2026-08-03T07:19:07.567Z
 Stopped at: Completed 16-06-PLAN.md -- buyer request pathway (POST /api/buyer/requests with server-side pre-cleared-terms matching, authorizeRequestTarget shared gate, GET /api/buyer/requests/[id]) and org request dashboard (RequestComposer, OrgRequestDashboard, requests/new/[id] pages under app/(buyer-portal)/buyers/requests); 103 suites / 1299 tests green, tsc/lint/build clean
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
