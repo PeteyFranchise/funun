@@ -30,6 +30,9 @@ export type ProjectRow = {
   contact_name: string | null
   contact_email: string | null
   contact_phone: string | null
+  // DDEX release-level identifiers (migration 082, 16-11).
+  grid: string | null
+  catalog_number: string | null
 }
 
 export type TrackRow = {
@@ -59,6 +62,8 @@ export function rightsOf(project: ProjectRow): ReleaseRights {
     contact_name: project.contact_name,
     contact_email: project.contact_email,
     contact_phone: project.contact_phone,
+    grid: project.grid,
+    catalog_number: project.catalog_number,
   }
 }
 
