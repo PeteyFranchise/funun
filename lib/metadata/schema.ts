@@ -134,12 +134,155 @@ export type RecordingInfo = {
   commerciallyAvailable?: boolean
 }
 
+// ─── Descriptors: mood, energy, vocal/instrumental (artist-authored) ──
+// The per-track "what does this sound/feel like" a sync supervisor filters
+// on before genre. No prior controlled vocabulary exists to extend: mood
+// tags on `antenna_opportunities` (lib/matching/antenna.ts) and
+// `SoundIdentity.mood_tags` (types/index.ts) are uncontrolled free-form
+// string[] today (see lib/antenna/demo.ts seed data — "late-night",
+// "moody", etc.). This IS the first controlled term list; the demand side
+// (Antenna matching, Phase 16 buyer catalog filters) should converge onto
+// it rather than the other way around.
+export type Mood =
+  | 'uplifting' | 'euphoric' | 'triumphant' | 'hopeful' | 'joyful'
+  | 'melancholy' | 'wistful' | 'bittersweet' | 'somber' | 'heartbroken'
+  | 'tense' | 'ominous' | 'aggressive' | 'gritty' | 'menacing'
+  | 'serene' | 'intimate' | 'tender' | 'dreamy' | 'ethereal'
+  | 'epic' | 'cinematic' | 'anthemic' | 'sweeping' | 'grand'
+  | 'quirky' | 'playful' | 'whimsical' | 'nostalgic' | 'romantic'
+  | 'introspective' | 'moody' | 'smooth' | 'sultry' | 'raw'
+  | 'energetic' | 'driving' | 'chill' | 'peaceful' | 'mysterious'
+
+export const MOOD_LABELS: Record<Mood, string> = {
+  uplifting: 'Uplifting',
+  euphoric: 'Euphoric',
+  triumphant: 'Triumphant',
+  hopeful: 'Hopeful',
+  joyful: 'Joyful',
+  melancholy: 'Melancholy',
+  wistful: 'Wistful',
+  bittersweet: 'Bittersweet',
+  somber: 'Somber',
+  heartbroken: 'Heartbroken',
+  tense: 'Tense',
+  ominous: 'Ominous',
+  aggressive: 'Aggressive',
+  gritty: 'Gritty',
+  menacing: 'Menacing',
+  serene: 'Serene',
+  intimate: 'Intimate',
+  tender: 'Tender',
+  dreamy: 'Dreamy',
+  ethereal: 'Ethereal',
+  epic: 'Epic',
+  cinematic: 'Cinematic',
+  anthemic: 'Anthemic',
+  sweeping: 'Sweeping',
+  grand: 'Grand',
+  quirky: 'Quirky',
+  playful: 'Playful',
+  whimsical: 'Whimsical',
+  nostalgic: 'Nostalgic',
+  romantic: 'Romantic',
+  introspective: 'Introspective',
+  moody: 'Moody',
+  smooth: 'Smooth',
+  sultry: 'Sultry',
+  raw: 'Raw',
+  energetic: 'Energetic',
+  driving: 'Driving',
+  chill: 'Chill',
+  peaceful: 'Peaceful',
+  mysterious: 'Mysterious',
+}
+
+export const MOOD_VALUES = Object.keys(MOOD_LABELS) as Mood[]
+
+/** Tagging stays a signal, not a checkbox sweep — cap the number of moods per track. */
+export const MOODS_MAX = 8
+
+// Deliberately mirrors `SoundIdentity.energy_level` (types/index.ts) so the
+// artist-authored per-track value and the artist-level benchmark value are
+// directly comparable.
+export type EnergyLevel = 'low' | 'medium' | 'high'
+
+export const ENERGY_LABELS: Record<EnergyLevel, string> = {
+  low: 'Low energy',
+  medium: 'Medium energy',
+  high: 'High energy',
+}
+
+export const ENERGY_VALUES = Object.keys(ENERGY_LABELS) as EnergyLevel[]
+
+// Explicit, artist-set — never inferred from lyrics presence or the `zxx`
+// language code (an instrumental version of a vocal track may still carry
+// lyrics metadata; absence of lyrics text does not mean no vocals).
+export type VocalType = 'vocal' | 'instrumental'
+
+export const VOCAL_LABELS: Record<VocalType, string> = {
+  vocal: 'Vocal',
+  instrumental: 'Instrumental',
+}
+
+export const VOCAL_VALUES = Object.keys(VOCAL_LABELS) as VocalType[]
+
+export type TrackDescriptors = {
+  moods: Mood[]
+  energy?: EnergyLevel | null
+  vocal?: VocalType | null
+  updated_at?: string
+}
+
+/** Read typed descriptors out of a loose metadata JSONB blob (null if absent). */
+export function readDescriptors(
+  metadata: Record<string, unknown> | null | undefined
+): TrackDescriptors | null {
+  const raw = metadata?.descriptors as Record<string, unknown> | undefined
+  if (!raw) return null
+  const rawMoods = Array.isArray(raw.moods) ? raw.moods : []
+  const moods = Array.from(
+    new Set(
+      rawMoods.filter(
+        (m): m is Mood => typeof m === 'string' && MOOD_VALUES.includes(m as Mood)
+      )
+    )
+  ).slice(0, MOODS_MAX)
+  const energy = ENERGY_VALUES.includes(raw.energy as EnergyLevel) ? (raw.energy as EnergyLevel) : null
+  const vocal = VOCAL_VALUES.includes(raw.vocal as VocalType) ? (raw.vocal as VocalType) : null
+  return {
+    moods,
+    energy,
+    vocal,
+    updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+  }
+}
+
+/** Validate + normalize descriptors input from the client (null clears them). */
+export function sanitizeDescriptors(input: unknown): TrackDescriptors | null {
+  const o = (input ?? {}) as Record<string, unknown>
+  const rawMoods = Array.isArray(o.moods) ? o.moods : []
+  const seen = new Set<Mood>()
+  for (const m of rawMoods) {
+    if (typeof m !== 'string') continue
+    if (!MOOD_VALUES.includes(m as Mood)) continue // free text / retired terms dropped silently
+    seen.add(m as Mood)
+    if (seen.size >= MOODS_MAX) break
+  }
+  const moods = Array.from(seen)
+  const energy = ENERGY_VALUES.includes(o.energy as EnergyLevel) ? (o.energy as EnergyLevel) : null
+  const vocal = VOCAL_VALUES.includes(o.vocal as VocalType) ? (o.vocal as VocalType) : null
+  const hasAny = moods.length > 0 || energy !== null || vocal !== null
+  if (!hasAny) return null // "untagged" — not an empty object
+  return { moods, energy, vocal, updated_at: new Date().toISOString() }
+}
+
 // Shape we read out of (and write into) tracks.metadata JSONB.
 export type TrackMetadata = {
   composers?: Composer[]
   lyrics?: TrackLyrics
   performers?: Performer[]
   recording?: RecordingInfo
+  descriptors?: TrackDescriptors
 }
 
 // Release-level rights & contact — shared across the project. Mirrors the
