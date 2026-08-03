@@ -57,6 +57,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           Deals
         </Link>
         <Link
+          href="/admin/deals/metrics"
+          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+        >
+          GTM Metrics
+        </Link>
+        <Link
           href="/admin/green-room-placements"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
