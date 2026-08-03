@@ -351,7 +351,7 @@ Plans:
 **Goal:** Build the product foundation for founder-led sync buyer deals: a specialized buyer account/portal, structured license requests, safe buyer discovery/request entry points, admin deal workflow, Contract Locker/e-sign handoff, and metrics that validate whether the GTM motion is repeatable.
 **Requirements**: BUYER-01..07 · DEAL-01..07 · PORTAL-01..05 · ARTIST-01,02 · ADMIN-01..03 · MONEY-01..03 · PAPER-01..04 · DELIVERY-01 · METRICS-01,02 (34 IDs; registered in REQUIREMENTS.md by plan 16-10, planning source: `16-CONTEXT.md` decisions D-01 through D-20)
 **Depends on:** Phase 13 for broad buyer visibility and trust/safety enforcement (shipped 2026-07-18 — prerequisite satisfied); Phase 15 capability model as precedent only (D-11 deliberately does NOT use it). Phase 14 export pack is reused unchanged for buyer delivery.
-**Plans:** 6/12 plans executed
+**Plans:** 7/12 plans executed
 
 **Wave 1** *(schema + contracts — parallel, disjoint files)*
 
@@ -366,7 +366,7 @@ Plans:
 **Wave 3** *(portal surfaces + deal pipeline)*
 
 - [ ] 16-05-PLAN.md — filtered rights-ready catalog browse + org-shared shortlists (migration 064, human-gated push)
-- [ ] 16-06-PLAN.md — request composer with server-side pre-cleared matching + org request dashboard
+- [x] 16-06-PLAN.md — request composer with server-side pre-cleared matching + org request dashboard
 - [ ] 16-07-PLAN.md — admin negotiation queue, deal-stage machine, commission economics, manual intake
 
 **Wave 4** *(external integrations — credential-gated)*
@@ -546,7 +546,7 @@ Plans:
 | 13. Network Tab & Trust & Safety | v1.2 | 5/5 | Complete   | 2026-07-18 |
 | 14. Playback Room Refinement | v1.2 (Sound Vault) | 6/6 | Complete   | 2026-07-07 |
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
-| 16. GTM Beta Launch & Buyer Portal | v1.3 | 6/12 | In Progress|  |
+| 16. GTM Beta Launch & Buyer Portal | v1.3 | 7/12 | In Progress|  |
 | 17. Split-Sheet E-Sign | v1.3-pre | 10/10 | Complete   | 2026-07-20 |
 
 ### Phase 19: Profile & Identity Model Cleanup
