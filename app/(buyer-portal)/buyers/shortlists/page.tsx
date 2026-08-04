@@ -30,9 +30,9 @@ export default async function ShortlistsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <p className="text-xs uppercase tracking-wide text-white/40">Shortlists</p>
-      <h1 className="mt-1 text-2xl font-semibold text-white">Org shortlist</h1>
-      <p className="mt-1 max-w-2xl text-sm text-white/50">
+      <p className="text-xs uppercase tracking-wide text-[color:var(--ink-3)]">Shortlists</p>
+      <h1 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">Org shortlist</h1>
+      <p className="mt-1 max-w-2xl text-sm text-[color:var(--ink-2)]">
         Every project saved by anyone on your team, visible to the whole org — scout saves, approver
         reviews (D-14c). Invisible to artists.
       </p>
