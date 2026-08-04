@@ -650,10 +650,10 @@ Plans:
 
 **Remaining scope:** 2c — wire License Send → `POST /api/buyer/requests` (16-06) so a request creates a real deal; 1.5 — enrich the catalog query (artist/energy/length/mood/vocal/instruments + tri-state rights) + server-side filtering/pagination (gated on inclusion decision); the dark-theme toggle; re-theme the other buyer surfaces (request composer/dashboard, shortlists, org dashboard) to light + reconcile the 16-03 portal shell with the catalogue top-nav; real preview audio; logo adoption.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 - [x] 22-01-PLAN.md — Record the built slices 1/2a/2b (faithful light catalogue + filters/search/sort + player/modal over the fixture); no new code, honest baseline. [catalogue-browse, audio-player]
-- [ ] 22-02-PLAN.md — Slice 2c: wire the License modal Send → real `POST /api/buyer/requests` via a unit-tested payload mapper + track selector (carries the phase threat model). [license-request-wiring]
+- [x] 22-02-PLAN.md — Slice 2c: wire the License modal Send → real `POST /api/buyer/requests` via a unit-tested payload mapper + track selector (carries the phase threat model). [license-request-wiring]
 - [ ] 22-03-PLAN.md — Buyer portal shell: promote the catalogue light top-nav to a shared BuyerTopNav, retire the dark sidebar (nav reconciliation), light `.fnbl` shell + per-buyer dark-theme toggle (cookie). [nav-reconciliation, theme-light-buyer, dark-toggle]
 - [ ] 22-04-PLAN.md — Re-theme the remaining buyer surfaces (shortlist, org requests list/detail/dashboard, request composer) to the light token system, dark-toggle-reactive. [retheme-surfaces, theme-light-buyer]
 - [ ] 22-05-PLAN.md — Slice 1.5 (GATED on the inclusion deliberation): enrich the catalog query (artist/mood/energy/vocal/length/versions/tri-state rights) + server-side filtering/pagination + flip page to live rows; derive-over-migrate. [live-data-enrichment]

@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 22
 current_phase_name: buyer-catalogue-light-ui
 status: board-clear
-stopped_at: "16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md"
-last_updated: "2026-08-04T07:15:54.594Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-08-04T07:25:32.149Z"
 last_activity: 2026-08-04
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 22
   completed_phases: 19
   total_plans: 129
-  completed_plans: 121
+  completed_plans: 122
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 22 (buyer-catalogue-light-ui) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -157,6 +157,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 16 P05 | ~12min | 3 tasks | 11 files |
 | Phase 16 P10 | ~25min (partial) | 2/3 tasks | 8 files |
 | Phase 22 P01 | 3min | 2 tasks | 0 files |
+| Phase 22 P02 | 45min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -305,6 +306,10 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 16]: 16-05: Migration 083 (buyer_shortlists + tracks.metadata GIN index) approved and live -- LOCAL=REMOTE through 083, service-role read 200 -- schema-level only; buyer-session adversarial RLS check (42501 write denial, cross-org zero-rows) is OUTSTANDING/DEFERRED pending a real buyer account.
 - [Phase 16]: 16-10 executed as a deliberate PARTIAL: Task 2 (GTM metrics module + admin dashboard) and Task 3 (REQUIREMENTS.md registration of all 34 Phase 16 IDs) built and committed; Task 1 (export-pack delivery unlock) explicitly deferred alongside 16-09's undecided signing model. — isDeliveryUnlocked requires a signed-AND-paid deal; 16-09 (signing) is deferred and 16-08 (payment) awaits the owner's Stripe setup + migration 084 push, so no real signed-contract state exists yet to build or test delivery against.
 - [Phase ?]: 22-01: Record-only baseline plan for buyer catalogue slices 1/2a/2b - no source code changed, existing CatalogBrowserLight.tsx/catalog-sample.ts/catalog page verified present+wired+type-clean; four deferrals recorded (preview audio, logo, Similarity/Playlists tabs, live-data/inclusion gate)
+- [Phase ?]: 22-02: buildRequestBody strips currency formatting client-side and rounds to integer cents rather than requiring a pre-cleaned numeric input — Matches the modal's free-text Offer field UX while still producing the route's required integer budget_cents
+- [Phase ?]: 22-02: Media has no home in license_requests, so it folds into buyer_notes as an optional 'Media: {value}' line instead of a schema change — Avoids a migration for a single display-only dimension the route doesn't need to validate
+- [Phase ?]: 22-02: SAMPLE_CATALOG_ROWS fixture rows carry synthetic vaultProjectId/tracks; a submit over the fixture is expected to 404 at authorizeRequestTarget by design — Correct-by-construction per T-22-02-02 — real deals require live rows (slice 1.5 / 22-05)
+- [Phase ?]: 22-02: plan frontmatter references requirement license-request-wiring but REQUIREMENTS.md has no Phase 22 section registering it (requirements.mark-complete returned not_found) — Same pre-existing gap noted at 16-03/16-11/22-01 -- deferred to a future /gsd-docs-update pass, not fixed by this executor (out of this plan's scope)
 
 ### Pending Todos
 
@@ -377,8 +382,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-04T07:14:58.061Z
-Stopped at: 16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md
+Last session: 2026-08-04T07:25:16.786Z
+Stopped at: Completed 22-02-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
