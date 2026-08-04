@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 22
 current_phase_name: buyer-catalogue-light-ui
 status: board-clear
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-08-04T07:37:06.193Z"
+stopped_at: Completed 22-04-PLAN.md
+last_updated: "2026-08-04T07:46:53.293Z"
 last_activity: 2026-08-04
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 22
   completed_phases: 19
   total_plans: 129
-  completed_plans: 123
+  completed_plans: 124
   percent: 86
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 22 (buyer-catalogue-light-ui) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -159,6 +159,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 22 P01 | 3min | 2 tasks | 0 files |
 | Phase 22 P02 | 45min | 3 tasks | 4 files |
 | Phase 22-buyer-catalogue-light-ui P03 | 25min | 3 tasks | 7 files |
+| Phase 22 P04 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -314,6 +315,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 22]: 22-03: Dark ink family (--ink/--ink-2/--ink-3) uses lavender tones rather than plain white, per the plan's explicit fallback instruction -- distinct from the artist dark theme's white-primary convention
 - [Phase 22]: 22-03: BuyerTopNav carries its own scoped nav CSS (duplicated from CatalogBrowserLight's original .top/.navlink/brandmark rules) rather than folding into FNBL_CSS -- FNBL_CSS stays tokens-only; the nav renders on shortlists/requests pages where CatalogBrowserLight never mounts
 - [Phase 22]: 22-03: plan frontmatter references requirements nav-reconciliation/theme-light-buyer/dark-toggle but REQUIREMENTS.md has no Phase 22 section registering them (requirements.mark-complete returned not_found for all 3) -- same pre-existing gap noted at 22-01/22-02, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: Indigo-accent CTA/badge pills use border-[line] bg-[wash-2] text-[indigo] hover:bg-[wash], matching CatalogBrowserLight's own .lic/.chip idiom — Keeps the light re-theme visually consistent with the existing catalogue surface rather than inventing a new indigo-tinted surface not present in FNBL_CSS
+- [Phase ?]: terms_agreed/contract deal-stage badges use the neutral wash/line surface with only the accent text color changed (indigo/fuchsia) — FNBL_CSS has no dedicated indigo-bg/indigo-line or fuchsia-bg/fuchsia-line token families -- only ok/part/req have full bg/line/fg triples
 
 ### Pending Todos
 
@@ -386,8 +389,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-04T07:36:53.333Z
-Stopped at: Completed 22-03-PLAN.md
+Last session: 2026-08-04T07:46:53.269Z
+Stopped at: Completed 22-04-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
