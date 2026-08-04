@@ -10,6 +10,7 @@ import {
   type Territory,
 } from '@/lib/deals/schema'
 import { buildRequestBody } from '@/lib/deals/request-payload'
+import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
@@ -25,6 +26,11 @@ import { buildRequestBody } from '@/lib/deals/request-payload'
 // server-side filtering are slices 1.5/2c. Which songs reach the catalogue is
 // an open decision — see .planning/deliberations/buyer-catalogue-inclusion-model.md.
 // Design CSS is ported scoped under `.fnbl` so it never leaks into the dark app.
+//
+// 22-03: mounted `embedded` from app/(buyer-portal)/buyers/catalog/page.tsx
+// so it renders inside the shared BuyerTopNav shell without drawing a
+// second, competing header or re-injecting the layout's already-injected
+// FNBL_CSS base tokens (nav-reconciliation Option A).
 
 export type CatalogRights = 'ok' | 'part' | 'req'
 export type Dynamics = 'twin' | 'steady' | 'build' | 'fade' | 'peak'
@@ -140,7 +146,20 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
   <div className="fld"><label>{label}</label>{children}</div>
 )
 
-export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogRow[]; isPublic?: boolean }) {
+export function CatalogBrowserLight({
+  rows,
+  isPublic = false,
+  embedded = false,
+}: {
+  rows: CatalogRow[]
+  isPublic?: boolean
+  // 22-03: when true, the surrounding app/(buyer-portal)/layout.tsx has
+  // already mounted the shared BuyerTopNav + injected FNBL_CSS once for the
+  // whole portal — this component must not draw a second, competing header
+  // or re-inject the base tokens. The non-embedded branch (isPublic) stays
+  // fully self-contained for the currently-unused public route.
+  embedded?: boolean
+}) {
   const emptySel = () => FILTER_KEYS.reduce((a, k) => ({ ...a, [k]: new Set<string>() }), {} as Record<FilterKey, Set<string>>)
 
   const [q, setQ] = useState('')
@@ -292,20 +311,22 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
   const activeCount = activeChips.length + (q.trim() ? 1 : 0)
 
   return (
-    <div className="fnbl" onClick={() => setOpen(null)}>
-      <style>{CSS}</style>
+    <div className={embedded ? undefined : 'fnbl'} onClick={() => setOpen(null)}>
+      <style>{embedded ? CSS : `${FNBL_CSS}${CSS}`}</style>
 
-      <header className="top">
-        <div className="l">
-          <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
-          {isPublic && <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
-        </div>
-        <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
-        <div className="r">
-          <button className="cart" type="button" aria-label="License queue"><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
-          <button className="burger" type="button" aria-label="Menu"><i /><i /><i /></button>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="top">
+          <div className="l">
+            <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
+            {isPublic && <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
+          </div>
+          <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
+          <div className="r">
+            <button className="cart" type="button" aria-label="License queue"><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
+            <button className="burger" type="button" aria-label="Menu"><i /><i /><i /></button>
+          </div>
+        </header>
+      )}
 
       <div className="wrap" onClick={e => e.stopPropagation()}>
         <div className="tabs" role="tablist">
@@ -544,13 +565,12 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
   )
 }
 
-// Claude Design's light catalogue CSS, scoped under `.fnbl`.
+// Claude Design's light catalogue CSS, scoped under `.fnbl`. The base
+// token block + `.fnbl *`/`.fnbl .icn`/`.fnbl .gtext` shared rules moved to
+// components/buyer/fnbl-theme.ts (FNBL_CSS, 22-03) so the whole buyer
+// portal single-sources them; everything catalogue-specific stays here.
 const CSS = `
-.fnbl{--page:#FFFFFF;--ink:#241A4D;--ink-2:#5F5885;--ink-3:#8B85AB;--wash:#F1EDFE;--wash-2:#E7E1FC;--line:#DED7FB;--line-2:#CFC5F7;--indigo:#6D5AE0;--fuchsia:#B22BC9;--grad:linear-gradient(105deg,#6D5AE0 0%,#B22BC9 100%);--ok-fg:#0B7A57;--ok-bg:#E4F6EF;--ok-line:#B6E4D3;--part-fg:#8A5B04;--part-bg:#FDF3E0;--part-line:#F0DCB2;--req-fg:#A62742;--req-bg:#FDEBEF;--req-line:#F5C9D3;background:var(--page);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;padding-bottom:120px;}
-.fnbl *{box-sizing:border-box;}
-.fnbl .icn{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .fnbl .wrap{max-width:1380px;margin:0 auto;padding:0 32px;}
-.fnbl .gtext{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .fnbl button{font-family:inherit;cursor:pointer;}
 .fnbl .top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:26px 40px;}
 .fnbl .top .l{display:flex;align-items:center;gap:34px;}
