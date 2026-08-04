@@ -630,3 +630,24 @@ Plans:
 - [x] 21-03-PLAN.md — Wave 2: "Shared with me" vault lane + shared-card badge [③]
 - [x] 21-04-PLAN.md — Wave 2: sheet↔project bidirectional sync while draft, link snaps on send-for-signature [sheet-project-sync ①]
 - [x] 21-05-PLAN.md — Wave 3: dashboard rework — remove Avg readiness, add "Closest to ready" + "Your next moves" feed [④③]
+
+---
+
+### Phase 22: Buyer Catalogue & Light-Theme Buyer UI
+
+**Goal:** Recreate the buyer **Browse Catalogue** pixel-faithfully from Claude Design's hi-fi handoff, and establish the **light-theme buyer UI** as a platform convention (buyer side = light/white, artist side = dark). Redesigns Phase 16's basic catalogue (16-05) into the real, designed buyer browse surface — working filters/search/sort, an audio player, and the License request flow — with a dark-theme toggle option for logged-in buyers.
+**Requirements**: see `.planning/phases/22-buyer-catalogue-light-ui/22-CONTEXT.md` (owner direction + Claude Design handoff; slices 1/2a/2b already built on `feat/buyer-catalogue-light`)
+**Depends on:** Phase 16 (buyer portal, catalogue data/query, request pipeline)
+
+**Locked decisions (from 22-CONTEXT.md — do not re-litigate):**
+
+- **Theme:** buyer side = LIGHT/white, artist side = DARK (owner 2026-08-03). Light is the default (public + logged-in); logged-in buyers get an optional **dark toggle**. Both of Claude Design's buyer themes are used.
+- **Design source:** Claude Design hi-fi handoff (`~/Desktop/Fununbuyerbrowse/mockups/buyer-catalogue.html` + `app.css` + logo/states files); in-repo canonical is `components/buyer/CatalogBrowserLight.tsx` (CSS ported scoped under `.fnbl`).
+- **Rights:** tri-state badge — Rights ready / Partial / Contact required; the real Partial/Contact definitions are undecided.
+- **Inclusion model DEFERRED:** which Sound Vault songs reach the catalogue, by what workflow, is an open decision (`.planning/deliberations/buyer-catalogue-inclusion-model.md`) — gates live-data wiring (slice 1.5).
+
+**Built so far (slices 1/2a/2b, on `feat/buyer-catalogue-light`):** faithful light catalogue (real album art + Inter); working browse (filters/search/sort/chips/count/empty); audio player + License request modal (simulated audio, demo toast). Renders a representative fixture (`lib/deals/catalog-sample.ts`) pending live-data wiring.
+
+**Remaining scope:** 2c — wire License Send → `POST /api/buyer/requests` (16-06) so a request creates a real deal; 1.5 — enrich the catalog query (artist/energy/length/mood/vocal/instruments + tri-state rights) + server-side filtering/pagination (gated on inclusion decision); the dark-theme toggle; re-theme the other buyer surfaces (request composer/dashboard, shortlists, org dashboard) to light + reconcile the 16-03 portal shell with the catalogue top-nav; real preview audio; logo adoption.
+
+**Plans:** 0/? — to be created by `/gsd-plan-phase 22`
