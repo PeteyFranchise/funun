@@ -1,17 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
 // buyer catalogue (mockups/buyer-catalogue.html). Buyer side is LIGHT to
 // distinguish it from the dark artist side (owner decision, 2026-08-03).
 //
-// Slice 2a — WORKING BROWSE: the filter dropdowns open, multi-select, and
-// narrow the results; search + Sort-by work; active chips + a live track count
-// + the empty state. Filtering/sorting is client-side over the `rows` the page
-// provides. Wiring server-side filtering to /api/buyer/catalog with the
-// enriched query is slice 1.5; the sticky player + License modal are slice 2b.
+// Slice 2a — working browse: filter dropdowns, search, sort, chips, live count,
+// empty state (client-side over `rows`).
+// Slice 2b — experience: the sticky audio player (audition a track) + the
+// License request modal (the buyer's conversion action). Playback is a
+// simulated playhead (the fixture has no preview audio); the request form shows
+// a success toast — wiring Send to /api/buyer/requests (16-06) + live data +
+// server-side filtering are slices 1.5/2c. Which songs reach the catalogue is
+// an open decision — see .planning/deliberations/buyer-catalogue-inclusion-model.md.
 // Design CSS is ported scoped under `.fnbl` so it never leaks into the dark app.
 
 export type CatalogRights = 'ok' | 'part' | 'req'
@@ -30,7 +33,7 @@ export type CatalogRow = {
   rights: CatalogRights
   dynamics: Dynamics
   mood: string
-  vocal: string // 'Instrumental' | 'Vocal'
+  vocal: string
   instruments: string[]
 }
 
@@ -53,9 +56,19 @@ const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 
 const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 
+const USE_TYPES = ['Film — trailer', 'Film — scene', 'TV — spot', 'Ad — social', 'Trailer', 'Video game', 'Podcast', 'Corporate']
+const MEDIA = ['All media', 'Digital / online', 'Broadcast', 'Theatrical', 'Internal / non-broadcast']
+const TERMS = ['1 year', '2 years', '5 years', 'In perpetuity']
+const TERRITORIES = ['Worldwide', 'North America', 'US only', 'Europe', 'Custom']
+
 function lenToSeconds(len: string): number {
   const [m, s] = len.split(':').map(Number)
   return (m || 0) * 60 + (s || 0)
+}
+function fmt(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 function lengthBucket(len: string): string {
   const s = lenToSeconds(len)
@@ -80,13 +93,13 @@ function rowMatches(row: CatalogRow, sel: Record<FilterKey, Set<string>>, q: str
 }
 
 function DynGlyph({ shape }: { shape: Dynamics }) {
-  const fill = '#DED7FB'
+  const f = '#DED7FB'
   const paths: Record<Dynamics, JSX.Element> = {
-    twin: (<><path d="M0 26 22 7l22 19z" fill={fill} /><path d="M56 26 78 4l22 22z" fill={fill} /></>),
-    steady: <rect x="0" y="18" width="100" height="8" rx="3" fill={fill} />,
-    build: <path d="M0 26 34 22 68 10 100 0v26z" fill={fill} />,
-    fade: (<><path d="M0 4 30 6l34 12 36 8v-4L64 14 30 2 0 0z" fill={fill} /><rect x="0" y="20" width="100" height="6" rx="3" fill={fill} /></>),
-    peak: (<><path d="M0 26 20 16l18 10z" fill={fill} /><path d="M44 26 72 2l28 24z" fill={fill} /></>),
+    twin: (<><path d="M0 26 22 7l22 19z" fill={f} /><path d="M56 26 78 4l22 22z" fill={f} /></>),
+    steady: <rect x="0" y="18" width="100" height="8" rx="3" fill={f} />,
+    build: <path d="M0 26 34 22 68 10 100 0v26z" fill={f} />,
+    fade: (<><path d="M0 4 30 6l34 12 36 8v-4L64 14 30 2 0 0z" fill={f} /><rect x="0" y="20" width="100" height="6" rx="3" fill={f} /></>),
+    peak: (<><path d="M0 26 20 16l18 10z" fill={f} /><path d="M44 26 72 2l28 24z" fill={f} /></>),
   }
   return (<svg className="dyn" width="104" height="26" viewBox="0 0 104 26" aria-hidden>{paths[shape]}</svg>)
 }
@@ -103,6 +116,9 @@ function RightsBadge({ rights }: { rights: CatalogRights }) {
 const Chevron = () => (<svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>)
 const Tick = () => (<svg className="icn tick" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5" /></svg>)
 const Check = () => (<svg viewBox="0 0 24 24"><path d="m20 6-11 11-5-5" /></svg>)
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="fld"><label>{label}</label>{children}</div>
+)
 
 export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogRow[]; isPublic?: boolean }) {
   const emptySel = () => FILTER_KEYS.reduce((a, k) => ({ ...a, [k]: new Set<string>() }), {} as Record<FilterKey, Set<string>>)
@@ -112,6 +128,15 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
   const [sort, setSort] = useState<(typeof SORTS)[number]>('Best match')
   const [open, setOpen] = useState<string | null>(null)
 
+  // ── slice 2b: player + modal + toast state ──
+  const [playId, setPlayId] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0) // seconds
+  const [favs, setFavs] = useState<Set<string>>(new Set())
+  const [modalId, setModalId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const filtered = useMemo(() => {
     const out = rows.filter(r => rowMatches(r, sel, q))
     if (sort === 'Shortest first') out.sort((a, b) => lenToSeconds(a.length) - lenToSeconds(b.length))
@@ -119,27 +144,60 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
     return out
   }, [rows, sel, q, sort])
 
+  const playRow = playId ? rows.find(r => r.id === playId) ?? null : null
+  const modalRow = modalId ? rows.find(r => r.id === modalId) ?? null : null
+  const dur = playRow ? lenToSeconds(playRow.length) : 0
+
+  // simulated playhead
+  useEffect(() => {
+    if (!playing || !playRow) return
+    const t = setInterval(() => {
+      setProgress(p => {
+        if (p + 1 >= dur) { setPlaying(false); return dur }
+        return p + 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [playing, playRow, dur])
+
+  function play(id: string) {
+    if (id === playId) { setPlaying(p => !p); return }
+    setPlayId(id); setProgress(0); setPlaying(true)
+  }
+  function step(delta: number) {
+    if (!playRow) return
+    const idx = rows.findIndex(r => r.id === playRow.id)
+    const next = rows[(idx + delta + rows.length) % rows.length]
+    setPlayId(next.id); setProgress(0); setPlaying(true)
+  }
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    const pct = (e.clientX - el.getBoundingClientRect().left) / el.offsetWidth
+    setProgress(Math.max(0, Math.min(1, pct)) * dur)
+  }
+  function toggleFav(id: string) {
+    setFavs(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function showToast(msg: string) {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 3200)
+  }
+  function submitRequest(e: React.FormEvent) {
+    e.preventDefault()
+    const who = modalRow?.artist ?? 'the artist'
+    setModalId(null)
+    showToast(`License request sent to ${who}`)
+  }
+
   function toggle(key: FilterKey, value: string) {
-    setSel(prev => {
-      const next = new Set(prev[key])
-      next.has(value) ? next.delete(value) : next.add(value)
-      return { ...prev, [key]: next }
-    })
+    setSel(prev => { const n = new Set(prev[key]); n.has(value) ? n.delete(value) : n.add(value); return { ...prev, [key]: n } })
   }
-  function resetKey(key: FilterKey) {
-    setSel(prev => ({ ...prev, [key]: new Set<string>() }))
-  }
+  function resetKey(key: FilterKey) { setSel(prev => ({ ...prev, [key]: new Set<string>() })) }
   function removeChip(key: FilterKey, value: string) {
-    setSel(prev => {
-      const next = new Set(prev[key])
-      next.delete(value)
-      return { ...prev, [key]: next }
-    })
+    setSel(prev => { const n = new Set(prev[key]); n.delete(value); return { ...prev, [key]: n } })
   }
-  function clearAll() {
-    setSel(emptySel())
-    setQ('')
-  }
+  function clearAll() { setSel(emptySel()); setQ('') }
 
   const activeChips = FILTER_KEYS.flatMap(k => [...sel[k]].map(v => ({ key: k, value: v })))
   const activeCount = activeChips.length + (q.trim() ? 1 : 0)
@@ -150,20 +208,12 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
 
       <header className="top">
         <div className="l">
-          <button className="navlink" type="button">
-            <svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse
-          </button>
-          {isPublic && (
-            <button className="navlink" type="button">
-              <svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login
-            </button>
-          )}
+          <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
+          {isPublic && <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
         </div>
         <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
         <div className="r">
-          <button className="cart" type="button" aria-label="License queue">
-            <svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span>
-          </button>
+          <button className="cart" type="button" aria-label="License queue"><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
           <button className="burger" type="button" aria-label="Menu"><i /><i /><i /></button>
         </div>
       </header>
@@ -182,9 +232,7 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
             <svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
             <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by song, artist or lyrics" aria-label="Search the catalogue" />
           </div>
-          <div className="alldd">
-            <button className="allbtn" type="button"><span>All</span><svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button>
-          </div>
+          <div className="alldd"><button className="allbtn" type="button"><span>All</span><svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></div>
         </div>
 
         <div className="filters">
@@ -192,21 +240,14 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
             const count = sel[key].size
             return (
               <div className="fdd" key={key}>
-                <button
-                  className={`fbtn ${count ? 'on' : ''}`}
-                  type="button"
-                  onClick={() => setOpen(o => (o === key ? null : key))}
-                >
-                  {key}
-                  {count > 0 && <span className="n">{count}</span>}
-                  <Chevron />
+                <button className={`fbtn ${count ? 'on' : ''}`} type="button" onClick={() => setOpen(o => (o === key ? null : key))}>
+                  {key}{count > 0 && <span className="n">{count}</span>}<Chevron />
                 </button>
                 <div className={`panel ${open === key ? 'open' : ''}`} style={{ left: 0, top: 'calc(100% + 10px)' }}>
                   <div className="ph">{key}</div>
                   {FILTER_OPTIONS[key].map(opt => (
                     <button key={opt} className={`o ${sel[key].has(opt) ? 'on' : ''}`} type="button" onClick={() => toggle(key, opt)}>
-                      <span className="cbx"><Check /></span>
-                      {opt}
+                      <span className="cbx"><Check /></span>{opt}
                     </button>
                   ))}
                   <div className="foot">
@@ -218,16 +259,11 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
             )
           })}
           <div className="fdd">
-            <button className="fbtn" type="button" onClick={() => setOpen(o => (o === 'Sort' ? null : 'Sort'))}>
-              Sort by<Chevron />
-            </button>
+            <button className="fbtn" type="button" onClick={() => setOpen(o => (o === 'Sort' ? null : 'Sort'))}>Sort by<Chevron /></button>
             <div className={`panel ${open === 'Sort' ? 'open' : ''}`} style={{ right: 0, top: 'calc(100% + 10px)' }}>
               <div className="ph">Sort by</div>
               {SORTS.map(s => (
-                <button key={s} className={`o ${sort === s ? 'on' : ''}`} type="button" onClick={() => { setSort(s); setOpen(null) }}>
-                  {s}
-                  <Tick />
-                </button>
+                <button key={s} className={`o ${sort === s ? 'on' : ''}`} type="button" onClick={() => { setSort(s); setOpen(null) }}>{s}<Tick /></button>
               ))}
             </div>
           </div>
@@ -239,9 +275,7 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
             {activeChips.map(({ key, value }) => (
               <span className="chip" key={`${key}:${value}`}>
                 <em>{key}:</em> {value}
-                <button type="button" aria-label={`Remove ${value}`} onClick={() => removeChip(key, value)}>
-                  <svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                </button>
+                <button type="button" aria-label={`Remove ${value}`} onClick={() => removeChip(key, value)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
               </span>
             ))}
             <button className="clearall" type="button" onClick={clearAll}>Clear all</button>
@@ -252,10 +286,7 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
           <span className="n">{filtered.length.toLocaleString()} tracks</span>
           <span className="s">Sorted by {sort}</span>
           {activeCount > 0 && (
-            <span className="fa">
-              <svg className="icn" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg>
-              {activeCount} filter{activeCount === 1 ? '' : 's'} active
-            </span>
+            <span className="fa"><svg className="icn" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg>{activeCount} filter{activeCount === 1 ? '' : 's'} active</span>
           )}
         </div>
 
@@ -268,14 +299,16 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
           </div>
         ) : (
           <div className="cols" style={{ marginTop: 22 }}>
-            <div className="thead">
-              <div>Song / Artist</div><div>Versions</div><div>Genres</div><div>Dynamics</div><div>Energy</div><div>Length</div><div /><div />
-            </div>
+            <div className="thead"><div>Song / Artist</div><div>Versions</div><div>Genres</div><div>Dynamics</div><div>Energy</div><div>Length</div><div /><div /></div>
             {filtered.map(row => (
-              <div className="trow" key={row.id}>
+              <div className={`trow ${playId === row.id ? 'playing' : ''}`} key={row.id}>
                 <div className="song">
                   <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
-                    <button className="pb" type="button" aria-label={`Play ${row.title}`}><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg></button>
+                    <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
+                      {playId === row.id && playing
+                        ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
+                        : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
+                    </button>
                   </div>
                   <div>
                     <div className="sname">{row.title}</div>
@@ -288,20 +321,79 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
                 <div><DynGlyph shape={row.dynamics} /></div>
                 <div className="energy">{row.energy}</div>
                 <div className="len">{row.length}</div>
-                <div>
-                  <button className="kebab" type="button" aria-label={`More options for ${row.title}`}>
-                    <svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg>
-                  </button>
-                </div>
-                <div><button className="lic" type="button">License</button></div>
+                <div><button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button></div>
+                <div><button className="lic" type="button" onClick={() => setModalId(row.id)}>License</button></div>
               </div>
             ))}
           </div>
         )}
 
-        {filtered.length > 0 && (
-          <button className="loadmore" type="button">Load more tracks</button>
-        )}
+        {filtered.length > 0 && <button className="loadmore" type="button">Load more tracks</button>}
+      </div>
+
+      {/* ── slice 2b: sticky mini player ── */}
+      {playRow && (
+        <div className={`mini up`} role="region" aria-label="Player">
+          <div className="in">
+            <div className="ma" style={playRow.coverUrl ? { backgroundImage: `url('${playRow.coverUrl}')` } : { background: playRow.gradient }} />
+            <div className="mi"><div className="mt">{playRow.title}</div><div className="mb">{playRow.artist}</div></div>
+            <div className="mctl">
+              <button className="sk" type="button" aria-label="Previous" onClick={() => step(-1)}><svg viewBox="0 0 24 24"><path d="M18 5v14l-11-7zM6 5h2v14H6z" /></svg></button>
+              <button className="mplay" type="button" aria-label={playing ? 'Pause' : 'Play'} onClick={() => setPlaying(p => !p)}>
+                {playing ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>) : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
+              </button>
+              <button className="sk" type="button" aria-label="Next" onClick={() => step(1)}><svg viewBox="0 0 24 24"><path d="M6 5v14l11-7zM16 5h2v14h-2z" /></svg></button>
+            </div>
+            <div className="mprog">
+              <span>{fmt(progress)}</span>
+              <div className="mtrack" onClick={seek}><div className="f" style={{ width: `${dur ? (progress / dur) * 100 : 0}%` }} /></div>
+              <span>{playRow.length}</span>
+            </div>
+            <div className="mvol"><svg className="icn" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M16 9a4 4 0 0 1 0 6" /></svg><div className="vt"><div className="f" /></div></div>
+            <div className="mr">
+              <button className={`hbtn ${favs.has(playRow.id) ? 'on' : ''}`} type="button" aria-label="Add to favorites" onClick={() => toggleFav(playRow.id)}>
+                <svg className="icn" viewBox="0 0 24 24"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z" /></svg>
+              </button>
+              <button className="mlic" type="button" onClick={() => setModalId(playRow.id)}>License</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── slice 2b: License request modal ── */}
+      {modalRow && (
+        <div className="scrim open" onClick={() => setModalId(null)}>
+          <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submitRequest}>
+            <div className="mh">
+              <div className="ma2" style={modalRow.coverUrl ? { backgroundImage: `url('${modalRow.coverUrl}')` } : { background: modalRow.gradient }} />
+              <div><h2>Request a license</h2><p>{modalRow.title} · by {modalRow.artist}</p></div>
+              <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div className="mb2">
+              <p className="lead">Tell the artist how you&rsquo;d use it. Within their pre-cleared terms this moves fast; anything below their floor routes to a quick negotiation.</p>
+              <div className="f2">
+                <Field label="Use type"><select defaultValue={USE_TYPES[0]}>{USE_TYPES.map(o => <option key={o}>{o}</option>)}</select></Field>
+                <Field label="Media"><select defaultValue={MEDIA[0]}>{MEDIA.map(o => <option key={o}>{o}</option>)}</select></Field>
+                <Field label="Term"><select defaultValue={TERMS[0]}>{TERMS.map(o => <option key={o}>{o}</option>)}</select></Field>
+                <Field label="Territory"><select defaultValue={TERRITORIES[0]}>{TERRITORIES.map(o => <option key={o}>{o}</option>)}</select></Field>
+                <Field label="Exclusivity"><select defaultValue="Non-exclusive"><option>Non-exclusive</option><option>Exclusive</option></select></Field>
+                <Field label="Offer (gross fee)"><input type="text" placeholder="$4,500" /></Field>
+              </div>
+              <Field label="Message"><textarea rows={3} placeholder="Placing in a Q4 indie feature trailer — 30-second hero cut…" /></Field>
+            </div>
+            <div className="mf">
+              <span className="note">You&rsquo;ll get a confirmation and can track this in your requests.</span>
+              <button className="cancel" type="button" onClick={() => setModalId(null)}>Cancel</button>
+              <button className="send" type="submit">Send request</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── slice 2b: toast ── */}
+      <div className={`toast ${toast ? 'show' : ''}`} role="status">
+        <svg className="icn" viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></svg>
+        {toast}
       </div>
     </div>
   )
@@ -309,7 +401,7 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
 
 // Claude Design's light catalogue CSS, scoped under `.fnbl`.
 const CSS = `
-.fnbl{--page:#FFFFFF;--ink:#241A4D;--ink-2:#5F5885;--ink-3:#8B85AB;--wash:#F1EDFE;--wash-2:#E7E1FC;--line:#DED7FB;--line-2:#CFC5F7;--indigo:#6D5AE0;--fuchsia:#B22BC9;--grad:linear-gradient(105deg,#6D5AE0 0%,#B22BC9 100%);--ok-fg:#0B7A57;--ok-bg:#E4F6EF;--ok-line:#B6E4D3;--part-fg:#8A5B04;--part-bg:#FDF3E0;--part-line:#F0DCB2;--req-fg:#A62742;--req-bg:#FDEBEF;--req-line:#F5C9D3;background:var(--page);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;padding-bottom:60px;}
+.fnbl{--page:#FFFFFF;--ink:#241A4D;--ink-2:#5F5885;--ink-3:#8B85AB;--wash:#F1EDFE;--wash-2:#E7E1FC;--line:#DED7FB;--line-2:#CFC5F7;--indigo:#6D5AE0;--fuchsia:#B22BC9;--grad:linear-gradient(105deg,#6D5AE0 0%,#B22BC9 100%);--ok-fg:#0B7A57;--ok-bg:#E4F6EF;--ok-line:#B6E4D3;--part-fg:#8A5B04;--part-bg:#FDF3E0;--part-line:#F0DCB2;--req-fg:#A62742;--req-bg:#FDEBEF;--req-line:#F5C9D3;background:var(--page);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;padding-bottom:120px;}
 .fnbl *{box-sizing:border-box;}
 .fnbl .icn{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .fnbl .wrap{max-width:1380px;margin:0 auto;padding:0 32px;}
@@ -385,13 +477,15 @@ const CSS = `
 .fnbl .thead{padding:0 6px 16px;font-size:15px;font-weight:800;color:var(--ink);}
 .fnbl .trow{padding:16px 6px;border-top:1px solid var(--line);}
 .fnbl .trow:hover{background:#FBFAFF;}
+.fnbl .trow.playing{background:linear-gradient(90deg,rgba(109,90,224,.09),rgba(178,43,201,.04) 62%,transparent);box-shadow:inset 3px 0 0 0 var(--indigo);}
 .fnbl .song{display:flex;align-items:center;gap:18px;min-width:0;}
 .fnbl .song>div:last-child{min-width:0;}
 .fnbl .art{width:66px;height:66px;border-radius:6px;flex:none;position:relative;background-size:cover;background-position:center;border:1px solid var(--line);overflow:hidden;}
 .fnbl .art .pb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(36,26,77,.52);border:none;padding:0;opacity:0;transition:opacity .16s;}
-.fnbl .art:hover .pb{opacity:1;}
+.fnbl .art:hover .pb,.fnbl .trow.playing .pb{opacity:1;}
 .fnbl .art .pb svg{width:24px;height:24px;fill:#fff;stroke:none;}
 .fnbl .sname{font-size:19px;font-weight:600;color:var(--indigo);line-height:1.25;}
+.fnbl .trow.playing .sname{font-weight:800;}
 .fnbl .sby{font-size:16px;color:var(--ink-2);margin-top:4px;white-space:nowrap;}
 .fnbl .sby b{font-weight:600;color:var(--ink-2);}
 .fnbl .vers{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line-2);border-radius:999px;padding:8px 17px;font-size:16px;font-weight:600;color:var(--indigo);background:#fff;white-space:nowrap;}
@@ -419,9 +513,60 @@ const CSS = `
 .fnbl .empty h3{font-size:24px;font-weight:800;margin:0;}
 .fnbl .empty p{font-size:16px;color:var(--ink-2);margin:11px 0 0;line-height:1.55;max-width:48ch;}
 .fnbl .empty .cta{margin-top:24px;border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:15px;font-weight:800;padding:15px 26px;}
+.fnbl .mini{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);box-shadow:0 -14px 40px -18px rgba(36,26,77,.22);z-index:80;transform:translateY(100%);transition:transform .34s cubic-bezier(.22,.61,.36,1);}
+.fnbl .mini.up{transform:none;}
+.fnbl .mini .in{max-width:1380px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;gap:22px;}
+.fnbl .mini .ma{width:56px;height:56px;border-radius:6px;flex:none;background-size:cover;background-position:center;border:1px solid var(--line);}
+.fnbl .mini .mi{width:210px;flex:none;min-width:0;}
+.fnbl .mini .mt{font-size:16px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fnbl .mini .mb{font-size:14px;color:var(--ink-2);}
+.fnbl .mctl{display:flex;align-items:center;gap:16px;flex:none;}
+.fnbl .mctl .sk{background:none;border:none;color:var(--indigo);display:flex;align-items:center;justify-content:center;padding:0;}
+.fnbl .mctl .sk svg{width:22px;height:22px;fill:currentColor;stroke:none;}
+.fnbl .mplay{width:48px;height:48px;border-radius:50%;border:none;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -10px rgba(109,90,224,.6);}
+.fnbl .mplay svg{width:18px;height:18px;fill:#fff;stroke:none;}
+.fnbl .mprog{flex:1;display:flex;align-items:center;gap:14px;font-size:13.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:90px;}
+.fnbl .mtrack{flex:1;height:6px;border-radius:3px;background:var(--wash-2);position:relative;cursor:pointer;}
+.fnbl .mtrack .f{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--grad);}
+.fnbl .mtrack .f::after{content:"";position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid var(--indigo);}
+.fnbl .mvol{display:flex;align-items:center;gap:10px;color:var(--indigo);flex:none;}
+.fnbl .mvol svg{width:20px;height:20px;}
+.fnbl .mvol .vt{width:82px;height:6px;border-radius:3px;background:var(--wash-2);position:relative;}
+.fnbl .mvol .vt .f{position:absolute;left:0;top:0;bottom:0;width:64%;border-radius:3px;background:var(--indigo);}
+.fnbl .mini .mr{display:flex;align-items:center;gap:12px;flex:none;}
+.fnbl .hbtn{width:42px;height:42px;border-radius:9px;border:1.5px solid var(--line-2);background:#fff;color:var(--ink-3);display:flex;align-items:center;justify-content:center;}
+.fnbl .hbtn:hover{border-color:var(--indigo);color:var(--indigo);}
+.fnbl .hbtn.on{color:var(--fuchsia);border-color:var(--fuchsia);background:#FDF0FE;}
+.fnbl .hbtn.on svg{fill:var(--fuchsia);}
+.fnbl .hbtn svg{width:19px;height:19px;}
+.fnbl .mlic{border:none;border-radius:9px;background:var(--grad);color:#fff;font-size:14.5px;font-weight:800;padding:14px 22px;box-shadow:0 12px 28px -12px rgba(109,90,224,.6);}
+.fnbl .toast{position:fixed;left:50%;bottom:130px;transform:translate(-50%,18px);background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:12px;font-size:14.5px;font-weight:700;color:var(--ink);box-shadow:0 26px 60px -18px rgba(36,26,77,.3);z-index:95;opacity:0;pointer-events:none;transition:opacity .24s,transform .24s;}
+.fnbl .toast.show{opacity:1;transform:translate(-50%,0);}
+.fnbl .toast svg{width:19px;height:19px;stroke:var(--ok-fg);stroke-width:2.6;fill:none;}
+.fnbl .scrim{position:fixed;inset:0;background:rgba(36,26,77,.42);backdrop-filter:blur(3px);z-index:90;display:none;align-items:flex-start;justify-content:center;padding:30px;overflow-y:auto;}
+.fnbl .scrim.open{display:flex;}
+.fnbl .modal{background:#fff;border-radius:20px;width:100%;max-width:640px;box-shadow:0 50px 110px -30px rgba(36,26,77,.55);overflow:hidden;margin:auto;max-height:calc(100vh - 60px);display:flex;flex-direction:column;}
+.fnbl .modal .mh{padding:30px 34px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:18px;flex:none;}
+.fnbl .modal .mh .ma2{width:62px;height:62px;border-radius:8px;background-size:cover;background-position:center;flex:none;border:1px solid var(--line);}
+.fnbl .modal .mh h2{margin:0;font-size:23px;font-weight:800;}
+.fnbl .modal .mh p{margin:6px 0 0;font-size:15px;color:var(--ink-2);}
+.fnbl .modal .mh .x{margin-left:auto;background:none;border:none;color:var(--ink-3);padding:4px;}
+.fnbl .modal .mh .x svg{width:22px;height:22px;stroke-width:2.4;}
+.fnbl .modal .mb2{padding:26px 34px 8px;overflow-y:auto;flex:1;min-height:0;}
+.fnbl .modal .lead{font-size:15.5px;color:var(--ink-2);line-height:1.55;margin:0 0 22px;}
+.fnbl .fld{margin-bottom:18px;}
+.fnbl .fld label{display:block;font-size:11px;letter-spacing:.15em;text-transform:uppercase;font-weight:800;color:var(--ink-3);margin-bottom:8px;}
+.fnbl .fld input,.fnbl .fld select,.fnbl .fld textarea{width:100%;border:1.5px solid var(--line-2);border-radius:10px;padding:13px 14px;font:500 15px 'Inter',system-ui,sans-serif;color:var(--ink);background:#fff;outline:none;}
+.fnbl .fld input:focus,.fnbl .fld select:focus,.fnbl .fld textarea:focus{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(109,90,224,.16);}
+.fnbl .f2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fnbl .modal .mf{padding:20px 34px 28px;display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);flex:none;background:#fff;flex-wrap:wrap;}
+.fnbl .modal .mf .note{font-size:13px;color:var(--ink-3);line-height:1.45;flex:1;min-width:180px;}
+.fnbl .modal .mf .send{border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:15px;font-weight:800;padding:15px 26px;flex:none;box-shadow:0 12px 28px -12px rgba(109,90,224,.6);}
+.fnbl .modal .mf .cancel{border:1.5px solid var(--line-2);background:#fff;border-radius:10px;color:var(--indigo);font-size:15px;font-weight:700;padding:15px 20px;flex:none;}
 @media (max-width:900px){
   .fnbl .cols{--grid:1fr auto;}
   .fnbl .thead{display:none;}
   .fnbl .trow>div:nth-child(n+3){display:none;}
+  .fnbl .f2{grid-template-columns:1fr;}
 }
 `
