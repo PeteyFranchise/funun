@@ -38,7 +38,6 @@ export default async function CatalogPage() {
 
   const liveRows = mapCardsToLightRows(initial.data)
   const rows = liveRows.length > 0 ? liveRows : SAMPLE_CATALOG_ROWS
-  const total = liveRows.length > 0 ? liveRows.length : SAMPLE_CATALOG_ROWS.length
 
-  return <CatalogBrowserLight rows={rows} total={total} />
+  return <CatalogBrowserLight rows={rows} />
 }
