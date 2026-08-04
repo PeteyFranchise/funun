@@ -46,12 +46,12 @@ export function mapCardsToLightRows(cards: CatalogCard[]): CatalogRow[] {
 // Representative catalogue for the faithful design render (slice 1). Mirrors
 // Claude Design's sample set; gradient covers so no external art is required.
 export const SAMPLE_CATALOG_ROWS: CatalogRow[] = [
-  { id: 's1', title: 'Paper', artist: 'Maya Reyes', coverUrl: null, gradient: GRADIENTS[1], genres: 'Alt-Pop, Electronic', energy: 'Medium', length: '3:24', versions: 1, rights: 'ok', dynamics: 'twin' },
-  { id: 's2', title: 'Moonlight', artist: 'Maya Reyes', coverUrl: null, gradient: GRADIENTS[0], genres: 'Ambient, Cinematic', energy: 'Low', length: '3:05', versions: 2, rights: 'ok', dynamics: 'steady' },
-  { id: 's3', title: 'Cross the Wire', artist: 'Sable Roy', coverUrl: null, gradient: GRADIENTS[5], genres: 'Synthwave, Electronic', energy: 'High', length: '3:42', versions: 1, rights: 'ok', dynamics: 'build' },
-  { id: 's4', title: 'Golden Hour', artist: 'Ledger & Vine', coverUrl: null, gradient: GRADIENTS[4], genres: 'Soul, Pop', energy: 'Low-Medium', length: '4:11', versions: 1, rights: 'part', dynamics: 'twin' },
-  { id: 's5', title: 'Lantern', artist: 'Odile Faye', coverUrl: null, gradient: GRADIENTS[2], genres: 'Folk, Singer-Songwriter, Acoustic', energy: 'Medium', length: '3:12', versions: 3, rights: 'ok', dynamics: 'fade' },
-  { id: 's6', title: 'Static Heart', artist: 'The Warm Fronts', coverUrl: null, gradient: GRADIENTS[2], genres: 'Indie Rock, Alternative', energy: 'Medium-High', length: '3:58', versions: 1, rights: 'req', dynamics: 'peak' },
+  { id: 's1', title: 'Paper', artist: 'Maya Reyes', coverUrl: '/buyer-catalogue/paper.jpg', gradient: GRADIENTS[1], genres: 'Alt-Pop, Electronic', energy: 'Medium', length: '3:24', versions: 1, rights: 'ok', dynamics: 'twin' },
+  { id: 's2', title: 'Moonlight', artist: 'Maya Reyes', coverUrl: '/buyer-catalogue/moonlight.jpg', gradient: GRADIENTS[0], genres: 'Ambient, Cinematic', energy: 'Low', length: '3:05', versions: 2, rights: 'ok', dynamics: 'steady' },
+  { id: 's3', title: 'Cross the Wire', artist: 'Sable Roy', coverUrl: '/buyer-catalogue/midnight-ride.jpg', gradient: GRADIENTS[5], genres: 'Synthwave, Electronic', energy: 'High', length: '3:42', versions: 1, rights: 'ok', dynamics: 'build' },
+  { id: 's4', title: 'Golden Hour', artist: 'Ledger & Vine', coverUrl: '/buyer-catalogue/golden-hour.jpg', gradient: GRADIENTS[4], genres: 'Soul, Pop', energy: 'Low-Medium', length: '4:11', versions: 1, rights: 'part', dynamics: 'twin' },
+  { id: 's5', title: 'Lantern', artist: 'Odile Faye', coverUrl: '/buyer-catalogue/lantern.jpg', gradient: GRADIENTS[2], genres: 'Folk, Singer-Songwriter, Acoustic', energy: 'Medium', length: '3:12', versions: 3, rights: 'ok', dynamics: 'fade' },
+  { id: 's6', title: 'Static Heart', artist: 'The Warm Fronts', coverUrl: '/buyer-catalogue/static-heart.jpg', gradient: GRADIENTS[2], genres: 'Indie Rock, Alternative', energy: 'Medium-High', length: '3:58', versions: 1, rights: 'req', dynamics: 'peak' },
   { id: 's7', title: 'Slow Static', artist: 'Junia Vale', coverUrl: null, gradient: GRADIENTS[0], genres: 'Downtempo, Electronic', energy: 'Low', length: '4:36', versions: 1, rights: 'ok', dynamics: 'fade' },
   { id: 's8', title: 'Brass Season', artist: 'Ilo Marchetti', coverUrl: null, gradient: GRADIENTS[4], genres: 'Jazz, Cinematic', energy: 'High', length: '2:48', versions: 2, rights: 'part', dynamics: 'peak' },
 ]
