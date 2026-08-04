@@ -35,6 +35,12 @@ export type CatalogRow = {
   mood: string
   vocal: string
   instruments: string[]
+  // 22-02 (slice 2c) — the real vault_projects id + track options the
+  // License modal needs to build a POST /api/buyer/requests body. Live rows
+  // carry the real ids; SAMPLE_CATALOG_ROWS carries synthetic ones (a submit
+  // over the fixture is expected to 404 at the route's authorization gate).
+  vaultProjectId: string
+  tracks: { id: string; title: string }[]
 }
 
 type FilterKey = 'Vocals' | 'Mood' | 'Dynamics' | 'Energy' | 'Length' | 'Instruments' | 'Genres' | 'Rights'
