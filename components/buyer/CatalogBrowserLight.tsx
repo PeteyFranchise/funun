@@ -1,6 +1,15 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  USAGE_TYPE_VALUES,
+  USAGE_TYPE_LABELS,
+  TERRITORY_VALUES,
+  TERRITORY_LABELS,
+  type UsageType,
+  type Territory,
+} from '@/lib/deals/schema'
+import { buildRequestBody } from '@/lib/deals/request-payload'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
@@ -62,10 +71,15 @@ const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 
 const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 
-const USE_TYPES = ['Film — trailer', 'Film — scene', 'TV — spot', 'Ad — social', 'Trailer', 'Video game', 'Podcast', 'Corporate']
 const MEDIA = ['All media', 'Digital / online', 'Broadcast', 'Theatrical', 'Internal / non-broadcast']
-const TERMS = ['1 year', '2 years', '5 years', 'In perpetuity']
-const TERRITORIES = ['Worldwide', 'North America', 'US only', 'Europe', 'Custom']
+// Term select renders these labels but STORES the integer month count the
+// route's z.number().int() term_months expects (22-02 Task 3).
+const TERM_OPTIONS = [
+  { label: '1 year', months: 12 },
+  { label: '2 years', months: 24 },
+  { label: '5 years', months: 60 },
+  { label: 'In perpetuity', months: 1200 },
+] as const
 
 function lenToSeconds(len: string): number {
   const [m, s] = len.split(':').map(Number)
@@ -143,6 +157,18 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ── slice 2c: License modal form state (wired to buildRequestBody) ──
+  const [muUsage, setMuUsage] = useState<UsageType | ''>('')
+  const [muTerritory, setMuTerritory] = useState<Territory | ''>('')
+  const [muTermMonths, setMuTermMonths] = useState<number>(TERM_OPTIONS[0].months)
+  const [muExclusivity, setMuExclusivity] = useState(false)
+  const [muOffer, setMuOffer] = useState('')
+  const [muMedia, setMuMedia] = useState(MEDIA[0])
+  const [muMessage, setMuMessage] = useState('')
+  const [muTrackIds, setMuTrackIds] = useState<string[]>([])
+  const [muSubmitting, setMuSubmitting] = useState(false)
+  const [muError, setMuError] = useState<string | null>(null)
+
   const filtered = useMemo(() => {
     const out = rows.filter(r => rowMatches(r, sel, q))
     if (sort === 'Shortest first') out.sort((a, b) => lenToSeconds(a.length) - lenToSeconds(b.length))
@@ -165,6 +191,22 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
     }, 1000)
     return () => clearInterval(t)
   }, [playing, playRow, dur])
+
+  // Reset the License modal's form whenever a new row is opened, and
+  // default-select the track when a row has exactly one.
+  useEffect(() => {
+    if (!modalId) return
+    const row = rows.find(r => r.id === modalId) ?? null
+    setMuUsage('')
+    setMuTerritory('')
+    setMuTermMonths(TERM_OPTIONS[0].months)
+    setMuExclusivity(false)
+    setMuOffer('')
+    setMuMedia(MEDIA[0])
+    setMuMessage('')
+    setMuTrackIds(row && row.tracks.length === 1 ? [row.tracks[0].id] : [])
+    setMuError(null)
+  }, [modalId, rows])
 
   function play(id: string) {
     if (id === playId) { setPlaying(p => !p); return }
@@ -189,11 +231,52 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
     if (toastTimer.current) clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(null), 3200)
   }
-  function submitRequest(e: React.FormEvent) {
+  // ── slice 2c: real POST /api/buyer/requests via buildRequestBody ──
+  // The route derives org from the session and re-authorizes the target
+  // project + tracks server-side (T-22-02-01/02) — this handler only builds
+  // and sends the D-07 dimensions, never trusts the row, and never adds a
+  // server-owned field to the payload.
+  async function submitRequest(e: React.FormEvent) {
     e.preventDefault()
-    const who = modalRow?.artist ?? 'the artist'
-    setModalId(null)
-    showToast(`License request sent to ${who}`)
+    if (!modalRow) return
+
+    const result = buildRequestBody(
+      {
+        usageType: muUsage,
+        territory: muTerritory,
+        termMonths: muTermMonths,
+        exclusivity: muExclusivity,
+        offer: muOffer,
+        media: muMedia,
+        message: muMessage,
+        trackIds: muTrackIds,
+      },
+      { vaultProjectId: modalRow.vaultProjectId }
+    )
+    if (!result.ok) {
+      setMuError(result.error)
+      return
+    }
+
+    setMuSubmitting(true)
+    setMuError(null)
+    try {
+      const res = await fetch('/api/buyer/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.body),
+      })
+      const json = (await res.json().catch(() => ({}))) as { data?: { id: string }; error?: string }
+      if (!res.ok || !json.data) {
+        setMuError(json.error ?? 'Failed to submit request. Please check your entries and try again.')
+        return
+      }
+      const successMessage = `License request sent to ${modalRow.artist || 'the artist'}`
+      setModalId(null)
+      showToast(successMessage)
+    } finally {
+      setMuSubmitting(false)
+    }
   }
 
   function toggle(key: FilterKey, value: string) {
@@ -377,20 +460,76 @@ export function CatalogBrowserLight({ rows, isPublic = false }: { rows: CatalogR
             </div>
             <div className="mb2">
               <p className="lead">Tell the artist how you&rsquo;d use it. Within their pre-cleared terms this moves fast; anything below their floor routes to a quick negotiation.</p>
+              <Field label="Tracks">
+                <div className="trklist">
+                  {modalRow.tracks.map(t => (
+                    <label className="trk" key={t.id}>
+                      <input
+                        type="checkbox"
+                        checked={muTrackIds.includes(t.id)}
+                        onChange={() =>
+                          setMuTrackIds(prev => (prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id]))
+                        }
+                      />
+                      {t.title}
+                    </label>
+                  ))}
+                  {modalRow.tracks.length === 0 && <p className="note">This project has no tracks to request.</p>}
+                </div>
+              </Field>
               <div className="f2">
-                <Field label="Use type"><select defaultValue={USE_TYPES[0]}>{USE_TYPES.map(o => <option key={o}>{o}</option>)}</select></Field>
-                <Field label="Media"><select defaultValue={MEDIA[0]}>{MEDIA.map(o => <option key={o}>{o}</option>)}</select></Field>
-                <Field label="Term"><select defaultValue={TERMS[0]}>{TERMS.map(o => <option key={o}>{o}</option>)}</select></Field>
-                <Field label="Territory"><select defaultValue={TERRITORIES[0]}>{TERRITORIES.map(o => <option key={o}>{o}</option>)}</select></Field>
-                <Field label="Exclusivity"><select defaultValue="Non-exclusive"><option>Non-exclusive</option><option>Exclusive</option></select></Field>
-                <Field label="Offer (gross fee)"><input type="text" placeholder="$4,500" /></Field>
+                <Field label="Use type">
+                  <select value={muUsage} onChange={e => setMuUsage(e.target.value as UsageType | '')}>
+                    <option value="">Select a use type</option>
+                    {USAGE_TYPE_VALUES.map(v => (
+                      <option key={v} value={v}>{USAGE_TYPE_LABELS[v]}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Media">
+                  <select value={muMedia} onChange={e => setMuMedia(e.target.value)}>
+                    {MEDIA.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </Field>
+                <Field label="Term">
+                  <select value={muTermMonths} onChange={e => setMuTermMonths(Number(e.target.value))}>
+                    {TERM_OPTIONS.map(t => (
+                      <option key={t.months} value={t.months}>{t.label}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Territory">
+                  <select value={muTerritory} onChange={e => setMuTerritory(e.target.value as Territory | '')}>
+                    <option value="">Select a territory</option>
+                    {TERRITORY_VALUES.map(v => (
+                      <option key={v} value={v}>{TERRITORY_LABELS[v]}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Exclusivity">
+                  <select value={String(muExclusivity)} onChange={e => setMuExclusivity(e.target.value === 'true')}>
+                    <option value="false">Non-exclusive</option>
+                    <option value="true">Exclusive</option>
+                  </select>
+                </Field>
+                <Field label="Offer (gross fee)">
+                  <input type="text" value={muOffer} onChange={e => setMuOffer(e.target.value)} placeholder="$4,500" />
+                </Field>
               </div>
-              <Field label="Message"><textarea rows={3} placeholder="Placing in a Q4 indie feature trailer — 30-second hero cut…" /></Field>
+              <Field label="Message">
+                <textarea
+                  rows={3}
+                  value={muMessage}
+                  onChange={e => setMuMessage(e.target.value)}
+                  placeholder="Placing in a Q4 indie feature trailer — 30-second hero cut…"
+                />
+              </Field>
+              {muError && <p className="err">{muError}</p>}
             </div>
             <div className="mf">
               <span className="note">You&rsquo;ll get a confirmation and can track this in your requests.</span>
               <button className="cancel" type="button" onClick={() => setModalId(null)}>Cancel</button>
-              <button className="send" type="submit">Send request</button>
+              <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : 'Send request'}</button>
             </div>
           </form>
         </div>
@@ -565,9 +704,14 @@ const CSS = `
 .fnbl .fld input,.fnbl .fld select,.fnbl .fld textarea{width:100%;border:1.5px solid var(--line-2);border-radius:10px;padding:13px 14px;font:500 15px 'Inter',system-ui,sans-serif;color:var(--ink);background:#fff;outline:none;}
 .fnbl .fld input:focus,.fnbl .fld select:focus,.fnbl .fld textarea:focus{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(109,90,224,.16);}
 .fnbl .f2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fnbl .trklist{display:flex;flex-direction:column;gap:10px;}
+.fnbl .trk{display:flex;align-items:center;gap:10px;font:500 15px 'Inter',system-ui,sans-serif;color:var(--ink);}
+.fnbl .trk input{width:17px;height:17px;accent-color:var(--indigo);}
+.fnbl .err{color:var(--req-fg);font-size:13.5px;font-weight:600;margin:0 0 4px;}
 .fnbl .modal .mf{padding:20px 34px 28px;display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);flex:none;background:#fff;flex-wrap:wrap;}
 .fnbl .modal .mf .note{font-size:13px;color:var(--ink-3);line-height:1.45;flex:1;min-width:180px;}
 .fnbl .modal .mf .send{border:none;border-radius:10px;background:var(--grad);color:#fff;font-size:15px;font-weight:800;padding:15px 26px;flex:none;box-shadow:0 12px 28px -12px rgba(109,90,224,.6);}
+.fnbl .modal .mf .send:disabled{opacity:.6;cursor:not-allowed;}
 .fnbl .modal .mf .cancel{border:1.5px solid var(--line-2);background:#fff;border-radius:10px;color:var(--indigo);font-size:15px;font-weight:700;padding:15px 20px;flex:none;}
 @media (max-width:900px){
   .fnbl .cols{--grid:1fr auto;}
