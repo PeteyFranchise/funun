@@ -39,17 +39,17 @@ function formatDate(value: string | null): string {
 }
 
 const STAGE_STYLES: Record<string, string> = {
-  submitted: 'border-white/15 bg-white/5 text-white/60',
-  in_negotiation: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
-  terms_agreed: 'border-indigo-400/30 bg-indigo-400/10 text-indigo-200',
-  contract: 'border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200',
-  closed_won: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-  closed_lost: 'border-white/10 bg-white/5 text-white/40',
+  submitted: 'border-[color:var(--line)] bg-[var(--wash)] text-[color:var(--ink-3)]',
+  in_negotiation: 'border-[color:var(--part-line)] bg-[var(--part-bg)] text-[color:var(--part-fg)]',
+  terms_agreed: 'border-[color:var(--line)] bg-[var(--wash)] text-[color:var(--indigo)]',
+  contract: 'border-[color:var(--line)] bg-[var(--wash)] text-[color:var(--fuchsia)]',
+  closed_won: 'border-[color:var(--ok-line)] bg-[var(--ok-bg)] text-[color:var(--ok-fg)]',
+  closed_lost: 'border-[color:var(--line)] bg-[var(--wash)] text-[color:var(--ink-3)]',
 }
 
 const FILTER_CHIP_BASE = 'rounded-full border px-2.5 py-1 text-[11px] font-medium transition'
-const FILTER_CHIP_ON = 'border-indigo-400/40 bg-indigo-400/15 text-indigo-200'
-const FILTER_CHIP_OFF = 'border-white/15 text-white/50 hover:border-white/30'
+const FILTER_CHIP_ON = 'border-[color:var(--line)] bg-[var(--wash-2)] text-[color:var(--indigo)]'
+const FILTER_CHIP_OFF = 'border-[color:var(--line)] text-[color:var(--ink-3)] hover:border-[color:var(--line-2)]'
 
 export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
   const [stageFilter, setStageFilter] = useState<DealStage | null>(null)
@@ -58,9 +58,9 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center">
-        <p className="text-sm font-semibold text-white/70">No requests yet</p>
-        <p className="mx-auto mt-1 max-w-sm text-xs text-white/50">
+      <div className="rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-8 text-center">
+        <p className="text-sm font-semibold text-[color:var(--ink-2)]">No requests yet</p>
+        <p className="mx-auto mt-1 max-w-sm text-xs text-[color:var(--ink-3)]">
           Requests your organization submits will appear here, org-wide, with their current deal
           stage — every member sees the same list.
         </p>
@@ -92,7 +92,7 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
 
       <div className="mt-4 space-y-3">
         {visibleRows.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-xs text-white/50">
+          <div className="rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-6 text-center text-xs text-[color:var(--ink-3)]">
             No requests at this stage.
           </div>
         ) : (
@@ -100,14 +100,14 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
             <Link
               key={request.id}
               href={`/buyers/requests/${request.id}`}
-              className="block rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20"
+              className="block rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-4 transition hover:border-[color:var(--line-2)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-white">{projectTitle}</p>
+                  <p className="text-sm font-semibold text-[color:var(--ink)]">{projectTitle}</p>
                   {/* Dual-level attribution (D-13a): who on the org filed it. */}
                   {submitterName && (
-                    <p className="text-[11px] text-white/40">Requested by {submitterName}</p>
+                    <p className="text-[11px] text-[color:var(--ink-3)]">Requested by {submitterName}</p>
                   )}
                 </div>
                 <span
@@ -119,32 +119,32 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-white/50 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-[color:var(--ink-2)] sm:grid-cols-4">
                 <div>
-                  <span className="block text-white/30">Usage</span>
+                  <span className="block text-[color:var(--ink-3)]">Usage</span>
                   {request.usage_types.length > 0
                     ? request.usage_types.map(u => USAGE_TYPE_LABELS[u]).join(', ')
                     : 'Not specified'}
                 </div>
                 <div>
-                  <span className="block text-white/30">Territory</span>
+                  <span className="block text-[color:var(--ink-3)]">Territory</span>
                   {request.territories.length > 0
                     ? request.territories.map(t => TERRITORY_LABELS[t]).join(', ')
                     : 'Not specified'}
                 </div>
                 <div>
-                  <span className="block text-white/30">Budget</span>
+                  <span className="block text-[color:var(--ink-3)]">Budget</span>
                   {formatMoney(request.budget_cents)}
                 </div>
                 <div>
-                  <span className="block text-white/30">Need by</span>
+                  <span className="block text-[color:var(--ink-3)]">Need by</span>
                   {formatDate(request.need_by)}
                 </div>
               </div>
 
               {request.gross_fee_cents != null && (
-                <p className="mt-3 text-[11px] text-white/60">
-                  Quoted fee: <span className="text-white/80">{formatMoney(request.gross_fee_cents)}</span>
+                <p className="mt-3 text-[11px] text-[color:var(--ink-2)]">
+                  Quoted fee: <span className="text-[color:var(--ink)]">{formatMoney(request.gross_fee_cents)}</span>
                 </p>
               )}
             </Link>
