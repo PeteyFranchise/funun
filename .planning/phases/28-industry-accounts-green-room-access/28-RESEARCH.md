@@ -607,10 +607,12 @@ list / Green Room discover filter is itself the stale/deprecated path, not the o
 
 **If this table is empty:** N/A — see rows above.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+*All three resolved/deferred with documented rationale (planner incorporated these): #1 (community-invite trust model) = deferred to a follow-on pending an owner product decision, the enabling primitive built in 28-03; #2 (member_type vs capability_grants) = capability_grants authoritative for checks, member_type kept in lockstep, full read-site cutover deferred; #3 (industry_profiles table) = leave untouched, stop gating on it.*
 
 1. **Community/Team-Member industry invite: immediate creation vs. token-claim self-serve, and is admin
-   review required?**
+   review required?**  RESOLVED (deferred — trust model is an owner product decision; primitive built in 28-03)
    - What we know: today only `verifyAdmin()`-gated `/api/admin/members` can create an Industry account
      (immediately, via `createIndustryMember()`). The self-serve capability-request path
      (`requestCapability()`) already models an "instant for one direction, admin-review for the other"
