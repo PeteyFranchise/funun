@@ -894,4 +894,16 @@ opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(ar
 (`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
 **Deferred:** Client Partners posting in the Green Room (future discussion — note only).
 
-**Status:** Context captured (28-CONTEXT.md), **not yet planned**.
+**Plans:** 5 plans (2 waves)
+
+Plans:
+- [ ] 28-01-PLAN.md — Antenna industry-gate fix (remove dead `industry_profiles` gate) + member_type/capability lockstep [Wave 1]
+- [ ] 28-02-PLAN.md — Green Room account-type gate (app-layer: Artist ✓ / Industry ✓ / else ✗ + inert Funūn-email block) [Wave 1]
+- [ ] 28-03-PLAN.md — Curator claim → Industry-account repoint (retire `role='curator'` mint) + shared `provisionIndustryAccount()` primitive [Wave 1]
+- [ ] 28-04-PLAN.md — Curator directory relocation under PitchPlug (navigation only) [Wave 1]
+- [ ] 28-05-PLAN.md — Migration 085 (industry capability write + backfill + Green Room RLS gate) + HUMAN-GATED push checkpoint [Wave 2]
+
+**Provisional requirements** (INDUSTRY-01…07) — cited in plan frontmatter but NOT yet registered in
+REQUIREMENTS.md (no Phase 28 section exists); register via `/gsd-docs-update` before phase close.
+
+**Status:** Planned 2026-08-05 (5 plans / 2 waves). Migration push is human-gated (Plan 28-05, autonomous:false).
