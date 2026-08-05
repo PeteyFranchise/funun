@@ -849,3 +849,38 @@ abuse limits. **Distinct from** Phase 26's sync-library invite (that invites a s
 
 **Status:** Context captured (27-CONTEXT.md), **not yet planned**. Near-term growth control; the owner's seed-artist
 account can be created independently at any time.
+
+### Account Taxonomy & Green Room Access (owner-confirmed 2026-08-05)
+
+Funūn's accounts settle into **four lanes** (see `28-CONTEXT.md`):
+
+| Account | Who | Access |
+|---------|-----|--------|
+| **Funūn Team Member** (internal) | Staff, role-typed (Leadership/AE/BD/…) | Team Console (Phase 25). **No Green Room posting under a Funūn email** — staff may make a personal Artist/Industry account to participate. |
+| **Artist** (external creator) | **Anyone with song credits** — artists, writers, producers, all creative roles | Sound Vault (Contract Locker, Split Sheets, Antenna/PitchPlug) + **Green Room + posts**. Invite-only (Phase 27). |
+| **Industry** (external) | Curators, A&R, execs, publishers, music supervisors, playlist owners, radio, managers | **Green Room + social profile** + tools to **post opportunities into Antenna**; per-subtype toolsets (future); **invite-only**. |
+| **Client Partner** (external buyer) | Sync buyers, B2B | Buyer portal (Phase 23), AE-managed. **Green Room posting = FUTURE discussion** (noted, deferred). |
+
+**Curators = a type of Industry account** (`playlist_curator` role); the standalone curators directory becomes the pitch-target CRM. This resolves the "better way to use curator accounts" thread.
+
+### Phase 28: Industry Accounts & Green Room Access Model
+
+**Goal:** Confirm the four-lane account taxonomy and the **Green Room access model**, and define the **Industry
+account** lane — external music-industry participants (curators, A&R, execs, publishers, supervisors, playlist
+owners, radio, managers) who **post opportunities into Antenna** and **participate in the Green Room** (social
+profile + posts), **invite-only**, role-typed by subtype. **Reconcile the standalone curators directory** into the
+industry-account model. **Mostly confirm/extend/reconcile — much already exists.**
+
+**Ground truth (already built):** `member_type ('artist','industry')` (migration 034); invite-based industry
+accounts (`createIndustryMember` + `industryInvite` email); the exact subtypes as slugs (`playlist_curator`,
+`ar_executive`, `publisher`, `music_supervisor`, `manager`, … in `lib/industry-roles.ts`); industry-gated Antenna
+opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(artist)/green-room`).
+
+**Requirements**: see `.planning/phases/28-industry-accounts-green-room-access/28-CONTEXT.md`
+**Depends on:** Phase 15 (capability model), the member_type/industry substrate, Green Room social (Phases 11–14), Antenna, Phase 25 (Team Members)
+
+**Open (GSD discussion):** curator directory ↔ industry-account reconciliation; Green Room access enforcement
+(`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
+**Deferred:** Client Partners posting in the Green Room (future discussion — note only).
+
+**Status:** Context captured (28-CONTEXT.md), **not yet planned**.
