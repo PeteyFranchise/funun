@@ -684,6 +684,7 @@ Funūn's buyer side runs **two onboarding models**, built in sequence. Both reus
   **ad agencies, film/ad production companies, brands with dedicated marketing teams.** Registration is
   **light-touch**: capture a little info (even just work email + phone) → **create a buyer company
   account** → Funūn **assigns an Account Executive (AE)** who helps the buyer complete onboarding.
+
 - **Model B — Self-Serve Creator (Phase 24, future).** Smaller **content creators** self-serving
   **instant** accounts from the browse, no AE in the loop (Musicbed / Marmoset-self-serve shape —
   Marmoset runs a separately-surfaced self-serve arm off the same catalogue). Deferred to post-Model-A.
@@ -732,15 +733,20 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 
 **Goal:** A **new account type for Funūn employees** (Account Executives, BD, leadership) so the people who
 run the business operate **inside the product**, governed by a **staff permission model**. Delivers:
+
 1. **A way to create Funūn team member accounts** — a provisioning flow (bootstrapped from an owner/superadmin
    seed; leadership creates the rest). Staff accounts are not self-serve.
+
 2. **Staff roles + permissions (RBAC).** Team accounts carry an **access level**; only staff **with the
    permission** can perform privileged actions. Specifically:
+
    - **Create client (buyer) accounts** — permissioned staff (e.g. AE/BD) can provision a buyer company
      account from the Funūn side (generalizes today's platform-admin-only `/admin/buyer-orgs`).
+
    - **Edit portions of client accounts** — permissioned staff can edit **specific parts** of a buyer
      account, **scoped by their access** (likely their assigned companies + a subset of fields), not blanket
      access to every client account.
+
 3. **AE↔buyer-company assignment** (one AE per buyer company) + **lead/work routing** so new-buyer signups
    and buyer activity land in the right employee's **in-app queue** AND email — Funūn's sales motion inside
    the team's daily systems.
@@ -754,12 +760,23 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
 **Plans:** 7 plans / 4 waves
+**Wave 1**
+
 - [ ] 25-01-PLAN.md — Staff role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
 - [ ] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
 - [ ] 25-03-PLAN.md — Migrations 085 (funun_staff + staff_audit_log, zero-RLS) + 086 (buyer_orgs.ae_user_id private) [W1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 25-04-PLAN.md — Staff account provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
 - [ ] 25-05-PLAN.md — Assignment-scoped buyer-org editing + AE assignment + widened staff-create gate [W2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 25-06-PLAN.md — Admin gate widening + role-aware sidebar + Staff UI + My Companies work queue [W3]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration [W4]
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
