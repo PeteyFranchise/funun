@@ -764,10 +764,10 @@ client accounts **on the client's behalf** (create, help onboard, edit details).
 staff as first-class accounts and (b) **least-privilege permissions** so only authorized staff touch client
 data — you don't want every team member able to edit every buyer. Today neither exists.
 
-**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-08 proposed at plan time — TEAM-08 = Team Console light/dark theme; registered in REQUIREMENTS.md by 25-07)
+**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 9 plans / 5 waves
+**Plans:** 10 plans / 5 waves
 **Wave 1**
 
 - [ ] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
@@ -787,6 +787,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 - [ ] 25-08-PLAN.md — Team Console light/dark theme + per-member toggle (ports buyer 22-03; dark default) [W4]
 - [ ] 25-09-PLAN.md — Leadership reassigns Client Partners between AEs (reassign UI + notify-both on the /ae route) [W4]
+- [ ] 25-10-PLAN.md — Team Member Directory (all-roles): contact cards + email/call actions (adds funun_staff title/phone) [W4]
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -794,7 +795,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
 
-**Status:** Planned (9 plans, 5 waves) 2026-08-05. Enables Model A's AE assignment + **reassignment**, Client Partner provisioning + editing, lead routing, and a light/dark Team Console (Phase 23 can stub AE/team until this lands).
+**Status:** Planned (10 plans, 5 waves) 2026-08-05. Enables Model A's AE assignment + **reassignment**, Client Partner provisioning + editing, lead routing, a light/dark Team Console, and an all-roles **Team Member Directory** (Phase 23 can stub AE/team until this lands).
 
 ### Phase 26: Sync-Library Inclusion & Artist Submission
 

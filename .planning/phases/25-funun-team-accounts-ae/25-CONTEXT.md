@@ -69,6 +69,15 @@ AE/BD/leadership need for beta.
   exist; legacy pages migrate incrementally.
 - Delivered by new plan **25-08** (depends_on 25-06, the shell it mounts in).
 
+## Team Member Directory — all-roles (owner 2026-08-05)
+- **Every** Team Member account (any role) gets a **Team Member Directory** (`/admin/directory`): a list of all
+  team members with a **contact card** each — name, role type, title, email, phone — and real **contact actions**
+  (email a teammate via `mailto:`, call via `tel:`). It is the internal **phone book**.
+- **Distinct from** the leadership-only **Team Members management** page (25-06): the Directory is **all-roles
+  and READ-ONLY** (no create/edit/role-change). Reads the same `funun_staff` + auth email.
+- Needs two **contact fields** on `funun_staff` — `title`, `phone` (nullable) — added to migration 085 (25-03).
+- Delivered by new plan **25-10** (depends_on 25-03 schema fields + 25-06 nav/shell). Requirement **TEAM-09**.
+
 ## Direction (from the discussion)
 - Funūn employee accounts are a **third principal type** — distinct from artist and Client Partner (buyer) accounts.
 - **Staff accounts are provisioned, not self-serve** (owner/superadmin bootstrap → leadership creates more).
