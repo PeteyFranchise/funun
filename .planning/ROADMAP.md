@@ -861,7 +861,11 @@ Funūn's accounts settle into **four lanes** (see `28-CONTEXT.md`):
 | **Industry** (external) | Curators, A&R, execs, publishers, music supervisors, playlist owners, radio, managers | **Green Room + social profile** + tools to **post opportunities into Antenna**; per-subtype toolsets (future); **invite-only**. |
 | **Client Partner** (external buyer) | Sync buyers, B2B | Buyer portal (Phase 23), AE-managed. **Green Room posting = FUTURE discussion** (noted, deferred). |
 
-**Curators = a type of Industry account** (`playlist_curator` role); the standalone curators directory becomes the pitch-target CRM. This resolves the "better way to use curator accounts" thread.
+**Curators — RESOLVED (owner 2026-08-05):** there is **no separate curator account** — the only curator *account* is an
+**Industry account** (`playlist_curator`); the legacy `role='curator'` is **retired** (its claim flow repoints at
+Industry-account creation). The **`curators` table = CRM data** (pitch-target contacts not yet onboarded), which **lives
+under PitchPlug for now** (the tool that pitches them). Growth loop: the **community + Team Members recruit directory
+contacts one by one** to join as Industry accounts; the directory is seeded manually + via future **discovery/scraping tools**.
 
 **Browse Catalogue access (reaffirmed 2026-08-05):** the Browse Catalogue stays **publicly accessible without an
 account** — anyone can browse + play previews. **Purchasing / licensing is gated**: any engagement (shortlist,

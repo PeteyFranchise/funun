@@ -30,8 +30,25 @@ Four lanes — two internal-vs-external axes:
 - **Industry account** = external music-industry people whose job is to **surface opportunities** to artists and
   **participate in the Green Room**. Different goals/tools/permissions from an artist. **Invite-only.** Each subtype
   eventually gets **its own toolset** (a curator's tools ≠ a publisher's ≠ a supervisor's).
-- **Curators are a TYPE of Industry account** (the `playlist_curator` role). The standalone `curators` directory
-  becomes the **pitch-target CRM**; a curator who *participates* is an Industry account. (Bridge = open question.)
+## Curators — RESOLVED (owner 2026-08-05)
+Split "curator" into the two things it actually is; there is **no separate curator account type**:
+- The **`curators` table = CRM data** — a directory of **pitch-target contacts Funūn has NOT yet onboarded** with
+  their own accounts. **Not an account type.** (Already carries name/email/platform/playlist/genre + bounce/drift flags.)
+- The **only real curator *account* = an Industry account** (`member_type='industry'`, `playlist_curator`).
+- **Retire the legacy `role='curator'`** account (migration 030) — it predates Industry accounts and is strictly
+  weaker (self-edits its directory row only; no Green Room, no tools). **Repoint the existing claim/join flow at
+  Industry-account creation** (a claimed directory contact becomes an Industry account, not the thin legacy one).
+  Beta likely has ~0 real `role='curator'` accounts to migrate — cheap cleanup.
+- **Curator acquisition loop (owner vision):** the directory is a **growth funnel** — the **Funūn community + Team
+  Members recruit directory contacts one by one** to accept an invite and **join as Industry accounts** (then they
+  post opportunities + participate in the Green Room). So **Industry invites can come from the community**, not only staff.
+- **Populating the directory:** seeded manually + via **discovery/scraping tools** to find curators / playlist owners /
+  radio / etc. as new pitch-target contacts (a future tool — mind each platform's ToS/robots + data-privacy/cold-outreach law when built).
+- **Placement (owner 2026-08-05):** the `curators` directory (the CRM data + its management) **lives within PitchPlug
+  for now** — PitchPlug is the tool that pitches to these contacts, so keep the directory as a **PitchPlug asset**
+  rather than a standalone curator system or a big new admin area. Don't over-build it. This placement is provisional
+  ("for now"); the account reconciliation above (curator = Industry account, retire `role='curator'`) is a **separate**
+  concern from where the directory data lives. (Today it's `/admin/curators` — folding it under PitchPlug is the near-term move.)
 
 ## Green Room access matrix (owner 2026-08-05)
 - **Artist** → ✓ access + post.
@@ -53,10 +70,9 @@ Four lanes — two internal-vs-external axes:
 
 <open_questions>
 ## Open — GSD discussion before/at planning
-1. **Curator reconciliation.** The standalone `curators` directory (migration 030 — `role='curator'`, claimable,
-   admin-seeded pitch targets) vs a `playlist_curator` **Industry account**. Same person/record or two things? Does
-   claiming a curator-directory row create/attach an Industry account? Keep the directory as CRM + Industry account
-   as the participant identity, with a bridge? (This resolves the earlier "better way to use curator accounts" thread.)
+1. **Curator reconciliation — RESOLVED** (see the "Curators — RESOLVED" block in Decisions): directory = CRM data
+   (lives under PitchPlug for now); the only curator *account* = an Industry account (`playlist_curator`); retire the
+   legacy `role='curator'` and repoint its claim flow at Industry-account creation.
 2. **Green Room access enforcement.** Is access simply `member_type IN ('artist','industry')`? Where's the gate
    (green-room route/layout)? Confirm industry accounts already get Green Room + a social profile, or wire it.
 3. **Team-Member "no Funūn-email posting."** Enforced (block `@funun.studio` from Green Room posting) vs policy/norm?
