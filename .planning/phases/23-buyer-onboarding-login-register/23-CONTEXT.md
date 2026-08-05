@@ -36,7 +36,9 @@ back AE assignment (Phase 25 — Model A may stub AE until then); subscription/b
   that's enough to create the account. NOT a bare lead (earlier framing), and NOT full self-serve access:
   the account is created, then an **AE completes onboarding**.
 - Both **"Register"** and **"Talk to a sales rep"** doors feed this same flow (two front doors, one pipeline).
-- Funūn can fully **manage/edit** buyer accounts from the admin side.
+- Funūn can **create + manage/edit** buyer accounts from the Funūn side — **access-gated by staff permission**
+  (see Phase 25: only permissioned staff create buyer accounts / edit scoped portions). Staff can also create
+  a buyer account outright (AE onboards a client they sourced), not only via the buyer-initiated register flow.
 
 ### Buyer company account model
 - **Company-scoped** (org-first, B2B). A company has **multiple members** (people who make music purchases).

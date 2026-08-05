@@ -728,21 +728,34 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 
 **Status:** Future / post-beta — discussion captured (24-CONTEXT.md), **not yet planned**. Sequenced after Model A ships.
 
-### Phase 25: Funūn Team / Internal Accounts & AE Assignment
+### Phase 25: Funūn Team / Internal Accounts & AE Assignment + Staff Permissions
 
 **Goal:** A **new account type for Funūn employees** (Account Executives, BD, leadership) so the people who
-run the business operate **inside the product**. Delivers: employee accounts + roles; **AE↔buyer-company
-assignment** (each buyer company has one AE); and **lead/work routing** so new-buyer signups and buyer
-activity land in the right employee's **in-app queue** AND email — making Funūn's sales motion part of
-its team's daily systems.
+run the business operate **inside the product**, governed by a **staff permission model**. Delivers:
+1. **A way to create Funūn team member accounts** — a provisioning flow (bootstrapped from an owner/superadmin
+   seed; leadership creates the rest). Staff accounts are not self-serve.
+2. **Staff roles + permissions (RBAC).** Team accounts carry an **access level**; only staff **with the
+   permission** can perform privileged actions. Specifically:
+   - **Create client (buyer) accounts** — permissioned staff (e.g. AE/BD) can provision a buyer company
+     account from the Funūn side (generalizes today's platform-admin-only `/admin/buyer-orgs`).
+   - **Edit portions of client accounts** — permissioned staff can edit **specific parts** of a buyer
+     account, **scoped by their access** (likely their assigned companies + a subset of fields), not blanket
+     access to every client account.
+3. **AE↔buyer-company assignment** (one AE per buyer company) + **lead/work routing** so new-buyer signups
+   and buyer activity land in the right employee's **in-app queue** AND email — Funūn's sales motion inside
+   the team's daily systems.
 
-**Why:** Model A is relationship-driven — an AE per company drives larger B2B deals. That requires Funūn
-staff to exist as first-class accounts (assign, notify, hand off, oversee), which today they do not.
+**Why:** Model A is relationship-driven — an AE per company drives larger B2B deals, and AEs/BD operate
+client accounts **on the client's behalf** (create, help onboard, edit details). That requires (a) Funūn
+staff as first-class accounts and (b) **least-privilege permissions** so only authorized staff touch client
+data — you don't want every team member able to edit every buyer. Today neither exists.
 
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md`
-**Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs to assign AEs to)
+**Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Status:** Discussion captured (25-CONTEXT.md), **not yet planned**. Enables Model A's AE assignment + lead routing (Phase 23 can stub AE until this lands).
+**Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
+
+**Status:** Discussion captured (25-CONTEXT.md), **not yet planned**. Enables Model A's AE assignment, buyer-account provisioning + editing, and lead routing (Phase 23 can stub AE/staff until this lands).
 
 ### Phase 26: Sync-Library Inclusion & Artist Submission
 
