@@ -21,8 +21,22 @@ Frictionless clearance is the GTM wedge: "instantly licensable catalog, no artis
 ## How it plugs into what's already built
 
 - **16-04 pre-cleared terms** = *what* an artist will license + price floor.
-- **Blanket authorization (new, at signup)** = *permission to execute* within those terms.
+- **Blanket authorization (new)** = *permission to execute* within those terms.
 - Together they are what let a buyer sign alone.
+
+## Refinement (owner, 2026-08-05) — WHERE the blanket agreement lives
+
+The buyer-onboarding discussion refined the blanket agreement's home: it is signed at **sync-library
+submission** (per song/catalogue admission), **not** as a generic account-signup ToS. When a (chosen/invited)
+artist submits songs to the sync-library, they **sign a blanket agreement authorizing Funūn to shop those
+songs** — and that authorization is what turns on public view + admits the song to the catalogue. See the
+**inclusion decision** (`buyer-catalogue-inclusion-model.md`, resolved 2026-08-05) and **Phase 26
+(Sync-Library Inclusion)**, which owns the artist submission + blanket-agreement e-sign flow.
+
+**Open scope question this raises (carried into Phase 26 + here):** does that submission-time blanket
+agreement *also* pre-authorize licensing **terms** (true blanket pre-auth → buyer signs alone), or only
+authorize Funūn to **shop** (with per-deal signing still needed)? That is the crux this deliberation still
+must settle with counsel — the inclusion decision fixed *that* there's a blanket agreement, not its full legal scope.
 
 ## Open sub-decisions (to resolve before building 16-09)
 

@@ -661,41 +661,56 @@ Plans:
 Waves: W1 = 22-01, 22-02 · W2 = 22-03 · W3 = 22-04, 22-05 (22-05 blocked_by `.planning/deliberations/buyer-catalogue-inclusion-model.md`).
 Deferred (not planned): real preview audio (no preview URLs yet), logo adoption, Similarity/Playlists tabs.
 
-### Buyer Onboarding — Two-Model Strategy (owner decision 2026-08-05)
+## Buyer & Sales Infrastructure Cluster (owner decisions 2026-08-05)
 
-Funūn's buyer side runs **two onboarding models**, built in sequence. Both reuse a shared
-front end (public Browse Catalogue + Funūn-styled Login/Register modal); they differ in what
-"Register" *does*.
+A cluster of phases stood up together from the buyer-onboarding discussion. They introduce
+**two new account types** (buyer/client companies + Funūn employees), an **AE-driven sales motion**,
+and the **sync-library inclusion model** (how songs get into the buyer catalogue). Numbered 23–26,
+but **numeric order ≠ build order** — see the sequencing note at the end of the cluster.
+
+**Why this cluster exists (rationale):** Funūn's buyer side is a **relationship-driven, B2B-first
+marketplace**, not just a self-serve store. Larger deals (agencies, film/ad, brand marketing teams)
+are won by people — so buyer *companies* get a dedicated **Account Executive (AE)**, and Funūn needs
+**internal employee accounts** for those AEs/BD/leadership to run the business inside the product.
+Supply is **curated, not open**: only invited artists submit songs to the sync-library (distinct from
+the open Sound Vault), gated by a **blanket agreement** authorizing Funūn to shop them.
+
+### Buyer Onboarding — Two-Model Strategy
+
+Funūn's buyer side runs **two onboarding models**, built in sequence. Both reuse a shared front end
+(public Browse Catalogue + Funūn-styled Login/Register modal); they differ in what "Register" *does*.
 
 - **Model A — Sales-Led B2B (Phase 23, active).** Larger, Funūn-brokered deals with businesses —
-  **ad agencies, film/ad production companies, brands with dedicated marketing teams.** Buyers are
-  vetted/provisioned: "Register" and "Talk to a sales rep" both create a **lead** an admin/BD
-  converts into a buyer account. Consistent with today's admin-created model (16-03) + the
-  industry-approved pattern (Phase 15).
+  **ad agencies, film/ad production companies, brands with dedicated marketing teams.** Registration is
+  **light-touch**: capture a little info (even just work email + phone) → **create a buyer company
+  account** → Funūn **assigns an Account Executive (AE)** who helps the buyer complete onboarding.
 - **Model B — Self-Serve Creator (Phase 24, future).** Smaller **content creators** self-serving
-  **instant** accounts from the browse, no BD in the loop (Musicbed / Marmoset-self-serve shape —
+  **instant** accounts from the browse, no AE in the loop (Musicbed / Marmoset-self-serve shape —
   Marmoset runs a separately-surfaced self-serve arm off the same catalogue). Deferred to post-Model-A.
 
-This **resolves** the earlier open "instant vs request-and-approve" decision: it's **both, phased —
-Model A (request-and-approve) first, Model B (instant self-serve) later.**
+This **resolves** the earlier open "instant vs request-and-approve" decision as **both, phased**: Model A
+(account-created-on-register, **AE-assisted onboarding**) first, Model B (instant self-serve) later.
 
-### Phase 23: Buyer Onboarding · Model A — Sales-Led B2B Access (+ public browse & login/register foundation)
+### Phase 23: Buyer Onboarding · Model A — Sales-Led B2B Access + Buyer Company Account Model
 
-**Goal:** Open the Browse Catalogue to **public (logged-out) browsing**, add the Funūn-styled
-**Login/Register modal** (the shared foundation both models reuse), let existing buyers log in, and
-route new-buyer interest — **Register** + **Talk to a sales rep** — into a **lead → admin provisions**
-pipeline. No self-serve instant accounts here (that's Model B). Closes the current gap where the
-catalogue is fully walled and buyers can only be admin-created with no buyer-facing entry point.
+**Goal:** Open the Browse Catalogue to **public (logged-out) browsing**; add the Funūn-styled
+**Login/Register modal** (shared foundation both models reuse); let existing buyers log in; and turn
+new-buyer interest into a **buyer company account** — captured light-touch at register, **assigned an AE**,
+and **AE-shepherded to full onboarding**. Establishes the **buyer company account model**: company-scoped
+accounts with **cross-company purchase visibility** and a **spend-approver** role, fully **Funūn-manageable**,
+and **distinct from artist (user) accounts**.
 
 **Requirements**: see `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md`
-**Depends on:** Phase 16 (buyer orgs/accounts/`handle_new_user` buyer branch), Phase 22 (light buyer UI + the browse the modal lives on)
+**Depends on:** Phase 16 (buyer orgs/`buyer_members`), Phase 22 (light buyer UI + the browse the modal lives on), **Phase 25 (AE assignment needs Funūn employee accounts — may stub initially)**
 
 **Locked decisions (from 23-CONTEXT.md):**
 
-- **Onboarding model:** Model A = **request-and-approve** — Register + Talk-to-sales both create a buyer **lead**; an admin/BD provisions the real account (no instant self-serve in this phase).
-- **Public browse:** the catalogue becomes browsable logged-out (today it walls to `/buyers/access`); the modal's **Login** button lives in that public browse.
+- **Onboarding model:** light-touch **Register creates a buyer company account** (both "Register" and "Talk to a sales rep" doors do this — minimum viable info is email + phone). Not a bare lead, and not full self-serve: the account is created, then an **AE completes onboarding**. Funūn can fully **manage/edit** these accounts.
+- **AE assignment:** every buyer company is assigned **one Account Executive** (a Funūn employee) by leadership → relationship-driven sales. (Needs Phase 25.)
+- **Buyer company account model:** company-scoped; **members** can see **what's happening across their company** (who's purchasing) — critical for the person **green-lighting spend**. Implies a **spend-approver / company-admin role** + a company-purchases view. **Very different from artist accounts** (own account type/shape, own admin tooling).
+- **Public browse:** the catalogue becomes browsable logged-out; a logged-out visitor can **browse + play previews**, but any **engagement** (shortlist / License) pops the modal → "create an account" (email + phone is enough to create one). The modal's **Login** button lives here.
+- **Lead/notification routing:** a new-buyer signup lands in an **admin queue** AND (once Phase 25 exists) in the assigned **AE's / BD's in-app account**, plus a **Resend email** — so it becomes part of their daily human systems.
 - **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout, Funūn-branded, adds "Talk to a sales rep". Opens over the browse (scrim, like the existing License modal).
-- **Account shape:** Model A buyers are **companies/teams** (org-first) — a B2B account.
 - **Logo:** adopt one of the 5 wordmark explorations (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`).
 
 **Status:** Discussion in progress (23-CONTEXT.md) — being nailed down before `/gsd-plan-phase 23`.
@@ -703,12 +718,60 @@ catalogue is fully walled and buyers can only be admin-created with no buyer-fac
 ### Phase 24: Buyer Onboarding · Model B — Self-Serve Creator Access
 
 **Goal:** The **self-serve** onboarding model for smaller content creators — **instant** buyer accounts
-created from the browse with no BD in the loop (Musicbed / Marmoset-self-serve shape). Reuses Phase 23's
+created from the browse with no AE in the loop (Musicbed / Marmoset-self-serve shape). Reuses Phase 23's
 Login/Register modal + public browse; adds the parts Model A deliberately skips: self-serve account/org
 bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/checkout + plan tiers, and the
 **transact-gate** that keeps artists protected when buyers aren't vetted.
 
 **Requirements**: see `.planning/phases/24-buyer-onboarding-self-serve/24-CONTEXT.md`
-**Depends on:** Phase 23 (shared modal + public browse), Phase 16 (buyer orgs), Stripe (billing)
+**Depends on:** Phase 23 (shared modal + public browse + buyer account model), Phase 16 (buyer orgs), Stripe (billing)
 
 **Status:** Future / post-beta — discussion captured (24-CONTEXT.md), **not yet planned**. Sequenced after Model A ships.
+
+### Phase 25: Funūn Team / Internal Accounts & AE Assignment
+
+**Goal:** A **new account type for Funūn employees** (Account Executives, BD, leadership) so the people who
+run the business operate **inside the product**. Delivers: employee accounts + roles; **AE↔buyer-company
+assignment** (each buyer company has one AE); and **lead/work routing** so new-buyer signups and buyer
+activity land in the right employee's **in-app queue** AND email — making Funūn's sales motion part of
+its team's daily systems.
+
+**Why:** Model A is relationship-driven — an AE per company drives larger B2B deals. That requires Funūn
+staff to exist as first-class accounts (assign, notify, hand off, oversee), which today they do not.
+
+**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md`
+**Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs to assign AEs to)
+
+**Status:** Discussion captured (25-CONTEXT.md), **not yet planned**. Enables Model A's AE assignment + lead routing (Phase 23 can stub AE until this lands).
+
+### Phase 26: Sync-Library Inclusion & Artist Submission
+
+**Goal:** Define and build **how songs get into the buyer catalogue** — the **sync-library**. Curated, not
+open: only **chosen / invited artists** may submit. A song reaches the catalogue via **artist submits →
+signs a blanket agreement (authorizing Funūn to shop it) → Funūn turns on public view + admits it to
+"Browse the Catalogue."** Includes the **artist-facing opportunity** (Funūn invites an artist — potentially
+one of the *first* opportunities they see on their Funūn page — to add songs to the sync-library so they
+get paid on sync deals) and the **admin curation/admission** side.
+
+**Why:** The Sound Vault is open to anyone; the **sync-library is a curated, represented catalogue**. Songs
+originate in the Vault but must be **explicitly submitted + rights-authorized** before buyers see them —
+protecting artists and keeping catalogue quality/trust high. **This resolves the core of the
+buyer-catalogue inclusion deliberation** (opt-in + invited + curated + blanket agreement) and is the real
+supply pipeline behind live catalogue data (Phase 22 · 22-05).
+
+**Requirements**: see `.planning/phases/26-sync-library-inclusion/26-CONTEXT.md`
+**Depends on:** Sound Vault + readiness (upstream song source), e-sign (`lib/esign/provider.ts`) for the blanket agreement, Phase 22 (the catalogue surface + `is_public`/`isRightsReady` gate to replace)
+**Resolves:** `.planning/deliberations/buyer-catalogue-inclusion-model.md` (core workflow). **Relates to:** `.planning/deliberations/sync-license-signing-model.md` (the blanket agreement is the artist→Funūn authorization).
+
+**Status:** Discussion captured (26-CONTEXT.md), **not yet planned**.
+
+### Cluster sequencing (build order ≠ phase number)
+
+The real dependency graph within the Model A track:
+
+1. **Phase 26 (sync-library inclusion)** — supply. Without it the catalogue has nothing real to show; it's upstream of live data (22-05).
+2. **Phase 25 (Funūn team accounts + AE)** — the AE/lead-routing infra Model A leans on.
+3. **Phase 23 (Model A onboarding + buyer account model)** — the demand-side entry; uses 25 (AE, routing) and benefits from 26 (real supply). Can be built with AE/routing **stubbed** if 25 isn't ready.
+4. **Phase 24 (Model B self-serve)** — last, post-beta.
+
+**Open sequencing decision (for a later pass):** do we build 26 + 25 first (real supply + AE infra, then a complete Model A), or build Phase 23's onboarding UI first with AE/supply stubbed to validate the buyer funnel early? To reason through.

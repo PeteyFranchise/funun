@@ -1,9 +1,29 @@
 # Deliberation — Buyer-Catalogue Inclusion Model (which Sound Vault songs reach buyers)
 
-**Status:** OPEN — needs a product decision + a workflow before the buyer catalogue pulls from live data
+**Status:** CORE RESOLVED 2026-08-05 (owner) — model = **curated sync-library: invite → submit → blanket agreement → Funūn admits**. Promoted to **Phase 26 (Sync-Library Inclusion & Artist Submission)** for build; remaining sub-decisions (data model, granularity, tri-state meaning, revocation) carried into that phase's CONTEXT. Original open analysis kept below for reference.
 **Opened:** 2026-08-04 (owner, during the buyer-catalogue light redesign)
 **Blocks:** the buyer-catalogue "make it real" step (live-data wiring, slice 1.5) — see `lib/deals/catalog-sample.ts`
 **Related:** `lib/deals/catalog.ts` (`isRightsReady`, `CATALOG_READINESS_THRESHOLD`), Phase 16 CONTEXT D-16, the tri-state rights badge (Rights ready / Partial / Contact required)
+
+---
+
+## ✅ Decision (owner, 2026-08-05)
+
+The sync-library is **curated, not automatic**. Concretely:
+
+- The **Sound Vault is open** (anyone can make one); the **sync-library is separate and curated**. Only
+  **chosen / invited artists** may submit songs to it. → resolves **#1 (opt-in, not automatic)** and **#2 (curated)**.
+- Songs **originate in the Vault** but must be **explicitly submitted**; inclusion is **not** a readiness side effect.
+- To submit, the artist **signs a blanket agreement** authorizing Funūn to **shop/represent** those songs.
+- Funūn then **turns on public view** for the song and **admits it** to "Browse the Catalogue."
+- Funūn can **invite** artists to add songs — potentially one of the **first opportunities** an artist sees
+  on their Funūn page ("add your songs so you can get paid on sync deals").
+
+**Still open (carried into Phase 26):** #3 tri-state rights meaning, #4 relationship to pre-cleared terms /
+the **blanket agreement's scope** (shop-only vs also pre-authorizing terms — see the sync-license-signing-model
+deliberation), #5 explicit listing **data model**, #6 project-vs-track **granularity**, #7 **revocation**.
+
+**Build home:** `.planning/phases/26-sync-library-inclusion/26-CONTEXT.md`.
 
 ---
 
