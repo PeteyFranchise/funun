@@ -661,19 +661,54 @@ Plans:
 Waves: W1 = 22-01, 22-02 · W2 = 22-03 · W3 = 22-04, 22-05 (22-05 blocked_by `.planning/deliberations/buyer-catalogue-inclusion-model.md`).
 Deferred (not planned): real preview audio (no preview URLs yet), logo adoption, Similarity/Playlists tabs.
 
-### Phase 23: Buyer Onboarding — Public Login / Register & Sales-Assisted Access
+### Buyer Onboarding — Two-Model Strategy (owner decision 2026-08-05)
 
-**Goal:** Give prospective buyers a way to get into the buyer portal **from the public Browse Catalogue**. Clicking **Login** opens a Funūn-styled modal (light `.fnbl` design, Funūn name/colors/logo — modeled on the Marmoset login modal the owner referenced) that offers three paths: **log in** (existing buyers), **register** (a self-serve buyer account created from the browse page), and **talk to a sales rep** (sales-assisted setup). Closes the current gap where buyers can only be **admin-created** (16-03) — there is no buyer-facing signup today.
+Funūn's buyer side runs **two onboarding models**, built in sequence. Both reuse a shared
+front end (public Browse Catalogue + Funūn-styled Login/Register modal); they differ in what
+"Register" *does*.
 
-**Requirements**: see `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md` (owner direction + Marmoset login-modal reference)
-**Depends on:** Phase 16 (buyer orgs/accounts/`handle_new_user` buyer branch), Phase 22 (light buyer UI + the public browse the modal lives on)
+- **Model A — Sales-Led B2B (Phase 23, active).** Larger, Funūn-brokered deals with businesses —
+  **ad agencies, film/ad production companies, brands with dedicated marketing teams.** Buyers are
+  vetted/provisioned: "Register" and "Talk to a sales rep" both create a **lead** an admin/BD
+  converts into a buyer account. Consistent with today's admin-created model (16-03) + the
+  industry-approved pattern (Phase 15).
+- **Model B — Self-Serve Creator (Phase 24, future).** Smaller **content creators** self-serving
+  **instant** accounts from the browse, no BD in the loop (Musicbed / Marmoset-self-serve shape —
+  Marmoset runs a separately-surfaced self-serve arm off the same catalogue). Deferred to post-Model-A.
+
+This **resolves** the earlier open "instant vs request-and-approve" decision: it's **both, phased —
+Model A (request-and-approve) first, Model B (instant self-serve) later.**
+
+### Phase 23: Buyer Onboarding · Model A — Sales-Led B2B Access (+ public browse & login/register foundation)
+
+**Goal:** Open the Browse Catalogue to **public (logged-out) browsing**, add the Funūn-styled
+**Login/Register modal** (the shared foundation both models reuse), let existing buyers log in, and
+route new-buyer interest — **Register** + **Talk to a sales rep** — into a **lead → admin provisions**
+pipeline. No self-serve instant accounts here (that's Model B). Closes the current gap where the
+catalogue is fully walled and buyers can only be admin-created with no buyer-facing entry point.
+
+**Requirements**: see `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md`
+**Depends on:** Phase 16 (buyer orgs/accounts/`handle_new_user` buyer branch), Phase 22 (light buyer UI + the browse the modal lives on)
 
 **Locked decisions (from 23-CONTEXT.md):**
 
-- **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout (Login title, email/password, remember-me, gradient Submit, forgot-password, divider, Register CTA, resend-activation) — Funūn-branded, adds a "Talk to a sales rep" path, uses the Funūn wordmark. Opens over the browse (scrim, like the existing License modal).
-- **Two on-ramps:** self-serve **Register** + **Talk to a sales rep** (request/contact).
+- **Onboarding model:** Model A = **request-and-approve** — Register + Talk-to-sales both create a buyer **lead**; an admin/BD provisions the real account (no instant self-serve in this phase).
+- **Public browse:** the catalogue becomes browsable logged-out (today it walls to `/buyers/access`); the modal's **Login** button lives in that public browse.
+- **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout, Funūn-branded, adds "Talk to a sales rep". Opens over the browse (scrim, like the existing License modal).
+- **Account shape:** Model A buyers are **companies/teams** (org-first) — a B2B account.
 - **Logo:** adopt one of the 5 wordmark explorations (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`).
 
-**⚠️ OPEN DECISION — settle before planning the Register path:** the **buyer onboarding model** — does self-serve Register create a live account **instantly**, or is it **request-and-approve** (sales/admin-gated)? Must reconcile with 16-03/D-12 (buyers admin-created; `handle_new_user` buyer branch early-returns with no org) and the Phase 15 model (industry accounts are admin-approved). **Recommendation to confirm:** request-and-approve for beta (both Register and Talk-to-sales create a buyer *request* an admin provisions), revisit self-serve-instant post-beta.
+**Status:** Discussion in progress (23-CONTEXT.md) — being nailed down before `/gsd-plan-phase 23`.
 
-**Status:** Context captured, **not yet planned** — run `/gsd-plan-phase 23` once the onboarding-model decision is confirmed.
+### Phase 24: Buyer Onboarding · Model B — Self-Serve Creator Access
+
+**Goal:** The **self-serve** onboarding model for smaller content creators — **instant** buyer accounts
+created from the browse with no BD in the loop (Musicbed / Marmoset-self-serve shape). Reuses Phase 23's
+Login/Register modal + public browse; adds the parts Model A deliberately skips: self-serve account/org
+bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/checkout + plan tiers, and the
+**transact-gate** that keeps artists protected when buyers aren't vetted.
+
+**Requirements**: see `.planning/phases/24-buyer-onboarding-self-serve/24-CONTEXT.md`
+**Depends on:** Phase 23 (shared modal + public browse), Phase 16 (buyer orgs), Stripe (billing)
+
+**Status:** Future / post-beta — discussion captured (24-CONTEXT.md), **not yet planned**. Sequenced after Model A ships.

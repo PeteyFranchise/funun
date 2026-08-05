@@ -1,96 +1,110 @@
-# Phase 23: Buyer Onboarding — Public Login / Register & Sales-Assisted Access - Context
+# Phase 23: Buyer Onboarding · Model A — Sales-Led B2B Access - Context
 
 **Gathered:** 2026-08-05
-**Status:** Ready for planning (one open decision to settle first — see Decisions)
+**Status:** Discussion in progress — Model A specifics being nailed down before planning
 **Source:** owner direction + Marmoset login-modal reference screenshot
 
 <domain>
 ## Phase Boundary
 
-Give prospective buyers a way to get INTO the buyer portal from the **public Browse
-Catalogue** (Phase 22's `isPublic` browse). Clicking **Login** opens a Funūn-styled
-modal — in the light `.fnbl` design, with the Funūn name/colors/logo — that offers:
-1. **Log in** (existing buyers: email/password, remember-me, forgot-password),
-2. **Register** — a **self-serve** path to a buyer account created from the browse page, and
-3. **Talk to a sales rep** — a sales-assisted path for buyers who need to be set up.
+Funūn's buyer side will run **two onboarding models** (owner, 2026-08-05), built in sequence:
+- **Model A — Sales-Led B2B (THIS phase):** larger, Funūn-brokered deals with businesses —
+  ad agencies, film/ad production companies, brands with dedicated marketing teams. Buyers are
+  **vetted/provisioned**, not self-serve.
+- **Model B — Self-Serve Creator (Phase 24, later):** smaller content creators self-serving
+  **instant** accounts (Musicbed / Marmoset-self-serve shape). Out of scope here.
 
-This closes the current gap: today there is **no self-serve buyer signup** — buyers are
-admin-created (16-03, D-12: an admin makes the buyer org + invites the first org-admin).
-This phase adds the buyer-facing on-ramps.
+This phase delivers **Model A + the shared front-end foundation both models reuse**:
+1. Open the **Browse Catalogue to public (logged-out) browsing** — today `/buyers/catalog` walls
+   logged-out visitors to `/buyers/access`; the `isPublic` "Login" button in `CatalogBrowserLight`
+   is scaffolding for a public browse that does not exist yet.
+2. The Funūn-styled **Login/Register modal** (light `.fnbl`, Funūn logo), opened from the public
+   browse's Login button.
+3. **Existing buyers log in** (Supabase email/password).
+4. **New-buyer interest → lead pipeline:** both **Register** and **Talk to a sales rep** create a
+   buyer **lead**; an admin/BD converts it into a real buyer account via the existing admin path
+   (`/admin/buyer-orgs` → `createBuyerAccount`). No instant self-serve accounts in Model A.
 
-**In scope:** the login/register modal (light `.fnbl`, Funūn logo), wiring the public
-catalogue's Login button to open it, the login flow, the self-serve register flow (per the
-decision below), the sales-rep request path, and the Funūn logo adoption.
+**In scope:** public browse mode/route; the login/register modal (shared); existing-buyer login +
+forgot-password; the Register + Talk-to-sales lead capture + where leads land + BD notification;
+Funūn logo adoption; org-first (B2B) account shape.
 
-**Out of scope / deferred:** the deep CRM/sales tooling behind "talk to a sales rep" (beyond
-capturing the lead); anything the onboarding-model decision defers.
+**Out of scope / deferred to Phase 24 (Model B):** self-serve **instant** account creation, the
+`handle_new_user` buyer-branch rewrite, subscription/checkout + plan tiers, the transact-gate for
+unvetted buyers.
 </domain>
 
 <decisions>
-## Implementation Decisions
+## Implementation Decisions (settled)
+
+### Onboarding model — RESOLVED
+- Model A = **request-and-approve**. Register + Talk-to-sales both create a buyer **lead**; an
+  admin/BD provisions the account. This reconciles cleanly with 16-03/D-12 (buyers admin-created)
+  and Phase 15 (industry accounts admin-approved) — **no auth surgery** needed. Self-serve-instant
+  is Model B (Phase 24).
+
+### Public browse
+- The catalogue becomes **browsable logged-out**. The modal's **Login** button lives there. (Exactly
+  what a logged-out visitor can DO — see open questions.)
+
+### Account shape
+- Model A buyers are **companies/teams** — an **org-first** B2B account (a buyer brings their team).
 
 ### Design
-- Funūn-styled modal in the **light `.fnbl` system** (Phase 22 tokens), matching the Marmoset
-  login-modal layout from the reference: centered card, **Login** title, email + password
-  fields, "Remember me", a gradient **Submit**, "I forgot my password!", a divider, a
-  **Register** CTA ("Don't have an account? …"), and a resend-activation line. Adapt copy +
-  add the **"Talk to a sales rep"** path. Use the **Funūn wordmark/logo** (not "Marmoset").
-- High fidelity to the buyer light design; the modal opens over the browse (scrim, like the
-  License modal already in `CatalogBrowserLight.tsx`).
-
-### Access paths
-- **Two on-ramps:** (1) self-serve **Register** from the browse; (2) **Talk to a sales rep**
-  (a request/contact path) for buyers who need assisted setup.
-
-### OPEN DECISION — the buyer onboarding model (settle BEFORE building Register)
-Does self-serve **Register** create a live buyer account **instantly**, or is it
-**request-and-approve** (sales/admin-gated)? This must reconcile with:
-- **16-03 / D-12** — buyers are currently **admin-created** (admin makes the org + invites the
-  first org-admin); `handle_new_user`'s buyer branch (migration 080) deliberately early-returns
-  with **NO** `user_profiles`/org row, assuming an admin created the org first.
-- **Phase 15 capability model** — artist → instant, **industry → admin-approved** (D-02). Buyers
-  may follow the industry pattern (request → approve) rather than instant self-serve.
-
-Sub-questions: does a self-serve buyer get a **personal org auto-created**, or **join/request an
-existing** org? Individual vs company signup? If instant, `handle_new_user`'s buyer branch + a
-`buyer_orgs`/`buyer_members` bootstrap must change. If request-and-approve, Register becomes a
-lead-capture that routes to the same admin `/admin/buyer-orgs` approval the sales path uses.
-**Recommendation to confirm:** request-and-approve (consistent with the industry-account gate and
-the current admin-created model) — "Register" and "Talk to sales" both create a buyer *request*;
-an admin/sales rep provisions the account. Revisit self-serve-instant post-beta.
+- Funūn light `.fnbl` modal mirroring the Marmoset reference (Login title, email/password,
+  remember-me, gradient Submit, forgot-password, divider, Register CTA, resend-activation) —
+  Funūn-branded, plus a **"Talk to a sales rep"** path, Funūn wordmark. Opens over the browse
+  (scrim, like the License modal already in `CatalogBrowserLight.tsx`).
 
 ### Logo
-- Adopt one of the **5 wordmark explorations** (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`)
-  — the FUNŪN wordmark where the 2nd U is the Arabic Nūn (bowl + dot). Pick one; used in the modal + top-nav.
-
-### Claude's Discretion
-- Modal component structure; whether register/login/sales are tabs or stacked sections.
-- The sales-rep request storage (reuse an existing table vs a small `buyer_signup_requests`),
-  pending the onboarding-model decision.
+- Adopt one of the 5 wordmark explorations (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`).
 </decisions>
+
+<open_questions>
+## Open — Model A specifics to settle in discussion (before planning)
+
+1. **Register vs Talk-to-sales — one pipeline or two?** Both produce a lead. Are they two front
+   doors into one `buyer_signup_requests` flow (different copy/fields), or genuinely distinct flows
+   (e.g. Register = a form, Talk-to-sales = a "contact us" that emails BD)? *(lean: one pipeline, two doors)*
+2. **What does the lead capture collect?** Enough for BD to qualify a B2B buyer — company, contact
+   name, role, work email, use-case/deal type (agency / film-TV / brand), maybe budget band. Which fields?
+3. **Where do leads land, and who's notified?** New `buyer_signup_requests` table + an admin queue in
+   `/admin/buyer-orgs`? Email/Resend notification to BD? Reuse anything existing?
+4. **What can a logged-out public browser DO?** Browse + play preview only, with shortlist/license
+   gated behind an account/lead? Or more? *(lean: browse + play; any engagement → the modal)*
+5. **Public preview audio** — still simulated (no preview URLs; real preview audio is deferred). OK
+   for public browse, or does public exposure raise the "what do we stream to anonymous visitors" question?
+6. **Login flows scope** — do we need forgot-password + resend-activation wired now, or is login-only
+   enough for the few existing/provisioned buyers in beta?
+7. **After approval** — a provisioned Model-A buyer lands in the existing gated portal (`/buyers/*`).
+   Anything special on first login (welcome, org setup)?
+</open_questions>
 
 <canonical_refs>
 ## Canonical References
 - Reference screenshot: Marmoset login modal (owner-provided) — layout to mirror, Funūn-branded.
-- `components/buyer/CatalogBrowserLight.tsx` — the public browse; its `isPublic` **Login** button
-  (currently a no-op) is the trigger; its License-modal/scrim pattern is the modal analog.
-- `components/buyer/fnbl-theme.ts` — the light token system for the modal.
-- `app/(buyer-portal)/buyers/access/page.tsx` — the existing buyer access landing.
-- `lib/buyers/createBuyerAccount.ts` + `app/api/admin/buyer-orgs/route.ts` — how buyers are
-  created today (admin path) — the register/sales flows reconcile with this.
+- `components/buyer/CatalogBrowserLight.tsx` — the browse; its `isPublic` **Login** button (line ~321,
+  currently a no-op) is the modal trigger; its License-modal/scrim pattern is the modal analog.
+- `app/(buyer-portal)/buyers/catalog/page.tsx` — the currently-walled catalogue route (redirects
+  logged-out → `/buyers/access`); this is where public-browse is opened up.
+- `components/buyer/fnbl-theme.ts` — light token system for the modal.
+- `lib/buyers/createBuyerAccount.ts` + `app/api/admin/buyer-orgs/route.ts` — the admin provisioning
+  path leads convert into.
 - `supabase/migrations/080_buyer_orgs_members.sql` — `handle_new_user` buyer branch + buyer tables.
-- `app/(auth)/signin/` — existing Supabase auth pattern.
+- `app/(auth)/signin/` — existing Supabase auth pattern (login/forgot-password).
 - `~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html` — the 5 logo options.
 </canonical_refs>
 
 <deferred>
-## Deferred Ideas
-- Self-serve-instant buyer signup (if the decision lands on request-and-approve for beta).
-- Full sales CRM integration behind "talk to a sales rep" (beyond lead capture + notify).
+## Deferred (to Phase 24 — Model B)
+- Self-serve **instant** buyer accounts (no BD in loop).
+- `handle_new_user` buyer-branch rewrite + auto org bootstrap.
+- Subscription/checkout + plan tiers.
+- The transact-gate that protects artists from unvetted buyers.
 - OAuth/SSO buyer login.
 </deferred>
 
 ---
 
-*Phase: 23-buyer-onboarding-login-register*
-*Context gathered: 2026-08-05 — owner direction + Marmoset login reference*
+*Phase: 23-buyer-onboarding-login-register (Model A)*
+*Context: 2026-08-05 — owner two-model decision; Model A active, Model B → Phase 24*
