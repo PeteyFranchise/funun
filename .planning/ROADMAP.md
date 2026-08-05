@@ -787,7 +787,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 - [ ] 25-08-PLAN.md — Team Console light/dark theme + per-member toggle (ports buyer 22-03; dark default) [W4]
 - [ ] 25-09-PLAN.md — Leadership reassigns Client Partners between AEs (reassign UI + notify-both on the /ae route) [W4]
-- [ ] 25-10-PLAN.md — Team Member Directory (all-roles): contact cards + email/call actions (adds funun_staff title/phone) [W4]
+- [ ] 25-10-PLAN.md — Team Member Directory (all-roles): card + list views, contact cards, email/call actions (adds funun_staff title/phone; by-team view = future) [W4]
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -828,3 +828,24 @@ The real dependency graph within the Model A track:
 4. **Phase 24 (Model B self-serve)** — last, post-beta.
 
 **Open sequencing decision (for a later pass):** do we build 26 + 25 first (real supply + AE infra, then a complete Model A), or build Phase 23's onboarding UI first with AE/supply stubbed to validate the buyer funnel early? To reason through.
+
+### Phase 27: Artist Invitation-Only Onboarding (growth gate)
+
+**Goal:** Change **artist signup** from **open self-serve** to **invitation-only self-serve** — a deliberate,
+temporary **growth control** (owner, 2026-08-05: "keep them self-serve but by invitation only for now as we
+grow"). Artists still create and own their account; a signup is **gated on a valid invitation**. Invites come
+from **any collaborator** (an existing artist who names someone by email) **or any Team Member** account
+(Phase 25 staff). **Bootstrap:** the owner creates the **first artist account** with a **personal email** to
+seed the invite chain (artist signup is open today, so this seed can be created now; the gate governs *later* signups).
+
+**Requirements**: see `.planning/phases/27-artist-invite-only-onboarding/27-CONTEXT.md`
+**Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 001/039/075), the
+collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*`), Phase 25 (Team-Member invite source)
+
+**Key open questions (27-CONTEXT):** the invite mechanism + enforcement point (an `artist_invites` allowlist
+checked in `handle_new_user`); whether adding a collaborator by email auto-creates an invite (reuse the existing
+claim substrate) vs an explicit invite action; the Team-Member "Invite artist" action; bootstrap timing/retroactivity;
+abuse limits. **Distinct from** Phase 26's sync-library invite (that invites a song; this invites a person to create an account).
+
+**Status:** Context captured (27-CONTEXT.md), **not yet planned**. Near-term growth control; the owner's seed-artist
+account can be created independently at any time.
