@@ -750,12 +750,21 @@ client accounts **on the client's behalf** (create, help onboard, edit details).
 staff as first-class accounts and (b) **least-privilege permissions** so only authorized staff touch client
 data — you don't want every team member able to edit every buyer. Today neither exists.
 
-**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md`
+**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-07 proposed at plan time; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
+
+**Plans:** 7 plans / 4 waves
+- [ ] 25-01-PLAN.md — Staff role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
+- [ ] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
+- [ ] 25-03-PLAN.md — Migrations 085 (funun_staff + staff_audit_log, zero-RLS) + 086 (buyer_orgs.ae_user_id private) [W1]
+- [ ] 25-04-PLAN.md — Staff account provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
+- [ ] 25-05-PLAN.md — Assignment-scoped buyer-org editing + AE assignment + widened staff-create gate [W2]
+- [ ] 25-06-PLAN.md — Admin gate widening + role-aware sidebar + Staff UI + My Companies work queue [W3]
+- [ ] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration [W4]
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
 
-**Status:** Discussion captured (25-CONTEXT.md), **not yet planned**. Enables Model A's AE assignment, buyer-account provisioning + editing, and lead routing (Phase 23 can stub AE/staff until this lands).
+**Status:** Planned (7 plans, 4 waves) 2026-08-05. Enables Model A's AE assignment, buyer-account provisioning + editing, and lead routing (Phase 23 can stub AE/staff until this lands).
 
 ### Phase 26: Sync-Library Inclusion & Artist Submission
 
