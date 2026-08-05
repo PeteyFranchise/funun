@@ -85,16 +85,16 @@ export default async function RequestsPage() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-white/40">Requests</p>
-          <h1 className="mt-1 text-2xl font-semibold text-white">License requests</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="text-xs uppercase tracking-wide text-[color:var(--ink-3)]">Requests</p>
+          <h1 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">License requests</h1>
+          <p className="mt-1 text-sm text-[color:var(--ink-2)]">
             Every license request your organization has submitted, with its current deal stage —
             visible to every member (D-16a).
           </p>
         </div>
         <Link
           href="/buyers/requests/new"
-          className="rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-400/20"
+          className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-3 py-1.5 text-xs font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"
         >
           New request
         </Link>

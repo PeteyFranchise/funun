@@ -1,6 +1,9 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { BuyerPortalNav } from '@/components/buyer/BuyerPortalNav'
+import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
+import { BuyerTopNav } from '@/components/buyer/BuyerTopNav'
+import { BUYER_THEME_COOKIE, readBuyerTheme } from '@/lib/buyers/theme'
 import type { BuyerRole } from '@/lib/buyers/schema'
 
 // ─── (buyer-portal) layout ─────────────────────────────────────────
@@ -13,6 +16,12 @@ import type { BuyerRole } from '@/lib/buyers/schema'
 // Buyers authenticate via magic link, never the artist password form — an
 // unauthenticated visitor is redirected to /buyers/access (a buyer-specific
 // landing page), never to /signin.
+//
+// 22-03: the shell is the light `.fnbl` system (buyer side is LIGHT,
+// artist side stays dark). FNBL_CSS is injected ONCE here; readBuyerTheme
+// picks the data-theme attribute server-side from the buyer's cookie so
+// there is no light->dark flash on load. BuyerTopNav is the single shared
+// nav for every route in this group (nav-reconciliation Option A).
 export default async function BuyerPortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
   const {
@@ -40,14 +49,19 @@ export default async function BuyerPortalLayout({ children }: { children: React.
     .eq('id', member.org_id)
     .maybeSingle()
 
+  const cookieStore = await cookies()
+  const theme = readBuyerTheme(cookieStore.get(BUYER_THEME_COOKIE)?.value)
+
   return (
-    <div className="flex min-h-screen bg-ink text-white">
-      <BuyerPortalNav
+    <div className="fnbl" data-theme={theme}>
+      <style>{FNBL_CSS}</style>
+      <BuyerTopNav
         companyName={org?.name ?? ''}
         buyerRole={member.buyer_role as BuyerRole}
         isOrgAdmin={member.is_org_admin}
+        theme={theme}
       />
-      <div className="flex min-h-screen flex-1 flex-col">{children}</div>
+      {children}
     </div>
   )
 }

@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 16
-current_phase_name: gtm-beta-buyer-portal
+current_phase: 22
+current_phase_name: buyer-catalogue-light-ui
 status: board-clear
-stopped_at: "16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md"
-last_updated: "2026-08-03T10:04:22.009Z"
-last_activity: 2026-08-03
-last_activity_desc: Phase 16 execution started
+stopped_at: Completed 22-04-PLAN.md
+last_updated: "2026-08-04T07:46:53.293Z"
+last_activity: 2026-08-04
+last_activity_desc: Phase 22 execution started
 progress:
-  total_phases: 21
+  total_phases: 22
   completed_phases: 19
-  total_plans: 124
-  completed_plans: 120
-  percent: 90
+  total_plans: 129
+  completed_plans: 124
+  percent: 86
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 16 — gtm-beta-buyer-portal
+**Current focus:** Phase 22 — buyer-catalogue-light-ui
 
 ## Current Position
 
-Phase: 16 (gtm-beta-buyer-portal) — EXECUTING
-Plan: 10 of 12
+Phase: 22 (buyer-catalogue-light-ui) — EXECUTING
+Plan: 5 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-03 — Phase 16 execution started
+Last activity: 2026-08-04 — Phase 22 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -156,6 +156,10 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 16 P07 | 14min | 3 tasks | 9 files |
 | Phase 16 P05 | ~12min | 3 tasks | 11 files |
 | Phase 16 P10 | ~25min (partial) | 2/3 tasks | 8 files |
+| Phase 22 P01 | 3min | 2 tasks | 0 files |
+| Phase 22 P02 | 45min | 3 tasks | 4 files |
+| Phase 22-buyer-catalogue-light-ui P03 | 25min | 3 tasks | 7 files |
+| Phase 22 P04 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -303,6 +307,16 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 16]: 16-05: Catalog/shortlists pages built under app/(buyer-portal)/buyers/* (Rule 1) matching BuyerPortalNav's URL contract; catalog query I/O extracted to lib/deals/catalog-query.ts (Rule 3) after a route.ts non-handler-export build failure.
 - [Phase ?]: [Phase 16]: 16-05: Migration 083 (buyer_shortlists + tracks.metadata GIN index) approved and live -- LOCAL=REMOTE through 083, service-role read 200 -- schema-level only; buyer-session adversarial RLS check (42501 write denial, cross-org zero-rows) is OUTSTANDING/DEFERRED pending a real buyer account.
 - [Phase 16]: 16-10 executed as a deliberate PARTIAL: Task 2 (GTM metrics module + admin dashboard) and Task 3 (REQUIREMENTS.md registration of all 34 Phase 16 IDs) built and committed; Task 1 (export-pack delivery unlock) explicitly deferred alongside 16-09's undecided signing model. — isDeliveryUnlocked requires a signed-AND-paid deal; 16-09 (signing) is deferred and 16-08 (payment) awaits the owner's Stripe setup + migration 084 push, so no real signed-contract state exists yet to build or test delivery against.
+- [Phase ?]: 22-01: Record-only baseline plan for buyer catalogue slices 1/2a/2b - no source code changed, existing CatalogBrowserLight.tsx/catalog-sample.ts/catalog page verified present+wired+type-clean; four deferrals recorded (preview audio, logo, Similarity/Playlists tabs, live-data/inclusion gate)
+- [Phase ?]: 22-02: buildRequestBody strips currency formatting client-side and rounds to integer cents rather than requiring a pre-cleaned numeric input — Matches the modal's free-text Offer field UX while still producing the route's required integer budget_cents
+- [Phase ?]: 22-02: Media has no home in license_requests, so it folds into buyer_notes as an optional 'Media: {value}' line instead of a schema change — Avoids a migration for a single display-only dimension the route doesn't need to validate
+- [Phase ?]: 22-02: SAMPLE_CATALOG_ROWS fixture rows carry synthetic vaultProjectId/tracks; a submit over the fixture is expected to 404 at authorizeRequestTarget by design — Correct-by-construction per T-22-02-02 — real deals require live rows (slice 1.5 / 22-05)
+- [Phase ?]: 22-02: plan frontmatter references requirement license-request-wiring but REQUIREMENTS.md has no Phase 22 section registering it (requirements.mark-complete returned not_found) — Same pre-existing gap noted at 16-03/16-11/22-01 -- deferred to a future /gsd-docs-update pass, not fixed by this executor (out of this plan's scope)
+- [Phase 22]: 22-03: Dark ink family (--ink/--ink-2/--ink-3) uses lavender tones rather than plain white, per the plan's explicit fallback instruction -- distinct from the artist dark theme's white-primary convention
+- [Phase 22]: 22-03: BuyerTopNav carries its own scoped nav CSS (duplicated from CatalogBrowserLight's original .top/.navlink/brandmark rules) rather than folding into FNBL_CSS -- FNBL_CSS stays tokens-only; the nav renders on shortlists/requests pages where CatalogBrowserLight never mounts
+- [Phase 22]: 22-03: plan frontmatter references requirements nav-reconciliation/theme-light-buyer/dark-toggle but REQUIREMENTS.md has no Phase 22 section registering them (requirements.mark-complete returned not_found for all 3) -- same pre-existing gap noted at 22-01/22-02, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: Indigo-accent CTA/badge pills use border-[line] bg-[wash-2] text-[indigo] hover:bg-[wash], matching CatalogBrowserLight's own .lic/.chip idiom — Keeps the light re-theme visually consistent with the existing catalogue surface rather than inventing a new indigo-tinted surface not present in FNBL_CSS
+- [Phase ?]: terms_agreed/contract deal-stage badges use the neutral wash/line surface with only the accent text color changed (indigo/fuchsia) — FNBL_CSS has no dedicated indigo-bg/indigo-line or fuchsia-bg/fuchsia-line token families -- only ok/part/req have full bg/line/fg triples
 
 ### Pending Todos
 
@@ -326,6 +340,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 16-00: plan frontmatter references requirements META-01/META-02 but REQUIREMENTS.md has no Phase 16 section registering them yet (requirements.mark-complete returned not_found) -- pre-existing documentation gap, not fixed by this executor; a future plan or /gsd-docs-update pass should register Phase 16's requirement IDs in REQUIREMENTS.md
 - 16-01/02/11: same pre-existing gap extends to BUYER-01/02/05/07, DEAL-01..07, and META-03/04/05 (requirements.mark-complete returned not_found for all 14) -- REQUIREMENTS.md still has no Phase 16 section; deferred to the same future /gsd-docs-update pass, not fixed by this finalization
 - Wave 0 of Phase 16 (16-00/01/02/11) is code-complete and migrations 080/081/082 are approved-and-live (LOCAL=REMOTE through 082, confirmed by operator via `supabase migration list` + a service-role PostgREST read on buyer_orgs returning 200). This confirms schema-level correctness only. Each of 16-01/16-02/16-11's own listed behavioral adversarial checks (buyer cannot UPDATE license_requests.stage -- 42501; admin_notes/owner_id/commission_pct/artist_net_cents not selectable by a buyer; phantom-row guard `SELECT COUNT(*) FROM user_profiles WHERE buyer role = 0`; UPC/GRid generation safety and the platform GRid global-counter check) remain OUTSTANDING -- they require a live buyer account, which Wave 2 buyer signup has not yet shipped. Track these in the phase verifier before Phase 16 is marked passed.
+- 22-01: plan frontmatter references requirements catalogue-browse/audio-player but REQUIREMENTS.md has no Phase 22 section registering them yet (requirements mark-complete returned not_found for both) -- same pre-existing gap pattern as Phase 16, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -374,8 +389,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-03T10:04:21.987Z
-Stopped at: 16-10 PARTIAL: Task 2 (GTM metrics + dashboard) and Task 3 (REQUIREMENTS.md registration) complete; Task 1 (delivery unlock) deferred alongside 16-09 — see 16-10-SUMMARY.md
+Last session: 2026-08-04T07:46:53.269Z
+Stopped at: Completed 22-04-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation
@@ -400,7 +415,7 @@ flips confirmed on signup OR sheet-response whichever first; initiator's party-1
 non-removable; mint-envelope live-write-back deferred as a Phase 17 follow-up.
 Resume file: 
 
-.planning/phases/16-gtm-beta-buyer-portal/16-10-PLAN.md (Task 1 only)
+None
 Resume file: .planning/phases/18-split-sheet-home/18-CONTEXT.md
 
 ## Operator Next Steps

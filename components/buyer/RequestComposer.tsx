@@ -27,8 +27,8 @@ function toggleValue<T extends string>(list: T[], value: T): T[] {
 }
 
 const CHIP_BASE = 'rounded-full border px-2.5 py-1 text-[11px] font-medium transition'
-const CHIP_ON = 'border-indigo-400/40 bg-indigo-400/15 text-indigo-200'
-const CHIP_OFF = 'border-white/15 text-white/50 hover:border-white/30'
+const CHIP_ON = 'border-[color:var(--indigo)] bg-[var(--wash)] text-[color:var(--indigo)]'
+const CHIP_OFF = 'border-[color:var(--line)] text-[color:var(--ink-3)] hover:border-[color:var(--line-2)]'
 
 export type ComposerProject = {
   id: string
@@ -99,13 +99,13 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="text-xs font-semibold text-white/70">Project</p>
-      <p className="mt-1 text-sm text-white">{project.title}</p>
+    <div className="rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-4">
+      <p className="text-xs font-semibold text-[color:var(--ink-3)]">Project</p>
+      <p className="mt-1 text-sm text-[color:var(--ink)]">{project.title}</p>
 
       {/* Tracks */}
       <div className="mt-4">
-        <label className="text-xs font-semibold text-white/70">Tracks</label>
+        <label className="text-xs font-semibold text-[color:var(--ink-3)]">Tracks</label>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {project.tracks.map(t => (
             <button
@@ -118,14 +118,14 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
             </button>
           ))}
           {project.tracks.length === 0 && (
-            <p className="text-[11px] text-white/40">This project has no tracks to request.</p>
+            <p className="text-[11px] text-[color:var(--ink-3)]">This project has no tracks to request.</p>
           )}
         </div>
       </div>
 
       {/* Usage / media types */}
       <div className="mt-4">
-        <label className="text-xs font-semibold text-white/70">Usage / media types</label>
+        <label className="text-xs font-semibold text-[color:var(--ink-3)]">Usage / media types</label>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {USAGE_TYPE_VALUES.map(v => (
             <button
@@ -142,7 +142,7 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
 
       {/* Territories */}
       <div className="mt-4">
-        <label className="text-xs font-semibold text-white/70">Territories</label>
+        <label className="text-xs font-semibold text-[color:var(--ink-3)]">Territories</label>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {TERRITORY_VALUES.map(v => (
             <button
@@ -160,7 +160,7 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
       {/* Term length + exclusivity */}
       <div className="mt-4 grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-white/70">Term length (months)</label>
+          <label className="text-xs font-semibold text-[color:var(--ink-3)]">Term length (months)</label>
           <input
             type="number"
             min={1}
@@ -168,11 +168,11 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
             value={termMonths}
             onChange={e => setTermMonths(e.target.value)}
             placeholder="e.g. 12"
-            className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 px-2 py-1.5 text-sm text-white outline-none focus:border-indigo-400/50"
+            className="mt-1 w-full rounded-lg border border-[color:var(--line-2)] bg-white px-2 py-1.5 text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--indigo)]"
           />
         </div>
         <div>
-          <label className="text-xs font-semibold text-white/70">Exclusivity</label>
+          <label className="text-xs font-semibold text-[color:var(--ink-3)]">Exclusivity</label>
           <div className="mt-1 flex gap-1.5">
             {[
               { value: false, label: 'Non-exclusive' },
@@ -194,9 +194,9 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
       {/* Budget + need-by */}
       <div className="mt-4 grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-white/70">Budget</label>
+          <label className="text-xs font-semibold text-[color:var(--ink-3)]">Budget</label>
           <div className="mt-1 flex items-center gap-1.5">
-            <span className="text-sm text-white/40">$</span>
+            <span className="text-sm text-[color:var(--ink-3)]">$</span>
             <input
               type="number"
               min={0}
@@ -204,42 +204,42 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
               value={budget}
               onChange={e => setBudget(e.target.value)}
               placeholder="0"
-              className="w-full rounded-lg border border-white/15 bg-black/20 px-2 py-1.5 text-sm text-white outline-none focus:border-indigo-400/50"
+              className="w-full rounded-lg border border-[color:var(--line-2)] bg-white px-2 py-1.5 text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--indigo)]"
             />
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold text-white/70">Need by</label>
+          <label className="text-xs font-semibold text-[color:var(--ink-3)]">Need by</label>
           <input
             type="date"
             value={needBy}
             onChange={e => setNeedBy(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 px-2 py-1.5 text-sm text-white outline-none focus:border-indigo-400/50"
+            className="mt-1 w-full rounded-lg border border-[color:var(--line-2)] bg-white px-2 py-1.5 text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--indigo)]"
           />
         </div>
       </div>
 
       {/* Notes */}
       <div className="mt-4">
-        <label className="text-xs font-semibold text-white/70">Notes for Funūn</label>
+        <label className="text-xs font-semibold text-[color:var(--ink-3)]">Notes for Funūn</label>
         <textarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
           rows={3}
           maxLength={2000}
           placeholder="Anything about the intended use worth knowing before we negotiate this."
-          className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 px-2 py-1.5 text-sm text-white outline-none focus:border-indigo-400/50"
+          className="mt-1 w-full rounded-lg border border-[color:var(--line-2)] bg-white px-2 py-1.5 text-sm text-[color:var(--ink)] outline-none focus:border-[color:var(--indigo)]"
         />
       </div>
 
-      {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
+      {error && <p className="mt-3 text-xs text-[color:var(--req-fg)]">{error}</p>}
 
       <div className="mt-5">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition hover:bg-indigo-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-3 py-1.5 text-xs font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? 'Submitting…' : 'Submit request'}
         </button>

@@ -83,78 +83,78 @@ export default async function RequestDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/buyers/requests" className="text-sm text-white/50 transition hover:text-white">
+      <Link href="/buyers/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
         ← Requests
       </Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-white/40">Request</p>
-          <h1 className="mt-1 text-2xl font-semibold text-white">{project?.title ?? 'Unknown project'}</h1>
+          <p className="text-xs uppercase tracking-wide text-[color:var(--ink-3)]">Request</p>
+          <h1 className="mt-1 text-2xl font-semibold text-[color:var(--ink)]">{project?.title ?? 'Unknown project'}</h1>
           {submitterName && (
-            <p className="mt-1 text-[11px] text-white/40">Requested by {submitterName}</p>
+            <p className="mt-1 text-[11px] text-[color:var(--ink-3)]">Requested by {submitterName}</p>
           )}
         </div>
-        <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
+        <span className="rounded-full border border-[color:var(--line)] bg-[var(--wash)] px-3 py-1 text-xs font-semibold text-[color:var(--ink-2)]">
           {DEAL_STAGE_LABELS[licenseRequest.stage]}
         </span>
       </div>
 
-      <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="mt-8 rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-4">
         <div>
-          <p className="text-xs font-semibold text-white/70">Tracks</p>
-          <p className="mt-1 text-sm text-white/80">
+          <p className="text-xs font-semibold text-[color:var(--ink-2)]">Tracks</p>
+          <p className="mt-1 text-sm text-[color:var(--ink)]">
             {trackTitles.length > 0 ? trackTitles.join(', ') : 'No tracks recorded'}
           </p>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs text-white/60 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs text-[color:var(--ink-2)] sm:grid-cols-4">
           <div>
-            <span className="block text-white/30">Usage</span>
+            <span className="block text-[color:var(--ink-3)]">Usage</span>
             {licenseRequest.usage_types.length > 0
               ? licenseRequest.usage_types.map(u => USAGE_TYPE_LABELS[u]).join(', ')
               : 'Not specified'}
           </div>
           <div>
-            <span className="block text-white/30">Territory</span>
+            <span className="block text-[color:var(--ink-3)]">Territory</span>
             {licenseRequest.territories.length > 0
               ? licenseRequest.territories.map(t => TERRITORY_LABELS[t]).join(', ')
               : 'Not specified'}
           </div>
           <div>
-            <span className="block text-white/30">Term</span>
+            <span className="block text-[color:var(--ink-3)]">Term</span>
             {licenseRequest.term_months != null ? `${licenseRequest.term_months} months` : 'Not specified'}
           </div>
           <div>
-            <span className="block text-white/30">Exclusivity</span>
+            <span className="block text-[color:var(--ink-3)]">Exclusivity</span>
             {licenseRequest.exclusivity ? 'Exclusive' : 'Non-exclusive'}
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/60">
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-[color:var(--ink-2)]">
           <span>
-            Budget: <span className="text-white/80">{formatMoney(licenseRequest.budget_cents)}</span>
+            Budget: <span className="text-[color:var(--ink)]">{formatMoney(licenseRequest.budget_cents)}</span>
           </span>
           <span>
-            Need by: <span className="text-white/80">{formatDate(licenseRequest.need_by)}</span>
+            Need by: <span className="text-[color:var(--ink)]">{formatDate(licenseRequest.need_by)}</span>
           </span>
           {licenseRequest.gross_fee_cents != null && (
             <span>
               Quoted fee:{' '}
-              <span className="text-white/80">{formatMoney(licenseRequest.gross_fee_cents)}</span>
+              <span className="text-[color:var(--ink)]">{formatMoney(licenseRequest.gross_fee_cents)}</span>
             </span>
           )}
         </div>
 
         {licenseRequest.buyer_notes && (
           <div className="mt-4">
-            <p className="text-xs font-semibold text-white/70">Notes</p>
-            <p className="mt-1 whitespace-pre-wrap text-xs text-white/60">{licenseRequest.buyer_notes}</p>
+            <p className="text-xs font-semibold text-[color:var(--ink-2)]">Notes</p>
+            <p className="mt-1 whitespace-pre-wrap text-xs text-[color:var(--ink-2)]">{licenseRequest.buyer_notes}</p>
           </div>
         )}
       </div>
 
-      <p className="mt-4 text-[11px] text-white/40">
+      <p className="mt-4 text-[11px] text-[color:var(--ink-3)]">
         Funūn handles negotiation and any next steps for this request — there is nothing further to
         do here until the stage changes.
       </p>
