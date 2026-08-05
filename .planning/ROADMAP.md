@@ -660,3 +660,20 @@ Plans:
 
 Waves: W1 = 22-01, 22-02 · W2 = 22-03 · W3 = 22-04, 22-05 (22-05 blocked_by `.planning/deliberations/buyer-catalogue-inclusion-model.md`).
 Deferred (not planned): real preview audio (no preview URLs yet), logo adoption, Similarity/Playlists tabs.
+
+### Phase 23: Buyer Onboarding — Public Login / Register & Sales-Assisted Access
+
+**Goal:** Give prospective buyers a way to get into the buyer portal **from the public Browse Catalogue**. Clicking **Login** opens a Funūn-styled modal (light `.fnbl` design, Funūn name/colors/logo — modeled on the Marmoset login modal the owner referenced) that offers three paths: **log in** (existing buyers), **register** (a self-serve buyer account created from the browse page), and **talk to a sales rep** (sales-assisted setup). Closes the current gap where buyers can only be **admin-created** (16-03) — there is no buyer-facing signup today.
+
+**Requirements**: see `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md` (owner direction + Marmoset login-modal reference)
+**Depends on:** Phase 16 (buyer orgs/accounts/`handle_new_user` buyer branch), Phase 22 (light buyer UI + the public browse the modal lives on)
+
+**Locked decisions (from 23-CONTEXT.md):**
+
+- **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout (Login title, email/password, remember-me, gradient Submit, forgot-password, divider, Register CTA, resend-activation) — Funūn-branded, adds a "Talk to a sales rep" path, uses the Funūn wordmark. Opens over the browse (scrim, like the existing License modal).
+- **Two on-ramps:** self-serve **Register** + **Talk to a sales rep** (request/contact).
+- **Logo:** adopt one of the 5 wordmark explorations (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`).
+
+**⚠️ OPEN DECISION — settle before planning the Register path:** the **buyer onboarding model** — does self-serve Register create a live account **instantly**, or is it **request-and-approve** (sales/admin-gated)? Must reconcile with 16-03/D-12 (buyers admin-created; `handle_new_user` buyer branch early-returns with no org) and the Phase 15 model (industry accounts are admin-approved). **Recommendation to confirm:** request-and-approve for beta (both Register and Talk-to-sales create a buyer *request* an admin provisions), revisit self-serve-instant post-beta.
+
+**Status:** Context captured, **not yet planned** — run `/gsd-plan-phase 23` once the onboarding-model decision is confirmed.
