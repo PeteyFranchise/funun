@@ -50,6 +50,9 @@ AE/BD/leadership need for beta.
 - **Routes (user-visible):** prefer the user-facing names — `/admin/team-members`, `/admin/my-client-partners`,
   `/admin/client-partners` — even though the underlying tables keep their internal names.
 - Confirmed: today's `is_admin` → **Leadership**, and AEs see only **their assigned Client Partners** (assignment-scoped).
+- **Leadership reassigns Client Partners between AEs** (owner 2026-08-05) — a **leadership-only** reassign control
+  on the Client Partners list, over the existing `/ae` route (the same `ae_user_id` write). Reassignment notifies
+  **both** the gaining and losing AE and is audited; the previous AE's scoped access ends immediately. Delivered by **25-09**.
 
 ## Team Console theme — light + dark from the start (owner 2026-08-05)
 - Team Member accounts get a **light OR dark** Team Console, **built in from the beginning** (not a fast-follow).
