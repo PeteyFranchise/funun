@@ -863,6 +863,13 @@ Funūn's accounts settle into **four lanes** (see `28-CONTEXT.md`):
 
 **Curators = a type of Industry account** (`playlist_curator` role); the standalone curators directory becomes the pitch-target CRM. This resolves the "better way to use curator accounts" thread.
 
+**Browse Catalogue access (reaffirmed 2026-08-05):** the Browse Catalogue stays **publicly accessible without an
+account** — anyone can browse + play previews. **Purchasing / licensing is gated**: any engagement (shortlist,
+License, purchase) prompts account creation, and to actually license a visitor becomes a **Client Partner** account
+(Model A light-touch register → AE onboards, Phase 23; Model B instant self-serve later). Song **rights state**
+(Rights ready / Partial / Contact required) is a *separate* gate on top of the account gate. **Note the current code
+still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is what opens public browse** — intended/planned, not yet live.
+
 ### Phase 28: Industry Accounts & Green Room Access Model
 
 **Goal:** Confirm the four-lane account taxonomy and the **Green Room access model**, and define the **Industry
