@@ -38,26 +38,33 @@ AE/BD/leadership need for beta.
 - **Access-gated capabilities:** only staff **with the permission** can create buyer accounts or edit
   (portions of) them. Editing is **scoped** (assigned companies + subset of fields), not blanket.
 - **One AE per buyer company** (assigned by leadership); leads/activity route to in-app queue **and** email.
+
+## Locked defaults (owner-approved 2026-08-05 — plan against these)
+1. **Identity / reconciliation — generalize `is_admin`, don't duplicate.** Today's admin gate is a single
+   binary `app_metadata.is_admin === true` (checked in `app/(admin)/layout.tsx` + per page via `lib/admin/gate.ts`,
+   no roles). Generalize it into a **staff role**: **leadership** (= today's `is_admin: true`, full access),
+   **AE**, **BD**. Extend `lib/admin/gate.ts` as the single authority — **no parallel auth path**. Staff role
+   carried on `app_metadata` (an optional `funun_staff` table for profile/assignment data is the planner's discretion).
+2. **Bootstrap — seed like `is_admin` today.** The first **leadership** account is seeded the same way
+   `is_admin` is set now (owner via Supabase dashboard / service role). Leadership then creates further staff
+   **in-app** (setting their role). No self-serve staff signup; no chicken-and-egg.
+3. **Permission granularity — role-level + scoped, beta-simple.** Capabilities are **role-level**
+   (leadership / AE / BD imply capability sets), **NOT** a per-capability grant matrix. Buyer-account **editing
+   is assignment-scoped** (an AE edits only *their* assigned companies) and limited to a **field allowlist**
+   (mirror the `EDITABLE_FIELDS` allowlist pattern in `app/api/profile/route.ts`).
+4. **Audit — log staff writes to client data.** Staff create/edit actions on buyer accounts are recorded
+   (who / what / when) — staff hold cross-tenant access, so the trail is required.
 </decisions>
 
 <open_questions>
-## Open — to reason through / settle at planning
-1. **Identity model** — how staff accounts sit in the Phase 15 capability model. New principal type? A
-   `funun_staff` table + roles? RLS for a "staff" principal that can read/write **across** buyer orgs
-   (scoped by permission) and see limited artist data for support.
-2. **Bootstrap** — who creates the FIRST staff account (a seed migration / the platform owner / existing
-   admin)? How the chain of "leadership creates staff" starts.
-3. **Reconciliation with existing platform-admin** — `/admin/*` today uses a platform-admin gate. Are current
-   admins = leadership? Does staff RBAC **subsume/replace** the existing admin check, or sit alongside it?
-   (Creating buyer accounts moves from admin-only to permissioned-staff — this gate must be reconciled, not duplicated.)
-4. **Permission model shape** — role-level (AE / BD / leadership each imply a capability set) vs explicit
-   per-capability grants; **field/section-level** edit scope on buyer accounts; **assignment-scoped** editing
-   (AE edits only their companies). How coarse is enough for beta?
-5. **Which buyer-account portions are staff-editable** — company profile/contact/AE fields yes; billing,
-   membership, or purchase history? Define the editable surface (mirrors the artist-profile `EDITABLE_FIELDS` allowlist pattern).
-6. **Audit** — staff actions on client data (create/edit) should be logged (who, what, when) — high-value target.
-7. **Assignment model** — `buyer_orgs.ae_user_id` vs a join table (history/handoffs); reassignment flow.
-8. **Work-queue surface** — where staff see leads/companies (`/team` or extend `/admin`); minimal = queue + email.
+## Open — for the planner to resolve (the 4 locked defaults above are settled)
+- **RLS shape for the staff principal** — how leadership/AE/BD read/write across buyer orgs scoped by
+  permission (and any limited artist-data access for support), on top of the existing RLS.
+- **Which exact buyer-account fields are staff-editable** — define the allowlist (company profile / contact /
+  AE fields yes; decide on billing / membership / purchase history), per default #3's field-allowlist approach.
+- **Assignment storage** — `buyer_orgs.ae_user_id` vs a join table (assignment history / handoffs); reassignment flow.
+- **`funun_staff` table vs `app_metadata`-only** — whether staff need a profile/assignment row (default #1 leaves this to the planner).
+- **Work-queue surface** — where staff see leads/companies (`/team` or extend `/admin`); minimal = queue + email.
 </open_questions>
 
 <canonical_refs>
