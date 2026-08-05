@@ -672,7 +672,7 @@ but **numeric order ≠ build order** — see the sequencing note at the end of 
 **Naming (owner 2026-08-05):** the buyer account is a **Client Partner** ("Buyer · Client Partner";
 UI/console say "Client Partners"). Funūn staff accounts are **Team Members**, typed by role — now
 **Leadership/Executive** (today's `is_admin` → **Leadership Admin**), **Account Executive (AE)**, **BD**;
-future role types (**A&R, IT, Operations**) added one at a time as they become real. Internal table/code
+future role types (**A&R, IT, Operations, HR / Team Member Services, Legal**) added one at a time as they become real. Internal table/code
 names (`buyer_orgs`, `funun_staff`, `staff_role`) are unchanged — only the labels.
 
 **Why this cluster exists (rationale):** Funūn's buyer side is a **relationship-driven, B2B-first
@@ -739,7 +739,7 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 ### Phase 25: Funūn Team Member Accounts & AE Assignment + Role Permissions
 
 **Goal:** A **new account type — Funūn Team Members** — **typed by role** (**Leadership/Executive**,
-**Account Executive**, **BD** now; **A&R, IT, Operations** added later, one at a time) so the people who
+**Account Executive**, **BD** now; **A&R, IT, Operations, HR / Team Member Services, Legal** added later, one at a time) so the people who
 run the business operate **inside the product**, governed by a **role permission model**. Delivers:
 
 1. **A way to create Funūn Team Member accounts** — a provisioning flow (bootstrapped from an owner/superadmin
@@ -764,32 +764,36 @@ client accounts **on the client's behalf** (create, help onboard, edit details).
 staff as first-class accounts and (b) **least-privilege permissions** so only authorized staff touch client
 data — you don't want every team member able to edit every buyer. Today neither exists.
 
-**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-07 proposed at plan time; registered in REQUIREMENTS.md by 25-07)
+**Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-08 proposed at plan time — TEAM-08 = Team Console light/dark theme; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 7 plans / 4 waves
+**Plans:** 8 plans / 5 waves
 **Wave 1**
 
-- [ ] 25-01-PLAN.md — Staff role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
+- [ ] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
 - [ ] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
 - [ ] 25-03-PLAN.md — Migrations 085 (funun_staff + staff_audit_log, zero-RLS) + 086 (buyer_orgs.ae_user_id private) [W1]
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 25-04-PLAN.md — Staff account provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
-- [ ] 25-05-PLAN.md — Assignment-scoped buyer-org editing + AE assignment + widened staff-create gate [W2]
+- [ ] 25-04-PLAN.md — Team Member provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
+- [ ] 25-05-PLAN.md — Assignment-scoped Client Partner editing + AE assignment + widened create gate [W2]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 25-06-PLAN.md — Admin gate widening + role-aware sidebar + Staff UI + My Companies work queue [W3]
+- [ ] 25-06-PLAN.md — Admin gate widening + role-aware sidebar + Team Members UI + My Client Partners queue [W3]
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration [W4]
+- [ ] 25-08-PLAN.md — Team Console light/dark theme + per-member toggle (ports buyer 22-03; dark default) [W4]
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration (TEAM-01..08) [W5]
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
 
-**Status:** Planned (7 plans, 4 waves) 2026-08-05. Enables Model A's AE assignment, buyer-account provisioning + editing, and lead routing (Phase 23 can stub AE/staff until this lands).
+**Status:** Planned (8 plans, 5 waves) 2026-08-05. Enables Model A's AE assignment, Client Partner provisioning + editing, lead routing, and a light/dark Team Console (Phase 23 can stub AE/team until this lands).
 
 ### Phase 26: Sync-Library Inclusion & Artist Submission
 

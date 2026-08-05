@@ -45,11 +45,26 @@ AE/BD/leadership need for beta.
   - **Now:** **Leadership / Executive** (top tier; today's `app_metadata.is_admin` → **Leadership Admin**
     via the D-02/A1 fallback — confirmed), **Account Executive (AE, sales)**, **BD**.
   - **Future (add one at a time — each its own capability def + a migration extending the role CHECK):**
-    **A&R**, **IT**, **Operations**. Not built now; the `staff_role` CHECK enum stays closed at
-    `('leadership','ae','bd')` for this phase and is widened per-role later.
+    **A&R**, **IT**, **Operations**, **HR / Team Member Services**, **Legal**. Not built now; the `staff_role`
+    CHECK enum stays closed at `('leadership','ae','bd')` for this phase and is widened per-role later.
 - **Routes (user-visible):** prefer the user-facing names — `/admin/team-members`, `/admin/my-client-partners`,
   `/admin/client-partners` — even though the underlying tables keep their internal names.
 - Confirmed: today's `is_admin` → **Leadership**, and AEs see only **their assigned Client Partners** (assignment-scoped).
+
+## Team Console theme — light + dark from the start (owner 2026-08-05)
+- Team Member accounts get a **light OR dark** Team Console, **built in from the beginning** (not a fast-follow).
+- **Per-member toggle**, persisted via cookie, **mirroring the buyer pattern exactly** (Phase 22 · 22-03):
+  `lib/buyers/theme.ts` → `lib/admin/theme.ts` (`readAdminTheme` + `ADMIN_THEME_COOKIE`);
+  `components/buyer/ThemeToggle.tsx` → `components/admin/AdminThemeToggle.tsx` (flips cookie + `data-theme`,
+  no flash); `components/buyer/fnbl-theme.ts` → an admin **console token CSS** injected in `app/(admin)/layout.tsx`
+  (cookie read server-side → `data-theme` on a themed wrapper).
+- **Default: dark** (matches today's `/admin` + the app the console lives in); **light is the opt-in**. Trivially
+  flipped to light-default if the owner prefers.
+- **Scope this phase:** the Team Console **shell + the new Phase 25 surfaces** (layout, Team Members page,
+  My Client Partners page) are fully theme-aware. Full re-theming of the **legacy admin pages** (Phase 16
+  buyer-orgs/members/deals/metrics/…) to light is a **follow-on** (mirrors buyer retheme plan 22-04) — the tokens
+  exist; legacy pages migrate incrementally.
+- Delivered by new plan **25-08** (depends_on 25-06, the shell it mounts in).
 
 ## Direction (from the discussion)
 - Funūn employee accounts are a **third principal type** — distinct from artist and Client Partner (buyer) accounts.
