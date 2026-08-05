@@ -664,9 +664,16 @@ Deferred (not planned): real preview audio (no preview URLs yet), logo adoption,
 ## Buyer & Sales Infrastructure Cluster (owner decisions 2026-08-05)
 
 A cluster of phases stood up together from the buyer-onboarding discussion. They introduce
-**two new account types** (buyer/client companies + Funūn employees), an **AE-driven sales motion**,
-and the **sync-library inclusion model** (how songs get into the buyer catalogue). Numbered 23–26,
+**two new account types** — **Client Partners** (the buyer/client-company account) and **Funūn Team
+Members** (internal employee accounts, typed by role) — an **AE-driven sales motion**, and the
+**sync-library inclusion model** (how songs get into the buyer catalogue). Numbered 23–26,
 but **numeric order ≠ build order** — see the sequencing note at the end of the cluster.
+
+**Naming (owner 2026-08-05):** the buyer account is a **Client Partner** ("Buyer · Client Partner";
+UI/console say "Client Partners"). Funūn staff accounts are **Team Members**, typed by role — now
+**Leadership/Executive** (today's `is_admin` → **Leadership Admin**), **Account Executive (AE)**, **BD**;
+future role types (**A&R, IT, Operations**) added one at a time as they become real. Internal table/code
+names (`buyer_orgs`, `funun_staff`, `staff_role`) are unchanged — only the labels.
 
 **Why this cluster exists (rationale):** Funūn's buyer side is a **relationship-driven, B2B-first
 marketplace**, not just a self-serve store. Larger deals (agencies, film/ad, brand marketing teams)
@@ -729,26 +736,27 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 
 **Status:** Future / post-beta — discussion captured (24-CONTEXT.md), **not yet planned**. Sequenced after Model A ships.
 
-### Phase 25: Funūn Team / Internal Accounts & AE Assignment + Staff Permissions
+### Phase 25: Funūn Team Member Accounts & AE Assignment + Role Permissions
 
-**Goal:** A **new account type for Funūn employees** (Account Executives, BD, leadership) so the people who
-run the business operate **inside the product**, governed by a **staff permission model**. Delivers:
+**Goal:** A **new account type — Funūn Team Members** — **typed by role** (**Leadership/Executive**,
+**Account Executive**, **BD** now; **A&R, IT, Operations** added later, one at a time) so the people who
+run the business operate **inside the product**, governed by a **role permission model**. Delivers:
 
-1. **A way to create Funūn team member accounts** — a provisioning flow (bootstrapped from an owner/superadmin
-   seed; leadership creates the rest). Staff accounts are not self-serve.
+1. **A way to create Funūn Team Member accounts** — a provisioning flow (bootstrapped from an owner/superadmin
+   seed; Leadership creates the rest). Team Member accounts are not self-serve.
 
-2. **Staff roles + permissions (RBAC).** Team accounts carry an **access level**; only staff **with the
-   permission** can perform privileged actions. Specifically:
+2. **Role types + permissions (RBAC).** Team Member accounts carry a **role type** (Leadership/AE/BD now);
+   only members **with the permission** can perform privileged actions. Specifically:
 
-   - **Create client (buyer) accounts** — permissioned staff (e.g. AE/BD) can provision a buyer company
-     account from the Funūn side (generalizes today's platform-admin-only `/admin/buyer-orgs`).
+   - **Create Client Partner accounts** — permissioned members (e.g. AE/BD) can provision a Client Partner
+     (buyer company) account from the Funūn side (generalizes today's platform-admin-only `/admin/buyer-orgs`).
 
-   - **Edit portions of client accounts** — permissioned staff can edit **specific parts** of a buyer
-     account, **scoped by their access** (likely their assigned companies + a subset of fields), not blanket
-     access to every client account.
+   - **Edit portions of Client Partner accounts** — permissioned members can edit **specific parts** of a
+     Client Partner account, **scoped by their access** (their assigned Client Partners + a subset of fields),
+     not blanket access to every one.
 
-3. **AE↔buyer-company assignment** (one AE per buyer company) + **lead/work routing** so new-buyer signups
-   and buyer activity land in the right employee's **in-app queue** AND email — Funūn's sales motion inside
+3. **AE↔Client Partner assignment** (one AE per Client Partner) + **lead/work routing** so new-buyer signups
+   and activity land in the right member's **in-app queue** AND email — Funūn's sales motion inside
    the team's daily systems.
 
 **Why:** Model A is relationship-driven — an AE per company drives larger B2B deals, and AEs/BD operate

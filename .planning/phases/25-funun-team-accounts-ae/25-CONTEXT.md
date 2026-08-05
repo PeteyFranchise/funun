@@ -32,8 +32,27 @@ AE/BD/leadership need for beta.
 </domain>
 
 <decisions>
+## Naming & vocabulary (owner 2026-08-05) — user-facing labels vs internal identifiers
+- **Client Partner** = the buyer/client-company account (user-facing name). The account is a
+  **Buyer · Client Partner**. UI + console say **"Client Partners"** (and **"My Client Partners"** for
+  an AE/BD's scoped list). **Internal table stays `buyer_orgs`** (already live, migration 080) — do NOT
+  rename it; only the label changes.
+- **Funūn Team Member** = the internal employee account (user-facing name), replacing "staff" in all
+  UI/console text ("Team Members", "Add Team Member"). **Internal identifiers stay** (`funun_staff`,
+  `staff_role`, `requireStaff`, `lib/staff/*`) — synonyms, no code churn; only labels change.
+- **Team Member role types** — the account is **typed by role**, and the set is **extensible** as roles
+  become real:
+  - **Now:** **Leadership / Executive** (top tier; today's `app_metadata.is_admin` → **Leadership Admin**
+    via the D-02/A1 fallback — confirmed), **Account Executive (AE, sales)**, **BD**.
+  - **Future (add one at a time — each its own capability def + a migration extending the role CHECK):**
+    **A&R**, **IT**, **Operations**. Not built now; the `staff_role` CHECK enum stays closed at
+    `('leadership','ae','bd')` for this phase and is widened per-role later.
+- **Routes (user-visible):** prefer the user-facing names — `/admin/team-members`, `/admin/my-client-partners`,
+  `/admin/client-partners` — even though the underlying tables keep their internal names.
+- Confirmed: today's `is_admin` → **Leadership**, and AEs see only **their assigned Client Partners** (assignment-scoped).
+
 ## Direction (from the discussion)
-- Funūn employee accounts are a **third principal type** — distinct from artist and buyer accounts.
+- Funūn employee accounts are a **third principal type** — distinct from artist and Client Partner (buyer) accounts.
 - **Staff accounts are provisioned, not self-serve** (owner/superadmin bootstrap → leadership creates more).
 - **Access-gated capabilities:** only staff **with the permission** can create buyer accounts or edit
   (portions of) them. Editing is **scoped** (assigned companies + subset of fields), not blanket.
