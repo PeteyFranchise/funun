@@ -874,6 +874,22 @@ License, purchase) prompts account creation, and to actually license a visitor b
 (Rights ready / Partial / Contact required) is a *separate* gate on top of the account gate. **Note the current code
 still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is what opens public browse** — intended/planned, not yet live.
 
+**Onboarding — who can create accounts + the invite account-type chooser (owner 2026-08-05):**
+- **Create a Client Partner account** (from their own view): **Leadership, AE, BD, IT**. *(Phase 25 · 25-05 ships
+  Leadership/AE/BD; IT gains it when that role type lands.)*
+- **Create a Funūn Team Member account:** **Leadership, IT, Team Member Services (HR/TMS)**. *(Phase 25 · 25-04
+  ships Leadership-only; IT/TMS gain it when those role types land.)*
+- **Seniority TIER (future):** within a department (IT/TMS), account-creation is restricted to a senior
+  **"Leadership Tier"** — entry-level roles in the department cannot create accounts. Adds a **tier** dimension on
+  top of role type. Not built now; noted so the RBAC model anticipates it.
+- **Invite → account-type chooser:** when someone is invited to join from the Artist/Industry side (Phases 27/28),
+  a **small onboarding box** directs them to the right account type — **Artist** (creative, song credits → Sound
+  Vault tools) · **Industry** (curator/A&R/publisher/supervisor/manager → opportunity + Green Room tools) · **Both**
+  (combined tools + menu). Each yields different tools + menu options.
+  - **⚠ OPEN design question (discuss GSD-style before planning):** "**Both**" implies a **dual account type**, but
+    `member_type` is a single enum (`'artist'|'industry'`) today. Supporting "both" needs either a multi-type /
+    capabilities model or a primary+secondary. To reason through before the onboarding chooser is planned.
+
 ### Phase 28: Industry Accounts & Green Room Access Model
 
 **Goal:** Confirm the four-lane account taxonomy and the **Green Room access model**, and define the **Industry
