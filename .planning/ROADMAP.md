@@ -886,9 +886,18 @@ still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is w
   a **small onboarding box** directs them to the right account type — **Artist** (creative, song credits → Sound
   Vault tools) · **Industry** (curator/A&R/publisher/supervisor/manager → opportunity + Green Room tools) · **Both**
   (combined tools + menu). Each yields different tools + menu options.
-  - **⚠ OPEN design question (discuss GSD-style before planning):** "**Both**" implies a **dual account type**, but
-    `member_type` is a single enum (`'artist'|'industry'`) today. Supporting "both" needs either a multi-type /
-    capabilities model or a primary+secondary. To reason through before the onboarding chooser is planned.
+  - **✅ RESOLVED (owner 2026-08-05) — capabilities / "switches" model (Option A):** an account holds independent
+    **capabilities** (an "Artist" switch → Sound Vault tools; an "Industry" switch → opportunity/Green Room tools)
+    rather than a single `member_type` label. **"Both" = both switches on** — no special third type. Rides the
+    Phase 28 reconciliation (`capability_grants` already becoming the source of truth); the onboarding chooser
+    simply grants the selected capability(ies).
+  - **Industry switch — future refinement (owner vision):** what the Industry switch turns on is **per-subtype** and
+    refined over time. Concretely, **managers / A&Rs** should get, from their industry page: a **roster of the artists
+    they represent**; **access to those artists' project cards** with **edit privileges granted per the artist↔manager
+    agreement** (agreement-scoped, granular); the ability to **help with administrative tasks** (double-check split
+    sheets / metadata / readiness); and **comment/communicate** with their artists + colleagues. This **extends the
+    Phase 21 cross-account access model** (`project_members` roles: viewer/editor/co-owner) from artist↔artist to
+    **artist↔industry-representative**. Future / per-subtype (rides Phase 28's deferred per-subtype toolsets).
 
 ### Phase 28: Industry Accounts & Green Room Access Model
 

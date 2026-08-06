@@ -96,7 +96,12 @@ Split "curator" into the two things it actually is; there is **no separate curat
 <deferred>
 ## Deferred Ideas
 - **Client Partners posting in the Green Room** — explicit future discussion (owner, note only for now).
-- Full **per-subtype industry toolsets** (iterative, one subtype at a time).
+- Full **per-subtype industry toolsets** (iterative, one subtype at a time). **Owner vision (2026-08-05):** the
+  **manager / A&R** subtype gets, from their industry page — a **roster of the artists they represent**; **access to
+  those artists' project cards** with **edit privileges per the artist↔manager agreement** (agreement-scoped);
+  **admin-help** (double-check split sheets / metadata / readiness); and **comment/communicate** with their artists +
+  colleagues. This **extends the Phase 21 cross-account access model** (`project_members` viewer/editor/co-owner) from
+  artist↔artist to **artist↔industry-representative**. Enabled by the capabilities/"switches" account model (Option A).
 - Enforcement mechanics for the Funūn-email Green Room rule (if we choose to hard-enforce).
 </deferred>
 
