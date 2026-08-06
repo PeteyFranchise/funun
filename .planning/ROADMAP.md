@@ -912,12 +912,15 @@ still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is w
   app — this adds account-type-aware landing; lands as a 25-06 extension / small **25-11**). No dedicated staff login page.
 - **Client Partner (buyer)** logs in via the **light buyer login modal** (Phase 23), NOT `/signin` — reachable from a
   buyer **landing page** + the Browse Catalogue; post-login → `/buyers/*`. Entry architecture below.
-- **Buyer entry — PROPOSED (owner deciding): path now, subdomain later.** Ship the buyer front door at a **path**
-  (`funun.studio/sync` landing + Browse Catalogue + the existing `/buyers/*` portal) for beta speed, **structured to
-  promote to a subdomain `sync.funun.studio` later** via DNS + Next.js rewrites (URLs stay — no rebuild). A **partner
-  landing page** ("Funūn Sync": license fast · value prop · featured catalogue · Browse + Log in / Request-access CTAs)
-  is the front door; the Phase 23 login/register modal is the sign-on. NOTE: `sync.funun.studio` (subdomain of
-  funun.studio), not `funun.sync.studio` (that needs owning the `sync.studio` domain). Owner to confirm.
+- **Buyer entry — DECIDED (owner 2026-08-05): unify under `/sync`, path now → subdomain later.** The ENTIRE buyer
+  world lives under one namespace — **`funun.studio/sync/*`**: a partner **landing page** at `/sync` ("Funūn Sync":
+  license fast · value prop · featured catalogue · Browse + Log in / Request-access CTAs), the **Browse Catalogue**,
+  and the **portal** — by **renaming the existing `/buyers/*` page routes → `/sync/*`** (cheap now: Phase 22 catalog
+  is the only existing code, no production URLs / real buyers yet). **Keep internal names** (`buyer_orgs`,
+  `components/buyer`, `/api/buyer/*`, `buyer_members`) — labels/routes only, same discipline as staff. One namespace
+  **promotes to the subdomain `sync.funun.studio` cleanly** (a single Next.js rewrite `sync.funun.studio/* → /sync/*`)
+  when marketing warrants — no rebuild. The Phase 23 login/register modal is the sign-on (reachable from the landing
+  page + the catalogue). NOTE: `sync.funun.studio` (subdomain of funun.studio), NOT `funun.sync.studio`. Folds into Phase 23.
 
 ### Phase 28: Industry Accounts & Green Room Access Model
 
