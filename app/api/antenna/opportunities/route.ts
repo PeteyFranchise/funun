@@ -60,19 +60,6 @@ export async function POST(request: Request) {
     )
   }
 
-  // Must be a registered industry pro.
-  const { data: profile } = await supabase
-    .from('industry_profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!profile) {
-    return NextResponse.json(
-      { error: 'Only industry professionals can post opportunities' },
-      { status: 403 }
-    )
-  }
-
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>
   if (!b.title || !b.type || !TYPES.includes(b.type as OpportunityType)) {
     return NextResponse.json({ error: 'A title and valid type are required' }, { status: 400 })
@@ -85,7 +72,6 @@ export async function POST(request: Request) {
 
   const insert = {
     created_by: user.id,
-    industry_profile_id: profile.id,
     title: String(b.title),
     description: typeof b.description === 'string' ? b.description : '',
     type: b.type as OpportunityType,

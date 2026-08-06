@@ -13,7 +13,7 @@ const mockSingle = jest.fn()
 const mockSelect = jest.fn(() => ({ single: mockSingle }))
 const mockInsert = jest.fn(() => ({ select: mockSelect }))
 const mockEq = jest.fn(() => Promise.resolve({ error: null }))
-const mockUpdate = jest.fn(() => ({ eq: mockEq }))
+const mockUpdate = jest.fn((_payload: Record<string, unknown>) => ({ eq: mockEq }))
 
 const mockFrom = jest.fn((table: string) => {
   if (table === 'capability_grants') return { insert: mockInsert }
