@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 28
 current_phase_name: industry-accounts-green-room-access
 status: board-clear
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-08-06T00:37:24.244Z"
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-08-06T00:44:24.837Z"
 last_activity: 2026-08-06
 last_activity_desc: Phase 28 execution started
 progress:
   total_phases: 28
   completed_phases: 19
   total_plans: 144
-  completed_plans: 124
+  completed_plans: 125
   percent: 68
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 28 (industry-accounts-green-room-access) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -160,6 +160,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 22 P02 | 45min | 3 tasks | 4 files |
 | Phase 22-buyer-catalogue-light-ui P03 | 25min | 3 tasks | 7 files |
 | Phase 22 P04 | 20min | 3 tasks | 7 files |
+| Phase 28 P01 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -317,6 +318,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 22]: 22-03: plan frontmatter references requirements nav-reconciliation/theme-light-buyer/dark-toggle but REQUIREMENTS.md has no Phase 22 section registering them (requirements.mark-complete returned not_found for all 3) -- same pre-existing gap noted at 22-01/22-02, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - [Phase ?]: Indigo-accent CTA/badge pills use border-[line] bg-[wash-2] text-[indigo] hover:bg-[wash], matching CatalogBrowserLight's own .lic/.chip idiom — Keeps the light re-theme visually consistent with the existing catalogue surface rather than inventing a new indigo-tinted surface not present in FNBL_CSS
 - [Phase ?]: terms_agreed/contract deal-stage badges use the neutral wash/line surface with only the accent text color changed (indigo/fuchsia) — FNBL_CSS has no dedicated indigo-bg/indigo-line or fuchsia-bg/fuchsia-line token families -- only ok/part/req have full bg/line/fg triples
+- [Phase 28]: 28-01: capability_grants stays authoritative for capability checks; member_type kept in lockstep going forward (other 6+ member_type read sites deferred, mirroring the Phase 19/20 blast-radius split)
+- [Phase 28]: 28-01: industry_profiles table left untouched (out of scope); only the Antenna route's dead read of it was removed
 
 ### Pending Todos
 
@@ -341,6 +344,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 16-01/02/11: same pre-existing gap extends to BUYER-01/02/05/07, DEAL-01..07, and META-03/04/05 (requirements.mark-complete returned not_found for all 14) -- REQUIREMENTS.md still has no Phase 16 section; deferred to the same future /gsd-docs-update pass, not fixed by this finalization
 - Wave 0 of Phase 16 (16-00/01/02/11) is code-complete and migrations 080/081/082 are approved-and-live (LOCAL=REMOTE through 082, confirmed by operator via `supabase migration list` + a service-role PostgREST read on buyer_orgs returning 200). This confirms schema-level correctness only. Each of 16-01/16-02/16-11's own listed behavioral adversarial checks (buyer cannot UPDATE license_requests.stage -- 42501; admin_notes/owner_id/commission_pct/artist_net_cents not selectable by a buyer; phantom-row guard `SELECT COUNT(*) FROM user_profiles WHERE buyer role = 0`; UPC/GRid generation safety and the platform GRid global-counter check) remain OUTSTANDING -- they require a live buyer account, which Wave 2 buyer signup has not yet shipped. Track these in the phase verifier before Phase 16 is marked passed.
 - 22-01: plan frontmatter references requirements catalogue-browse/audio-player but REQUIREMENTS.md has no Phase 22 section registering them yet (requirements mark-complete returned not_found for both) -- same pre-existing gap pattern as Phase 16, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- 28-01: plan frontmatter references requirements INDUSTRY-01/INDUSTRY-06 but REQUIREMENTS.md has no Phase 28 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as Phases 16/22/23, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -389,8 +393,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-04T07:46:53.269Z
-Stopped at: Completed 22-04-PLAN.md
+Last session: 2026-08-06T00:44:08.050Z
+Stopped at: Completed 28-01-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
 Candidates). Research (18-RESEARCH.md) surfaced findings beyond the reconciliation

@@ -875,22 +875,28 @@ License, purchase) prompts account creation, and to actually license a visitor b
 still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is what opens public browse** — intended/planned, not yet live.
 
 **Onboarding — who can create accounts + the invite account-type chooser (owner 2026-08-05):**
+
 - **Create a Client Partner account** (from their own view): **Leadership, AE, BD, IT**. *(Phase 25 · 25-05 ships
   Leadership/AE/BD; IT gains it when that role type lands.)*
+
 - **Create a Funūn Team Member account:** **Leadership, IT, Team Member Services (HR/TMS)**. *(Phase 25 · 25-04
   ships Leadership-only; IT/TMS gain it when those role types land.)*
+
 - **Seniority TIER (future):** within a department (IT/TMS), account-creation is restricted to a senior
   **"Leadership Tier"** — entry-level roles in the department cannot create accounts. Adds a **tier** dimension on
   top of role type. Not built now; noted so the RBAC model anticipates it.
+
 - **Invite → account-type chooser:** when someone is invited to join from the Artist/Industry side (Phases 27/28),
   a **small onboarding box** directs them to the right account type — **Artist** (creative, song credits → Sound
   Vault tools) · **Industry** (curator/A&R/publisher/supervisor/manager → opportunity + Green Room tools) · **Both**
   (combined tools + menu). Each yields different tools + menu options.
+
   - **✅ RESOLVED (owner 2026-08-05) — capabilities / "switches" model (Option A):** an account holds independent
     **capabilities** (an "Artist" switch → Sound Vault tools; an "Industry" switch → opportunity/Green Room tools)
     rather than a single `member_type` label. **"Both" = both switches on** — no special third type. Rides the
     Phase 28 reconciliation (`capability_grants` already becoming the source of truth); the onboarding chooser
     simply grants the selected capability(ies).
+
   - **Industry switch — future refinement (owner vision):** what the Industry switch turns on is **per-subtype** and
     refined over time. Concretely, **managers / A&Rs** should get, from their industry page: a **roster of the artists
     they represent**; **access to those artists' project cards** with **edit privileges granted per the artist↔manager
@@ -919,12 +925,12 @@ opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(ar
 (`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
 **Deferred:** Client Partners posting in the Green Room (future discussion — note only).
 
-**Plans:** 5 plans (2 waves)
+**Plans:** 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 28-01-PLAN.md — Antenna industry-gate fix (remove dead `industry_profiles` gate) + member_type/capability lockstep [Wave 1]
+- [x] 28-01-PLAN.md — Antenna industry-gate fix (remove dead `industry_profiles` gate) + member_type/capability lockstep [Wave 1]
 - [ ] 28-02-PLAN.md — Green Room account-type gate (app-layer: Artist ✓ / Industry ✓ / else ✗ + inert Funūn-email block) [Wave 1]
 - [ ] 28-03-PLAN.md — Curator claim → Industry-account repoint (retire `role='curator'` mint) + shared `provisionIndustryAccount()` primitive [Wave 1]
 - [ ] 28-04-PLAN.md — Curator directory relocation under PitchPlug (navigation only) [Wave 1]
