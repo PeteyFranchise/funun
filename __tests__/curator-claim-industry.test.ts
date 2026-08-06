@@ -81,7 +81,7 @@ describe('POST /api/curators/claim/[token]', () => {
       claim_token_expires_at: null,
       claimed_by: null,
     }
-    const { service, eqUpdate1, isSpy } = buildService({ curatorRow })
+    const { service, eqUpdate1, eqUpdate2, isSpy } = buildService({ curatorRow })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
 
@@ -97,7 +97,8 @@ describe('POST /api/curators/claim/[token]', () => {
     )
 
     // The atomic conditional UPDATE (IDOR mitigation) must be preserved exactly.
-    expect(eqUpdate1).toHaveBeenCalledWith('claim_token', TOKEN)
+    expect(eqUpdate1).toHaveBeenCalledWith('id', 'cur1')
+    expect(eqUpdate2).toHaveBeenCalledWith('claim_token', TOKEN)
     expect(isSpy).toHaveBeenCalledWith('claimed_by', null)
 
     // Exactly one email, with curator-claim-appropriate copy (not the cold-invite subject).
@@ -114,7 +115,7 @@ describe('POST /api/curators/claim/[token]', () => {
       claim_token_expires_at: null,
       claimed_by: null,
     }
-    const { service, eqUpdate1, isSpy, maybeSingleUpdate } = buildService({ curatorRow })
+    const { service, eqUpdate1, eqUpdate2, isSpy, maybeSingleUpdate } = buildService({ curatorRow })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(provisionIndustryAccount as jest.Mock).mockRejectedValueOnce(
       new DuplicateIndustryMemberError('This email has already been invited.')
@@ -128,7 +129,8 @@ describe('POST /api/curators/claim/[token]', () => {
     // existing account's role/member_type (no such write is mocked here).
     expect(provisionIndustryAccount).toHaveBeenCalledTimes(1)
     expect(maybeSingleUpdate).toHaveBeenCalled()
-    expect(eqUpdate1).toHaveBeenCalledWith('claim_token', TOKEN)
+    expect(eqUpdate1).toHaveBeenCalledWith('id', 'cur1')
+    expect(eqUpdate2).toHaveBeenCalledWith('claim_token', TOKEN)
     expect(isSpy).toHaveBeenCalledWith('claimed_by', null)
     expect(sendEmail).toHaveBeenCalledTimes(1)
   })

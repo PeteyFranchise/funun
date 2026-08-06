@@ -1,24 +1,31 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/industry/createIndustryMember'
 
 // ─── POST /api/curators/claim/[token] ────────────────────────────────────
 // Verifies a 72h-expiry, one-time claim token (issued via the admin
-// issue_claim action) and creates a lightweight magic-link curator account
-// (PITCH-05, D-18/D-19). Public — no session required to call this route;
-// the token itself is the authentication.
+// issue_claim action) and turns a claimed curator directory row into a real
+// Industry account (member_type='industry', badge playlist_curator) —
+// INDUSTRY-04. Public — no session required to call this route; the token
+// itself is the authentication.
 //
-// CRITICAL (RESEARCH.md Pitfall 1 / T-06-01): app_metadata.role='curator'
+// CRITICAL (RESEARCH.md Pitfall 1 / T-06-01 / T-28-03-02): app_metadata.role
 // MUST be set AT createUser() time, not via a post-insert UPDATE — that is
-// what makes handle_new_user()'s curator branch (migration 030) fire and
-// skip the artist_profiles/subscriptions insert for this account.
+// what makes handle_new_user()'s industry branch (migration 039) fire
+// correctly instead of racing a phantom-row. provisionIndustryAccount()
+// (lib/industry/createIndustryMember.ts) is the shared primitive that
+// enforces this; this route does NOT call admin.createUser() directly and
+// NEVER mints app_metadata.role='curator' again. It also does NOT call
+// createIndustryMember() wholesale — that would send its own cold-invite
+// email on top of this route's curator-claim copy (RESEARCH Pitfall 4).
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const service = createServiceClient()
 
   const { data: curator, error: fetchError } = await service
     .from('curators')
-    .select('id, email, claim_token_expires_at, claimed_by')
+    .select('id, email, name, claim_token_expires_at, claimed_by')
     .eq('claim_token', token)
     .maybeSingle()
 
@@ -31,30 +38,37 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
 
   const emailPayload = {
     to: curator.email,
-    subject: 'Sign in to your Funūn curator profile',
+    subject: 'Your Funūn curator profile is now an Industry account',
   }
 
-  // app_metadata.role MUST be set here, at creation — a bare createUser() or
-  // a post-insert UPDATE would let handle_new_user() create an artist
-  // profile for this account (T-06-01).
-  const { data: created, error: createError } = await service.auth.admin.createUser({
-    email: curator.email,
-    email_confirm: true,
-    app_metadata: { role: 'curator' },
-  })
+  let userId: string
 
-  if (createError || !created?.user) {
+  try {
+    const provisioned = await provisionIndustryAccount({
+      email: curator.email,
+      displayName: curator.name ?? curator.email,
+      roleSlugs: ['playlist_curator'],
+    })
+    userId = provisioned.userId
+  } catch (err) {
+    if (!(err instanceof DuplicateIndustryMemberError)) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'Could not create account' },
+        { status: 500 }
+      )
+    }
+
     // Edge case (RESEARCH.md Open Question 4): the email already belongs to
-    // an existing auth.users row (e.g. a prior artist account). Do not
-    // touch that account's role or profile — just reuse its id to link the
-    // curator record, and still send a magic link.
+    // an existing auth.users row (e.g. a prior artist or industry account).
+    // Do not touch that account's role or member_type — just reuse its id
+    // to link the curator record, and still send a magic link.
     const { data: existing, error: linkError } = await service.auth.admin.generateLink({
       type: 'magiclink',
       email: curator.email,
     })
     if (linkError || !existing?.user) {
       return NextResponse.json(
-        { error: createError?.message ?? 'Could not create account' },
+        { error: linkError?.message ?? 'Could not create account' },
         { status: 500 }
       )
     }
@@ -72,7 +86,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
 
     await sendEmail({
       ...emailPayload,
-      html: `<p>Sign in to your curator profile:</p><p><a href="${existing.properties.action_link}">Sign in</a></p>`,
+      html: `<p>Sign in to your account:</p><p><a href="${existing.properties.action_link}">Sign in</a></p>`,
     })
 
     return NextResponse.json({ ok: true })
@@ -80,7 +94,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
 
   const { data: claimed, error: claimError } = await service
     .from('curators')
-    .update({ claimed_by: created.user.id, claim_token: null })
+    .update({ claimed_by: userId, claim_token: null })
     .eq('id', curator.id)
     .eq('claim_token', token)
     .is('claimed_by', null)
@@ -91,7 +105,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
 
   // Send the actual magic link via Resend (lib/email), not Supabase's
   // built-in email templates — matches how this app already owns all its
-  // transactional email.
+  // transactional email. This is the route's OWN curator-claim welcome
+  // copy — provisionIndustryAccount() never sends email itself.
   const { data: link } = await service.auth.admin.generateLink({
     type: 'magiclink',
     email: curator.email,
@@ -99,7 +114,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
   if (link?.properties?.action_link) {
     await sendEmail({
       ...emailPayload,
-      html: `<p>Sign in to your curator profile:</p><p><a href="${link.properties.action_link}">Sign in</a></p>`,
+      html: `<p>Your curator profile is now a Funūn Industry account. Sign in:</p><p><a href="${link.properties.action_link}">Sign in</a></p>`,
     })
   }
 
