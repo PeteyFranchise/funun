@@ -6,14 +6,14 @@ current_phase: 28
 current_phase_name: industry-accounts-green-room-access
 status: board-clear
 stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-08-06T00:44:24.837Z"
+last_updated: "2026-08-06T00:51:46.541Z"
 last_activity: 2026-08-06
 last_activity_desc: Phase 28 execution started
 progress:
   total_phases: 28
   completed_phases: 19
   total_plans: 144
-  completed_plans: 125
+  completed_plans: 126
   percent: 68
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 28 (industry-accounts-green-room-access) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -161,6 +161,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 22-buyer-catalogue-light-ui P03 | 25min | 3 tasks | 7 files |
 | Phase 22 P04 | 20min | 3 tasks | 7 files |
 | Phase 28 P01 | 15min | 3 tasks | 5 files |
+| Phase 28 P02 | ~5min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -320,6 +321,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: terms_agreed/contract deal-stage badges use the neutral wash/line surface with only the accent text color changed (indigo/fuchsia) — FNBL_CSS has no dedicated indigo-bg/indigo-line or fuchsia-bg/fuchsia-line token families -- only ok/part/req have full bg/line/fg triples
 - [Phase 28]: 28-01: capability_grants stays authoritative for capability checks; member_type kept in lockstep going forward (other 6+ member_type read sites deferred, mirroring the Phase 19/20 blast-radius split)
 - [Phase 28]: 28-01: industry_profiles table left untouched (out of scope); only the Antenna route's dead read of it was removed
+- [Phase ?]: Green Room app-layer gate reads member_type only (never an independent capability_grants read), matching lib/green-room/discover.ts's existing convention (28-02)
+- [Phase ?]: FUNUN_STAFF_EMAIL_DOMAINS is an inert/forward-safe email-domain heuristic standing in for the unshipped Phase 25 funun_staff table; blocks @funun.studio from posting (INDUSTRY-07, 28-02)
 
 ### Pending Todos
 
@@ -393,7 +396,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-06T00:44:08.050Z
+Last session: 2026-08-06T00:51:30.987Z
 Stopped at: Completed 28-01-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
