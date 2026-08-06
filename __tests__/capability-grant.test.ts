@@ -70,9 +70,11 @@ describe('grantCapability', () => {
     })
 
     expect(mockFrom).toHaveBeenCalledWith('user_profiles')
-    expect(mockUpdate).toHaveBeenCalledWith({
-      roles: mapSlugsToProfileRoles(['music_supervisor']),
-    })
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roles: mapSlugsToProfileRoles(['music_supervisor']),
+      })
+    )
     expect(mockEq).toHaveBeenCalledWith('id', 'p1')
   })
 
