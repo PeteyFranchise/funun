@@ -905,6 +905,20 @@ still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is w
     Phase 21 cross-account access model** (`project_members` roles: viewer/editor/co-owner) from artist↔artist to
     **artist↔industry-representative**. Future / per-subtype (rides Phase 28's deferred per-subtype toolsets).
 
+**Login & post-login routing (owner 2026-08-05):**
+- **Artist + Industry + Team Member** share the main-app **`/signin`** (Supabase email/password). **Post-login is
+  ROLE-AWARE (Option A):** `staff_role`/`is_admin` → **`/admin`** (Team Console); Artist/Industry → **`/dashboard`**.
+  **Folded into Phase 25** (the app currently lands *everyone* on `/dashboard`, so staff wrongly land in the artist
+  app — this adds account-type-aware landing; lands as a 25-06 extension / small **25-11**). No dedicated staff login page.
+- **Client Partner (buyer)** logs in via the **light buyer login modal** (Phase 23), NOT `/signin` — reachable from a
+  buyer **landing page** + the Browse Catalogue; post-login → `/buyers/*`. Entry architecture below.
+- **Buyer entry — PROPOSED (owner deciding): path now, subdomain later.** Ship the buyer front door at a **path**
+  (`funun.studio/sync` landing + Browse Catalogue + the existing `/buyers/*` portal) for beta speed, **structured to
+  promote to a subdomain `sync.funun.studio` later** via DNS + Next.js rewrites (URLs stay — no rebuild). A **partner
+  landing page** ("Funūn Sync": license fast · value prop · featured catalogue · Browse + Log in / Request-access CTAs)
+  is the front door; the Phase 23 login/register modal is the sign-on. NOTE: `sync.funun.studio` (subdomain of
+  funun.studio), not `funun.sync.studio` (that needs owning the `sync.studio` domain). Owner to confirm.
+
 ### Phase 28: Industry Accounts & Green Room Access Model
 
 **Goal:** Confirm the four-lane account taxonomy and the **Green Room access model**, and define the **Industry
