@@ -5,7 +5,7 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 28
 current_phase_name: industry-accounts-green-room-access
 status: board-clear
-stopped_at: "28-05 (migration 085 - industry capability write + Green Room RLS gate): 2/2 automatable tasks complete (drafted, text-tested, committed fba75e1/0575a97). 1 BLOCKING human-verify checkpoint open: supabase db push + live smoke."
+stopped_at: "Phase 28 Wave 1 complete (28-01..04, all green). 28-05: migration 085 was PUSHED live, but Codex review caught a regression — 085 rebuilt handle_new_user() from the 076 body and dropped migration 080's buyer early-return (new buyer signups would fall through to the artist branch). CORRECTIVE migration 086 (commit 01605a8) restores the buyer branch while retaining 085's industry capability insert; drafted + 10/10 text-tested + committed, NOT pushed (085 left untouched). BLOCKING/AWAITING: owner pushes 086 via Codex + runs 5 smoke checks (incl. a buyer signup getting NO profile row) → reply 'approved'. THEN: close out Phase 28 (update 28-05-SUMMARY with results, gsd-verify, register INDUSTRY-01..07). NOTE: Phase 25 plans reserved migration 085/086 — renumber to 087/088 before executing Phase 25."
 last_updated: "2026-08-06T01:30:00.000Z"
 last_activity: 2026-08-06
 last_activity_desc: Phase 28 Plan 05 tasks 1-2 executed - migration 085 drafted, NOT pushed (blocking checkpoint)
