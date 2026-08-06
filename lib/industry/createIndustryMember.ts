@@ -61,7 +61,47 @@ export async function provisionIndustryAccount(input: {
     )
   }
 
-  return { userId: created.user.id }
+  const userId = created.user.id
+
+  // Same trigger-timing reconciliation as createBuyerAccount: handle_new_user
+  // could not see app_metadata.role='industry' at INSERT time (GoTrue applies
+  // app_metadata just after the users insert), so it ran the default artist
+  // branch — a member_type='artist' profile with NO industry capability grant.
+  // Correct both via the service role — reliable and trigger-timing-independent.
+  await service
+    .from('user_profiles')
+    .update({
+      member_type: 'industry',
+      artist_name: displayName,
+      industry_roles: roleSlugs,
+      roles: profileRoles,
+    })
+    .eq('id', userId)
+
+  // Idempotent industry capability grant: capability_grants_active_uniq is a
+  // partial unique index, so a plain insert could 23505 on re-run (or if a
+  // future GoTrue makes the trigger's industry branch fire and grant first).
+  // Guard with a NOT-EXISTS check, mirroring migration 085's backfill idempotency.
+  const { data: existingGrant } = await service
+    .from('capability_grants')
+    .select('id')
+    .eq('profile_id', userId)
+    .eq('capability', 'industry')
+    .eq('status', 'approved')
+    .maybeSingle()
+
+  if (!existingGrant) {
+    await service.from('capability_grants').insert({
+      profile_id: userId,
+      capability: 'industry',
+      status: 'approved',
+      role_slugs: roleSlugs,
+      source: 'signup',
+      decided_at: new Date().toISOString(),
+    })
+  }
+
+  return { userId }
 }
 
 // ─── createIndustryMember (D-05) ──────────────────────────────────────────

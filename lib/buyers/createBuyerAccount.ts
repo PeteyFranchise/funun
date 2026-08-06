@@ -58,6 +58,16 @@ export async function createBuyerAccount(input: {
     )
   }
 
+  // handle_new_user's buyer early-return (migration 080) cannot fire in this
+  // Supabase instance: GoTrue applies app_metadata just AFTER the auth.users
+  // insert, so the trigger doesn't see role='buyer' and runs its default artist
+  // branch — creating a phantom user_profiles + subscriptions row. Buyers are a
+  // fully separate account type with NO profile (D-11/D-04), so reconcile here
+  // via the service role — reliably, independent of the trigger's timing.
+  // Idempotent: a no-op if a future GoTrue ever makes the buyer branch fire.
+  await service.from('subscriptions').delete().eq('user_id', created.user.id)
+  await service.from('user_profiles').delete().eq('id', created.user.id)
+
   // migration 080 REVOKEd INSERT on buyer_members from authenticated/anon —
   // this write must go through the service-role client. Must succeed before
   // the auth user is treated as usable: an auth user carrying the buyer role

@@ -321,8 +321,21 @@ describe('public token routes use atomic unused-state predicates', () => {
       error: null,
     })
     const curatorClaim = makeBuilder({ data: { id: 'curator-1' }, error: null })
+    let curatorsFromCalls = 0
     const service = {
-      from: jest.fn().mockReturnValueOnce(curatorLookup.builder).mockReturnValueOnce(curatorClaim.builder),
+      from: jest.fn((table: string) => {
+        if (table === 'curators') {
+          // 1st curators call = token lookup, 2nd = the claim update
+          curatorsFromCalls += 1
+          return curatorsFromCalls === 1 ? curatorLookup.builder : curatorClaim.builder
+        }
+        // provisionIndustryAccount's Bug-1 reconciliation (Phase 28 corrective): a
+        // user_profiles update + a capability_grants read returning an existing grant
+        // (so the guarded insert is skipped) — lets the route reach 200 with the
+        // tracked curator builders' eq/is assertions intact.
+        if (table === 'capability_grants') return makeBuilder({ data: { id: 'existing-grant' }, error: null }).builder
+        return makeBuilder({ data: null, error: null }).builder
+      }),
       auth: {
         admin: {
           createUser: jest.fn(async () => ({ data: { user: { id: 'user-1' } }, error: null })),
