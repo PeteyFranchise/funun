@@ -5,6 +5,7 @@ import {
   loadGreenRoomFeed,
   parseFeedCursor,
 } from '@/lib/green-room/feed-query'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 import { createApiClient } from '@/lib/supabase/server'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
@@ -21,6 +22,13 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // INDUSTRY-02: viewer gate runs BEFORE loadGreenRoomFeed — a non-member
+  // (buyer/no-profile, or any member_type outside artist/industry) never
+  // reaches the feed query.
+  const principal = await loadGreenRoomPrincipal(supabase, user.id)
+  const gate = greenRoomViewerGate(principal)
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const searchParams = new URL(request.url).searchParams
   const rawTab = searchParams.get('tab') ?? 'for_you'
