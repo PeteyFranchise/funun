@@ -45,6 +45,12 @@ export default async function PitchPlugPage() {
           Tailored outreach emails for curators, blogs, radio, sync and bookers — written from your
           vault, grounded in real details, ready to send.
         </p>
+        <Link
+          href="/curators"
+          className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-[#818CF8] transition hover:text-[#A5B4FC]"
+        >
+          Browse the curator directory →
+        </Link>
       </header>
 
       {projects.length === 0 ? (
