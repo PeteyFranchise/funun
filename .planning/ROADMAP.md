@@ -925,14 +925,14 @@ opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(ar
 (`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
 **Deferred:** Client Partners posting in the Green Room (future discussion — note only).
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 28-01-PLAN.md — Antenna industry-gate fix (remove dead `industry_profiles` gate) + member_type/capability lockstep [Wave 1]
 - [x] 28-02-PLAN.md — Green Room account-type gate (app-layer: Artist ✓ / Industry ✓ / else ✗ + inert Funūn-email block) [Wave 1]
-- [ ] 28-03-PLAN.md — Curator claim → Industry-account repoint (retire `role='curator'` mint) + shared `provisionIndustryAccount()` primitive [Wave 1]
+- [x] 28-03-PLAN.md — Curator claim → Industry-account repoint (retire `role='curator'` mint) + shared `provisionIndustryAccount()` primitive [Wave 1]
 - [ ] 28-04-PLAN.md — Curator directory relocation under PitchPlug (navigation only) [Wave 1]
 
 **Wave 2** *(blocked on Wave 1 completion)*
