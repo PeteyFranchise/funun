@@ -38,10 +38,13 @@ key-decisions:
 patterns-established:
   - "For a plan whose final task is a blocking human-verify migration-push checkpoint, the executor drafts + text-tests + commits the migration and test, writes the SUMMARY documenting the drafted-but-not-pushed state (status: blocked, mirroring 17-09-SUMMARY.md's precedent), and stops without running supabase db push"
 
-requirements-completed: []
-# INDUSTRY-01/INDUSTRY-02/INDUSTRY-06 remain NOT marked complete — the DB-layer half of
-# each requirement (this migration) is drafted but not yet live. Mark complete only after
-# the Task 3 checkpoint resolves "approved" (LOCAL=REMOTE through 085 + smoke checks pass).
+requirements-completed: [INDUSTRY-01, INDUSTRY-02, INDUSTRY-06]
+# RESOLVED 2026-08-06: the Task 3 checkpoint is closed and these are live-verified. The DB
+# layer went live across a corrective chain — 085 (pushed) regressed the buyer branch → 086
+# (restore) → live smoke then surfaced 2 pre-existing bugs + 1 latent one, fixed by 087
+# (SECURITY DEFINER Green Room eligibility) and 088 (author-own-row SELECT policy that fixes
+# INSERT..RETURNING) plus a Bug-1 provisioning reconciliation in app code. LOCAL=REMOTE
+# through 088 and all smoke checks pass. See "Checkpoint Resolution" at the end.
 
 coverage:
   - id: D1
@@ -96,7 +99,7 @@ coverage:
 # Metrics
 duration: ~20min
 completed: 2026-08-06
-status: blocked
+status: complete
 ---
 
 # Phase 28 Plan 05: Migration 085 — Industry Capability Grant + Green Room RLS Gate Summary
@@ -221,3 +224,45 @@ No REFACTOR commit was needed. No test-suite gate applies to Task 3 (checkpoint,
 - FOUND commit: fba75e1 (test, RED)
 - FOUND commit: 0575a97 (feat, GREEN)
 - TDD gate sequence verified: test(fba75e1) -> feat(0575a97); no refactor commit needed
+
+---
+
+## Checkpoint Resolution (Task 3 — RESOLVED 2026-08-06)
+
+The blocking human-verify checkpoint is closed. Getting the DB layer live took a four-migration corrective chain because the owner's live push + smoke surfaced defects that only an end-to-end exercise against production could reveal. All are now fixed, live (`LOCAL=REMOTE` through 088), and smoke-verified.
+
+### What happened, in order
+
+1. **085 pushed → buyer-branch regression (caught by Codex review).** 085 rebuilt `handle_new_user()` from migration 076's body and dropped migration 080's buyer early-return, so new buyer signups would fall through to the artist branch. **Migration 086** (`01605a8`) restores the buyer branch while keeping 085's industry capability insert. 085 was left untouched (never edit a landed migration).
+
+2. **Live smoke found two real bugs** (confirmed through the REAL `createBuyerAccount` / `provisionIndustryAccount` paths, not test artifacts):
+   - **Bug 1 — trigger timing.** In this Supabase instance GoTrue applies `app_metadata.role` *just after* the `auth.users` insert, so the `AFTER INSERT` `handle_new_user` trigger never sees `role='buyer'`/`'industry'` and runs its default artist branch — giving buyers a phantom profile and industry accounts a `member_type='artist'` profile with no capability grant. **Fix (app code, trigger-timing-independent):** `createBuyerAccount` deletes the phantom `user_profiles` + `subscriptions` rows; `provisionIndustryAccount` sets `member_type='industry'` + fields and inserts a guarded (idempotent) `industry` capability grant. Commit `cbdf405`.
+   - **Bug 2 — Green Room INSERT RLS.** 085's `green_room_posts_insert_own` hand-wrote an inline `EXISTS` subquery against `user_profiles`, breaking this repo's SECURITY DEFINER-helper convention. **Fix: migration 087** (`8ccbc09`) adds `is_green_room_eligible(uuid)` (SECURITY DEFINER STABLE, mirrors `is_buyer_org_member`) and rewrites the policy to call it. Pushed live.
+
+3. **087 pushed → (c) still failed.** With 087 live, an eligible artist/industry account *still* got `42501` posting in the Green Room. A full production diagnostic (real artist Bearer session) proved the INSERT itself is legal: `auth.uid()`=author, `member_type='artist'`, `is_green_room_eligible=true`, and there is no RESTRICTIVE/stacked policy — yet the insert 42501s. **Real root cause (latent since 057/059, orthogonal to 085/087):** the app writes with `.insert().select().single()` = `INSERT .. RETURNING`; PostgreSQL applies the SELECT policy to the returned row, and that policy is `green_room_can_view_post(id, auth.uid())` — a `STABLE` function that *re-queries* `green_room_posts` for the row, whose snapshot can't see the just-inserted tuple → returns false → the RETURNING is rejected `42501`. **Fix: migration 088** (`0f88a22`) rewrites `green_room_posts_select_visible` to affirm the author's own non-deleted row via a DIRECT `author_id = auth.uid()` predicate (no re-query) OR `green_room_can_view_post`; INSERT policy untouched. A gated confirmation (a `return=minimal`/no-RETURNING Bearer insert returned 201) proved the diagnosis *before* 088 was pushed.
+
+### Final live smoke (post-088, all PASS)
+
+- **(a)** A buyer created via the real `createBuyerAccount()` has **no** `user_profiles` and **no** `subscriptions` row.
+- **(b)** An industry account created via the real `provisionIndustryAccount()` has `member_type='industry'` + one approved `industry` capability grant and **`POST /api/antenna/opportunities` → 201** (was a guaranteed 403).
+- **(c)** An eligible **artist** AND an eligible **industry** account each post in the Green Room through the real `POST /api/green-room/posts` route (`.insert().select()`) → **201** (was 42501).
+- **(d)** A buyer (no profile) `green_room_posts` insert is **RLS-rejected (42501)**.
+- **(e)** A `@funun.studio` account is **app-layer-blocked (403)** by `greenRoomPosterGate`.
+
+Migration list confirmed `LOCAL=REMOTE` through **088**. Disposable users/orgs/posts all cleaned up; no repo files edited during the live runs.
+
+### Migrations & commits (this corrective arc)
+
+| Migration | Purpose | Commit | State |
+|-----------|---------|--------|-------|
+| 085 | Industry capability grant + backfill + Green Room RLS gate | `0575a97` | live |
+| 086 | Restore buyer branch in `handle_new_user` (085 regression fix) | `01605a8` | live |
+| 087 | Green Room RLS via SECURITY DEFINER `is_green_room_eligible` (Bug 2) | `8ccbc09` | live |
+| 088 | Green Room SELECT policy affirms author's own row (fixes INSERT..RETURNING) | `0f88a22` | live |
+| — | Bug 1: provisioning functions reconcile profile/grant post-`createUser` (app code) | `cbdf405` | merged |
+
+**Requirements INDUSTRY-01 / INDUSTRY-02 / INDUSTRY-06 are now live-verified and marked complete** (registered in `.planning/REQUIREMENTS.md` alongside INDUSTRY-03/04/05/07 from Plans 28-01..04). Phase 28 is complete.
+
+### Deferred follow-up (not Phase 28 scope)
+
+The live `role='curator'` account migration count check (Task 3, step 2) and the two-step curator-branch / `(curator-portal)` route-group removal remain a future cleanup, unblocked only once that count is confirmed zero. Plan 28-03's repoint already prevents any NEW `role='curator'` account from being minted.

@@ -414,6 +414,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Pending (awaiting owner Stripe setup + live push): 3 (MONEY-01..03)
 - Deferred (blocked on signing-model decision): 5 (PAPER-01..04, DELIVERY-01)
 
+## v1.4 — Phase 28: Industry Accounts & Green Room Access Requirements
+
+Industry becomes a first-class account capability: external professionals (curators, A&R, publishers, supervisors) can be invited, post opportunities to the Antenna, and participate in the Green Room — while Funūn staff and Client-Partner (buyer) accounts are held out of the Green Room. Backed by corrective migrations 085 (industry capability grant + Green Room RLS gate), 086 (restore buyer branch), 087 (SECURITY DEFINER Green Room eligibility helper), and 088 (author-own-row SELECT policy fixing INSERT..RETURNING) — all live (`LOCAL=REMOTE` through 088) and end-to-end smoke-verified against production.
+
+### Industry capability & Antenna
+
+- **INDUSTRY-01**: Industry members can post opportunities to the Antenna, gated solely by the `industry` capability (`hasCapability`); the dead `industry_profiles` double-gate is removed
+- **INDUSTRY-04**: A shared `provisionIndustryAccount()` primitive mints an industry account (no email) for both the admin-invite and curator-claim call sites, reconciling `member_type='industry'` + an approved `industry` capability grant independent of trigger timing
+- **INDUSTRY-06**: `capability_grants` is the single source of truth for the `industry` capability, kept in lockstep with `member_type`
+
+### Green Room access
+
+- **INDUSTRY-02**: Only Artist and Industry accounts may post in the Green Room — enforced at the app layer (`greenRoomPosterGate`) and backstopped by DB RLS on `green_room_posts`
+- **INDUSTRY-07**: Funūn staff cannot post in the Green Room under a `@funun.studio` email — they must use a personal Artist or Industry account
+
+### Onboarding & directory
+
+- **INDUSTRY-03**: Industry accounts are created by invitation (admin / team-member invite); the curator-claim path is repointed onto the shared industry provisioning
+- **INDUSTRY-05**: The curators directory is relocated under PitchPlug (out of the admin area)
+
+**Traceability (Phase 28):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| INDUSTRY-01 | Phase 28 | 28-01, 28-05 | Complete |
+| INDUSTRY-02 | Phase 28 | 28-02, 28-05 | Complete |
+| INDUSTRY-03 | Phase 28 | 28-03 | Complete |
+| INDUSTRY-04 | Phase 28 | 28-03 | Complete |
+| INDUSTRY-05 | Phase 28 | 28-04 | Complete |
+| INDUSTRY-06 | Phase 28 | 28-01, 28-05 | Complete |
+| INDUSTRY-07 | Phase 28 | 28-02 | Complete |
+
+**Coverage (Phase 28):**
+
+- Phase 28 requirement IDs: 7 total
+- Complete: 7 (all live-verified via production smoke — industry posts an Antenna opportunity; artist + industry post in the Green Room; buyer RLS-rejected; @funun app-blocked)
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-03 — Phase 16 plan 16-10 registered all 34 Phase 16 requirement IDs (BUYER/DEAL/PORTAL/ARTIST/ADMIN/MONEY/PAPER/DELIVERY/METRICS) with decision traceability; METRICS-01/02 marked complete (GTM metrics module + admin dashboard shipped this plan); MONEY-01..03 pending live Stripe push; PAPER-01..04 and DELIVERY-01 deferred pending the sync-license signing-model decision*
+*Last updated: 2026-08-06 — Phase 28 registered all 7 INDUSTRY requirement IDs (industry capability/Antenna, Green Room access, onboarding/directory), all Complete and live-verified against production after corrective migrations 085–088 landed and end-to-end smoke passed (industry Antenna post; artist+industry Green Room posts; buyer RLS-reject; @funun staff app-block)*
