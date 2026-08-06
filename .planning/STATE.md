@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 22
-current_phase_name: buyer-catalogue-light-ui
+current_phase: 28
+current_phase_name: industry-accounts-green-room-access
 status: board-clear
 stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-08-04T07:46:53.293Z"
-last_activity: 2026-08-04
-last_activity_desc: Phase 22 execution started
+last_updated: "2026-08-06T00:37:24.244Z"
+last_activity: 2026-08-06
+last_activity_desc: Phase 28 execution started
 progress:
-  total_phases: 22
+  total_phases: 28
   completed_phases: 19
-  total_plans: 129
+  total_plans: 144
   completed_plans: 124
-  percent: 86
+  percent: 68
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 22 — buyer-catalogue-light-ui
+**Current focus:** Phase 28 — industry-accounts-green-room-access
 
 ## Current Position
 
-Phase: 22 (buyer-catalogue-light-ui) — EXECUTING
-Plan: 5 of 5
+Phase: 28 (industry-accounts-green-room-access) — EXECUTING
+Plan: 1 of 5
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -45,7 +45,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-04 — Phase 22 execution started
+Last activity: 2026-08-06 — Phase 28 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
