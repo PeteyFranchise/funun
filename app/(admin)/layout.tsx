@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           href="/admin/curators"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
-          Curators
+          PitchPlug · Curators
         </Link>
         <Link
           href="/admin/members"
