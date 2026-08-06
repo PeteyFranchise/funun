@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 28
 current_phase_name: industry-accounts-green-room-access
 status: board-clear
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-08-06T01:07:28.131Z"
+stopped_at: "28-05 (migration 085 - industry capability write + Green Room RLS gate): 2/2 automatable tasks complete (drafted, text-tested, committed fba75e1/0575a97). 1 BLOCKING human-verify checkpoint open: supabase db push + live smoke."
+last_updated: "2026-08-06T01:30:00.000Z"
 last_activity: 2026-08-06
-last_activity_desc: Phase 28 execution started
+last_activity_desc: Phase 28 Plan 05 tasks 1-2 executed - migration 085 drafted, NOT pushed (blocking checkpoint)
 progress:
   total_phases: 28
   completed_phases: 19
@@ -28,8 +28,9 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 28 (industry-accounts-green-room-access) — EXECUTING
-Plan: 5 of 5
+Phase: 28 (industry-accounts-green-room-access) — EXECUTING (BLOCKED on Plan 28-05 checkpoint)
+Plan: 5 of 5 — Tasks 1-2 complete (migration 085 drafted + text-tested, NOT pushed); Task 3 is a
+BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
@@ -164,6 +165,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 28 P02 | ~5min | 3 tasks | 6 files |
 | Phase 28 P03 | 20min | 3 tasks | 4 files |
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
+| Phase 28 P05 | ~20min (2/3 tasks, checkpoint-blocked) | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -327,6 +329,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: FUNUN_STAFF_EMAIL_DOMAINS is an inert/forward-safe email-domain heuristic standing in for the unshipped Phase 25 funun_staff table; blocks @funun.studio from posting (INDUSTRY-07, 28-02)
 - [Phase ?]: [Phase 28]: 28-03: provisionIndustryAccount() extracted into lib/industry/createIndustryMember.ts (not a new module) as the shared email-free account-creation primitive; the curator claim route's DuplicateIndustryMemberError catch resolves the existing account's id via generateLink's returned user, matching the pre-existing existing-account fallback shape
 - [Phase 28]: Curator directory relocation kept navigation-only: PitchPlug link added with zero curator data wiring; admin /admin/curators route href unchanged, only label relabeled to PitchPlug · Curators
+- [Phase 28]: 28-05: migration 085's capability_grants insert lives inside handle_new_user()'s SECURITY DEFINER trigger (not app code) so it is the single writer, atomic with the user_profiles insert, and covers both the admin-invite and repointed curator-claim (28-03) creation paths for free; source='signup' for the trigger write, source='backfill' for the idempotent existing-account backfill (both already valid per migration 042's CHECK, no new enum value)
+- [Phase 28]: 28-05: green_room_posts_insert_own RLS policy DROP+CREATE replaced (not stacked) with a member_type IN ('artist','industry') EXISTS gate alongside the existing author_id check — the DB-authoritative backstop mirroring 28-02's app-layer greenRoomPosterGate()
 
 ### Pending Todos
 
@@ -352,6 +356,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Wave 0 of Phase 16 (16-00/01/02/11) is code-complete and migrations 080/081/082 are approved-and-live (LOCAL=REMOTE through 082, confirmed by operator via `supabase migration list` + a service-role PostgREST read on buyer_orgs returning 200). This confirms schema-level correctness only. Each of 16-01/16-02/16-11's own listed behavioral adversarial checks (buyer cannot UPDATE license_requests.stage -- 42501; admin_notes/owner_id/commission_pct/artist_net_cents not selectable by a buyer; phantom-row guard `SELECT COUNT(*) FROM user_profiles WHERE buyer role = 0`; UPC/GRid generation safety and the platform GRid global-counter check) remain OUTSTANDING -- they require a live buyer account, which Wave 2 buyer signup has not yet shipped. Track these in the phase verifier before Phase 16 is marked passed.
 - 22-01: plan frontmatter references requirements catalogue-browse/audio-player but REQUIREMENTS.md has no Phase 22 section registering them yet (requirements mark-complete returned not_found for both) -- same pre-existing gap pattern as Phase 16, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 28-01: plan frontmatter references requirements INDUSTRY-01/INDUSTRY-06 but REQUIREMENTS.md has no Phase 28 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as Phases 16/22/23, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- 28-05 checkpoint (Task 3, BLOCKING): migration 085 (supabase/migrations/085_industry_capability_green_room_gate.sql -- handle_new_user() industry capability_grants write + backfill + green_room_posts_insert_own RLS member_type gate) is drafted, text-tested (commits fba75e1/0575a97), and NOT pushed -- requires a human with Supabase CLI/dashboard access to review, confirm the live role='curator' account count, run `supabase db push`, confirm LOCAL=REMOTE through 085, and execute the 4-scenario post-push smoke (industry account posts an Antenna opportunity; artist+industry can post in Green Room; a non-member is RLS-rejected; a @funun.studio account is app-layer-blocked). Full steps in 28-05-SUMMARY.md's Checkpoint section and 28-05-PLAN.md Task 3. This is the last open item in Phase 28.
 
 ### Quick Tasks Completed
 
@@ -400,6 +405,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
+Last session: 2026-08-06T01:30:00.000Z
+Stopped at: 28-05 Tasks 1-2 complete (migration 085 drafted + text-tested, commits fba75e1/0575a97, NOT pushed). Task 3 is a BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md.
+Resume file: 28-05-PLAN.md (Task 3: migration push checkpoint)
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`

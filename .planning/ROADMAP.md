@@ -925,7 +925,8 @@ opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(ar
 (`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
 **Deferred:** Client Partners posting in the Green Room (future discussion — note only).
 
-**Plans:** 4/5 plans executed
+**Plans:** 4/5 plans complete; 28-05's two autonomous tasks are done — 1 BLOCKING human-verify checkpoint (migration
+085 push) remains open
 
 Plans:
 **Wave 1**
@@ -937,9 +938,12 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 28-05-PLAN.md — Migration 085 (industry capability write + backfill + Green Room RLS gate) + HUMAN-GATED push checkpoint [Wave 2]
+- [ ] 28-05-PLAN.md — Migration 085 (industry capability write + backfill + Green Room RLS gate) drafted + text-tested
+  (commits `fba75e1`, `0575a97`); BLOCKING checkpoint (Task 3: owner reviews, pushes via Codex, confirms live
+  `role='curator'` count, runs post-push smoke) NOT yet resolved [Wave 2]
 
 **Provisional requirements** (INDUSTRY-01…07) — cited in plan frontmatter but NOT yet registered in
 REQUIREMENTS.md (no Phase 28 section exists); register via `/gsd-docs-update` before phase close.
 
-**Status:** Planned 2026-08-05 (5 plans / 2 waves). Migration push is human-gated (Plan 28-05, autonomous:false).
+**Status:** Executing (5 plans / 2 waves). 4/5 plans complete; 28-05's migration is drafted, text-tested, and NOT
+pushed — blocked on the human-gated `supabase db push` + live smoke checkpoint (Plan 28-05 Task 3).
