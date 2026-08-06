@@ -55,7 +55,10 @@ Split "curator" into the two things it actually is; there is **no separate curat
 - **Industry** → ✓ access + social profile + post + opportunity-posting tools.
 - **Team Member (as Funūn)** → ✗ **may NOT post under a Funūn email address.** A Team Member is welcome to create a
   **personal** Artist/Industry account (own email/username) to participate.
-- **Client Partner** → **DEFERRED** — future discussion whether they can post. **Note only for now.**
+- **Client Partner** → **NO Green Room at all** (owner 2026-08-05 — resolves the earlier "deferred" to a firm no):
+  not in their menu, no view, no post. The buyer experience is license-fast / browse-catalogue / track-purchases
+  (+ future: view playback playlists shared/sent to them). Phase 28's gate ALREADY enforces this (buyers are "else ✗"
+  in both the viewer and poster gates) — no code change needed; this just resolves the decision.
 
 ## Ground truth — what already exists (this is confirm/extend, NOT greenfield)
 - `member_type` enum `('artist','industry')` — migration 034. The two external types exist.
@@ -95,7 +98,8 @@ Split "curator" into the two things it actually is; there is **no separate curat
 
 <deferred>
 ## Deferred Ideas
-- **Client Partners posting in the Green Room** — explicit future discussion (owner, note only for now).
+- ~~Client Partners posting in the Green Room~~ — **RESOLVED 2026-08-05: NO Green Room for Client Partners at all**
+  (not in menu, no access). Already enforced by Phase 28's gate (buyers = "else ✗"). Not deferred anymore.
 - Full **per-subtype industry toolsets** (iterative, one subtype at a time). **Owner vision (2026-08-05):** the
   **manager / A&R** subtype gets, from their industry page — a **roster of the artists they represent**; **access to
   those artists' project cards** with **edit privileges per the artist↔manager agreement** (agreement-scoped);

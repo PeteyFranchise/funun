@@ -859,7 +859,7 @@ Funūn's accounts settle into **four lanes** (see `28-CONTEXT.md`):
 | **Funūn Team Member** (internal) | Staff, role-typed (Leadership/AE/BD/…) | Team Console (Phase 25). **No Green Room posting under a Funūn email** — staff may make a personal Artist/Industry account to participate. |
 | **Artist** (external creator) | **Anyone with song credits** — artists, writers, producers, all creative roles | Sound Vault (Contract Locker, Split Sheets, Antenna/PitchPlug) + **Green Room + posts**. Invite-only (Phase 27). |
 | **Industry** (external) | Curators, A&R, execs, publishers, music supervisors, playlist owners, radio, managers | **Green Room + social profile** + tools to **post opportunities into Antenna**; per-subtype toolsets (future); **invite-only**. |
-| **Client Partner** (external buyer) | Sync buyers, B2B | Buyer portal (Phase 23), AE-managed. **Green Room posting = FUTURE discussion** (noted, deferred). |
+| **Client Partner** (external buyer) | Sync buyers, B2B | Buyer portal (Phase 23), AE-managed. **NO Green Room at all — not in their menu, no access** (owner 2026-08-05). Focus: license fast · browse catalogue · track purchases; **+ future: view playback playlists shared/sent to them**. Phase 28's gate already enforces no-access (buyers are "else ✗"). |
 
 **Curators — RESOLVED (owner 2026-08-05):** there is **no separate curator account** — the only curator *account* is an
 **Industry account** (`playlist_curator`); the legacy `role='curator'` is **retired** (its claim flow repoints at
