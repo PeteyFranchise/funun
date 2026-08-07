@@ -8,6 +8,13 @@ import { mapCardsToLightRows, SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sa
 export const dynamic = 'force-dynamic'
 
 // ─── Catalog browse page (D-16) ─────────────────────────────────────────
+// 23-02: moved from app/(buyer-portal)/buyers/catalog/page.tsx to
+// app/sync/catalog/page.tsx as part of the /buyers/* → /sync/* unification.
+// This page keeps its own self-gate (redirect to /sync/access when no
+// buyer session) for now — opening this page up to logged-out visitors is
+// 23-03's scope (the non-gating /sync layout is what makes that possible,
+// not this plan).
+//
 // Server component: renders the first, unfiltered page of results via the
 // SAME loadCatalogPage the API route calls (no duplicated privacy logic).
 //
@@ -23,14 +30,14 @@ export default async function CatalogPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/buyers/access')
+  if (!user) redirect('/sync/access')
 
   const { data: member } = await supabase
     .from('buyer_members')
     .select('org_id')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (!member) redirect('/buyers/access')
+  if (!member) redirect('/sync/access')
 
   const service = createServiceClient()
   const filter = buildCatalogFilter({})

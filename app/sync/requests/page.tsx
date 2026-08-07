@@ -14,6 +14,11 @@ const LICENSE_REQUEST_COLUMNS =
   'id, buyer_org_id, created_by, vault_project_id, usage_types, territories, term_months, exclusivity, budget_cents, need_by, buyer_notes, stage, matched_precleared, gross_fee_cents, contract_document_id, created_at, updated_at'
 
 // ─── Org request dashboard (D-16a) ─────────────────────────────────────────
+// 23-02: moved from app/(buyer-portal)/buyers/requests/page.tsx to
+// app/sync/requests/page.tsx as part of the /buyers/* → /sync/*
+// unification. Self-gates to /sync/access (the non-gating /sync layout no
+// longer backstops this).
+//
 // Every license_request submitted by ANY member of the caller's org — the
 // RLS on license_requests (migration 081) already scopes SELECT to buyer-org
 // membership, so a plain query against the session client returns exactly
@@ -32,14 +37,14 @@ export default async function RequestsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/buyers/access')
+  if (!user) redirect('/sync/access')
 
   const { data: member } = await supabase
     .from('buyer_members')
     .select('org_id')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (!member) redirect('/buyers/access')
+  if (!member) redirect('/sync/access')
 
   const { data } = await supabase
     .from('license_requests')
@@ -93,7 +98,7 @@ export default async function RequestsPage() {
           </p>
         </div>
         <Link
-          href="/buyers/requests/new"
+          href="/sync/requests/new"
           className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-3 py-1.5 text-xs font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"
         >
           New request
