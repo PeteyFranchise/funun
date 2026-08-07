@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
-stopped_at: "Completed 25-04-PLAN.md (staff account provisioning + leadership-only staff routes); next: 25-05"
-last_updated: "2026-08-07T00:49:48.310Z"
+stopped_at: "Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06"
+last_updated: "2026-08-07T00:59:44.638Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 133
+  completed_plans: 134
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -170,6 +170,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P02 | 10min | 2 tasks | 4 files |
 | Phase 25 P03 | 15min | 3 tasks | 3 files |
 | Phase 25 P04 | ~20min | 3 tasks | 6 files |
+| Phase 25 P05 | ~20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -348,6 +349,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 25]: 25-04: createStaffAccount cleans up the phantom user_profiles/subscriptions rows handle_new_user() creates for staff accounts (migration 086 has no staff early-return branch) -- Rule 2, mirrors createBuyerAccount's identical buyer-branch-timing reconciliation
 - [Phase ?]: [Phase 25]: 25-04: funun_staff has no invited_by column (migration 089 as authored) -- omitted from the insert; invitedBy still flows into app_metadata.user_metadata.invited_by for provenance
 - [Phase ?]: [Phase 25]: 25-04: deactivation semantics -- funun_staff has no active/deactivated_at column (migration 089 unpushed, out of this plan's edit scope), so PATCH { active:false } clears app_metadata.staff_role to null via the same admin.updateUserById() call used for role change -- a real, immediate access revocation with zero schema change; funun_staff.staff_role keeps its last-known value as a historical display record only
+- [Phase 25]: 25-05: STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name'] only for v1 (A3); ae_user_id is never in the edit allowlist, closing AE self-assignment (T-25-19)
+- [Phase 25]: 25-05: scope denial on PATCH /api/admin/buyer-orgs/[id] returns 404 (not 403) for both an unassigned-to-this-AE org and a nonexistent org, avoiding existence leakage
+- [Phase 25]: 25-05: GET /api/admin/buyer-orgs scoped identically to the write path — non-leadership callers get .eq('ae_user_id', caller) appended, leadership stays unscoped (Pitfall 4)
 
 ### Pending Todos
 
@@ -426,8 +430,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T00:49:48.284Z
-Stopped at: Completed 25-04-PLAN.md (staff account provisioning + leadership-only staff routes); next: 25-05
+Last session: 2026-08-07T00:59:44.610Z
+Stopped at: Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
