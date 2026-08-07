@@ -1,12 +1,18 @@
 import { getStaffRole } from '@/lib/admin/staff-role'
 
-// ─── Post-sign-in routing (Phase 25 / 25-11 — login-routing Option A) ──────
-// Pure destination resolver for the sign-in page. Precedence:
-//   1. an explicit, same-origin ?next= deep link always wins;
-//   2. otherwise Funūn staff land on the admin surface and everyone else on the
-//      Sound Vault (the app's existing default home).
+// ─── Post-sign-in routing (Phase 25 / 25-11 — login-routing Option A;
+// Phase 23 / 23-05 — buyer role branch) ─────────────────────────────────────
+// Pure destination resolver, reused by both the sign-in page and the
+// recovery/callback flow (23-05 Task 2). Precedence:
+//   1. an explicit, same-origin ?next= deep link always wins for every role;
+//   2. a buyer (app_metadata.role === 'buyer') lands on the buyer catalogue —
+//      a buyer is never staff and must never be dropped on the artist /vault
+//      (RESEARCH Pitfall 2);
+//   3. otherwise Funūn staff land on the admin surface and everyone else on
+//      the Sound Vault (the app's existing default home).
 // There is no /admin index route (it 404s), so staff are sent to a real page.
 
+export const BUYER_HOME = '/sync/catalog'
 export const STAFF_HOME = '/admin/my-client-partners'
 export const DEFAULT_HOME = '/vault'
 
@@ -39,5 +45,12 @@ export function postSignInPath(input: {
 }): string {
   const next = safeNext(input.next)
   if (next) return next
+
+  // A buyer is never staff — check the buyer branch before staff/default
+  // resolution so a buyer's role always wins that ordering, even though
+  // getStaffRole() would independently return null for a buyer anyway.
+  const meta = (input.user?.app_metadata ?? undefined) as { role?: string } | undefined
+  if (meta?.role === 'buyer') return BUYER_HOME
+
   return getStaffRole(input.user ?? {}) ? STAFF_HOME : DEFAULT_HOME
 }

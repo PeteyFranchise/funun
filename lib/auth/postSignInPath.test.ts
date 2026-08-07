@@ -1,7 +1,8 @@
-import { postSignInPath, STAFF_HOME, DEFAULT_HOME } from '@/lib/auth/postSignInPath'
+import { postSignInPath, BUYER_HOME, STAFF_HOME, DEFAULT_HOME } from '@/lib/auth/postSignInPath'
 
 const staff = (staff_role: string) => ({ app_metadata: { staff_role } })
 const artist = { app_metadata: {} }
+const buyer = { app_metadata: { role: 'buyer' } }
 
 describe('postSignInPath — role-aware post-sign-in routing (25-11)', () => {
   it('routes each staff role to the admin surface when no next is given', () => {
@@ -20,6 +21,17 @@ describe('postSignInPath — role-aware post-sign-in routing (25-11)', () => {
     expect(postSignInPath({ user: null })).toBe(DEFAULT_HOME)
   })
 
+  it('routes a buyer to /sync/catalog when no next is given (23-05)', () => {
+    expect(postSignInPath({ user: buyer })).toBe(BUYER_HOME)
+    expect(postSignInPath({ user: buyer, next: undefined })).toBe(BUYER_HOME)
+    expect(postSignInPath({ user: buyer, next: null })).toBe(BUYER_HOME)
+  })
+
+  it('still routes staff and artists correctly alongside the buyer branch (23-05)', () => {
+    expect(postSignInPath({ user: staff('leadership') })).toBe(STAFF_HOME)
+    expect(postSignInPath({ user: artist })).toBe(DEFAULT_HOME)
+  })
+
   it('honours an explicit same-origin next deep link, even for staff', () => {
     expect(postSignInPath({ user: staff('leadership'), next: '/vault/abc' })).toBe('/vault/abc')
     expect(postSignInPath({ user: artist, next: '/settings' })).toBe('/settings')
@@ -36,6 +48,15 @@ describe('postSignInPath — role-aware post-sign-in routing (25-11)', () => {
     expect(postSignInPath({ user: artist, next: '//evil.com' })).toBe(DEFAULT_HOME)
     expect(postSignInPath({ user: staff('leadership'), next: 'http://evil.com/x' })).toBe(STAFF_HOME)
     expect(postSignInPath({ user: artist, next: 'javascript:alert(1)' })).toBe(DEFAULT_HOME)
+  })
+
+  it('rejects a crafted off-site next for a buyer and falls back to /sync/catalog (23-05)', () => {
+    expect(postSignInPath({ user: buyer, next: '//evil.com' })).toBe(BUYER_HOME)
+    expect(postSignInPath({ user: buyer, next: 'https://evil.com' })).toBe(BUYER_HOME)
+  })
+
+  it('honours an explicit same-origin next deep link for a buyer too', () => {
+    expect(postSignInPath({ user: buyer, next: '/update-password' })).toBe('/update-password')
   })
 
   it('rejects backslash + control-char normalization tricks (review finding #1)', () => {
