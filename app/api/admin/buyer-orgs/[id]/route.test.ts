@@ -46,16 +46,20 @@ function mockService(
       maybeSingle: jest.fn(async () => ({ data: orgRow, error: null })),
     })),
   }))
-  const updateSpy = jest.fn((update: Record<string, unknown>) => ({
-    eq: jest.fn(() => ({
+  // review #8: the write now chains .eq('id').[.eq('ae_user_id')].select().maybeSingle()
+  // — a chainable eq (returns the same builder) terminating in maybeSingle.
+  const updateSpy = jest.fn((update: Record<string, unknown>) => {
+    const builder: { eq: jest.Mock; select: jest.Mock } = {
+      eq: jest.fn(() => builder),
       select: jest.fn(() => ({
-        single: jest.fn(async () => ({
+        maybeSingle: jest.fn(async () => ({
           data: updateError ? null : { id: ORG_UUID, name: 'Fallback Org', ...update },
           error: updateError,
         })),
       })),
-    })),
-  }))
+    }
+    return builder
+  })
   const auditInsert = jest.fn(async () => ({ error: null }))
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
