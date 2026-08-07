@@ -767,12 +767,12 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 2/10 plans executed
+**Plans:** 3/10 plans executed
 **Wave 1**
 
 - [x] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
 - [x] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
-- [ ] 25-03-PLAN.md — Migrations 089 (funun_staff + staff_audit_log, zero-RLS) + 090 (buyer_orgs.ae_user_id private) [W1] — renumbered from 085/086 after Phase 28 took 085–088
+- [x] 25-03-PLAN.md — Migrations 089 (funun_staff + staff_audit_log, zero-RLS) + 090 (buyer_orgs.ae_user_id private) [W1] — renumbered from 085/086 after Phase 28 took 085–088
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
