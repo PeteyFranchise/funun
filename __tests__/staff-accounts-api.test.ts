@@ -1,4 +1,5 @@
 import { GET as staffGET, POST as staffPOST } from '@/app/api/admin/staff/route'
+import { PATCH as staffPATCH } from '@/app/api/admin/staff/[id]/route'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { createStaffAccount, DuplicateStaffAccountError } from '@/lib/staff/createStaffAccount'
@@ -165,5 +166,92 @@ describe('POST /api/admin/staff', () => {
     )
 
     expect(res.status).toBe(500)
+  })
+})
+
+describe('PATCH /api/admin/staff/[id]', () => {
+  function serviceForPatch() {
+    const updateUserById = jest.fn(async () => ({ error: null }))
+    const fununStaffUpdateEq = jest.fn(async () => ({ error: null }))
+    const fununStaffUpdate = jest.fn(() => ({ eq: fununStaffUpdateEq }))
+    const maybeSingle = jest.fn(async () => ({
+      data: { id: '1', user_id: NEW_USER_ID, staff_role: 'bd', display_name: 'BD Person' },
+      error: null,
+    }))
+    const selectEq = jest.fn(() => ({ maybeSingle }))
+    const select = jest.fn(() => ({ eq: selectEq }))
+
+    const from = jest.fn(() => ({ update: fununStaffUpdate, select }))
+
+    return {
+      auth: { admin: { updateUserById } },
+      from,
+      updateUserById,
+      fununStaffUpdate,
+      fununStaffUpdateEq,
+    }
+  }
+
+  it('rejects a non-leadership caller with 403', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
+    const res = await staffPATCH(jsonRequest(`http://t.local/api/admin/staff/${NEW_USER_ID}`, { staff_role: 'bd' }, 'PATCH'), {
+      params: Promise.resolve({ id: NEW_USER_ID }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('dual-writes app_metadata AND funun_staff.staff_role for a valid role change, then logs once', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADER_ID }, staffRole: 'leadership' })
+    const service = serviceForPatch()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await staffPATCH(
+      jsonRequest(`http://t.local/api/admin/staff/${NEW_USER_ID}`, { staff_role: 'bd' }, 'PATCH'),
+      { params: Promise.resolve({ id: NEW_USER_ID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateUserById).toHaveBeenCalledWith(NEW_USER_ID, {
+      app_metadata: { staff_role: 'bd' },
+    })
+    expect(service.fununStaffUpdate).toHaveBeenCalledWith({ staff_role: 'bd' })
+    expect(service.fununStaffUpdateEq).toHaveBeenCalledWith('user_id', NEW_USER_ID)
+    expect(logStaffAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects an invalid staff_role with 400 and performs no write', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADER_ID }, staffRole: 'leadership' })
+    const service = serviceForPatch()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await staffPATCH(
+      jsonRequest(`http://t.local/api/admin/staff/${NEW_USER_ID}`, { staff_role: 'root' }, 'PATCH'),
+      { params: Promise.resolve({ id: NEW_USER_ID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateUserById).not.toHaveBeenCalled()
+    expect(service.fununStaffUpdate).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  it('accepts { active:false } as a deactivate signal, clears app_metadata.staff_role, and audits it', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADER_ID }, staffRole: 'leadership' })
+    const service = serviceForPatch()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await staffPATCH(
+      jsonRequest(`http://t.local/api/admin/staff/${NEW_USER_ID}`, { active: false }, 'PATCH'),
+      { params: Promise.resolve({ id: NEW_USER_ID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateUserById).toHaveBeenCalledWith(NEW_USER_ID, {
+      app_metadata: { staff_role: null },
+    })
+    expect(logStaffAction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'deactivate_staff', targetId: NEW_USER_ID })
+    )
   })
 })
