@@ -71,6 +71,31 @@ export function buildAeAssignedNotification(args: {
   }
 }
 
+// ─── ae_unassigned ──────────────────────────────────────────────────────
+// Fires alongside buildAeAssignedNotification when leadership REASSIGNS a
+// Client Partner away from its current AE (25-09) — the losing AE also
+// gets notified, not only the gaining one. Mirrors buildAeAssignedNotification's
+// shape exactly; link still points at the company (the losing AE loses read
+// access at the same write, so the link will 404/403 for them going
+// forward — informational only, matches T-25-17's disposition).
+
+export function buildAeUnassignedNotification(args: {
+  recipientId: string
+  orgId: string
+  orgName: string
+  actorId?: string | null
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'ae_unassigned',
+    title: `A Client Partner was reassigned away from you`,
+    body: `${args.orgName} is no longer in your Client Partners list.`,
+    link: `/admin/client-partners/${args.orgId}`,
+    data: { orgId: args.orgId, orgName: args.orgName },
+    actorId: args.actorId ?? null,
+  }
+}
+
 // ─── lead_routed ────────────────────────────────────────────────────────
 // Fires when a new buyer-company lead lands and is routed to an employee
 // (either their assigned AE, or the leadership fallback via

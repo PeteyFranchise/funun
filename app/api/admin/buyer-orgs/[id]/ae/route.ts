@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
-import { buildAeAssignedNotification } from '@/lib/staff/notifications'
+import { buildAeAssignedNotification, buildAeUnassignedNotification } from '@/lib/staff/notifications'
 
 // Canonical RFC-4122 UUID shape, mirrors lib/social/dm.ts's isUuid — the
 // body value is interpolated into a service-role update, so any non-UUID
@@ -14,9 +14,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Leadership-only AE (re)assignment (D-03 — an AE can never self-assign; the
 // edit allowlist in ../route.ts deliberately never includes ae_user_id).
 // Accepts either a UUID (assign) or null (unassign). Every write is audited
-// (D-04); a fresh assignment also notifies the newly-assigned AE via the
-// existing notifications table (best-effort — never blocks the response,
-// mirrors lib/social/activity-emit.ts's convention).
+// (D-04). Reassignment-aware (25-09): the prior ae_user_id is read BEFORE
+// the update, in the same handler, so both the newly-assigned AE (gained)
+// and the previous AE (lost) can be notified when the assignment actually
+// changes hands — not only the new one. Both notifications are best-effort
+// (never block the response), mirrors lib/social/activity-emit.ts's
+// convention.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
@@ -37,6 +40,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const service = createServiceClient()
+
+  // Read the PRIOR assignment before writing — required to know whether
+  // this is a fresh assignment, a no-op re-assignment, an unassign, or a
+  // genuine reassignment away from a different AE (25-09).
+  const { data: priorRow } = await service
+    .from('buyer_orgs')
+    .select('ae_user_id')
+    .eq('id', id)
+    .maybeSingle()
+  const prevAeUserId = (priorRow as { ae_user_id?: string | null } | null)?.ae_user_id ?? null
+
   const { data, error } = await service
     .from('buyer_orgs')
     .update({ ae_user_id: aeUserId })
@@ -54,13 +68,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     changes: { ae_user_id: aeUserId },
   })
 
+  const orgName = (data as { name?: string } | null)?.name ?? 'this Client Partner'
+
   if (aeUserId) {
     await createNotification(
       service,
       buildAeAssignedNotification({
         recipientId: aeUserId,
         orgId: id,
-        orgName: (data as { name?: string } | null)?.name ?? 'this Client Partner',
+        orgName,
+        actorId: auth.user.id,
+      })
+    ).catch(() => {})
+  }
+
+  // The assignment changed away from a previous, different AE — notify
+  // them too, whether the new value is a different AE or unassigned.
+  const changedAwayFromPrevAe = prevAeUserId !== null && prevAeUserId !== aeUserId
+  if (changedAwayFromPrevAe) {
+    await createNotification(
+      service,
+      buildAeUnassignedNotification({
+        recipientId: prevAeUserId as string,
+        orgId: id,
+        orgName,
         actorId: auth.user.id,
       })
     ).catch(() => {})
