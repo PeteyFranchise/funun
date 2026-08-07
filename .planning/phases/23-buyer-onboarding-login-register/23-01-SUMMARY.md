@@ -141,3 +141,7 @@ None yet for this plan specifically. Migration 095 remains unpushed — the owne
 ---
 *Phase: 23-buyer-onboarding-login-register*
 *Completed: 2026-08-07*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk; all 4 task/docs commit hashes (6bfb01c, b32e523, 36db4e3, 09b5523) verified present in git log.
