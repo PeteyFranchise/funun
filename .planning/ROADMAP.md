@@ -723,7 +723,7 @@ and **distinct from artist (user) accounts**.
 
 **Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
 
-**Plans:** 6/8 plans executed
+**Plans:** 7/8 plans executed
 
 **Wave 1 — Foundations**
 
@@ -739,7 +739,7 @@ and **distinct from artist (user) accounts**.
 
 **Wave 3 — Modal** *(blocked on Wave 2)*
 
-- [ ] 23-07-PLAN.md — Login/Register modal (.fnbl Marmoset mirror, two doors) + CatalogBrowserLight engagement gating + landing CTA [W3]
+- [x] 23-07-PLAN.md — Login/Register modal (.fnbl Marmoset mirror, two doors) + CatalogBrowserLight engagement gating + landing CTA [W3]
 
 **Wave 4 — Human checkpoint** *(blocked on Wave 3)*
 

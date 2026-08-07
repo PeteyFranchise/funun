@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 23
 current_phase_name: buyer-onboarding-login-register
 status: board-clear
-stopped_at: "Completed 23-06-PLAN.md (AE onboarding surface: Client Partner detail page, status transition, unassigned queue)"
-last_updated: "2026-08-07T09:40:41.414Z"
+stopped_at: Completed 23-07-PLAN.md (LoginRegisterModal + browse gate + landing CTA wiring)
+last_updated: "2026-08-07T09:53:57.727Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 28
   completed_phases: 21
   total_plans: 152
-  completed_plans: 145
+  completed_plans: 146
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 23 (buyer-onboarding-login-register) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -181,6 +181,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 23 P04 | 15min | 3 tasks | 5 files |
 | Phase 23 P05 | 20min | 3 tasks | 6 files |
 | Phase 23 P06 | 20min | 3 tasks | 6 files |
+| Phase 23-buyer-onboarding-login-register P07 | ~20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -387,6 +388,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 23-06: GET /api/admin/buyer-orgs's request param made required (Request), not optional -- Next.js typed-route checker rejects Request|undefined; test call sites updated to pass a Request
 - [Phase ?]: 23-06: cross-company purchase visibility (SYNC-10) confirmed already satisfied by migration 081 RLS + app/sync/requests/page.tsx -- no new code, no new RLS needed
 - [Phase ?]: 23-06: plan frontmatter references requirements SYNC-06/SYNC-10 but REQUIREMENTS.md has no Phase 23 section registering them (requirements.mark-complete returned not_found for both) -- same pre-existing gap noted at 23-01/23-02/23-04, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: 23-07: Login errors show a single fixed generic message (never the raw Supabase error) -- T-23-23 account-enumeration mitigation; postSignInPath's next is always null in the modal (no client-controlled redirect surface exists)
+- [Phase ?]: 23-07: SyncAuthCTAs.tsx added as a new client-boundary file beyond the plan's literal files_modified -- Next.js requires 'use client' at whole-module scope, so the server-component /sync landing page cannot inline modal-open state (Rule 3)
 
 ### Pending Todos
 
@@ -467,9 +470,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T09:40:31.443Z
-Stopped at: Completed 23-06-PLAN.md (AE onboarding surface: Client Partner detail page, status transition, unassigned queue)
-Resume file: None
+Last session: 2026-08-07T09:53:57.704Z
+Stopped at: Completed 23-07-PLAN.md (LoginRegisterModal + browse gate + landing CTA wiring)
+Resume file: 23-08-PLAN.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
