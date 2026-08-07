@@ -10,10 +10,18 @@ export const dynamic = 'force-dynamic'
 // ─── Catalog browse page (D-16) ─────────────────────────────────────────
 // 23-02: moved from app/(buyer-portal)/buyers/catalog/page.tsx to
 // app/sync/catalog/page.tsx as part of the /buyers/* → /sync/* unification.
-// This page keeps its own self-gate (redirect to /sync/access when no
-// buyer session) for now — opening this page up to logged-out visitors is
-// 23-03's scope (the non-gating /sync layout is what makes that possible,
-// not this plan).
+// 23-03: opened to logged-out visitors (locked directive 4 — a public
+// visitor browses + plays simulated previews with no auth wall; engagement
+// (shortlist/License) still pops the login/register modal, wired in 23-07).
+// Branches on session presence:
+//   - no user                     → public browse: loadCatalogPage(..., null,
+//                                    ...), CatalogBrowserLight isPublic (its
+//                                    own self-contained header + Login
+//                                    button, NOT embedded — BuyerTopNav is
+//                                    for authenticated members only)
+//   - user, no buyer_members row  → redirect to /sync/access (unchanged)
+//   - user is a buyer             → authenticated embedded experience
+//                                    (unchanged)
 //
 // Server component: renders the first, unfiltered page of results via the
 // SAME loadCatalogPage the API route calls (no duplicated privacy logic).
@@ -30,7 +38,15 @@ export default async function CatalogPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/sync/access')
+  const service = createServiceClient()
+  const filter = buildCatalogFilter({})
+
+  if (!user) {
+    const initial = await loadCatalogPage(service, null, filter, 1)
+    const liveRows = mapCardsToLightRows(initial.data)
+    const rows = liveRows.length > 0 ? liveRows : SAMPLE_CATALOG_ROWS
+    return <CatalogBrowserLight rows={rows} isPublic />
+  }
 
   const { data: member } = await supabase
     .from('buyer_members')
@@ -39,8 +55,6 @@ export default async function CatalogPage() {
     .maybeSingle()
   if (!member) redirect('/sync/access')
 
-  const service = createServiceClient()
-  const filter = buildCatalogFilter({})
   const initial = await loadCatalogPage(service, user.id, filter, 1)
 
   const liveRows = mapCardsToLightRows(initial.data)
