@@ -177,7 +177,7 @@ export function BuyerOrgsAdmin({
       setShowCreateForm(false)
       if (json.emailSent === false) {
         setEmailWarning(
-          `Company created, but the invite email to ${createForm.adminEmail.trim()} could not be delivered. They can still sign in at /buyers/access using their email address.`
+          `Company created, but the invite email to ${createForm.adminEmail.trim()} could not be delivered. They can still sign in at /sync/access using their email address.`
         )
       }
     } catch (err) {

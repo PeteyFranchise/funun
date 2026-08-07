@@ -99,7 +99,7 @@ export function OrgRequestDashboard({ rows }: { rows: OrgRequestRow[] }) {
           visibleRows.map(({ request, projectTitle, submitterName }) => (
             <Link
               key={request.id}
-              href={`/buyers/requests/${request.id}`}
+              href={`/sync/requests/${request.id}`}
               className="block rounded-xl border border-[color:var(--line)] bg-[var(--wash)] p-4 transition hover:border-[color:var(--line-2)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">

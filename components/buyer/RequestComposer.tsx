@@ -92,7 +92,7 @@ export function RequestComposer({ project }: { project: ComposerProject }) {
         setError(json.error ?? 'Failed to submit request. Please check your entries and try again.')
         return
       }
-      router.push(`/buyers/requests/${json.data.id}`)
+      router.push(`/sync/requests/${json.data.id}`)
     } finally {
       setSubmitting(false)
     }

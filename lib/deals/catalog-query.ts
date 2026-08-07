@@ -22,8 +22,9 @@ import {
 // Lives in lib/ (not the route.ts file) because Next.js route modules may
 // only export HTTP method handlers plus a small route-config set — any
 // other export fails Next's route type-checking at build time. Both
-// GET /api/buyer/catalog and app/(buyer-portal)/buyers/catalog/page.tsx's
-// server-rendered first page import this one implementation, so the
+// GET /api/buyer/catalog and app/sync/catalog/page.tsx's (23-02: renamed
+// from app/(buyer-portal)/buyers/catalog/page.tsx) server-rendered first
+// page import this one implementation, so the
 // privacy gate can never drift between the two call sites (mirrors
 // lib/deals/request-target.ts's authorizeRequestTarget precedent).
 

@@ -6,7 +6,8 @@ import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
 // ─── authorizeRequestTarget (T-16-23) ─────────────────────────────────────
 // Shared target authorization for the buyer request pathway. Both
 // POST /api/buyer/requests and the composer's project/track lookup
-// (app/(buyer-portal)/buyers/requests/new/page.tsx) must apply the EXACT
+// (app/sync/requests/new/page.tsx, 23-02: renamed from
+// app/(buyer-portal)/buyers/requests/new/page.tsx) must apply the EXACT
 // same rights-ready + Phase 13 visibility + block gate, so a buyer cannot
 // reach a private, unready, non-owned, or blocking artist's project by
 // guessing/typing a project id (16-VALIDATION V16-03). Extracted here

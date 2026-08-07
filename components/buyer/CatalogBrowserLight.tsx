@@ -27,7 +27,8 @@ import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 // an open decision — see .planning/deliberations/buyer-catalogue-inclusion-model.md.
 // Design CSS is ported scoped under `.fnbl` so it never leaks into the dark app.
 //
-// 22-03: mounted `embedded` from app/(buyer-portal)/buyers/catalog/page.tsx
+// 22-03: mounted `embedded` from app/sync/catalog/page.tsx (23-02: renamed
+// from app/(buyer-portal)/buyers/catalog/page.tsx)
 // so it renders inside the shared BuyerTopNav shell without drawing a
 // second, competing header or re-injecting the layout's already-injected
 // FNBL_CSS base tokens (nav-reconciliation Option A).
