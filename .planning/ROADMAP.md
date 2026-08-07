@@ -993,3 +993,20 @@ REQUIREMENTS.md (no Phase 28 section exists); register via `/gsd-docs-update` be
 
 **Status:** Executing (5 plans / 2 waves). 4/5 plans complete; 28-05's migration is drafted, text-tested, and NOT
 pushed — blocked on the human-gated `supabase db push` + live smoke checkpoint (Plan 28-05 Task 3).
+
+### Phase 29: Self-Serve Flat-Price Sync Licensing (Marmoset-style)
+
+**Goal:** Build a **self-serve licensing platform with flat, published pricing** for smaller sync deals that do
+not require negotiation — a Buyer can license an eligible Sync Library song instantly at a set price for a
+defined scope/medium, no AE in the loop. Larger / exclusive / negotiated deals continue through the AE-led flow.
+
+**Why:** Phase 26 populates the Sync Library and gets blanket agreements signed (Funūn authorized to shop +
+negotiate; price per-deal). Most small placements do not need human negotiation — flat-rate self-serve (à la
+Marmoset, Musicbed, Artlist) removes friction, closes small deals 24/7, and scales revenue without AE time. Sits
+on top of the represented catalogue as the low-touch transaction layer.
+
+**Depends on:** Phase 26 (Sync Library supply + blanket agreements), Phase 22/23 (buyer catalogue + Client
+Partner accounts), the per-deal licensing/signing model (`sync-license-signing-model.md` deliberation — the
+per-deal license must be resolved), Stripe (payments).
+
+**Status:** Backlog — owner-requested 2026-08-07 during Phase 26 planning. Not yet scoped; post-beta.

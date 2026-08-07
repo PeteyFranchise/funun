@@ -1,7 +1,7 @@
 # Phase 26: Sync-Library Inclusion & Artist Submission - Context
 
 **Gathered:** 2026-08-05
-**Status:** Captured — NOT yet planned. Resolves the core of the buyer-catalogue inclusion deliberation.
+**Status:** Key decisions LOCKED (2026-08-07 live owner planning) — see "Locked decisions" section below. Ready for UI design (/gsd-ui-phase) + planning.
 **Source:** owner decision during buyer-onboarding discussion (2026-08-05)
 
 <domain>
@@ -68,7 +68,70 @@ inclusion placeholder (`isRightsReady` / `is_public + readiness`) with a real li
 - Phase 22 · `22-05-PLAN.md` (live-data enrichment) — the downstream consumer of this supply.
 </canonical_refs>
 
+<resolved>
+## Locked decisions (2026-08-07 — live owner planning; supersedes the open questions above)
+
+**Two entry paths into the sync library, converging at the blanket agreement:**
+- **Invited (push):** a Funūn team member invites the artist → a dedicated **home spotlight card** on the
+  artist's Funūn page (backed by `capability_grants`, source `admin_invited`) → artist adds song(s) from the
+  Vault → signs the blanket agreement → staff admits → live.
+- **Self-application (pull):** an *uninvited* artist proactively **submits songs for review** (flexibly: one
+  song, several, or a whole EP/album) → Funūn staff review and **accept** → the artist joins the **same
+  pipeline from the blanket-agreement step onward** (they have already supplied the songs) → admitted → live.
+  Acceptance mints the same "sync-library participant" grant (`capability_grants`, source `self_applied`).
+- This **revises the earlier "invited-only" framing** (Phase Boundary + Decisions above): the model is
+  **curated = invited OR self-applied-and-accepted**. *Applying* (submitting songs for review) is open to any
+  artist; being *admitted* is always curated (invite = pre-acceptance; application = earns acceptance via staff review).
+
+**Resolves OQ#6 (invite mechanic):** dedicated home **spotlight card** backed by `capability_grants` — NOT
+embedded in Antenna (its match/apply semantics do not fit a hand-picked invite). Two grant sources:
+`admin_invited`, `self_applied`.
+
+**Resolves OQ#2 (granularity) + OQ#1 (data model): SONG-LEVEL.**
+- The **individual song/track is the licensable unit** — a buyer licenses one song at a time.
+- Submission is **batched but per-song-admitted**: an artist may submit 1 song, several, or a whole release;
+  **each song is reviewed and admitted individually**. No fixed batch cap (the earlier "3–5 songs" was illustrative).
+- Data model: a **per-song sync-listing entity** with a status state machine (e.g. `applied`/`invited` →
+  `agreement_pending` → `admitted` / `rejected` / `withdrawn`), replacing the `isRightsReady` /
+  `is_public + readiness` placeholder. Dedicated table(s), NOT a repurposed `is_public` (overloaded — it also
+  drives the public profile grid). Planner finalizes exact states/columns.
+
+**Resolves OQ#4 (agreement scope): pre-authorize terms EXCEPT price.**
+- The blanket agreement grants Funūn authority to **shop AND to negotiate/execute** sync licenses on the
+  artist's behalf.
+- **Price and its drivers — scope, medium, exclusive vs. non-exclusive — are negotiated per deal** (usually by
+  the Funūn AE); the agreement gives Funūn the authority to conduct that negotiation.
+- Likely **one blanket ("master") agreement per artist** covering all songs they submit to the sync library
+  (planner/UI confirm sign-once vs per-submission; "blanket" implies once, covering the catalogue relationship).
+- **Temporary agreement doc:** owner-requested a **draft template now** for review/amendment — see
+  `26-BLANKET-AGREEMENT-DRAFT.md`. **Counsel drafts + approves the final** later. The agreement must be a
+  **swappable/versioned template** so the counsel-approved version replaces the draft with no code change.
+
+**Counsel/production gate — NOT a build blocker (owner 2026-08-07):** with no music uploaded yet, there is
+nothing to shop and nothing to mint in production, so the Phase-17-style "counsel-reviewed-before-production-mint"
+concern **does not gate this build**. Build the full pipeline end-to-end using the temporary draft agreement;
+treat "swap in counsel-approved agreement" as a pre-real-launch checklist item, not a code gate that impedes
+development or testing.
+
+**OQ#5 (revocation):** withdrawal removes the song from the catalogue (stops it being returned/browsable)
+immediately; there are **no in-flight buyer deals in this phase's scope** (no licensing occurs here), so
+nothing downstream to cancel. Keep simple: withdraw → un-admit.
+
+**OQ#3 (tri-state rights meaning):** the catalogue's Rights ready / Partial / Contact-required tri-state now
+sits *on top of* admission — an admitted song with a signed blanket agreement is at least "rights ready to shop."
+Planner maps the tri-state to real conditions (signed agreement + song readiness), replacing the placeholder.
+
+**Phase boundary sharpened (owner 2026-08-07):** Phase 26 **populates the sync library** — submissions,
+admissions, signed blanket agreements, and staff familiarization with the catalogue to shop. **No actual
+licensing, sale, or buyer request occurs in this phase** — that is downstream/future. Staging the shelf, not
+transacting.
+
+**Roadmap follow-on (owner 2026-08-07):** a future **self-serve flat-price licensing platform** (Marmoset-style)
+for smaller deals that do not require negotiation — added to ROADMAP.md as a later phase. Out of scope for Phase 26.
+</resolved>
+
 ---
 
 *Phase: 26-sync-library-inclusion*
 *Context: 2026-08-05 — owner inclusion decision (curated, invite + submit + blanket agreement)*
+*Decisions locked: 2026-08-07 — song-level, two entry paths, agreement pre-authorizes terms except price*
