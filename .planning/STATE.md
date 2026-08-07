@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 28
-current_phase_name: industry-accounts-green-room-access
+current_phase: 25
+current_phase_name: funun-team-accounts-ae
 status: board-clear
 stopped_at: "Phase 28 COMPLETE + live-verified (2026-08-06). Industry is now a first-class account capability: invited industry members post Antenna opportunities + participate in the Green Room; Client-Partner (buyer) and @funun staff are held OUT of the Green Room. Corrective migration chain 085→086→087→088 all live (LOCAL=REMOTE through 088) plus a Bug-1 provisioning reconciliation in app code (commit cbdf405). Final production smoke all GREEN: (a) buyer via real createBuyerAccount has no profile/subscription; (b) industry via real provisionIndustryAccount posts an Antenna opportunity (201); (c) artist AND industry post in the Green Room via the real route (201); (d) buyer RLS-rejected on green_room_posts; (e) @funun app-blocked. The real (c) blocker was NOT the 085/087 INSERT gate — it was a latent SELECT-on-RETURNING bug (green_room_can_view_post is a STABLE fn that re-queries green_room_posts, and its snapshot can't see the just-inserted row under .insert().select()=INSERT..RETURNING → 42501), fixed by migration 088's direct author_id=auth.uid() SELECT predicate (commit 0f88a22). 28-05-SUMMARY closed with the full resolution; INDUSTRY-01..07 registered in REQUIREMENTS.md (all Complete). NEXT: Phase 25 (staff RBAC + login routing Option A) — RENUMBER its reserved migrations to 089+ (085/086/087/088 now taken) and slot login-routing plan 25-11, then execute. Also queued: Phase 23 (buyer onboarding + /sync unification + landing), Phase 26 (sync-library), Phase 27 (artist invite-only) — planned/captured. Optional: formal /gsd-verify 28 (the live production smoke already verifies the phase goal). Deferred (not Phase 28): the role='curator' migration-count check + curator-branch/(curator-portal) route-group removal — unblocked only once that live count is confirmed zero (28-03 repoint already prevents new curator accounts)."
-last_updated: "2026-08-06T07:00:00.000Z"
-last_activity: 2026-08-06
-last_activity_desc: Phase 28 CLOSED — corrective migrations 085–088 live + smoke-verified green; 28-05-SUMMARY resolved; INDUSTRY-01..07 registered complete
+last_updated: "2026-08-07T00:22:43.316Z"
+last_activity: 2026-08-07
+last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 28 — industry-accounts-green-room-access
+**Current focus:** Phase 25 — funun-team-accounts-ae
 
 ## Current Position
 
-Phase: 28 (industry-accounts-green-room-access) — EXECUTING (BLOCKED on Plan 28-05 checkpoint)
-Plan: 5 of 5 — Tasks 1-2 complete (migration 085 drafted + text-tested, NOT pushed); Task 3 is a
+Phase: 25 (funun-team-accounts-ae) — EXECUTING
+Plan: 1 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -46,7 +46,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-06 — Phase 28 execution started
+Last activity: 2026-08-07 — Phase 25 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
