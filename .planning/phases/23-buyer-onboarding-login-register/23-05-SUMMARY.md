@@ -170,3 +170,6 @@ None - no external service configuration required. (Resend remains unconfigured 
 ---
 *Phase: 23-buyer-onboarding-login-register*
 *Completed: 2026-08-07*
+
+## Self-Check: PASSED
+All created/modified files present on disk; all four task/summary commits (051b4ce, 721207f, f17c661, e8dfda3) found in git log.
