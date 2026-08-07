@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
-stopped_at: "Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02"
-last_updated: "2026-08-07T00:41:11.224Z"
+stopped_at: "Completed 25-04-PLAN.md (staff account provisioning + leadership-only staff routes); next: 25-05"
+last_updated: "2026-08-07T00:49:48.310Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 132
+  completed_plans: 133
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -169,6 +169,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P01 | 15min | 2 tasks | 4 files |
 | Phase 25 P02 | 10min | 2 tasks | 4 files |
 | Phase 25 P03 | 15min | 3 tasks | 3 files |
+| Phase 25 P04 | ~20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -344,6 +345,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 25-03: funun_staff.staff_role stays a DISPLAY COPY of the authoritative app_metadata.staff_role (Pitfall 1) -- documented in the table COMMENT so a future role-change route writes both in the same handler
 - [Phase ?]: 25-03: buyer_orgs.ae_user_id deliberately omitted from migration 080's authenticated GRANT SELECT allowlist (Pitfall 2, D-03) -- private/staff-only by construction, documented in the column COMMENT
 - [Phase ?]: 25-03: plan frontmatter references requirement TEAM-02 but REQUIREMENTS.md has no Phase 25 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at Phases 16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: [Phase 25]: 25-04: createStaffAccount cleans up the phantom user_profiles/subscriptions rows handle_new_user() creates for staff accounts (migration 086 has no staff early-return branch) -- Rule 2, mirrors createBuyerAccount's identical buyer-branch-timing reconciliation
+- [Phase ?]: [Phase 25]: 25-04: funun_staff has no invited_by column (migration 089 as authored) -- omitted from the insert; invitedBy still flows into app_metadata.user_metadata.invited_by for provenance
+- [Phase ?]: [Phase 25]: 25-04: deactivation semantics -- funun_staff has no active/deactivated_at column (migration 089 unpushed, out of this plan's edit scope), so PATCH { active:false } clears app_metadata.staff_role to null via the same admin.updateUserById() call used for role change -- a real, immediate access revocation with zero schema change; funun_staff.staff_role keeps its last-known value as a historical display record only
 
 ### Pending Todos
 
@@ -372,6 +376,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 28-05 checkpoint (Task 3, BLOCKING): migration 085 (supabase/migrations/085_industry_capability_green_room_gate.sql -- handle_new_user() industry capability_grants write + backfill + green_room_posts_insert_own RLS member_type gate) is drafted, text-tested (commits fba75e1/0575a97), and NOT pushed -- requires a human with Supabase CLI/dashboard access to review, confirm the live role='curator' account count, run `supabase db push`, confirm LOCAL=REMOTE through 085, and execute the 4-scenario post-push smoke (industry account posts an Antenna opportunity; artist+industry can post in Green Room; a non-member is RLS-rejected; a @funun.studio account is app-layer-blocked). Full steps in 28-05-SUMMARY.md's Checkpoint section and 28-05-PLAN.md Task 3. This is the last open item in Phase 28.
 - 25-01: plan frontmatter references requirement TEAM-01 but REQUIREMENTS.md has no Phase 25 section registering it yet (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/28, deferred to a future /gsd-docs-update pass per the plan's own instruction, not fixed by this executor
 - 25-02: plan frontmatter references requirements TEAM-05/TEAM-06 but REQUIREMENTS.md has no Phase 25 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as 25-01/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- 25-04: plan frontmatter references requirement TEAM-03 but REQUIREMENTS.md still has no Phase 25 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as 25-01/25-02/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- 25-04: funun_staff (migration 089, unpushed) has no active/deactivated_at column -- PATCH /api/admin/staff/[id]'s { active:false } deactivate signal clears app_metadata.staff_role to null (real, immediate access revocation) but leaves no queryable "deactivated" flag on funun_staff for a future Team Members list UI to render. Candidate follow-up if a migration author revisits funun_staff.
 
 ### Quick Tasks Completed
 
@@ -420,8 +426,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T00:40:21.171Z
-Stopped at: Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02
+Last session: 2026-08-07T00:49:48.284Z
+Stopped at: Completed 25-04-PLAN.md (staff account provisioning + leadership-only staff routes); next: 25-05
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

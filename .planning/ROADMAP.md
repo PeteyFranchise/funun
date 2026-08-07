@@ -767,7 +767,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 3/10 plans executed
+**Plans:** 4/10 plans executed
 **Wave 1**
 
 - [x] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
@@ -776,7 +776,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 25-04-PLAN.md — Team Member provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
+- [x] 25-04-PLAN.md — Team Member provisioning (createStaffAccount + leadership-only /api/admin/staff routes) [W2]
 - [ ] 25-05-PLAN.md — Assignment-scoped Client Partner editing + AE assignment + widened create gate [W2]
 
 **Wave 3** *(blocked on Wave 2 completion)*
