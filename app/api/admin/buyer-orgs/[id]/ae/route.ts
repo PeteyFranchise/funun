@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireStaff } from '@/lib/admin/gate'
+import { requireStaff, getStaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
 import { buildAeAssignedNotification, buildAeUnassignedNotification } from '@/lib/staff/notifications'
@@ -40,6 +40,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const service = createServiceClient()
+
+  // Verify the assignment target is a real, ACTIVE staff member who can hold a
+  // Client Partner — an AE or BD (review #8). The UUID-shape check alone let
+  // leadership assign a Client Partner to an artist / buyer / stale auth UUID
+  // (the auth.users FK accepts any user), producing an unreachable assignment
+  // and a misdirected notification. getStaffRole reads the authoritative
+  // app_metadata.staff_role, so a deactivated account (staff_role cleared) is
+  // rejected too.
+  if (aeUserId !== null) {
+    const { data: target } = await service.auth.admin.getUserById(aeUserId)
+    const targetRole = target?.user ? getStaffRole(target.user) : null
+    if (targetRole !== 'ae' && targetRole !== 'bd') {
+      return NextResponse.json(
+        { error: 'ae_user_id must be an active Account Executive or BD team member.' },
+        { status: 400 }
+      )
+    }
+  }
 
   // Read the PRIOR assignment before writing — required to know whether
   // this is a fresh assignment, a no-op re-assignment, an unassign, or a

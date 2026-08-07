@@ -28,6 +28,10 @@ export type SplitSheetListItem = {
   status: SplitSheetStatusValue
   created_at: string
   parties: SplitSheetPartyProgress[]
+  // review #11: only the initiator may delete a draft (the DELETE endpoint
+  // enforces this). Carry it so the button is shown only to the initiator
+  // instead of relying on the list query happening to exclude others' drafts.
+  canDelete: boolean
 }
 
 const STATUS_LABELS: Record<SplitSheetStatusValue, string> = {
@@ -110,7 +114,7 @@ export function SplitSheetList({ sheets }: { sheets: SplitSheetListItem[] }) {
                         : ''}
                     </p>
                   </Link>
-                  {sheet.status === 'draft' && (
+                  {sheet.status === 'draft' && sheet.canDelete && (
                     <DeleteDraftButton sheetId={sheet.id} songName={sheet.song_name} />
                   )}
                 </div>

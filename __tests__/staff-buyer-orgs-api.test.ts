@@ -13,6 +13,13 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/admin/gate', () => ({
   requireStaff: jest.fn(),
+  // Faithful-enough getStaffRole for the AE-target validation (review #8):
+  // reads app_metadata.staff_role, with the is_admin→leadership fallback.
+  getStaffRole: (u: { app_metadata?: { staff_role?: string; is_admin?: boolean } } | null) => {
+    const r = u?.app_metadata?.staff_role
+    if (r === 'leadership' || r === 'ae' || r === 'bd') return r
+    return u?.app_metadata?.is_admin === true ? 'leadership' : null
+  },
 }))
 
 jest.mock('@/lib/staff/audit', () => ({
@@ -53,16 +60,23 @@ function mockService(options: {
       maybeSingle: jest.fn(async () => ({ data: orgRow, error: null })),
     })),
   }))
-  const updateSpy = jest.fn((update: Record<string, unknown>) => ({
-    eq: jest.fn(() => ({
+  // review #8: the write now chains .eq('id').[.eq('ae_user_id')].select().maybeSingle()
+  // — a chainable eq (returns the same builder) terminating in maybeSingle.
+  const updateSpy = jest.fn((update: Record<string, unknown>) => {
+    const builder: {
+      eq: jest.Mock
+      select: jest.Mock
+    } = {
+      eq: jest.fn(() => builder),
       select: jest.fn(() => ({
-        single: jest.fn(async () => ({
+        maybeSingle: jest.fn(async () => ({
           data: updateError ? null : { id: ORG_UUID, name: 'Fallback Org', ...update },
           error: updateError,
         })),
       })),
-    })),
-  }))
+    }
+    return builder
+  })
   const auditInsert = jest.fn(async () => ({ error: null }))
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
@@ -101,11 +115,22 @@ function mockAssignService(
     })),
   }))
   const auditInsert = jest.fn(async () => ({ error: null }))
+  // review #8: the /ae route now validates the target is an active AE/BD via
+  // getUserById → getStaffRole; return an 'ae' user so a valid assignment passes.
+  const getUserById = jest.fn(
+    async (): Promise<{
+      data: { user: { app_metadata: Record<string, unknown> } }
+      error: null
+    }> => ({
+      data: { user: { app_metadata: { staff_role: 'ae' } } },
+      error: null,
+    })
+  )
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
     return { select: selectSpy, update: updateSpy }
   })
-  return { from, selectSpy, updateSpy, auditInsert }
+  return { from, selectSpy, updateSpy, auditInsert, auth: { admin: { getUserById } }, getUserById }
 }
 
 describe('PATCH /api/admin/buyer-orgs/[id] — scoped, allowlisted, audited edit', () => {
@@ -421,6 +446,29 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
 
     expect(res.status).toBe(401)
   })
+
+  it('rejects assigning a Client Partner to a non-AE/BD target — 400, no write (review #8)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockAssignService()
+    // target is an artist (no staff_role) → getStaffRole null → rejected before any write
+    service.getUserById.mockResolvedValue({
+      data: { user: { app_metadata: { member_type: 'artist' } } },
+      error: null,
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
 })
 
 // Builds a fake service client for GET /api/admin/buyer-orgs — an
@@ -493,7 +541,17 @@ describe('POST /api/admin/buyer-orgs — widened staff-create gate', () => {
     )
 
     expect(res.status).toBe(201)
-    expect(logStaffAction).toHaveBeenCalledTimes(1)
+    // two audit events now: the company creation (#9) then the first-admin invite
+    expect(logStaffAction).toHaveBeenCalledTimes(2)
+    // #9/#12: the buyer_org creation is audited immediately, and an AE creator is
+    // auto-assigned (ae_user_id) so the new company stays in their scoped queue.
+    expect(logStaffAction).toHaveBeenNthCalledWith(1, service, {
+      actorId: AE_UUID,
+      action: 'create_buyer_org',
+      targetType: 'buyer_org',
+      targetId: ORG_UUID,
+      changes: { name: 'Acme Co', ae_user_id: AE_UUID },
+    })
     expect(logStaffAction).toHaveBeenCalledWith(service, {
       actorId: AE_UUID,
       action: 'create_buyer_account',

@@ -92,9 +92,19 @@ export async function POST(request: Request) {
   }
 
   const service = createServiceClient()
+  // review #12: an AE/BD who creates a Client Partner is auto-assigned to it, so
+  // it appears in their own scoped GET (otherwise ae_user_id stays null and the
+  // company vanishes from the creator's queue the moment they refresh). Leadership
+  // sees every org and assigns an AE via the dedicated /ae route, so leave it
+  // unassigned for them.
+  const selfAssignedAe = auth.staffRole !== 'leadership' ? auth.user.id : null
   const { data: org, error: orgError } = await service
     .from('buyer_orgs')
-    .insert({ name: orgName, created_by: auth.user.id })
+    .insert({
+      name: orgName,
+      created_by: auth.user.id,
+      ...(selfAssignedAe ? { ae_user_id: selfAssignedAe } : {}),
+    })
     .select(ORG_COLUMNS)
     .single()
 
@@ -104,6 +114,16 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+
+  // Audit the company creation immediately (review #9): record it even if the
+  // first-admin invite below fails, so a buyer_org that exists is never unaudited.
+  await logStaffAction(service, {
+    actorId: auth.user.id,
+    action: 'create_buyer_org',
+    targetType: 'buyer_org',
+    targetId: org.id,
+    changes: { name: orgName, ae_user_id: selfAssignedAe },
+  })
 
   try {
     const { userId, emailSent } = await createBuyerAccount({
