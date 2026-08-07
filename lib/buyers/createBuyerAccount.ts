@@ -88,9 +88,20 @@ export async function createBuyerAccount(input: {
     })
     if (memberError) throw new Error(`buyer_members insert failed: ${memberError.message}`)
 
+    // 23-05 Task 3 (AUTH DECISION — LOCKED, password path): a recovery-style
+    // link lands the new buyer on the "set your password" step (/update-password,
+    // role-aware per 23-05 Task 2) instead of an immediate passwordless session.
+    // redirectTo mirrors forgot-password/page.tsx's own recovery redirectTo
+    // exactly (/auth/callback?next=/update-password) so the same code-exchange
+    // + role-aware-landing path handles both the reset flow and this invite.
+    // Reversible on purpose: swapping `type` back to 'magiclink' (and dropping
+    // redirectTo) is the entire diff required to revert to magic-link-only,
+    // per this task's own directive.
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '')
     const { data: link, error: linkError } = await service.auth.admin.generateLink({
-      type: 'magiclink',
+      type: 'recovery',
       email,
+      options: { redirectTo: `${appUrl}/auth/callback?next=/update-password` },
     })
     if (linkError || !link?.properties?.action_link) {
       throw new Error(linkError?.message ?? 'could not generate invite link')
