@@ -424,20 +424,27 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
 })
 
 // Builds a fake service client for GET /api/admin/buyer-orgs — an
-// awaitable/chainable buyer_orgs query (supports .eq() being appended for
-// non-leadership scoping, mirroring supabase-js's PostgrestFilterBuilder
-// shape) plus a per-org buyer_members count lookup.
+// awaitable/chainable buyer_orgs query (supports .eq()/.is() being
+// appended, mirroring supabase-js's PostgrestFilterBuilder shape) plus a
+// per-org buyer_members count lookup. .is() covers 23-06's leadership
+// unassigned-lead queue (`?unassigned=1` -> .is('ae_user_id', null)).
 function mockListService(orgs: Array<{ id: string; name: string; ae_user_id: string | null }>) {
   let filtered = orgs
   const eqSpy = jest.fn((col: string, val: string) => {
     filtered = filtered.filter(r => (r as Record<string, unknown>)[col] === val)
     return builder
   })
+  const isSpy = jest.fn((col: string, val: null) => {
+    filtered = filtered.filter(r => (r as Record<string, unknown>)[col] === val)
+    return builder
+  })
   const builder: {
     eq: typeof eqSpy
+    is: typeof isSpy
     then: (resolve: (v: { data: typeof orgs; error: null }) => void) => void
   } = {
     eq: eqSpy,
+    is: isSpy,
     then: resolve => resolve({ data: filtered, error: null }),
   }
   const orderSpy = jest.fn(() => builder)
@@ -448,7 +455,7 @@ function mockListService(orgs: Array<{ id: string; name: string; ae_user_id: str
     if (table === 'buyer_members') return { select: memberSelectSpy }
     return { select: selectSpy }
   })
-  return { from, selectSpy, orderSpy, eqSpy }
+  return { from, selectSpy, orderSpy, eqSpy, isSpy }
 }
 
 function mockCreateOrgService() {
@@ -540,7 +547,7 @@ describe('GET /api/admin/buyer-orgs — scoped listing for non-leadership', () =
     const service = mockListService(orgs)
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await orgsGET()
+    const res = await orgsGET(new Request('http://t.local/api/admin/buyer-orgs'))
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -560,7 +567,7 @@ describe('GET /api/admin/buyer-orgs — scoped listing for non-leadership', () =
     const service = mockListService(orgs)
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await orgsGET()
+    const res = await orgsGET(new Request('http://t.local/api/admin/buyer-orgs'))
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -572,9 +579,52 @@ describe('GET /api/admin/buyer-orgs — scoped listing for non-leadership', () =
   it('returns 401 with no session', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Unauthorized', status: 401 })
 
-    const res = await orgsGET()
+    const res = await orgsGET(new Request('http://t.local/api/admin/buyer-orgs'))
 
     expect(res.status).toBe(401)
     expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('23-06: ?unassigned=1 filters to ae_user_id IS NULL for leadership', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const orgs = [
+      { id: 'org-1', name: 'Org One', ae_user_id: AE_UUID },
+      { id: 'org-2', name: 'Org Two', ae_user_id: null },
+    ]
+    const service = mockListService(orgs)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await orgsGET(new Request('http://t.local/api/admin/buyer-orgs?unassigned=1'))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(service.isSpy).toHaveBeenCalledWith('ae_user_id', null)
+    expect(body.data).toHaveLength(1)
+    expect(body.data[0].id).toBe('org-2')
+  })
+
+  it('23-06: ?unassigned=1 is ignored for a non-leadership caller — still scoped to their own ae_user_id', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: AE_UUID },
+      staffRole: 'ae',
+    })
+    const orgs = [
+      { id: 'org-1', name: 'Org One', ae_user_id: AE_UUID },
+      { id: 'org-2', name: 'Org Two', ae_user_id: null },
+    ]
+    const service = mockListService(orgs)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await orgsGET(new Request('http://t.local/api/admin/buyer-orgs?unassigned=1'))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(service.eqSpy).toHaveBeenCalledWith('ae_user_id', AE_UUID)
+    expect(service.isSpy).not.toHaveBeenCalled()
+    expect(body.data).toHaveLength(1)
+    expect(body.data[0].id).toBe('org-1')
   })
 })
