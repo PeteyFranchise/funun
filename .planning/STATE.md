@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
 stopped_at: "Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06"
-last_updated: "2026-08-07T01:08:05.360Z"
+last_updated: "2026-08-07T01:20:17.184Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 134
+  completed_plans: 136
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -172,6 +172,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P04 | ~20min | 3 tasks | 6 files |
 | Phase 25 P05 | ~20min | 3 tasks | 4 files |
 | Phase 25 P06 | ~20min | 3 tasks | 5 files |
+| Phase 25 P08 | ~30min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -356,6 +357,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 25]: 25-06: layout gate widened to any staff role; leadership-only sidebar links + Team Members management link wrapped in isLeadership conditional; My Client Partners + Directory render for every staff role
 - [Phase ?]: [Phase 25]: 25-06: /admin/team-members and /admin/my-client-partners each carry their own inline per-page staff/leadership self-guard, matching the codebase convention of not relying on the layout gate alone (Pitfall 3)
 - [Phase ?]: [Phase 25]: 25-06: grep-confirmed every pre-existing /admin/* page already had a leadership self-guard before this plan ran -- no page needed one added
+- [Phase ?]: [Phase 25]: 25-08: Console token names/values are direct 1:1 lifts from tailwind.config.ts's existing dark colors (ink/card/card2/lav/lavdim/hair/hairstrong) + the verified FNBL_CSS light palette -- zero new colors invented
+- [Phase ?]: [Phase 25]: 25-08: SignOutButton.tsx (shared with ArtistNav) left unmodified -- wrapped in a Tailwind arbitrary-child-selector override inside the admin layout only, avoiding a cross-context shared-component edit
+- [Phase ?]: [Phase 25]: 25-08: team-members/page.tsx and my-client-partners/page.tsx h1 headlines tokenized (Rule 2) though outside this task's declared files_modified -- required by the plan's own both-themes truth
 
 ### Pending Todos
 
@@ -434,7 +438,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T01:07:40.840Z
+Last session: 2026-08-07T01:19:54.680Z
 Stopped at: Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
