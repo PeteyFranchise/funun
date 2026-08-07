@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
 stopped_at: "Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10"
-last_updated: "2026-08-07T01:32:08.963Z"
+last_updated: "2026-08-07T01:44:20.651Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 137
+  completed_plans: 138
   percent: 71
 ---
 
@@ -174,6 +174,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P06 | ~20min | 3 tasks | 5 files |
 | Phase 25 P08 | ~30min | 3 tasks | 8 files |
 | Phase 25 P09 | ~20min | 2 tasks | 5 files |
+| Phase 25 P10 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -363,6 +364,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 25]: 25-08: team-members/page.tsx and my-client-partners/page.tsx h1 headlines tokenized (Rule 2) though outside this task's declared files_modified -- required by the plan's own both-themes truth
 - [Phase 25]: 25-09: changedAwayFromPrevAe = prevAeUserId !== null && prevAeUserId !== aeUserId — one predicate covers reassign/unassign-with-prior-AE/same-AE-reconfirm for the /ae route's notify-both behavior, reusing the single existing assign_ae audit path
 - [Phase 25]: 25-09: app/(admin)/admin/buyer-orgs/page.tsx stays leadership-only (getStaffRole(user)==='leadership' self-guard, same scope as the pre-plan is_admin check) — AE/BD already have their own scoped queue at /admin/my-client-partners (25-06)
+- [Phase 25]: Gate uses getStaffRole(user) === null (admits leadership/AE/BD) rather than requireStaff(['leadership']) used by the management page — the all-roles/read-only distinction for the Team Member Directory
 
 ### Pending Todos
 
@@ -441,7 +443,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T01:32:08.935Z
+Last session: 2026-08-07T01:44:03.945Z
 Stopped at: Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
