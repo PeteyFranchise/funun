@@ -138,13 +138,12 @@ describe('buildRegisterPayload', () => {
 
   // ── mass-assignment guard ──
   it('never emits keys outside the allowlist', () => {
-    const result = buildRegisterPayload({
+    const pollutedForm = {
       ...baseForm,
-      // @ts-expect-error — deliberately probing for key leakage
       status: 'active',
-      // @ts-expect-error — deliberately probing for key leakage
       ae_user_id: 'staff-id',
-    } as RegisterForm)
+    } as RegisterForm & { status: string; ae_user_id: string }
+    const result = buildRegisterPayload(pollutedForm)
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(Object.keys(result.body).sort()).toEqual(
