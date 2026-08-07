@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
+import { SyncAuthCTAs } from '@/components/buyer/SyncAuthCTAs'
 
 // ─── /sync landing page ─────────────────────────────────────────────────
 // 23-02: the public, logged-out-safe front door to the buyer world — hero,
@@ -14,9 +15,13 @@ import { SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
 // small non-interactive strip (no play controls, no click-through) — the
 // full interactive browse lives at /sync/catalog.
 //
-// For Wave 1 (this plan) the "Log in / Request access" CTA is a plain link
-// to /sync/access. 23-07 upgrades it to open the Login/Register modal in
-// place, per the plan's own key_links note.
+// 23-07: the "Log in / Request access" CTA is now split into two buttons
+// (Log in / Request access), both rendered by the SyncAuthCTAs client
+// island — each opens the SAME LoginRegisterModal in place, with a
+// different initialTab ('login' / 'register'), per the plan's own
+// key_links note. /sync/access remains the target for the modal's own
+// internal links (e.g. a fresh magic-link/password flow) — nothing here
+// links to it directly anymore.
 //
 // No `dynamic` export here — the parent app/sync/layout.tsx already reads
 // cookies()/auth.getUser(), which makes the whole /sync route dynamic; this
@@ -46,9 +51,7 @@ export default function SyncLandingPage() {
           <Link href="/sync/catalog" className="cta cta-primary">
             Browse the catalog
           </Link>
-          <Link href="/sync/access" className="cta cta-secondary">
-            Log in / Request access
-          </Link>
+          <SyncAuthCTAs />
         </div>
       </section>
 
@@ -101,9 +104,7 @@ export default function SyncLandingPage() {
           <Link href="/sync/catalog" className="cta cta-primary">
             Browse the catalog
           </Link>
-          <Link href="/sync/access" className="cta cta-secondary">
-            Log in / Request access
-          </Link>
+          <SyncAuthCTAs />
         </div>
       </section>
     </div>
