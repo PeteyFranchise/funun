@@ -212,7 +212,7 @@ describe('PATCH /api/admin/staff/[id]', () => {
 
     expect(res.status).toBe(200)
     expect(service.updateUserById).toHaveBeenCalledWith(NEW_USER_ID, {
-      app_metadata: { staff_role: 'bd' },
+      app_metadata: { staff_role: 'bd', is_admin: false },
     })
     expect(service.fununStaffUpdate).toHaveBeenCalledWith({ staff_role: 'bd' })
     expect(service.fununStaffUpdateEq).toHaveBeenCalledWith('user_id', NEW_USER_ID)
@@ -247,11 +247,26 @@ describe('PATCH /api/admin/staff/[id]', () => {
 
     expect(res.status).toBe(200)
     expect(service.updateUserById).toHaveBeenCalledWith(NEW_USER_ID, {
-      app_metadata: { staff_role: null },
+      app_metadata: { staff_role: null, is_admin: false },
     })
     expect(logStaffAction).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ action: 'deactivate_staff', targetId: NEW_USER_ID })
     )
+  })
+
+  it('rejects a leadership admin changing their OWN staff account — self-lockout guard (review #7)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADER_ID }, staffRole: 'leadership' })
+    const service = serviceForPatch()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await staffPATCH(
+      jsonRequest(`http://t.local/api/admin/staff/${LEADER_ID}`, { active: false }, 'PATCH'),
+      { params: Promise.resolve({ id: LEADER_ID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateUserById).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
   })
 })

@@ -57,14 +57,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const { data, error } = await service
-    .from('buyer_orgs')
-    .update(update)
-    .eq('id', id)
-    .select()
-    .single()
+  // Scope-safe write (review #8): for non-leadership the UPDATE itself carries the
+  // assignment predicate, so the mutation cannot slip through a TOCTOU window
+  // between the scope-check read above and this write (e.g. a concurrent
+  // reassignment). If nothing matches the scope, no row is returned → 404 (not
+  // 403), matching the existence-hiding behaviour of the pre-check above.
+  let writeQuery = service.from('buyer_orgs').update(update).eq('id', id)
+  if (auth.staffRole !== 'leadership') {
+    writeQuery = writeQuery.eq('ae_user_id', auth.user.id)
+  }
+  const { data, error } = await writeQuery.select().maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Unconditional — mirrors grantOrRevokeVerification's "log even
   // idempotent actions" discipline (D-04).
