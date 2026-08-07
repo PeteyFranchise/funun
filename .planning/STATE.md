@@ -6,14 +6,14 @@ current_phase: 23
 current_phase_name: buyer-onboarding-login-register
 status: board-clear
 stopped_at: Completed 23-03-PLAN.md (null-safe loadCatalogPage + public /sync/catalog browse)
-last_updated: "2026-08-07T09:04:01.590Z"
+last_updated: "2026-08-07T09:16:40.845Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 28
   completed_phases: 21
   total_plans: 152
-  completed_plans: 142
+  completed_plans: 143
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 23 (buyer-onboarding-login-register) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -178,6 +178,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 23 P01 | 2min | 3 tasks | 3 files |
 | Phase 23-buyer-onboarding-login-register P02 | 25min | 3 tasks | 19 files |
 | Phase 23-buyer-onboarding-login-register P03 | 15min | 2 tasks | 3 files |
+| Phase 23 P04 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -375,6 +376,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 23]: 23-02: plan frontmatter references requirement SYNC-09 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - [Phase ?]: [Phase 23]: 23-03: loadCatalogPage's buyerUserId widened to string | null on the single implementation (no parallel public function) -- anonymous callers skip loadBlockedIds entirely rather than passing an empty sentinel into its uuid .or() filter (RESEARCH Pitfall 3)
 - [Phase ?]: [Phase 23]: 23-03: public /sync/catalog render uses CatalogBrowserLight isPublic (its own self-contained header + Login button), not embedded -- BuyerTopNav stays authenticated-member-only
+- [Phase ?]: [Phase 23]: 23-04: buildRegisterPayload allowlists exactly company/contactName/email/phone/role/useCase/source, never spreading the request body; invalid/missing source falls back to register rather than erroring
+- [Phase ?]: [Phase 23]: 23-04: routeLead (best-effort lead routing) fires on both the success path and the caught-DuplicateBuyerAccountError path, since buyer_orgs row creation is unconditional either way
+- [Phase ?]: [Phase 23]: 23-04: Duplicate-email registration returns the exact same 201 shape as success (account-enumeration avoidance), leaving the created org row in place; rate limiting is an in-memory per-key Map (IP + email, 5/15min), explicitly beta-acceptable per plan directive
 
 ### Pending Todos
 
@@ -455,7 +459,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T09:04:01.563Z
+Last session: 2026-08-07T09:16:01.164Z
 Stopped at: Completed 23-03-PLAN.md (null-safe loadCatalogPage + public /sync/catalog browse)
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
