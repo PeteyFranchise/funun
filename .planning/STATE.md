@@ -6,7 +6,7 @@ current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
 stopped_at: "Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06"
-last_updated: "2026-08-07T00:59:44.638Z"
+last_updated: "2026-08-07T01:08:05.360Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 6 of 10
+Plan: 7 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -171,6 +171,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P03 | 15min | 3 tasks | 3 files |
 | Phase 25 P04 | ~20min | 3 tasks | 6 files |
 | Phase 25 P05 | ~20min | 3 tasks | 4 files |
+| Phase 25 P06 | ~20min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -352,6 +353,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 25]: 25-05: STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name'] only for v1 (A3); ae_user_id is never in the edit allowlist, closing AE self-assignment (T-25-19)
 - [Phase 25]: 25-05: scope denial on PATCH /api/admin/buyer-orgs/[id] returns 404 (not 403) for both an unassigned-to-this-AE org and a nonexistent org, avoiding existence leakage
 - [Phase 25]: 25-05: GET /api/admin/buyer-orgs scoped identically to the write path — non-leadership callers get .eq('ae_user_id', caller) appended, leadership stays unscoped (Pitfall 4)
+- [Phase ?]: [Phase 25]: 25-06: layout gate widened to any staff role; leadership-only sidebar links + Team Members management link wrapped in isLeadership conditional; My Client Partners + Directory render for every staff role
+- [Phase ?]: [Phase 25]: 25-06: /admin/team-members and /admin/my-client-partners each carry their own inline per-page staff/leadership self-guard, matching the codebase convention of not relying on the layout gate alone (Pitfall 3)
+- [Phase ?]: [Phase 25]: 25-06: grep-confirmed every pre-existing /admin/* page already had a leadership self-guard before this plan ran -- no page needed one added
 
 ### Pending Todos
 
@@ -430,7 +434,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T00:59:44.610Z
+Last session: 2026-08-07T01:07:40.840Z
 Stopped at: Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
