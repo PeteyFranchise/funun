@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import { getStaffRole } from '@/lib/admin/gate'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -10,8 +11,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
 
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  // Widened (Phase 25, D-01): any staff role (leadership/AE/BD) is admitted
+  // here — not just leadership (the pre-existing is_admin-only gate). Every
+  // leadership-only page under /admin/* still carries its own inline
+  // leadership self-guard (verified in 25-06 Task 3) — this layout gate is
+  // deliberately NOT the sole authority (Pitfall 3).
+  const role = getStaffRole(user)
+  if (!role) redirect('/')
+  const isLeadership = role === 'leadership'
 
   return (
     <div className="flex min-h-screen bg-ink text-white">
@@ -20,71 +27,94 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-white/30">
           Admin
         </p>
+        {isLeadership && (
+          <>
+            <Link
+              href="/checklist"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Checklist Items
+            </Link>
+            <Link
+              href="/tips"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Tips
+            </Link>
+            <Link
+              href="/admin/curators"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              PitchPlug · Curators
+            </Link>
+            <Link
+              href="/admin/members"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Industry Members
+            </Link>
+            <Link
+              href="/admin/team-members"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Team Members
+            </Link>
+            <Link
+              href="/admin/buyer-orgs"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Client Partners
+            </Link>
+            <Link
+              href="/admin/deals"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Deals
+            </Link>
+            <Link
+              href="/admin/deals/metrics"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              GTM Metrics
+            </Link>
+            <Link
+              href="/admin/green-room-placements"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Green Room Placements
+            </Link>
+            <Link
+              href="/admin/reports"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Reports
+            </Link>
+            <Link
+              href="/admin/verification"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Verification
+            </Link>
+            <Link
+              href="/admin/esign-usage"
+              className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              E-Sign Usage
+            </Link>
+          </>
+        )}
+        {/* Every staff role (leadership/AE/BD) sees these two links. */}
         <Link
-          href="/checklist"
+          href="/admin/my-client-partners"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
-          Checklist Items
+          My Client Partners
         </Link>
         <Link
-          href="/tips"
+          href="/admin/directory"
           className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
         >
-          Tips
-        </Link>
-        <Link
-          href="/admin/curators"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          PitchPlug · Curators
-        </Link>
-        <Link
-          href="/admin/members"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Industry Members
-        </Link>
-        <Link
-          href="/admin/buyer-orgs"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Buyer Orgs
-        </Link>
-        <Link
-          href="/admin/deals"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Deals
-        </Link>
-        <Link
-          href="/admin/deals/metrics"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          GTM Metrics
-        </Link>
-        <Link
-          href="/admin/green-room-placements"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Green Room Placements
-        </Link>
-        <Link
-          href="/admin/reports"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Reports
-        </Link>
-        <Link
-          href="/admin/verification"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          Verification
-        </Link>
-        <Link
-          href="/admin/esign-usage"
-          className="rounded-lg px-3 py-2 text-[13px] text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          E-Sign Usage
+          Directory
         </Link>
         <div className="mt-auto border-t border-white/10 px-3 pt-3">
           <SignOutButton />
