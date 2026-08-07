@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { DealsQueue, type AdminDealRow } from '@/components/admin/DealsQueue'
 import type { LicenseRequestAdmin } from '@/lib/deals/schema'
@@ -21,8 +22,7 @@ export default async function AdminDealsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  if (getStaffRole(user) !== 'leadership') redirect('/')
 
   const service = createServiceClient()
   const { data } = await service

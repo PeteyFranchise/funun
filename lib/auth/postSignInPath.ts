@@ -10,15 +10,27 @@ import { getStaffRole } from '@/lib/admin/staff-role'
 export const STAFF_HOME = '/admin/my-client-partners'
 export const DEFAULT_HOME = '/vault'
 
-// Only honour same-origin relative paths ('/...'). Reject absolute URLs and
-// protocol-relative ('//host') values so a crafted ?next= cannot open-redirect
-// a freshly authenticated session off-site (the prior `router.push(next)` did
-// no such check).
+const APP_ORIGIN = 'https://funun.studio'
+
+// Only honour same-origin relative paths ('/...'). A crafted ?next= must not
+// open-redirect a freshly authenticated session off-site. Browsers treat BOTH
+// '//host' and '/\host' as protocol-relative (off-site), so reject a second
+// '/' or a backslash right after the leading '/'. Then resolve against the app
+// origin and require the origin to be UNCHANGED — the WHATWG URL parser strips
+// embedded tabs/newlines and normalises backslashes before we re-check, so any
+// value that resolves off-origin (e.g. '/\evil.com', '/\t//evil.com') is caught
+// here, and only a genuine same-origin path is returned.
 function safeNext(next?: string | null): string | null {
   const n = next?.trim()
   if (!n) return null
-  if (n.startsWith('/') && !n.startsWith('//')) return n
-  return null
+  if (n[0] !== '/' || n[1] === '/' || n[1] === '\\') return null
+  try {
+    const url = new URL(n, APP_ORIGIN)
+    if (url.origin !== APP_ORIGIN) return null
+    return url.pathname + url.search + url.hash
+  } catch {
+    return null
+  }
 }
 
 export function postSignInPath(input: {

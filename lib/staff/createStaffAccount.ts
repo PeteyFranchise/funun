@@ -53,49 +53,62 @@ export async function createStaffAccount(input: {
     )
   }
 
-  // handle_new_user's default branch (migration 086) has no staff early
-  // return, so it fires for every new staff auth user — creating a phantom
-  // user_profiles + subscriptions row and running claim_collaborators().
-  // Staff accounts are a fully separate account type with NO artist profile
-  // (mirrors createBuyerAccount.ts's identical buyer-branch-timing
-  // reconciliation), so remove them here via the service role. Idempotent:
-  // a no-op if a future migration ever adds a staff early-return branch.
-  await service.from('subscriptions').delete().eq('user_id', created.user.id)
-  await service.from('user_profiles').delete().eq('id', created.user.id)
+  const userId = created.user.id
 
-  // migration 089 REVOKEd INSERT on funun_staff from authenticated/anon —
-  // this write must go through the service-role client. Must succeed before
-  // the auth user is treated as usable: an auth user carrying a staff role
-  // with no funun_staff row would list nowhere in Team Member surfaces.
-  // funun_staff has no invited_by column (migration 089) — omitted here.
-  const { error: staffError } = await service.from('funun_staff').insert({
-    user_id: created.user.id,
-    staff_role: staffRole,
-    display_name: displayName,
-  })
-  if (staffError) {
-    throw new Error(`Failed to create staff account: ${staffError.message}`)
-  }
+  // Everything after createUser must land as a COMPLETE account, or none at all
+  // (review finding #3). If any critical step fails we compensate by deleting the
+  // just-created auth user (+ any funun_staff row) — otherwise a partial "ghost"
+  // account is left behind: an auth user carrying app_metadata.staff_role that
+  // requireStaff() still trusts, with no directory row. Errors that were silently
+  // ignored before (the phantom-row cleanup, the invite-link generation) are now
+  // fatal-with-rollback.
+  let actionLink: string
+  try {
+    // handle_new_user's default branch (migration 086) has no staff early return,
+    // so it fires for every new staff auth user — creating a phantom user_profiles
+    // + subscriptions row. Staff have NO artist profile; a lingering user_profiles
+    // row would even make the account wrongly Green-Room-eligible, so treat a
+    // cleanup error as fatal rather than ignoring it.
+    const { error: subErr } = await service.from('subscriptions').delete().eq('user_id', userId)
+    if (subErr) throw new Error(`subscriptions cleanup failed: ${subErr.message}`)
+    const { error: profErr } = await service.from('user_profiles').delete().eq('id', userId)
+    if (profErr) throw new Error(`user_profiles cleanup failed: ${profErr.message}`)
 
-  const { data: link, error: linkError } = await service.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
-  if (linkError || !link?.properties?.action_link) {
+    // migration 089 REVOKEd INSERT on funun_staff from authenticated/anon — this
+    // write goes through the service role. funun_staff has no invited_by column.
+    const { error: staffError } = await service.from('funun_staff').insert({
+      user_id: userId,
+      staff_role: staffRole,
+      display_name: displayName,
+    })
+    if (staffError) throw new Error(`funun_staff insert failed: ${staffError.message}`)
+
+    const { data: link, error: linkError } = await service.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    })
+    if (linkError || !link?.properties?.action_link) {
+      throw new Error(linkError?.message ?? 'could not generate invite link')
+    }
+    actionLink = link.properties.action_link
+  } catch (err) {
+    // Best-effort compensation so a retry starts clean and no ghost principal remains.
+    try {
+      await service.from('funun_staff').delete().eq('user_id', userId)
+    } catch {}
+    try {
+      await service.auth.admin.deleteUser(userId)
+    } catch {}
     throw new Error(
-      `Failed to create staff account: ${linkError?.message ?? 'could not generate invite link'}`
+      `Failed to create staff account: ${err instanceof Error ? err.message : 'unknown error'}`
     )
   }
 
-  // Custom Resend invite email — NOT Supabase's built-in invite template.
-  // sendEmail() no-ops safely if Resend isn't configured (returns
-  // { ok: false }). WR-04 (mirrored): surface delivery failure to the caller
-  // instead of silently discarding it so the route can warn leadership.
-  const { subject, html } = staffInviteEmail({
-    displayName,
-    actionLink: link.properties.action_link,
-  })
+  // Past this point the account is complete + valid — email delivery is best-effort
+  // (sendEmail() no-ops with { ok: false } when Resend isn't configured) and never
+  // rolls back the account. WR-04: surface delivery failure to the caller.
+  const { subject, html } = staffInviteEmail({ displayName, actionLink })
   const { ok: emailSent } = await sendEmail({ to: email, subject, html })
 
-  return { userId: created.user.id, emailSent }
+  return { userId, emailSent }
 }
