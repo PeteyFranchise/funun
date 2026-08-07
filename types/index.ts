@@ -420,6 +420,22 @@ export type UserProfile = {
   administrator: string | null
   mlc_id: string | null
   soundexchange_id: string | null
+  // ─── DDEX identifiers + generation prefixes (migration 082, 16-11) ────
+  // Party-level ISNI for the primary recording artist — PRIVATE column
+  // (migration 040 doctrine); see 082's grant-decision comment for why
+  // this stays consistent with pro/ipi/mlc_id rather than public.
+  isni: string | null
+  // ARTIST-held prefixes for self_assign_with_prefix schemes (D-16e/f).
+  // Funūn holds no GS1 prefix of its own — this is the ONLY path to a
+  // generated UPC. grid_issuer_code is OPTIONAL: normally null, meaning
+  // the artist uses Funūn's platform-issued GRid path; present only when
+  // a label overrides with their own issuer code.
+  gs1_company_prefix: string | null
+  grid_issuer_code: string | null
+  catalog_number_prefix: string | null
+  // Per-scheme sequential counters for the artist's own prefixes — server-
+  // owned generation state, never client-editable.
+  identifier_counters: Record<string, number> | null
   // Public showcase profile (migration 010). is_public is the app-level
   // gate for whether /@handle renders; handle is the shareable slug.
   handle: string | null

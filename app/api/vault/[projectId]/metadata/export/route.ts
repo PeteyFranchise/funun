@@ -6,7 +6,7 @@ import { buildRdrN } from '@/lib/metadata/rdr-export'
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
 const PROJECT_COLS =
-  'title, type, genre, sub_genre, release_date, upc, cover_art_url, label, publisher, c_line, p_line, copyright_year, primary_language, contact_name, contact_email, contact_phone'
+  'title, type, genre, sub_genre, release_date, upc, cover_art_url, label, publisher, c_line, p_line, copyright_year, primary_language, contact_name, contact_email, contact_phone, grid, catalog_number'
 const TRACK_COLS =
   'id, title, track_number, isrc, iswc, duration_seconds, bpm, key_signature, explicit, language, featuring_artists, audio_file_url, metadata'
 

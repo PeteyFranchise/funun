@@ -3,6 +3,7 @@ import { createApiClient } from '@/lib/supabase/server'
 import {
   readComposers,
   sanitizeComposers,
+  sanitizeDescriptors,
   sanitizeLyrics,
   sanitizePerformers,
   sanitizeRecordingInfo,
@@ -78,6 +79,9 @@ function sanitize(body: Record<string, unknown>): TrackUpdate {
     }
     if ('recording' in incoming) {
       next.recording = sanitizeRecordingInfo(incoming.recording) // null clears
+    }
+    if ('descriptors' in incoming) {
+      next.descriptors = sanitizeDescriptors(incoming.descriptors) // null clears (untagged)
     }
     if (Object.keys(next).length > 0) update.metadata = next
   }

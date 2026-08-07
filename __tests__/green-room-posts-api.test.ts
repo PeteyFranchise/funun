@@ -189,16 +189,30 @@ describe('POST /api/green-room/posts', () => {
   })
 })
 
+// INDUSTRY-02 / INDUSTRY-07: createGreenRoomPost() now runs greenRoomPosterGate
+// first via loadGreenRoomPrincipal(), which reads user_profiles.member_type
+// (supabase.from) and the caller's email (supabase.auth.getUser). These
+// linked-object tests exercise post-write.ts below the gate, so each needs a
+// passing principal (an approved industry account, no Funun email).
+function greenRoomTestClient(from: jest.Mock) {
+  return {
+    from,
+    auth: { getUser: jest.fn(async () => ({ data: { user: { email: 'user-1@gmail.com' } } })) },
+  }
+}
+
 describe('createGreenRoomPost linked object publishing checks', () => {
   it('rejects a private linked project before inserting the post', async () => {
     const projectQuery = chain({ data: { id: 'project-1', user_id: 'user-1', is_public: false }, error: null })
+    const memberTypeQuery = chain({ data: { member_type: 'industry' }, error: null })
     const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') return memberTypeQuery
       if (table === 'vault_projects') return projectQuery
       if (table === 'green_room_posts') throw new Error('Post insert should not run')
       throw new Error(`Unexpected table: ${table}`)
     })
 
-    const result = await createGreenRoomPostActual({ from } as never, 'user-1', {
+    const result = await createGreenRoomPostActual(greenRoomTestClient(from) as never, 'user-1', {
       postType: 'release_announcement',
       body: 'Announcing this soon',
       linkedObject: { type: 'project', id: 'project-1' },
@@ -214,14 +228,16 @@ describe('createGreenRoomPost linked object publishing checks', () => {
   it('rejects a linked track when its parent project is private', async () => {
     const trackQuery = chain({ data: { id: 'track-1', user_id: 'user-1', project_id: 'project-1' }, error: null })
     const projectQuery = chain({ data: { id: 'project-1', user_id: 'user-1', is_public: false }, error: null })
+    const memberTypeQuery = chain({ data: { member_type: 'industry' }, error: null })
     const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') return memberTypeQuery
       if (table === 'tracks') return trackQuery
       if (table === 'vault_projects') return projectQuery
       if (table === 'green_room_posts') throw new Error('Post insert should not run')
       throw new Error(`Unexpected table: ${table}`)
     })
 
-    const result = await createGreenRoomPostActual({ from } as never, 'user-1', {
+    const result = await createGreenRoomPostActual(greenRoomTestClient(from) as never, 'user-1', {
       postType: 'release_announcement',
       body: 'Track preview',
       linkedObject: { type: 'track', id: 'track-1' },
@@ -257,12 +273,14 @@ describe('createGreenRoomPost linked object publishing checks', () => {
         })),
       })),
     }
+    const memberTypeQuery = chain({ data: { member_type: 'industry' }, error: null })
     const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') return memberTypeQuery
       if (table === 'green_room_posts') return insertQuery
       throw new Error(`Unexpected table: ${table}`)
     })
 
-    const result = await createGreenRoomPostActual({ from } as never, 'user-1', {
+    const result = await createGreenRoomPostActual(greenRoomTestClient(from) as never, 'user-1', {
       postType: 'release_announcement',
       body: 'Draft announcement',
       status: 'draft',
@@ -286,6 +304,48 @@ describe('createGreenRoomPost linked object publishing checks', () => {
       },
     })
     expect(from).not.toHaveBeenCalledWith('vault_projects')
+  })
+
+  it('rejects a non-member (no user_profiles row) before any DB write (INDUSTRY-02)', async () => {
+    const memberTypeQuery = chain({ data: null, error: null })
+    const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') return memberTypeQuery
+      throw new Error(`Unexpected table: ${table}`)
+    })
+
+    const result = await createGreenRoomPostActual(greenRoomTestClient(from) as never, 'buyer-1', {
+      postType: 'general_update',
+      body: 'Trying to post as a buyer',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'The Green Room is open to Artist and Industry accounts.',
+      status: 403,
+    })
+  })
+
+  it('rejects a Funun-staff email before any DB write (INDUSTRY-07)', async () => {
+    const memberTypeQuery = chain({ data: { member_type: 'artist' }, error: null })
+    const from = jest.fn((table: string) => {
+      if (table === 'user_profiles') return memberTypeQuery
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    const supabase = {
+      from,
+      auth: { getUser: jest.fn(async () => ({ data: { user: { email: 'staff@funun.studio' } } })) },
+    }
+
+    const result = await createGreenRoomPostActual(supabase as never, 'staff-1', {
+      postType: 'general_update',
+      body: 'Posting as Funun staff',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Funūn staff cannot post under a Funūn email — use a personal Artist or Industry account.',
+      status: 403,
+    })
   })
 })
 

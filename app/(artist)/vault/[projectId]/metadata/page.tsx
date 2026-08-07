@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getDemoProject } from '@/lib/vault/demo-store'
-import { readComposers, readLyrics, readPerformers, readRecordingInfo } from '@/lib/metadata/schema'
+import { readComposers, readLyrics, readPerformers, readRecordingInfo, readDescriptors } from '@/lib/metadata/schema'
 import { MetadataStudio } from '@/components/vault/MetadataStudio'
+import { canGenerate, type ArtistIdentifierProfile, type PlatformIdentifierState } from '@/lib/metadata/generate'
+import type { IdentifierEligibilityMap } from '@/components/vault/MetadataStudio'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +30,9 @@ type MetaProject = {
   contact_name?: string | null
   contact_email?: string | null
   contact_phone?: string | null
+  grid?: string | null
+  catalog_number?: string | null
+  identifier_sources?: Record<string, string> | null
   tracks: {
     id: string
     title?: string | null
@@ -52,6 +57,16 @@ export default async function MetadataPage({
   let artistName = ''
   let coverWidth: number | null = null
   let coverHeight: number | null = null
+  // Eligibility for the self-assignable/platform-issued release-level
+  // generators (16-11 Task 4b/5) — computed server-side against PRIVATE
+  // profile columns + the service-role-only platform config, never trusted
+  // from the client. Demo mode has no real profile/platform state.
+  const NOT_AVAILABLE_IN_DEMO = { eligible: false as const, reason: 'Not available in demo mode.' }
+  let identifierEligibility: IdentifierEligibilityMap = {
+    upc: NOT_AVAILABLE_IN_DEMO,
+    grid: NOT_AVAILABLE_IN_DEMO,
+    catalog_number: NOT_AVAILABLE_IN_DEMO,
+  }
 
   if (DEMO) {
     project = (await getDemoProject(projectId)) as MetaProject | null
@@ -69,6 +84,7 @@ export default async function MetadataPage({
         id, title, type, genre, sub_genre, cover_art_url,
         upc, label, publisher, c_line, p_line, copyright_year,
         primary_language, contact_name, contact_email, contact_phone,
+        grid, catalog_number, identifier_sources,
         tracks (id, title, track_number, isrc, iswc, language, audio_file_url, metadata)
       `
       )
@@ -85,6 +101,39 @@ export default async function MetadataPage({
         .eq('id', user.id)
         .maybeSingle()
       artistName = profile?.artist_name ?? ''
+
+      // gs1_company_prefix/grid_issuer_code/catalog_number_prefix are
+      // PRIVATE columns (migration 040/082 doctrine) — read via the
+      // service-role client, ownership already established via
+      // auth.getUser() above (D-19 pattern). platform_identifier_config is
+      // service-role-only entirely (migration 082).
+      const service = createServiceClient()
+      const [{ data: prefixRow }, { data: platformRow }] = await Promise.all([
+        service
+          .from('user_profiles')
+          .select('gs1_company_prefix, grid_issuer_code, catalog_number_prefix')
+          .eq('id', user.id)
+          .maybeSingle(),
+        service.from('platform_identifier_config').select('grid_issuer_code, grid_release_counter').eq('id', 1).maybeSingle(),
+      ])
+
+      const eligibilityProfile: ArtistIdentifierProfile = {
+        gs1_company_prefix: prefixRow?.gs1_company_prefix ?? null,
+        grid_issuer_code: prefixRow?.grid_issuer_code ?? null,
+        catalog_number_prefix: prefixRow?.catalog_number_prefix ?? null,
+        isrc_country_code: null,
+        isrc_registrant_code: null,
+      }
+      const eligibilityPlatform: PlatformIdentifierState = {
+        grid_issuer_code: platformRow?.grid_issuer_code ?? null,
+        grid_release_counter: Number(platformRow?.grid_release_counter ?? 0),
+      }
+
+      identifierEligibility = {
+        upc: canGenerate('upc', eligibilityProfile, eligibilityPlatform),
+        grid: canGenerate('grid', eligibilityProfile, eligibilityPlatform),
+        catalog_number: canGenerate('catalog_number', eligibilityProfile, eligibilityPlatform),
+      }
 
       // Cover-art dimensions (captured on upload) so the 3000² check can verify.
       const { data: cover } = await supabase
@@ -113,27 +162,37 @@ export default async function MetadataPage({
     contact_name: str(project.contact_name),
     contact_email: str(project.contact_email),
     contact_phone: str(project.contact_phone),
+    grid: str(project.grid),
+    catalog_number: str(project.catalog_number),
   }
+
+  const identifierSources: Record<string, string> = project.identifier_sources ?? {}
 
   const initialTracks = [...(project.tracks ?? [])]
     .sort((a, b) => (a.track_number ?? 0) - (b.track_number ?? 0))
-    .map(t => ({
-      id: t.id,
-      title: t.title ?? 'Untitled track',
-      track_number: t.track_number ?? null,
-      isrc: str(t.isrc),
-      iswc: str(t.iswc),
-      language: str(t.language),
-      audio_file_url: t.audio_file_url ?? null,
-      composers: readComposers(t.metadata),
-      lyrics: readLyrics(t.metadata)?.text ?? '',
-      lyricsExplicit: readLyrics(t.metadata)?.explicit ?? false,
-      performers: readPerformers(t.metadata),
-      recordingDate: readRecordingInfo(t.metadata)?.recordingDate ?? '',
-      recordingCountry: readRecordingInfo(t.metadata)?.recordingCountry ?? '',
-      originalPurpose: readRecordingInfo(t.metadata)?.originalPurpose ?? '',
-      commerciallyAvailable: readRecordingInfo(t.metadata)?.commerciallyAvailable ?? false,
-    }))
+    .map(t => {
+      const descriptors = readDescriptors(t.metadata)
+      return {
+        id: t.id,
+        title: t.title ?? 'Untitled track',
+        track_number: t.track_number ?? null,
+        isrc: str(t.isrc),
+        iswc: str(t.iswc),
+        language: str(t.language),
+        audio_file_url: t.audio_file_url ?? null,
+        composers: readComposers(t.metadata),
+        lyrics: readLyrics(t.metadata)?.text ?? '',
+        lyricsExplicit: readLyrics(t.metadata)?.explicit ?? false,
+        performers: readPerformers(t.metadata),
+        recordingDate: readRecordingInfo(t.metadata)?.recordingDate ?? '',
+        recordingCountry: readRecordingInfo(t.metadata)?.recordingCountry ?? '',
+        originalPurpose: readRecordingInfo(t.metadata)?.originalPurpose ?? '',
+        commerciallyAvailable: readRecordingInfo(t.metadata)?.commerciallyAvailable ?? false,
+        descriptorMoods: descriptors?.moods ?? [],
+        descriptorEnergy: descriptors?.energy ?? '',
+        descriptorVocal: descriptors?.vocal ?? '',
+      }
+    })
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -164,6 +223,8 @@ export default async function MetadataPage({
           coverHeight={coverHeight}
           initialRelease={initialRelease}
           initialTracks={initialTracks}
+          identifierEligibility={identifierEligibility}
+          identifierSources={identifierSources}
         />
       </div>
     </div>

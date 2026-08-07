@@ -51,6 +51,10 @@ const EDITABLE_FIELDS = [
   'administrator',
   'mlc_id',
   'soundexchange_id',
+  'isni',
+  'gs1_company_prefix',
+  'grid_issuer_code',
+  'catalog_number_prefix',
   'legal_first_name',
   'legal_middle_name',
   'legal_last_name',
@@ -104,6 +108,16 @@ async function sanitize(
     if (key === 'isrc_registrant_code') {
       const reg = normalizeRegistrant(typeof value === 'string' ? value : '')
       update[key] = reg || null
+      continue
+    }
+    if (key === 'gs1_company_prefix') {
+      const v = typeof value === 'string' ? value.replace(/\D/g, '').slice(0, 11) : ''
+      update[key] = v || null
+      continue
+    }
+    if (key === 'grid_issuer_code') {
+      const v = typeof value === 'string' ? value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5) : ''
+      update[key] = v || null
       continue
     }
     if (key === 'mailing_address') {

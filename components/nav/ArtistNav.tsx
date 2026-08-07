@@ -16,6 +16,7 @@ import {
   LaunchpadIcon,
   CollaboratorsIcon,
   NetworkIcon,
+  DealsIcon,
   SettingsIcon,
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
@@ -35,6 +36,7 @@ type Item = {
 const ITEMS: Item[] = [
   { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
   { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
+  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon, requiresCapability: 'artist' },
   // No requiresCapability — split sheets are open to industry accounts by
   // design (D-20); gating this on 'artist' would re-orphan the route for
   // exactly the producers/writers who create sheets most (18-01 finding 1).

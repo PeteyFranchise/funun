@@ -33,6 +33,21 @@ function request(url: string) {
   return new Request(url)
 }
 
+// INDUSTRY-02: loadGreenRoomPrincipal() reads user_profiles.member_type via
+// supabase.from(...). Route-level tests that pass the viewer gate need this
+// mock so they exercise the tab/cursor logic below the gate, not the gate
+// itself (the gate has its own dedicated unit coverage in
+// __tests__/green-room-account-gate.test.ts).
+function mockUserProfilesFrom(memberType: string | null = 'artist') {
+  return jest.fn(() => ({
+    select: jest.fn(() => ({
+      eq: jest.fn(() => ({
+        maybeSingle: jest.fn(async () => ({ data: memberType ? { member_type: memberType } : null })),
+      })),
+    })),
+  }))
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
 })
@@ -50,9 +65,22 @@ describe('GET /api/green-room/feed', () => {
     expect(loadGreenRoomFeed).not.toHaveBeenCalled()
   })
 
+  it('rejects a non-member (buyer/no-profile) before loadGreenRoomFeed runs (INDUSTRY-02)', async () => {
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'buyer-1' } } })) },
+      from: mockUserProfilesFrom(null),
+    })
+
+    const res = await GET(request('http://test.local/api/green-room/feed'))
+
+    expect(res.status).toBe(403)
+    expect(loadGreenRoomFeed).not.toHaveBeenCalled()
+  })
+
   it('rejects unknown tab values before querying', async () => {
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'viewer-1' } } })) },
+      from: mockUserProfilesFrom('artist'),
     })
 
     const res = await GET(request('http://test.local/api/green-room/feed?tab=ads'))
@@ -65,6 +93,7 @@ describe('GET /api/green-room/feed', () => {
   it('rejects malformed cursors before querying', async () => {
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'viewer-1' } } })) },
+      from: mockUserProfilesFrom('artist'),
     })
 
     const res = await GET(request('http://test.local/api/green-room/feed?cursor=not-a-cursor'))
@@ -79,6 +108,7 @@ describe('GET /api/green-room/feed', () => {
     const cursor = encodeFeedCursor({ publishedAt: '2026-07-15T12:00:00.000Z', id: postId })
     const supabase = {
       auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'viewer-1' } } })) },
+      from: mockUserProfilesFrom('artist'),
     }
     ;(createApiClient as jest.Mock).mockResolvedValue(supabase)
     ;(loadGreenRoomFeed as jest.Mock).mockResolvedValue({

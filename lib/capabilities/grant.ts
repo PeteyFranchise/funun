@@ -52,9 +52,17 @@ export async function grantCapability(input: {
     throw new Error(`Failed to grant capability: ${error.message}`)
   }
 
+  // INDUSTRY-06: an approved industry grant also flips the account lane so
+  // the admin members list / Green Room discover / Antenna gate (all of
+  // which read member_type in at least one place) never disagree about who
+  // is industry. Artist grants intentionally leave member_type untouched —
+  // only an approved industry grant may set/change the lane.
   await service
     .from('user_profiles')
-    .update({ roles: mapSlugsToProfileRoles(input.roleSlugs) })
+    .update({
+      roles: mapSlugsToProfileRoles(input.roleSlugs),
+      ...(input.capability === 'industry' ? { member_type: 'industry' } : {}),
+    })
     .eq('id', input.profileId)
 
   return { grantId: data.id }

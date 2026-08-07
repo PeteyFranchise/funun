@@ -66,6 +66,11 @@ export const DEMO_PROFILE: UserProfile = {
   administrator: null,
   mlc_id: null,
   soundexchange_id: null,
+  isni: null,
+  gs1_company_prefix: null,
+  grid_issuer_code: null,
+  catalog_number_prefix: null,
+  identifier_counters: null,
   created_at: '2024-03-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }

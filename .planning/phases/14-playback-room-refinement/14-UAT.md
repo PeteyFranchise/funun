@@ -1,9 +1,10 @@
 ---
-status: testing
+status: closed_by_owner_waiver
 phase: 14-playback-room-refinement
 source: [14-VERIFICATION.md]
 started: 2026-07-07T02:03:17Z
-updated: 2026-07-07T02:03:17Z
+updated: 2026-07-18T22:00:00Z
+waiver: "2026-07-18 — owner (Pete) directed all 9 UAT items be treated as successful without execution ('clear the board'). Recorded as an accepted-risk waiver, not pass evidence: results below remain [pending]/unexecuted. Highest residual risk is HOBBY-1 (the >4.5MB stems upload path on a real Vercel deployment — a broken byte-proxy path passes locally but 413s in production); if large stems uploads fail after deploy, run this checklist as the repro script."
 ---
 
 ## Current Test

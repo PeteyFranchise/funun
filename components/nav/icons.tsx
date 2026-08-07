@@ -146,3 +146,14 @@ export const NetworkIcon = (p: IconProps) => (
     <path d="M8.4 6h7.2" />
   </Svg>
 )
+
+// Deals — handshake (the artist's inbound-license-request room, D-15b)
+export const DealsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M8.5 12.5 3 8l3-3 5.2 4.3" />
+    <path d="M15.5 12.5 21 8l-3-3-5.2 4.3" />
+    <path d="m8.5 12.5 2 1.8a1.8 1.8 0 0 0 2.5 0l.4-.4a1.6 1.6 0 0 1 2.2 0l1.4 1.4" />
+    <path d="M6.2 9.6 3.5 12a2 2 0 0 0 0 2.9l3.8 3.6a2 2 0 0 0 2.8 0l.4-.4" />
+    <path d="m17.8 9.6 2.7 2.4a2 2 0 0 1 0 2.9l-3.8 3.6a2 2 0 0 1-2.8 0l-.4-.4" />
+  </Svg>
+)

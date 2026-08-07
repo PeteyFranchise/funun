@@ -200,7 +200,7 @@ const CSV_HEADERS = [
   'contact_phone',
 ]
 
-function csvCell(v: unknown): string {
+export function csvCell(v: unknown): string {
   const s = v == null ? '' : String(v)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
@@ -283,6 +283,26 @@ const RELEASE_TYPE_AVS: Record<string, string> = {
 }
 const releaseTypeAvs = (t: string) => RELEASE_TYPE_AVS[t] ?? 'Album'
 
+/**
+ * ReleaseId contents: ICPN (UPC), GRid, and CatalogNumber can all appear
+ * side by side per the ERN 3.5.1 ReleaseId composite — each identifies the
+ * release differently and none supersedes another. Falls back to a
+ * ProprietaryId built from the release title only when NONE of the three
+ * is present, so ReleaseId is never emitted empty.
+ */
+function releaseIdXml(release: ReleaseBundle): string {
+  const parts: string[] = []
+  if (release.upc) parts.push(`<ICPN IsEan="false">${xmlEscape(release.upc)}</ICPN>`)
+  if (release.rights.grid) parts.push(`<GRid>${xmlEscape(release.rights.grid)}</GRid>`)
+  if (release.rights.catalog_number) {
+    parts.push(`<CatalogNumber>${xmlEscape(release.rights.catalog_number)}</CatalogNumber>`)
+  }
+  if (parts.length === 0) {
+    return `<ProprietaryId Namespace="Funun">${xmlEscape(release.releaseTitle)}</ProprietaryId>`
+  }
+  return parts.join('')
+}
+
 export function buildDdexErn(release: ReleaseBundle): string {
   const r = release.rights
   const now = new Date().toISOString()
@@ -300,10 +320,13 @@ export function buildDdexErn(release: ReleaseBundle): string {
       const ref = `A${i + 1}`
       resourceRefs.push(ref)
       const displayArtist = artistCredit(release.artistName, t.featuring_artists)
+      // ISNI (party-level, D-16d) included on the ResourceContributor's
+      // existing party block when a performer carries one. PartyId is a
+      // standard ERN party-identifier element — not an invented one.
       const contributors = t.performers
         .map(
           p =>
-            `          <ResourceContributor><PartyName><FullName>${xmlEscape(p.name)}</FullName></PartyName><ResourceContributorRole>${p.role === 'featured' ? 'FeaturedArtist' : 'AssociatedPerformer'}</ResourceContributorRole></ResourceContributor>`
+            `          <ResourceContributor>${p.isni ? `<PartyId Namespace="ISNI">${xmlEscape(p.isni)}</PartyId>` : ''}<PartyName><FullName>${xmlEscape(p.name)}</FullName></PartyName><ResourceContributorRole>${p.role === 'featured' ? 'FeaturedArtist' : 'AssociatedPerformer'}</ResourceContributorRole></ResourceContributor>`
         )
         .join('\n')
       const writers = t.composers
@@ -360,11 +383,7 @@ ${soundRecordings}
   </ResourceList>
   <ReleaseList>
     <Release>
-      <ReleaseId>${
-        release.upc
-          ? `<ICPN IsEan="false">${xmlEscape(release.upc)}</ICPN>`
-          : `<ProprietaryId Namespace="Funun">${xmlEscape(release.releaseTitle)}</ProprietaryId>`
-      }</ReleaseId>
+      <ReleaseId>${releaseIdXml(release)}</ReleaseId>
       <ReleaseReference>R0</ReleaseReference>
       <ReferenceTitle><TitleText>${xmlEscape(release.releaseTitle)}</TitleText></ReferenceTitle>
       <ReleaseResourceReferenceList>

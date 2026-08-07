@@ -9,6 +9,7 @@ import {
   type GreenRoomPostType,
   type GreenRoomVisibility,
 } from '@/lib/green-room/feed'
+import { greenRoomPosterGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 
 export type GreenRoomPostStatus = 'draft' | 'published'
 
@@ -126,6 +127,13 @@ export async function createGreenRoomPost(
   userId: string,
   raw: unknown
 ): Promise<{ ok: true; post: GreenRoomCreatedPost } | { ok: false; error: string; status: number }> {
+  // INDUSTRY-02 / INDUSTRY-07: the poster gate runs BEFORE any validation or
+  // DB write — a buyer/no-profile principal or a Funun-staff email must
+  // never reach validateGreenRoomPostInput or the insert below.
+  const principal = await loadGreenRoomPrincipal(supabase, userId)
+  const gate = greenRoomPosterGate(principal)
+  if (!gate.ok) return gate
+
   const validation = validateGreenRoomPostInput(raw)
   if (!validation.ok) return validation
 

@@ -15,12 +15,33 @@ import {
   PERFORMER_ROLE_LABELS,
   ORIGINAL_PURPOSES,
   ORIGINAL_PURPOSE_LABELS,
+  MOOD_LABELS,
+  MOOD_VALUES,
+  MOODS_MAX,
+  ENERGY_LABELS,
+  ENERGY_VALUES,
+  VOCAL_LABELS,
+  VOCAL_VALUES,
   type Composer,
   type Performer,
+  type Mood,
+  type EnergyLevel,
+  type VocalType,
 } from '@/lib/metadata/schema'
 import { validateRelease, type ValidationReport } from '@/lib/metadata/validate'
 import { isValidIswc, isValidIswcShape } from '@/lib/metadata/identifiers'
 import { assessCwrReadiness, type CwrReadiness } from '@/lib/metadata/cwr'
+import type { EligibilityResult } from '@/lib/metadata/generate'
+import { IdentifierInfoButton } from '@/components/vault/IdentifierGuide'
+
+// Server-computed eligibility (16-11 Task 5) for the release-level
+// generatable schemes — never computed client-side, since it depends on
+// PRIVATE profile columns and the service-role-only platform config.
+export type IdentifierEligibilityMap = {
+  upc: EligibilityResult
+  grid: EligibilityResult
+  catalog_number: EligibilityResult
+}
 
 // ─── MetadataStudio ──────────────────────────────────────────────────
 // Capture UI for everything a release needs before delivery: release-level
@@ -43,6 +64,11 @@ type StudioTrack = {
   recordingCountry: string
   originalPurpose: string
   commerciallyAvailable: boolean
+  descriptorMoods: Mood[]
+  // Stored loosely as strings (mirroring originalPurpose above) — the
+  // server's sanitizeDescriptors() is the source of validation truth.
+  descriptorEnergy: string
+  descriptorVocal: string
 }
 
 type ReleaseState = {
@@ -56,6 +82,9 @@ type ReleaseState = {
   contact_name: string
   contact_email: string
   contact_phone: string
+  // DDEX release-level identifiers (migration 082, 16-11).
+  grid: string
+  catalog_number: string
 }
 
 const LEVEL_DOT: Record<'error' | 'warn' | 'ok', string> = {
@@ -75,6 +104,8 @@ export function MetadataStudio({
   coverHeight,
   initialRelease,
   initialTracks,
+  identifierEligibility,
+  identifierSources,
 }: {
   projectId: string
   releaseTitle: string
@@ -86,9 +117,14 @@ export function MetadataStudio({
   coverHeight: number | null
   initialRelease: ReleaseState
   initialTracks: StudioTrack[]
+  /** Server-computed generation eligibility for upc/grid/catalog_number (16-11 Task 5). */
+  identifierEligibility?: IdentifierEligibilityMap
+  /** Provenance per identifier id — 'generated' | 'imported' | 'manual' (T-16-11-8). */
+  identifierSources?: Record<string, string>
 }) {
   const router = useRouter()
   const [release, setRelease] = useState<ReleaseState>(initialRelease)
+  const [sources, setSources] = useState<Record<string, string>>(identifierSources ?? {})
   const [tracks, setTracks] = useState<StudioTrack[]>(initialTracks)
   const [savingRelease, setSavingRelease] = useState(false)
   const [savingTrack, setSavingTrack] = useState<string | null>(null)
@@ -170,12 +206,31 @@ export function MetadataStudio({
           contact_name: release.contact_name || null,
           contact_email: release.contact_email || null,
           contact_phone: release.contact_phone || null,
+          grid: release.grid || null,
+          catalog_number: release.catalog_number || null,
         }),
       })
       router.refresh()
     } finally {
       setSavingRelease(false)
     }
+  }
+
+  // Mint a release-level identifier (upc/grid/catalog_number) via the
+  // generalized generator route. Eligibility was already computed
+  // server-side (identifierEligibility prop) — this route re-checks it
+  // again against the caller's own session, never trusting the client.
+  async function generateReleaseIdentifier(scheme: 'upc' | 'grid' | 'catalog_number') {
+    const res = await fetch('/api/metadata/generate-identifier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheme, projectId }),
+    })
+    const json = await res.json()
+    if (!res.ok) return { error: json.error ?? 'Could not generate' as string }
+    setRelease(prev => ({ ...prev, [scheme]: json.data.value }))
+    setSources(prev => ({ ...prev, [scheme]: 'generated' }))
+    return { value: json.data.value as string }
   }
 
   function setTrack(id: string, patch: Partial<StudioTrack>) {
@@ -210,6 +265,18 @@ export function MetadataStudio({
                     recordingCountry: t.recordingCountry || undefined,
                     originalPurpose: t.originalPurpose || undefined,
                     commerciallyAvailable: t.commerciallyAvailable,
+                  }
+                : null,
+            // Descriptors are optional creative-discovery metadata (mood/
+            // energy/vocal) — omitting all three sends null, which the
+            // route's sanitizeDescriptors() treats as "untagged", not an
+            // empty object.
+            descriptors:
+              t.descriptorMoods.length > 0 || t.descriptorEnergy || t.descriptorVocal
+                ? {
+                    moods: t.descriptorMoods,
+                    energy: t.descriptorEnergy || undefined,
+                    vocal: t.descriptorVocal || undefined,
                   }
                 : null,
           },
@@ -280,19 +347,53 @@ export function MetadataStudio({
           Shared across every track on {releaseTitle}.
         </p>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TextField label="UPC / Barcode" value={release.upc} onChange={v => setReleaseField('upc', v)} placeholder="12–13 digits (distributor often assigns)" />
+          <ReleaseIdentifierField
+            scheme="upc"
+            label="UPC / Barcode"
+            value={release.upc}
+            onChange={v => setReleaseField('upc', v)}
+            placeholder="12–13 digits (distributor often assigns)"
+            eligibility={identifierEligibility?.upc}
+            provenance={sources.upc}
+            onGenerate={() => generateReleaseIdentifier('upc')}
+          />
           <TextField label="Label" value={release.label} onChange={v => setReleaseField('label', v)} placeholder="Your label or imprint" />
           <TextField label="℗ line (sound recording)" value={release.p_line} onChange={v => setReleaseField('p_line', v)} placeholder="℗ 2026 Your Name" />
           <TextField label="© line (composition)" value={release.c_line} onChange={v => setReleaseField('c_line', v)} placeholder="© 2026 Your Name" />
           <TextField label="Publisher" value={release.publisher} onChange={v => setReleaseField('publisher', v)} placeholder="Publishing entity (or self)" />
           <TextField label="Copyright year" value={release.copyright_year} onChange={v => setReleaseField('copyright_year', v.replace(/[^\d]/g, ''))} placeholder="2026" />
           <SelectField label="Primary language" value={release.primary_language} onChange={v => setReleaseField('primary_language', v)} options={[{ value: '', label: '—' }, ...LANGUAGES.map(l => ({ value: l.code, label: l.label }))]} />
-          <div className="hidden sm:block" />
+          <ReleaseIdentifierField
+            scheme="grid"
+            label="GRid"
+            value={release.grid}
+            onChange={v => setReleaseField('grid', v)}
+            placeholder="A1-XXXXX-XXXXXXXXXX-X"
+            eligibility={identifierEligibility?.grid}
+            provenance={sources.grid}
+            onGenerate={() => generateReleaseIdentifier('grid')}
+          />
+          <ReleaseIdentifierField
+            scheme="catalog_number"
+            label="Catalog number"
+            value={release.catalog_number}
+            onChange={v => setReleaseField('catalog_number', v)}
+            placeholder="FUN-0007"
+            eligibility={identifierEligibility?.catalog_number}
+            provenance={sources.catalog_number}
+            onGenerate={() => generateReleaseIdentifier('catalog_number')}
+          />
           <TextField label="Contact name" value={release.contact_name} onChange={v => setReleaseField('contact_name', v)} placeholder="Who to reach" />
           <TextField label="Contact email" value={release.contact_email} onChange={v => setReleaseField('contact_email', v)} placeholder="you@email.com" />
           <TextField label="Contact phone" value={release.contact_phone} onChange={v => setReleaseField('contact_phone', v)} placeholder="Optional" />
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <Link
+            href={`/vault/${projectId}/metadata/identifiers`}
+            className="text-xs font-medium text-white/50 transition hover:text-white"
+          >
+            View all identifiers & code sheet →
+          </Link>
           <button
             onClick={saveRelease}
             disabled={savingRelease}
@@ -338,6 +439,26 @@ export function MetadataStudio({
                 />
                 <IswcField value={t.iswc} onChange={v => setTrack(t.id, { iswc: v.toUpperCase() })} />
                 <SelectField label="Language" value={t.language} onChange={v => setTrack(t.id, { language: v })} options={[{ value: '', label: 'Use release default' }, ...LANGUAGES.map(l => ({ value: l.code, label: l.label }))]} />
+              </div>
+
+              {/* Descriptors — mood, energy, vocal/instrumental. Creative-
+                  discovery metadata for sync buyers/supervisors, kept next
+                  to the other musical-detail fields rather than inside the
+                  rights/credits sections below. Optional — never gates
+                  saving or affects readiness scoring. */}
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">Descriptors</p>
+                <p className="mt-0.5 text-[11px] text-white/40">
+                  How sync buyers and music supervisors find this track — mood, energy, and vocal type.
+                </p>
+                <DescriptorsEditor
+                  moods={t.descriptorMoods}
+                  energy={t.descriptorEnergy}
+                  vocal={t.descriptorVocal}
+                  onMoodsChange={moods => setTrack(t.id, { descriptorMoods: moods })}
+                  onEnergyChange={energy => setTrack(t.id, { descriptorEnergy: energy })}
+                  onVocalChange={vocal => setTrack(t.id, { descriptorVocal: vocal })}
+                />
               </div>
 
               {/* Composers */}
@@ -469,6 +590,12 @@ export function MetadataStudio({
           ← Back to project
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/vault/${projectId}/metadata/identifiers`}
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white"
+          >
+            Identifiers guide →
+          </Link>
           <Link
             href={`/vault/${projectId}/metadata/registrations`}
             className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white"
@@ -772,12 +899,15 @@ function ComposerEditor({
               </select>
               {/* IPI field with save-to-profile nudge */}
               <div className="relative sm:col-span-2">
-                <input
-                  value={c.ipi ?? ''}
-                  onChange={e => handleFieldChange(i, 'ipi', e.target.value)}
-                  placeholder="IPI #"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
-                />
+                <div className="flex items-center gap-1">
+                  <input
+                    value={c.ipi ?? ''}
+                    onChange={e => handleFieldChange(i, 'ipi', e.target.value)}
+                    placeholder="IPI #"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                  />
+                  <IdentifierInfoButton id="ipi" />
+                </div>
                 {picked && (
                   <NudgeButton
                     name={picked.collaboratorName}
@@ -962,12 +1092,15 @@ function PerformerEditor({
             placeholder="Contribution (e.g. Lead vocals)"
             className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-3"
           />
-          <input
-            value={p.isni ?? ''}
-            onChange={e => set(i, { isni: e.target.value })}
-            placeholder="ISNI / IPN"
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none sm:col-span-2"
-          />
+          <div className="flex items-center gap-1 sm:col-span-2">
+            <input
+              value={p.isni ?? ''}
+              onChange={e => set(i, { isni: e.target.value })}
+              placeholder="ISNI / IPN"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            />
+            <IdentifierInfoButton id="isni" />
+          </div>
           <div className="flex items-center justify-end sm:col-span-1">
             <button
               onClick={() => remove(i)}
@@ -991,6 +1124,197 @@ function PerformerEditor({
   )
 }
 
+// ─── Descriptors editor (mood / energy / vocal-instrumental) ─────────
+// Chip-picker interaction mirrors the genre/role pickers in
+// components/profile/ProfileForm.tsx (selected = filled lav pill,
+// unselected = ghost border). Vocal/instrumental is a two-way toggle,
+// never inferred from lyrics presence or the zxx language code.
+function DescriptorsEditor({
+  moods,
+  energy,
+  vocal,
+  onMoodsChange,
+  onEnergyChange,
+  onVocalChange,
+}: {
+  moods: Mood[]
+  energy: string
+  vocal: string
+  onMoodsChange: (next: Mood[]) => void
+  onEnergyChange: (next: EnergyLevel | '') => void
+  onVocalChange: (next: VocalType | '') => void
+}) {
+  function toggleMood(mood: Mood) {
+    if (moods.includes(mood)) {
+      onMoodsChange(moods.filter(m => m !== mood))
+      return
+    }
+    if (moods.length >= MOODS_MAX) return // cap enforced — disabled state below
+    onMoodsChange([...moods, mood])
+  }
+
+  const chipCls = (selected: boolean, disabled: boolean) =>
+    [
+      'rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+      selected
+        ? 'border-lav/50 bg-lav/20 text-white'
+        : disabled
+          ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20'
+          : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+    ].join(' ')
+
+  const toggleCls = (selected: boolean) =>
+    [
+      'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
+      selected
+        ? 'border-lav/50 bg-lav/20 text-white'
+        : 'border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80',
+    ].join(' ')
+
+  return (
+    <div className="mt-2 space-y-3">
+      <div>
+        <div className="flex flex-wrap gap-2">
+          {MOOD_VALUES.map(mood => {
+            const selected = moods.includes(mood)
+            const atCap = !selected && moods.length >= MOODS_MAX
+            return (
+              <button
+                key={mood}
+                type="button"
+                disabled={atCap}
+                onClick={() => toggleMood(mood)}
+                className={chipCls(selected, atCap)}
+              >
+                {MOOD_LABELS[mood]}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-1.5 text-[11px] text-white/30">
+          {moods.length}/{MOODS_MAX} moods selected
+        </p>
+      </div>
+      <div className="flex flex-wrap items-start gap-5">
+        <div>
+          <span className="text-xs text-white/40">Energy</span>
+          <div className="mt-1 flex gap-1.5">
+            {ENERGY_VALUES.map(e => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => onEnergyChange(energy === e ? '' : e)}
+                className={toggleCls(energy === e)}
+              >
+                {ENERGY_LABELS[e]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <span className="text-xs text-white/40">Vocal / instrumental</span>
+          <div className="mt-1 flex gap-1.5">
+            {VOCAL_VALUES.map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => onVocalChange(vocal === v ? '' : v)}
+                className={toggleCls(vocal === v)}
+              >
+                {VOCAL_LABELS[v]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Release-level generatable identifier field (upc/grid/catalog_number) ──
+// The assignment-guidance affordance for release-level generation
+// (16-11 Task 5): when eligible, a Generate control appears with one line
+// naming what it will mint from; when NOT eligible (missing prefix), no
+// disabled Generate button is rendered at all — the ineligibility reason
+// (already phrased for the common, correct case — e.g. "your distributor
+// assigns a UPC") is shown instead. Centrally-allocated schemes never
+// reach this component at all — it is only ever used for upc/grid/
+// catalog_number.
+function ReleaseIdentifierField({
+  scheme,
+  label,
+  value,
+  onChange,
+  placeholder,
+  eligibility,
+  provenance,
+  onGenerate,
+}: {
+  scheme: 'upc' | 'grid' | 'catalog_number'
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  eligibility?: EligibilityResult
+  provenance?: string
+  onGenerate: () => Promise<{ value?: string; error?: string }>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  async function handleGenerate() {
+    setBusy(true)
+    setMsg(null)
+    const result = await onGenerate()
+    if (result.error) setMsg(result.error)
+    setBusy(false)
+  }
+
+  const canOfferGenerate = Boolean(eligibility?.eligible) && !value
+  const provenanceLabel =
+    provenance === 'generated' ? 'Generated in Funūn' : provenance === 'imported' ? 'Imported' : provenance === 'manual' ? 'Entered manually' : null
+
+  return (
+    <div>
+      <label className="block">
+        <span className="text-xs text-white/40">
+          {label}
+          <IdentifierInfoButton id={scheme} />
+        </span>
+        <div className="mt-1 flex gap-1.5">
+          <input
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+          />
+          {canOfferGenerate && (
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={busy}
+              className="shrink-0 rounded-lg border border-white/15 px-2.5 py-2 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-30"
+            >
+              {busy ? '…' : 'Generate'}
+            </button>
+          )}
+        </div>
+      </label>
+      {canOfferGenerate && eligibility && eligibility.eligible && (
+        <p className="mt-1 text-[11px] text-white/40">
+          Will mint from{' '}
+          {eligibility.source === 'platform' ? "Funūn's platform GRid issuer code" : `your prefix ${eligibility.usingPrefix}`}.
+        </p>
+      )}
+      {!value && eligibility && !eligibility.eligible && (
+        <p className="mt-1 text-[11px] leading-relaxed text-white/40">{eligibility.reason}</p>
+      )}
+      {value && provenanceLabel && <p className="mt-1 text-[11px] text-white/30">{provenanceLabel}</p>}
+      {msg && <p className="mt-1 text-xs text-amber-300/90">{msg}</p>}
+    </div>
+  )
+}
+
 // ─── ISRC field (with one-click generation) ──────────────────────────
 function IsrcField({
   value,
@@ -1005,7 +1329,10 @@ function IsrcField({
 }) {
   return (
     <label className="block">
-      <span className="text-xs text-white/40">ISRC</span>
+      <span className="text-xs text-white/40">
+        ISRC
+        <IdentifierInfoButton id="isrc" />
+      </span>
       <div className="mt-1 flex gap-1.5">
         <input
           value={value}
@@ -1054,7 +1381,10 @@ function IswcField({ value, onChange }: { value: string; onChange: (v: string) =
   const tone = !value ? 'text-white/30' : fullOk ? 'text-emerald-300/90' : 'text-amber-300/90'
   return (
     <label className="block">
-      <span className="text-xs text-white/40">ISWC</span>
+      <span className="text-xs text-white/40">
+        ISWC
+        <IdentifierInfoButton id="iswc" />
+      </span>
       <input
         value={value}
         onChange={e => onChange(e.target.value)}

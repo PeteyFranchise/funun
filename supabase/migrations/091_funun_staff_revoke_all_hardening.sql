@@ -1,0 +1,32 @@
+-- ============================================================
+-- Funūn — Phase 25 (gap closure): fully lock funun_staff + staff_audit_log to the
+-- service role. Migration 091.
+--
+-- WHY: migration 089 created both tables as "service-role-only" via RLS-enabled + zero-policy
+-- + `REVOKE SELECT, INSERT, UPDATE, DELETE ... FROM authenticated, anon` (mirroring migration
+-- 058). Live verification at the 25-07 checkpoint proved the DML denial holds (a direct
+-- authenticated PostgREST read returns 42501), BUT anon and authenticated STILL retain
+-- TRUNCATE, TRIGGER, and REFERENCES on both tables: Supabase's default privileges grant the
+-- full table privilege set, and a DML-only REVOKE leaves those three behind. RLS does NOT gate
+-- TRUNCATE, so an authenticated user could TRUNCATE funun_staff / staff_audit_log — a staff-list
+-- wipe and audit-trail destruction. This migration closes that hole.
+--
+-- WHAT: REVOKE ALL on both tables from PUBLIC, anon, authenticated. This removes the residual
+-- TRUNCATE/TRIGGER/REFERENCES (and re-covers the DML privileges 089 already revoked — harmless
+-- overlap). service_role is deliberately NOT revoked: it is a separate role that keeps its
+-- Supabase default grants + BYPASSRLS, so the app's service client still reads/writes these
+-- tables. Idempotent — REVOKE of an already-absent privilege is a no-op, safe to re-run. RLS
+-- stays enabled with zero policies (unchanged). Does NOT touch the DML REVOKE 089 applied.
+--
+-- HUMAN-GATED — never `supabase db push` from an agent (matches Phases 16/21/25/28's standing
+-- convention). Draft + text-tested; the owner reviews and pushes via Codex. Do NOT edit
+-- migration 089 (already live).
+--
+-- SEPARATE FINDING (NOT fixed here, flagged for a follow-up decision): migration 058's
+-- verification_audit_log and reports tables carry the identical DML-only REVOKE and therefore
+-- the same latent TRUNCATE/TRIGGER/REFERENCES exposure. Hardening those is out of this Phase 25
+-- checkpoint's scope and left to a deliberate follow-up so this migration stays reviewable.
+-- ============================================================
+
+REVOKE ALL ON public.funun_staff     FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.staff_audit_log FROM PUBLIC, anon, authenticated;
