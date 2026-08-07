@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
-stopped_at: "Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06"
-last_updated: "2026-08-07T01:20:17.184Z"
+stopped_at: "Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10"
+last_updated: "2026-08-07T01:32:08.963Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 136
+  completed_plans: 137
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 8 of 10
+Plan: 10 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -173,6 +173,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P05 | ~20min | 3 tasks | 4 files |
 | Phase 25 P06 | ~20min | 3 tasks | 5 files |
 | Phase 25 P08 | ~30min | 3 tasks | 8 files |
+| Phase 25 P09 | ~20min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -360,6 +361,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 25]: 25-08: Console token names/values are direct 1:1 lifts from tailwind.config.ts's existing dark colors (ink/card/card2/lav/lavdim/hair/hairstrong) + the verified FNBL_CSS light palette -- zero new colors invented
 - [Phase ?]: [Phase 25]: 25-08: SignOutButton.tsx (shared with ArtistNav) left unmodified -- wrapped in a Tailwind arbitrary-child-selector override inside the admin layout only, avoiding a cross-context shared-component edit
 - [Phase ?]: [Phase 25]: 25-08: team-members/page.tsx and my-client-partners/page.tsx h1 headlines tokenized (Rule 2) though outside this task's declared files_modified -- required by the plan's own both-themes truth
+- [Phase 25]: 25-09: changedAwayFromPrevAe = prevAeUserId !== null && prevAeUserId !== aeUserId — one predicate covers reassign/unassign-with-prior-AE/same-AE-reconfirm for the /ae route's notify-both behavior, reusing the single existing assign_ae audit path
+- [Phase 25]: 25-09: app/(admin)/admin/buyer-orgs/page.tsx stays leadership-only (getStaffRole(user)==='leadership' self-guard, same scope as the pre-plan is_admin check) — AE/BD already have their own scoped queue at /admin/my-client-partners (25-06)
 
 ### Pending Todos
 
@@ -438,8 +441,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T01:19:54.680Z
-Stopped at: Completed 25-05-PLAN.md (buyer-org staff edit + AE assignment + widened create/scoped list); next: 25-06
+Last session: 2026-08-07T01:32:08.935Z
+Stopped at: Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

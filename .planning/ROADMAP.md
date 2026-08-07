@@ -767,7 +767,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 7/10 plans executed
+**Plans:** 8/10 plans executed
 **Wave 1**
 
 - [x] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
@@ -786,7 +786,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 25-08-PLAN.md — Team Console light/dark theme + per-member toggle (ports buyer 22-03; dark default) [W4]
-- [ ] 25-09-PLAN.md — Leadership reassigns Client Partners between AEs (reassign UI + notify-both on the /ae route) [W4]
+- [x] 25-09-PLAN.md — Leadership reassigns Client Partners between AEs (reassign UI + notify-both on the /ae route) [W4]
 - [ ] 25-10-PLAN.md — Team Member Directory (all-roles): card + list views, contact cards, email/call actions (adds funun_staff title/phone; by-team view = future) [W4]
 
 **Wave 5** *(blocked on Wave 4 completion)*
