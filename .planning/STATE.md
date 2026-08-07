@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 25
-current_phase_name: funun-team-accounts-ae
+current_phase: 23
+current_phase_name: buyer-onboarding-login-register
 status: board-clear
-stopped_at: "Phase 25 COMPLETE + live-verified (2026-08-07). Funūn Team Member accounts are first-class staff RBAC: getStaffRole/requireStaff gate (leadership/ae/bd; is_admin->leadership fallback; verifyAdmin alias kept), service-role-only funun_staff + staff_audit_log, private buyer_orgs.ae_user_id, createStaffAccount + /api/admin/staff (leadership CRUD), assignment-scoped /api/admin/buyer-orgs edit + leadership-only AE assign/reassign (notifies both AEs), /admin widened to any staff role + role-aware sidebar, pages /admin/team-members + /admin/my-client-partners + /admin/directory, Team Console light/dark theme. Migrations 089/090 + corrective 091 (REVOKE ALL closing 089's TRUNCATE/TRIGGER/REFERENCES gap — RLS doesn't gate TRUNCATE) ALL LIVE (LOCAL=REMOTE through 091). 25-07 six-point production security smoke all GREEN; owner peter.zora@gmail.com (1d7990e2-...) seeded staff_role='leadership' + funun_staff directory row, reaches /admin/my-client-partners + /admin/directory as Leadership. TEAM-01..09 registered Complete in REQUIREMENTS.md; 25-07-SUMMARY closed. Full suite green. 25-11 login-routing (Option A) SHIPPED as quick task 260806-wqr (commit 25b528b): role-aware post-signin routing — staff -> /admin/my-client-partners, else -> /vault, explicit same-origin ?next= wins; getStaffRole extracted to client-safe lib/admin/staff-role.ts (re-exported from gate.ts); pure postSignInPath + open-redirect guard; full suite 129/1553 green + build clean. Live browser check (sign in as staff vs artist) needs real creds — owner to confirm. NEXT: queued phases — Phase 23 (buyer onboarding Model A + /sync unification + landing), 26 (sync-library), 27 (artist invite-only) — all planned/captured, need planning/execution. Background task task_99e1252f (harden 058 verification_audit_log + reports — identical TRUNCATE gap, mirror 091) running independently. Optional: formal /gsd-verify 25 (the live production smoke already verified the phase goal)."
-last_updated: "2026-08-07T03:00:00.000Z"
+stopped_at: "Phase 23 COMPLETE (8/8 plans) on branch codex/phase-23-buyer-onboarding (pushed). Buyer onboarding Model A + /sync SHIPPED at the DB+branch level: /buyers/*→/sync/* unified + public /sync landing; public logged-out /sync/catalog (anon-crash fixed); POST /api/sync/register (public, rate-limited, enumeration-safe, real Phase-25 lead routing); buyer PASSWORD auth (role-aware→/sync/catalog); AE onboarding surface (/admin/client-partners/[orgId] detail, status pending_onboarding→active via staff-edit allowlist, unassigned-lead queue); .fnbl LoginRegisterModal (Marmoset mirror, Register+Talk-to-sales→one pipeline) wired into browse+landing. Migrations 092/093/094 (batch-1 review hardening) + 095 (buyer_orgs status+lead fields) ALL PUSHED LIVE (LOCAL=REMOTE through 095). 23-08 onboarding-loop smoke PASSED live against prod Supabase (register→pending→AE assign→detail no-404→active→login→gated browse); 093/094/095 grants verified live; 092 grant-catalog query deferred (no direct SQL). SYNC-01..10 registered Complete in REQUIREMENTS.md. Full suite 135 suites/1610 green; tsc+lint+build clean. ONLY REMAINING = DEPLOY (funun.studio/sync 404s until the code deploys). DEPLOY ORDER: (1) merge PR #57 batch-2 review fixes; (2) reconcile Phase 23's buyer-orgs route changes with #57 (23-06 touched app/api/admin/buyer-orgs/[id]/route.ts + route.ts + staff-buyer-orgs-api.test.ts on the pre-#57 files — CONFLICT); (3) open + merge the Phase 23 PR → /sync live. Migrations already live so the deploy has its schema. NOTE: Resend email still unconfigured in prod (invites/lead emails no-op). Deferred: SYNC-10 spend-oversight UI; 092 grant-catalog confirm; Phase 21 RLS smoke (0/31). NEXT feature per roadmap after deploy: Phase 26 (sync-library supply)."
+last_updated: "2026-08-07T10:30:00.000Z"
 last_activity: 2026-08-07
-last_activity_desc: "Phase 25 CLOSED + 25-11 login-routing shipped (quick 260806-wqr) — role-aware post-signin routing, full suite 129/1553 green"
+last_activity_desc: "Phase 23 CLOSED — migrations 092-095 live, onboarding-loop smoke passed, SYNC-01..10 registered; deploy (PR #57 → reconcile → Phase 23 PR) remains"
 progress:
   total_phases: 28
-  completed_phases: 21
-  total_plans: 144
-  completed_plans: 139
-  percent: 72
+  completed_phases: 22
+  total_plans: 152
+  completed_plans: 147
+  percent: 75
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 25 — funun-team-accounts-ae
+**Current focus:** Phase 23 — buyer-onboarding-login-register
 
 ## Current Position
 
-Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 10 of 10
+Phase: 23 (buyer-onboarding-login-register) — EXECUTING
+Plan: 8 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -46,7 +46,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-07 — Phase 25 execution started
+Last activity: 2026-08-07 — Phase 23 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -175,6 +175,13 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P08 | ~30min | 3 tasks | 8 files |
 | Phase 25 P09 | ~20min | 2 tasks | 5 files |
 | Phase 25 P10 | 20min | 2 tasks | 2 files |
+| Phase 23 P01 | 2min | 3 tasks | 3 files |
+| Phase 23-buyer-onboarding-login-register P02 | 25min | 3 tasks | 19 files |
+| Phase 23-buyer-onboarding-login-register P03 | 15min | 2 tasks | 3 files |
+| Phase 23 P04 | 15min | 3 tasks | 5 files |
+| Phase 23 P05 | 20min | 3 tasks | 6 files |
+| Phase 23 P06 | 20min | 3 tasks | 6 files |
+| Phase 23-buyer-onboarding-login-register P07 | ~20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -365,6 +372,24 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 25]: 25-09: changedAwayFromPrevAe = prevAeUserId !== null && prevAeUserId !== aeUserId — one predicate covers reassign/unassign-with-prior-AE/same-AE-reconfirm for the /ae route's notify-both behavior, reusing the single existing assign_ae audit path
 - [Phase 25]: 25-09: app/(admin)/admin/buyer-orgs/page.tsx stays leadership-only (getStaffRole(user)==='leadership' self-guard, same scope as the pre-plan is_admin check) — AE/BD already have their own scoped queue at /admin/my-client-partners (25-06)
 - [Phase 25]: Gate uses getStaffRole(user) === null (admits leadership/AE/BD) rather than requireStaff(['leadership']) used by the management page — the all-roles/read-only distinction for the Team Member Directory
+- [Phase 23]: 23-01: status/use_case granted to authenticated (buyer-readable); contact_name/contact_email/contact_phone/contact_role/source kept staff-only in migration 095, mirroring migration 090's ae_user_id precedent
+- [Phase 23]: 23-01: BUYER_ORG_STATUS_VALUES tuple exported from lib/buyers/schema.ts as the single source of truth for status validation, mirroring the existing BUYER_ROLE_VALUES convention
+- [Phase ?]: [Phase 23]: 23-02: /sync layout stops force-redirecting logged-out visitors; auth moved into each authenticated sub-page (catalog/shortlists/requests self-gate to /sync/access) so a future public page under the same layout needs no auth check at all
+- [Phase ?]: [Phase 23]: 23-02: /sync landing page's featured teaser uses SAMPLE_CATALOG_ROWS directly (not loadCatalogPage) to avoid RESEARCH.md Pitfall 3's anon-viewer UUID crash -- that fix is 23-03's scope
+- [Phase ?]: [Phase 23]: 23-02: plan frontmatter references requirement SYNC-09 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: [Phase 23]: 23-03: loadCatalogPage's buyerUserId widened to string | null on the single implementation (no parallel public function) -- anonymous callers skip loadBlockedIds entirely rather than passing an empty sentinel into its uuid .or() filter (RESEARCH Pitfall 3)
+- [Phase ?]: [Phase 23]: 23-03: public /sync/catalog render uses CatalogBrowserLight isPublic (its own self-contained header + Login button), not embedded -- BuyerTopNav stays authenticated-member-only
+- [Phase ?]: [Phase 23]: 23-04: buildRegisterPayload allowlists exactly company/contactName/email/phone/role/useCase/source, never spreading the request body; invalid/missing source falls back to register rather than erroring
+- [Phase ?]: [Phase 23]: 23-04: routeLead (best-effort lead routing) fires on both the success path and the caught-DuplicateBuyerAccountError path, since buyer_orgs row creation is unconditional either way
+- [Phase ?]: [Phase 23]: 23-04: Duplicate-email registration returns the exact same 201 shape as success (account-enumeration avoidance), leaving the created org row in place; rate limiting is an in-memory per-key Map (IP + email, 5/15min), explicitly beta-acceptable per plan directive
+- [Phase ?]: 23-05: postSignInPath buyer branch checked before staff/default resolution (a buyer is never staff, per plan's literal precedence instruction)
+- [Phase ?]: 23-05: app/auth/callback/route.ts passes the raw (un-defaulted) next param into postSignInPath rather than pre-defaulting to /vault -- pre-defaulting would make the explicit-next branch always win and defeat role-based fallback for buyer/staff callbacks with no explicit next
+- [Phase ?]: 23-05: createBuyerAccount's recovery generateLink call needed an explicit options.redirectTo (/auth/callback?next=/update-password), mirroring forgot-password's own recovery redirectTo -- not named in the plan's action text but required to satisfy the task's own done criteria
+- [Phase ?]: 23-06: GET /api/admin/buyer-orgs's request param made required (Request), not optional -- Next.js typed-route checker rejects Request|undefined; test call sites updated to pass a Request
+- [Phase ?]: 23-06: cross-company purchase visibility (SYNC-10) confirmed already satisfied by migration 081 RLS + app/sync/requests/page.tsx -- no new code, no new RLS needed
+- [Phase ?]: 23-06: plan frontmatter references requirements SYNC-06/SYNC-10 but REQUIREMENTS.md has no Phase 23 section registering them (requirements.mark-complete returned not_found for both) -- same pre-existing gap noted at 23-01/23-02/23-04, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: 23-07: Login errors show a single fixed generic message (never the raw Supabase error) -- T-23-23 account-enumeration mitigation; postSignInPath's next is always null in the modal (no client-controlled redirect surface exists)
+- [Phase ?]: 23-07: SyncAuthCTAs.tsx added as a new client-boundary file beyond the plan's literal files_modified -- Next.js requires 'use client' at whole-module scope, so the server-component /sync landing page cannot inline modal-open state (Rule 3)
 
 ### Pending Todos
 
@@ -395,6 +420,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 25-02: plan frontmatter references requirements TEAM-05/TEAM-06 but REQUIREMENTS.md has no Phase 25 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as 25-01/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 25-04: plan frontmatter references requirement TEAM-03 but REQUIREMENTS.md still has no Phase 25 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as 25-01/25-02/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 25-04: funun_staff (migration 089, unpushed) has no active/deactivated_at column -- PATCH /api/admin/staff/[id]'s { active:false } deactivate signal clears app_metadata.staff_role to null (real, immediate access revocation) but leaves no queryable "deactivated" flag on funun_staff for a future Team Members list UI to render. Candidate follow-up if a migration author revisits funun_staff.
+- 23-01: plan frontmatter references requirement SYNC-01 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/25/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -444,9 +470,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T01:44:03.945Z
-Stopped at: Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10
-Resume file: None
+Last session: 2026-08-07T09:53:57.704Z
+Stopped at: Completed 23-07-PLAN.md (LoginRegisterModal + browse gate + landing CTA wiring)
+Resume file: 23-08-PLAN.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`

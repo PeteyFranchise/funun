@@ -11,6 +11,7 @@ import {
 } from '@/lib/deals/schema'
 import { buildRequestBody } from '@/lib/deals/request-payload'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
+import { LoginRegisterModal } from '@/components/buyer/LoginRegisterModal'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
@@ -27,7 +28,8 @@ import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 // an open decision — see .planning/deliberations/buyer-catalogue-inclusion-model.md.
 // Design CSS is ported scoped under `.fnbl` so it never leaks into the dark app.
 //
-// 22-03: mounted `embedded` from app/(buyer-portal)/buyers/catalog/page.tsx
+// 22-03: mounted `embedded` from app/sync/catalog/page.tsx (23-02: renamed
+// from app/(buyer-portal)/buyers/catalog/page.tsx)
 // so it renders inside the shared BuyerTopNav shell without drawing a
 // second, competing header or re-injecting the layout's already-injected
 // FNBL_CSS base tokens (nav-reconciliation Option A).
@@ -174,6 +176,10 @@ export function CatalogBrowserLight({
   const [favs, setFavs] = useState<Set<string>>(new Set())
   const [modalId, setModalId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // 23-07: gates any engagement (License / shortlist) — and the isPublic
+  // Login button — behind the Login/Register modal for a logged-out
+  // visitor. Browsing + simulated playback stay ungated.
+  const [authModalOpen, setAuthModalOpen] = useState(false)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── slice 2c: License modal form state (wired to buildRequestBody) ──
@@ -318,7 +324,7 @@ export function CatalogBrowserLight({
         <header className="top">
           <div className="l">
             <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
-            {isPublic && <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
+            {isPublic && <button className="navlink" type="button" onClick={() => setAuthModalOpen(true)}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
           </div>
           <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
           <div className="r">
@@ -432,7 +438,7 @@ export function CatalogBrowserLight({
                 <div className="energy">{row.energy}</div>
                 <div className="len">{row.length}</div>
                 <div><button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button></div>
-                <div><button className="lic" type="button" onClick={() => setModalId(row.id)}>License</button></div>
+                <div><button className="lic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(row.id))}>License</button></div>
               </div>
             ))}
           </div>
@@ -461,10 +467,10 @@ export function CatalogBrowserLight({
             </div>
             <div className="mvol"><svg className="icn" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M16 9a4 4 0 0 1 0 6" /></svg><div className="vt"><div className="f" /></div></div>
             <div className="mr">
-              <button className={`hbtn ${favs.has(playRow.id) ? 'on' : ''}`} type="button" aria-label="Add to favorites" onClick={() => toggleFav(playRow.id)}>
+              <button className={`hbtn ${favs.has(playRow.id) ? 'on' : ''}`} type="button" aria-label="Add to favorites" onClick={() => (isPublic ? setAuthModalOpen(true) : toggleFav(playRow.id))}>
                 <svg className="icn" viewBox="0 0 24 24"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z" /></svg>
               </button>
-              <button className="mlic" type="button" onClick={() => setModalId(playRow.id)}>License</button>
+              <button className="mlic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(playRow.id))}>License</button>
             </div>
           </div>
         </div>
@@ -561,6 +567,9 @@ export function CatalogBrowserLight({
         <svg className="icn" viewBox="0 0 24 24"><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></svg>
         {toast}
       </div>
+
+      {/* 23-07: Login/Register modal — the isPublic engagement gate */}
+      <LoginRegisterModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </div>
   )
 }

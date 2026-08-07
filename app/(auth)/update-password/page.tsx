@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { postSignInPath } from '@/lib/auth/postSignInPath'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -60,11 +61,18 @@ export default function UpdatePasswordPage() {
       return
     }
 
+    // Role-aware landing (23-05 Pitfall 2): a buyer who sets/resets a password
+    // must not be dropped on the artist Sound Vault. getUser() reads the
+    // just-updated session's current user; postSignInPath falls back to
+    // DEFAULT_HOME ('/vault') for artists, preserving prior behavior exactly.
+    const { data } = await supabase.auth.getUser()
+    const destination = postSignInPath({ user: data.user })
+
     setDone(true)
     setSubmitting(false)
     // Give the user a moment to read the confirmation, then land them in the app.
     setTimeout(() => {
-      router.push('/vault')
+      router.push(destination)
       router.refresh()
     }, 1800)
   }
@@ -74,7 +82,7 @@ export default function UpdatePasswordPage() {
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
         <h1 className="text-xl font-semibold text-white">Password updated</h1>
         <p className="mt-2 text-sm text-white/60">
-          You&apos;re all set. Taking you to your vault…
+          You&apos;re all set. Taking you in…
         </p>
         <Link href="/signin" className="mt-6 inline-block text-sm text-white hover:underline">
           Or sign in manually

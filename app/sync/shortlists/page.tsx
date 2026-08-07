@@ -6,6 +6,11 @@ import { ShortlistPanel } from '@/components/buyer/ShortlistPanel'
 export const dynamic = 'force-dynamic'
 
 // ─── Org-shared shortlist page (D-14c) ─────────────────────────────────
+// 23-02: moved from app/(buyer-portal)/buyers/shortlists/page.tsx to
+// app/sync/shortlists/page.tsx as part of the /buyers/* → /sync/*
+// unification. Self-gates to /sync/access (the non-gating /sync layout no
+// longer backstops this).
+//
 // Renders every project saved by ANY member of the caller's org via the
 // SAME loadShortlistEntries the API route's GET handler calls, so the
 // "re-evaluate rights-readiness at render time" rule and dual-level
@@ -16,14 +21,14 @@ export default async function ShortlistsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/buyers/access')
+  if (!user) redirect('/sync/access')
 
   const { data: member } = await supabase
     .from('buyer_members')
     .select('org_id')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (!member) redirect('/buyers/access')
+  if (!member) redirect('/sync/access')
 
   const service = createServiceClient()
   const entries = await loadShortlistEntries(service, member.org_id)

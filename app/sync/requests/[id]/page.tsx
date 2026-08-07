@@ -26,6 +26,11 @@ function formatDate(value: string | null): string {
 }
 
 // ─── Request detail (D-16a) ─────────────────────────────────────────────────
+// 23-02: moved from app/(buyer-portal)/buyers/requests/[id]/page.tsx to
+// app/sync/requests/[id]/page.tsx as part of the /buyers/* → /sync/*
+// unification. Self-gates to /sync/access (the non-gating /sync layout no
+// longer backstops this).
+//
 // Scoped to the caller's own buyer org — a request id from another org
 // returns notFound() (404), never a distinguishable 403, matching the
 // 10-03 precedent (16-VALIDATION's "buyer sees another buyer's request"
@@ -43,14 +48,14 @@ export default async function RequestDetailPage({
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/buyers/access')
+  if (!user) redirect('/sync/access')
 
   const { data: member } = await supabase
     .from('buyer_members')
     .select('org_id')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (!member) redirect('/buyers/access')
+  if (!member) redirect('/sync/access')
 
   const { data } = await supabase
     .from('license_requests')
@@ -83,7 +88,7 @@ export default async function RequestDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/buyers/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
+      <Link href="/sync/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
         ← Requests
       </Link>
 

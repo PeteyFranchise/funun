@@ -43,7 +43,7 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
           Save a project from the catalog and it will show up here for your whole org to see.
         </p>
         <Link
-          href="/buyers/catalog"
+          href="/sync/catalog"
           className="mt-4 inline-block text-xs font-medium text-[color:var(--indigo)] transition hover:text-[color:var(--fuchsia)]"
         >
           Browse catalog →
@@ -78,7 +78,7 @@ export function ShortlistPanel({ initialEntries }: { initialEntries: ShortlistEn
           <div className="mt-4 flex items-center gap-2">
             {entry.stillRightsReady ? (
               <Link
-                href={`/buyers/requests/new?project=${entry.vaultProjectId}`}
+                href={`/sync/requests/new?project=${entry.vaultProjectId}`}
                 className="rounded-lg border border-[color:var(--line)] bg-[var(--wash-2)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--indigo)] transition hover:bg-[var(--wash)]"
               >
                 Request license

@@ -81,8 +81,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const origin = new URL(request.url).origin
     session = await createCheckoutSessionForCharge(chargeParams, {
-      successUrl: `${origin}/buyers/requests/${id}?payment=success`,
-      cancelUrl: `${origin}/buyers/requests/${id}?payment=cancelled`,
+      successUrl: `${origin}/sync/requests/${id}?payment=success`,
+      cancelUrl: `${origin}/sync/requests/${id}?payment=cancelled`,
       description: `Funūn sync license — deal ${id}`,
       licenseRequestId: id,
     })

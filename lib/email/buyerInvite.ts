@@ -22,6 +22,6 @@ export function buyerInviteEmail(args: { displayName: string; actionLink: string
   const { displayName, actionLink } = args
   return {
     subject: 'You have been invited to Funūn',
-    html: `<p>Hi ${esc(displayName)},</p><p>You've been invited to join Funūn as a buyer.</p><p><a href="${esc(actionLink)}">Sign in to Funūn</a></p>`,
+    html: `<p>Hi ${esc(displayName)},</p><p>You've been invited to join Funūn as a buyer.</p><p><a href="${esc(actionLink)}">Set your password to get started</a></p>`,
   }
 }

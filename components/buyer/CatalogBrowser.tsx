@@ -263,7 +263,7 @@ export function CatalogBrowser({
 
                 <div className="mt-4 flex items-center gap-2">
                   <Link
-                    href={`/buyers/requests/new?project=${card.id}`}
+                    href={`/sync/requests/new?project=${card.id}`}
                     className="rounded-lg border border-indigo-400/30 bg-indigo-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-200 transition hover:bg-indigo-400/20"
                   >
                     Request license

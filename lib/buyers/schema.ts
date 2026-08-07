@@ -8,15 +8,27 @@ export const BUYER_ROLE_LABELS: Record<BuyerRole, string> = {
   approver: 'Approver',
 }
 
-// ─── BuyerOrg (migration 080: buyer_orgs) ─────────────────────────────────
-// Mirrors the column-grant allowlist on the migration — verified_at and
-// created_by are private (admin-audit only) and deliberately excluded here.
+// ─── BuyerOrgStatus (migration 095: pending_onboarding -> active) ─────────
+export const BUYER_ORG_STATUS_VALUES = ['pending_onboarding', 'active'] as const
+
+export type BuyerOrgStatus = (typeof BUYER_ORG_STATUS_VALUES)[number]
+
+// ─── BuyerOrg (migration 080: buyer_orgs; migration 095: status/use_case) ─
+// Mirrors the column-grant allowlist on the migrations — verified_at and
+// created_by (080) are private (admin-audit only) and deliberately
+// excluded here; status and use_case (095) were added to the authenticated
+// GRANT SELECT allowlist and are included. contact_name/contact_email/
+// contact_phone/contact_role/source (095) are staff-only lead/CRM fields,
+// NOT in the authenticated grant, and are deliberately excluded here too —
+// this type stays honest to the column-privilege allowlist.
 export type BuyerOrg = {
   id: string
   name: string
   is_personal: boolean
   verified: boolean
   created_at: string
+  status: BuyerOrgStatus
+  use_case: string | null
 }
 
 // ─── BuyerMember (migration 080: buyer_members) ───────────────────────────

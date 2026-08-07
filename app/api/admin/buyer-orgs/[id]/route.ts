@@ -3,17 +3,21 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import { logStaffAction } from '@/lib/staff/audit'
+import { BUYER_ORG_STATUS_VALUES } from '@/lib/buyers/schema'
 
 // Mass-assignment allowlist (D-03, mirrors app/api/profile/route.ts's
 // EDITABLE_FIELDS convention). Deliberately EXCLUDES `verified`/
 // `verified_at`/`created_by` (admin-audit fields), `is_personal` (system
 // flag), and `ae_user_id` (assignment is a separate leadership-only route,
 // app/api/admin/buyer-orgs/[id]/ae/route.ts — never mass-assignable here).
-// v1 ships `name` only — the only non-audit, non-system column that exists
-// on buyer_orgs today (RESEARCH Assumption A3). Phase 23 is expected to add
-// company-profile columns (contact name, phone, use-case); extend this list
-// then, not before.
-const STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name'] as const
+// Phase 23 (23-06) extends v1's `name`-only list with `status` (the
+// pending_onboarding -> active onboarding-completion transition, validated
+// against BUYER_ORG_STATUS_VALUES below) and `use_case` (a staff-editable
+// correction of the qualifying answer captured at register). The other
+// migration-095 lead/CRM fields (contact_name/contact_email/contact_phone/
+// contact_role/source) stay out of this allowlist for v1 — no edit surface
+// for them yet.
+const STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name', 'status', 'use_case'] as const
 
 // ─── PATCH /api/admin/buyer-orgs/[id] ──────────────────────────────────────
 // Assignment-scoped, field-allowlisted, audited buyer-org edit (D-03/D-04).
@@ -47,10 +51,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   for (const key of STAFF_EDITABLE_BUYER_ORG_FIELDS) {
     if (!(key in body)) continue
     const value = body[key]
-    if (typeof value === 'string') {
-      const trimmed = value.trim()
-      if (trimmed) update[key] = trimmed
+    if (typeof value !== 'string') continue
+    const trimmed = value.trim()
+    if (!trimmed) continue
+    // T-23-19: validate status against the CHECK-constraint enum BEFORE any
+    // DB write is attempted — an invalid status must never reach the
+    // update() call below, mirroring the string-trim loop's own discipline.
+    if (
+      key === 'status' &&
+      !BUYER_ORG_STATUS_VALUES.includes(trimmed as (typeof BUYER_ORG_STATUS_VALUES)[number])
+    ) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${BUYER_ORG_STATUS_VALUES.join(', ')}` },
+        { status: 400 }
+      )
     }
+    update[key] = trimmed
   }
 
   if (Object.keys(update).length === 0) {

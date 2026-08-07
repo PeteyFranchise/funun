@@ -4,8 +4,9 @@ import type { BuyerRole } from '@/lib/buyers/schema'
 import { ThemeToggle } from '@/components/buyer/ThemeToggle'
 
 // ─── BuyerTopNav ──────────────────────────────────────────────────────────
-// The shared light top-nav mounted ONCE by app/(buyer-portal)/layout.tsx
-// for every buyer-portal route (nav-reconciliation Option A, 22-03).
+// The shared light top-nav mounted by app/sync/layout.tsx (23-02: renamed
+// from app/(buyer-portal)/layout.tsx) for every authenticated /sync route
+// (nav-reconciliation Option A, 22-03).
 // Promotes CatalogBrowserLight's `.top`/`.navlink`/brandmark idiom into a
 // standalone component so the catalogue no longer draws a second,
 // competing header, and folds in the three portal links + company/tier the
@@ -26,20 +27,20 @@ export function BuyerTopNav({
       <style>{TOPNAV_CSS}</style>
       <header className="top">
         <div className="l">
-          <Link className="navlink" href="/buyers/catalog">
+          <Link className="navlink" href="/sync/catalog">
             <svg className="icn" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
             </svg>
             Browse
           </Link>
-          <Link className="navlink" href="/buyers/shortlists">
+          <Link className="navlink" href="/sync/shortlists">
             <svg className="icn" viewBox="0 0 24 24">
               <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z" />
             </svg>
             Shortlists
           </Link>
-          <Link className="navlink" href="/buyers/requests">
+          <Link className="navlink" href="/sync/requests">
             <svg className="icn" viewBox="0 0 24 24">
               <rect x="3" y="5" width="18" height="14" rx="2" />
               <path d="m3 8 9 5 9-5" />
@@ -69,8 +70,8 @@ export function BuyerTopNav({
 // Nav-only CSS scoped under `.fnbl`, ported from CatalogBrowserLight's
 // original header block (that component keeps its own copy for the
 // non-embedded/public path). BuyerTopNav needs its own copy because it
-// renders on EVERY buyer-portal route (catalog, shortlists, requests), not
-// just /buyers/catalog.
+// renders on EVERY authenticated /sync route (catalog, shortlists,
+// requests), not just /sync/catalog.
 const TOPNAV_CSS = `
 .fnbl .top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:26px 40px;}
 .fnbl .top .l{display:flex;align-items:center;gap:34px;}

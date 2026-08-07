@@ -11,8 +11,9 @@ import { isRightsReady } from '@/lib/deals/catalog'
 // Lives in lib/ (not the route.ts file) because Next.js route modules may
 // only export HTTP method handlers plus a small route-config set — any
 // other export fails Next's route type-checking at build time. Both
-// GET /api/buyer/shortlists and app/(buyer-portal)/buyers/shortlists/
-// page.tsx's server-rendered list import this one implementation, so the
+// GET /api/buyer/shortlists and app/sync/shortlists/page.tsx's (23-02:
+// renamed from app/(buyer-portal)/buyers/shortlists/page.tsx)
+// server-rendered list import this one implementation, so the
 // re-evaluation rule and dual-level attribution can never drift between
 // the two surfaces.
 

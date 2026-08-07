@@ -6,7 +6,7 @@ import { logStaffAction } from '@/lib/staff/audit'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const ORG_COLUMNS = 'id, name, is_personal, verified, created_at'
+const ORG_COLUMNS = 'id, name, is_personal, verified, created_at, status'
 
 // ─── GET /api/admin/buyer-orgs ─────────────────────────────────────────────
 // Column-explicit select (never select star — migration 080's column-grant
@@ -16,11 +16,20 @@ const ORG_COLUMNS = 'id, name, is_personal, verified, created_at'
 // callers (AE/BD) are scoped to their assigned companies only — the read
 // path is scoped exactly like the write path (Pitfall 4: never widen GET
 // without also adding the ae_user_id filter).
-export async function GET() {
+//
+// 23-06: `?unassigned=1` adds leadership's unassigned-lead queue —
+// buyer_orgs WHERE ae_user_id IS NULL — reusing this same GET rather than a
+// parallel queue table/route (RESEARCH anti-pattern warning). The param is
+// silently ignored for non-leadership callers: they are already scoped to
+// their own assigned companies (an AE/BD has no "unassigned" view to ask
+// for), so the existing .eq('ae_user_id', ...) branch below still wins.
+export async function GET(request: Request) {
   const auth = await requireStaff()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
+
+  const unassignedOnly = new URL(request.url).searchParams.get('unassigned') === '1'
 
   const service = createServiceClient()
   let query = service
@@ -29,6 +38,8 @@ export async function GET() {
     .order('created_at', { ascending: false })
   if (auth.staffRole !== 'leadership') {
     query = query.eq('ae_user_id', auth.user.id)
+  } else if (unassignedOnly) {
+    query = query.is('ae_user_id', null)
   }
   const { data, error } = await query
 

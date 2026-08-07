@@ -492,6 +492,49 @@ Internal Funūn Team Member accounts become first-class, role-typed (Leadership 
 - Phase 25 requirement IDs: 9 total
 - Complete: 9 (all live-verified via the 25-07 production security smoke — staff tables service-role-only incl. no TRUNCATE after 091; `ae_user_id` private; assignment-scope 404; one audit row per action; AE-scoped queue; leadership-only page redirect; owner seeded Leadership + directory row)
 
+## v1.4 — Phase 23: Buyer Onboarding (Model A) & /sync Unification Requirements
+
+Model A (sales-led B2B) buyer onboarding plus the shared front-end foundation both onboarding models reuse: the Browse Catalogue opens to public browsing, a Funūn-styled Login/Register modal turns interest into a light-touch buyer **company** account, and Funūn leadership assigns an AE who shepherds the company from `pending_onboarding` to `active`. Built on the now-live Phase 25 AE/lead-routing infra + migration 095. All live-verified against production Supabase via the 23-08 onboarding-loop smoke; the deployed `/sync` surface goes live when this branch deploys.
+
+### Public browse & modal
+
+- **SYNC-02**: The Browse Catalogue is public — a logged-out visitor can browse `/sync/catalog` and play previews, with engagement (shortlist / License) gated behind the login/register modal
+- **SYNC-07**: A Funūn light `.fnbl` Login/Register modal (Marmoset mirror) opens over the browse (scrim); both "Register" and "Talk to a sales rep" doors are surfaced
+- **SYNC-09**: The buyer namespace is unified under `/sync/*` with a public `/sync` landing page (the shared foundation both onboarding models reuse)
+
+### Account model & register pipeline
+
+- **SYNC-01**: The buyer **company** account model — `buyer_orgs.status` lifecycle (`pending_onboarding` → `active`) + lead-qualifying fields (contact name/email/phone/role, use-case, source), with a column-privacy split (status + use_case buyer-readable; contact_* / source staff-only) [migration 095]
+- **SYNC-03**: Light-touch Register creates a real buyer company account (work email + phone minimum) — not a bare lead — via the public, rate-limited, enumeration-safe `POST /api/sync/register`
+- **SYNC-04**: Both "Register" and "Talk to a sales rep" doors feed one account-creation pipeline
+- **SYNC-05**: A new-buyer signup lands in the admin queue AND routes to the assigned AE/BD in-app + a Resend email (the shipped Phase 25 lead-routing hook)
+- **SYNC-08**: Existing buyers log in with email/password (buyer password auth), landing role-aware on `/sync/catalog`
+
+### AE-assisted onboarding & oversight
+
+- **SYNC-06**: AE-assisted onboarding — leadership assigns one AE (unassigned-lead queue), and the AE advances the company `pending_onboarding` → `active` from the `/admin/client-partners/[orgId]` detail page the lead notification links to
+- **SYNC-10**: Cross-company purchase visibility — company members see their own company's activity via migration 081 RLS (the approver-only spend-oversight UI is deferred)
+
+**Traceability (Phase 23):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| SYNC-01 | Phase 23 | 23-01 (+095) | Complete |
+| SYNC-02 | Phase 23 | 23-03 | Complete |
+| SYNC-03 | Phase 23 | 23-04 | Complete |
+| SYNC-04 | Phase 23 | 23-04 | Complete |
+| SYNC-05 | Phase 23 | 23-04 | Complete |
+| SYNC-06 | Phase 23 | 23-06 | Complete |
+| SYNC-07 | Phase 23 | 23-07 | Complete |
+| SYNC-08 | Phase 23 | 23-05 | Complete |
+| SYNC-09 | Phase 23 | 23-02 | Complete |
+| SYNC-10 | Phase 23 | 23-06 (existing 081 RLS) | Complete (oversight UI deferred) |
+
+**Coverage (Phase 23):**
+
+- Phase 23 requirement IDs: 10 total
+- Complete: 10 (all verified via the 23-08 production onboarding-loop smoke against live Supabase after migrations 092–095 landed — register → pending_onboarding → admin queue → AE assign → detail page (no 404) → Active → password login → gated browse; deployed-domain `/sync` UAT pending the code deploy; SYNC-10 spend-oversight UI deferred)
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-07 — Phase 25 registered all 9 TEAM requirement IDs (staff gate/schema, provisioning + Client Partner management, admin surface/theme/directory), all Complete and live-verified against production after migrations 089/090 + corrective 091 (REVOKE ALL closing the 089 TRUNCATE gap) landed and the six-point 25-07 security smoke passed; owner seeded as Leadership with a funun_staff directory row*
+*Last updated: 2026-08-07 — Phase 23 registered all 10 SYNC requirement IDs (public browse + modal, buyer company account model + register pipeline, AE-assisted onboarding), all Complete and verified via the 23-08 production onboarding-loop smoke after migrations 092–095 landed; deployed `/sync` UAT pending the branch deploy*

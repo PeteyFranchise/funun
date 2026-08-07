@@ -7,6 +7,11 @@ import { RequestComposer } from '@/components/buyer/RequestComposer'
 export const dynamic = 'force-dynamic'
 
 // ─── New request page (D-07/D-02) ──────────────────────────────────────────
+// 23-02: moved from app/(buyer-portal)/buyers/requests/new/page.tsx to
+// app/sync/requests/new/page.tsx as part of the /buyers/* → /sync/*
+// unification. Self-gates to /sync/access (the non-gating /sync layout no
+// longer backstops this).
+//
 // The project is pre-selected via a `?project=` query param — arriving from
 // a catalog card or shortlist entry (plan 16-05), never chosen here. This
 // page owns no project browse UI of its own (out of this plan's scope).
@@ -24,7 +29,7 @@ export default async function NewRequestPage({
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/buyers/access')
+  if (!user) redirect('/sync/access')
 
   let target: Awaited<ReturnType<typeof authorizeRequestTarget>> | null = null
   if (projectId) {
@@ -35,7 +40,7 @@ export default async function NewRequestPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/buyers/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
+      <Link href="/sync/requests" className="text-sm text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]">
         ← Requests
       </Link>
       <div className="mt-4">
@@ -54,7 +59,7 @@ export default async function NewRequestPage({
               rights-ready project to build a request against.
             </p>
             <Link
-              href="/buyers/catalog"
+              href="/sync/catalog"
               className="mt-4 inline-block text-xs font-medium text-[color:var(--indigo)] transition hover:text-[color:var(--fuchsia)]"
             >
               Browse catalog →

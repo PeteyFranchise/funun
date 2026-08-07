@@ -721,7 +721,33 @@ and **distinct from artist (user) accounts**.
 - **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout, Funūn-branded, adds "Talk to a sales rep". Opens over the browse (scrim, like the existing License modal).
 - **Logo:** adopt one of the 5 wordmark explorations (`~/Desktop/Fununbuyerbrowse/FUNUN Logo Exploration.html`).
 
-**Status:** Discussion in progress (23-CONTEXT.md) — being nailed down before `/gsd-plan-phase 23`.
+**Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
+
+**Plans:** 7/8 plans executed
+
+**Wave 1 — Foundations**
+
+- [x] 23-01-PLAN.md — Migration 095 (renumbered from 092 — 092/093/094 taken by review-fix migrations): buyer_orgs status (pending_onboarding→active) + lead-qualifying fields + per-column grants; text-test; BuyerOrg type [W1]
+- [x] 23-02-PLAN.md — /sync unification: rename /buyers/*→/sync/* (non-gating layout) + public /sync landing page [W1]
+
+**Wave 2 — Core capabilities** *(blocked on Wave 1)*
+
+- [x] 23-03-PLAN.md — Public catalogue browse: anon-safe loadCatalogPage (Pitfall 3 fix) + open /sync/catalog logged-out [W2]
+- [x] 23-04-PLAN.md — Register pipeline: pure builder + POST /api/sync/register (service-role, rate-limited, real lead routing) [W2]
+- [x] 23-05-PLAN.md — Buyer password auth: role-aware redirect to /sync/catalog + recovery-link invite (isolated/swappable) [W2]
+- [x] 23-06-PLAN.md — AE routing + status transition: /admin/client-partners/[orgId] detail (Pitfall 4) + unassigned queue [W2]
+
+**Wave 3 — Modal** *(blocked on Wave 2)*
+
+- [x] 23-07-PLAN.md — Login/Register modal (.fnbl Marmoset mirror, two doors) + CatalogBrowserLight engagement gating + landing CTA [W3]
+
+**Wave 4 — Human checkpoint** *(blocked on Wave 3)*
+
+- [ ] 23-08-PLAN.md — [BLOCKING] owner pushes migration 092 + live onboarding-loop smoke + register SYNC-01..10 [W4]
+
+**Open product question for the owner (confirm before executing):** buyer auth = email/password (planned, per the locked Marmoset design — 23-05) vs magic-link-only. 23-05 is isolated so it can be swapped with one `type` change. Note: Resend is NOT configured in prod, so invite/reset emails no-op until configured — the in-app notification + admin queue are the reliable channels.
+
+**Status:** Planned (8 plans, 4 waves) 2026-08-07 — ready for `/gsd-execute-phase 23` (pending the auth-mechanism confirmation).
 
 ### Phase 24: Buyer Onboarding · Model B — Self-Serve Creator Access
 
