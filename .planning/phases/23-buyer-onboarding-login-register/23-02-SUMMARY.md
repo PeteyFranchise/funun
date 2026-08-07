@@ -159,3 +159,7 @@ None - no external service configuration required.
 ---
 *Phase: 23-buyer-onboarding-login-register*
 *Completed: 2026-08-07*
+
+## Self-Check: PASSED
+
+All 8 created files verified present on disk; all 3 task commits (78188bc, 76eb7b2, fac94f1) plus the summary docs commit (69aa8d8) verified present in git log.
