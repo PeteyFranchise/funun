@@ -26,6 +26,9 @@ export default async function SplitSheetsListPage() {
     song_name: r.song_name,
     status: r.status as SplitSheetListItem['status'],
     created_at: r.created_at,
+    // review #11: the delete-draft button is initiator-only (the DELETE endpoint
+    // requires it); surface that so the button never renders for a party-only viewer.
+    canDelete: r.initiator_user_id === user.id,
     parties: (r.split_sheet_parties ?? []).map(p => ({
       id: p.id,
       name: p.name,

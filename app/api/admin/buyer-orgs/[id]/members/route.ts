@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/admin/gate'
 import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
 import { normalizeBuyerRole } from '@/lib/buyers/org'
+import { logStaffAction } from '@/lib/staff/audit'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -65,6 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const buyerRole = normalizeBuyerRole(body.buyer_role)
   const isOrgAdmin = body.is_org_admin === true
 
+  const service = createServiceClient()
   try {
     const { userId, emailSent } = await createBuyerAccount({
       email,
@@ -73,6 +75,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       buyerRole,
       isOrgAdmin,
       invitedBy: auth.user.id,
+    })
+
+    // review #9: this staff mutation was previously unaudited — record it (D-04).
+    await logStaffAction(service, {
+      actorId: auth.user.id,
+      action: 'add_buyer_member',
+      targetType: 'buyer_org',
+      targetId: orgId,
+      changes: { user_id: userId, buyer_role: buyerRole, is_org_admin: isOrgAdmin },
     })
 
     return NextResponse.json(

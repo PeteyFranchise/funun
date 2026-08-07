@@ -70,7 +70,32 @@ export async function POST(
   }
 
   if (decision === 'approve') {
-    // Flip the grant row to approved and record the admin decision.
+    // Reflect the approved capability on the profile BEFORE flipping the grant,
+    // so a failure here leaves the grant 'pending' and the whole approval stays
+    // cleanly retryable (the double-decide guard above would otherwise 409 a retry).
+    // D-11: attach the pre-picked badge (role_slugs collected at request time).
+    // INDUSTRY-06 lane flip (review #6): an approved 'industry' grant must also set
+    // member_type='industry' so the account lane matches the capability — the same
+    // rule grantCapability() applies; this route previously updated only roles, so
+    // an artist approved for industry stayed member_type='artist'.
+    const roleSlugs: string[] = Array.isArray(grant.role_slugs) ? grant.role_slugs : []
+    const profileUpdate: {
+      roles?: ReturnType<typeof mapSlugsToProfileRoles>
+      member_type?: 'industry'
+    } = {}
+    if (roleSlugs.length > 0) profileUpdate.roles = mapSlugsToProfileRoles(roleSlugs)
+    if (grant.capability === 'industry') profileUpdate.member_type = 'industry'
+    if (Object.keys(profileUpdate).length > 0) {
+      const { error: profileError } = await service
+        .from('user_profiles')
+        .update(profileUpdate)
+        .eq('id', grant.profile_id)
+      if (profileError) {
+        return NextResponse.json({ error: profileError.message }, { status: 500 })
+      }
+    }
+
+    // Now flip the grant row to approved and record the admin decision.
     const { error: updateError } = await service
       .from('capability_grants')
       .update({
@@ -80,19 +105,8 @@ export async function POST(
         source: 'admin_approved',
       })
       .eq('id', grant.id)
-
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
-    }
-
-    // D-11: attach the pre-picked badge — role_slugs were collected at request
-    // time; no new input from the caller needed.
-    const roleSlugs: string[] = Array.isArray(grant.role_slugs) ? grant.role_slugs : []
-    if (roleSlugs.length > 0) {
-      await service
-        .from('user_profiles')
-        .update({ roles: mapSlugsToProfileRoles(roleSlugs) })
-        .eq('id', grant.profile_id)
     }
 
     return NextResponse.json({ data: { grantId: grant.id, status: 'approved' as const } })

@@ -61,6 +61,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
+  // Self-lockout guard (review #7): a leadership admin cannot deactivate or
+  // re-role their OWN account here. The caller is always leadership and can
+  // never target themselves, so at least one active leadership principal always
+  // remains — the "last leadership" can never be removed/downgraded via this route.
+  if (id === auth.user.id) {
+    return NextResponse.json(
+      { error: 'You can’t change your own staff role or active status here.' },
+      { status: 400 }
+    )
+  }
+
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const result = sanitizeStaffPatch(body)
   if ('error' in result) {
@@ -78,7 +89,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (nextAppMetadataRole !== undefined) {
     const { error: authError } = await service.auth.admin.updateUserById(id, {
-      app_metadata: { staff_role: nextAppMetadataRole },
+      // staff_role is the authoritative gate value. Also clear the legacy
+      // app_metadata.is_admin fallback (review #7): otherwise is_admin=true would
+      // override this deactivation/downgrade, since getStaffRole() treats
+      // is_admin===true as leadership regardless of staff_role.
+      app_metadata: { staff_role: nextAppMetadataRole, is_admin: false },
     })
     if (authError) {
       return NextResponse.json({ error: authError.message }, { status: 500 })
