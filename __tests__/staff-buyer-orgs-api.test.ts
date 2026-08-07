@@ -2,8 +2,10 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
+import { createBuyerAccount } from '@/lib/buyers/createBuyerAccount'
 import { PATCH as orgPATCH } from '@/app/api/admin/buyer-orgs/[id]/route'
 import { PATCH as aePATCH } from '@/app/api/admin/buyer-orgs/[id]/ae/route'
+import { GET as orgsGET, POST as orgsPOST } from '@/app/api/admin/buyer-orgs/route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -19,6 +21,11 @@ jest.mock('@/lib/staff/audit', () => ({
 
 jest.mock('@/lib/notifications', () => ({
   createNotification: jest.fn(),
+}))
+
+jest.mock('@/lib/buyers/createBuyerAccount', () => ({
+  createBuyerAccount: jest.fn(),
+  DuplicateBuyerAccountError: class DuplicateBuyerAccountError extends Error {},
 }))
 
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -338,5 +345,161 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     )
 
     expect(res.status).toBe(401)
+  })
+})
+
+// Builds a fake service client for GET /api/admin/buyer-orgs — an
+// awaitable/chainable buyer_orgs query (supports .eq() being appended for
+// non-leadership scoping, mirroring supabase-js's PostgrestFilterBuilder
+// shape) plus a per-org buyer_members count lookup.
+function mockListService(orgs: Array<{ id: string; name: string; ae_user_id: string | null }>) {
+  let filtered = orgs
+  const eqSpy = jest.fn((col: string, val: string) => {
+    filtered = filtered.filter(r => (r as Record<string, unknown>)[col] === val)
+    return builder
+  })
+  const builder: {
+    eq: typeof eqSpy
+    then: (resolve: (v: { data: typeof orgs; error: null }) => void) => void
+  } = {
+    eq: eqSpy,
+    then: resolve => resolve({ data: filtered, error: null }),
+  }
+  const orderSpy = jest.fn(() => builder)
+  const selectSpy = jest.fn(() => ({ order: orderSpy }))
+  const memberCountEq = jest.fn(async () => ({ count: 0 }))
+  const memberSelectSpy = jest.fn(() => ({ eq: memberCountEq }))
+  const from = jest.fn((table: string) => {
+    if (table === 'buyer_members') return { select: memberSelectSpy }
+    return { select: selectSpy }
+  })
+  return { from, selectSpy, orderSpy, eqSpy }
+}
+
+function mockCreateOrgService() {
+  const insertSpy = jest.fn(() => ({
+    select: jest.fn(() => ({
+      single: jest.fn(async () => ({
+        data: { id: ORG_UUID, name: 'Acme Co', is_personal: false, verified: false, created_at: '2026-01-01' },
+        error: null,
+      })),
+    })),
+  }))
+  const from = jest.fn((table: string) => {
+    if (table === 'buyer_orgs') return { insert: insertSpy }
+    return {}
+  })
+  return { from, insertSpy }
+}
+
+describe('POST /api/admin/buyer-orgs — widened staff-create gate', () => {
+  it('succeeds for an AE caller (was 403 under verifyAdmin) and logs create_buyer_account', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: AE_UUID },
+      staffRole: 'ae',
+    })
+    const service = mockCreateOrgService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: 'new-admin-id', emailSent: true })
+
+    const res = await orgsPOST(
+      jsonRequest(
+        'http://t.local/api/admin/buyer-orgs',
+        { org_name: 'Acme Co', admin_email: 'admin@acme.test', admin_display_name: 'Admin' },
+        'POST'
+      )
+    )
+
+    expect(res.status).toBe(201)
+    expect(logStaffAction).toHaveBeenCalledTimes(1)
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: AE_UUID,
+      action: 'create_buyer_account',
+      targetType: 'buyer_org',
+      targetId: ORG_UUID,
+    })
+  })
+
+  it('succeeds for a BD caller', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: OTHER_AE_UUID },
+      staffRole: 'bd',
+    })
+    const service = mockCreateOrgService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: 'new-admin-id', emailSent: true })
+
+    const res = await orgsPOST(
+      jsonRequest(
+        'http://t.local/api/admin/buyer-orgs',
+        { org_name: 'Acme Co', admin_email: 'admin@acme.test', admin_display_name: 'Admin' },
+        'POST'
+      )
+    )
+
+    expect(res.status).toBe(201)
+  })
+
+  it('returns 401 with no session', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Unauthorized', status: 401 })
+
+    const res = await orgsPOST(
+      jsonRequest('http://t.local/api/admin/buyer-orgs', { org_name: 'X' }, 'POST')
+    )
+
+    expect(res.status).toBe(401)
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/admin/buyer-orgs — scoped listing for non-leadership', () => {
+  it('returns all orgs for leadership, unscoped', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const orgs = [
+      { id: 'org-1', name: 'Org One', ae_user_id: AE_UUID },
+      { id: 'org-2', name: 'Org Two', ae_user_id: null },
+    ]
+    const service = mockListService(orgs)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await orgsGET()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toHaveLength(2)
+    expect(service.eqSpy).not.toHaveBeenCalled()
+  })
+
+  it('scopes the list to ae_user_id === caller for a non-leadership caller', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: AE_UUID },
+      staffRole: 'ae',
+    })
+    const orgs = [
+      { id: 'org-1', name: 'Org One', ae_user_id: AE_UUID },
+      { id: 'org-2', name: 'Org Two', ae_user_id: OTHER_AE_UUID },
+    ]
+    const service = mockListService(orgs)
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await orgsGET()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(service.eqSpy).toHaveBeenCalledWith('ae_user_id', AE_UUID)
+    expect(body.data).toHaveLength(1)
+    expect(body.data[0].id).toBe('org-1')
+  })
+
+  it('returns 401 with no session', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Unauthorized', status: 401 })
+
+    const res = await orgsGET()
+
+    expect(res.status).toBe(401)
+    expect(createServiceClient).not.toHaveBeenCalled()
   })
 })
