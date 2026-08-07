@@ -36,7 +36,8 @@ export default async function SyncLayout({ children }: { children: React.ReactNo
     data: { user },
   } = await supabase.auth.getUser()
 
-  let member: { org_id: string; buyer_role: BuyerRole; is_org_admin: boolean } | null = null
+  type BuyerMembership = { org_id: string; buyer_role: BuyerRole; is_org_admin: boolean }
+  let member: BuyerMembership | null = null
   let orgName = ''
 
   const isBuyer = user != null && (user.app_metadata as { role?: string })?.role === 'buyer'
@@ -46,7 +47,7 @@ export default async function SyncLayout({ children }: { children: React.ReactNo
       .select('org_id, buyer_role, is_org_admin')
       .eq('user_id', user!.id)
       .maybeSingle()
-    member = memberRow as typeof member
+    member = memberRow as BuyerMembership | null
 
     if (member) {
       const { data: org } = await supabase
