@@ -1,4 +1,11 @@
 import { createApiClient } from '@/lib/supabase/server'
+import { getStaffRole, ALL_STAFF_ROLES, type StaffRole } from './staff-role'
+
+// getStaffRole + StaffRole moved to ./staff-role (client-safe, no server imports)
+// so client components can import them; re-exported here so every existing
+// importer of @/lib/admin/gate is unaffected (D-01, single authority).
+export { getStaffRole } from './staff-role'
+export type { StaffRole } from './staff-role'
 
 // ─── Staff auth gate (Phase 25 — generalized from the binary admin gate) ──
 // Must run on every /api/admin/* handler before createServiceClient() is
@@ -9,10 +16,6 @@ import { createApiClient } from '@/lib/supabase/server'
 // redirect alone is not relied upon as the authority decision.
 // D-01 (Phase 25): requireStaff() is the single authority every staff route
 // calls before touching a service-role client — no parallel auth path.
-
-export type StaffRole = 'leadership' | 'ae' | 'bd'
-
-const ALL_STAFF_ROLES: StaffRole[] = ['leadership', 'ae', 'bd']
 
 type ApiUser = NonNullable<
   Awaited<ReturnType<Awaited<ReturnType<typeof createApiClient>>['auth']['getUser']>>['data']['user']
@@ -27,19 +30,6 @@ type VerifyAdminResult =
   | { error: 'Unauthorized'; status: 401 }
   | { error: 'Forbidden'; status: 403 }
   | { user: ApiUser }
-
-// Pure — reads only app_metadata, never I/O, never throws. staff_role is
-// authoritative when present; app_metadata.is_admin === true is a
-// backward-compat fallback to 'leadership' for the pre-existing owner
-// bootstrap account (D-02/A1) so it is not locked out on deploy.
-export function getStaffRole(user: { app_metadata?: unknown }): StaffRole | null {
-  const meta = user?.app_metadata as { staff_role?: string; is_admin?: boolean } | undefined
-  if (meta?.staff_role === 'leadership' || meta?.staff_role === 'ae' || meta?.staff_role === 'bd') {
-    return meta.staff_role
-  }
-  if (meta?.is_admin === true) return 'leadership'
-  return null
-}
 
 export async function requireStaff(allowed: StaffRole[] = ALL_STAFF_ROLES): Promise<RequireStaffResult> {
   const supabase = await createApiClient()

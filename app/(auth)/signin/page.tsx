@@ -4,13 +4,14 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { postSignInPath } from '@/lib/auth/postSignInPath'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
 function SignInForm() {
   const router = useRouter()
-  const next = useSearchParams().get('next') ?? '/vault'
+  const next = useSearchParams().get('next')
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
@@ -23,14 +24,17 @@ function SignInForm() {
     setSubmitting(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       setSubmitting(false)
       return
     }
 
-    router.push(next)
+    // Role-aware landing (25-11): staff → admin surface, others → vault; an
+    // explicit same-origin ?next= deep link wins. postSignInPath guards against
+    // off-site open redirects the prior raw router.push(next) allowed.
+    router.push(postSignInPath({ user: data.user, next }))
     router.refresh()
   }
 
