@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { createNotification } from '@/lib/notifications'
 import { PATCH as orgPATCH } from '@/app/api/admin/buyer-orgs/[id]/route'
+import { PATCH as aePATCH } from '@/app/api/admin/buyer-orgs/[id]/ae/route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -14,6 +15,10 @@ jest.mock('@/lib/admin/gate', () => ({
 
 jest.mock('@/lib/staff/audit', () => ({
   logStaffAction: jest.fn(),
+}))
+
+jest.mock('@/lib/notifications', () => ({
+  createNotification: jest.fn(),
 }))
 
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -62,7 +67,30 @@ function mockService(options: {
 beforeEach(() => {
   jest.clearAllMocks()
   ;(logStaffAction as jest.Mock).mockResolvedValue({ ok: true })
+  ;(createNotification as jest.Mock).mockResolvedValue({ ok: true })
 })
+
+// Builds a fake service client covering the buyer_orgs assignment-write
+// call shape used by PATCH /api/admin/buyer-orgs/[id]/ae.
+function mockAssignService(options: { updateError?: { message: string } | null } = {}) {
+  const { updateError = null } = options
+  const updateSpy = jest.fn((update: Record<string, unknown>) => ({
+    eq: jest.fn(() => ({
+      select: jest.fn(() => ({
+        single: jest.fn(async () => ({
+          data: updateError ? null : { id: ORG_UUID, name: 'Acme Co', ...update },
+          error: updateError,
+        })),
+      })),
+    })),
+  }))
+  const auditInsert = jest.fn(async () => ({ error: null }))
+  const from = jest.fn((table: string) => {
+    if (table === 'staff_audit_log') return { insert: auditInsert }
+    return { update: updateSpy }
+  })
+  return { from, updateSpy, auditInsert }
+}
 
 describe('PATCH /api/admin/buyer-orgs/[id] — scoped, allowlisted, audited edit', () => {
   it('lets leadership edit name on any org, logs the action, returns 200', async () => {
@@ -208,6 +236,104 @@ describe('PATCH /api/admin/buyer-orgs/[id] — scoped, allowlisted, audited edit
 
     const res = await orgPATCH(
       jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}`, { name: 'X' }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(401)
+  })
+})
+
+describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment + notify', () => {
+  it('returns 403 for an AE/BD caller — assignment is leadership-only (D-03)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(403)
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('leadership assigning an AE sets ae_user_id, logs assign_ae, and notifies the AE; returns 200', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockAssignService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateSpy).toHaveBeenCalledWith({ ae_user_id: AE_UUID })
+    expect(logStaffAction).toHaveBeenCalledTimes(1)
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: LEADERSHIP_UUID,
+      action: 'assign_ae',
+      targetType: 'buyer_org',
+      targetId: ORG_UUID,
+      changes: { ae_user_id: AE_UUID },
+    })
+    expect(createNotification).toHaveBeenCalledTimes(1)
+    const [, payload] = (createNotification as jest.Mock).mock.calls[0]
+    expect(payload.userId).toBe(AE_UUID)
+    expect(payload.type).toBe('ae_assigned')
+  })
+
+  it('returns 400 for a non-UUID ae_user_id and writes nothing', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockAssignService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: 'not-a-uuid' }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('accepts ae_user_id: null (unassign), logs it, and skips the notification', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockAssignService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: null }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateSpy).toHaveBeenCalledWith({ ae_user_id: null })
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: LEADERSHIP_UUID,
+      action: 'assign_ae',
+      targetType: 'buyer_org',
+      targetId: ORG_UUID,
+      changes: { ae_user_id: null },
+    })
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when there is no session', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Unauthorized', status: 401 })
+
+    const res = await aePATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
