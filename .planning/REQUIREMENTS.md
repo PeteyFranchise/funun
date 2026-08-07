@@ -451,6 +451,47 @@ Industry becomes a first-class account capability: external professionals (curat
 - Phase 28 requirement IDs: 7 total
 - Complete: 7 (all live-verified via production smoke — industry posts an Antenna opportunity; artist + industry post in the Green Room; buyer RLS-rejected; @funun app-blocked)
 
+## v1.4 — Phase 25: Funūn Team Accounts & AE (Staff RBAC) Requirements
+
+Internal Funūn Team Member accounts become first-class, role-typed (Leadership / AE / BD), with a service-role-only staff schema, assignment-scoped Client Partner management, an audited admin surface, a themeable Team Console, and an all-roles Team Member Directory. Backed by migrations 089 (funun_staff + staff_audit_log, RLS-enabled zero-policy), 090 (buyer_orgs.ae_user_id private), and 091 (REVOKE ALL hardening closing 089's TRUNCATE gap) — all live (`LOCAL=REMOTE` through 091) and verified by a six-point production security smoke.
+
+### Gate & schema
+
+- **TEAM-01**: Staff role gate — `getStaffRole`/`requireStaff` (leadership/ae/bd) generalized from `is_admin`, with the `verifyAdmin` alias preserved so existing admin routes are untouched; `is_admin=true` falls back to Leadership
+- **TEAM-02**: Staff schema — `funun_staff` + `staff_audit_log` are service-role-only (RLS-enabled, zero-policy, REVOKE ALL from anon/authenticated), and `buyer_orgs.ae_user_id` is a private column (not in the authenticated SELECT allowlist)
+
+### Provisioning & Client Partner management
+
+- **TEAM-03**: Staff provisioning — `createStaffAccount` (atomic `app_metadata.staff_role`, phantom-row reconciliation, `funun_staff` insert, invite) behind leadership-only `/api/admin/staff` routes
+- **TEAM-04**: Assignment-scoped Client Partner editing + AE assignment — field-allowlisted edits gated by `isAssignedToOrg` (404-not-403 on scope denial), leadership-only AE assignment and reassignment (notifies both gaining and losing AE)
+- **TEAM-05**: Staff audit trail — `logStaffAction` writes exactly one `staff_audit_log` row per staff action
+- **TEAM-06**: Lead/work routing — AE-assigned notification builders + the AE/BD-scoped "My Client Partners" queue (the buyer-signup lead-routing call site lands in Phase 23)
+
+### Admin surface, theme & directory
+
+- **TEAM-07**: Staff admin surface — `/admin` widened from binary `is_admin` to any staff role, with a role-aware sidebar (leadership-only links gated; AE/BD see their scoped surfaces)
+- **TEAM-08**: Team Console light/dark theme — cookie-backed, no-flash toggle across the `(admin)` surface
+- **TEAM-09**: Team Member Directory — all-roles contact directory with card and list views
+
+**Traceability (Phase 25):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| TEAM-01 | Phase 25 | 25-01 | Complete |
+| TEAM-02 | Phase 25 | 25-03, 25-07 (+091) | Complete |
+| TEAM-03 | Phase 25 | 25-04 | Complete |
+| TEAM-04 | Phase 25 | 25-05, 25-09 | Complete |
+| TEAM-05 | Phase 25 | 25-02 | Complete |
+| TEAM-06 | Phase 25 | 25-02, 25-06 | Complete |
+| TEAM-07 | Phase 25 | 25-06 | Complete |
+| TEAM-08 | Phase 25 | 25-08 | Complete |
+| TEAM-09 | Phase 25 | 25-10 | Complete |
+
+**Coverage (Phase 25):**
+
+- Phase 25 requirement IDs: 9 total
+- Complete: 9 (all live-verified via the 25-07 production security smoke — staff tables service-role-only incl. no TRUNCATE after 091; `ae_user_id` private; assignment-scope 404; one audit row per action; AE-scoped queue; leadership-only page redirect; owner seeded Leadership + directory row)
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-06 — Phase 28 registered all 7 INDUSTRY requirement IDs (industry capability/Antenna, Green Room access, onboarding/directory), all Complete and live-verified against production after corrective migrations 085–088 landed and end-to-end smoke passed (industry Antenna post; artist+industry Green Room posts; buyer RLS-reject; @funun staff app-block)*
+*Last updated: 2026-08-07 — Phase 25 registered all 9 TEAM requirement IDs (staff gate/schema, provisioning + Client Partner management, admin surface/theme/directory), all Complete and live-verified against production after migrations 089/090 + corrective 091 (REVOKE ALL closing the 089 TRUNCATE gap) landed and the six-point 25-07 security smoke passed; owner seeded as Leadership with a funun_staff directory row*

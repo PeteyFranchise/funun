@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
-stopped_at: "Phase 25 Waves 1-4 COMPLETE (9/10 plans: 25-01..06, 25-08, 25-09, 25-10). Staff RBAC backbone built: getStaffRole/requireStaff gate (generalized from is_admin, verifyAdmin alias kept), lib/staff/{scope,audit,notifications,createStaffAccount}, /api/admin/staff (leadership CRUD) + /api/admin/buyer-orgs (assignment-scoped edit / leadership-only AE assign+reassign / widened create + AE-scoped list), /admin surface widened to any staff role with role-aware sidebar, pages /admin/team-members (leadership) + /admin/my-client-partners (AE/BD scoped) + /admin/directory (all-roles Team Member Directory, card+list), Team Console light/dark theme. createStaffAccount reuses the Phase-28 phantom-row reconciliation (no staff trigger branch). Migrations 089_funun_staff_and_audit + 090_buyer_orgs_ae_assignment AUTHORED + text-tested (14/14) + committed, NOT pushed. Full suite 127 suites/1542 tests green; tsc+lint clean; tree clean. ONLY REMAINING: 25-07 (Wave 5) = HUMAN-GATED — owner pushes 089/090 via Codex (supabase db push; confirm LOCAL=REMOTE through 090) + seeds the bootstrap Leadership account (today's is_admin admins auto-become Leadership) + confirms /admin loads for it. AWAITING: owner runs the 25-07 push+seed -> reply 'pushed'. THEN I: register TEAM-01..TEAM-09 in REQUIREMENTS.md (25-07's job, deferred by every plan), close 25-07-SUMMARY, gsd-verify Phase 25, then build 25-11 (login-routing Option A: post-signin staff->/admin else->/dashboard) as the agreed fast-follow. NOTE: browser/visual check of the Team Console (theme toggle, directory, reassign) needs the staff session the push+seed creates — do it post-push."
-last_updated: "2026-08-07T02:15:00.000Z"
+stopped_at: "Phase 25 COMPLETE + live-verified (2026-08-07). Funūn Team Member accounts are first-class staff RBAC: getStaffRole/requireStaff gate (leadership/ae/bd; is_admin->leadership fallback; verifyAdmin alias kept), service-role-only funun_staff + staff_audit_log, private buyer_orgs.ae_user_id, createStaffAccount + /api/admin/staff (leadership CRUD), assignment-scoped /api/admin/buyer-orgs edit + leadership-only AE assign/reassign (notifies both AEs), /admin widened to any staff role + role-aware sidebar, pages /admin/team-members + /admin/my-client-partners + /admin/directory, Team Console light/dark theme. Migrations 089/090 + corrective 091 (REVOKE ALL closing 089's TRUNCATE/TRIGGER/REFERENCES gap — RLS doesn't gate TRUNCATE) ALL LIVE (LOCAL=REMOTE through 091). 25-07 six-point production security smoke all GREEN; owner peter.zora@gmail.com (1d7990e2-...) seeded staff_role='leadership' + funun_staff directory row, reaches /admin/my-client-partners + /admin/directory as Leadership. TEAM-01..09 registered Complete in REQUIREMENTS.md; 25-07-SUMMARY closed. Full suite green. NEXT (agreed fast-follow): build 25-11 = login-routing Option A — post-signin redirect staff -> /admin/my-client-partners (NOTE: no /admin index page exists, GET /admin 404s — route to the sub-page or add an index), everyone else -> /dashboard. Then queued: Phase 23 (buyer onboarding Model A + /sync unification + landing), 26 (sync-library), 27 (artist invite-only). Background task task_99e1252f (harden 058 verification_audit_log + reports — identical TRUNCATE gap, mirror 091) running independently. Optional: formal /gsd-verify 25 (the live production smoke already verified the phase goal)."
+last_updated: "2026-08-07T03:00:00.000Z"
 last_activity: 2026-08-07
-last_activity_desc: "Phase 25 Waves 1-4 executed (9 plans, all green); 25-07 human migration-push checkpoint pending"
+last_activity_desc: "Phase 25 CLOSED — 089/090 + corrective 091 live + 6-point security smoke green; owner seeded Leadership; TEAM-01..09 registered complete"
 progress:
   total_phases: 28
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 144
-  completed_plans: 138
-  percent: 71
+  completed_plans: 139
+  percent: 72
 ---
 
 # Project State
