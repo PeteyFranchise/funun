@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 23
 current_phase_name: buyer-onboarding-login-register
 status: board-clear
-stopped_at: "Phase 23 Waves 1-3 COMPLETE (7/8 plans: 23-01..07) on branch codex/phase-23-buyer-onboarding (pushed). Buyer onboarding Model A + /sync built: migration 095_buyer_org_lead_fields (buyer_orgs.status pending_onboarding→active + 5 lead columns w/ column-privilege split) AUTHORED + text-tested (6/6), NOT pushed; /buyers/*→/sync/* unified + public /sync landing; public logged-out /sync/catalog (anon-crash bug fixed); POST /api/sync/register (public, rate-limited, enumeration-safe, wires REAL Phase-25 lead routing resolveLeadRecipient/buildLeadRoutedNotification); buyer PASSWORD auth (role-aware redirect→/sync/catalog, recovery-invite); AE onboarding surface (/admin/client-partners/[orgId] detail resolves 404'd notif links, status transition via staff-edit allowlist, unassigned-lead queue); .fnbl LoginRegisterModal (Marmoset mirror, Register + Talk-to-sales → one pipeline) wired into browse + landing. Full suite 135 suites/1610 green; tsc+lint+build clean; tree clean. ONLY REMAINING: 23-08 (Wave 4) = HUMAN-GATED — owner pushes migration 095 via Codex (supabase db push; confirm LOCAL=REMOTE through 095) + runs the onboarding-loop smoke, then registers SYNC-01..10 in REQUIREMENTS.md. AWAITING owner: push 095 + smoke → 'pushed'. THEN open Phase 23 PR — NOTE it will conflict with PR #57 (batch-2 review fixes) in app/api/admin/buyer-orgs/[id]/route.ts + route.ts + staff-buyer-orgs-api.test.ts (23-06 extended the allowlist on the pre-batch-2 files); reconcile at merge. Migration 095 must be LIVE before the code deploys (register/catalog use its columns). Batch-2 PR #57 + migrations 092/093/094 still awaiting owner merge/push."
-last_updated: "2026-08-07T09:53:57.727Z"
+stopped_at: "Phase 23 COMPLETE (8/8 plans) on branch codex/phase-23-buyer-onboarding (pushed). Buyer onboarding Model A + /sync SHIPPED at the DB+branch level: /buyers/*→/sync/* unified + public /sync landing; public logged-out /sync/catalog (anon-crash fixed); POST /api/sync/register (public, rate-limited, enumeration-safe, real Phase-25 lead routing); buyer PASSWORD auth (role-aware→/sync/catalog); AE onboarding surface (/admin/client-partners/[orgId] detail, status pending_onboarding→active via staff-edit allowlist, unassigned-lead queue); .fnbl LoginRegisterModal (Marmoset mirror, Register+Talk-to-sales→one pipeline) wired into browse+landing. Migrations 092/093/094 (batch-1 review hardening) + 095 (buyer_orgs status+lead fields) ALL PUSHED LIVE (LOCAL=REMOTE through 095). 23-08 onboarding-loop smoke PASSED live against prod Supabase (register→pending→AE assign→detail no-404→active→login→gated browse); 093/094/095 grants verified live; 092 grant-catalog query deferred (no direct SQL). SYNC-01..10 registered Complete in REQUIREMENTS.md. Full suite 135 suites/1610 green; tsc+lint+build clean. ONLY REMAINING = DEPLOY (funun.studio/sync 404s until the code deploys). DEPLOY ORDER: (1) merge PR #57 batch-2 review fixes; (2) reconcile Phase 23's buyer-orgs route changes with #57 (23-06 touched app/api/admin/buyer-orgs/[id]/route.ts + route.ts + staff-buyer-orgs-api.test.ts on the pre-#57 files — CONFLICT); (3) open + merge the Phase 23 PR → /sync live. Migrations already live so the deploy has its schema. NOTE: Resend email still unconfigured in prod (invites/lead emails no-op). Deferred: SYNC-10 spend-oversight UI; 092 grant-catalog confirm; Phase 21 RLS smoke (0/31). NEXT feature per roadmap after deploy: Phase 26 (sync-library supply)."
+last_updated: "2026-08-07T10:30:00.000Z"
 last_activity: 2026-08-07
-last_activity_desc: Phase 23 execution started
+last_activity_desc: "Phase 23 CLOSED — migrations 092-095 live, onboarding-loop smoke passed, SYNC-01..10 registered; deploy (PR #57 → reconcile → Phase 23 PR) remains"
 progress:
   total_phases: 28
-  completed_phases: 21
+  completed_phases: 22
   total_plans: 152
-  completed_plans: 146
+  completed_plans: 147
   percent: 75
 ---
 
