@@ -772,7 +772,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 - [ ] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
 - [ ] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
-- [ ] 25-03-PLAN.md — Migrations 085 (funun_staff + staff_audit_log, zero-RLS) + 086 (buyer_orgs.ae_user_id private) [W1]
+- [ ] 25-03-PLAN.md — Migrations 089 (funun_staff + staff_audit_log, zero-RLS) + 090 (buyer_orgs.ae_user_id private) [W1] — renumbered from 085/086 after Phase 28 took 085–088
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

@@ -28,8 +28,8 @@ copy RESEARCH.md's `lib/admin/gate.ts` code block verbatim — extend the real f
 | `app/api/admin/buyer-orgs/[id]/route.ts` (NEW) | route/controller | CRUD | `app/api/profile/route.ts` (PATCH + EDITABLE_FIELDS) | exact |
 | `app/api/admin/buyer-orgs/[id]/ae/route.ts` (NEW) | route/controller | CRUD | `app/api/profile/route.ts` (PATCH) | role-match |
 | `app/api/admin/buyer-orgs/route.ts` (MODIFY: widen gate) | route/controller | CRUD | itself (extend in place) | exact |
-| `supabase/migrations/085_funun_staff_and_audit.sql` (NEW) | migration | batch/DDL | `supabase/migrations/058_trust_safety_schema.sql` (`verification_audit_log`) | exact |
-| `supabase/migrations/086_buyer_orgs_ae_assignment.sql` (NEW) | migration | batch/DDL | `supabase/migrations/081_license_requests_deals.sql` (`owner_id` column) + `supabase/migrations/080_buyer_orgs_members.sql` (REVOKE/GRANT posture) | exact |
+| `supabase/migrations/089_funun_staff_and_audit.sql` (NEW) | migration | batch/DDL | `supabase/migrations/058_trust_safety_schema.sql` (`verification_audit_log`) | exact |
+| `supabase/migrations/090_buyer_orgs_ae_assignment.sql` (NEW) | migration | batch/DDL | `supabase/migrations/081_license_requests_deals.sql` (`owner_id` column) + `supabase/migrations/080_buyer_orgs_members.sql` (REVOKE/GRANT posture) | exact |
 
 ## Pattern Assignments
 
@@ -403,7 +403,7 @@ leadership-only OR widen+scope it (RESEARCH's Pitfall 4 requires the list/GET pa
 
 ---
 
-### `supabase/migrations/085_funun_staff_and_audit.sql` (migration, batch/DDL) — NEW — HUMAN-GATED
+### `supabase/migrations/089_funun_staff_and_audit.sql` (migration, batch/DDL) — NEW — HUMAN-GATED
 
 **Analog:** `supabase/migrations/058_trust_safety_schema.sql`'s `verification_audit_log` table (lines
 157-181, verified read in full) — the exact zero-RLS-policy, service-role-only shape.
@@ -443,7 +443,7 @@ migrations are human-gated; do not run `supabase db push`.
 
 ---
 
-### `supabase/migrations/086_buyer_orgs_ae_assignment.sql` (migration, batch/DDL) — NEW — HUMAN-GATED
+### `supabase/migrations/090_buyer_orgs_ae_assignment.sql` (migration, batch/DDL) — NEW — HUMAN-GATED
 
 **Analog A (column precedent):** `supabase/migrations/081_license_requests_deals.sql` line 95 —
 `owner_id UUID REFERENCES auth.users,` — single nullable FK column for admin-assignment, confirmed present.
@@ -517,7 +517,7 @@ async function sanitize(body: Record<string, unknown>, service: SupabaseClient, 
 
 ### Zero-RLS-policy service-role-only table
 **Source:** `supabase/migrations/058_trust_safety_schema.sql` lines 158-179 (`verification_audit_log`)
-**Apply to:** `staff_audit_log`, `funun_staff` (migration `085_funun_staff_and_audit.sql`)
+**Apply to:** `staff_audit_log`, `funun_staff` (migration `089_funun_staff_and_audit.sql`)
 
 ### Atomic account creation (role in `createUser()`, never post-insert UPDATE)
 **Source:** `lib/buyers/createBuyerAccount.ts` lines 22-59

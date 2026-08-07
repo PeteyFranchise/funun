@@ -75,7 +75,7 @@ AE/BD/leadership need for beta.
   (email a teammate via `mailto:`, call via `tel:`). It is the internal **phone book**.
 - **Distinct from** the leadership-only **Team Members management** page (25-06): the Directory is **all-roles
   and READ-ONLY** (no create/edit/role-change). Reads the same `funun_staff` + auth email.
-- Needs two **contact fields** on `funun_staff` — `title`, `phone` (nullable) — added to migration 085 (25-03).
+- Needs two **contact fields** on `funun_staff` — `title`, `phone` (nullable) — added to migration 089 (25-03).
 - Delivered by new plan **25-10** (depends_on 25-03 schema fields + 25-06 nav/shell). Requirement **TEAM-09**.
 
 ## Direction (from the discussion)

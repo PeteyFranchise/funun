@@ -180,8 +180,8 @@ app/api/admin/
         ├── route.ts             # NEW PATCH — scoped field-allowlist edit + assign-AE (leadership-only sub-action)
         └── ae/route.ts          # NEW PATCH — leadership-only AE (re)assignment, separate route so the two permission bars stay legible
 supabase/migrations/
-├── 085_funun_staff_and_audit.sql   # funun_staff + staff_audit_log tables, zero-RLS-policy pattern
-└── 086_buyer_orgs_ae_assignment.sql # buyer_orgs.ae_user_id nullable column (private — no column GRANT to authenticated)
+├── 089_funun_staff_and_audit.sql   # funun_staff + staff_audit_log tables, zero-RLS-policy pattern
+└── 090_buyer_orgs_ae_assignment.sql # buyer_orgs.ae_user_id nullable column (private — no column GRANT to authenticated)
 ```
 
 ### Pattern 1: Widen the gate, don't fork it
@@ -386,7 +386,7 @@ export async function isAssignedToOrg(
 
 ### Migration: nullable AE assignment column
 ```sql
--- Source: supabase/migrations/086_buyer_orgs_ae_assignment.sql (new file)
+-- Source: supabase/migrations/090_buyer_orgs_ae_assignment.sql (new file)
 -- Additive, nullable — no backfill needed (every existing org starts
 -- unassigned; leadership assigns via the new PATCH .../ae route).
 ALTER TABLE public.buyer_orgs
@@ -525,7 +525,7 @@ No formal `REQ-XX` IDs are registered for this phase in `.planning/REQUIREMENTS.
 - `middleware.ts` — confirmed `/admin` is already in `isProtected`; no changes needed there
 - `grep` sweep of `supabase/migrations/*.sql` for `auth.jwt()` — confirmed zero usages, grounding the "no RLS-via-JWT-claims" architectural claim
 - `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md`, `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md`, `.planning/phases/15-account-capability-model/15-CONTEXT.md` — locked decisions, consumer-phase needs, capability-model precedent
-- `.planning/STATE.md` — migration numbering (084 is latest; 085/086 recommended next), pre-existing REQUIREMENTS.md registration-gap pattern to avoid repeating
+- `.planning/STATE.md` — migration numbering (084 is latest; 089/090 recommended next), pre-existing REQUIREMENTS.md registration-gap pattern to avoid repeating
 - `.planning/config.json` — confirmed `nyquist_validation: true`, `security_enforcement: true`, `security_asvs_level: 1`
 
 ### Secondary (MEDIUM confidence)
