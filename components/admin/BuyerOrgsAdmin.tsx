@@ -18,6 +18,18 @@ export type BuyerOrgRow = {
   verified: boolean
   created_at: string
   memberCount: number
+  // Leadership-only reassign control (25-09) — undefined/null for callers
+  // that don't fetch AE assignment data.
+  aeUserId?: string | null
+  aeName?: string | null
+}
+
+// The assignable AE pool for the reassign picker — funun_staff rows where
+// staff_role = 'ae' (25-09's must_haves: options come from that pool, plus
+// an Unassign option the component renders itself).
+export type AePoolOption = {
+  userId: string
+  displayName: string
 }
 
 type BuyerOrgMember = {
@@ -57,7 +69,15 @@ function formatJoined(dateString: string): string {
   }
 }
 
-export function BuyerOrgsAdmin({ initialOrgs }: { initialOrgs: BuyerOrgRow[] }) {
+export function BuyerOrgsAdmin({
+  initialOrgs,
+  isLeadership = false,
+  aePool = [],
+}: {
+  initialOrgs: BuyerOrgRow[]
+  isLeadership?: boolean
+  aePool?: AePoolOption[]
+}) {
   const [orgs, setOrgs] = useState<BuyerOrgRow[]>(initialOrgs)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createForm, setCreateForm] = useState<CreateFormState>(EMPTY_CREATE_FORM)
@@ -74,6 +94,46 @@ export function BuyerOrgsAdmin({ initialOrgs }: { initialOrgs: BuyerOrgRow[] }) 
   const [addMemberForm, setAddMemberForm] = useState<AddMemberFormState>(EMPTY_ADD_MEMBER_FORM)
   const [addingMember, setAddingMember] = useState(false)
   const [addMemberError, setAddMemberError] = useState<string | null>(null)
+
+  // Leadership-only AE reassign control (25-09) — PATCHes the existing
+  // leadership-only /ae route (T-25-15: a forged request from a non-leadership
+  // caller still 403s server-side; this state only exists to drive the UI).
+  const [reassigningId, setReassigningId] = useState<string | null>(null)
+  const [reassignError, setReassignError] = useState<string | null>(null)
+  const [reassignErrorOrgId, setReassignErrorOrgId] = useState<string | null>(null)
+
+  const handleReassignAe = async (orgId: string, newAeUserId: string | null) => {
+    setReassigningId(orgId)
+    setReassignError(null)
+    setReassignErrorOrgId(null)
+    try {
+      const res = await fetch(`/api/admin/buyer-orgs/${orgId}/ae`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ae_user_id: newAeUserId }),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: { id: string; ae_user_id: string | null }
+        error?: string
+      }
+      if (!res.ok) {
+        throw new Error(json.error ?? 'Something went wrong — please try again.')
+      }
+      const newAeName = newAeUserId
+        ? aePool.find(ae => ae.userId === newAeUserId)?.displayName ?? null
+        : null
+      setOrgs(prev =>
+        prev.map(org =>
+          org.id === orgId ? { ...org, aeUserId: newAeUserId, aeName: newAeName } : org
+        )
+      )
+    } catch (err) {
+      setReassignError(err instanceof Error ? err.message : 'Something went wrong — please try again.')
+      setReassignErrorOrgId(orgId)
+    } finally {
+      setReassigningId(null)
+    }
+  }
 
   const handleCreateOrg = async () => {
     if (!createForm.orgName.trim()) {
@@ -305,6 +365,39 @@ export function BuyerOrgsAdmin({ initialOrgs }: { initialOrgs: BuyerOrgRow[] }) 
                   {expandedOrgId === org.id ? 'Hide members' : 'View members'}
                 </span>
               </button>
+
+              {/* Account Exec — leadership-only reassign control (25-09). New
+                  UI added by this plan; styled with the Team Console tokens
+                  (25-08) so it reads in both light and dark rather than the
+                  legacy dark-only classes the rest of this component uses. */}
+              <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[color:var(--border)] pt-2 text-[12px]">
+                <span className="text-[color:var(--ink-3)]">Account Exec:</span>
+                {isLeadership ? (
+                  <>
+                    <select
+                      value={org.aeUserId ?? ''}
+                      disabled={reassigningId === org.id}
+                      onChange={e => handleReassignAe(org.id, e.target.value || null)}
+                      className="rounded-md border border-[color:var(--border)] bg-[color:var(--panel-2)] px-2 py-1 text-[12px] text-[color:var(--ink)] focus:border-[color:var(--indigo)] focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="">Unassigned</option>
+                      {aePool.map(ae => (
+                        <option key={ae.userId} value={ae.userId}>
+                          {ae.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    {reassigningId === org.id && (
+                      <span className="text-[color:var(--ink-3)]">Saving…</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-[color:var(--ink-2)]">{org.aeName ?? 'Unassigned'}</span>
+                )}
+              </div>
+              {isLeadership && reassignErrorOrgId === org.id && reassignError && (
+                <p className="mt-1 text-[11px] text-[color:var(--rose-fg)]">{reassignError}</p>
+              )}
 
               {expandedOrgId === org.id && (
                 <div className="mt-3 border-t border-white/10 pt-3">
