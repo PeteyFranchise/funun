@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 25
-current_phase_name: funun-team-accounts-ae
+current_phase: 23
+current_phase_name: buyer-onboarding-login-register
 status: board-clear
 stopped_at: "Phase 25 COMPLETE + live-verified (2026-08-07). Funūn Team Member accounts are first-class staff RBAC: getStaffRole/requireStaff gate (leadership/ae/bd; is_admin->leadership fallback; verifyAdmin alias kept), service-role-only funun_staff + staff_audit_log, private buyer_orgs.ae_user_id, createStaffAccount + /api/admin/staff (leadership CRUD), assignment-scoped /api/admin/buyer-orgs edit + leadership-only AE assign/reassign (notifies both AEs), /admin widened to any staff role + role-aware sidebar, pages /admin/team-members + /admin/my-client-partners + /admin/directory, Team Console light/dark theme. Migrations 089/090 + corrective 091 (REVOKE ALL closing 089's TRUNCATE/TRIGGER/REFERENCES gap — RLS doesn't gate TRUNCATE) ALL LIVE (LOCAL=REMOTE through 091). 25-07 six-point production security smoke all GREEN; owner peter.zora@gmail.com (1d7990e2-...) seeded staff_role='leadership' + funun_staff directory row, reaches /admin/my-client-partners + /admin/directory as Leadership. TEAM-01..09 registered Complete in REQUIREMENTS.md; 25-07-SUMMARY closed. Full suite green. 25-11 login-routing (Option A) SHIPPED as quick task 260806-wqr (commit 25b528b): role-aware post-signin routing — staff -> /admin/my-client-partners, else -> /vault, explicit same-origin ?next= wins; getStaffRole extracted to client-safe lib/admin/staff-role.ts (re-exported from gate.ts); pure postSignInPath + open-redirect guard; full suite 129/1553 green + build clean. Live browser check (sign in as staff vs artist) needs real creds — owner to confirm. NEXT: queued phases — Phase 23 (buyer onboarding Model A + /sync unification + landing), 26 (sync-library), 27 (artist invite-only) — all planned/captured, need planning/execution. Background task task_99e1252f (harden 058 verification_audit_log + reports — identical TRUNCATE gap, mirror 091) running independently. Optional: formal /gsd-verify 25 (the live production smoke already verified the phase goal)."
-last_updated: "2026-08-07T03:00:00.000Z"
+last_updated: "2026-08-07T08:42:03.408Z"
 last_activity: 2026-08-07
-last_activity_desc: "Phase 25 CLOSED + 25-11 login-routing shipped (quick 260806-wqr) — role-aware post-signin routing, full suite 129/1553 green"
+last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 28
   completed_phases: 21
-  total_plans: 144
-  completed_plans: 139
-  percent: 72
+  total_plans: 152
+  completed_plans: 140
+  percent: 75
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 25 — funun-team-accounts-ae
+**Current focus:** Phase 23 — buyer-onboarding-login-register
 
 ## Current Position
 
-Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 10 of 10
+Phase: 23 (buyer-onboarding-login-register) — EXECUTING
+Plan: 2 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -46,7 +46,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-07 — Phase 25 execution started
+Last activity: 2026-08-07 — Phase 23 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -175,6 +175,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P08 | ~30min | 3 tasks | 8 files |
 | Phase 25 P09 | ~20min | 2 tasks | 5 files |
 | Phase 25 P10 | 20min | 2 tasks | 2 files |
+| Phase 23 P01 | 2min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -365,6 +366,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 25]: 25-09: changedAwayFromPrevAe = prevAeUserId !== null && prevAeUserId !== aeUserId — one predicate covers reassign/unassign-with-prior-AE/same-AE-reconfirm for the /ae route's notify-both behavior, reusing the single existing assign_ae audit path
 - [Phase 25]: 25-09: app/(admin)/admin/buyer-orgs/page.tsx stays leadership-only (getStaffRole(user)==='leadership' self-guard, same scope as the pre-plan is_admin check) — AE/BD already have their own scoped queue at /admin/my-client-partners (25-06)
 - [Phase 25]: Gate uses getStaffRole(user) === null (admits leadership/AE/BD) rather than requireStaff(['leadership']) used by the management page — the all-roles/read-only distinction for the Team Member Directory
+- [Phase 23]: 23-01: status/use_case granted to authenticated (buyer-readable); contact_name/contact_email/contact_phone/contact_role/source kept staff-only in migration 095, mirroring migration 090's ae_user_id precedent
+- [Phase 23]: 23-01: BUYER_ORG_STATUS_VALUES tuple exported from lib/buyers/schema.ts as the single source of truth for status validation, mirroring the existing BUYER_ROLE_VALUES convention
 
 ### Pending Todos
 
@@ -395,6 +398,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 25-02: plan frontmatter references requirements TEAM-05/TEAM-06 but REQUIREMENTS.md has no Phase 25 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as 25-01/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 25-04: plan frontmatter references requirement TEAM-03 but REQUIREMENTS.md still has no Phase 25 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as 25-01/25-02/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 25-04: funun_staff (migration 089, unpushed) has no active/deactivated_at column -- PATCH /api/admin/staff/[id]'s { active:false } deactivate signal clears app_metadata.staff_role to null (real, immediate access revocation) but leaves no queryable "deactivated" flag on funun_staff for a future Team Members list UI to render. Candidate follow-up if a migration author revisits funun_staff.
+- 23-01: plan frontmatter references requirement SYNC-01 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/25/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -444,7 +448,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T01:44:03.945Z
+Last session: 2026-08-07T08:41:42.057Z
 Stopped at: Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z

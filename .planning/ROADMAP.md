@@ -723,22 +723,26 @@ and **distinct from artist (user) accounts**.
 
 **Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
 
-**Plans:** 8 plans, 4 waves (planned 2026-08-07)
+**Plans:** 1/8 plans executed
 
 **Wave 1 — Foundations**
-- [ ] 23-01-PLAN.md — Migration 092: buyer_orgs status (pending_onboarding→active) + lead-qualifying fields + per-column grants; text-test; BuyerOrg type [W1]
+
+- [x] 23-01-PLAN.md — Migration 095 (renumbered from 092 — 092/093/094 taken by review-fix migrations): buyer_orgs status (pending_onboarding→active) + lead-qualifying fields + per-column grants; text-test; BuyerOrg type [W1]
 - [ ] 23-02-PLAN.md — /sync unification: rename /buyers/*→/sync/* (non-gating layout) + public /sync landing page [W1]
 
 **Wave 2 — Core capabilities** *(blocked on Wave 1)*
+
 - [ ] 23-03-PLAN.md — Public catalogue browse: anon-safe loadCatalogPage (Pitfall 3 fix) + open /sync/catalog logged-out [W2]
 - [ ] 23-04-PLAN.md — Register pipeline: pure builder + POST /api/sync/register (service-role, rate-limited, real lead routing) [W2]
 - [ ] 23-05-PLAN.md — Buyer password auth: role-aware redirect to /sync/catalog + recovery-link invite (isolated/swappable) [W2]
 - [ ] 23-06-PLAN.md — AE routing + status transition: /admin/client-partners/[orgId] detail (Pitfall 4) + unassigned queue [W2]
 
 **Wave 3 — Modal** *(blocked on Wave 2)*
+
 - [ ] 23-07-PLAN.md — Login/Register modal (.fnbl Marmoset mirror, two doors) + CatalogBrowserLight engagement gating + landing CTA [W3]
 
 **Wave 4 — Human checkpoint** *(blocked on Wave 3)*
+
 - [ ] 23-08-PLAN.md — [BLOCKING] owner pushes migration 092 + live onboarding-loop smoke + register SYNC-01..10 [W4]
 
 **Open product question for the owner (confirm before executing):** buyer auth = email/password (planned, per the locked Marmoset design — 23-05) vs magic-link-only. 23-05 is isolated so it can be swapped with one `type` change. Note: Resend is NOT configured in prod, so invite/reset emails no-op until configured — the in-app notification + admin queue are the reliable channels.
