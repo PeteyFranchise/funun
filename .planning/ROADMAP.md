@@ -723,7 +723,7 @@ and **distinct from artist (user) accounts**.
 
 **Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
 
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 **Wave 1 — Foundations**
 
@@ -732,7 +732,7 @@ and **distinct from artist (user) accounts**.
 
 **Wave 2 — Core capabilities** *(blocked on Wave 1)*
 
-- [ ] 23-03-PLAN.md — Public catalogue browse: anon-safe loadCatalogPage (Pitfall 3 fix) + open /sync/catalog logged-out [W2]
+- [x] 23-03-PLAN.md — Public catalogue browse: anon-safe loadCatalogPage (Pitfall 3 fix) + open /sync/catalog logged-out [W2]
 - [ ] 23-04-PLAN.md — Register pipeline: pure builder + POST /api/sync/register (service-role, rate-limited, real lead routing) [W2]
 - [ ] 23-05-PLAN.md — Buyer password auth: role-aware redirect to /sync/catalog + recovery-link invite (isolated/swappable) [W2]
 - [ ] 23-06-PLAN.md — AE routing + status transition: /admin/client-partners/[orgId] detail (Pitfall 4) + unassigned queue [W2]

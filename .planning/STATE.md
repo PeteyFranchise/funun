@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 23
 current_phase_name: buyer-onboarding-login-register
 status: board-clear
-stopped_at: Completed 23-02-PLAN.md (/sync route unification + non-gating layout + public landing page)
-last_updated: "2026-08-07T08:55:26.012Z"
+stopped_at: Completed 23-03-PLAN.md (null-safe loadCatalogPage + public /sync/catalog browse)
+last_updated: "2026-08-07T09:04:01.590Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 28
   completed_phases: 21
   total_plans: 152
-  completed_plans: 141
+  completed_plans: 142
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 23 (buyer-onboarding-login-register) — EXECUTING
-Plan: 3 of 10
+Plan: 4 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -177,6 +177,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P10 | 20min | 2 tasks | 2 files |
 | Phase 23 P01 | 2min | 3 tasks | 3 files |
 | Phase 23-buyer-onboarding-login-register P02 | 25min | 3 tasks | 19 files |
+| Phase 23-buyer-onboarding-login-register P03 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -372,6 +373,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 23]: 23-02: /sync layout stops force-redirecting logged-out visitors; auth moved into each authenticated sub-page (catalog/shortlists/requests self-gate to /sync/access) so a future public page under the same layout needs no auth check at all
 - [Phase ?]: [Phase 23]: 23-02: /sync landing page's featured teaser uses SAMPLE_CATALOG_ROWS directly (not loadCatalogPage) to avoid RESEARCH.md Pitfall 3's anon-viewer UUID crash -- that fix is 23-03's scope
 - [Phase ?]: [Phase 23]: 23-02: plan frontmatter references requirement SYNC-09 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase ?]: [Phase 23]: 23-03: loadCatalogPage's buyerUserId widened to string | null on the single implementation (no parallel public function) -- anonymous callers skip loadBlockedIds entirely rather than passing an empty sentinel into its uuid .or() filter (RESEARCH Pitfall 3)
+- [Phase ?]: [Phase 23]: 23-03: public /sync/catalog render uses CatalogBrowserLight isPublic (its own self-contained header + Login button), not embedded -- BuyerTopNav stays authenticated-member-only
 
 ### Pending Todos
 
@@ -452,8 +455,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T08:55:02.525Z
-Stopped at: Completed 23-02-PLAN.md (/sync route unification + non-gating layout + public landing page)
+Last session: 2026-08-07T09:04:01.563Z
+Stopped at: Completed 23-03-PLAN.md (null-safe loadCatalogPage + public /sync/catalog browse)
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
