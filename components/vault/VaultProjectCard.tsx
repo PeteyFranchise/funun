@@ -58,7 +58,9 @@ function dateLine(card: VaultCard): string {
 
 function rightLabel(card: VaultCard): { text: string; cls: string } {
   const gatesLeft = Math.max(0, card.totalItems - card.completeItems)
-  if (card.score >= 80) return { text: 'Deal-ready', cls: 'gtext' }
+  // Green completes the traffic light (red Needs work → amber gates → green
+  // deal-ready), matching the detail view's emerald readiness chip.
+  if (card.score >= 80) return { text: 'Deal-ready', cls: 'text-emerald-400' }
   if (card.score >= 50)
     return {
       text: gatesLeft > 0 ? `${gatesLeft} gate${gatesLeft === 1 ? '' : 's'} left` : 'Almost ready',

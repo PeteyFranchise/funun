@@ -31,12 +31,16 @@ type Props = {
   collaborators: CollaboratorProfile[]
   credits: CreditRow[]
   initialTab?: 'roster' | 'credits'
+  memberHandles?: Record<string, string>
+  inviteStatus?: Record<string, { sentAt: string; status: string }>
 }
 
 export function CollaboratorRoster({
   collaborators,
   credits,
   initialTab = 'roster',
+  memberHandles = {},
+  inviteStatus = {},
 }: Props) {
   const [activeTab, setActiveTab] = useState<'roster' | 'credits'>(initialTab)
   const [creating, setCreating] = useState(false)
@@ -94,6 +98,20 @@ export function CollaboratorRoster({
       setList(prev =>
         prev.map(c => c.id === collab.id ? { ...c, is_favorite: !c.is_favorite } : c)
       )
+    }
+  }
+
+  // Send an educational invite email to a non-member collaborator via the
+  // existing 24h-cooldown endpoint. res.ok covers success, cooldown, and the
+  // best-effort email path; the card owns the sending/sent/error UI.
+  async function handleInvite(id: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch('/api/collaborators/' + id + '/invite', { method: 'POST' })
+      const body = await res.json().catch(() => ({}))
+      if (res.ok) return { ok: true }
+      return { ok: false, error: (body && body.error) || 'Could not send invite' }
+    } catch {
+      return { ok: false, error: 'Network error — try again' }
     }
   }
 
@@ -199,7 +217,7 @@ export function CollaboratorRoster({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
             {list.map(collab =>
               editingId === collab.id ? (
                 <div key={collab.id} className="sm:col-span-2 lg:col-span-3">
@@ -220,6 +238,9 @@ export function CollaboratorRoster({
                   onArchive={() => handleArchive(collab.id)}
                   onDelete={() => handleDelete(collab.id)}
                   onFavoriteToggle={() => handleFavoriteToggle(collab)}
+                  onInvite={() => handleInvite(collab.id)}
+                  invite={inviteStatus[collab.id] ?? null}
+                  memberHandle={collab.claimed_by ? memberHandles[collab.claimed_by] ?? null : null}
                 />
               )
             )}
