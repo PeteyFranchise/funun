@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '@/lib/admin/gate'
+import { requireStaff } from '@/lib/admin/gate'
 import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
+import { logStaffAction } from '@/lib/staff/audit'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -11,17 +12,25 @@ const ORG_COLUMNS = 'id, name, is_personal, verified, created_at'
 // Column-explicit select (never select star — migration 080's column-grant
 // lockdown convention). Attaches a per-org member count, mirroring the
 // getUserById per-row email attach in app/api/admin/members/route.ts.
+// Staff-gated (widened from leadership-only verifyAdmin); non-leadership
+// callers (AE/BD) are scoped to their assigned companies only — the read
+// path is scoped exactly like the write path (Pitfall 4: never widen GET
+// without also adding the ae_user_id filter).
 export async function GET() {
-  const auth = await verifyAdmin()
+  const auth = await requireStaff()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
   const service = createServiceClient()
-  const { data, error } = await service
+  let query = service
     .from('buyer_orgs')
     .select(ORG_COLUMNS)
     .order('created_at', { ascending: false })
+  if (auth.staffRole !== 'leadership') {
+    query = query.eq('ae_user_id', auth.user.id)
+  }
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -39,13 +48,15 @@ export async function GET() {
 }
 
 // ─── POST /api/admin/buyer-orgs ────────────────────────────────────────────
-// D-12: platform admins create the company record AND invite its first org
-// admin in the same request — org admins are approvers with member
-// management (D-13). Validates strictly against an explicit allowlist (org
-// name, admin email, admin display name only) — never spreads the request
-// body into an insert.
+// D-12: staff create the company record AND invite its first org admin in
+// the same request — org admins are approvers with member management
+// (D-13). Widened from leadership-only to any permissioned staff (D-03:
+// leadership/AE/BD can all create Client Partner accounts on the client's
+// behalf). Validates strictly against an explicit allowlist (org name,
+// admin email, admin display name only) — never spreads the request body
+// into an insert.
 export async function POST(request: Request) {
-  const auth = await verifyAdmin()
+  const auth = await requireStaff(['leadership', 'ae', 'bd'])
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -91,6 +102,13 @@ export async function POST(request: Request) {
       buyerRole: 'approver',
       isOrgAdmin: true,
       invitedBy: auth.user.id,
+    })
+
+    await logStaffAction(service, {
+      actorId: auth.user.id,
+      action: 'create_buyer_account',
+      targetType: 'buyer_org',
+      targetId: org.id,
     })
 
     return NextResponse.json(
