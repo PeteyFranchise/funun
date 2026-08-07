@@ -27,6 +27,16 @@ import {
 // page import this one implementation, so the
 // privacy gate can never drift between the two call sites (mirrors
 // lib/deals/request-target.ts's authorizeRequestTarget precedent).
+//
+// 23-03: buyerUserId is `string | null` — a null caller is a logged-out
+// public catalog visitor (RESEARCH Pitfall 3). loadBlockedIds's `.or(...)`
+// filter is built against a uuid column, so passing an empty/anonymous
+// sentinel through it throws `invalid input syntax for type uuid` rather
+// than degrading gracefully. A visitor with no account can neither block
+// nor be blocked (`blocks` rows only ever reference real auth.users ids),
+// so the fix is to skip block resolution entirely when buyerUserId is
+// null — NOT to fork a parallel public implementation (single-
+// implementation doctrine, see the paragraph above).
 
 const PAGE_SIZE = 20
 
@@ -74,7 +84,7 @@ export type CatalogPageResult = { data: CatalogCard[]; page: number; pageSize: n
 
 export async function loadCatalogPage(
   service: SupabaseClient,
-  buyerUserId: string,
+  buyerUserId: string | null,
   filter: CatalogFilter,
   page: number
 ): Promise<CatalogPageResult> {
@@ -110,7 +120,10 @@ export async function loadCatalogPage(
       o.profile_visibility === 'connections_only' ? ('connections_only' as const) : ('public' as const),
     ])
   )
-  const blockedIds = await loadBlockedIds(service, buyerUserId)
+  // Anonymous visitor: skip block resolution entirely (Pitfall 3) — there
+  // is no real account id to check blocks against, and blockedIds stays
+  // an empty set so the exclusion check below is inert for anon reads.
+  const blockedIds = buyerUserId ? await loadBlockedIds(service, buyerUserId) : new Set<string>()
 
   // Usage-cleared filter (D-15): one batched existence check against
   // project_license_terms, not a per-project query.
