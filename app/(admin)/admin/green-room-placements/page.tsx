@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { PlacementAdmin, type PlacementRecord } from '@/components/admin/PlacementAdmin'
 
@@ -12,8 +13,7 @@ export default async function AdminGreenRoomPlacementsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  if (getStaffRole(user) !== 'leadership') redirect('/')
 
   const service = createServiceClient()
   const { data: placements } = await service

@@ -29,19 +29,24 @@ function buildService(overrides: {
   )
 
   const deleteEq = jest.fn(async () => ({ error: null }))
+  const deleteUser = jest.fn(async () => ({ error: null }))
   const fununStaffInsert = jest.fn(async () => overrides.fununStaffInsertResult ?? { error: null })
 
   const from = jest.fn((table: string) => {
-    if (table === 'funun_staff') return { insert: fununStaffInsert }
+    // funun_staff supports both the insert and the compensation delete
+    if (table === 'funun_staff') {
+      return { insert: fununStaffInsert, delete: jest.fn(() => ({ eq: deleteEq })) }
+    }
     // subscriptions / user_profiles phantom-row cleanup
     return { delete: jest.fn(() => ({ eq: deleteEq })) }
   })
 
   return {
-    auth: { admin: { createUser, generateLink } },
+    auth: { admin: { createUser, generateLink, deleteUser } },
     from,
     createUser,
     generateLink,
+    deleteUser,
     fununStaffInsert,
     deleteEq,
   }
@@ -164,7 +169,20 @@ describe('createStaffAccount', () => {
 
     await expect(
       createStaffAccount({ email: 'fail@funun.studio', displayName: 'Fail', staffRole: 'ae' })
-    ).rejects.toThrow('Failed to create staff account: insert failed')
+    ).rejects.toThrow(/Failed to create staff account.*insert failed/)
+  })
+
+  it('compensates by deleting the auth user when a post-create step fails — no ghost staff_role account (review finding #3)', async () => {
+    const service = buildService({ fununStaffInsertResult: { error: { message: 'insert failed' } } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    await expect(
+      createStaffAccount({ email: 'ghost@funun.studio', displayName: 'Ghost', staffRole: 'leadership' })
+    ).rejects.toThrow(/Failed to create staff account/)
+
+    // the just-created auth user must be rolled back so no principal carrying
+    // app_metadata.staff_role survives without a directory row
+    expect(service.deleteUser).toHaveBeenCalledWith(USER_ID)
   })
 
   it('throws when generateLink fails after a successful funun_staff insert', async () => {
