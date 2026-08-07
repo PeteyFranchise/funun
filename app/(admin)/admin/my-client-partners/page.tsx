@@ -45,7 +45,7 @@ export default async function AdminMyClientPartnersPage() {
 
   return (
     <div className="flex-1 px-9 py-[30px]">
-      <h1 className="text-2xl font-bold text-white">My Client Partners</h1>
+      <h1 className="text-2xl font-bold text-[color:var(--ink)]">My Client Partners</h1>
       <MyCompanies initialOrgs={orgRows} />
     </div>
   )

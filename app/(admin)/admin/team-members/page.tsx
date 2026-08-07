@@ -38,7 +38,7 @@ export default async function AdminTeamMembersPage() {
 
   return (
     <div className="flex-1 px-9 py-[30px]">
-      <h1 className="text-2xl font-bold text-white">Team Members</h1>
+      <h1 className="text-2xl font-bold text-[color:var(--ink)]">Team Members</h1>
       <StaffAdmin initialStaff={staffRows} />
     </div>
   )

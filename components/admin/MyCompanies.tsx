@@ -91,32 +91,34 @@ export function MyCompanies({ initialOrgs }: { initialOrgs: MyCompanyRow[] }) {
   return (
     <div className="mt-6">
       {orgs.length === 0 ? (
-        <p className="mt-4 text-[14px] text-white/50">
+        <p className="mt-4 text-[14px] text-[color:var(--ink-3)]">
           No Client Partners are assigned to you yet.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
           {orgs.map(org => (
-            <div key={org.id} className="rounded-xl border border-white/10 p-4">
+            <div key={org.id} className="rounded-xl border border-[color:var(--border)] p-4">
               {editingId === org.id ? (
                 <div>
-                  {editError && <p className="mb-2 text-[13px] text-rose-400">{editError}</p>}
+                  {editError && (
+                    <p className="mb-2 text-[13px] text-[color:var(--rose-fg)]">{editError}</p>
+                  )}
                   <input
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[14px] text-white placeholder:text-white/30 focus:border-brandindigo/60 focus:outline-none"
+                    className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2 text-[14px] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] focus:border-[color:var(--indigo)] focus:outline-none"
                   />
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={() => handleSave(org.id)}
                       disabled={saving}
-                      className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-black transition hover:bg-white/90 disabled:opacity-50"
+                      className="rounded-lg bg-[color:var(--ink)] px-3 py-1.5 text-[12px] font-bold text-[color:var(--ground)] transition hover:opacity-90 disabled:opacity-50"
                     >
                       {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/60 transition hover:text-white"
+                      className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-[12px] text-[color:var(--ink-2)] transition hover:text-[color:var(--ink)]"
                     >
                       Cancel
                     </button>
@@ -125,8 +127,10 @@ export function MyCompanies({ initialOrgs }: { initialOrgs: MyCompanyRow[] }) {
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="truncate text-[14px] font-bold text-white">{org.name}</p>
-                    <p className="mt-0.5 text-[12px] text-lavdim">
+                    <p className="truncate text-[14px] font-bold text-[color:var(--ink)]">
+                      {org.name}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-[color:var(--ink-3)]">
                       {org.memberCount} member{org.memberCount !== 1 ? 's' : ''} · Created{' '}
                       {formatJoined(org.created_at)}
                       {org.is_personal ? ' · Personal' : ''}
@@ -135,7 +139,7 @@ export function MyCompanies({ initialOrgs }: { initialOrgs: MyCompanyRow[] }) {
                   </div>
                   <button
                     onClick={() => startEdit(org)}
-                    className="rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/70 transition hover:text-white"
+                    className="rounded-lg border border-[color:var(--border)] px-3 py-1.5 text-[12px] text-[color:var(--ink-2)] transition hover:text-[color:var(--ink)]"
                   >
                     Edit
                   </button>
