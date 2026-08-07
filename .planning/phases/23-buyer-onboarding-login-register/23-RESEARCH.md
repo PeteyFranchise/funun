@@ -188,7 +188,7 @@ lib/
 └── staff/
     └── notifications.ts                    # WIRE the already-built buildLeadRoutedNotification call site
 supabase/migrations/
-└── 092_buyer_org_lead_fields.sql           # NEW — status column + qualifying fields (human-gated push)
+└── 095_buyer_org_lead_fields.sql           # NEW — status column + qualifying fields (human-gated push)
 ```
 
 ### Pattern 1: Server-owned write for an unauthenticated register endpoint
@@ -321,7 +321,7 @@ const STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name', 'status', 'use_case'] as const
 
 **What goes wrong:** An executor runs `supabase db push` directly, or numbers a new migration file starting from a stale local head.
 **Why it happens:** N/A — this is a documented, repeatedly-enforced project convention (every migration from 058 onward carries an identical "never push from an agent" banner), but it's easy to slip on a phase with this much schema surface (new `buyer_orgs` columns for status + qualifying fields).
-**How to avoid:** The next free migration number is **092** (`091_funun_staff_revoke_all_hardening.sql` is the current HEAD per `ls supabase/migrations/`). Draft `092_buyer_org_lead_fields.sql` with the same "HUMAN-GATED — never `supabase db push` from an agent" banner every migration since 058 carries, and stop at drafting + text-testing (e.g. a `__tests__/migration-092.test.ts` asserting the raw SQL string, mirroring `__tests__/migration-089-090.test.ts`'s convention).
+**How to avoid:** The next free migration number is **095** (`091_funun_staff_revoke_all_hardening.sql` is the current HEAD per `ls supabase/migrations/`). Draft `095_buyer_org_lead_fields.sql` with the same "HUMAN-GATED — never `supabase db push` from an agent" banner every migration since 058 carries, and stop at drafting + text-testing (e.g. a `__tests__/migration-095.test.ts` asserting the raw SQL string, mirroring `__tests__/migration-089-090.test.ts`'s convention).
 **Warning signs:** `supabase migration list` shows `LOCAL != REMOTE` after an agent session.
 
 ### Pitfall 6: Column-privilege doctrine — new `buyer_orgs` columns are private by default
@@ -394,7 +394,7 @@ This is a literal to-do left by 25-02's plan — the new `/api/sync/register` ro
 
 1. **Account model schema.** `buyer_members.buyer_role` (`requester`/`approver`) already IS the purchaser/spend-approver split — no new role enum needed. `is_org_admin` already IS the company-admin flag. The AE link is `buyer_orgs.ae_user_id` (migration 090, live, private column). **Recommendation:** add no new role column; the existing two-tier model already satisfies CONTEXT.md's "spend-approver/company-admin role distinct from an individual purchaser role" requirement (`approver` = spend-approver, `is_org_admin` = company-admin, and they're already-conventionally co-assigned per `POST /api/admin/buyer-orgs`).
 
-2. **"Created but not onboarded" state.** Add `buyer_orgs.status text not null default 'pending_onboarding' check (status in ('pending_onboarding','active'))` in migration 092. A `pending_onboarding` buyer can do everything a normal buyer can today (browse, shortlist, submit requests) per D-14a's existing "both tiers get full browse+submit reach" precedent — CONTEXT.md doesn't restrict pending-buyer capability, only says the AE "helps the buyer complete onboarding," implying onboarding is a sales/relationship process, not a feature-gate. Do not gate any existing buyer-portal feature behind `status = 'active'` unless a future decision says otherwise.
+2. **"Created but not onboarded" state.** Add `buyer_orgs.status text not null default 'pending_onboarding' check (status in ('pending_onboarding','active'))` in migration 095. A `pending_onboarding` buyer can do everything a normal buyer can today (browse, shortlist, submit requests) per D-14a's existing "both tiers get full browse+submit reach" precedent — CONTEXT.md doesn't restrict pending-buyer capability, only says the AE "helps the buyer complete onboarding," implying onboarding is a sales/relationship process, not a feature-gate. Do not gate any existing buyer-portal feature behind `status = 'active'` unless a future decision says otherwise.
 
 3. **Cross-company purchase visibility.** Already built (migration 081's RLS + `app/(buyer-portal)/buyers/requests/page.tsx`, `OrgRequestDashboard` component) — every org member already sees every org member's requests. The only gap: no distinct "spend oversight" UI variant for `approver`-tier viewers (today `requester` and `approver` see an identical dashboard). If a dedicated approver view (e.g. a spend total, a pending-approval queue) is wanted, it's a UI-only addition on top of already-correct data access — no new RLS needed.
 
@@ -439,7 +439,7 @@ No REQUIREMENTS.md IDs are registered for Phase 23 yet (confirmed: `grep` of REQ
 | (register endpoint) | POST creates `buyer_orgs` row with `status='pending_onboarding'` + first `approver`/`is_org_admin` member | integration (mocked service client, mirrors existing `__tests__` conventions for admin routes) | `npm test -- app/api/sync/register` | ❌ Wave 0 |
 | (public catalog) | `loadCatalogPagePublic` (or the null-safe branch) does not throw for an anonymous caller | unit | `npm test -- lib/deals/catalog-query.test.ts` | ❌ Wave 0 (no existing test file for `catalog-query.ts` found) |
 | (lead routing) | `resolveLeadRecipient`/`buildLeadRoutedNotification` wired at the new call site | unit (pure functions, already tested at the builder level per Phase 25) | `npm test -- lib/staff/notifications.test.ts` | check — Phase 25 likely already covers the builders; the call-site wiring itself needs an integration test in the new route's test file |
-| (migration 092) | Structural/text-content test mirroring `__tests__/migration-089-090.test.ts` | unit | `npm test -- __tests__/migration-092.test.ts` | ❌ Wave 0 |
+| (migration 095) | Structural/text-content test mirroring `__tests__/migration-089-090.test.ts` | unit | `npm test -- __tests__/migration-095.test.ts` | ❌ Wave 0 |
 
 ### Sampling Rate
 
@@ -451,7 +451,7 @@ No REQUIREMENTS.md IDs are registered for Phase 23 yet (confirmed: `grep` of REQ
 
 - [ ] `lib/buyers/register.test.ts` — pure payload-builder/validator tests (mirrors `lib/deals/request-payload.test.ts`'s existing pattern for `buildRequestBody`)
 - [ ] `lib/deals/catalog-query.test.ts` — no existing test file found for this module; add coverage for both the authenticated and (new) anonymous-safe paths
-- [ ] `__tests__/migration-092.test.ts` — structural test for the new migration, mirroring `__tests__/migration-089-090.test.ts`
+- [ ] `__tests__/migration-095.test.ts` — structural test for the new migration, mirroring `__tests__/migration-089-090.test.ts`
 - [ ] Route-level test for `POST /api/sync/register` (mirrors any existing `app/api/admin/buyer-orgs/route.test.ts` if one exists — verify during planning)
 
 ## Security Domain
@@ -471,7 +471,7 @@ No REQUIREMENTS.md IDs are registered for Phase 23 yet (confirmed: `grep` of REQ
 | Pattern | STRIDE | Standard Mitigation |
 |---------|--------|----------------------|
 | Public register endpoint abused for account-creation spam / email-bombing | Denial of Service | Rate limit by IP/email (reuse the `lib/social/dm.ts` rate-limit *pattern*), never reveal whether an email is already registered (mirror `forgot-password`'s existing account-enumeration-avoidance discipline) |
-| Column-privilege leak on new `buyer_orgs` fields (staff-only qualifying data readable by the buyer, or vice versa) | Information Disclosure | Explicit `GRANT SELECT (...)` allowlist per new column in migration 092, decided deliberately (Pitfall 6), never "grant everything" |
+| Column-privilege leak on new `buyer_orgs` fields (staff-only qualifying data readable by the buyer, or vice versa) | Information Disclosure | Explicit `GRANT SELECT (...)` allowlist per new column in migration 095, decided deliberately (Pitfall 6), never "grant everything" |
 | Open redirect via a crafted `?next=` on the buyer-flavored sign-in/reset path | Spoofing / Tampering | Reuse `postSignInPath()`'s existing `safeNext()` same-origin-only guard (`lib/auth/postSignInPath.ts:17-22`) — do not build a second, unguarded redirect resolver for the buyer flow |
 | RLS recursion on any new buyer-scoped policy | Denial of Service (query failure) | Reuse `is_buyer_org_member()` (SECURITY DEFINER) rather than a naive self-join subquery — migration 064/078/080's established fix |
 
