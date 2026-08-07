@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 23
 current_phase_name: buyer-onboarding-login-register
 status: board-clear
-stopped_at: "Phase 25 COMPLETE + live-verified (2026-08-07). Funūn Team Member accounts are first-class staff RBAC: getStaffRole/requireStaff gate (leadership/ae/bd; is_admin->leadership fallback; verifyAdmin alias kept), service-role-only funun_staff + staff_audit_log, private buyer_orgs.ae_user_id, createStaffAccount + /api/admin/staff (leadership CRUD), assignment-scoped /api/admin/buyer-orgs edit + leadership-only AE assign/reassign (notifies both AEs), /admin widened to any staff role + role-aware sidebar, pages /admin/team-members + /admin/my-client-partners + /admin/directory, Team Console light/dark theme. Migrations 089/090 + corrective 091 (REVOKE ALL closing 089's TRUNCATE/TRIGGER/REFERENCES gap — RLS doesn't gate TRUNCATE) ALL LIVE (LOCAL=REMOTE through 091). 25-07 six-point production security smoke all GREEN; owner peter.zora@gmail.com (1d7990e2-...) seeded staff_role='leadership' + funun_staff directory row, reaches /admin/my-client-partners + /admin/directory as Leadership. TEAM-01..09 registered Complete in REQUIREMENTS.md; 25-07-SUMMARY closed. Full suite green. 25-11 login-routing (Option A) SHIPPED as quick task 260806-wqr (commit 25b528b): role-aware post-signin routing — staff -> /admin/my-client-partners, else -> /vault, explicit same-origin ?next= wins; getStaffRole extracted to client-safe lib/admin/staff-role.ts (re-exported from gate.ts); pure postSignInPath + open-redirect guard; full suite 129/1553 green + build clean. Live browser check (sign in as staff vs artist) needs real creds — owner to confirm. NEXT: queued phases — Phase 23 (buyer onboarding Model A + /sync unification + landing), 26 (sync-library), 27 (artist invite-only) — all planned/captured, need planning/execution. Background task task_99e1252f (harden 058 verification_audit_log + reports — identical TRUNCATE gap, mirror 091) running independently. Optional: formal /gsd-verify 25 (the live production smoke already verified the phase goal)."
-last_updated: "2026-08-07T08:42:03.408Z"
+stopped_at: Completed 23-02-PLAN.md (/sync route unification + non-gating layout + public landing page)
+last_updated: "2026-08-07T08:55:26.012Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 28
   completed_phases: 21
   total_plans: 152
-  completed_plans: 140
+  completed_plans: 141
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 23 (buyer-onboarding-login-register) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -176,6 +176,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 25 P09 | ~20min | 2 tasks | 5 files |
 | Phase 25 P10 | 20min | 2 tasks | 2 files |
 | Phase 23 P01 | 2min | 3 tasks | 3 files |
+| Phase 23-buyer-onboarding-login-register P02 | 25min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -368,6 +369,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 25]: Gate uses getStaffRole(user) === null (admits leadership/AE/BD) rather than requireStaff(['leadership']) used by the management page — the all-roles/read-only distinction for the Team Member Directory
 - [Phase 23]: 23-01: status/use_case granted to authenticated (buyer-readable); contact_name/contact_email/contact_phone/contact_role/source kept staff-only in migration 095, mirroring migration 090's ae_user_id precedent
 - [Phase 23]: 23-01: BUYER_ORG_STATUS_VALUES tuple exported from lib/buyers/schema.ts as the single source of truth for status validation, mirroring the existing BUYER_ROLE_VALUES convention
+- [Phase ?]: [Phase 23]: 23-02: /sync layout stops force-redirecting logged-out visitors; auth moved into each authenticated sub-page (catalog/shortlists/requests self-gate to /sync/access) so a future public page under the same layout needs no auth check at all
+- [Phase ?]: [Phase 23]: 23-02: /sync landing page's featured teaser uses SAMPLE_CATALOG_ROWS directly (not loadCatalogPage) to avoid RESEARCH.md Pitfall 3's anon-viewer UUID crash -- that fix is 23-03's scope
+- [Phase ?]: [Phase 23]: 23-02: plan frontmatter references requirement SYNC-09 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Pending Todos
 
@@ -448,8 +452,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T08:41:42.057Z
-Stopped at: Completed 25-09-PLAN.md (reassignment-aware /ae route + leadership reassign UI); next: 25-10
+Last session: 2026-08-07T08:55:02.525Z
+Stopped at: Completed 23-02-PLAN.md (/sync route unification + non-gating layout + public landing page)
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

@@ -723,12 +723,12 @@ and **distinct from artist (user) accounts**.
 
 **Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
 
-**Plans:** 1/8 plans executed
+**Plans:** 2/8 plans executed
 
 **Wave 1 — Foundations**
 
 - [x] 23-01-PLAN.md — Migration 095 (renumbered from 092 — 092/093/094 taken by review-fix migrations): buyer_orgs status (pending_onboarding→active) + lead-qualifying fields + per-column grants; text-test; BuyerOrg type [W1]
-- [ ] 23-02-PLAN.md — /sync unification: rename /buyers/*→/sync/* (non-gating layout) + public /sync landing page [W1]
+- [x] 23-02-PLAN.md — /sync unification: rename /buyers/*→/sync/* (non-gating layout) + public /sync landing page [W1]
 
 **Wave 2 — Core capabilities** *(blocked on Wave 1)*
 
