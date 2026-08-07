@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
-stopped_at: "Phase 28 COMPLETE + live-verified (2026-08-06). Industry is now a first-class account capability: invited industry members post Antenna opportunities + participate in the Green Room; Client-Partner (buyer) and @funun staff are held OUT of the Green Room. Corrective migration chain 085→086→087→088 all live (LOCAL=REMOTE through 088) plus a Bug-1 provisioning reconciliation in app code (commit cbdf405). Final production smoke all GREEN: (a) buyer via real createBuyerAccount has no profile/subscription; (b) industry via real provisionIndustryAccount posts an Antenna opportunity (201); (c) artist AND industry post in the Green Room via the real route (201); (d) buyer RLS-rejected on green_room_posts; (e) @funun app-blocked. The real (c) blocker was NOT the 085/087 INSERT gate — it was a latent SELECT-on-RETURNING bug (green_room_can_view_post is a STABLE fn that re-queries green_room_posts, and its snapshot can't see the just-inserted row under .insert().select()=INSERT..RETURNING → 42501), fixed by migration 088's direct author_id=auth.uid() SELECT predicate (commit 0f88a22). 28-05-SUMMARY closed with the full resolution; INDUSTRY-01..07 registered in REQUIREMENTS.md (all Complete). NEXT: Phase 25 (staff RBAC + login routing Option A) — RENUMBER its reserved migrations to 089+ (085/086/087/088 now taken) and slot login-routing plan 25-11, then execute. Also queued: Phase 23 (buyer onboarding + /sync unification + landing), Phase 26 (sync-library), Phase 27 (artist invite-only) — planned/captured. Optional: formal /gsd-verify 28 (the live production smoke already verifies the phase goal). Deferred (not Phase 28): the role='curator' migration-count check + curator-branch/(curator-portal) route-group removal — unblocked only once that live count is confirmed zero (28-03 repoint already prevents new curator accounts)."
-last_updated: "2026-08-07T00:22:43.316Z"
+stopped_at: "Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02"
+last_updated: "2026-08-07T00:29:15.401Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 129
+  completed_plans: 130
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 1 of 10
+Plan: 2 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -166,6 +166,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 28 P03 | 20min | 3 tasks | 4 files |
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
 | Phase 28 P05 | ~20min (2/3 tasks, checkpoint-blocked) | 2 tasks | 2 files |
+| Phase 25 P01 | 15min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -331,6 +332,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 28]: Curator directory relocation kept navigation-only: PitchPlug link added with zero curator data wiring; admin /admin/curators route href unchanged, only label relabeled to PitchPlug · Curators
 - [Phase 28]: 28-05: migration 085's capability_grants insert lives inside handle_new_user()'s SECURITY DEFINER trigger (not app code) so it is the single writer, atomic with the user_profiles insert, and covers both the admin-invite and repointed curator-claim (28-03) creation paths for free; source='signup' for the trigger write, source='backfill' for the idempotent existing-account backfill (both already valid per migration 042's CHECK, no new enum value)
 - [Phase 28]: 28-05: green_room_posts_insert_own RLS policy DROP+CREATE replaced (not stacked) with a member_type IN ('artist','industry') EXISTS gate alongside the existing author_id check — the DB-authoritative backstop mirroring 28-02's app-layer greenRoomPosterGate()
+- [Phase 25]: requireStaff() is the single authority every staff route calls before createServiceClient() -- no parallel auth path (D-01)
+- [Phase 25]: is_admin===true treated as an implicit leadership fallback (D-02/A1) so the owner's bootstrap account isn't locked out on deploy
 
 ### Pending Todos
 
@@ -357,6 +360,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 22-01: plan frontmatter references requirements catalogue-browse/audio-player but REQUIREMENTS.md has no Phase 22 section registering them yet (requirements mark-complete returned not_found for both) -- same pre-existing gap pattern as Phase 16, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 28-01: plan frontmatter references requirements INDUSTRY-01/INDUSTRY-06 but REQUIREMENTS.md has no Phase 28 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as Phases 16/22/23, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 28-05 checkpoint (Task 3, BLOCKING): migration 085 (supabase/migrations/085_industry_capability_green_room_gate.sql -- handle_new_user() industry capability_grants write + backfill + green_room_posts_insert_own RLS member_type gate) is drafted, text-tested (commits fba75e1/0575a97), and NOT pushed -- requires a human with Supabase CLI/dashboard access to review, confirm the live role='curator' account count, run `supabase db push`, confirm LOCAL=REMOTE through 085, and execute the 4-scenario post-push smoke (industry account posts an Antenna opportunity; artist+industry can post in Green Room; a non-member is RLS-rejected; a @funun.studio account is app-layer-blocked). Full steps in 28-05-SUMMARY.md's Checkpoint section and 28-05-PLAN.md Task 3. This is the last open item in Phase 28.
+- 25-01: plan frontmatter references requirement TEAM-01 but REQUIREMENTS.md has no Phase 25 section registering it yet (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/28, deferred to a future /gsd-docs-update pass per the plan's own instruction, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -405,9 +409,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-06T01:30:00.000Z
-Stopped at: 28-05 Tasks 1-2 complete (migration 085 drafted + text-tested, commits fba75e1/0575a97, NOT pushed). Task 3 is a BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md.
-Resume file: 28-05-PLAN.md (Task 3: migration push checkpoint)
+Last session: 2026-08-07T00:29:15.374Z
+Stopped at: Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02
+Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`

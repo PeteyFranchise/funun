@@ -767,10 +767,10 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 10 plans / 5 waves
+**Plans:** 1/10 plans executed
 **Wave 1**
 
-- [ ] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
+- [x] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
 - [ ] 25-02-PLAN.md — Audit write-through (logStaffAction) + lead-routing notification builders [W1]
 - [ ] 25-03-PLAN.md — Migrations 089 (funun_staff + staff_audit_log, zero-RLS) + 090 (buyer_orgs.ae_user_id private) [W1] — renumbered from 085/086 after Phase 28 took 085–088
 
@@ -906,12 +906,15 @@ still walls the catalogue (Phase 22 gated it to `/buyers/access`); Phase 23 is w
     **artist↔industry-representative**. Future / per-subtype (rides Phase 28's deferred per-subtype toolsets).
 
 **Login & post-login routing (owner 2026-08-05):**
+
 - **Artist + Industry + Team Member** share the main-app **`/signin`** (Supabase email/password). **Post-login is
   ROLE-AWARE (Option A):** `staff_role`/`is_admin` → **`/admin`** (Team Console); Artist/Industry → **`/dashboard`**.
   **Folded into Phase 25** (the app currently lands *everyone* on `/dashboard`, so staff wrongly land in the artist
   app — this adds account-type-aware landing; lands as a 25-06 extension / small **25-11**). No dedicated staff login page.
+
 - **Client Partner (buyer)** logs in via the **light buyer login modal** (Phase 23), NOT `/signin` — reachable from a
   buyer **landing page** + the Browse Catalogue; post-login → `/buyers/*`. Entry architecture below.
+
 - **Buyer entry — DECIDED (owner 2026-08-05): unify under `/sync`, path now → subdomain later.** The ENTIRE buyer
   world lives under one namespace — **`funun.studio/sync/*`**: a partner **landing page** at `/sync` ("Funūn Sync":
   license fast · value prop · featured catalogue · Browse + Log in / Request-access CTAs), the **Browse Catalogue**,
