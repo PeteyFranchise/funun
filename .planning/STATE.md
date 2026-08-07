@@ -6,14 +6,14 @@ current_phase: 25
 current_phase_name: funun-team-accounts-ae
 status: board-clear
 stopped_at: "Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02"
-last_updated: "2026-08-07T00:29:15.401Z"
+last_updated: "2026-08-07T00:35:54.053Z"
 last_activity: 2026-08-07
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 28
   completed_phases: 20
   total_plans: 144
-  completed_plans: 130
+  completed_plans: 131
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 25 (funun-team-accounts-ae) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -167,6 +167,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 28 P04 | 12min | 2 tasks | 3 files |
 | Phase 28 P05 | ~20min (2/3 tasks, checkpoint-blocked) | 2 tasks | 2 files |
 | Phase 25 P01 | 15min | 2 tasks | 4 files |
+| Phase 25 P02 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -334,6 +335,10 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 28]: 28-05: green_room_posts_insert_own RLS policy DROP+CREATE replaced (not stacked) with a member_type IN ('artist','industry') EXISTS gate alongside the existing author_id check — the DB-authoritative backstop mirroring 28-02's app-layer greenRoomPosterGate()
 - [Phase 25]: requireStaff() is the single authority every staff route calls before createServiceClient() -- no parallel auth path (D-01)
 - [Phase 25]: is_admin===true treated as an implicit leadership fallback (D-02/A1) so the owner's bootstrap account isn't locked out on deploy
+- [Phase ?]: [Phase 25]: 25-02: logStaffAction is the ONE write-through call every staff write (25-04, 25-05) will invoke -- centralizes D-04's audit requirement into a single code-review surface
+- [Phase ?]: [Phase 25]: 25-02: logStaffAction never throws -- mirrors createNotification's { ok, error } convention; the caller decides whether a log failure blocks the primary write
+- [Phase ?]: [Phase 25]: 25-02: Notification builders reuse the existing notifications table + createNotification (no new table/queue) -- notifications.type is unconstrained TEXT so 'ae_assigned'/'lead_routed' need no migration
+- [Phase ?]: [Phase 25]: 25-02: Phase 23's buyer-signup lead-routing call site is documented in-file, not wired -- that mutation has not landed yet; 25-05 wires buildAeAssignedNotification after an AE (re)assignment write instead
 
 ### Pending Todos
 
@@ -361,6 +366,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 28-01: plan frontmatter references requirements INDUSTRY-01/INDUSTRY-06 but REQUIREMENTS.md has no Phase 28 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as Phases 16/22/23, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - 28-05 checkpoint (Task 3, BLOCKING): migration 085 (supabase/migrations/085_industry_capability_green_room_gate.sql -- handle_new_user() industry capability_grants write + backfill + green_room_posts_insert_own RLS member_type gate) is drafted, text-tested (commits fba75e1/0575a97), and NOT pushed -- requires a human with Supabase CLI/dashboard access to review, confirm the live role='curator' account count, run `supabase db push`, confirm LOCAL=REMOTE through 085, and execute the 4-scenario post-push smoke (industry account posts an Antenna opportunity; artist+industry can post in Green Room; a non-member is RLS-rejected; a @funun.studio account is app-layer-blocked). Full steps in 28-05-SUMMARY.md's Checkpoint section and 28-05-PLAN.md Task 3. This is the last open item in Phase 28.
 - 25-01: plan frontmatter references requirement TEAM-01 but REQUIREMENTS.md has no Phase 25 section registering it yet (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/28, deferred to a future /gsd-docs-update pass per the plan's own instruction, not fixed by this executor
+- 25-02: plan frontmatter references requirements TEAM-05/TEAM-06 but REQUIREMENTS.md has no Phase 25 section registering them yet (requirements.mark-complete returned not_found for both) -- same pre-existing gap pattern as 25-01/16/22/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
 
@@ -409,7 +415,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T00:29:15.374Z
+Last session: 2026-08-07T00:34:30.638Z
 Stopped at: Completed 25-01-PLAN.md (staff role gate + isAssignedToOrg); next: 25-02
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
