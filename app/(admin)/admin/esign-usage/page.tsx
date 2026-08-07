@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { monthlyEsignUsage, currentMonthRange } from '@/lib/esign/telemetry'
 import { MONTHLY_NEW_RECIPIENT_CAP } from '@/lib/split-sheets/envelopes'
@@ -40,8 +41,7 @@ export default async function AdminEsignUsagePage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  if (getStaffRole(user) !== 'leadership') redirect('/')
 
   const service = createServiceClient()
   const { startIso, endIso } = currentMonthRange(new Date())

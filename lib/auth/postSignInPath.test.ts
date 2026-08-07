@@ -37,4 +37,17 @@ describe('postSignInPath — role-aware post-sign-in routing (25-11)', () => {
     expect(postSignInPath({ user: staff('leadership'), next: 'http://evil.com/x' })).toBe(STAFF_HOME)
     expect(postSignInPath({ user: artist, next: 'javascript:alert(1)' })).toBe(DEFAULT_HOME)
   })
+
+  it('rejects backslash + control-char normalization tricks (review finding #1)', () => {
+    // browsers normalize '/\host' and '/%5Chost' (decoded to '/\host') to '//host' → off-site
+    expect(postSignInPath({ user: artist, next: '/\\evil.com' })).toBe(DEFAULT_HOME)
+    expect(postSignInPath({ user: staff('leadership'), next: '/\\evil.com' })).toBe(STAFF_HOME)
+    expect(postSignInPath({ user: artist, next: '/\\/evil.com' })).toBe(DEFAULT_HOME)
+    expect(postSignInPath({ user: artist, next: '\\/\\/evil.com' })).toBe(DEFAULT_HOME)
+    // embedded tab/newline the WHATWG parser strips, then it resolves off-origin
+    expect(postSignInPath({ user: artist, next: '/\t//evil.com' })).toBe(DEFAULT_HOME)
+    expect(postSignInPath({ user: artist, next: '/\n//evil.com' })).toBe(DEFAULT_HOME)
+    // a legit deep link with query + hash is preserved
+    expect(postSignInPath({ user: artist, next: '/vault/abc?x=1#y' })).toBe('/vault/abc?x=1#y')
+  })
 })

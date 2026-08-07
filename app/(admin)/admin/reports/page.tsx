@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { loadReportsForAdmin } from '@/lib/trust-safety/admin-reports'
 import { ReportsAdmin } from '@/components/admin/ReportsAdmin'
@@ -13,8 +14,7 @@ export default async function AdminReportsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  if (getStaffRole(user) !== 'leadership') redirect('/')
 
   const service = createServiceClient()
   const reports = await loadReportsForAdmin(service, {

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { ChecklistAdmin } from '@/components/admin/ChecklistAdmin'
 import type { ChecklistItem } from '@/types'
@@ -21,8 +22,7 @@ export default async function AdminChecklistPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const isAdmin = (user.app_metadata as { is_admin?: boolean })?.is_admin === true
-  if (!isAdmin) redirect('/')
+  if (getStaffRole(user) !== 'leadership') redirect('/')
 
   const service = createServiceClient()
   const { data: items } = await service

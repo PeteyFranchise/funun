@@ -58,51 +58,61 @@ export async function createBuyerAccount(input: {
     )
   }
 
-  // handle_new_user's buyer early-return (migration 080) cannot fire in this
-  // Supabase instance: GoTrue applies app_metadata just AFTER the auth.users
-  // insert, so the trigger doesn't see role='buyer' and runs its default artist
-  // branch — creating a phantom user_profiles + subscriptions row. Buyers are a
-  // fully separate account type with NO profile (D-11/D-04), so reconcile here
-  // via the service role — reliably, independent of the trigger's timing.
-  // Idempotent: a no-op if a future GoTrue ever makes the buyer branch fire.
-  await service.from('subscriptions').delete().eq('user_id', created.user.id)
-  await service.from('user_profiles').delete().eq('id', created.user.id)
+  const userId = created.user.id
 
-  // migration 080 REVOKEd INSERT on buyer_members from authenticated/anon —
-  // this write must go through the service-role client. Must succeed before
-  // the auth user is treated as usable: an auth user carrying the buyer role
-  // with no membership row would reach nothing (the (buyer-portal) layout's
-  // membership check redirects it back to the access page).
-  const { error: memberError } = await service.from('buyer_members').insert({
-    org_id: orgId,
-    user_id: created.user.id,
-    buyer_role: buyerRole,
-    is_org_admin: isOrgAdmin,
-    invited_by: invitedBy ?? null,
-  })
-  if (memberError) {
-    throw new Error(`Failed to create buyer account: ${memberError.message}`)
-  }
+  // Everything after createUser must land as a COMPLETE account, or none at all
+  // (review finding #3): if any critical step fails, compensate by deleting the
+  // just-created auth user (+ any buyer_members row). The phantom-row cleanup is
+  // now fatal-on-error rather than ignored — a buyer that keeps its stray
+  // user_profiles row would pass is_green_room_eligible() and could post directly.
+  let actionLink: string
+  try {
+    // handle_new_user's buyer early-return (migration 080) cannot fire in this
+    // Supabase instance (GoTrue applies app_metadata just AFTER the auth.users
+    // insert), so the trigger's default artist branch creates a phantom
+    // user_profiles + subscriptions row. Buyers have NO profile — remove them.
+    const { error: subErr } = await service.from('subscriptions').delete().eq('user_id', userId)
+    if (subErr) throw new Error(`subscriptions cleanup failed: ${subErr.message}`)
+    const { error: profErr } = await service.from('user_profiles').delete().eq('id', userId)
+    if (profErr) throw new Error(`user_profiles cleanup failed: ${profErr.message}`)
 
-  const { data: link, error: linkError } = await service.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
-  if (linkError || !link?.properties?.action_link) {
+    // migration 080 REVOKEd INSERT on buyer_members from authenticated/anon —
+    // service-role write. An auth user with the buyer role but no membership row
+    // reaches nothing (the (buyer-portal) layout redirects it back to access).
+    const { error: memberError } = await service.from('buyer_members').insert({
+      org_id: orgId,
+      user_id: userId,
+      buyer_role: buyerRole,
+      is_org_admin: isOrgAdmin,
+      invited_by: invitedBy ?? null,
+    })
+    if (memberError) throw new Error(`buyer_members insert failed: ${memberError.message}`)
+
+    const { data: link, error: linkError } = await service.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    })
+    if (linkError || !link?.properties?.action_link) {
+      throw new Error(linkError?.message ?? 'could not generate invite link')
+    }
+    actionLink = link.properties.action_link
+  } catch (err) {
+    try {
+      await service.from('buyer_members').delete().eq('user_id', userId)
+    } catch {}
+    try {
+      await service.auth.admin.deleteUser(userId)
+    } catch {}
     throw new Error(
-      `Failed to create buyer account: ${linkError?.message ?? 'could not generate invite link'}`
+      `Failed to create buyer account: ${err instanceof Error ? err.message : 'unknown error'}`
     )
   }
 
-  // Custom Resend invite email — NOT Supabase's built-in invite template.
-  // sendEmail() no-ops safely if Resend isn't configured (returns
-  // { ok: false }). WR-04 (mirrored): surface delivery failure to the caller
-  // instead of silently discarding it so the route can warn the admin.
-  const { subject, html } = buyerInviteEmail({
-    displayName,
-    actionLink: link.properties.action_link,
-  })
+  // Past this point the account is complete + valid — email delivery is best-effort
+  // (sendEmail() no-ops with { ok: false } when Resend isn't configured) and never
+  // rolls back the account. WR-04: surface delivery failure to the caller.
+  const { subject, html } = buyerInviteEmail({ displayName, actionLink })
   const { ok: emailSent } = await sendEmail({ to: email, subject, html })
 
-  return { userId: created.user.id, emailSent }
+  return { userId, emailSent }
 }
