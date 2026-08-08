@@ -11,11 +11,11 @@ import { AssetUpload } from '@/components/vault/AssetUpload'
 import { DocumentManager } from '@/components/vault/DocumentManager'
 import { ToolsPanel } from '@/components/tools/ToolsPanel'
 import { ProjectTabs } from '@/components/vault/ProjectTabs'
-import { TrackList, type PlayerTrack } from '@/components/vault/TrackList'
+import { TrackList, type PlayerTrack, type TrackSyncStatus } from '@/components/vault/TrackList'
 import { readMasterAudio } from '@/lib/metadata/schema'
 import { SubmissionHistory } from '@/components/vault/SubmissionHistory'
 import { getProjectSubmissions } from '@/lib/submissions'
-import type { Submission } from '@/types'
+import type { Submission, SyncListingStatus } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -214,6 +214,49 @@ export default async function VaultProjectPage({
     submissions = await getProjectSubmissions(supabase, project.id)
   }
 
+  // Sync Library status per track (26-07-PLAN) — this owner's own
+  // sync_listings rows for this project's tracks, plus whether they already
+  // have a signed blanket agreement on file (covered-by-agreement
+  // indicator, decision #4). Session client only — RLS scopes both tables
+  // to the owning artist (sync_listings_select_own / vault_documents'
+  // project_id IS NULL + user_id fallback, migration 096/078). Demo has no
+  // sync-library data.
+  let syncStatusByTrack: Record<string, TrackSyncStatus> = {}
+  let hasSignedBlanketAgreement = false
+  if (!DEMO) {
+    const supabase = await createServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const trackIds = project.tracks.map(t => t.id)
+      if (trackIds.length > 0) {
+        const { data: listingsRaw } = await supabase
+          .from('sync_listings')
+          .select('id, track_id, status, rejection_reason')
+          .eq('artist_user_id', user.id)
+          .in('track_id', trackIds)
+        type ListingRow = { id: string; track_id: string; status: SyncListingStatus; rejection_reason: string | null }
+        syncStatusByTrack = ((listingsRaw ?? []) as ListingRow[]).reduce<Record<string, TrackSyncStatus>>(
+          (acc, row) => {
+            acc[row.track_id] = { id: row.id, status: row.status, rejection_reason: row.rejection_reason }
+            return acc
+          },
+          {}
+        )
+      }
+
+      const { data: signedDoc } = await supabase
+        .from('vault_documents')
+        .select('id')
+        .eq('type', 'blanket_agreement')
+        .eq('user_id', user.id)
+        .eq('status', 'signed')
+        .maybeSingle()
+      hasSignedBlanketAgreement = signedDoc != null
+    }
+  }
+
   const contentsCount = project.vault_assets.length + project.vault_documents.length
 
   const readinessPanel = (
@@ -373,7 +416,13 @@ export default async function VaultProjectPage({
       {/* Tracks (left) + Release Readiness (right) */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <TrackList projectId={project.id} tracks={playerTracks} canManage />
+          <TrackList
+            projectId={project.id}
+            tracks={playerTracks}
+            canManage
+            syncStatusByTrack={syncStatusByTrack}
+            hasSignedBlanketAgreement={hasSignedBlanketAgreement}
+          />
         </div>
         <div className="lg:col-span-2">{readinessPanel}</div>
       </div>
