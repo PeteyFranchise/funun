@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 26
-current_phase_name: sync-library-inclusion
-status: deployed
-stopped_at: Phase 26 DEPLOYED to production 2026-08-08 — PR #59 merged to main (be4e24e), prod Vercel deploy GREEN; migration 096 live; 146 suites/1723 tests + tsc + build green. Buyer catalogue now admitted-only (reads EMPTY until songs admitted — intended; replaced the beta is_public gate). REMAINING (non-blocking; phase not formally closed): (1) live-env UAT — 11 flow tests BLOCKED in 26-UAT.md (need running app + real artist/staff auth/data; live DocuSeal sign round-trip deferred); (2) register SYNCLIB-01..15 in REQUIREMENTS.md via /gsd-docs-update; (3) swap counsel-approved blanket agreement into the versioned template before real artist use.
-last_updated: "2026-08-08T06:00:00.000Z"
+current_phase: 27
+current_phase_name: artist-invite-only-onboarding
+status: pending
+stopped_at: "▶ NEXT (owner-set, 2026-08-09): start with `/gsd-discuss-phase 27` — full GSD discussion of Phase 27 (Artist Invitation-Only Onboarding growth gate; context in 27-CONTEXT.md). THEN `/gsd-explore` for the Phase 24 self-serve business model (paid-tier early-access + content-protection — see memory project-self-serve-business-model; Phase 29 self-serve flat-price licensing folds into that conversation). — PRIOR: Phase 26 SHIPPED to prod (PR #59, main be4e24e); SYNCLIB-01..15 registered; roadmap trued up (23/25/28 marked shipped). Phase 26 loose ends (all non-blocking): live-env UAT (11 tests blocked in 26-UAT.md), counsel-approved blanket-agreement swap-in, and the running sample-fallback task."
+last_updated: "2026-08-08T06:30:00.000Z"
 last_activity: 2026-08-08
-last_activity_desc: Phase 26 deployed to production (PR #59 → main be4e24e, prod Vercel green); live UAT + SYNCLIB registration remain
+last_activity_desc: "Phase 26 shipped + closed out (SYNCLIB registered, roadmap trued up); NEXT is /gsd-discuss-phase 27 (2026-08-09)"
 progress:
   total_phases: 28
   completed_phases: 22
