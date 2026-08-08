@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 23
-current_phase_name: buyer-onboarding-login-register
-status: board-clear
-stopped_at: "Phase 23 SHIPPED TO PRODUCTION 2026-08-07: deploy sequence complete — (1) PR #57 batch-2 review fixes merged→main; (2) Phase 23 branch reconciled with #57 (buyer-orgs [id]/route.ts + route.ts auto-combined #57's scope-safe write + 23-06's status/use_case allowlist + unassigned queue; colocated [id]/route.test.ts mock aligned to #57's chainable write); (3) PR #58 opened, Vercel preview green, MERGED→main 424583c, production Vercel deploy SUCCESS. /sync now LIVE. tsc+lint clean, 1612/1612 tests (135 suites) green. REMAINING = Pete's deployed-domain /sync UAT. Historical context below. Phase 23 COMPLETE (8/8 plans) on branch codex/phase-23-buyer-onboarding (pushed, merged via #58). Buyer onboarding Model A + /sync SHIPPED at the DB+branch level: /buyers/*→/sync/* unified + public /sync landing; public logged-out /sync/catalog (anon-crash fixed); POST /api/sync/register (public, rate-limited, enumeration-safe, real Phase-25 lead routing); buyer PASSWORD auth (role-aware→/sync/catalog); AE onboarding surface (/admin/client-partners/[orgId] detail, status pending_onboarding→active via staff-edit allowlist, unassigned-lead queue); .fnbl LoginRegisterModal (Marmoset mirror, Register+Talk-to-sales→one pipeline) wired into browse+landing. Migrations 092/093/094 (batch-1 review hardening) + 095 (buyer_orgs status+lead fields) ALL PUSHED LIVE (LOCAL=REMOTE through 095). 23-08 onboarding-loop smoke PASSED live against prod Supabase (register→pending→AE assign→detail no-404→active→login→gated browse); 093/094/095 grants verified live; 092 grant-catalog query deferred (no direct SQL). SYNC-01..10 registered Complete in REQUIREMENTS.md. Full suite 135 suites/1610 green; tsc+lint+build clean. ONLY REMAINING = DEPLOY (funun.studio/sync 404s until the code deploys). DEPLOY ORDER: (1) merge PR #57 batch-2 review fixes; (2) reconcile Phase 23's buyer-orgs route changes with #57 (23-06 touched app/api/admin/buyer-orgs/[id]/route.ts + route.ts + staff-buyer-orgs-api.test.ts on the pre-#57 files — CONFLICT); (3) open + merge the Phase 23 PR → /sync live. Migrations already live so the deploy has its schema. NOTE: Resend email still unconfigured in prod (invites/lead emails no-op). Deferred: SYNC-10 spend-oversight UI; 092 grant-catalog confirm; Phase 21 RLS smoke (0/31). NEXT feature per roadmap after deploy: Phase 26 (sync-library supply)."
-last_updated: "2026-08-07T18:00:00.000Z"
+current_phase: 26
+current_phase_name: sync-library-inclusion
+status: planned
+stopped_at: Phase 26 PLANNED — 10 plans / 3 waves, plan-checker VERIFICATION PASSED (all dimensions; SYNCLIB-01..15 covered). Ready for /gsd-execute-phase 26 — Wave 1 (migration 096 + domain core) first; the [BLOCKING] human-gated 096 db push blocks Wave 2. SYNCLIB-01..15 to register in REQUIREMENTS.md before phase close.
+last_updated: "2026-08-08T03:15:00.000Z"
 last_activity: 2026-08-07
-last_activity_desc: "Phase 23 SHIPPED — PR #57 merged, Phase 23 reconciled+PR #58 merged→main (424583c), production Vercel deploy green, /sync LIVE; awaiting Pete's deployed-domain UAT"
+last_activity_desc: Phase 26 planned — 10 plans/3 waves, checker VERIFICATION PASSED; ready for /gsd-execute-phase 26
 progress:
   total_phases: 28
-  completed_phases: 23
-  total_plans: 152
+  completed_phases: 22
+  total_plans: 162
   completed_plans: 147
-  percent: 82
+  percent: 79
 ---
 
 # Project State
@@ -470,9 +470,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T09:53:57.704Z
-Stopped at: Completed 23-07-PLAN.md (LoginRegisterModal + browse gate + landing CTA wiring)
-Resume file: 23-08-PLAN.md
+Last session: 2026-08-08T02:46:35.159Z
+Stopped at: Phase 26 UI-SPEC approved (6/6 dimensions, 1 non-blocking visual-hierarchy flag). Ready for /gsd-plan-phase 26.
+Resume file: .planning/phases/26-sync-library-inclusion/26-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
