@@ -22,6 +22,7 @@ import {
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
 
 type Item = {
   href: string
@@ -123,6 +124,15 @@ export function ArtistNav({
     if (item.requiresSyncLibraryAccess && !hasSyncLibraryAccess) return false
     return true
   })
+
+  // "New" dot on the Sync Library nav item (26-UI-SPEC.md "New-feature
+  // highlight") — clears the moment the artist first arrives at the hub
+  // (components/sync-library/SyncLibraryCoachMark.tsx marks the shared
+  // seen-flag on mount and broadcasts it here). Cosmetic only (T-26-33) —
+  // hasSyncLibraryAccess remains the sole access-control gate above.
+  const syncLibrarySeenKey = userId ? newFeatureSeenKey('synclib', userId) : null
+  const syncLibrarySeen = useNewFeatureSeen(syncLibrarySeenKey)
+  const showSyncLibraryDot = hasSyncLibraryAccess && !syncLibrarySeen
 
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [collapsed, setCollapsed] = useState(false)
@@ -273,8 +283,9 @@ export function ArtistNav({
       )}
 
       {/* Nav items */}
-      {visibleItems.map(({ href, label, match, Icon }) => {
+      {visibleItems.map(({ href, label, match, Icon, requiresSyncLibraryAccess }) => {
         const active = pathname === match || pathname.startsWith(match + '/')
+        const showDot = requiresSyncLibraryAccess && showSyncLibraryDot
         return (
           <Link
             key={href}
@@ -298,7 +309,13 @@ export function ArtistNav({
                 ].join(' ')}
               />
             )}
-            <Icon gradient={active} className="h-[21px] w-[21px] flex-none" />
+            <span className="relative flex-none">
+              <Icon gradient={active} className="h-[21px] w-[21px]" />
+              {/* "New" dot — matches NotificationBell's unread-dot scale, no count. */}
+              {showDot && (
+                <span className="absolute -right-[2px] -top-[2px] h-[7px] w-[7px] rounded-full bg-brandfuchsia" />
+              )}
+            </span>
             {!collapsed && label}
 
             {/* Tooltip when collapsed */}
