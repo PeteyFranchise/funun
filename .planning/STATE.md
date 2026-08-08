@@ -4,11 +4,11 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 26
 current_phase_name: sync-library-inclusion
-status: executed
-stopped_at: Phase 26 EXECUTED — all 10 plans complete (3 waves), migration 096 LIVE, full suite 146 suites/1723 tests + tsc + npm run build all GREEN, pushed on codex/phase-26-sync-library (head 61c0357). REMAINING: (1) formal /gsd-verify-work + owner UAT of the real flows (invite→self-apply→sign→admit→hub-unlock→leadership-remove; live DocuSeal round-trip deferred per plans); (2) register SYNCLIB-01..15 in REQUIREMENTS.md via /gsd-docs-update; (3) deploy (open PR → merge to main). Buyer catalogue correctly reads empty until songs are admitted.
-last_updated: "2026-08-08T05:00:00.000Z"
+status: deployed
+stopped_at: Phase 26 DEPLOYED to production 2026-08-08 — PR #59 merged to main (be4e24e), prod Vercel deploy GREEN; migration 096 live; 146 suites/1723 tests + tsc + build green. Buyer catalogue now admitted-only (reads EMPTY until songs admitted — intended; replaced the beta is_public gate). REMAINING (non-blocking; phase not formally closed): (1) live-env UAT — 11 flow tests BLOCKED in 26-UAT.md (need running app + real artist/staff auth/data; live DocuSeal sign round-trip deferred); (2) register SYNCLIB-01..15 in REQUIREMENTS.md via /gsd-docs-update; (3) swap counsel-approved blanket agreement into the versioned template before real artist use.
+last_updated: "2026-08-08T06:00:00.000Z"
 last_activity: 2026-08-08
-last_activity_desc: Phase 26 executed — 10/10 plans, migration 096 live, 1723 tests + tsc + build green
+last_activity_desc: Phase 26 deployed to production (PR #59 → main be4e24e, prod Vercel green); live UAT + SYNCLIB registration remain
 progress:
   total_phases: 28
   completed_phases: 22
