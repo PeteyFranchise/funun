@@ -137,3 +137,21 @@ export function getCurrentBlanketAgreement(): {
     title: BLANKET_AGREEMENT_TITLE,
   }
 }
+
+// ─── Signing-surface copy (26-07-PLAN, 26-UI-SPEC.md Screen D) ─────────
+// UI strings for the signing page + BlanketAgreementSigningEmbed — kept
+// here, not hardcoded in the component, so this file stays the single
+// source of everything an artist reads about the blanket agreement
+// (mirrors lib/split-sheets/agreement.ts's PRE_SIGNATURE_REVIEW_PROMPT
+// convention). Verbatim per 26-UI-SPEC.md's Copywriting Contract.
+
+/** Shown above the embed, before the artist signs (mirrors PRE_SIGNATURE_REVIEW_PROMPT's role). */
+export const BLANKET_AGREEMENT_REVIEW_PROMPT =
+  "This one-time agreement authorizes Funūn to represent and shop your submitted songs for sync licensing. Price and deal terms are always negotiated per deal — this only signs off Funūn's authority to negotiate on your behalf. You'll sign this once; future songs you submit are covered automatically."
+
+/** The completion panel heading, shown once onComplete fires (client hint only — see BlanketAgreementSigningEmbed). */
+export const BLANKET_AGREEMENT_SIGNED_HEADING = "Signed — you're in the Sync Library"
+
+/** The completion panel body. */
+export const BLANKET_AGREEMENT_SIGNED_BODY =
+  "We'll notify you as soon as your first song goes live in Browse the Catalogue."
