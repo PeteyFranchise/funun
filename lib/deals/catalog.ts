@@ -12,8 +12,8 @@ import { ALL_GENRE_SLUGS } from '@/lib/genres'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
-// replacing the beta `is_public !== true` placeholder (RESEARCH Open
-// Question 3). A project is admitted only when it has at least one
+// replacing the beta is_public-based eligibility placeholder (RESEARCH
+// Open Question 3). A project is admitted only when it has at least one
 // sync_listings row with status = 'admitted' (SONG-LEVEL per
 // 26-CONTEXT.md — a project may have several tracks, only some of which
 // are admitted; callers resolve has_admitted_sync_listing per PROJECT by

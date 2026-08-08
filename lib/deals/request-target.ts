@@ -25,8 +25,8 @@ import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
 // 26-06: the admission check now delegates to lib/deals/catalog.ts's
 // isAdmittedToSyncLibrary (the SAME helper lib/deals/catalog-query.ts's
 // loadCatalogPage/isRightsReady call), replacing the old inline
-// `is_public !== true` check — one shared admission authority, no third
-// copy (T-26-24). This function resolves has_admitted_sync_listing via a
+// is_public-based eligibility check — one shared admission authority, no
+// third copy (T-26-24). This function resolves has_admitted_sync_listing via a
 // sync_listings existence lookup (status = 'admitted'), then applies
 // readiness/stage3 (computeStage3().canContinue) and the Phase 13
 // visibility/block gate on top, exactly as before.
