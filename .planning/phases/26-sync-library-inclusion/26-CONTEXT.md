@@ -164,17 +164,22 @@ transacting.
 **Roadmap follow-on (owner 2026-08-07):** a future **self-serve flat-price licensing platform** (Marmoset-style)
 for smaller deals that do not require negotiation — added to ROADMAP.md as a later phase. Out of scope for Phase 26.
 
-**UI-phase flagged details — resolved (owner 2026-08-07, after 26-UI-SPEC.md approved 6/6):**
+**UI-phase flagged details — resolved one-by-one with owner (2026-08-07, after 26-UI-SPEC.md approved 6/6). These
+owner decisions are AUTHORITATIVE and override any conflicting detail in 26-UI-SPEC.md:**
 1. **Rejection reason:** staff may attach an **optional short reason** when rejecting a submitted song, **shown
    to the artist** (adds a reason field to the admin reject action + surfaces it on the song's rejected status).
-2. **Invited artists skip `under_review`:** the invite IS the acceptance — an invited artist's song goes
-   submitted → `agreement_pending` → admitted (no review queue). Only **self-applied** songs pass through
-   `under_review`.
+2. **Staff admit EVERY song** (owner reversed the earlier "invited skips review" default): every song — invited
+   OR self-applied — passes through a **staff admit/reject gate** before going live. "Invited" vs "self-applied"
+   is **metadata shown in the curation queue**, not a different flow gate — one consistent human curation gate on
+   the whole catalogue. Per-song state: submitted/added → [sign agreement if not yet signed] → **pending staff
+   admit** → admitted / rejected.
 3. **Spotlight invite card:** **not dismissible** — persists until acted on.
-4. **Post-signing submissions:** once the blanket agreement is signed, later songs **skip the sign step**
-   (covered by the existing agreement); their status reflects "covered by your agreement," not a re-sign.
-5. **Sync Library hub focal point:** **"Admitted songs"** is the primary visual anchor (resolves the UI-checker's
-   Dimension-2 visual-hierarchy flag).
+4. **Post-signing submissions:** later songs (after the sign-once agreement) skip the sign step and move
+   **straight to "pending admit" with NO special "covered" indicator** (owner chose the quieter treatment — no
+   extra badge explaining why signing was skipped).
+5. **Sync Library hub anchor:** **"In progress"** is the primary visual anchor (owner chose the workspace framing
+   over "Admitted songs") — pending-admit / mid-flow songs lead the page; "Admitted songs" and "Your agreement"
+   sit below as reference. Resolves the UI-checker's Dimension-2 visual-hierarchy flag.
 </resolved>
 
 ---
