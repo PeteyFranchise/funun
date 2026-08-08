@@ -535,6 +535,60 @@ Model A (sales-led B2B) buyer onboarding plus the shared front-end foundation bo
 - Phase 23 requirement IDs: 10 total
 - Complete: 10 (all verified via the 23-08 production onboarding-loop smoke against live Supabase after migrations 092–095 landed — register → pending_onboarding → admin queue → AE assign → detail page (no 404) → Active → password login → gated browse; deployed-domain `/sync` UAT pending the code deploy; SYNC-10 spend-oversight UI deferred)
 
+## v1.2 — Phase 26: Sync-Library Inclusion & Artist Submission Requirements
+
+The curated sync-library supply pipeline — how songs get into the buyer catalogue. Artists submit (invited spotlight OR self-apply from the Vault) → sign a sign-once blanket agreement authorizing Funūn to shop → staff admit each song → it becomes browsable/licensable. Song-level (a buyer licenses one song at a time). Backed by migration 096 (`sync_listings` per-song state machine; `capability_grants` `sync_library` capability + `admin_invited`/`self_applied` sources; `vault_documents.type='blanket_agreement'`) — live (`LOCAL=REMOTE` through 096). Deployed to production via PR #59 (main `be4e24e`); live-env UAT pending.
+
+### Schema & domain core
+- **SYNCLIB-01**: `sync_listings` per-song admission state machine (`applied`/`invited` → `agreement_pending` → `pending_admit` → `admitted`/`rejected`/`withdrawn`/`removed`) with one-active-listing-per-track uniqueness, RLS + column lockdown; a shared TS state machine + eligibility predicate mirror the CHECK enum
+- **SYNCLIB-02**: "Sync-library participant" grant via `capability_grants` (`sync_library` capability) with two sources — `admin_invited` (staff invite) and `self_applied` (accepted application)
+
+### Submission (self-apply + invited)
+- **SYNCLIB-03**: Ungated per-song self-apply — a "Submit to Sync Library" action on any Vault song (all artists), song-level, batched submit / per-song admission
+- **SYNCLIB-04**: Artist withdrawal of a listing → `withdrawn`, removed from the catalogue
+- **SYNCLIB-05**: Staff invite an artist → mints an `admin_invited` grant → the non-dismissible dashboard spotlight card surfaces for that artist (persists until acted on; disappears post-submission)
+
+### Blanket agreement
+- **SYNCLIB-06**: Sign-once-per-artist blanket agreement via the lightweight `vault_documents.document_data.esign` JSONB path (not `esign_envelopes`), versioned/swappable template, Unicode-safe PDF; later songs skip signing ("covered by your agreement")
+- **SYNCLIB-07**: DocuSeal webhook dispatch-by-lookup — blanket-agreement completions dispatched separately from split-sheet completions, preserving raw-body→verify→parse ordering + idempotency
+
+### Admission, removal & catalogue gate
+- **SYNCLIB-08**: Single staff admit/reject curation gate — every song (invited OR self-applied) passes one human gate; unconditional `logStaffAction` audit
+- **SYNCLIB-09**: Optional short rejection reason (and removal reason), shown to the artist via notification
+- **SYNCLIB-10**: Catalogue admission gate — one `isAdmittedToSyncLibrary` helper replaces the duplicated `is_public` eligibility checks (`isRightsReady`, `authorizeRequestTarget`, `loadShortlistEntries`); catalogue shows only admitted songs
+- **SYNCLIB-15**: Admin Sync-Library section — invite panel + curation queue + LEADERSHIP-ONLY "Remove from Sync Library" takedown (`requireStaff(['leadership'])`)
+
+### Artist surfaces
+- **SYNCLIB-11**: Vault song-row submission action + on-song status chips (dot+pill idiom) + "covered by agreement" indicator
+- **SYNCLIB-12**: Post-admission Sync Library hub, anchored on "In progress" (workspace framing), then "Admitted songs", then "Your agreement"
+- **SYNCLIB-13**: Server-gated "Sync Library" nav item under "Deals", visible ONLY after ≥1 admitted song (progressive disclosure); "Split Sheets" moved under "Contract Locker"
+- **SYNCLIB-14**: New-feature highlight when the hub unlocks — admission notification + "New" nav dot until first open + a reusable coach-mark primitive
+
+**Traceability (Phase 26):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| SYNCLIB-01 | Phase 26 | 26-01, 26-02 | Complete |
+| SYNCLIB-02 | Phase 26 | 26-01, 26-05 | Complete |
+| SYNCLIB-03 | Phase 26 | 26-03, 26-07 | Complete |
+| SYNCLIB-04 | Phase 26 | 26-03 | Complete |
+| SYNCLIB-05 | Phase 26 | 26-05, 26-08 | Complete |
+| SYNCLIB-06 | Phase 26 | 26-04, 26-07 | Complete |
+| SYNCLIB-07 | Phase 26 | 26-04 | Complete |
+| SYNCLIB-08 | Phase 26 | 26-05, 26-10 | Complete |
+| SYNCLIB-09 | Phase 26 | 26-05, 26-10 | Complete |
+| SYNCLIB-10 | Phase 26 | 26-06 | Complete |
+| SYNCLIB-11 | Phase 26 | 26-07 | Complete |
+| SYNCLIB-12 | Phase 26 | 26-09 | Complete |
+| SYNCLIB-13 | Phase 26 | 26-09 | Complete |
+| SYNCLIB-14 | Phase 26 | 26-05, 26-09 | Complete |
+| SYNCLIB-15 | Phase 26 | 26-10 | Complete |
+
+**Coverage (Phase 26):**
+
+- Phase 26 requirement IDs: 15 total
+- Complete (code + automated): 15 — all built; 1723 tests + tsc + build green; deployed via PR #59. Live-env UAT (11 flow tests in 26-UAT.md) BLOCKED pending real auth/data; live DocuSeal sign round-trip deferred; counsel-approved agreement swap-in pending.
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-07 — Phase 23 registered all 10 SYNC requirement IDs (public browse + modal, buyer company account model + register pipeline, AE-assisted onboarding), all Complete and verified via the 23-08 production onboarding-loop smoke after migrations 092–095 landed; deployed `/sync` UAT pending the branch deploy*
+*Last updated: 2026-08-08 — Phase 26 registered all 15 SYNCLIB requirement IDs (curated sync-library supply pipeline: submit/invite, sign-once blanket agreement, staff admit/reject + leadership removal, catalogue admission gate, artist + admin UI), all code-Complete and deployed via PR #59; live-env UAT pending*
