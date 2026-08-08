@@ -760,7 +760,18 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 **Requirements**: see `.planning/phases/24-buyer-onboarding-self-serve/24-CONTEXT.md`
 **Depends on:** Phase 23 (shared modal + public browse + buyer account model), Phase 16 (buyer orgs), Stripe (billing)
 
-**Status:** Future / post-beta — discussion captured (24-CONTEXT.md), **not yet planned**. Sequenced after Model A ships.
+**Status:** ON HOLD pending a **business-model GSD discussion** (planned 2026-08-09 — owner). Self-serve is NOT
+to be planned/built until the business model is understood and a model + design + go-to-market game plan is agreed.
+The discussion must research and resolve:
+- **(a) Paid-tier membership / early access** — a subscription tier that lets buyers preview and "try out" tracks
+  ahead of licensing (Musicbed / Marmoset / Artlist / Epidemic-style tiers). Research how those tiers are
+  structured, priced, and what preview access they grant.
+- **(b) Content protection / anti-piracy** — how those companies stop members from placing preview or
+  unlicensed tracks on YouTube, Facebook, and other platforms (e.g. YouTube Content ID / audio fingerprinting,
+  watermarked previews, licence-gated downloads, takedown tooling). Determine what Funūn needs here.
+- **Deliverable:** a business model + design + game plan that (re)shapes this phase's scope.
+Sequenced after Model A (Phase 23, shipped). Original self-serve context in 24-CONTEXT.md; run as `/gsd-explore`
+(business-model ideation) before any `/gsd-discuss-phase 24`.
 
 ### Phase 25: Funūn Team Member Accounts & AE Assignment + Role Permissions
 
@@ -889,7 +900,7 @@ checked in `handle_new_user`); whether adding a collaborator by email auto-creat
 claim substrate) vs an explicit invite action; the Team-Member "Invite artist" action; bootstrap timing/retroactivity;
 abuse limits. **Distinct from** Phase 26's sync-library invite (that invites a song; this invites a person to create an account).
 
-**Status:** Context captured (27-CONTEXT.md), **not yet planned**. Near-term growth control; the owner's seed-artist
+**Status:** Full **GSD discussion planned 2026-08-09** (`/gsd-discuss-phase 27` — owner) before planning. Context captured (27-CONTEXT.md), **not yet planned**. Near-term growth control; the owner's seed-artist
 account can be created independently at any time.
 
 ### Account Taxonomy & Green Room Access (owner-confirmed 2026-08-05)
