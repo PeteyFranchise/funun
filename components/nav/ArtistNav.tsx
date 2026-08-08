@@ -17,10 +17,12 @@ import {
   CollaboratorsIcon,
   NetworkIcon,
   DealsIcon,
+  SyncLibraryIcon,
   SettingsIcon,
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
 
 type Item = {
   href: string
@@ -31,16 +33,33 @@ type Item = {
   // account's capability set doesn't include this value. Untagged items
   // (Antenna, Settings) are universal — Antenna is dual-use per D-07.
   requiresCapability?: 'artist' | 'industry'
+  // Data-driven gate (≥1 admitted sync-library listing) — NOT a static
+  // capability. Resolved server-side in app/(artist)/layout.tsx and passed
+  // down as hasSyncLibraryAccess, mirroring how capabilities is already
+  // resolved server-side (26-CONTEXT.md "Nav visibility is a server-side
+  // check", D-08 doctrine).
+  requiresSyncLibraryAccess?: true
 }
 
 const ITEMS: Item[] = [
   { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
   { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
-  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon, requiresCapability: 'artist' },
   // No requiresCapability — split sheets are open to industry accounts by
   // design (D-20); gating this on 'artist' would re-orphan the route for
   // exactly the producers/writers who create sheets most (18-01 finding 1).
+  // Sits directly under Contract Locker (26-CONTEXT.md nav-order lock,
+  // 2026-08-07 — "it is part of the Contract Locker").
   { href: '/split-sheets', label: 'Split Sheets', match: '/split-sheets', Icon: LockerIcon },
+  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon, requiresCapability: 'artist' },
+  // Sync Library — appears directly under Deals ONLY once the artist has
+  // ≥1 admitted song (progressive disclosure; earned, not given).
+  {
+    href: '/sync-library',
+    label: 'Sync Library',
+    match: '/sync-library',
+    Icon: SyncLibraryIcon,
+    requiresSyncLibraryAccess: true,
+  },
   { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon, requiresCapability: 'artist' },
   { href: '/green-room', label: 'The Green Room', match: '/green-room', Icon: GreenRoomIcon },
   { href: '/network', label: 'Network', match: '/network', Icon: NetworkIcon },
@@ -66,6 +85,8 @@ type NavUser = { name?: string; plan?: string; initials?: string }
 export function ArtistNav({
   user,
   capabilities = ['artist'],
+  hasSyncLibraryAccess = false,
+  userId,
 }: {
   user?: NavUser
   // Default ['artist'] preserves existing behavior for any caller that
@@ -73,6 +94,15 @@ export function ArtistNav({
   // rollout). The real value always comes from a server-side read of
   // capability_grants (app/(artist)/layout.tsx) — never fetched client-side.
   capabilities?: string[]
+  // ≥1 admitted sync-library listing, resolved server-side in
+  // app/(artist)/layout.tsx (hasAdmittedSyncListing) — never client-fetched.
+  // Gates the Sync Library nav item independently of `capabilities` (26-09).
+  hasSyncLibraryAccess?: boolean
+  // The signed-in user's id — used only to scope the Sync Library "New"
+  // dot's per-user localStorage seen-flag (T-26-33, cosmetic only, no
+  // access-control meaning). Optional so this component still renders
+  // sensibly if a future caller doesn't have it yet.
+  userId?: string
 }) {
   const pathname = usePathname() ?? ''
   const name = user?.name ?? 'Your Profile'
@@ -87,10 +117,22 @@ export function ArtistNav({
       .toUpperCase()
 
   // D-08: hide rooms outside the account's capability set entirely — never
-  // render a disabled/grayed dead-end control.
-  const visibleItems = ITEMS.filter(
-    item => !item.requiresCapability || capabilities.includes(item.requiresCapability)
-  )
+  // render a disabled/grayed dead-end control. Sync Library's gate is a
+  // second, independent predicate (data-driven, not a static capability).
+  const visibleItems = ITEMS.filter(item => {
+    if (item.requiresCapability && !capabilities.includes(item.requiresCapability)) return false
+    if (item.requiresSyncLibraryAccess && !hasSyncLibraryAccess) return false
+    return true
+  })
+
+  // "New" dot on the Sync Library nav item (26-UI-SPEC.md "New-feature
+  // highlight") — clears the moment the artist first arrives at the hub
+  // (components/sync-library/SyncLibraryCoachMark.tsx marks the shared
+  // seen-flag on mount and broadcasts it here). Cosmetic only (T-26-33) —
+  // hasSyncLibraryAccess remains the sole access-control gate above.
+  const syncLibrarySeenKey = userId ? newFeatureSeenKey('synclib', userId) : null
+  const syncLibrarySeen = useNewFeatureSeen(syncLibrarySeenKey)
+  const showSyncLibraryDot = hasSyncLibraryAccess && !syncLibrarySeen
 
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [collapsed, setCollapsed] = useState(false)
@@ -241,8 +283,9 @@ export function ArtistNav({
       )}
 
       {/* Nav items */}
-      {visibleItems.map(({ href, label, match, Icon }) => {
+      {visibleItems.map(({ href, label, match, Icon, requiresSyncLibraryAccess }) => {
         const active = pathname === match || pathname.startsWith(match + '/')
+        const showDot = requiresSyncLibraryAccess && showSyncLibraryDot
         return (
           <Link
             key={href}
@@ -266,7 +309,13 @@ export function ArtistNav({
                 ].join(' ')}
               />
             )}
-            <Icon gradient={active} className="h-[21px] w-[21px] flex-none" />
+            <span className="relative flex-none">
+              <Icon gradient={active} className="h-[21px] w-[21px]" />
+              {/* "New" dot — matches NotificationBell's unread-dot scale, no count. */}
+              {showDot && (
+                <span className="absolute -right-[2px] -top-[2px] h-[7px] w-[7px] rounded-full bg-brandfuchsia" />
+              )}
+            </span>
             {!collapsed && label}
 
             {/* Tooltip when collapsed */}

@@ -842,7 +842,23 @@ supply pipeline behind live catalogue data (Phase 22 · 22-05).
 **Depends on:** Sound Vault + readiness (upstream song source), e-sign (`lib/esign/provider.ts`) for the blanket agreement, Phase 22 (the catalogue surface + `is_public`/`isRightsReady` gate to replace)
 **Resolves:** `.planning/deliberations/buyer-catalogue-inclusion-model.md` (core workflow). **Relates to:** `.planning/deliberations/sync-license-signing-model.md` (the blanket agreement is the artist→Funūn authorization).
 
-**Status:** Discussion captured (26-CONTEXT.md), **not yet planned**.
+**Plans:** 10 plans (3 waves)
+
+Plans:
+- [ ] 26-01-PLAN.md — Migration 096 (sync_listings state machine + capability_grants/vault_documents extensions) + [BLOCKING] human-gated schema push
+- [ ] 26-02-PLAN.md — Pure domain core: status state machine + eligibility predicate + shared types (TDD)
+- [ ] 26-03-PLAN.md — Artist self-apply submit (per-song, batched) + withdraw routes
+- [ ] 26-04-PLAN.md — Blanket agreement: versioned template + PDF renderer + mint route + DocuSeal webhook dispatch
+- [ ] 26-05-PLAN.md — Staff routes: invite + admit/reject curation gate + leadership-only removal + notification builders
+- [ ] 26-06-PLAN.md — Catalogue gate: single admission-status helper replacing duplicated is_public checks
+- [ ] 26-07-PLAN.md — Vault song-row "+ Sync Library" action + status chips + blanket-agreement signing page
+- [ ] 26-08-PLAN.md — Dashboard invited spotlight card
+- [ ] 26-09-PLAN.md — Sync Library hub + nav reorder/gating + new-feature highlight (New dot + coach-mark)
+- [ ] 26-10-PLAN.md — Admin Sync Library section: invite panel + curation queue + leadership removal
+
+> Requirement IDs: no registered IDs existed for Phase 26 (requirements live in 26-CONTEXT.md). Plans derive a provisional **SYNCLIB-01..15** set (distinct from Phase 23's SYNC-01..10); register them in REQUIREMENTS.md via /gsd-docs-update before phase close (Phase 28 precedent).
+
+**Status:** EXECUTED 2026-08-08 — 10 plans / 3 waves built on `codex/phase-26-sync-library`; migration 096 live; 1723 tests + tsc + build green. Before close: `/gsd-verify-work` + owner UAT, register SYNCLIB-01..15 in REQUIREMENTS.md, deploy (PR → main).
 
 ### Cluster sequencing (build order ≠ phase number)
 
@@ -993,3 +1009,20 @@ REQUIREMENTS.md (no Phase 28 section exists); register via `/gsd-docs-update` be
 
 **Status:** Executing (5 plans / 2 waves). 4/5 plans complete; 28-05's migration is drafted, text-tested, and NOT
 pushed — blocked on the human-gated `supabase db push` + live smoke checkpoint (Plan 28-05 Task 3).
+
+### Phase 29: Self-Serve Flat-Price Sync Licensing (Marmoset-style)
+
+**Goal:** Build a **self-serve licensing platform with flat, published pricing** for smaller sync deals that do
+not require negotiation — a Buyer can license an eligible Sync Library song instantly at a set price for a
+defined scope/medium, no AE in the loop. Larger / exclusive / negotiated deals continue through the AE-led flow.
+
+**Why:** Phase 26 populates the Sync Library and gets blanket agreements signed (Funūn authorized to shop +
+negotiate; price per-deal). Most small placements do not need human negotiation — flat-rate self-serve (à la
+Marmoset, Musicbed, Artlist) removes friction, closes small deals 24/7, and scales revenue without AE time. Sits
+on top of the represented catalogue as the low-touch transaction layer.
+
+**Depends on:** Phase 26 (Sync Library supply + blanket agreements), Phase 22/23 (buyer catalogue + Client
+Partner accounts), the per-deal licensing/signing model (`sync-license-signing-model.md` deliberation — the
+per-deal license must be resolved), Stripe (payments).
+
+**Status:** Backlog — owner-requested 2026-08-07 during Phase 26 planning. Not yet scoped; post-beta.

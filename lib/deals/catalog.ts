@@ -10,28 +10,48 @@ import {
 } from '@/lib/metadata/schema'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 
+// ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
+// The SINGLE admission-authority predicate for buyer-catalogue membership,
+// replacing the beta is_public-based eligibility placeholder (RESEARCH
+// Open Question 3). A project is admitted only when it has at least one
+// sync_listings row with status = 'admitted' (SONG-LEVEL per
+// 26-CONTEXT.md — a project may have several tracks, only some of which
+// are admitted; callers resolve has_admitted_sync_listing per PROJECT by
+// checking existence across its tracks/rows before calling this). Pure:
+// accepts the already-resolved boolean signal, no I/O — both catalogue
+// callers (lib/deals/catalog-query.ts's loadCatalogPage and
+// lib/deals/request-target.ts's authorizeRequestTarget) do the sync_listings
+// lookup and call this ONE helper (T-26-24 — no third inline copy).
+// Fails closed: null/false/missing all resolve to false, never to
+// "assume admitted".
+export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: boolean | null }): boolean {
+  return project.has_admitted_sync_listing === true
+}
+
 // ─── isRightsReady (D-16, RESEARCH Open Question 3 / Assumption A4) ──────
 // The SINGLE named helper expressing the rights-ready definition for buyer
 // catalog browse. CATALOG_READINESS_THRESHOLD is deliberately TUNABLE in
-// this one place — the beta definition is public AND readiness at or above
-// the threshold AND computeStage3().canContinue, and product may raise or
-// lower it after observing how much catalog surfaces. Deliberately NOT a
-// boolean flag column on vault_projects (RESEARCH Don't Hand-Roll) — a
-// parallel flag would desync from the readiness pipeline the first time
-// either changes.
+// this one place — the beta definition is sync-library ADMITTED (26-06,
+// replacing the old is_public placeholder) AND readiness at or above the
+// threshold AND computeStage3().canContinue, and product may raise or
+// lower the threshold after observing how much catalog surfaces.
+// Deliberately NOT a boolean flag column on vault_projects (RESEARCH
+// Don't Hand-Roll) — a parallel flag would desync from the readiness
+// pipeline the first time either changes.
 //
 // Pure: accepts an already-fetched project shape and an already-computed
-// Stage3Result, so callers do the I/O (see app/api/buyer/catalog/route.ts,
-// lib/deals/request-target.ts) and this stays unit-testable without a DB.
+// Stage3Result, so callers do the I/O (see lib/deals/catalog-query.ts,
+// lib/deals/request-target.ts, lib/deals/shortlists.ts) and this stays
+// unit-testable without a DB.
 export const CATALOG_READINESS_THRESHOLD = 60
 
 export type CatalogProjectLike = {
-  is_public: boolean | null
+  has_admitted_sync_listing: boolean | null
   vault_readiness_score: number | null
 }
 
 export function isRightsReady(project: CatalogProjectLike, stage3: Stage3Result): boolean {
-  if (project.is_public !== true) return false
+  if (!isAdmittedToSyncLibrary(project)) return false
   if (project.vault_readiness_score == null) return false // fail closed on missing readiness
   if (project.vault_readiness_score < CATALOG_READINESS_THRESHOLD) return false
   return stage3.canContinue

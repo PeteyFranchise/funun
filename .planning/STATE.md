@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 23
-current_phase_name: buyer-onboarding-login-register
-status: board-clear
-stopped_at: "Phase 23 SHIPPED TO PRODUCTION 2026-08-07: deploy sequence complete — (1) PR #57 batch-2 review fixes merged→main; (2) Phase 23 branch reconciled with #57 (buyer-orgs [id]/route.ts + route.ts auto-combined #57's scope-safe write + 23-06's status/use_case allowlist + unassigned queue; colocated [id]/route.test.ts mock aligned to #57's chainable write); (3) PR #58 opened, Vercel preview green, MERGED→main 424583c, production Vercel deploy SUCCESS. /sync now LIVE. tsc+lint clean, 1612/1612 tests (135 suites) green. REMAINING = Pete's deployed-domain /sync UAT. Historical context below. Phase 23 COMPLETE (8/8 plans) on branch codex/phase-23-buyer-onboarding (pushed, merged via #58). Buyer onboarding Model A + /sync SHIPPED at the DB+branch level: /buyers/*→/sync/* unified + public /sync landing; public logged-out /sync/catalog (anon-crash fixed); POST /api/sync/register (public, rate-limited, enumeration-safe, real Phase-25 lead routing); buyer PASSWORD auth (role-aware→/sync/catalog); AE onboarding surface (/admin/client-partners/[orgId] detail, status pending_onboarding→active via staff-edit allowlist, unassigned-lead queue); .fnbl LoginRegisterModal (Marmoset mirror, Register+Talk-to-sales→one pipeline) wired into browse+landing. Migrations 092/093/094 (batch-1 review hardening) + 095 (buyer_orgs status+lead fields) ALL PUSHED LIVE (LOCAL=REMOTE through 095). 23-08 onboarding-loop smoke PASSED live against prod Supabase (register→pending→AE assign→detail no-404→active→login→gated browse); 093/094/095 grants verified live; 092 grant-catalog query deferred (no direct SQL). SYNC-01..10 registered Complete in REQUIREMENTS.md. Full suite 135 suites/1610 green; tsc+lint+build clean. ONLY REMAINING = DEPLOY (funun.studio/sync 404s until the code deploys). DEPLOY ORDER: (1) merge PR #57 batch-2 review fixes; (2) reconcile Phase 23's buyer-orgs route changes with #57 (23-06 touched app/api/admin/buyer-orgs/[id]/route.ts + route.ts + staff-buyer-orgs-api.test.ts on the pre-#57 files — CONFLICT); (3) open + merge the Phase 23 PR → /sync live. Migrations already live so the deploy has its schema. NOTE: Resend email still unconfigured in prod (invites/lead emails no-op). Deferred: SYNC-10 spend-oversight UI; 092 grant-catalog confirm; Phase 21 RLS smoke (0/31). NEXT feature per roadmap after deploy: Phase 26 (sync-library supply)."
-last_updated: "2026-08-07T18:00:00.000Z"
-last_activity: 2026-08-07
-last_activity_desc: "Phase 23 SHIPPED — PR #57 merged, Phase 23 reconciled+PR #58 merged→main (424583c), production Vercel deploy green, /sync LIVE; awaiting Pete's deployed-domain UAT"
+current_phase: 26
+current_phase_name: sync-library-inclusion
+status: executed
+stopped_at: Phase 26 EXECUTED — all 10 plans complete (3 waves), migration 096 LIVE, full suite 146 suites/1723 tests + tsc + npm run build all GREEN, pushed on codex/phase-26-sync-library (head 61c0357). REMAINING: (1) formal /gsd-verify-work + owner UAT of the real flows (invite→self-apply→sign→admit→hub-unlock→leadership-remove; live DocuSeal round-trip deferred per plans); (2) register SYNCLIB-01..15 in REQUIREMENTS.md via /gsd-docs-update; (3) deploy (open PR → merge to main). Buyer catalogue correctly reads empty until songs are admitted.
+last_updated: "2026-08-08T05:00:00.000Z"
+last_activity: 2026-08-08
+last_activity_desc: Phase 26 executed — 10/10 plans, migration 096 live, 1723 tests + tsc + build green
 progress:
   total_phases: 28
-  completed_phases: 23
-  total_plans: 152
-  completed_plans: 147
-  percent: 82
+  completed_phases: 22
+  total_plans: 162
+  completed_plans: 157
+  percent: 79
 ---
 
 # Project State
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 23 — buyer-onboarding-login-register
+**Current focus:** Phase 26 — sync-library-inclusion
 
 ## Current Position
 
-Phase: 23 (buyer-onboarding-login-register) — EXECUTING
-Plan: 8 of 10
+Phase: 26 (sync-library-inclusion) — EXECUTING
+Plan: 1 of 10
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -46,7 +46,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-07 — Phase 23 execution started
+Last activity: 2026-08-08 — Phase 26 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -470,9 +470,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-07T09:53:57.704Z
-Stopped at: Completed 23-07-PLAN.md (LoginRegisterModal + browse gate + landing CTA wiring)
-Resume file: 23-08-PLAN.md
+Last session: 2026-08-08T02:46:35.159Z
+Stopped at: Phase 26 UI-SPEC approved (6/6 dimensions, 1 non-blocking visual-hierarchy flag). Ready for /gsd-plan-phase 26.
+Resume file: .planning/phases/26-sync-library-inclusion/26-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`

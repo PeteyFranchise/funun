@@ -24,6 +24,7 @@ export const DOC_LABELS: Record<DocumentType, string> = {
   hire_right: 'Work-for-Hire',
   sample_clearance: 'Sample Clearance',
   distribution_agreement: 'Distribution Agreement',
+  blanket_agreement: 'Sync Library Agreement',
 }
 
 export type DocRow = {
@@ -71,6 +72,8 @@ export function detailFor(
       return `${projectTitle} · contributor agreement`
     case 'distribution_agreement':
       return `${projectTitle} · distribution terms`
+    case 'blanket_agreement':
+      return `${projectTitle} · sync library agreement`
   }
 }
 

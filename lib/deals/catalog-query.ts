@@ -14,10 +14,17 @@ import {
 // ─── loadCatalogPage (D-16, T-16-17/T-16-18/T-16-20/T-16-21) ──────────────
 // The I/O half of the buyer catalog: queries vault_projects SERVER-SIDE
 // ONLY via the service-role client (never a direct PostgREST surface to the
-// buyer client, mirroring the people-search doctrine) so is_public + Phase
-// 13 visibility + block exclusion cannot be bypassed. Stage 3 is computed
-// per project from a BOUNDED, paged fetch — never across the whole table
-// per request (T-16-21).
+// buyer client, mirroring the people-search doctrine) so sync-library
+// admission + Phase 13 visibility + block exclusion cannot be bypassed.
+// Stage 3 is computed per project from a BOUNDED, paged fetch — never
+// across the whole table per request (T-16-21).
+//
+// 26-06: catalogue membership is admission-driven, replacing the beta
+// `is_public` gate. has_admitted_sync_listing is resolved per project via
+// ONE batched sync_listings query (status = 'admitted') scoped to this
+// page's project ids, then passed into isRightsReady — the SAME
+// isAdmittedToSyncLibrary authority lib/deals/request-target.ts's
+// authorizeRequestTarget uses (T-26-24 — no drift between the two gates).
 //
 // Lives in lib/ (not the route.ts file) because Next.js route modules may
 // only export HTTP method handlers plus a small route-config set — any
@@ -41,7 +48,7 @@ import {
 const PAGE_SIZE = 20
 
 const PROJECT_COLUMNS = `
-  id, title, type, genre, is_public, vault_readiness_score, user_id,
+  id, title, type, genre, vault_readiness_score, user_id,
   cover_art_url, content_id_registered, content_id_dismissed_until,
   tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
   vault_documents (id, type, status, track_id, document_data)
@@ -52,7 +59,6 @@ type CatalogProjectRow = {
   title: string
   type: string
   genre: string | null
-  is_public: boolean | null
   vault_readiness_score: number | null
   user_id: string
   cover_art_url: string | null
@@ -94,7 +100,6 @@ export async function loadCatalogPage(
   let query = service
     .from('vault_projects')
     .select(PROJECT_COLUMNS)
-    .eq('is_public', true)
     .order('created_at', { ascending: false })
     .range(from, to)
 
@@ -106,6 +111,23 @@ export async function loadCatalogPage(
   if (projects.length === 0) {
     return { data: [], page, pageSize: PAGE_SIZE }
   }
+
+  // Sync-library admission (26-06, T-26-24): ONE batched sync_listings
+  // query scoped to this page's project ids resolves which projects have
+  // at least one ADMITTED song, mapped onto each project before the
+  // isRightsReady gate runs below — replaces the removed `.eq('is_public',
+  // true)` membership filter above.
+  const { data: admittedRows } = await service
+    .from('sync_listings')
+    .select('vault_project_id')
+    .eq('status', 'admitted')
+    .in(
+      'vault_project_id',
+      projects.map(p => p.id)
+    )
+  const admittedProjectIds = new Set(
+    ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
+  )
 
   // Batch owner visibility + block resolution (T-16-17/T-16-18) — one
   // query each, never per-row.
@@ -152,7 +174,8 @@ export async function loadCatalogPage(
 
     const tracks = project.tracks ?? []
     const stage3 = computeStage3(project, tracks, project.vault_documents ?? [], project.vault_readiness_score ?? 0)
-    if (!isRightsReady(project, stage3)) continue
+    const hasAdmittedSyncListing = admittedProjectIds.has(project.id)
+    if (!isRightsReady({ ...project, has_admitted_sync_listing: hasAdmittedSyncListing }, stage3)) continue
 
     if (!projectMatchesKeyBpm(tracks, filter)) continue
     if (!projectMatchesDescriptors(tracks, filter)) continue

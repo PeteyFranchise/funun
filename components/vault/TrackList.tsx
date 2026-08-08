@@ -2,7 +2,9 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { AddTrackForm } from '@/components/vault/AddTrackForm'
+import type { SyncListingStatus } from '@/types'
 
 export type PlayerTrack = {
   id: string
@@ -95,14 +97,149 @@ function AudioSlot({
   )
 }
 
+// One track's sync-library listing, as fetched by the playback-room page —
+// the minimal shape TrackList needs to render the row's chip (26-07-PLAN).
+export type TrackSyncStatus = {
+  id: string
+  status: SyncListingStatus
+  rejection_reason: string | null
+}
+
+// Static (non-interactive) chip states — dot + pill border, never solid
+// fill, mirroring DocumentCard.tsx's STATUS_META / VaultProjectCard.tsx's
+// CHIP idiom exactly (26-UI-SPEC.md Status Chip Semantics). applied /
+// invited / agreement_pending are handled separately below as the
+// INTERACTIVE gradient "Sign agreement" / "Continue signing" chip — the
+// DB-authoritative state machine (26-CONTEXT.md decision #2) supersedes
+// UI-SPEC's superseded applied->under_review progression.
+const SYNC_CHIP_STATIC: Partial<
+  Record<SyncListingStatus, { label: string; badge: string; dot: string }>
+> = {
+  pending_admit: {
+    label: 'In review',
+    badge: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+    dot: 'bg-amber-400',
+  },
+  admitted: {
+    label: 'Live in Sync Library',
+    badge: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    dot: 'bg-emerald-400',
+  },
+  rejected: {
+    label: 'Not accepted',
+    badge: 'border-rose-400/20 bg-rose-400/5 text-rose-300/80',
+    dot: 'bg-rose-400/70',
+  },
+  withdrawn: {
+    label: 'Withdrawn',
+    badge: 'border-white/10 bg-white/5 text-lavdim',
+    dot: 'bg-white/30',
+  },
+  removed: {
+    label: 'Removed',
+    badge: 'border-white/10 bg-white/5 text-lavdim',
+    dot: 'bg-white/30',
+  },
+}
+
+// The "+ Sync Library" row action + status chip, owner-scoped (rendered
+// only when canManage — see TrackList below). Mirrors AudioSlot's ghost-
+// pill idiom for the empty state (26-UI-SPEC.md Screen C).
+function SyncLibraryCell({
+  listing,
+  hasSignedBlanketAgreement,
+  submitting,
+  onSubmit,
+}: {
+  listing?: TrackSyncStatus
+  hasSignedBlanketAgreement: boolean
+  submitting: boolean
+  onSubmit: () => void
+}) {
+  if (!listing) {
+    return (
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={submitting}
+        title="Submit this song to the Sync Library"
+        className={`rounded-md border px-2 py-1 text-xs font-semibold transition ${
+          'border-white/10 text-white/60 hover:border-white/30 hover:text-white'
+        } ${submitting ? 'opacity-50' : ''}`}
+      >
+        {submitting ? '…' : '+ Sync Library'}
+      </button>
+    )
+  }
+
+  // Pre-signed, sign-needed states — gradient interactive chip, mirrors
+  // Phase 17's e-sign CTA treatment for the same class of action (26-UI-
+  // SPEC.md Accent exception).
+  if (listing.status === 'applied' || listing.status === 'invited' || listing.status === 'agreement_pending') {
+    return (
+      <Link
+        href="/sync-library/agreement"
+        className="rounded-md bg-grad px-2 py-1 text-xs font-semibold text-white shadow-cta transition hover:opacity-90"
+      >
+        {listing.status === 'agreement_pending' ? 'Continue signing' : 'Sign agreement'}
+      </Link>
+    )
+  }
+
+  const meta = SYNC_CHIP_STATIC[listing.status]
+  if (!meta) return null
+
+  const chip = (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${meta.badge}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+      {meta.label}
+    </span>
+  )
+
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      {listing.status === 'admitted' ? (
+        <Link href="/sync-library" title="View in the Sync Library">
+          {chip}
+        </Link>
+      ) : (
+        chip
+      )}
+      {/* Decision #4 — a song landing in pending_admit while the artist
+          already has a signed blanket agreement skips the sign step;
+          this indicator tells them why. */}
+      {listing.status === 'pending_admit' && hasSignedBlanketAgreement && (
+        <span className="text-[10px] text-white/40">Covered by your Sync Library agreement</span>
+      )}
+      {/* UI-phase decision #1 — optional staff rejection reason, shown to the artist. */}
+      {listing.status === 'rejected' && listing.rejection_reason && (
+        <span
+          className="max-w-[160px] truncate text-[10px] text-rose-300/60"
+          title={listing.rejection_reason}
+        >
+          {listing.rejection_reason}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function TrackList({
   projectId,
   tracks,
   canManage,
+  syncStatusByTrack,
+  hasSignedBlanketAgreement,
 }: {
   projectId: string
   tracks: PlayerTrack[]
   canManage: boolean
+  /** Owner's own sync-library listing per track, keyed by track id (26-07-PLAN). */
+  syncStatusByTrack?: Record<string, TrackSyncStatus>
+  /** Whether the artist already has a signed blanket agreement on file. */
+  hasSignedBlanketAgreement?: boolean
 }) {
   const router = useRouter()
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -112,6 +249,7 @@ export function TrackList({
   const [liveDuration, setLiveDuration] = useState(0)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [syncSubmittingId, setSyncSubmittingId] = useState<string | null>(null)
 
   const current = tracks.find(t => t.id === currentId) ?? null
   const totalSeconds = tracks.reduce((s, t) => s + (t.duration_seconds ?? 0), 0)
@@ -164,6 +302,29 @@ export function TrackList({
       router.refresh()
     } finally {
       setUploadingKey(null)
+    }
+  }
+
+  // "+ Sync Library" row action (26-07-PLAN) — self-apply, ungated,
+  // per-track. Server re-checks ownership independently (T-26-26); this
+  // is a UI convenience, not the security boundary.
+  async function submitToSyncLibrary(trackId: string) {
+    setSyncSubmittingId(trackId)
+    setError(null)
+    try {
+      const res = await fetch('/api/sync-library/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, trackIds: [trackId] }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setError((json as { error?: string }).error ?? 'Something went wrong — please try again.')
+        return
+      }
+      router.refresh()
+    } finally {
+      setSyncSubmittingId(null)
     }
   }
 
@@ -285,6 +446,17 @@ export function TrackList({
                           onPick={f => void upload(t.id, f, 'share')}
                         />
                       </div>
+                    )}
+                    {/* Sync Library row action (26-07-PLAN) — owner-only, matching
+                        this file's existing canManage ownership convention; a
+                        collaborator viewing someone else's project never sees this. */}
+                    {canManage && (
+                      <SyncLibraryCell
+                        listing={syncStatusByTrack?.[t.id]}
+                        hasSignedBlanketAgreement={Boolean(hasSignedBlanketAgreement)}
+                        submitting={syncSubmittingId === t.id}
+                        onSubmit={() => void submitToSyncLibrary(t.id)}
+                      />
                     )}
                   </div>
                 </li>

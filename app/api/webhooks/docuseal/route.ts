@@ -3,11 +3,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { verifyDocusealSignature, parseDocusealEvent } from '@/lib/esign/webhook'
 import { docusealProvider } from '@/lib/esign/docuseal'
 import type { EsignCompletionArtifacts } from '@/lib/esign/docuseal'
+import type { EsignWebhookEvent } from '@/lib/esign/provider'
 import { DOC_BUCKET } from '@/lib/storage'
 import { buildFanoutRows } from '@/lib/split-sheets/distribution'
 import { renderCompletionCertificate } from '@/lib/vault/pdf/completion-certificate'
 import { buildSplitSheetExecutedNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
+import { isValidTransition, nextStatusOnAgreementSigned } from '@/lib/sync-library/submission'
 
 // ─── POST /api/webhooks/docuseal ──────────────────────────────────────
 // The completion half of Funūn's first live e-sign integration (ESIGN-07).
@@ -82,6 +84,127 @@ type EnvelopeRow = {
     docuseal_submitter_id: string | null
   }[]
   split_sheets: SheetRow | null
+}
+
+// ─── Phase 26 dispatch extension (SYNCLIB-07) ──────────────────────────
+// This webhook is ACCOUNT-WIDE: a blanket-agreement completion hits the
+// SAME URL as every split sheet. The resolution above (esign_envelopes) is
+// split-sheet-specific — a blanket agreement never has a row there (it
+// uses the lightweight vault_documents.document_data.esign path, Plan
+// 26-04). When no esign_envelopes row matches event.requestId, the branch
+// below is the FALLBACK lookup, tried only then — never the other way
+// around, so a split-sheet completion is never at risk of falling into
+// this branch (RESEARCH Pitfall 1).
+
+type BlanketAgreementDocRow = {
+  id: string
+  user_id: string
+  status: string
+  document_data: Record<string, unknown> | null
+}
+
+/**
+ * Completes a blanket-agreement vault_documents row. Mirrors the split-sheet
+ * completion's shape (idempotency guard first, re-host the executed PDF
+ * promptly, then transition state) but never touches esign_envelopes,
+ * renderAndStoreCertificate, or buildFanoutRows — those are split-sheet-only.
+ */
+async function handleBlanketAgreementCompletion(
+  service: ReturnType<typeof createServiceClient>,
+  doc: BlanketAgreementDocRow,
+  event: EsignWebhookEvent
+) {
+  // ── THE IDEMPOTENCY GUARD — mirrors envelope.status === 'completed' ──
+  if (doc.status === 'signed') {
+    return NextResponse.json({ ok: true, idempotent: true })
+  }
+
+  // ── Re-host the executed PDF, promptly (T-17-22's ~40-minute URL window) ─
+  let artifacts
+  try {
+    artifacts = await docusealProvider.fetchCompletionArtifacts(event.requestId)
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error: `Could not fetch the executed agreement: ${e instanceof Error ? e.message : 'unknown error'}`,
+      },
+      { status: 502 }
+    )
+  }
+
+  const signedPath = `${doc.user_id}/sync-library/blanket-agreement-${doc.id}.pdf`
+  const { error: uploadError } = await service.storage
+    .from(DOC_BUCKET)
+    .upload(signedPath, Buffer.from(artifacts.executedPdf), {
+      upsert: true,
+      contentType: 'application/pdf',
+    })
+  if (uploadError) {
+    return NextResponse.json(
+      { error: `Could not store the signed agreement: ${uploadError.message}` },
+      { status: 500 }
+    )
+  }
+
+  const completedAt = new Date().toISOString()
+  const existingEsign = (doc.document_data?.esign ?? {}) as Record<string, unknown>
+  const existingSigners = Array.isArray(existingEsign.signers)
+    ? (existingEsign.signers as Record<string, unknown>[])
+    : []
+  const updatedEsign = {
+    ...existingEsign,
+    signedFileUrl: signedPath,
+    completedAt,
+    signers:
+      existingSigners.length > 0
+        ? existingSigners.map(s => ({ ...s, status: 'signed' }))
+        : [{ status: 'signed' }],
+  }
+
+  // Satisfies vault_documents_status_requires_evidence_chk (migration
+  // 045/049): status='signed' requires signed_at AND (file_url OR
+  // document_data.esign.completedAt) — completedAt above covers it.
+  const { error: docUpdateError } = await service
+    .from('vault_documents')
+    .update({
+      status: 'signed',
+      signed_at: completedAt,
+      document_data: { ...(doc.document_data ?? {}), esign: updatedEsign },
+    })
+    .eq('id', doc.id)
+
+  if (docUpdateError) {
+    return NextResponse.json(
+      { error: `Could not record the completion: ${docUpdateError.message}` },
+      { status: 500 }
+    )
+  }
+
+  // ── Advance the pre-signed cohort (sign-once covers every listing) ──
+  const { data: listingsRaw } = await service
+    .from('sync_listings')
+    .select('id, status')
+    .eq('artist_user_id', doc.user_id)
+    .in('status', ['applied', 'invited', 'agreement_pending'])
+
+  const listings = (listingsRaw ?? []) as { id: string; status: string }[]
+  let advanced = 0
+  for (const listing of listings) {
+    const next = nextStatusOnAgreementSigned(listing.status)
+    if (!next || !isValidTransition(listing.status, next)) continue
+    await service
+      .from('sync_listings')
+      .update({ status: next, blanket_agreement_document_id: doc.id })
+      .eq('id', listing.id)
+    advanced += 1
+  }
+
+  return NextResponse.json({
+    ok: true,
+    blanketAgreementId: doc.id,
+    signedFileUrl: signedPath,
+    advancedListings: advanced,
+  })
 }
 
 /**
@@ -259,6 +382,31 @@ export async function POST(request: Request) {
   // An envelope Funūn does not know about is permanent, not transient:
   // 200 so DocuSeal stops retrying a delivery no retry can fix.
   if (!envelope) {
+    // Fallback lookup (Phase 26, SYNCLIB-07): no split sheet knows this
+    // submission id — try the blanket-agreement path before giving up.
+    // Tried ONLY here, after the split-sheet resolution has already come
+    // back empty, so a split-sheet completion is never at risk of being
+    // misrouted into this branch.
+    const { data: agreementDocRaw, error: agreementError } = await service
+      .from('vault_documents')
+      .select('id, user_id, status, document_data')
+      .eq('type', 'blanket_agreement')
+      .eq('document_data->esign->>requestId', event.requestId)
+      .maybeSingle()
+
+    if (agreementError) {
+      // Transient — let the provider retry into the idempotency guard.
+      return NextResponse.json({ error: 'Could not resolve the submission' }, { status: 500 })
+    }
+
+    const agreementDoc = agreementDocRaw as BlanketAgreementDocRow | null
+    if (agreementDoc) {
+      return handleBlanketAgreementCompletion(service, agreementDoc, event)
+    }
+
+    // Neither a split sheet nor a blanket agreement knows this submission
+    // id — permanent, not transient: 200 so DocuSeal stops retrying a
+    // delivery no retry can fix.
     return NextResponse.json({ ok: true, ignored: 'unknown_submission' })
   }
 

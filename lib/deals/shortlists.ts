@@ -30,7 +30,6 @@ type ShortlistProjectRow = {
   id: string
   title: string
   type: string
-  is_public: boolean | null
   vault_readiness_score: number | null
   content_id_registered: boolean | null
   content_id_dismissed_until: string | null
@@ -68,13 +67,27 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
     .from('vault_projects')
     .select(
       `
-      id, title, type, is_public, vault_readiness_score, content_id_registered, content_id_dismissed_until,
+      id, title, type, vault_readiness_score, content_id_registered, content_id_dismissed_until,
       tracks (id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
       vault_documents (id, type, status, track_id, document_data)
       `
     )
     .in('id', projectIds)
   const projectById = new Map(((projectRows ?? []) as ShortlistProjectRow[]).map(p => [p.id, p]))
+
+  // 26-06: isRightsReady's admission signal — one batched sync_listings
+  // lookup (SAME status='admitted' authority lib/deals/catalog-query.ts
+  // and lib/deals/request-target.ts use), so a saved shortlist entry does
+  // not silently fail closed on every read (T-26-24 — single admission
+  // authority, no drift).
+  const { data: admittedRows } = await service
+    .from('sync_listings')
+    .select('vault_project_id')
+    .eq('status', 'admitted')
+    .in('vault_project_id', projectIds)
+  const admittedProjectIds = new Set(
+    ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
+  )
 
   const saverIds = Array.from(new Set(rows.map(r => r.created_by)))
   const saverNameById = new Map<string, string | null>()
@@ -104,7 +117,10 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
         project.vault_documents ?? [],
         project.vault_readiness_score ?? 0
       )
-      stillRightsReady = isRightsReady(project, stage3)
+      stillRightsReady = isRightsReady(
+        { ...project, has_admitted_sync_listing: admittedProjectIds.has(project.id) },
+        stage3
+      )
     }
     return {
       id: r.id,

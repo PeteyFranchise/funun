@@ -1,5 +1,6 @@
 import {
   isRightsReady,
+  isAdmittedToSyncLibrary,
   normalizeKeySignature,
   buildCatalogFilter,
   projectMatchesKeyBpm,
@@ -23,27 +24,38 @@ function stage3(canContinue: boolean): Stage3Result {
   }
 }
 
+describe('isAdmittedToSyncLibrary', () => {
+  it('is true only when has_admitted_sync_listing is exactly true', () => {
+    expect(isAdmittedToSyncLibrary({ has_admitted_sync_listing: true })).toBe(true)
+  })
+
+  it('fails closed on false and null', () => {
+    expect(isAdmittedToSyncLibrary({ has_admitted_sync_listing: false })).toBe(false)
+    expect(isAdmittedToSyncLibrary({ has_admitted_sync_listing: null })).toBe(false)
+  })
+})
+
 describe('isRightsReady', () => {
   const readyProject: CatalogProjectLike = {
-    is_public: true,
+    has_admitted_sync_listing: true,
     vault_readiness_score: CATALOG_READINESS_THRESHOLD,
   }
 
-  it('is false when the project is not public, regardless of readiness', () => {
-    expect(isRightsReady({ ...readyProject, is_public: false }, stage3(true))).toBe(false)
-    expect(isRightsReady({ ...readyProject, is_public: null }, stage3(true))).toBe(false)
+  it('is false when the project is not admitted to the sync library, regardless of readiness', () => {
+    expect(isRightsReady({ ...readyProject, has_admitted_sync_listing: false }, stage3(true))).toBe(false)
+    expect(isRightsReady({ ...readyProject, has_admitted_sync_listing: null }, stage3(true))).toBe(false)
   })
 
-  it('is false when public but readiness is below the threshold', () => {
+  it('is false when admitted but readiness is below the threshold', () => {
     const project = { ...readyProject, vault_readiness_score: CATALOG_READINESS_THRESHOLD - 1 }
     expect(isRightsReady(project, stage3(true))).toBe(false)
   })
 
-  it('is false when public and at/above threshold but stage3.canContinue is false', () => {
+  it('is false when admitted and at/above threshold but stage3.canContinue is false', () => {
     expect(isRightsReady(readyProject, stage3(false))).toBe(false)
   })
 
-  it('is true when public, at/above threshold, and stage3.canContinue is true', () => {
+  it('is true when admitted, at/above threshold, and stage3.canContinue is true', () => {
     expect(isRightsReady(readyProject, stage3(true))).toBe(true)
   })
 

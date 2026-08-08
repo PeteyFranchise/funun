@@ -27,6 +27,7 @@ const DOC_LABEL: Record<DocumentType, string> = {
   hire_right: 'work-for-hire agreement',
   sample_clearance: 'sample clearance license',
   distribution_agreement: 'distribution agreement',
+  blanket_agreement: 'sync library agreement',
 }
 
 function extractJson(text: string): Record<string, unknown> | null {

@@ -1,7 +1,7 @@
 # Phase 26: Sync-Library Inclusion & Artist Submission - Context
 
 **Gathered:** 2026-08-05
-**Status:** Captured — NOT yet planned. Resolves the core of the buyer-catalogue inclusion deliberation.
+**Status:** Key decisions LOCKED (2026-08-07 live owner planning) — see "Locked decisions" section below. Ready for UI design (/gsd-ui-phase) + planning.
 **Source:** owner decision during buyer-onboarding discussion (2026-08-05)
 
 <domain>
@@ -68,7 +68,134 @@ inclusion placeholder (`isRightsReady` / `is_public + readiness`) with a real li
 - Phase 22 · `22-05-PLAN.md` (live-data enrichment) — the downstream consumer of this supply.
 </canonical_refs>
 
+<resolved>
+## Locked decisions (2026-08-07 — live owner planning; supersedes the open questions above)
+
+**Two entry paths into the sync library, converging at the blanket agreement:**
+- **Invited (push):** a Funūn team member invites the artist → a dedicated **home spotlight card** on the
+  artist's Funūn page (backed by `capability_grants`, source `admin_invited`) → artist adds song(s) from the
+  Vault → signs the blanket agreement → staff admits → live.
+- **Self-application (pull):** an *uninvited* artist proactively **submits songs for review** (flexibly: one
+  song, several, or a whole EP/album) → Funūn staff review and **accept** → the artist joins the **same
+  pipeline from the blanket-agreement step onward** (they have already supplied the songs) → admitted → live.
+  Acceptance mints the same "sync-library participant" grant (`capability_grants`, source `self_applied`).
+- This **revises the earlier "invited-only" framing** (Phase Boundary + Decisions above): the model is
+  **curated = invited OR self-applied-and-accepted**. *Applying* (submitting songs for review) is open to any
+  artist; being *admitted* is always curated (invite = pre-acceptance; application = earns acceptance via staff review).
+
+**Resolves OQ#6 (invite mechanic):** dedicated home **spotlight card** backed by `capability_grants` — NOT
+embedded in Antenna (its match/apply semantics do not fit a hand-picked invite). Two grant sources:
+`admin_invited`, `self_applied`.
+
+**Artist-side surface placement + hub gating (owner 2026-08-07):**
+- **Invited spotlight card** → the artist **home** (`/dashboard` or `/launchpad` — UI-phase picks), shown only
+  to artists with a pending `admin_invited` grant.
+- **Self-apply entry point** → a per-song **"Submit to Sync Library"** action in the **Sound Vault** (`/vault`),
+  available to **ALL artists**. This is the only pre-admission door for an uninvited artist — it is **NOT gated**.
+- **Pre-admission status + signing live ON the song in the Vault** (status badge: applied / under review /
+  agreement-pending / admitted / rejected) and via notifications — NOT in the hub. The one-time
+  blanket-agreement signing is reached from the song's status action (self-apply) or the invite flow (invited).
+- **"Sync Library" hub** (dedicated artist nav item + page) → appears **ONLY once the artist has ≥1 song
+  ADMITTED** (live in the catalogue) — progressive disclosure; it does not exist for artists with zero admitted
+  songs. The hub is the **post-admission home**: admitted songs + statuses, the signed agreement on file,
+  submit-more-songs, and (future) sync earnings/deals. Nav visibility is a **server-side check** (≥1 admitted
+  listing), mirroring how `capabilities` are read server-side in `app/(artist)/layout.tsx` and gated in
+  `components/nav/ArtistNav.tsx`. **Nav placement: directly under "Deals"** (position 4 in the artist nav —
+  owner-confirmed 2026-08-07).
+- **Implication:** the *initial* self-application journey (fresh artist → apply → track status → sign) happens
+  **without the hub**, via the Vault; the hub is *earned* by getting a first song in.
+- **Full artist nav order (owner-confirmed 2026-08-07):** also move **Split Sheets** to sit **directly under
+  Contract Locker** (it is part of the Contract Locker) — in BOTH menus; a small reorder of the existing
+  `ArtistNav.tsx` ITEMS array, applied as part of this phase's nav work. Resulting order — **before admission:**
+  Sound Vault · Contract Locker · Split Sheets · Deals · Collaborators · The Green Room · Network · Messages ·
+  Antenna · PitchPlug · Benchmarks · Launchpad · Rights Coach · Earnings · Settings. **After first admission:**
+  same, with **Sync Library inserted directly under Deals** → Sound Vault · Contract Locker · Split Sheets ·
+  Deals · **Sync Library** · Collaborators · The Green Room · Network · Messages · Antenna · PitchPlug ·
+  Benchmarks · Launchpad · Rights Coach · Earnings · Settings.
+- **New-feature highlight when the hub unlocks (owner 2026-08-07):** the moment the Sync Library hub appears
+  (first song admitted), highlight it so the artist notices — reuse the existing notification system
+  (`lib/notifications` `createNotification`, surfaced in `components/nav/NotificationBell.tsx` /
+  `NotificationPanel.tsx`): (a) fire an in-app **notification** ("'[Song]' is now live in the Sync Library —
+  manage your catalogue here") linking to the hub; (b) show a **"New" badge/dot** on the Sync Library nav item
+  until the artist opens it the first time, then clear it (needs a lightweight per-user "seen" flag); (c) optional
+  one-time coach-mark/tooltip anchored to the nav item on first visit. Build this as a small reusable
+  "newly-unlocked feature" highlight primitive where practical, so future gated features reuse it.
+
+**Resolves OQ#2 (granularity) + OQ#1 (data model): SONG-LEVEL.**
+- The **individual song/track is the licensable unit** — a buyer licenses one song at a time.
+- Submission is **batched but per-song-admitted**: an artist may submit 1 song, several, or a whole release;
+  **each song is reviewed and admitted individually**. No fixed batch cap (the earlier "3–5 songs" was illustrative).
+- Data model: a **per-song sync-listing entity** with a status state machine (e.g. `applied`/`invited` →
+  `agreement_pending` → `admitted` / `rejected` / `withdrawn`), replacing the `isRightsReady` /
+  `is_public + readiness` placeholder. Dedicated table(s), NOT a repurposed `is_public` (overloaded — it also
+  drives the public profile grid). Planner finalizes exact states/columns.
+
+**Resolves OQ#4 (agreement scope): pre-authorize terms EXCEPT price.**
+- The blanket agreement grants Funūn authority to **shop AND to negotiate/execute** sync licenses on the
+  artist's behalf.
+- **Price and its drivers — scope, medium, exclusive vs. non-exclusive — are negotiated per deal** (usually by
+  the Funūn AE); the agreement gives Funūn the authority to conduct that negotiation.
+- **One blanket ("master") agreement per artist** covering all songs they submit to the sync library —
+  **sign-once, NOT per-submission** (owner-confirmed 2026-08-07). Later submissions fall under the same signed
+  agreement; a re-sign is needed only if the agreement version materially changes.
+- **Temporary agreement doc:** owner-requested a **draft template now** for review/amendment — see
+  `26-BLANKET-AGREEMENT-DRAFT.md`. **Counsel drafts + approves the final** later. The agreement must be a
+  **swappable/versioned template** so the counsel-approved version replaces the draft with no code change.
+
+**Counsel/production gate — NOT a build blocker (owner 2026-08-07):** with no music uploaded yet, there is
+nothing to shop and nothing to mint in production, so the Phase-17-style "counsel-reviewed-before-production-mint"
+concern **does not gate this build**. Build the full pipeline end-to-end using the temporary draft agreement;
+treat "swap in counsel-approved agreement" as a pre-real-launch checklist item, not a code gate that impedes
+development or testing.
+
+**OQ#5 (revocation):** withdrawal removes the song from the catalogue (stops it being returned/browsable)
+immediately; there are **no in-flight buyer deals in this phase's scope** (no licensing occurs here), so
+nothing downstream to cancel. Keep simple: withdraw → un-admit.
+
+**OQ#3 (tri-state rights meaning):** the catalogue's Rights ready / Partial / Contact-required tri-state now
+sits *on top of* admission — an admitted song with a signed blanket agreement is at least "rights ready to shop."
+Planner maps the tri-state to real conditions (signed agreement + song readiness), replacing the placeholder.
+
+**Phase boundary sharpened (owner 2026-08-07):** Phase 26 **populates the sync library** — submissions,
+admissions, signed blanket agreements, and staff familiarization with the catalogue to shop. **No actual
+licensing, sale, or buyer request occurs in this phase** — that is downstream/future. Staging the shelf, not
+transacting.
+
+**Roadmap follow-on (owner 2026-08-07):** a future **self-serve flat-price licensing platform** (Marmoset-style)
+for smaller deals that do not require negotiation — added to ROADMAP.md as a later phase. Out of scope for Phase 26.
+
+**UI-phase flagged details — resolved one-by-one with owner (2026-08-07, after 26-UI-SPEC.md approved 6/6). These
+owner decisions are AUTHORITATIVE and override any conflicting detail in 26-UI-SPEC.md:**
+1. **Rejection reason:** staff may attach an **optional short reason** when rejecting a submitted song, **shown
+   to the artist** (adds a reason field to the admin reject action + surfaces it on the song's rejected status).
+2. **Staff admit EVERY song** (owner reversed the earlier "invited skips review" default): every song — invited
+   OR self-applied — passes through a **staff admit/reject gate** before going live. "Invited" vs "self-applied"
+   is **metadata shown in the curation queue**, not a different flow gate — one consistent human curation gate on
+   the whole catalogue. Per-song state: submitted/added → [sign agreement if not yet signed] → **pending staff
+   admit** → admitted / rejected.
+3. **Spotlight invite card:** **not dismissible** — persists until acted on.
+4. **Post-signing submissions:** later songs (after the sign-once agreement) skip the sign step and show a
+   **"Covered by your Sync Library agreement" indicator** (owner changed their mind 2026-08-07 — clarity over
+   quiet: the artist sees WHY signing was skipped) before moving to "pending admit".
+5. **Sync Library hub anchor:** **"In progress"** is the primary visual anchor (owner chose the workspace framing
+   over "Admitted songs") — pending-admit / mid-flow songs lead the page; "Admitted songs" and "Your agreement"
+   sit below as reference. Resolves the UI-checker's Dimension-2 visual-hierarchy flag.
+
+**Staff removal / takedown of an admitted song (owner 2026-08-07):** Funūn staff can **remove an already-admitted
+song from the Sync Library** (take it down so it is no longer browsable/licensable) — for rights issues, quality,
+legal, etc. **LEADERSHIP-ONLY for now** (`requireStaff(['leadership'])` — NOT AE/BD; mirrors the Phase-25
+leadership-gated pattern). Lives in the admin Sync Library section as a **"Remove from Sync Library"** action on an
+admitted song. Per-song state: `admitted` → **`removed`** (staff takedown — a distinct action from the artist's own
+`withdrawn` and the pre-admission `rejected`; planner decides whether `removed`/`withdrawn` are separate states or
+one "inactive" state + actor metadata). **Audited** via `logStaffAction` like other staff mutations, with an
+**optional reason** and the artist **notified** their song was removed (consistent with rejection-reason decision #1).
+No in-flight deals to consider in this phase. NOTE: only **removal** is leadership-restricted for now — **admission**
+(adding a song via the curation queue) stays with the broader permissioned-staff curation role unless the owner
+later tightens it.
+</resolved>
+
 ---
 
 *Phase: 26-sync-library-inclusion*
 *Context: 2026-08-05 — owner inclusion decision (curated, invite + submit + blanket agreement)*
+*Decisions locked: 2026-08-07 — song-level, two entry paths, agreement pre-authorizes terms except price*

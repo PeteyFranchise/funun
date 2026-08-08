@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import type { VaultProjectType } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { readinessItemsForProject, readinessLabel } from '@/lib/vault/readiness'
 import type { VaultProjectRow } from '@/lib/vault/demo'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { VaultProjectCard } from '@/components/vault/VaultProjectCard'
+import { InvitedSpotlightCard } from '@/components/sync-library/InvitedSpotlightCard'
 import { fetchSplitSheetsForUser, type SplitSheetRow } from '@/lib/split-sheets/list'
 import {
   buildNextMoves,
@@ -59,22 +60,58 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   )
 }
 
+// ─── Invited-spotlight visibility (26-08, 26-CONTEXT.md decision #3) ────
+// Server-side only, mirroring app/(artist)/layout.tsx's capability_grants
+// read doctrine (service-role client, never a client fetch). True only
+// when the artist has an APPROVED, admin_invited sync_library grant AND
+// zero sync_listings rows — they have not yet added a song to the
+// sync-library flow. The card auto-disappears once a sync_listings row
+// exists (no dismiss flag needed to satisfy the "disappears once they've
+// added at least one song" behavior).
+async function resolveInvitedSpotlightVisibility(userId: string): Promise<boolean> {
+  const service = createServiceClient()
+
+  const { data: grant } = await service
+    .from('capability_grants')
+    .select('status, source')
+    .eq('profile_id', userId)
+    .eq('capability', 'sync_library')
+    .maybeSingle()
+  const grantRow = grant as { status: string; source: string } | null
+  if (!grantRow || grantRow.status !== 'approved' || grantRow.source !== 'admin_invited') {
+    return false
+  }
+
+  const { count } = await service
+    .from('sync_listings')
+    .select('id', { count: 'exact', head: true })
+    .eq('artist_user_id', userId)
+
+  return (count ?? 0) === 0
+}
+
 export default async function DashboardPage() {
   let projects: VaultProjectRow[] = []
   let creditsPreview: CreditPreviewRow[] = []
   let nextMoves: NextMoveSections = { pinned: [], flexible: [] }
+  let showInvitedSpotlight = false
 
   if (DEMO) {
     projects = await getDemoProjects()
-    // DEMO branch renders no credits preview (D-05) and no next-moves feed
-    // — no split_sheets emulation exists in the demo store, mirroring
-    // /contracts' DEMO branch for attentionSheets.
+    // DEMO branch renders no credits preview (D-05), no next-moves feed
+    // (no split_sheets emulation in the demo store, mirroring /contracts'
+    // DEMO branch for attentionSheets), and no invited spotlight (no real
+    // authenticated user/capability_grants row to resolve against).
   } else {
     const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
     const viewerUserId = user?.id ?? ''
+
+    if (user) {
+      showInvitedSpotlight = await resolveInvitedSpotlightVisibility(user.id)
+    }
 
     const { data } = await supabase
       .from('vault_projects')
@@ -173,6 +210,17 @@ export default async function DashboardPage() {
           <span className="text-lg leading-none">+</span> New project
         </Link>
       </header>
+
+      {/* Invited spotlight card (26-08) — the single entry point for the
+          invited path into the Sync Library. Non-dismissible: visibility is
+          resolved server-side above and disappears on its own once the
+          artist adds a song (a sync_listings row then exists). Sits above
+          "Your next moves" per 26-UI-SPEC.md Screen B placement. */}
+      {showInvitedSpotlight && (
+        <div className="mt-8">
+          <InvitedSpotlightCard />
+        </div>
+      )}
 
       {/* Your next moves — cross-account action feed (④). Inclusion rule is
           "is this waiting on you?", never ownership, so this renders
