@@ -6,6 +6,7 @@ import { MessagesIcon } from '@/components/nav/MessagesIcon'
 import { PresenceTracker } from '@/components/nav/PresenceTracker'
 import { ArtistLayoutClient } from '@/components/nav/ArtistLayoutClient'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { hasAdmittedSyncListing } from '@/lib/sync-library/hub-access'
 
 // Reads the account's approved capability set server-side and passes it to
 // ArtistNav as a prop (D-08). Never fetched client-side — capability_grants
@@ -18,6 +19,11 @@ export default async function ArtistLayout({ children }: { children: React.React
   } = await supabase.auth.getUser()
 
   let capabilities: string[] = []
+  // Sync Library nav visibility is a DATA-DRIVEN gate (≥1 admitted song),
+  // not a static capability — resolved server-side here, alongside
+  // capabilities, and passed down as a prop (never client-fetched),
+  // mirroring the capabilities read immediately above (26-CONTEXT.md).
+  let hasSyncLibraryAccess = false
   if (user) {
     const service = createServiceClient()
     const { data: grants } = await service
@@ -26,11 +32,16 @@ export default async function ArtistLayout({ children }: { children: React.React
       .eq('profile_id', user.id)
       .eq('status', 'approved')
     capabilities = (grants ?? []).map(g => g.capability)
+    hasSyncLibraryAccess = await hasAdmittedSyncListing(service, user.id)
   }
 
   const body = (
     <div className="flex min-h-screen bg-ink text-white">
-      <ArtistNav capabilities={capabilities} />
+      <ArtistNav
+        capabilities={capabilities}
+        hasSyncLibraryAccess={hasSyncLibraryAccess}
+        userId={user?.id}
+      />
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">
           {user && <MessagesIcon userId={user.id} />}

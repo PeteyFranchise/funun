@@ -157,3 +157,16 @@ export const DealsIcon = (p: IconProps) => (
     <path d="m17.8 9.6 2.7 2.4a2 2 0 0 1 0 2.9l-3.8 3.6a2 2 0 0 1-2.8 0l-.4-.4" />
   </Svg>
 )
+
+// Sync Library — two catalogue shelves holding a note (distinct from
+// Sound Vault's rack-with-disc motif and Contract Locker's document-lock)
+export const SyncLibraryIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="4.3" width="18" height="5.4" rx="1.3" />
+    <rect x="3" y="14.3" width="18" height="5.4" rx="1.3" />
+    <path d="M8.5 7h7" />
+    <path d="M8.5 17h4.3" />
+    <path d="M16.8 15.4v4.7" />
+    <circle cx="15.9" cy="20.1" r="1.1" />
+  </Svg>
+)
