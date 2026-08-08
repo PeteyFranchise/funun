@@ -39,7 +39,6 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     title: 'Test Track',
     type: 'single',
     genre: 'House',
-    is_public: true,
     vault_readiness_score: 100,
     user_id: 'owner-1',
     cover_art_url: null,
@@ -51,11 +50,23 @@ function projectRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeService(projects: unknown[], ownerRows: unknown[]) {
+// admittedProjectIds defaults to the id of every project row passed in —
+// tests that want to exercise the NOT-admitted branch pass an explicit
+// (possibly empty) list.
+function makeService(
+  projects: unknown[],
+  ownerRows: unknown[],
+  admittedProjectIds?: string[]
+) {
+  const admitted = (
+    admittedProjectIds ?? (projects as { id: string }[]).map(p => p.id)
+  ).map(id => ({ vault_project_id: id }))
+
   return {
     from: jest.fn((table: string) => {
       if (table === 'vault_projects') return tableBuilder(projects).builder
       if (table === 'user_profiles') return tableBuilder(ownerRows).builder
+      if (table === 'sync_listings') return tableBuilder(admitted).builder
       if (table === 'project_license_terms') return tableBuilder([]).builder
       return tableBuilder([]).builder
     }),
@@ -129,5 +140,34 @@ describe('loadCatalogPage — authenticated buyer (buyerUserId = real id)', () =
 
     expect(mockedLoadBlockedIds).toHaveBeenCalledWith(service, 'buyer-1')
     expect(result.data).toHaveLength(1)
+  })
+})
+
+describe('loadCatalogPage — sync-library admission gate (26-06)', () => {
+  it('excludes a project with no admitted sync listing, even if otherwise rights-ready', async () => {
+    const project = projectRow()
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [] // no admitted sync_listings rows for any project
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toEqual([])
+  })
+
+  it('includes a project with an admitted sync listing (and excludes an unadmitted sibling)', async () => {
+    const admittedProject = projectRow({ id: 'proj-admitted' })
+    const unadmittedProject = projectRow({ id: 'proj-not-admitted' })
+    const service = makeService(
+      [admittedProject, unadmittedProject],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      ['proj-admitted']
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data.map(c => c.id)).toEqual(['proj-admitted'])
   })
 })
