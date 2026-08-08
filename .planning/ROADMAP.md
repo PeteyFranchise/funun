@@ -747,7 +747,7 @@ and **distinct from artist (user) accounts**.
 
 **Open product question for the owner (confirm before executing):** buyer auth = email/password (planned, per the locked Marmoset design — 23-05) vs magic-link-only. 23-05 is isolated so it can be swapped with one `type` change. Note: Resend is NOT configured in prod, so invite/reset emails no-op until configured — the in-app notification + admin queue are the reliable channels.
 
-**Status:** Planned (8 plans, 4 waves) 2026-08-07 — ready for `/gsd-execute-phase 23` (pending the auth-mechanism confirmation).
+**Status:** SHIPPED 2026-08-07 — 8 plans / 4 waves executed; migrations 092–095 live; deployed to production via PR #58 (main). Public `/sync` onboarding lane live (register → pending_onboarding → AE onboard → Active → gated browse). Deployed-domain UAT + SYNC-10 spend-oversight UI deferred.
 
 ### Phase 24: Buyer Onboarding · Model B — Self-Serve Creator Access
 
@@ -832,7 +832,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
 
-**Status:** Planned (10 plans, 5 waves) 2026-08-05. Enables Model A's AE assignment + **reassignment**, Client Partner provisioning + editing, lead routing, a light/dark Team Console, and an all-roles **Team Member Directory** (Phase 23 can stub AE/team until this lands).
+**Status:** SHIPPED 2026-08-05 — 10 plans / 5 waves executed; migrations 089–091 live; deployed to production. AE assignment + **reassignment**, Client Partner provisioning + editing, lead routing, a light/dark Team Console, and an all-roles **Team Member Directory** are live; verified via a six-point production security smoke.
 
 ### Phase 26: Sync-Library Inclusion & Artist Submission
 
@@ -1018,8 +1018,7 @@ Plans:
 **Provisional requirements** (INDUSTRY-01…07) — cited in plan frontmatter but NOT yet registered in
 REQUIREMENTS.md (no Phase 28 section exists); register via `/gsd-docs-update` before phase close.
 
-**Status:** Executing (5 plans / 2 waves). 4/5 plans complete; 28-05's migration is drafted, text-tested, and NOT
-pushed — blocked on the human-gated `supabase db push` + live smoke checkpoint (Plan 28-05 Task 3).
+**Status:** SHIPPED — all 5 plans / 2 waves executed; migration 085 (industry capability + Green Room RLS gate) live (`LOCAL=REMOTE` through 096, no migration gaps); deployed to production. Industry accounts + Green Room access model live; INDUSTRY-01..07 registered Complete.
 
 ### Phase 29: Self-Serve Flat-Price Sync Licensing (Marmoset-style)
 
