@@ -566,6 +566,21 @@ export type VaultAsset = {
   created_at: string
 }
 
+// ─── Sync Library (Phase 26, 26-CONTEXT.md) ────────────────────────────
+// Per-song sync-library admission state machine. Matches migration 096's
+// CHECK enum exactly (supabase/migrations/096_sync_library.sql). The
+// canonical transition table lives in lib/sync-library/submission.ts —
+// this is the shared type only.
+export type SyncListingStatus =
+  | 'applied'
+  | 'invited'
+  | 'agreement_pending'
+  | 'pending_admit'
+  | 'admitted'
+  | 'rejected'
+  | 'withdrawn'
+  | 'removed'
+
 // ─── Vault Documents ──────────────────────────────────────────────────
 export type DocumentType =
   | 'split_sheet'
