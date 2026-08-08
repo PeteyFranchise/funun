@@ -842,7 +842,23 @@ supply pipeline behind live catalogue data (Phase 22 · 22-05).
 **Depends on:** Sound Vault + readiness (upstream song source), e-sign (`lib/esign/provider.ts`) for the blanket agreement, Phase 22 (the catalogue surface + `is_public`/`isRightsReady` gate to replace)
 **Resolves:** `.planning/deliberations/buyer-catalogue-inclusion-model.md` (core workflow). **Relates to:** `.planning/deliberations/sync-license-signing-model.md` (the blanket agreement is the artist→Funūn authorization).
 
-**Status:** Discussion captured (26-CONTEXT.md), **not yet planned**.
+**Plans:** 10 plans (3 waves)
+
+Plans:
+- [ ] 26-01-PLAN.md — Migration 096 (sync_listings state machine + capability_grants/vault_documents extensions) + [BLOCKING] human-gated schema push
+- [ ] 26-02-PLAN.md — Pure domain core: status state machine + eligibility predicate + shared types (TDD)
+- [ ] 26-03-PLAN.md — Artist self-apply submit (per-song, batched) + withdraw routes
+- [ ] 26-04-PLAN.md — Blanket agreement: versioned template + PDF renderer + mint route + DocuSeal webhook dispatch
+- [ ] 26-05-PLAN.md — Staff routes: invite + admit/reject curation gate + leadership-only removal + notification builders
+- [ ] 26-06-PLAN.md — Catalogue gate: single admission-status helper replacing duplicated is_public checks
+- [ ] 26-07-PLAN.md — Vault song-row "+ Sync Library" action + status chips + blanket-agreement signing page
+- [ ] 26-08-PLAN.md — Dashboard invited spotlight card
+- [ ] 26-09-PLAN.md — Sync Library hub + nav reorder/gating + new-feature highlight (New dot + coach-mark)
+- [ ] 26-10-PLAN.md — Admin Sync Library section: invite panel + curation queue + leadership removal
+
+> Requirement IDs: no registered IDs existed for Phase 26 (requirements live in 26-CONTEXT.md). Plans derive a provisional **SYNCLIB-01..15** set (distinct from Phase 23's SYNC-01..10); register them in REQUIREMENTS.md via /gsd-docs-update before phase close (Phase 28 precedent).
+
+**Status:** Planned 2026-08-08 (10 plans, 3 waves). Ready for /gsd-execute-phase 26.
 
 ### Cluster sequencing (build order ≠ phase number)
 
