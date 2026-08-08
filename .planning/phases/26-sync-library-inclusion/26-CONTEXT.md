@@ -163,6 +163,18 @@ transacting.
 
 **Roadmap follow-on (owner 2026-08-07):** a future **self-serve flat-price licensing platform** (Marmoset-style)
 for smaller deals that do not require negotiation — added to ROADMAP.md as a later phase. Out of scope for Phase 26.
+
+**UI-phase flagged details — resolved (owner 2026-08-07, after 26-UI-SPEC.md approved 6/6):**
+1. **Rejection reason:** staff may attach an **optional short reason** when rejecting a submitted song, **shown
+   to the artist** (adds a reason field to the admin reject action + surfaces it on the song's rejected status).
+2. **Invited artists skip `under_review`:** the invite IS the acceptance — an invited artist's song goes
+   submitted → `agreement_pending` → admitted (no review queue). Only **self-applied** songs pass through
+   `under_review`.
+3. **Spotlight invite card:** **not dismissible** — persists until acted on.
+4. **Post-signing submissions:** once the blanket agreement is signed, later songs **skip the sign step**
+   (covered by the existing agreement); their status reflects "covered by your agreement," not a re-sign.
+5. **Sync Library hub focal point:** **"Admitted songs"** is the primary visual anchor (resolves the UI-checker's
+   Dimension-2 visual-hierarchy flag).
 </resolved>
 
 ---
