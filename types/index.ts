@@ -581,6 +581,31 @@ export type SyncListingStatus =
   | 'withdrawn'
   | 'removed'
 
+export type SyncListingEntrySource = 'admin_invited' | 'self_applied'
+
+// Mirrors sync_listings' columns (migration 096) — snake_case DB column
+// names, matching the neighbouring VaultDocument shape's convention.
+export type SyncListing = {
+  id: string
+  vault_project_id: string
+  track_id: string
+  artist_user_id: string
+  status: SyncListingStatus
+  entry_source: SyncListingEntrySource
+  blanket_agreement_document_id: string | null
+  rejection_reason: string | null
+  removal_reason: string | null
+  applied_at: string
+  decided_at: string | null
+  decided_by: string | null
+  admitted_at: string | null
+  withdrawn_at: string | null
+  removed_at: string | null
+  removed_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ─── Vault Documents ──────────────────────────────────────────────────
 export type DocumentType =
   | 'split_sheet'
@@ -588,6 +613,7 @@ export type DocumentType =
   | 'hire_right'
   | 'sample_clearance'
   | 'distribution_agreement'
+  | 'blanket_agreement'
 
 export type VerificationState = 'pass' | 'fail' | 'pending'
 export type VerificationCheck = {
