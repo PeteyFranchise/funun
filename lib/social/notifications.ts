@@ -40,6 +40,11 @@ export const NOTIFICATION_TYPES = {
   split_sheet_view_nudge: { icon: 'eye', inlineAction: 'split_sheet_resend' },
   // Phase 19 — R4 flag-for-fix on frozen sheets (D-05/D-06/D-08)
   split_sheet_identity_flagged: { icon: 'flag', inlineAction: 'split_sheet_review' },
+  // Phase 26 — Sync Library staff curation lifecycle (26-05)
+  sync_library_invite: { icon: 'star', inlineAction: null },
+  sync_library_admitted: { icon: 'check-circle', inlineAction: null },
+  sync_library_rejected: { icon: 'flag', inlineAction: null },
+  sync_library_removed: { icon: 'alert-triangle', inlineAction: null },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -387,6 +392,96 @@ export function buildIdentityCorrectionFlagNotification(args: {
     },
     actorId: args.partyId,
     actorName: args.partyName,
+    actorAvatarUrl: null,
+  }
+}
+
+// ─── Phase 26 — Sync Library staff-curation lifecycle (26-05) ──────────
+// Fires on the four staff mutations (invite/admit/reject/remove). Staff act
+// on behalf of Funūn as an institution rather than as an individually-named
+// peer, so `actorName` is fixed to 'Funūn' (mirrors the "Funūn wants to
+// represent your music..." institutional framing from 26-UI-SPEC's
+// spotlight-card body) rather than resolving a per-staff display name —
+// otherwise identical in shape to lib/deals/notifications.ts's
+// admin-attribution builders.
+
+/** Fires when staff mints an admin_invited sync_library grant (26-05 Task 1). */
+export function buildSyncLibraryInviteNotification(args: {
+  recipientId: string
+  actorId: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'sync_library_invite',
+    title: "You're invited to the Sync Library",
+    body: 'Funūn wants to represent your music for sync licensing. Add songs from your Sound Vault and start earning when supervisors license your work.',
+    link: '/dashboard',
+    actorId: args.actorId,
+    actorName: 'Funūn',
+    actorAvatarUrl: null,
+  }
+}
+
+/**
+ * Fires on a song's staff admit decision, but ONLY when it is the artist's
+ * FIRST admitted listing — the SYNCLIB-14 new-feature-highlight trigger
+ * (26-UI-SPEC "New-feature highlight"; title is VERBATIM from locked
+ * context, do not paraphrase). Links to the Sync Library hub that just
+ * unlocked.
+ */
+export function buildSyncLibraryAdmittedNotification(args: {
+  recipientId: string
+  actorId: string
+  songTitle: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'sync_library_admitted',
+    title: `'${args.songTitle}' is now live in the Sync Library — manage your catalogue here`,
+    link: '/sync-library',
+    data: { songTitle: args.songTitle },
+    actorId: args.actorId,
+    actorName: 'Funūn',
+    actorAvatarUrl: null,
+  }
+}
+
+/** Fires on a song's staff reject decision — `reason` is the optional staff-authored explanation, shown to the artist (26-CONTEXT.md UI-phase decision #1). */
+export function buildSyncLibraryRejectedNotification(args: {
+  recipientId: string
+  actorId: string
+  songTitle: string
+  reason: string | null
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'sync_library_rejected',
+    title: `'${args.songTitle}' was not accepted into the Sync Library`,
+    body: args.reason ?? null,
+    link: '/vault',
+    data: { songTitle: args.songTitle, reason: args.reason },
+    actorId: args.actorId,
+    actorName: 'Funūn',
+    actorAvatarUrl: null,
+  }
+}
+
+/** Fires when leadership takes down an already-admitted song — a distinct terminal action from `rejected`/`withdrawn` (26-CONTEXT.md "Staff removal / takedown"). `reason` is the optional leadership-authored explanation. */
+export function buildSyncLibraryRemovedNotification(args: {
+  recipientId: string
+  actorId: string
+  songTitle: string
+  reason: string | null
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'sync_library_removed',
+    title: `'${args.songTitle}' was removed from the Sync Library`,
+    body: args.reason ?? null,
+    link: '/vault',
+    data: { songTitle: args.songTitle, reason: args.reason },
+    actorId: args.actorId,
+    actorName: 'Funūn',
     actorAvatarUrl: null,
   }
 }
