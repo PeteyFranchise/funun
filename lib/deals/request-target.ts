@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeStage3 } from '@/lib/vault/stage3'
+import { isAdmittedToSyncLibrary } from '@/lib/deals/catalog'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
 
@@ -8,22 +9,27 @@ import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
 // POST /api/buyer/requests and the composer's project/track lookup
 // (app/sync/requests/new/page.tsx, 23-02: renamed from
 // app/(buyer-portal)/buyers/requests/new/page.tsx) must apply the EXACT
-// same rights-ready + Phase 13 visibility + block gate, so a buyer cannot
-// reach a private, unready, non-owned, or blocking artist's project by
-// guessing/typing a project id (16-VALIDATION V16-03). Extracted here
-// (Rule 2 — missing shared authorization would let the two call sites
-// drift out of sync, a security-relevant DRY violation) rather than
-// duplicated inline in both files.
+// same sync-library-admission + Phase 13 visibility + block gate, so a
+// buyer cannot reach a non-admitted, private, non-owned, or blocking
+// artist's project by guessing/typing a project id (16-VALIDATION
+// V16-03). Extracted here (Rule 2 — missing shared authorization would
+// let the two call sites drift out of sync, a security-relevant DRY
+// violation) rather than duplicated inline in both files.
 //
 // Runs on the SERVICE-ROLE client deliberately: tracks/vault_documents RLS
 // (migration 078) scopes SELECT to the project owner or member, which a
 // buyer session never is — a session-client read would return zero rows
 // even for a project that should be requestable. The checks below stand
-// in for that missing session-level visibility, mirroring the rights-ready
-// definition plan 16-05's lib/deals/catalog.ts (isRightsReady) will also
-// express once that plan lands: public AND readiness-threshold AND
-// computeStage3().canContinue, plus the Phase 13 visibility/block gate
-// the catalog route applies on top.
+// in for that missing session-level visibility.
+//
+// 26-06: the admission check now delegates to lib/deals/catalog.ts's
+// isAdmittedToSyncLibrary (the SAME helper lib/deals/catalog-query.ts's
+// loadCatalogPage/isRightsReady call), replacing the old inline
+// `is_public !== true` check — one shared admission authority, no third
+// copy (T-26-24). This function resolves has_admitted_sync_listing via a
+// sync_listings existence lookup (status = 'admitted'), then applies
+// readiness/stage3 (computeStage3().canContinue) and the Phase 13
+// visibility/block gate on top, exactly as before.
 
 export type RequestTargetProject = {
   id: string
@@ -39,7 +45,6 @@ type ProjectRow = {
   title: string
   user_id: string
   type: string
-  is_public: boolean | null
   vault_readiness_score: number
   content_id_registered: boolean | null
   content_id_dismissed_until: string | null
@@ -71,7 +76,7 @@ export async function authorizeRequestTarget(
     .from('vault_projects')
     .select(
       `
-      id, title, user_id, type, is_public, vault_readiness_score,
+      id, title, user_id, type, vault_readiness_score,
       content_id_registered, content_id_dismissed_until,
       tracks (id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
       vault_documents (id, type, status, track_id, document_data)
@@ -82,7 +87,20 @@ export async function authorizeRequestTarget(
 
   const project = data as ProjectRow | null
   if (!project) return { ok: false }
-  if (project.is_public !== true) return { ok: false }
+
+  // 26-06: admission is the single gate authority — one sync_listings
+  // existence lookup, then the SAME isAdmittedToSyncLibrary helper
+  // lib/deals/catalog.ts's isRightsReady uses.
+  const { data: admittedListing } = await service
+    .from('sync_listings')
+    .select('id')
+    .eq('vault_project_id', project.id)
+    .eq('status', 'admitted')
+    .limit(1)
+    .maybeSingle()
+  if (!isAdmittedToSyncLibrary({ has_admitted_sync_listing: admittedListing != null })) {
+    return { ok: false }
+  }
 
   const stage3 = computeStage3(
     project,
