@@ -82,6 +82,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
             </>
           )}
+          {/* Sync Library curation (26-10) — leadership + ae, matching the
+              backing routes' requireStaff(['leadership','ae']) exactly
+              (26-CONTEXT.md's "broader permissioned-staff curation role");
+              bd does not see this link. Kept as its own condition (not
+              folded into the isLeadership-only block above) so ae staff can
+              navigate to a page they are actually permitted to use. */}
+          {(isLeadership || role === 'ae') && (
+            <Link href="/admin/sync-library" className={NAV_LINK_CLASS}>
+              Sync Library
+            </Link>
+          )}
           {/* Every staff role (leadership/AE/BD) sees these two links. */}
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
