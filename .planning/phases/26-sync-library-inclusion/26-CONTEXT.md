@@ -87,6 +87,40 @@ inclusion placeholder (`isRightsReady` / `is_public + readiness`) with a real li
 embedded in Antenna (its match/apply semantics do not fit a hand-picked invite). Two grant sources:
 `admin_invited`, `self_applied`.
 
+**Artist-side surface placement + hub gating (owner 2026-08-07):**
+- **Invited spotlight card** → the artist **home** (`/dashboard` or `/launchpad` — UI-phase picks), shown only
+  to artists with a pending `admin_invited` grant.
+- **Self-apply entry point** → a per-song **"Submit to Sync Library"** action in the **Sound Vault** (`/vault`),
+  available to **ALL artists**. This is the only pre-admission door for an uninvited artist — it is **NOT gated**.
+- **Pre-admission status + signing live ON the song in the Vault** (status badge: applied / under review /
+  agreement-pending / admitted / rejected) and via notifications — NOT in the hub. The one-time
+  blanket-agreement signing is reached from the song's status action (self-apply) or the invite flow (invited).
+- **"Sync Library" hub** (dedicated artist nav item + page) → appears **ONLY once the artist has ≥1 song
+  ADMITTED** (live in the catalogue) — progressive disclosure; it does not exist for artists with zero admitted
+  songs. The hub is the **post-admission home**: admitted songs + statuses, the signed agreement on file,
+  submit-more-songs, and (future) sync earnings/deals. Nav visibility is a **server-side check** (≥1 admitted
+  listing), mirroring how `capabilities` are read server-side in `app/(artist)/layout.tsx` and gated in
+  `components/nav/ArtistNav.tsx`. **Nav placement: directly under "Deals"** (position 4 in the artist nav —
+  owner-confirmed 2026-08-07).
+- **Implication:** the *initial* self-application journey (fresh artist → apply → track status → sign) happens
+  **without the hub**, via the Vault; the hub is *earned* by getting a first song in.
+- **Full artist nav order (owner-confirmed 2026-08-07):** also move **Split Sheets** to sit **directly under
+  Contract Locker** (it is part of the Contract Locker) — in BOTH menus; a small reorder of the existing
+  `ArtistNav.tsx` ITEMS array, applied as part of this phase's nav work. Resulting order — **before admission:**
+  Sound Vault · Contract Locker · Split Sheets · Deals · Collaborators · The Green Room · Network · Messages ·
+  Antenna · PitchPlug · Benchmarks · Launchpad · Rights Coach · Earnings · Settings. **After first admission:**
+  same, with **Sync Library inserted directly under Deals** → Sound Vault · Contract Locker · Split Sheets ·
+  Deals · **Sync Library** · Collaborators · The Green Room · Network · Messages · Antenna · PitchPlug ·
+  Benchmarks · Launchpad · Rights Coach · Earnings · Settings.
+- **New-feature highlight when the hub unlocks (owner 2026-08-07):** the moment the Sync Library hub appears
+  (first song admitted), highlight it so the artist notices — reuse the existing notification system
+  (`lib/notifications` `createNotification`, surfaced in `components/nav/NotificationBell.tsx` /
+  `NotificationPanel.tsx`): (a) fire an in-app **notification** ("'[Song]' is now live in the Sync Library —
+  manage your catalogue here") linking to the hub; (b) show a **"New" badge/dot** on the Sync Library nav item
+  until the artist opens it the first time, then clear it (needs a lightweight per-user "seen" flag); (c) optional
+  one-time coach-mark/tooltip anchored to the nav item on first visit. Build this as a small reusable
+  "newly-unlocked feature" highlight primitive where practical, so future gated features reuse it.
+
 **Resolves OQ#2 (granularity) + OQ#1 (data model): SONG-LEVEL.**
 - The **individual song/track is the licensable unit** — a buyer licenses one song at a time.
 - Submission is **batched but per-song-admitted**: an artist may submit 1 song, several, or a whole release;
@@ -101,8 +135,9 @@ embedded in Antenna (its match/apply semantics do not fit a hand-picked invite).
   artist's behalf.
 - **Price and its drivers — scope, medium, exclusive vs. non-exclusive — are negotiated per deal** (usually by
   the Funūn AE); the agreement gives Funūn the authority to conduct that negotiation.
-- Likely **one blanket ("master") agreement per artist** covering all songs they submit to the sync library
-  (planner/UI confirm sign-once vs per-submission; "blanket" implies once, covering the catalogue relationship).
+- **One blanket ("master") agreement per artist** covering all songs they submit to the sync library —
+  **sign-once, NOT per-submission** (owner-confirmed 2026-08-07). Later submissions fall under the same signed
+  agreement; a re-sign is needed only if the agreement version materially changes.
 - **Temporary agreement doc:** owner-requested a **draft template now** for review/amendment — see
   `26-BLANKET-AGREEMENT-DRAFT.md`. **Counsel drafts + approves the final** later. The agreement must be a
   **swappable/versioned template** so the counsel-approved version replaces the draft with no code change.
