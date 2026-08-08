@@ -174,12 +174,24 @@ owner decisions are AUTHORITATIVE and override any conflicting detail in 26-UI-S
    the whole catalogue. Per-song state: submitted/added → [sign agreement if not yet signed] → **pending staff
    admit** → admitted / rejected.
 3. **Spotlight invite card:** **not dismissible** — persists until acted on.
-4. **Post-signing submissions:** later songs (after the sign-once agreement) skip the sign step and move
-   **straight to "pending admit" with NO special "covered" indicator** (owner chose the quieter treatment — no
-   extra badge explaining why signing was skipped).
+4. **Post-signing submissions:** later songs (after the sign-once agreement) skip the sign step and show a
+   **"Covered by your Sync Library agreement" indicator** (owner changed their mind 2026-08-07 — clarity over
+   quiet: the artist sees WHY signing was skipped) before moving to "pending admit".
 5. **Sync Library hub anchor:** **"In progress"** is the primary visual anchor (owner chose the workspace framing
    over "Admitted songs") — pending-admit / mid-flow songs lead the page; "Admitted songs" and "Your agreement"
    sit below as reference. Resolves the UI-checker's Dimension-2 visual-hierarchy flag.
+
+**Staff removal / takedown of an admitted song (owner 2026-08-07):** Funūn staff can **remove an already-admitted
+song from the Sync Library** (take it down so it is no longer browsable/licensable) — for rights issues, quality,
+legal, etc. **LEADERSHIP-ONLY for now** (`requireStaff(['leadership'])` — NOT AE/BD; mirrors the Phase-25
+leadership-gated pattern). Lives in the admin Sync Library section as a **"Remove from Sync Library"** action on an
+admitted song. Per-song state: `admitted` → **`removed`** (staff takedown — a distinct action from the artist's own
+`withdrawn` and the pre-admission `rejected`; planner decides whether `removed`/`withdrawn` are separate states or
+one "inactive" state + actor metadata). **Audited** via `logStaffAction` like other staff mutations, with an
+**optional reason** and the artist **notified** their song was removed (consistent with rejection-reason decision #1).
+No in-flight deals to consider in this phase. NOTE: only **removal** is leadership-restricted for now — **admission**
+(adding a song via the curation queue) stays with the broader permissioned-staff curation role unless the owner
+later tightens it.
 </resolved>
 
 ---
