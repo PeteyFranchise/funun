@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: "Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted). Migrations 097-103 written + tested (1965 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys, (2) approve 3 email copies, (3) set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY + SUPABASE_ACCESS_TOKEN; then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance."
-last_updated: "2026-08-09T11:35:57.026Z"
+stopped_at: "Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted) + Turnstile scoped-hardening pass (env var renamed TURNSTILE_SECRET_KEY -> TURNSTILE_SECRET, fail-closed guards, action marker, widget reset-on-failure, token-aware submit gate). Migrations 097-103 written + tested (1971 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys -- set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET (corrected name) + SUPABASE_ACCESS_TOKEN, (2) approve 3 email copies, then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance."
+last_updated: "2026-08-09T13:56:04.140Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
@@ -501,9 +501,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T11:35:57.005Z
-Stopped at: Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted). Migrations 097-103 written + tested (1965 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys, (2) approve 3 email copies, (3) set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET_KEY + SUPABASE_ACCESS_TOKEN; then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance.
-Resume file: .planning/phases/27-artist-invite-only-onboarding/27-11-PLAN.md
+Last session: 2026-08-09T13:56:04.065Z
+Stopped at: Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted) + Turnstile scoped-hardening pass (env var renamed TURNSTILE_SECRET_KEY -> TURNSTILE_SECRET, fail-closed guards, action marker, widget reset-on-failure, token-aware submit gate). Migrations 097-103 written + tested (1971 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys -- set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET (corrected name) + SUPABASE_ACCESS_TOKEN, (2) approve 3 email copies, then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance.
+Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
