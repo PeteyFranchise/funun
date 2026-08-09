@@ -1,40 +1,57 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Artist invite allowlist — TypeScript twin of the DB gate ────────────
-// isArtistEmailAllowed() mirrors migration 098's handle_new_user() gate
+// isArtistEmailAllowed() mirrors migration 099's handle_new_user() gate
 // predicate exactly: EXISTS(collaborators WHERE LOWER(email)=LOWER(email))
 // OR EXISTS(artist_invites WHERE LOWER(email)=LOWER(email) AND
 // status='pending' AND (token_expires_at IS NULL OR token_expires_at >
 // NOW())). Both sides are driven against the SAME shared scenario table
 // (lib/invites/invite-fixtures.ts) to guard against drift (27-RESEARCH
 // Pitfall 3) — this function's own test, and
-// __tests__/migration-098-gate.test.ts, both import INVITE_ALLOWLIST_SCENARIOS.
+// __tests__/migration-099-gate.test.ts, both import INVITE_ALLOWLIST_SCENARIOS.
 //
 // This is the "check-invite" pre-check UX read only — the real,
 // unbypassable boundary lives in the DB trigger (D-02); this function must
 // never be treated as the enforcement point itself.
 
+// Fix M1 (27-CODEX-REVIEW.md): `.ilike(col, value)` treats `%`/`_` in
+// `value` as wildcards — a raw user-supplied email like "%" or "a_b@x.com"
+// would match many/other rows instead of none, diverging from the SQL
+// gate's exact `LOWER(email) = LOWER(NEW.email)` equality. Escaping the
+// three characters ILIKE's pattern language treats specially (`\`, `%`,
+// `_`) turns `.ilike()` into an exact, case-insensitive equality check —
+// same case-folding behavior as the SQL gate's LOWER()=LOWER(), but with no
+// possibility of the input being interpreted as a pattern. Single shared
+// predicate used by BOTH lookups below so they can never diverge from each
+// other, let alone from the SQL twin.
+function exactCaseInsensitiveEmailPattern(email: string): string {
+  return email.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
 /**
  * True when `email` is authorized to self-serve sign up as an artist:
  * either an existing collaborator row names it (D-04 — auto-allowed the
  * moment any artist adds them as a collaborator), or a pending, unexpired
- * artist_invites row matches it. Case-insensitive, trims the input.
+ * artist_invites row matches it. Case-insensitive, exact match only (no
+ * wildcards — M1), trims the input.
  */
 export async function isArtistEmailAllowed(service: SupabaseClient, email: string): Promise<boolean> {
   const trimmed = (email ?? '').trim()
   if (!trimmed) return false
 
+  const pattern = exactCaseInsensitiveEmailPattern(trimmed)
+
   const { count: collaboratorCount } = await service
     .from('collaborators')
     .select('id', { count: 'exact', head: true })
-    .ilike('email', trimmed)
+    .ilike('email', pattern)
   if ((collaboratorCount ?? 0) > 0) return true
 
   const nowIso = new Date().toISOString()
   const { count: inviteCount } = await service
     .from('artist_invites')
     .select('id', { count: 'exact', head: true })
-    .ilike('email', trimmed)
+    .ilike('email', pattern)
     .eq('status', 'pending')
     .or(`token_expires_at.is.null,token_expires_at.gt.${nowIso}`)
 

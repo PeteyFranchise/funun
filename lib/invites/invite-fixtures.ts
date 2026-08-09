@@ -58,4 +58,40 @@ export const INVITE_ALLOWLIST_SCENARIOS: InviteAllowlistScenario[] = [
     inviteRows: [],
     expected: true,
   },
+  // ── M1/M2 (27-CODEX-REVIEW.md) — wildcard-injection regression guards ──
+  // A literal `_`/`%` in the input email must be matched EXACTLY, never
+  // interpreted as an ILIKE wildcard. The SQL gate's `LOWER(email) =
+  // LOWER(NEW.email)` was always exact-match-only (no LIKE/ILIKE anywhere
+  // in it); these scenarios prove the TS twin (isArtistEmailAllowed) now
+  // matches that behavior exactly, both for the case a wildcard character
+  // is present in a row that DOES match literally, and the case where an
+  // unescaped wildcard would have falsely matched a DIFFERENT row.
+  {
+    name: 'literal underscore in email matches only the exact literal collaborator row',
+    email: 'a_b@example.com',
+    collaboratorEmails: ['a_b@example.com'],
+    inviteRows: [],
+    expected: true,
+  },
+  {
+    name: 'literal underscore in email must NOT wildcard-match a similar collaborator row',
+    email: 'a_b@example.com',
+    collaboratorEmails: ['axb@example.com'],
+    inviteRows: [],
+    expected: false,
+  },
+  {
+    name: 'literal percent in email must NOT wildcard-match every collaborator row',
+    email: '%@example.com',
+    collaboratorEmails: ['zzz@example.com'],
+    inviteRows: [],
+    expected: false,
+  },
+  {
+    name: 'literal underscore in email must NOT wildcard-match a similar pending invite row',
+    email: 'a_b@example.com',
+    collaboratorEmails: [],
+    inviteRows: [{ email: 'axb@example.com', status: 'pending', expired: false }],
+    expected: false,
+  },
 ]
