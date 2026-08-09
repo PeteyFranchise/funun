@@ -6,19 +6,27 @@ import { sendEmail } from '@/lib/email'
 import { POST } from './route'
 
 // ─── POST /api/admin/artist-invites/[id]/convert (27-08 Task 2; H1 fix
-// 27-CODEX-REVIEW.md; follow-up review atomic-claim hardening) ───────────
+// 27-CODEX-REVIEW.md; follow-up review #1 atomic-claim hardening; follow-up
+// review #2 MEDIUM — sent-marker/claim split + mint-failure release +
+// idempotency key) ─────────────────────────────────────────────────────────
 // Colocated route test, same mocked-dependency conventions as
 // app/api/admin/artist-invites/route.test.ts. Covers: convert creates
-// invite + stamps converted_to_invite_at + sends template B + audits;
-// unsubscribed row still sends (D-19); unknown id -> 404; non-staff -> 403;
-// an already-converted row with a still-active invite is a true duplicate
-// (no resend); an already-converted row whose invite has since EXPIRED is
-// re-issued and resent (H1); a FIRST-TIME conversion requires winning an
-// atomic `converted_to_invite_at IS NULL` claim before minting/sending —
-// losing that race (a concurrent duplicate POST) is treated as
-// already-converted with no double email. The mint claim/rotate logic
-// itself is tested in lib/invites/mintInvite.test.ts — this file mocks
-// that module.
+// invite + stamps converted_to_invite_at + invite_email_sent_at + sends
+// template B with an idempotency key + audits; unsubscribed row still sends
+// (D-19); unknown id -> 404; non-staff -> 403; an already-converted row with
+// a still-active invite AND a confirmed prior send is a true duplicate (no
+// resend); an already-converted row whose invite has since EXPIRED is
+// re-issued and resent (H1) regardless of invite_email_sent_at; an
+// already-converted row whose invite is STILL active but was NEVER
+// confirmed sent (a lost mint-response retry) resends using the reused
+// invite instead of silently reporting a duplicate; a FIRST-TIME conversion
+// requires winning an atomic `converted_to_invite_at IS NULL` claim before
+// minting/sending — losing that race is treated as already-converted with
+// no double email; a mint failure on a FIRST-TIME claim RELEASES it
+// (retryable) but a mint failure on an already-converted row touches
+// nothing (there was no claim to release). The mint claim/rotate logic
+// itself is tested in lib/invites/mintInvite.test.ts — this file mocks that
+// module.
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -43,7 +51,13 @@ jest.mock('@/lib/email', () => ({
 const AE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const WAITLIST_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 
-type ClaimResult = { data: { id: string } | null; error: { message: string } | null }
+type WaitlistRow = {
+  id: string
+  email: string
+  converted_to_invite_at: string | null
+  invite_email_sent_at: string | null
+}
+type MaybeSingleResult = { data: { id: string } | null; error: { message: string } | null }
 
 function postRequest() {
   return new Request(`http://t.local/api/admin/artist-invites/${WAITLIST_UUID}/convert`, {
@@ -53,32 +67,55 @@ function postRequest() {
 
 function mockService(
   options: {
-    waitlistRow?: { id: string; email: string; converted_to_invite_at: string | null } | null
-    claimResult?: ClaimResult
-    restampResult?: ClaimResult
+    waitlistRow?: WaitlistRow | null
+    maybeSingleResults?: MaybeSingleResult[]
   } = {}
 ) {
-  const {
-    waitlistRow = null,
-    claimResult = { data: { id: WAITLIST_UUID }, error: null },
-    restampResult,
-  } = options
+  const { waitlistRow = null, maybeSingleResults } = options
 
   const auditInsert = jest.fn(async () => ({ error: null }))
 
-  // ── update(...).eq(id).is('converted_to_invite_at', null).select('id')
-  // .maybeSingle() — the first-time atomic claim.
-  const claimMaybeSingle = jest.fn(async () => claimResult)
-  const claimSelect = jest.fn(() => ({ maybeSingle: claimMaybeSingle }))
-  const isSpy = jest.fn(() => ({ select: claimSelect }))
+  // A single ordered queue of maybeSingle() results, consumed in call
+  // order, shared by every terminal write this route can reach in a single
+  // request (claim, release-on-mint-failure, restamp) — mirrors the route's
+  // actual sequential execution (at most one of claim/release/restamp fires
+  // per branch, in a fixed order).
+  let callIndex = 0
+  const maybeSingleSpy = jest.fn(async () => {
+    if (maybeSingleResults) {
+      const result = maybeSingleResults[callIndex] ?? maybeSingleResults[maybeSingleResults.length - 1]
+      callIndex += 1
+      return result
+    }
+    return { data: { id: WAITLIST_UUID }, error: null }
+  })
 
-  // ── update(...).eq(id).select('id').maybeSingle() — the non-CAS restamp
-  // on an already-converted row's re-issue-on-expiry path (H1).
-  const restampMaybeSingle = jest.fn(async () => restampResult ?? claimResult)
-  const restampSelect = jest.fn(() => ({ maybeSingle: restampMaybeSingle }))
+  // ── claim chain: update(...).eq('id', id).is('converted_to_invite_at',
+  // null).select('id').maybeSingle()
+  const selectAfterIsSpy = jest.fn(() => ({ maybeSingle: maybeSingleSpy }))
+  const isSpy = jest.fn(() => ({ select: selectAfterIsSpy }))
 
-  const eqSpy = jest.fn(() => ({ is: isSpy, select: restampSelect }))
-  const updateSpy = jest.fn(() => ({ eq: eqSpy }))
+  // ── release chain (mint-failure, first-time claim only):
+  // update(...).eq('id', id).eq('converted_to_invite_at', stamp).select('id')
+  // .maybeSingle()
+  const selectAfterEq2Spy = jest.fn(() => ({ maybeSingle: maybeSingleSpy }))
+  const eq2Spy = jest.fn(() => ({ select: selectAfterEq2Spy }))
+
+  // ── restamp chain (re-issue path) AND the confirmed-sent-marker write
+  // both start with update(...).eq('id', id).select(...) or a bare
+  // update(...).eq('id', id) awaited directly — the shared node below
+  // supports both: .select() continues the restamp chain; a plain `await`
+  // on the node itself resolves fine (it's just a non-thenable object,
+  // which `await` passes through unchanged) for the fire-and-forget
+  // sent-marker write.
+  const selectAfterEqIdSpy = jest.fn(() => ({ maybeSingle: maybeSingleSpy }))
+  const eqIdNode = {
+    is: isSpy,
+    eq: eq2Spy,
+    select: selectAfterEqIdSpy,
+  }
+  const eqSpy = jest.fn(() => eqIdNode)
+  const updateSpy = jest.fn((_payload: Record<string, unknown>) => ({ eq: eqSpy }))
 
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
@@ -95,7 +132,7 @@ function mockService(
     throw new Error(`Unexpected table: ${table}`)
   })
 
-  return { from, auditInsert, updateSpy, eqSpy, isSpy, claimMaybeSingle, restampMaybeSingle }
+  return { from, auditInsert, updateSpy, eqSpy, isSpy, eq2Spy, selectAfterEqIdSpy, maybeSingleSpy }
 }
 
 beforeEach(() => {
@@ -105,10 +142,15 @@ beforeEach(() => {
 })
 
 describe('POST /api/admin/artist-invites/[id]/convert', () => {
-  it('creates an invite, stamps converted_to_invite_at, sends template B, and audits', async () => {
+  it('creates an invite, stamps converted_to_invite_at + invite_email_sent_at, sends template B with an idempotency key, and audits', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
-      waitlistRow: { id: WAITLIST_UUID, email: 'waiter@example.com', converted_to_invite_at: null },
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'waiter@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+      },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'invite-1', token: 'tok-1', state: 'created' })
@@ -128,17 +170,25 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
       source: 'waitlist_conversion',
       invitedByUserId: AE_UUID,
     })
-    expect(service.updateSpy).toHaveBeenCalledWith(
+
+    // Two writes: the first-time claim, then the confirmed-sent marker
+    // (invite_email_sent_at) after a successful send — no separate restamp
+    // for a first-time conversion.
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ converted_to_invite_at: expect.any(String) })
     )
-    // Exactly one write (the claim) — no separate restamp for a first-time
-    // conversion.
-    expect(service.updateSpy).toHaveBeenCalledTimes(1)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ invite_email_sent_at: expect.any(String) })
+    )
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
     expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('waiter@example.com')
     const sendArgs = (sendEmail as jest.Mock).mock.calls[0][0]
     expect(sendArgs.html).toContain('tok-1')
+    expect(sendArgs.idempotencyKey).toBe(`artist-convert-${WAITLIST_UUID}-tok-1`)
 
     expect(logStaffAction).toHaveBeenCalledWith(service, {
       actorId: AE_UUID,
@@ -152,7 +202,12 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
   it('still sends the email for an unsubscribed row (D-19)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
-      waitlistRow: { id: WAITLIST_UUID, email: 'opted-out@example.com', converted_to_invite_at: null },
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'opted-out@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+      },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'invite-2', token: 'tok-2', state: 'created' })
@@ -176,13 +231,14 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
-  it('does not duplicate an invite for an already-converted row with a still-active invite', async () => {
+  it('does not duplicate an invite for an already-converted row with a still-active invite AND a confirmed prior send', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
       waitlistRow: {
         id: WAITLIST_UUID,
         email: 'already@example.com',
         converted_to_invite_at: '2026-08-01T00:00:00Z',
+        invite_email_sent_at: '2026-08-01T00:00:05Z',
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -193,18 +249,66 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.duplicate).toBe(true)
-    // Already-converted rows skip the claim entirely — no write at all.
+    // Already-converted, already-confirmed-sent rows skip the claim AND the
+    // restamp AND the sent-marker write entirely — no writes at all.
     expect(service.updateSpy).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
-  it('re-issues and resends for an already-converted row whose invite has EXPIRED (H1)', async () => {
+  it('resends using the reused invite when a prior conversion was never confirmed sent (lost mint-response retry, follow-up review #2)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService({
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'lost-response@example.com',
+        // A prior attempt already won the first-time claim and minted an
+        // invite (converted_to_invite_at is set), but died/lost its
+        // response before ever confirming a send — invite_email_sent_at is
+        // still null.
+        converted_to_invite_at: '2026-08-01T00:00:00Z',
+        invite_email_sent_at: null,
+      },
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    // mintOrRotateInvite is idempotent — the SAME still-active invite from
+    // the prior attempt is reused, not recreated.
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'existing-invite-4', token: 'reused-tok', state: 'reused' })
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: WAITLIST_UUID }) })
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.duplicate).toBeUndefined()
+    // No first-time claim attempted (converted_to_invite_at was already
+    // set) — the ONLY writes are the re-issue restamp and the sent marker.
+    expect(service.isSpy).not.toHaveBeenCalled()
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ converted_to_invite_at: expect.any(String) })
+    )
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ invite_email_sent_at: expect.any(String) })
+    )
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('lost-response@example.com')
+    expect((sendEmail as jest.Mock).mock.calls[0][0].idempotencyKey).toBe(
+      `artist-convert-${WAITLIST_UUID}-reused-tok`
+    )
+  })
+
+  it('re-issues and resends for an already-converted row whose invite has EXPIRED (H1), regardless of a prior confirmed send', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
       waitlistRow: {
         id: WAITLIST_UUID,
         email: 'stale@example.com',
         converted_to_invite_at: '2026-01-01T00:00:00Z',
+        // Even though the ORIGINAL invite was confirmed sent, its token has
+        // since expired — a rotated token is genuinely different content
+        // and must always be resent.
+        invite_email_sent_at: '2026-01-01T00:00:05Z',
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -217,17 +321,23 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(body.duplicate).toBeUndefined()
     // The re-issue restamp is a checked, non-CAS write (no `.is()` guard —
     // this row is legitimately already converted).
-    expect(service.updateSpy).toHaveBeenCalledWith(
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ converted_to_invite_at: expect.any(String) })
     )
     expect(sendEmail).toHaveBeenCalledTimes(1)
     expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('stale@example.com')
   })
 
-  it('returns 500 when the mint claim fails and never sends', async () => {
+  it('returns 500 when the mint fails on a FIRST-TIME claim and RELEASES the claim (retryable, not permanently stuck)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
-      waitlistRow: { id: WAITLIST_UUID, email: 'boom@example.com', converted_to_invite_at: null },
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'boom@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+      },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
@@ -236,13 +346,45 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
 
     expect(res.status).toBe(500)
     expect(sendEmail).not.toHaveBeenCalled()
+    // Claim, then release — two writes, not a stuck single claim.
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    const claimStamp = service.updateSpy.mock.calls[0][0].converted_to_invite_at
+    expect(typeof claimStamp).toBe('string')
+    expect(service.updateSpy).toHaveBeenNthCalledWith(2, { converted_to_invite_at: null })
+    // The release is CAS'd on the EXACT stamp this request just wrote.
+    expect(service.eq2Spy).toHaveBeenCalledWith('converted_to_invite_at', claimStamp)
   })
 
-  it('loses the first-time conversion claim race and returns duplicate without minting or sending (follow-up review)', async () => {
+  it('returns 500 when the mint fails on an ALREADY-converted row — no claim to release, no writes at all', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
-      waitlistRow: { id: WAITLIST_UUID, email: 'raced@example.com', converted_to_invite_at: null },
-      claimResult: { data: null, error: null },
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'already-boom@example.com',
+        converted_to_invite_at: '2026-01-01T00:00:00Z',
+        invite_email_sent_at: '2026-01-01T00:00:05Z',
+      },
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: WAITLIST_UUID }) })
+
+    expect(res.status).toBe(500)
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(service.updateSpy).not.toHaveBeenCalled()
+  })
+
+  it('loses the first-time conversion claim race and returns duplicate without minting or sending (follow-up review #1)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService({
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'raced@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+      },
+      maybeSingleResults: [{ data: null, error: null }],
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
@@ -258,8 +400,13 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
   it('returns 500 when the first-time claim UPDATE errors', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
-      waitlistRow: { id: WAITLIST_UUID, email: 'db-down@example.com', converted_to_invite_at: null },
-      claimResult: { data: null, error: { message: 'connection reset' } },
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'db-down@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+      },
+      maybeSingleResults: [{ data: null, error: { message: 'connection reset' } }],
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
@@ -277,8 +424,9 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         id: WAITLIST_UUID,
         email: 'restamp-fails@example.com',
         converted_to_invite_at: '2026-01-01T00:00:00Z',
+        invite_email_sent_at: null,
       },
-      restampResult: { data: null, error: { message: 'restamp boom' } },
+      maybeSingleResults: [{ data: null, error: { message: 'restamp boom' } }],
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'existing-invite-3', token: 'rotated-tok', state: 'rotated' })
