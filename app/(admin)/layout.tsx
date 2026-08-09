@@ -93,12 +93,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Sync Library
             </Link>
           )}
-          {/* Every staff role (leadership/AE/BD) sees these two links. */}
+          {/* Every staff role (leadership/AE/BD) sees these links. */}
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
           </Link>
           <Link href="/admin/directory" className={NAV_LINK_CLASS}>
             Directory
+          </Link>
+          {/* Artist Invites (Phase 27, D-06/D-14) — waitlist + invite
+              management is open to any staff role; the page-level
+              "Reopen & broadcast" action is separately gated to Leadership
+              inside ArtistInvitesAdmin via the server-resolved isLeadership
+              prop, not by hiding this nav link. */}
+          <Link href="/admin/artist-invites" className={NAV_LINK_CLASS}>
+            Artist Invites
           </Link>
           <div className="mt-auto flex flex-col gap-1 border-t border-[color:var(--border)] pt-3">
             <AdminThemeToggle theme={theme} />
