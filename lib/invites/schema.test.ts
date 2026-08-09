@@ -50,18 +50,46 @@ describe('sanitizeWaitlistEntry', () => {
   })
 
   it('lowercases the email', () => {
-    const result = sanitizeWaitlistEntry({ email: 'Jamie.Rivera@Example.COM' })
+    const result = sanitizeWaitlistEntry({ email: 'Jamie.Rivera@Example.COM', name: 'Jamie Rivera' })
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.email).toBe('jamie.rivera@example.com')
   })
 
-  it('allows name and note to be omitted (default to empty string)', () => {
-    const result = sanitizeWaitlistEntry({ email: 'artist@example.com' })
+  it('allows note to be omitted (defaults to empty string)', () => {
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', name: 'Jamie Rivera' })
     expect(result).toEqual({
       ok: true,
-      value: { email: 'artist@example.com', name: '', note: '' },
+      value: { email: 'artist@example.com', name: 'Jamie Rivera', note: '' },
     })
+  })
+
+  // L3 (27-CODEX-REVIEW.md): name is required server-side — the signup
+  // page's waitlist form already marks it `required` client-side; this
+  // closes the client/server parity gap.
+  it('rejects a missing name', () => {
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com' })
+    expect(result).toEqual({ ok: false, error: 'A name is required.' })
+  })
+
+  it('rejects a whitespace-only name', () => {
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', name: '   ' })
+    expect(result).toEqual({ ok: false, error: 'A name is required.' })
+  })
+
+  it('caps name length at 200 characters (L3)', () => {
+    const longName = 'x'.repeat(300)
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', name: longName })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.name.length).toBe(200)
+    expect(result.value.name).toBe('x'.repeat(200))
+  })
+
+  it('rejects an email longer than 254 characters (L3)', () => {
+    const longEmail = `${'x'.repeat(250)}@a.co`
+    const result = sanitizeWaitlistEntry({ email: longEmail, name: 'Jamie Rivera' })
+    expect(result).toEqual({ ok: false, error: 'A valid email is required.' })
   })
 
   it('rejects a missing email', () => {
@@ -86,7 +114,7 @@ describe('sanitizeWaitlistEntry', () => {
 
   it('caps note length at 1000 characters', () => {
     const longNote = 'x'.repeat(1500)
-    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', note: longNote })
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', name: 'Jamie Rivera', note: longNote })
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.note.length).toBe(1000)
@@ -94,7 +122,7 @@ describe('sanitizeWaitlistEntry', () => {
   })
 
   it('coerces a non-string note to a string', () => {
-    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', note: 12345 })
+    const result = sanitizeWaitlistEntry({ email: 'artist@example.com', name: 'Jamie Rivera', note: 12345 })
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.note).toBe('12345')

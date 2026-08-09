@@ -7,6 +7,9 @@
 // to import on the client.
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// RFC 5321 §4.5.3.1.3 caps a full email address at 254 characters.
+const EMAIL_MAX_LENGTH = 254
+const NAME_MAX_LENGTH = 200
 const NOTE_MAX_LENGTH = 1000
 
 // Where an artist_invites row came from — must match migration 097's
@@ -41,15 +44,25 @@ export type SanitizeWaitlistEntryResult =
 // result rather than throwing — mirrors lib/buyers/register.ts's
 // buildRegisterPayload() convention. Any other key on the input (status,
 // unsubscribed_at, id, ...) is silently dropped since it is never read.
+//
+// L3 (27-CODEX-REVIEW.md): email and name both had no length cap (an
+// arbitrarily long string reached the DB unbounded), and name had no
+// non-empty requirement server-side even though the signup page's
+// waitlist form already marks it `required` client-side — this closes
+// that client/server parity gap and caps both fields defensively.
 export function sanitizeWaitlistEntry(input: unknown): SanitizeWaitlistEntryResult {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
 
   const email = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : ''
-  if (!email || !EMAIL_REGEX.test(email)) {
+  if (!email || email.length > EMAIL_MAX_LENGTH || !EMAIL_REGEX.test(email)) {
     return { ok: false, error: 'A valid email is required.' }
   }
 
   const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+  if (!name) {
+    return { ok: false, error: 'A name is required.' }
+  }
+  const cappedName = name.slice(0, NAME_MAX_LENGTH)
 
   const rawNote = raw.note
   const note =
@@ -57,5 +70,5 @@ export function sanitizeWaitlistEntry(input: unknown): SanitizeWaitlistEntryResu
       ? ''
       : String(rawNote).trim().slice(0, NOTE_MAX_LENGTH)
 
-  return { ok: true, value: { email, name, note } }
+  return { ok: true, value: { email, name: cappedName, note } }
 }

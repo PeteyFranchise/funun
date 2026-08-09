@@ -10,20 +10,24 @@ import { sanitizeWaitlistEntry } from '@/lib/invites/schema'
 // genuinely public write path" shape. Compensating controls replace auth:
 // rate-limit (ip + email dimensions, shared limiter from 27-02), Cloudflare
 // Turnstile verification (fail-closed, BEFORE any DB write), and
-// sanitizeWaitlistEntry's strict {email,name,note} allowlist (27-01)
-// blocking mass-assignment.
+// sanitizeWaitlistEntry's strict {email,name,note} allowlist + length caps
+// (27-01, L3) blocking mass-assignment.
 //
-// Auto-resubscribe upsert (D-19): PostgREST's on_conflict merge only
-// accepts a plain-column conflict target, but artist_waitlist's uniqueness
-// is a functional UNIQUE INDEX on LOWER(email) (migration 097), not a
-// plain-column unique constraint — so a literal single-statement
-// `ON CONFLICT (email) DO UPDATE` (as sketched in 27-RESEARCH's
-// illustrative SQL) cannot be expressed through the service-role
-// PostgREST client. sanitizeWaitlistEntry() always normalizes email to
-// lowercase before it reaches this route (and every prior write went
-// through the same path), so a manual select-by-email + branch
-// (update the existing row, else insert) reaches the identical final
-// state, including clearing unsubscribed_at on the update path.
+// Auto-resubscribe upsert (D-19, H2 fix 27-CODEX-REVIEW.md): PostgREST's
+// supabase-js on_conflict merge only accepts a plain-column conflict
+// target, but artist_waitlist's uniqueness is a functional UNIQUE INDEX on
+// LOWER(email) (migration 097), not a plain-column unique constraint — so
+// a literal single-statement `.upsert(..., { onConflict })` cannot be
+// expressed through the service-role PostgREST client. This route
+// previously worked around that with a manual select-then-branch
+// (update the existing row, else insert, with a 23505-race fallback) that
+// ignored most of the individual Supabase errors along the way and always
+// returned `{ok:true}` regardless of whether anything was actually
+// persisted (H2 — false success). Migration 100's upsert_artist_waitlist()
+// RPC does the identical single-statement `INSERT ... ON CONFLICT
+// (LOWER(email)) DO UPDATE` atomically server-side (Postgres itself has no
+// such conflict-target limitation — only the PostgREST client does), so
+// this route now has exactly ONE write to check the error/result of.
 
 const ipLimiter = createRateLimiter()
 const emailLimiter = createRateLimiter()
@@ -59,51 +63,17 @@ export async function POST(request: Request) {
 
   const service = createServiceClient()
 
-  const { data: existing } = await service
-    .from('artist_waitlist')
-    .select('id')
-    .eq('email', entry.email)
-    .maybeSingle()
+  const { data: waitlistId, error: upsertError } = await service.rpc('upsert_artist_waitlist', {
+    p_email: entry.email,
+    p_name: entry.name,
+    p_note: entry.note,
+  })
 
-  if (existing) {
-    await service
-      .from('artist_waitlist')
-      .update({
-        name: entry.name || null,
-        note: entry.note || null,
-        unsubscribed_at: null, // D-19: rejoining the waitlist auto-resubscribes
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-  } else {
-    const { error: insertError } = await service.from('artist_waitlist').insert({
-      email: entry.email,
-      name: entry.name || null,
-      note: entry.note || null,
-    })
-
-    // Race guard: a concurrent submit for the same email won the insert
-    // between our SELECT and INSERT (unique violation on the LOWER(email)
-    // index) — fall back to the update path so this request still
-    // auto-resubscribes instead of erroring.
-    if (insertError && insertError.code === '23505') {
-      const { data: retry } = await service
-        .from('artist_waitlist')
-        .select('id')
-        .eq('email', entry.email)
-        .maybeSingle()
-      if (retry) {
-        await service
-          .from('artist_waitlist')
-          .update({
-            name: entry.name || null,
-            note: entry.note || null,
-            unsubscribed_at: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', retry.id)
-      }
-    }
+  // H2: every write error is checked, and success is never reported unless
+  // a row was actually persisted — no path below this returns {ok:true}
+  // without waitlistId set.
+  if (upsertError || !waitlistId) {
+    return errorResponse('Something went wrong. Please try again.', 500)
   }
 
   // Neutral success — never reveal whether the email was already on the
