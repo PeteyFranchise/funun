@@ -6,7 +6,7 @@ current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
 stopped_at: "Phase 27 waves 1-4 SHIPPED (10/11 plans on main, full suite green, /signup gate + /unsubscribe live-verified). NEXT = Wave 5 owner cutover (27-11): (1) confirm/seed owner bootstrap artist account, (2) provision Cloudflare Turnstile keys, (3) sign off 3 email templates, (4) [BLOCKING] supabase db push migrations 097+098 (flips gate LIVE), (5) smoke test. Migrations NOT yet pushed; gate NOT live. Then /gsd-docs-update to register INVITE-01..12, then /gsd-verify-work + /gsd-ship."
-last_updated: "2026-08-09T07:56:03.965Z"
+last_updated: "2026-08-09T08:27:26.000Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
@@ -416,6 +416,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 27]: Deep-link resolution always re-runs check-invite before rendering allowed; token resolver only supplies pre-fill data, never admission (D-02).
 - [Phase 27]: Editing the deep-link email structurally falls back to the plain gate state (deepLink cleared, gateState reset) rather than only hiding the inviter framing (D-09).
 - [Phase 27]: Turnstile integrated via next/script + memoized callback ref, no new npm dependency; fixed-height slot degrades safely when NEXT_PUBLIC_TURNSTILE_SITE_KEY is unprovisioned (D-12).
+- [Phase 27]: Extends 27-11 scope (D-18/INVITE-11/T-27-17 self-lockout resilience) — added scripts/break-glass.ts (service-role CLI: grant-artist-invite, create-staff) + docs/BREAK-GLASS.md (3-layer runbook with dashboard-SQL equivalents) so the owner always has a way past the artist-invite gate; added tsx as devDependency (no ts-node/tsx previously installed) to run it.
 - [Phase ?]: 27-10: Per-row Invited state derives from the waitlist row's own converted_to_invite_at, not a join against initialInvites
 - [Phase ?]: 27-10: Search input reuses StaffAdmin's panel-2/border input treatment; no literal var(--input) token exists in console-theme.ts
 
