@@ -900,7 +900,7 @@ seed the invite chain (artist signup is open today, so this seed can be created 
 **Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 086 current live body), the
 collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*`), Phase 25 (Team-Member invite source)
 
-**Plans:** 4/11 plans executed
+**Plans:** 5/11 plans executed
 
 Plans:
 **Wave 1**
@@ -912,7 +912,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 27-04-PLAN.md — Allowlist twin + server-authoritative gate (migration 098) [wave 2]
-- [ ] 27-05-PLAN.md — Three branded email templates (invite / spot-opened / reopened) [wave 2]
+- [x] 27-05-PLAN.md — Three branded email templates (invite / spot-opened / reopened) [wave 2]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
