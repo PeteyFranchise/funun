@@ -50,6 +50,24 @@ import { sendEmail } from '@/lib/email'
 // failure also now RELEASES the first-time claim (compare-and-set on the
 // exact timestamp this request wrote) so a retry re-attempts a first-time
 // conversion instead of forever treating the row as already-claimed.
+//
+// (27-CODEX-REVIEW.md follow-up review #3 — NEW ISSUE 1) invite_email_sent_at
+// alone is a boolean-shaped "was ANY send ever confirmed" signal with no
+// correlation to WHICH token was actually delivered. Three different routes
+// (admin issue-invite, this route, and the reopen broadcast) all share
+// mintOrRotateInvite() for the same email, so the row's active invite token
+// can rotate out from under a convert call without this route's knowledge —
+// e.g. token A is confirmed sent, A later expires, some call rotates to
+// token B, and B's own send fails or its process dies before confirming. A
+// retry then sees mintOrRotateInvite() return the SAME still-active token B
+// (state 'reused'), and the old boolean check alone would read "yes, a send
+// was confirmed before" and silently suppress a resend of a token that was
+// NEVER actually delivered. Migration 103's invite_email_sent_token records
+// the EXACT token that was last confirmed sent; duplicate-suppression below
+// now compares it against mint.token directly — a match is a true duplicate
+// (the currently-active token was already delivered); any mismatch,
+// including a still-active-but-different token or a null (never confirmed),
+// falls through to (re)send regardless of mint.state.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -64,7 +82,7 @@ export async function POST(
 
   const { data: waitlistRow, error: waitlistError } = await service
     .from('artist_waitlist')
-    .select('id, email, converted_to_invite_at, invite_email_sent_at')
+    .select('id, email, converted_to_invite_at, invite_email_sent_at, invite_email_sent_token')
     .eq('id', id)
     .maybeSingle()
 
@@ -77,6 +95,7 @@ export async function POST(
     email: string
     converted_to_invite_at: string | null
     invite_email_sent_at: string | null
+    invite_email_sent_token: string | null
   }
 
   let ownsFirstConversion = false
@@ -128,32 +147,60 @@ export async function POST(
       // column) so a retry re-attempts a genuine first-time conversion
       // instead of finding a permanently "already converted" row with
       // nothing ever minted or sent.
-      await service
+      //
+      // (LOW — 27-CODEX-REVIEW.md follow-up review #3) This write's result
+      // was previously ignored entirely. A genuine DB error here leaves the
+      // row claimed-but-unreleased (retry would see it as already-converted
+      // with nothing ever sent); a CAS miss (no error, no row) means our own
+      // claim stamp no longer matches — nothing else legitimately writes
+      // converted_to_invite_at while we hold this claim, so a miss here is
+      // unexpected and worth the same visibility. Both are surfaced via the
+      // staff audit log (this codebase's only observability channel for
+      // staff-write side effects, lib/staff/audit.ts) rather than silently
+      // swallowed, so the code matches what the comment above claims it does.
+      const release = await service
         .from('artist_waitlist')
         .update({ converted_to_invite_at: null })
         .eq('id', id)
         .eq('converted_to_invite_at', firstClaimStamp)
         .select('id')
         .maybeSingle()
+
+      if (release.error || !release.data) {
+        await logStaffAction(service, {
+          actorId: auth.user.id,
+          action: 'artist_invite.convert_release_failed',
+          targetType: 'artist_waitlist',
+          targetId: id,
+          changes: {
+            reason: 'mint_failed',
+            releaseError: release.error?.message ?? null,
+            casMiss: !release.error && !release.data,
+          },
+        })
+      }
     }
     return NextResponse.json({ error: mint.error }, { status: 500 })
   }
 
-  // Duplicate-suppression is keyed on invite_email_sent_at — a marker
-  // DISTINCT from converted_to_invite_at, stamped only after a CONFIRMED
-  // sendEmail() success (see header comment, follow-up review #2). A
+  // Duplicate-suppression is keyed on invite_email_sent_token (migration
+  // 103, follow-up review #3 NEW ISSUE 1) — the EXACT token last confirmed
+  // sent, compared directly against mint.token, rather than the boolean
+  // "was ANY send ever confirmed" (invite_email_sent_at alone) the previous
+  // fix used. invite_email_sent_at presence is not enough: three routes
+  // (admin issue-invite, this route, and the reopen broadcast) all share
+  // mintOrRotateInvite() for the same email, so the row's active token can
+  // rotate out from under this route between calls — a stale boolean check
+  // would suppress a resend of a token that was never actually delivered. A
   // first-time conversion (ownsFirstConversion) never has a prior
-  // invite_email_sent_at and always proceeds to send. A row that was
-  // already converted before is a true duplicate only when its invite is
-  // STILL active (state 'reused') AND a previous attempt actually,
-  // confirmedly sent the email — a lost-response retry (invite reused, but
-  // invite_email_sent_at still null because nothing was ever confirmed
-  // sent) correctly falls through to (re)send instead. An expired
-  // previously-converted invite always falls through with state 'rotated'
-  // (H1 fix) regardless of invite_email_sent_at, since the link itself has
-  // changed and must be resent.
-  const alreadyConfirmedSent = Boolean(row.invite_email_sent_at)
-  if (!ownsFirstConversion && mint.state === 'reused' && alreadyConfirmedSent) {
+  // invite_email_sent_token and always proceeds to send. Any other row is a
+  // true duplicate only when the token this call is about to send is
+  // IDENTICAL to the one last confirmed delivered; a mismatch — a rotated
+  // token (H1's re-issue path), a still-active-but-different token, or null
+  // (never confirmed, e.g. a lost-response retry) — always falls through to
+  // (re)send, independent of mint.state.
+  const suppressDuplicate = !ownsFirstConversion && row.invite_email_sent_token === mint.token
+  if (suppressDuplicate) {
     return NextResponse.json({
       ok: true,
       data: { id: mint.id, email: row.email },
@@ -200,13 +247,20 @@ export async function POST(
   })
 
   if (emailResult.ok) {
-    // Confirmed-sent marker (follow-up review #2) — best-effort, not
+    // Confirmed-sent marker (follow-up review #2/#3) — best-effort, not
     // gating the response: the email has already, genuinely gone out by
     // this point, so a failure to persist this marker should never turn a
     // successful send into a 500. Worst case on a failed write here is a
     // future retry re-sending (safe, and further guarded by the
-    // idempotency key above), never a silent skip.
-    await service.from('artist_waitlist').update({ invite_email_sent_at: new Date().toISOString() }).eq('id', id)
+    // idempotency key above), never a silent skip. invite_email_sent_token
+    // (migration 103) is stamped alongside invite_email_sent_at with the
+    // EXACT token that was just emailed — the pair is what lets a future
+    // call correlate "was THIS token confirmed sent" instead of only "was
+    // something ever sent".
+    await service
+      .from('artist_waitlist')
+      .update({ invite_email_sent_at: new Date().toISOString(), invite_email_sent_token: mint.token })
+      .eq('id', id)
   }
 
   await logStaffAction(service, {

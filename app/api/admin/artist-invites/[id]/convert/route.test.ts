@@ -8,25 +8,31 @@ import { POST } from './route'
 // ─── POST /api/admin/artist-invites/[id]/convert (27-08 Task 2; H1 fix
 // 27-CODEX-REVIEW.md; follow-up review #1 atomic-claim hardening; follow-up
 // review #2 MEDIUM — sent-marker/claim split + mint-failure release +
-// idempotency key) ─────────────────────────────────────────────────────────
+// idempotency key; follow-up review #3 — NEW ISSUE 1 sent-TOKEN correlation,
+// LOW mint-failure release-result visibility) ──────────────────────────────
 // Colocated route test, same mocked-dependency conventions as
 // app/api/admin/artist-invites/route.test.ts. Covers: convert creates
-// invite + stamps converted_to_invite_at + invite_email_sent_at + sends
-// template B with an idempotency key + audits; unsubscribed row still sends
-// (D-19); unknown id -> 404; non-staff -> 403; an already-converted row with
-// a still-active invite AND a confirmed prior send is a true duplicate (no
-// resend); an already-converted row whose invite has since EXPIRED is
-// re-issued and resent (H1) regardless of invite_email_sent_at; an
+// invite + stamps converted_to_invite_at + invite_email_sent_at +
+// invite_email_sent_token + sends template B with an idempotency key +
+// audits; unsubscribed row still sends (D-19); unknown id -> 404; non-staff
+// -> 403; an already-converted row is a true duplicate ONLY when the token
+// about to be sent is IDENTICAL to invite_email_sent_token (NEW ISSUE 1 —
+// not merely "some send was confirmed before" and not merely "the invite
+// state is 'reused'"); a row whose currently-active token differs from the
+// last CONFIRMED-sent token — whether because the invite expired and
+// rotated (H1) or because some other route rotated it since the last
+// confirmed send — always (re)sends regardless of mint.state; an
 // already-converted row whose invite is STILL active but was NEVER
-// confirmed sent (a lost mint-response retry) resends using the reused
-// invite instead of silently reporting a duplicate; a FIRST-TIME conversion
-// requires winning an atomic `converted_to_invite_at IS NULL` claim before
-// minting/sending — losing that race is treated as already-converted with
-// no double email; a mint failure on a FIRST-TIME claim RELEASES it
-// (retryable) but a mint failure on an already-converted row touches
-// nothing (there was no claim to release). The mint claim/rotate logic
-// itself is tested in lib/invites/mintInvite.test.ts — this file mocks that
-// module.
+// confirmed sent (a lost mint-response retry, invite_email_sent_token null)
+// resends using the reused invite instead of silently reporting a
+// duplicate; a FIRST-TIME conversion requires winning an atomic
+// `converted_to_invite_at IS NULL` claim before minting/sending — losing
+// that race is treated as already-converted with no double email; a mint
+// failure on a FIRST-TIME claim RELEASES it (retryable, with the release
+// result's error/CAS-miss surfaced via the audit log) but a mint failure on
+// an already-converted row touches nothing (there was no claim to release).
+// The mint claim/rotate logic itself is tested in
+// lib/invites/mintInvite.test.ts — this file mocks that module.
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -56,6 +62,7 @@ type WaitlistRow = {
   email: string
   converted_to_invite_at: string | null
   invite_email_sent_at: string | null
+  invite_email_sent_token: string | null
 }
 type MaybeSingleResult = { data: { id: string } | null; error: { message: string } | null }
 
@@ -142,7 +149,7 @@ beforeEach(() => {
 })
 
 describe('POST /api/admin/artist-invites/[id]/convert', () => {
-  it('creates an invite, stamps converted_to_invite_at + invite_email_sent_at, sends template B with an idempotency key, and audits', async () => {
+  it('creates an invite, stamps converted_to_invite_at + invite_email_sent_at + invite_email_sent_token, sends template B with an idempotency key, and audits', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
       waitlistRow: {
@@ -150,6 +157,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'waiter@example.com',
         converted_to_invite_at: null,
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -181,7 +189,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     )
     expect(service.updateSpy).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ invite_email_sent_at: expect.any(String) })
+      expect.objectContaining({ invite_email_sent_at: expect.any(String), invite_email_sent_token: 'tok-1' })
     )
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
@@ -207,6 +215,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'opted-out@example.com',
         converted_to_invite_at: null,
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -231,7 +240,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
-  it('does not duplicate an invite for an already-converted row with a still-active invite AND a confirmed prior send', async () => {
+  it('does not duplicate an invite for an already-converted row whose CURRENT active token exactly matches invite_email_sent_token (NEW ISSUE 1, follow-up review #3)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
       waitlistRow: {
@@ -239,6 +248,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'already@example.com',
         converted_to_invite_at: '2026-08-01T00:00:00Z',
         invite_email_sent_at: '2026-08-01T00:00:05Z',
+        invite_email_sent_token: 'active-tok',
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -255,6 +265,41 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
+  it('resends when the currently-active invite token no longer matches invite_email_sent_token, even though mint reports state "reused" (NEW ISSUE 1, follow-up review #3)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService({
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'rotated-elsewhere@example.com',
+        converted_to_invite_at: '2026-08-01T00:00:00Z',
+        // Token A was confirmed sent, then expired; a DIFFERENT call (e.g.
+        // the reopen broadcast, or another convert retry) already rotated
+        // the row to token B before THIS call ever ran, so THIS call's own
+        // mintOrRotateInvite() sees B as already active/non-expired and
+        // reports 'reused' — but invite_email_sent_token still holds the
+        // stale token A, so the boolean-only check (mint.state === 'reused'
+        // && Boolean(invite_email_sent_at)) would have wrongly suppressed
+        // this resend of token B, which was never actually delivered.
+        invite_email_sent_at: '2026-07-01T00:00:05Z',
+        invite_email_sent_token: 'stale-token-a',
+      },
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'existing-invite-5', token: 'fresh-token-b', state: 'reused' })
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: WAITLIST_UUID }) })
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.duplicate).toBeUndefined()
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect((sendEmail as jest.Mock).mock.calls[0][0].html).toContain('fresh-token-b')
+    expect(service.updateSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ invite_email_sent_at: expect.any(String), invite_email_sent_token: 'fresh-token-b' })
+    )
+  })
+
   it('resends using the reused invite when a prior conversion was never confirmed sent (lost mint-response retry, follow-up review #2)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({
@@ -267,6 +312,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         // still null.
         converted_to_invite_at: '2026-08-01T00:00:00Z',
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -289,7 +335,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     )
     expect(service.updateSpy).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ invite_email_sent_at: expect.any(String) })
+      expect.objectContaining({ invite_email_sent_at: expect.any(String), invite_email_sent_token: 'reused-tok' })
     )
     expect(sendEmail).toHaveBeenCalledTimes(1)
     expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('lost-response@example.com')
@@ -309,6 +355,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         // since expired — a rotated token is genuinely different content
         // and must always be resent.
         invite_email_sent_at: '2026-01-01T00:00:05Z',
+        invite_email_sent_token: 'original-tok',
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -337,6 +384,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'boom@example.com',
         converted_to_invite_at: null,
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -353,6 +401,73 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
     expect(service.updateSpy).toHaveBeenNthCalledWith(2, { converted_to_invite_at: null })
     // The release is CAS'd on the EXACT stamp this request just wrote.
     expect(service.eq2Spy).toHaveBeenCalledWith('converted_to_invite_at', claimStamp)
+    // The release succeeded (default mock: data present, no error) — no
+    // release-failure surfaced via the audit log.
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a first-time-claim release CAS-miss via the audit log instead of silently dropping it (LOW, follow-up review #3)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService({
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'release-cas-miss@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+        invite_email_sent_token: null,
+      },
+      // 1st maybeSingle: first-time claim succeeds. 2nd maybeSingle: the
+      // mint-failure release CAS finds no matching converted_to_invite_at
+      // stamp (unexpected — nothing else legitimately writes this column
+      // while we hold the claim).
+      maybeSingleResults: [
+        { data: { id: WAITLIST_UUID }, error: null },
+        { data: null, error: null },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: WAITLIST_UUID }) })
+
+    expect(res.status).toBe(500)
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: AE_UUID,
+      action: 'artist_invite.convert_release_failed',
+      targetType: 'artist_waitlist',
+      targetId: WAITLIST_UUID,
+      changes: { reason: 'mint_failed', releaseError: null, casMiss: true },
+    })
+  })
+
+  it('surfaces a first-time-claim release DB error via the audit log instead of silently dropping it (LOW, follow-up review #3)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService({
+      waitlistRow: {
+        id: WAITLIST_UUID,
+        email: 'release-db-error@example.com',
+        converted_to_invite_at: null,
+        invite_email_sent_at: null,
+        invite_email_sent_token: null,
+      },
+      maybeSingleResults: [
+        { data: { id: WAITLIST_UUID }, error: null },
+        { data: null, error: { message: 'connection reset' } },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: WAITLIST_UUID }) })
+
+    expect(res.status).toBe(500)
+    expect(logStaffAction).toHaveBeenCalledWith(service, {
+      actorId: AE_UUID,
+      action: 'artist_invite.convert_release_failed',
+      targetType: 'artist_waitlist',
+      targetId: WAITLIST_UUID,
+      changes: { reason: 'mint_failed', releaseError: 'connection reset', casMiss: false },
+    })
   })
 
   it('returns 500 when the mint fails on an ALREADY-converted row — no claim to release, no writes at all', async () => {
@@ -363,6 +478,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'already-boom@example.com',
         converted_to_invite_at: '2026-01-01T00:00:00Z',
         invite_email_sent_at: '2026-01-01T00:00:05Z',
+        invite_email_sent_token: 'old-tok',
       },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -383,6 +499,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'raced@example.com',
         converted_to_invite_at: null,
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
       maybeSingleResults: [{ data: null, error: null }],
     })
@@ -405,6 +522,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'db-down@example.com',
         converted_to_invite_at: null,
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
       maybeSingleResults: [{ data: null, error: { message: 'connection reset' } }],
     })
@@ -425,6 +543,7 @@ describe('POST /api/admin/artist-invites/[id]/convert', () => {
         email: 'restamp-fails@example.com',
         converted_to_invite_at: '2026-01-01T00:00:00Z',
         invite_email_sent_at: null,
+        invite_email_sent_token: null,
       },
       maybeSingleResults: [{ data: null, error: { message: 'restamp boom' } }],
     })
