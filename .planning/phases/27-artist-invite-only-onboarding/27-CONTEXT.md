@@ -91,6 +91,9 @@ an artist account.
   while open, or via the mechanism), then invites a curated founding cohort using the real invite flow. **No open
   soft-launch window** (keeps the controlled, exclusive story).
 
+### Email subscription & re-subscribe (owner add, 2026-08-09)
+- **D-19 — Unsubscribe is broadcast-only; personal invites always reach.** The Unsubscribe link opts a person out of the **bulk "we've reopened" broadcast only**. A **personal invite always still reaches them** — both (a) a **collaborator** naming/inviting them and (b) a **Team-Member** waitlist→invite conversion. Rationale (owner): a collaborator invite rides a real working relationship — they're typically **signing a split sheet** together — so it's operational/transactional, not marketing, and must land even for an unsubscribed person. **Re-subscribe two ways:** automatic on rejoining the waiting list, plus a **"Resubscribe"** button on the unsubscribe landing page. Re-subscribe is **user-initiated** — staff don't silently re-subscribe an opt-out; the personal invite is the sanctioned direct-contact path. The Team Console shows an **"unsubscribed"** chip on waitlist rows (the "Convert to invite" action stays enabled — a personal invite still sends).
+
 ### Claude's Discretion
 - Allowlist/invite table design (reuse `collaborator_invites` vs a dedicated `artist_invites`) — see For Research.
 - Signup-page visual specifics beyond "prominent gate + inline denial/waitlist."
@@ -110,6 +113,11 @@ an artist account.
 - **Captcha provider** choice + integration for the waitlist form (D-12).
 - **`claim_collaborators` ordering** vs the allowlist check (email-match already links rows on signup — confirm it
   runs only for admitted signups).
+- **Email subscription state + compliance (D-19).** Model a per-person opt-out **scoped to the broadcast** (a
+  suppression flag on the waitlist/invite record) so the reopen broadcast skips opt-outs while personal invites
+  (collaborator + Team-Member) still send. Confirm the transactional-vs-commercial line: the reopen broadcast is
+  **commercial** (must honor unsubscribe + carry an unsubscribe link, e.g. CAN-SPAM); collaborator/Team-Member
+  personal invites are **transactional/relationship-based** (still send). Flag for BD/counsel review.
 </for_research>
 
 <canonical_refs>

@@ -114,6 +114,8 @@ Founding-member / exclusive positioning (D-16) throughout; owner owns final word
 | Branded email — Invite (D-17, template A) | Subject contract: *"You're invited to Funūn"* (founding-member framing, not the existing minimal `industryInvite.ts` subject/tone — do not reuse that copy). Body must state who invited them (if known) and lead with the founding-cohort story before the CTA. |
 | Branded email — Spot opened (D-17, template B) | Subject contract: *"Your spot on Funūn just opened"* — for D-13a per-person waitlist conversions specifically; must reference that they were on the waiting list. |
 | Branded email — We've reopened (D-17, template C) | Subject contract: *"Funūn has reopened invites"* — broadcast tone (D-13b), sent to every waitlister at once; must not read as personally singled-out (it's a batch send) while still carrying the founding-member warmth. |
+| Unsubscribe confirmation (D-19) | Heading: *"You've unsubscribed"* / body: *"You won't get Funūn's waiting-list broadcasts anymore."* + reassurance box: *"A personal invite from a collaborator or the Funūn team will still reach you — this only turns off the bulk 'we've reopened' announcements."* Primary action: *"Resubscribe"*; secondary link: *"rejoin the waiting list"*. |
+| Re-subscribe confirmation (D-19) | *"You're resubscribed — you're back on the list."* / body: *"We'll email you the moment a spot opens, including reopen announcements."* |
 
 ---
 
@@ -162,6 +164,13 @@ Structural contract for all three (owner sign-off on final visual/copy is a sepa
 - CTA button uses the exact brand gradient (`linear-gradient(105deg,#818CF8 0%,#D946EF 100%)`) as its background — the one deliberate accent-color use inside an otherwise neutral email body, matching `industryInvite.ts`'s existing precedent of an indigo (`#818CF8`) button on white (this phase upgrades that single-color button to the full two-stop gradient for stronger brand match, per D-17's "not the minimal style" instruction).
 - Every template ships both an HTML body and a plain-text fallback (raises the bar above `industryInvite.ts`/`staffInvite.ts`, which lack a `text` field — matches the higher bar already set by `app/api/collaborators/[id]/invite/route.ts`'s email, which does include one).
 - All interpolated user-supplied values (inviter name, waitlist name/note) must be HTML-escaped before interpolation — reuse the `esc()` helper pattern from `industryInvite.ts`/`staffInvite.ts` verbatim (do not re-derive).
+
+### 7. Unsubscribe & re-subscribe (D-19, owner add 2026-08-09)
+
+- **Unsubscribe landing page** (`/unsubscribe`, reached from an email's unsubscribe link) — dark auth-style centered card (matches the signup surface, NOT the light email), reusing the `signin`/`signup` card treatment (`rounded-xl border border-white/10 bg-white/[0.03] p-6`). Copy makes the **broadcast-only scope** explicit (see Copywriting), including a reassurance box that a personal invite from a collaborator or the Funūn team still reaches them. Primary action: **Resubscribe** (public-surface white-button convention, `bg-white text-black`); secondary: a "rejoin the waiting list" link.
+- **Resubscribed confirmation** — same card, green success line + "You're back on the list" (reuses the signup-success voice).
+- **Auto re-subscribe:** re-submitting the waitlist form (surface 3) clears the opt-out server-side — no separate step for the person.
+- **Team Console (surface 5) unsubscribed chip:** waitlist rows for opted-out people show a small rose "Unsubscribed" pill (`border-rose-500/30 text-rose-200`); the "Convert to invite" action stays **enabled** — a personal invite still reaches them (D-19; a collaborator invite in particular rides a real working relationship like a split sheet). Only the bulk "we've reopened" broadcast filters out opted-out recipients.
 
 ---
 
