@@ -3,57 +3,57 @@ import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-s
 import type { ArtistInviteSource } from '@/lib/invites/schema'
 
 // ─── Shared artist-invite mint/rotate/reuse claim ─────────────────────────
-// (27-CODEX-REVIEW.md B3/H1/M5) Single source of truth for "get me a valid,
-// authorized invite token for this email" — used by the admin "issue
-// invite" route, the waitlist "convert" route, and the Leadership-only
-// reopen broadcast so all three claim/rotate an artist_invites row
-// identically instead of three divergent copies of the same insert/dup-
-// check logic.
+// (27-CODEX-REVIEW.md B3/H1/M5, follow-up review) Single source of truth
+// for "get me a valid, authorized invite token for this email" — used by
+// the admin "issue invite" route, the waitlist "convert" route, and the
+// Leadership-only reopen broadcast so all three claim/rotate an
+// artist_invites row identically.
 //
-// Outcomes:
+// This now delegates the ENTIRE decision to migration 101's
+// mint_or_rotate_artist_invite() RPC — a single atomic
+// `INSERT ... ON CONFLICT (LOWER(email)) WHERE status='pending' DO UPDATE`
+// statement. The follow-up review found the prior JS implementation (a
+// plain SELECT followed by an unconditional UPDATE) was NOT atomic: two
+// concurrent callers could both read the same expired pending row and both
+// issue their own UPDATE, silently invalidating whichever email went out
+// first (a torn read/write), and used `.ilike('email', email)` with no
+// escaping, reintroducing the ILIKE-wildcard bug (M1) that
+// lib/invites/allowlist.ts had already fixed elsewhere. Routing through a
+// single row-locked SQL statement — with an exact `LOWER(email)` equality
+// match, never ILIKE — eliminates both issues at once: there is no
+// client-side SELECT left to express with a pattern-matching operator, and
+// two concurrent callers now serialize on Postgres's own row lock instead
+// of racing in application code.
+//
+// Outcomes (identical external contract to the pre-fix version):
 //   - 'reused'  — an active (non-expired) pending row already exists for
-//                 this email; returned as-is, no write. Preserves the
-//                 pre-fix duplicate-idempotency behavior (no re-send).
-//   - 'rotated' — a pending row exists but its token_expires_at has
-//                 passed; token + expiry are rotated in place instead of
-//                 reporting a stale duplicate (H1 fix — expired invites
-//                 can now be re-issued).
-//   - 'created' — no pending row existed; a new one is inserted. Migration
-//                 099's partial UNIQUE index on LOWER(email) WHERE
-//                 status='pending' makes this the atomic claim: a
-//                 concurrent insert for the same email loses with a 23505
-//                 unique violation, and this function falls back to
-//                 reusing/rotating the row the other caller just won
-//                 instead of erroring (B3 concurrency safety for the
-//                 per-recipient broadcast mint).
+//                 this email; the RPC's DO UPDATE branch is a no-op write
+//                 that returns the row unchanged. Preserves the
+//                 duplicate-idempotency behavior (no re-send).
+//   - 'rotated' — a pending row exists but was tokenless or its
+//                 token_expires_at had passed; the RPC atomically swaps in
+//                 the candidate token/expiry generated below (H1 fix —
+//                 expired invites can now be re-issued, and two
+//                 concurrent rotations can no longer both "win").
+//   - 'created' — no pending row existed; the RPC's INSERT branch lands.
+//                 Migration 099's partial UNIQUE index on LOWER(email)
+//                 WHERE status='pending' is the ON CONFLICT target, so a
+//                 concurrent insert attempt for the same email
+//                 automatically falls through to the reuse/rotate branch
+//                 within the SAME statement (B3 concurrency safety for the
+//                 per-recipient broadcast mint) — no separate 23505
+//                 handling needed in JS anymore.
 
 export type MintInviteResult =
   | { ok: true; id: string; token: string; state: 'created' | 'rotated' | 'reused' }
   | { ok: false; error: string }
 
-type PendingRow = { id: string; invite_token: string | null; token_expires_at: string | null }
-
-function isExpired(row: PendingRow): boolean {
-  return !!row.token_expires_at && new Date(row.token_expires_at).getTime() <= Date.now()
-}
+type MintRpcRow = { out_id: string; out_invite_token: string; out_state: 'created' | 'rotated' | 'reused' }
 
 function newExpiry(): string {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
   return expiresAt.toISOString()
-}
-
-async function rotateRow(service: SupabaseClient, row: PendingRow): Promise<MintInviteResult> {
-  const token = generateApprovalToken()
-
-  const { error } = await service
-    .from('artist_invites')
-    .update({ invite_token: token, token_expires_at: newExpiry(), updated_at: new Date().toISOString() })
-    .eq('id', row.id)
-    .eq('status', 'pending')
-
-  if (error) return { ok: false, error: error.message }
-  return { ok: true, id: row.id, token, state: 'rotated' }
 }
 
 export async function mintOrRotateInvite(
@@ -62,62 +62,26 @@ export async function mintOrRotateInvite(
 ): Promise<MintInviteResult> {
   const { email, source, invitedByUserId } = args
 
-  const { data: existing, error: selectError } = await service
-    .from('artist_invites')
-    .select('id, invite_token, token_expires_at')
-    .ilike('email', email)
-    .eq('status', 'pending')
-    .maybeSingle()
+  // Candidate token/expiry — generated here (single source of truth for
+  // token generation, unchanged crypto), but only ACTUALLY used by the RPC
+  // if it decides this call needs to create or rotate. A "reused" outcome
+  // discards this candidate entirely; it is never a wasted write, only a
+  // wasted (cheap, local) crypto.randomBytes() call.
+  const candidateToken = generateApprovalToken()
+  const candidateExpiresAt = newExpiry()
 
-  if (selectError) return { ok: false, error: selectError.message }
+  const { data, error } = await service.rpc('mint_or_rotate_artist_invite', {
+    p_email: email,
+    p_source: source,
+    p_invited_by_user_id: invitedByUserId,
+    p_new_token: candidateToken,
+    p_new_expires_at: candidateExpiresAt,
+  })
 
-  if (existing) {
-    const row = existing as PendingRow
-    if (!isExpired(row) && row.invite_token) {
-      return { ok: true, id: row.id, token: row.invite_token, state: 'reused' }
-    }
-    return rotateRow(service, row)
-  }
+  if (error) return { ok: false, error: error.message }
 
-  const token = generateApprovalToken()
+  const row = (Array.isArray(data) ? data[0] : data) as MintRpcRow | undefined | null
+  if (!row) return { ok: false, error: 'Failed to create invite.' }
 
-  const { data: inserted, error: insertError } = await service
-    .from('artist_invites')
-    .insert({
-      email,
-      status: 'pending',
-      source,
-      invite_token: token,
-      token_expires_at: newExpiry(),
-      invited_by_user_id: invitedByUserId,
-    })
-    .select('id')
-    .maybeSingle()
-
-  if (insertError) {
-    if (insertError.code === '23505') {
-      // Lost the race for the pending slot (migration 099's partial unique
-      // index on LOWER(email) WHERE status='pending') — another caller
-      // just claimed it. Reuse/rotate the winner's row instead of failing.
-      const { data: winner, error: winnerError } = await service
-        .from('artist_invites')
-        .select('id, invite_token, token_expires_at')
-        .ilike('email', email)
-        .eq('status', 'pending')
-        .maybeSingle()
-
-      if (winnerError || !winner) {
-        return { ok: false, error: winnerError?.message ?? 'Failed to create invite.' }
-      }
-      const row = winner as PendingRow
-      if (!isExpired(row) && row.invite_token) {
-        return { ok: true, id: row.id, token: row.invite_token, state: 'reused' }
-      }
-      return rotateRow(service, row)
-    }
-    return { ok: false, error: insertError.message }
-  }
-
-  if (!inserted) return { ok: false, error: 'Failed to create invite.' }
-  return { ok: true, id: (inserted as { id: string }).id, token, state: 'created' }
+  return { ok: true, id: row.out_id, token: row.out_invite_token, state: row.out_state }
 }
