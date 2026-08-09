@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -10,16 +10,55 @@ import { useSearchParams } from 'next/navigation'
 // bg-white/[0.03] p-6) from app/(auth)/signup/page.tsx — this route lives
 // outside the (auth) route group, so the centering + wordmark shell that
 // AuthLayout normally provides is reproduced here directly.
+//
+// Codex review Blocker B2 (27-CODEX-REVIEW.md): this page used to render
+// "You've unsubscribed" on load without ever calling a mutation —
+// `unsubscribed_at` was never set, a false opt-out. It now calls
+// POST /api/waitlist/unsubscribe on load (a 'checking' state covers the
+// round trip) and only shows the confirmation once that call succeeds; a
+// missing/invalid token or a failed call falls through to the same 'error'
+// state as before.
 
-type UnsubscribeState = 'landing' | 'resubscribed' | 'error'
+type UnsubscribeState = 'checking' | 'unsubscribed' | 'resubscribed' | 'error'
 
 function UnsubscribeFlow() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token') ?? ''
 
-  const [state, setState] = useState<UnsubscribeState>(token ? 'landing' : 'error')
+  const [state, setState] = useState<UnsubscribeState>(token ? 'checking' : 'error')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+
+    let cancelled = false
+
+    async function unsubscribe() {
+      try {
+        const res = await fetch('/api/waitlist/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        if (cancelled) return
+        if (!res.ok) {
+          setState('error')
+          return
+        }
+        setState('unsubscribed')
+      } catch {
+        if (!cancelled) setState('error')
+      }
+    }
+
+    unsubscribe()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   async function handleResubscribe() {
     setSubmitting(true)
@@ -47,6 +86,15 @@ function UnsubscribeFlow() {
       setError('Something went wrong — try again.')
       setSubmitting(false)
     }
+  }
+
+  if (state === 'checking') {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
+        <h1 className="text-xl font-semibold text-white">Unsubscribing&hellip;</h1>
+        <p className="mt-2 text-sm text-white/60">One moment.</p>
+      </div>
+    )
   }
 
   if (state === 'error') {
@@ -79,6 +127,7 @@ function UnsubscribeFlow() {
     )
   }
 
+  // state === 'unsubscribed'
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
       <h1 className="text-xl font-semibold text-white">You&rsquo;ve unsubscribed</h1>
