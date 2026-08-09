@@ -100,7 +100,7 @@ None - plan executed exactly as written.
 
 ## Issues Encountered
 
-None.
+- `gsd-tools query requirements.mark-complete INVITE-04` returned `not_found` — REQUIREMENTS.md has no "Phase 27" traceability section registering INVITE-04 (or any Phase 27 requirement ID) yet, unlike Phase 16/17/18/19/23/25/26/28. This is a pre-existing planning-doc gap (not introduced by this plan) — INVITE-04 is defined only in `27-RESEARCH.md`'s requirements table. Left unmarked; flagging so a future Phase 27 plan or a REQUIREMENTS.md housekeeping pass registers the Phase 27 section retroactively.
 
 ## User Setup Required
 
