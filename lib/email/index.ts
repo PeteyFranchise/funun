@@ -20,6 +20,21 @@ export async function sendEmail(args: {
    * fails gracefully until the override's domain is live.
    */
   from?: string
+  /**
+   * Optional Resend `Idempotency-Key` (27-CODEX-REVIEW.md follow-up #2
+   * MEDIUM — ambiguous provider timeouts / lost responses). When provided,
+   * a retried send using the SAME key returns Resend's cached result
+   * instead of dispatching a second email — the backstop for a caller that
+   * retries after a network timeout or process death where the original
+   * request may have already been accepted by Resend even though the
+   * caller never saw the response. Callers should build this from stable,
+   * request-independent identifiers (e.g. a recipient id + a coarse time
+   * epoch, or a recipient id + the exact invite token being sent) so a
+   * genuine retry of the SAME logical send reuses the key, while content
+   * that has legitimately changed (a rotated invite token, a new campaign)
+   * gets a fresh one.
+   */
+  idempotencyKey?: string
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY
   // Gate on args.from specifically when the caller explicitly passed a
@@ -38,14 +53,17 @@ export async function sendEmail(args: {
   }
   try {
     const resend = new Resend(apiKey)
-    const { error } = await resend.emails.send({
-      from,
-      to: args.to,
-      subject: args.subject,
-      html: args.html,
-      text: args.text,
-      ...(args.replyTo ? { replyTo: args.replyTo } : {}),
-    })
+    const { error } = await resend.emails.send(
+      {
+        from,
+        to: args.to,
+        subject: args.subject,
+        html: args.html,
+        text: args.text,
+        ...(args.replyTo ? { replyTo: args.replyTo } : {}),
+      },
+      args.idempotencyKey ? { idempotencyKey: args.idempotencyKey } : undefined
+    )
     if (error) return { ok: false, error: error.message }
     return { ok: true }
   } catch (e) {
