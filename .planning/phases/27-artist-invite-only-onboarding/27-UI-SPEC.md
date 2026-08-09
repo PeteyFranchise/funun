@@ -1,10 +1,11 @@
 ---
 phase: 27
 slug: artist-invite-only-onboarding
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-08
+reviewed_at: 2026-08-08
 ---
 
 # Phase 27 — UI Design Contract
