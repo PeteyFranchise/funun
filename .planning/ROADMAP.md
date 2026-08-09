@@ -900,12 +900,12 @@ seed the invite chain (artist signup is open today, so this seed can be created 
 **Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 086 current live body), the
 collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*`), Phase 25 (Team-Member invite source)
 
-**Plans:** 11 plans (planned 2026-08-09)
+**Plans:** 1/11 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 27-01-PLAN.md — Invite & waitlist tables (migration 097) + invite schema module [wave 1]
+- [x] 27-01-PLAN.md — Invite & waitlist tables (migration 097) + invite schema module [wave 1]
 - [ ] 27-02-PLAN.md — Shared security + email utilities (rate-limit / turnstile / esc) [wave 1]
 - [ ] 27-03-PLAN.md — Collaborator-side invite prompt (D-08a) [wave 1]
 
