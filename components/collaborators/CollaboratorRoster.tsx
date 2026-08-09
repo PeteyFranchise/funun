@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { CollaboratorProfile } from '@/lib/collaborators'
 import { CollaboratorCard } from '@/components/collaborators/CollaboratorCard'
 import { CollaboratorForm } from '@/components/collaborators/CollaboratorForm'
+import { CollaboratorInvitePrompt } from '@/components/collaborators/CollaboratorInvitePrompt'
 
 // ─── CollaboratorRoster ───────────────────────────────────────
 // Two-tab page-level client component:
@@ -46,8 +47,15 @@ export function CollaboratorRoster({
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [list, setList] = useState<CollaboratorProfile[]>(collaborators)
+  // Post-save invite nudge (D-08a) — set only when the just-saved row is a
+  // NEW collaborator with a non-empty email; never gates the save itself.
+  const [invitePromptFor, setInvitePromptFor] = useState<CollaboratorProfile | null>(null)
 
   function handleSaved(saved: CollaboratorProfile) {
+    // Determine new-vs-edit from the pre-save list (closure state), before
+    // the save is folded into `list` below.
+    const isNew = !list.some(c => c.id === saved.id)
+
     setList(prev => {
       const idx = prev.findIndex(c => c.id === saved.id)
       if (idx !== -1) {
@@ -59,6 +67,10 @@ export function CollaboratorRoster({
     })
     setCreating(false)
     setEditingId(null)
+
+    if (isNew && saved.email && saved.email.trim()) {
+      setInvitePromptFor(saved)
+    }
   }
 
   // Archive a claimed collaborator — send a non-null marker; server forces the
@@ -181,6 +193,18 @@ export function CollaboratorRoster({
             onSaved={handleSaved}
             onCancel={() => setCreating(false)}
           />
+        )}
+
+        {/* Post-save invite prompt (D-08a) — default-on, dismissible, never
+            blocks the save; the row above is already committed to `list`. */}
+        {invitePromptFor && (
+          <div className="mb-3">
+            <CollaboratorInvitePrompt
+              collaboratorName={invitePromptFor.name}
+              onSend={() => handleInvite(invitePromptFor.id)}
+              onDismiss={() => setInvitePromptFor(null)}
+            />
+          </div>
         )}
 
         {/* Card grid */}
