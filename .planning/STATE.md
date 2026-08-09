@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: Completed 27-06-PLAN.md
-last_updated: "2026-08-09T07:30:14.732Z"
+stopped_at: Completed 27-09-PLAN.md
+last_updated: "2026-08-09T07:41:05.712Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 28
   completed_phases: 23
   total_plans: 173
-  completed_plans: 165
+  completed_plans: 166
   percent: 82
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 27 (artist-invite-only-onboarding) — EXECUTING
-Plan: 9 of 11
+Plan: 10 of 11
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -190,6 +190,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 27 P07 | 20min | 2 tasks | 4 files |
 | Phase 27 P06 | 25min | 2 tasks | 4 files |
 | Phase 27 P08 | 30min | 3 tasks | 6 files |
+| Phase 27 P09 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -411,6 +412,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: invite/[token] resolver checks artist_invites first then falls back to collaborator_invites; inviterName resolved best-effort via user_profiles.artist_name, never admits by token (T-27-03)
 - [Phase 27]: 27-08: idempotent duplicate/already-converted paths skip logStaffAction (no write occurred), mirroring the collaborator-invite cooldown-skip convention
 - [Phase 27]: 27-08: reopen broadcast actionLink is a bare /signup announcement link, not a per-recipient token — personal tokened invites stay the convert route's job
+- [Phase 27]: Deep-link resolution always re-runs check-invite before rendering allowed; token resolver only supplies pre-fill data, never admission (D-02).
+- [Phase 27]: Editing the deep-link email structurally falls back to the plain gate state (deepLink cleared, gateState reset) rather than only hiding the inviter framing (D-09).
+- [Phase 27]: Turnstile integrated via next/script + memoized callback ref, no new npm dependency; fixed-height slot degrades safely when NEXT_PUBLIC_TURNSTILE_SITE_KEY is unprovisioned (D-12).
 
 ### Pending Todos
 
@@ -491,8 +495,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T07:28:59.828Z
-Stopped at: Completed 27-06-PLAN.md
+Last session: 2026-08-09T07:41:05.686Z
+Stopped at: Completed 27-09-PLAN.md
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
