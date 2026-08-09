@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
-import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
+import { mintOrRotateInvite } from '@/lib/invites/mintInvite'
 import { artistSpotOpenedEmail } from '@/lib/email/artistSpotOpened'
 import { sendEmail } from '@/lib/email'
 
@@ -14,7 +14,10 @@ import { sendEmail } from '@/lib/email'
 // transactional/relationship-based send, distinct from the bulk reopen
 // broadcast (template C, ../broadcast/route.ts), which is the only send
 // unsubscribe suppresses. createServiceClient() is only ever reached AFTER
-// the requireStaff() gate passes.
+// the requireStaff() gate passes. Invite claim/rotation goes through the
+// shared mintOrRotateInvite() (27-CODEX-REVIEW.md H1) so a previously-
+// converted row whose invite has since expired can be re-issued rather
+// than reported as a stale duplicate.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -39,41 +42,30 @@ export async function POST(
 
   const row = waitlistRow as { id: string; email: string; converted_to_invite_at: string | null }
 
-  // Idempotency guard — an already-converted row is not converted twice.
-  if (row.converted_to_invite_at) {
-    const { data: existingInvite } = await service
-      .from('artist_invites')
-      .select('id')
-      .ilike('email', row.email)
-      .eq('source', 'waitlist_conversion')
-      .maybeSingle()
+  // Shared mint/rotate/reuse claim (27-CODEX-REVIEW.md H1/B3) — replaces
+  // the old "converted_to_invite_at set => always duplicate" check, which
+  // could never re-issue a PAST-EXPIRY invite for a row already converted
+  // once (H1).
+  const mint = await mintOrRotateInvite(service, {
+    email: row.email,
+    source: 'waitlist_conversion',
+    invitedByUserId: auth.user.id,
+  })
 
-    return NextResponse.json({
-      ok: true,
-      data: { id: (existingInvite as { id: string } | null)?.id ?? null, email: row.email },
-      duplicate: true,
-    })
+  if (!mint.ok) {
+    return NextResponse.json({ error: mint.error }, { status: 500 })
   }
 
-  const inviteToken = generateApprovalToken()
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
-
-  const { data: inserted, error: insertError } = await service
-    .from('artist_invites')
-    .insert({
-      email: row.email,
-      status: 'pending',
-      source: 'waitlist_conversion',
-      invite_token: inviteToken,
-      token_expires_at: expiresAt.toISOString(),
-      invited_by_user_id: auth.user.id,
+  // True duplicate only when this row was already converted AND its invite
+  // is still active (state 'reused') — nothing to (re)send. An expired
+  // previously-converted invite instead falls through with state 'rotated'
+  // (H1 fix) so it gets resent below.
+  if (row.converted_to_invite_at && mint.state === 'reused') {
+    return NextResponse.json({
+      ok: true,
+      data: { id: mint.id, email: row.email },
+      duplicate: true,
     })
-    .select('id')
-    .maybeSingle()
-
-  if (insertError || !inserted) {
-    return NextResponse.json({ error: insertError?.message ?? 'Failed to create invite.' }, { status: 500 })
   }
 
   await service
@@ -82,7 +74,7 @@ export async function POST(
     .eq('id', id)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const actionLink = `${appUrl}/signup?invite=${inviteToken}`
+  const actionLink = `${appUrl}/signup?invite=${mint.token}`
   const template = artistSpotOpenedEmail({ actionLink })
   // Best-effort — sent EVEN IF the row is unsubscribed (D-19). Unsubscribe
   // is broadcast-scoped only; this route never reads unsubscribed_at.
@@ -97,7 +89,7 @@ export async function POST(
   })
 
   return NextResponse.json(
-    { ok: true, data: { id: (inserted as { id: string }).id, email: row.email }, emailSent: emailResult.ok },
+    { ok: true, data: { id: mint.id, email: row.email }, emailSent: emailResult.ok },
     { status: 201 }
   )
 }

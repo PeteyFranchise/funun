@@ -1,12 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { mintOrRotateInvite } from '@/lib/invites/mintInvite'
 import { sendEmail } from '@/lib/email'
 import { GET, POST } from './route'
 
-// ─── GET+POST /api/admin/artist-invites (27-08 Task 1) ────────────────────
+// ─── GET+POST /api/admin/artist-invites (27-08 Task 1; H1 fix 27-CODEX-
+// REVIEW.md) ────────────────────────────────────────────────────────────
 // Colocated route test, mirroring app/api/admin/buyer-orgs/[id]/route.test.ts's
 // admin-route conventions (mocked requireStaff/createServiceClient/audit).
+// POST's invite claim/rotate logic itself is tested in
+// lib/invites/mintInvite.test.ts — this file mocks that module and only
+// asserts the route's wiring (call args + response shape per outcome).
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -18,6 +23,10 @@ jest.mock('@/lib/admin/gate', () => ({
 
 jest.mock('@/lib/staff/audit', () => ({
   logStaffAction: jest.fn(),
+}))
+
+jest.mock('@/lib/invites/mintInvite', () => ({
+  mintOrRotateInvite: jest.fn(),
 }))
 
 jest.mock('@/lib/email', () => ({
@@ -38,30 +47,12 @@ function mockService(
   options: {
     waitlist?: unknown[]
     invites?: unknown[]
-    existingInvite?: { id: string } | null
-    insertedId?: string
-    insertError?: { message: string } | null
     staffDisplayName?: string | null
   } = {}
 ) {
-  const {
-    waitlist = [],
-    invites = [],
-    existingInvite = null,
-    insertedId = 'invite-1',
-    insertError = null,
-    staffDisplayName = null,
-  } = options
+  const { waitlist = [], invites = [], staffDisplayName = null } = options
 
   const auditInsert = jest.fn(async () => ({ error: null }))
-  const insertSpy = jest.fn(() => ({
-    select: jest.fn(() => ({
-      maybeSingle: jest.fn(async () => ({
-        data: insertError ? null : { id: insertedId },
-        error: insertError,
-      })),
-    })),
-  }))
 
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
@@ -87,22 +78,14 @@ function mockService(
     if (table === 'artist_invites') {
       return {
         select: jest.fn(() => ({
-          // GET path
           order: jest.fn(async () => ({ data: invites, error: null })),
-          // POST duplicate-check path
-          ilike: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              maybeSingle: jest.fn(async () => ({ data: existingInvite, error: null })),
-            })),
-          })),
         })),
-        insert: insertSpy,
       }
     }
     throw new Error(`Unexpected table: ${table}`)
   })
 
-  return { from, auditInsert, insertSpy }
+  return { from, auditInsert }
 }
 
 beforeEach(() => {
@@ -149,6 +132,7 @@ describe('POST /api/admin/artist-invites', () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService({ staffDisplayName: 'Jordan AE' })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'invite-1', token: 'tok-abc', state: 'created' })
 
     const res = await POST(jsonRequest({ email: 'newartist@example.com' }))
 
@@ -157,14 +141,11 @@ describe('POST /api/admin/artist-invites', () => {
     expect(body.ok).toBe(true)
     expect(body.data.email).toBe('newartist@example.com')
 
-    expect(service.insertSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: 'newartist@example.com',
-        status: 'pending',
-        source: 'staff',
-        invited_by_user_id: AE_UUID,
-      })
-    )
+    expect(mintOrRotateInvite).toHaveBeenCalledWith(service, {
+      email: 'newartist@example.com',
+      source: 'staff',
+      invitedByUserId: AE_UUID,
+    })
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
     const sendArgs = (sendEmail as jest.Mock).mock.calls[0][0]
@@ -179,17 +160,49 @@ describe('POST /api/admin/artist-invites', () => {
     })
   })
 
-  it('does not duplicate an already-pending invite for the same email', async () => {
+  it('does not resend for an already-active pending invite (H1 unchanged: true duplicate)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
-    const service = mockService({ existingInvite: { id: 'existing-1' } })
+    const service = mockService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'existing-1', token: 'existing-tok', state: 'reused' })
 
     const res = await POST(jsonRequest({ email: 'dup@example.com' }))
 
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.duplicate).toBe(true)
-    expect(service.insertSpy).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  it('re-issues and resends for an expired pending invite instead of reporting a duplicate (H1)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'existing-1', token: 'rotated-tok', state: 'rotated' })
+
+    const res = await POST(jsonRequest({ email: 'expired@example.com' }))
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.duplicate).toBeUndefined()
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('expired@example.com')
+    expect(logStaffAction).toHaveBeenCalledWith(
+      service,
+      expect.objectContaining({ action: 'artist_invite.reissue', targetId: 'existing-1' })
+    )
+  })
+
+  it('returns 500 when the mint claim fails and never sends', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
+
+    const res = await POST(jsonRequest({ email: 'boom@example.com' }))
+
+    expect(res.status).toBe(500)
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
@@ -202,7 +215,7 @@ describe('POST /api/admin/artist-invites', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('rejects an invalid email with 400 and never writes', async () => {
+  it('rejects an invalid email with 400 and never mints', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
     const service = mockService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
@@ -210,6 +223,6 @@ describe('POST /api/admin/artist-invites', () => {
     const res = await POST(jsonRequest({ email: 'not-an-email' }))
 
     expect(res.status).toBe(400)
-    expect(service.insertSpy).not.toHaveBeenCalled()
+    expect(mintOrRotateInvite).not.toHaveBeenCalled()
   })
 })

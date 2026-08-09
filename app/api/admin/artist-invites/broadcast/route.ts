@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { mintOrRotateInvite } from '@/lib/invites/mintInvite'
 import { artistReopenedEmail } from '@/lib/email/artistReopened'
 import { sendEmail } from '@/lib/email'
 
@@ -12,10 +13,17 @@ import { sendEmail } from '@/lib/email'
 // Eligible = unsubscribed_at IS NULL (D-19 — opted-out rows are excluded
 // from the broadcast; their personal-invite path via convert/ is
 // untouched) AND notified_reopen_at IS NULL (idempotency — RESEARCH
-// Pitfall 6 / T-27-14). Each recipient's notified_reopen_at is stamped
-// immediately after its send is attempted, so a retry or double-click
-// never re-sends the same person (at-most-once semantics — accepted per
-// RESEARCH over strict at-least-once for a bulk send).
+// Pitfall 6 / T-27-14).
+//
+// (27-CODEX-REVIEW.md B3/M5) A bare /signup link is not enough — the
+// signup gate (migration 099) only admits emails with an authorizing
+// artist_invites row. Each recipient's own invite is minted/reused/rotated
+// via the shared mintOrRotateInvite() claim (same helper the admin
+// issue-invite and convert routes use) BEFORE the send, so the link is one
+// the recipient is actually authorized to use. delivered/failed are
+// tracked SEPARATELY (M5): notified_reopen_at is stamped ONLY after a
+// successful send, so a mint or send failure leaves the row untouched and
+// retryable on the next broadcast run — never silently marked delivered.
 export async function POST() {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
@@ -34,33 +42,51 @@ export async function POST() {
 
   const eligible = (rows ?? []) as { id: string; email: string; unsubscribe_token: string }[]
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  let sent = 0
+  let delivered = 0
+  let failed = 0
 
   for (const row of eligible) {
-    const actionLink = `${appUrl}/signup`
+    // Mint/reuse/rotate this recipient's own authorizing invite BEFORE
+    // sending (B3) — a mint failure is recorded as failed and the row is
+    // left untouched (stays eligible for retry), never stamped.
+    const mint = await mintOrRotateInvite(service, {
+      email: row.email,
+      source: 'staff',
+      invitedByUserId: auth.user.id,
+    })
+
+    if (!mint.ok) {
+      failed += 1
+      continue
+    }
+
+    const actionLink = `${appUrl}/signup?invite=${mint.token}`
     const unsubscribeLink = `${appUrl}/unsubscribe?token=${row.unsubscribe_token}`
     const template = artistReopenedEmail({ actionLink, unsubscribeLink })
 
-    // Best-effort — a single send failure must not abort the batch (mirrors
-    // app/api/sync/register/route.ts's routeLead best-effort side-effect
-    // pattern, scaled to a loop). The row is stamped regardless of send
-    // outcome so a retry never re-attempts a recipient already processed.
-    await sendEmail({ to: row.email, subject: template.subject, html: template.html, text: template.text })
+    const sendResult = await sendEmail({ to: row.email, subject: template.subject, html: template.html, text: template.text })
+
+    if (!sendResult.ok) {
+      // Send failed — leave notified_reopen_at unset (M5: a send failure
+      // must stay retryable, never silently marked delivered).
+      failed += 1
+      continue
+    }
 
     await service
       .from('artist_waitlist')
       .update({ notified_reopen_at: new Date().toISOString() })
       .eq('id', row.id)
 
-    sent += 1
+    delivered += 1
   }
 
   await logStaffAction(service, {
     actorId: auth.user.id,
     action: 'artist_invite.broadcast',
     targetType: 'artist_waitlist',
-    changes: { count: sent },
+    changes: { delivered, failed },
   })
 
-  return NextResponse.json({ sent })
+  return NextResponse.json({ delivered, failed })
 }

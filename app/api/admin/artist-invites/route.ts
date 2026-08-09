@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
-import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
+import { mintOrRotateInvite } from '@/lib/invites/mintInvite'
 import { artistInviteEmail } from '@/lib/email/artistInvite'
 import { sendEmail } from '@/lib/email'
 
@@ -59,8 +59,12 @@ async function resolveStaffDisplayName(service: SupabaseClient, userId: string):
 }
 
 // ─── POST — issue a direct invite by email (any staff) ───────────────────
-// source='staff', tokened, mails template A, audited. Duplicate pending
-// invite for the same email is idempotent — no second row is created.
+// source='staff', tokened, mails template A, audited. Uses the shared
+// mintOrRotateInvite() claim (27-CODEX-REVIEW.md H1/B3): an already-active
+// pending invite for the same email is idempotent — no second row, no
+// resend (state === 'reused'). A PAST-EXPIRY pending invite is rotated in
+// place and resent instead of being reported as a stale duplicate (H1 fix
+// — was previously indistinguishable from an active duplicate).
 export async function POST(request: Request) {
   const auth = await requireStaff()
   if ('error' in auth) {
@@ -75,42 +79,17 @@ export async function POST(request: Request) {
 
   const service = createServiceClient()
 
-  // Idempotency guard — an already-pending invite for this email is
-  // returned as-is rather than duplicated.
-  const { data: existing } = await service
-    .from('artist_invites')
-    .select('id')
-    .ilike('email', email)
-    .eq('status', 'pending')
-    .maybeSingle()
-
-  if (existing) {
-    return NextResponse.json({ ok: true, data: { id: (existing as { id: string }).id, email }, duplicate: true })
+  const mint = await mintOrRotateInvite(service, { email, source: 'staff', invitedByUserId: auth.user.id })
+  if (!mint.ok) {
+    return NextResponse.json({ error: mint.error }, { status: 500 })
   }
 
-  const inviteToken = generateApprovalToken()
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
-
-  const { data: inserted, error: insertError } = await service
-    .from('artist_invites')
-    .insert({
-      email,
-      status: 'pending',
-      source: 'staff',
-      invite_token: inviteToken,
-      token_expires_at: expiresAt.toISOString(),
-      invited_by_user_id: auth.user.id,
-    })
-    .select('id')
-    .maybeSingle()
-
-  if (insertError || !inserted) {
-    return NextResponse.json({ error: insertError?.message ?? 'Failed to create invite.' }, { status: 500 })
+  if (mint.state === 'reused') {
+    return NextResponse.json({ ok: true, data: { id: mint.id, email }, duplicate: true })
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const actionLink = `${appUrl}/signup?invite=${inviteToken}`
+  const actionLink = `${appUrl}/signup?invite=${mint.token}`
   const inviterName = await resolveStaffDisplayName(service, auth.user.id)
 
   const template = artistInviteEmail({ inviterName, actionLink })
@@ -120,14 +99,14 @@ export async function POST(request: Request) {
 
   await logStaffAction(service, {
     actorId: auth.user.id,
-    action: 'artist_invite.create',
+    action: mint.state === 'rotated' ? 'artist_invite.reissue' : 'artist_invite.create',
     targetType: 'artist_invite',
-    targetId: (inserted as { id: string }).id,
+    targetId: mint.id,
     changes: { email },
   })
 
   return NextResponse.json(
-    { ok: true, data: { id: (inserted as { id: string }).id, email }, emailSent: emailResult.ok },
+    { ok: true, data: { id: mint.id, email }, emailSent: emailResult.ok },
     { status: 201 }
   )
 }
