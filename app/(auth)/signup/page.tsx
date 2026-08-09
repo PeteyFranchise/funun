@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { isWaitlistSubmitDisabled } from './waitlist-gate'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -27,11 +28,13 @@ declare global {
         container: HTMLElement,
         options: {
           sitekey: string
+          action?: string
           callback?: (token: string) => void
           'error-callback'?: () => void
           'expired-callback'?: () => void
         }
       ) => string
+      reset: (widgetId?: string) => void
     }
   }
 }
@@ -62,8 +65,10 @@ function SignUpFlow() {
   const [wlError, setWlError] = useState<string | null>(null)
   const [wlSent, setWlSent] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileScriptError, setTurnstileScriptError] = useState(false)
   const turnstileRendered = useRef(false)
   const turnstileNode = useRef<HTMLDivElement | null>(null)
+  const turnstileWidgetId = useRef<string | null>(null)
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
   const checkInvite = useCallback(async (candidateEmail: string) => {
@@ -176,21 +181,42 @@ function SignUpFlow() {
     setSubmitting(false)
   }
 
-  const attachTurnstile = useCallback(
-    (node: HTMLDivElement | null) => {
-      turnstileNode.current = node
-      if (node && siteKey && window.turnstile && !turnstileRendered.current) {
-        turnstileRendered.current = true
-        window.turnstile.render(node, {
-          sitekey: siteKey,
-          callback: token => setTurnstileToken(token),
-          'error-callback': () => setTurnstileToken(''),
-          'expired-callback': () => setTurnstileToken(''),
-        })
-      }
+  // Single render() call site (both the callback-ref attach and the
+  // <Script> onLoad race to render first) — keeps the widget options
+  // (including the `action` marker) defined in exactly one place.
+  const renderTurnstileWidget = useCallback(
+    (node: HTMLDivElement) => {
+      if (!siteKey || !window.turnstile || turnstileRendered.current) return
+      turnstileRendered.current = true
+      turnstileWidgetId.current = window.turnstile.render(node, {
+        sitekey: siteKey,
+        action: 'turnstile-spin-v2',
+        callback: token => setTurnstileToken(token),
+        'error-callback': () => setTurnstileToken(''),
+        'expired-callback': () => setTurnstileToken(''),
+      })
     },
     [siteKey]
   )
+
+  const attachTurnstile = useCallback(
+    (node: HTMLDivElement | null) => {
+      turnstileNode.current = node
+      if (node) renderTurnstileWidget(node)
+    },
+    [renderTurnstileWidget]
+  )
+
+  // Single-use token: any failed submit (rate-limited, verification
+  // failure, network error) must reset the widget and clear the stale
+  // token so the next attempt gets a fresh one instead of silently
+  // resubmitting an already-consumed/invalid token.
+  function resetTurnstile() {
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current)
+    }
+    setTurnstileToken('')
+  }
 
   async function handleWaitlistSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -206,12 +232,14 @@ function SignUpFlow() {
       if (res.status === 429) {
         setWlError('Too many requests. Please try again later.')
         setWlSubmitting(false)
+        resetTurnstile()
         return
       }
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string }
         setWlError(data.error ?? 'Something went wrong — try again.')
         setWlSubmitting(false)
+        resetTurnstile()
         return
       }
       setWlSent(true)
@@ -219,6 +247,7 @@ function SignUpFlow() {
     } catch {
       setWlError('Something went wrong — try again.')
       setWlSubmitting(false)
+      resetTurnstile()
     }
   }
 
@@ -475,6 +504,11 @@ function SignUpFlow() {
                 {!siteKey && (
                   <p className="text-xs text-white/30">Verification will appear here.</p>
                 )}
+                {siteKey && turnstileScriptError && (
+                  <p className="text-xs text-rose-300">
+                    Couldn&rsquo;t load verification — refresh the page and try again.
+                  </p>
+                )}
               </div>
 
               {wlError && (
@@ -485,7 +519,7 @@ function SignUpFlow() {
 
               <button
                 type="submit"
-                disabled={wlSubmitting}
+                disabled={isWaitlistSubmitDisabled(wlSubmitting, siteKey, turnstileToken)}
                 className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
               >
                 {wlSubmitting ? 'Joining…' : 'Join the waiting list'}
@@ -497,16 +531,9 @@ function SignUpFlow() {
                 src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
                 strategy="afterInteractive"
                 onLoad={() => {
-                  if (turnstileNode.current && window.turnstile && !turnstileRendered.current) {
-                    turnstileRendered.current = true
-                    window.turnstile.render(turnstileNode.current, {
-                      sitekey: siteKey,
-                      callback: token => setTurnstileToken(token),
-                      'error-callback': () => setTurnstileToken(''),
-                      'expired-callback': () => setTurnstileToken(''),
-                    })
-                  }
+                  if (turnstileNode.current) renderTurnstileWidget(turnstileNode.current)
                 }}
+                onError={() => setTurnstileScriptError(true)}
               />
             )}
           </>
