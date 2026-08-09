@@ -52,11 +52,25 @@ import { sendEmail } from '@/lib/email'
 // and the reset's result is checked rather than fired-and-forgotten.
 //
 // A STABLE, per-recipient Resend Idempotency-Key (`artist-reopen-{waitlist
-// row id}-{day}`) is attached to every send. An ambiguous provider timeout
-// (the request may have been accepted by Resend even though this process
-// never saw the response, or died before it could) plus a later retry with
-// the row's claim released reuses the SAME key for the SAME calendar day —
-// Resend returns its cached result instead of dispatching a second email.
+// row id}`) is attached to every send. An ambiguous provider timeout (the
+// request may have been accepted by Resend even though this process never
+// saw the response, or died before it could) plus a later retry with the
+// row's claim released reuses the SAME key — Resend returns its cached
+// result instead of dispatching a second email.
+//
+// (27-CODEX-REVIEW.md follow-up review #3 — NEW ISSUE 2) The key was
+// previously day-scoped (`artist-reopen-{id}-{YYYY-MM-DD}`, computed once
+// per broadcast RUN via `new Date().toISOString().slice(0, 10)`). A retry
+// that is merely delayed — or that happens to straddle a UTC-midnight
+// rollover between the original attempt and the retry — would compute a
+// DIFFERENT day string and therefore a different key, defeating the whole
+// point of the idempotency key for exactly the ambiguous-timeout scenario
+// it exists to cover. Each artist_waitlist row can only ever be broadcast
+// to ONCE in its lifetime (the eligibility query excludes any row whose
+// notified_reopen_at is already set), so a key scoped to the row alone —
+// with no time component — is both sufficient and correct: it cannot
+// collide with a genuinely later, distinct reopen campaign because this
+// row would no longer be eligible for one.
 export async function POST() {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
@@ -80,12 +94,19 @@ export async function POST() {
   // reclaimable well within the same business day rather than blocking the
   // recipient indefinitely.
   const CLAIM_LEASE_MS = 10 * 60 * 1000
-  // Day-scoped idempotency epoch — see header comment. Shared by every
-  // recipient claimed in this run; a genuinely NEW reopen campaign the next
-  // day gets a fresh key per recipient rather than being deduped forever.
-  const reopenEpoch = new Date().toISOString().slice(0, 10)
   let delivered = 0
   let failed = 0
+  // Release-result visibility (LOW — 27-CODEX-REVIEW.md follow-up review
+  // #3). Collected across the loop and attached to the run's audit-log
+  // entry rather than console-logged (this codebase has no console.log
+  // convention in committed code) or silently dropped — see the two
+  // capture sites below for what counts as an error vs. a benign CAS miss.
+  const releaseIssues: Array<{
+    id: string
+    phase: 'mint' | 'send'
+    kind: 'error' | 'cas_miss'
+    detail?: string
+  }> = []
 
   for (const row of eligible) {
     const claimToken = randomUUID()
@@ -130,17 +151,25 @@ export async function POST() {
     if (!mint.ok) {
       // RELEASE the claim (compare-and-set on our own claim_token) so the
       // row stays retryable on the next run instead of being stuck
-      // permanently leased with nothing sent. The CAS result is checked but
-      // not further escalated on mismatch — if it no longer matches, our
-      // lease already expired and another run has since reclaimed the row,
-      // which is that run's responsibility now, not an error condition here.
-      await service
+      // permanently leased with nothing sent. The CAS result IS now
+      // captured (LOW — follow-up review #3): a genuine DB error is a real
+      // problem (the row may stay leased longer than intended) and is
+      // recorded distinctly from a benign CAS miss (our lease already
+      // expired and another run has since reclaimed the row — that run's
+      // responsibility now, not an error, but still worth surfacing
+      // alongside the run's audit entry for visibility).
+      const release = await service
         .from('artist_waitlist')
         .update({ claim_token: null, claimed_at: null })
         .eq('id', row.id)
         .eq('claim_token', claimToken)
         .select('id')
         .maybeSingle()
+      if (release.error) {
+        releaseIssues.push({ id: row.id, phase: 'mint', kind: 'error', detail: release.error.message })
+      } else if (!release.data) {
+        releaseIssues.push({ id: row.id, phase: 'mint', kind: 'cas_miss' })
+      }
       failed += 1
       continue
     }
@@ -154,20 +183,27 @@ export async function POST() {
       subject: template.subject,
       html: template.html,
       text: template.text,
-      idempotencyKey: `artist-reopen-${row.id}-${reopenEpoch}`,
+      idempotencyKey: `artist-reopen-${row.id}`,
     })
 
     if (!sendResult.ok) {
       // Send failed — release the claim the same way a mint failure does
       // (M5: a send failure must stay retryable, never silently marked
-      // delivered nor left permanently leased).
-      await service
+      // delivered nor left permanently leased). Result captured for the
+      // same reason as the mint-failure release above (LOW — follow-up
+      // review #3).
+      const release = await service
         .from('artist_waitlist')
         .update({ claim_token: null, claimed_at: null })
         .eq('id', row.id)
         .eq('claim_token', claimToken)
         .select('id')
         .maybeSingle()
+      if (release.error) {
+        releaseIssues.push({ id: row.id, phase: 'send', kind: 'error', detail: release.error.message })
+      } else if (!release.data) {
+        releaseIssues.push({ id: row.id, phase: 'send', kind: 'cas_miss' })
+      }
       failed += 1
       continue
     }
@@ -199,7 +235,7 @@ export async function POST() {
     actorId: auth.user.id,
     action: 'artist_invite.broadcast',
     targetType: 'artist_waitlist',
-    changes: { delivered, failed },
+    changes: { delivered, failed, ...(releaseIssues.length ? { releaseIssues } : {}) },
   })
 
   return NextResponse.json({ delivered, failed })

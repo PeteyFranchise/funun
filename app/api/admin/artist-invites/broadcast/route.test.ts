@@ -7,7 +7,9 @@ import { POST } from './route'
 
 // ─── POST /api/admin/artist-invites/broadcast (27-08 Task 3; B3/M5 fix
 // 27-CODEX-REVIEW.md; follow-up review #1 atomic-claim hardening; follow-up
-// review #2 MEDIUM — claim-lease/delivered-marker split + idempotency key) ─
+// review #2 MEDIUM — claim-lease/delivered-marker split + idempotency key;
+// follow-up review #3 — NEW ISSUE 2 row-scoped idempotency key, LOW release
+// -result visibility) ───────────────────────────────────────────────────
 // Colocated route test, same mocked-dependency conventions as the sibling
 // artist-invites routes. Covers: leadership triggers send to eligible rows
 // only (query excludes opted-out/already-notified rows); each row is
@@ -15,13 +17,17 @@ import { POST } from './route'
 // `UPDATE ... WHERE notified_reopen_at IS NULL AND (claimed_at IS NULL OR
 // claimed_at < lease-expiry)`) BEFORE any mint/send work; a mint failure or
 // a send failure RELEASES the claim (claim_token/claimed_at cleared via a
-// claim_token compare-and-set) and is counted as `failed`; notified_reopen_at
-// (the FINAL delivered marker) is stamped only on confirmed send success,
-// also via a claim_token compare-and-set; every send carries a stable,
-// day-scoped idempotency key; a row whose claim is lost to a concurrent
-// broadcast run is skipped without mint/send and without being
-// double-counted; AE/BD get 403. The mint claim/rotate logic itself is
-// tested in lib/invites/mintInvite.test.ts — this file mocks that module.
+// claim_token compare-and-set) and is counted as `failed`, with the release
+// result surfaced via the audit log on error/CAS-miss (LOW, follow-up
+// review #3) rather than silently dropped; notified_reopen_at (the FINAL
+// delivered marker) is stamped only on confirmed send success, also via a
+// claim_token compare-and-set; every send carries a STABLE, row-scoped
+// idempotency key with no time component, so a delayed retry or one that
+// straddles a UTC-midnight rollover reuses the same key (NEW ISSUE 2); a row
+// whose claim is lost to a concurrent broadcast run is skipped without
+// mint/send and without being double-counted; AE/BD get 403. The mint
+// claim/rotate logic itself is tested in lib/invites/mintInvite.test.ts —
+// this file mocks that module.
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -187,7 +193,7 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     })
   })
 
-  it('sends with a stable, day-scoped idempotency key derived from the recipient row id', async () => {
+  it('sends with a stable idempotency key scoped to the recipient row alone, with no time component (follow-up review #3 NEW ISSUE 2)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' }]
     const service = mockService({ eligibleRows })
@@ -196,7 +202,49 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     await POST()
 
     const sendArgs = (sendEmail as jest.Mock).mock.calls[0][0]
-    expect(sendArgs.idempotencyKey).toMatch(/^artist-reopen-w1-\d{4}-\d{2}-\d{2}$/)
+    expect(sendArgs.idempotencyKey).toBe('artist-reopen-w1')
+  })
+
+  it('reuses the SAME idempotency key across a simulated UTC-midnight rollover between calls (follow-up review #3 NEW ISSUE 2)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' }]
+
+    const beforeMidnight = new Date('2026-08-09T23:59:59.000Z')
+    const afterMidnight = new Date('2026-08-10T00:00:01.000Z')
+    const realDate = Date
+
+    // First "attempt" — day A.
+    jest.useFakeTimers().setSystemTime(beforeMidnight)
+    const serviceA = mockService({ eligibleRows })
+    ;(createServiceClient as jest.Mock).mockReturnValue(serviceA)
+    await POST()
+    const keyBefore = (sendEmail as jest.Mock).mock.calls[0][0].idempotencyKey
+
+    // A delayed retry of the SAME logical send — day B (rolled over past
+    // midnight UTC). The row/email/id are identical; only wall-clock time
+    // has moved.
+    jest.clearAllMocks()
+    ;(logStaffAction as jest.Mock).mockResolvedValue({ ok: true })
+    ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
+    ;(mintOrRotateInvite as jest.Mock).mockImplementation(async (_service, { email }: { email: string }) => ({
+      ok: true,
+      id: `invite-for-${email}`,
+      token: `tok-${email}`,
+      state: 'created',
+    }))
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    jest.setSystemTime(afterMidnight)
+    const serviceB = mockService({ eligibleRows })
+    ;(createServiceClient as jest.Mock).mockReturnValue(serviceB)
+    await POST()
+    const keyAfter = (sendEmail as jest.Mock).mock.calls[0][0].idempotencyKey
+
+    jest.useRealTimers()
+    expect(Date).toBe(realDate)
+
+    expect(keyBefore).toBe('artist-reopen-w1')
+    expect(keyAfter).toBe('artist-reopen-w1')
+    expect(keyBefore).toBe(keyAfter)
   })
 
   it('claims the row BEFORE minting or sending (claim-before-send ordering)', async () => {
@@ -261,6 +309,67 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     expect(mintOrRotateInvite).toHaveBeenCalledTimes(1)
     expect(service.updateSpy).toHaveBeenCalledTimes(2)
     expect(service.updateSpy).toHaveBeenNthCalledWith(2, { claim_token: null, claimed_at: null })
+  })
+
+  it('surfaces a mint-failure release CAS-miss via the audit log instead of silently dropping it (LOW, follow-up review #3)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'no-invite@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({
+      eligibleRows,
+      // 1st maybeSingle: claim succeeds. 2nd maybeSingle: the mint-failure
+      // release CAS finds no matching claim_token (e.g. our lease already
+      // expired and was reclaimed by another run before we could release).
+      maybeSingleResults: [
+        { data: { id: 'w1' }, error: null },
+        { data: null, error: null },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: false, error: 'db boom' })
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.failed).toBe(1)
+    expect(logStaffAction).toHaveBeenCalledWith(
+      service,
+      expect.objectContaining({
+        changes: expect.objectContaining({
+          releaseIssues: [{ id: 'w1', phase: 'mint', kind: 'cas_miss' }],
+        }),
+      })
+    )
+  })
+
+  it('surfaces a send-failure release DB error via the audit log instead of silently dropping it (LOW, follow-up review #3)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'bounces@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({
+      eligibleRows,
+      // 1st maybeSingle: claim succeeds. 2nd maybeSingle: the send-failure
+      // release UPDATE hits a genuine DB error.
+      maybeSingleResults: [
+        { data: { id: 'w1' }, error: null },
+        { data: null, error: { message: 'connection reset' } },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(sendEmail as jest.Mock).mockResolvedValue({ ok: false, error: 'send failed' })
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.failed).toBe(1)
+    expect(logStaffAction).toHaveBeenCalledWith(
+      service,
+      expect.objectContaining({
+        changes: expect.objectContaining({
+          releaseIssues: [{ id: 'w1', phase: 'send', kind: 'error', detail: 'connection reset' }],
+        }),
+      })
+    )
   })
 
   it('does not finalize (does not count as delivered) when the post-send CAS loses the lease', async () => {
