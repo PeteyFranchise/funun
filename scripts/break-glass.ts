@@ -16,13 +16,18 @@
 //                                  artist through the normal /signup form.
 //   create-staff <email> [role]  — an UNGATED Team Member (admin) account.
 //                                  Staff provisioning is a fully separate
-//                                  handle_new_user() branch (migration 086)
-//                                  that RETURNs NEW before the artist-branch
-//                                  gate is ever reached — reusing
+//                                  handle_new_user() branch, keyed on
+//                                  app_metadata.staff_role (migration 099,
+//                                  27-CODEX-REVIEW.md B1 fix) that RETURNs
+//                                  NEW before the artist-branch gate is ever
+//                                  reached — reusing
 //                                  lib/staff/createStaffAccount.ts here is
 //                                  what makes this path immune to the gate
-//                                  by construction, not by a parallel
-//                                  reimplementation that could drift.
+//                                  by construction (it sets staff_role
+//                                  atomically inside its own
+//                                  auth.admin.createUser() call), not by a
+//                                  parallel reimplementation that could
+//                                  drift.
 //
 // SERVICE-ROLE ONLY. Reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_
 // ROLE_KEY from the environment (or .env.local for local use) and refuses

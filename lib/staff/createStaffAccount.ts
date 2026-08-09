@@ -9,12 +9,19 @@ export class DuplicateStaffAccountError extends Error {}
 // ─── createStaffAccount (Phase 25, D-01/D-02/D-04) ─────────────────────────
 // Standalone, reusable helper modelled line-for-line on
 // lib/buyers/createBuyerAccount.ts, with one critical divergence:
-// handle_new_user() (migration 086) has NO staff branch — a new staff
-// account falls through to the default artist branch, inserting a phantom
-// user_profiles + subscriptions row and running claim_collaborators(). Staff
-// are a fully separate principal type with NO artist profile, so this helper
-// reconciles that below (same pattern createBuyerAccount already uses for
-// the identical buyer-branch-timing gap).
+// migrations 086-098 shipped handle_new_user() with NO staff branch — a new
+// staff account fell through to the default artist branch, inserting a
+// phantom user_profiles + subscriptions row and running
+// claim_collaborators() (and, once migration 098's invite gate went live,
+// getting REJECTED outright by it — 27-CODEX-REVIEW.md B1). Migration 099
+// adds a native staff early-return branch keyed on app_metadata.staff_role,
+// which this function sets atomically inside createUser() below, so as of
+// 099 the phantom-row cleanup further down never actually fires (the
+// trigger no longer creates those rows for a staff signup). It is left in
+// place as a defensive no-op: it costs nothing when there is nothing to
+// clean up, and keeps this helper correct for the window before 099 is
+// pushed, or if Layer 3 of docs/BREAK-GLASS.md is ever used to temporarily
+// revert the gate (which also reverts the staff branch).
 //
 // app_metadata.staff_role MUST be set atomically inside
 // service.auth.admin.createUser() (never a post-insert UPDATE) — RESEARCH's
@@ -64,11 +71,16 @@ export async function createStaffAccount(input: {
   // fatal-with-rollback.
   let actionLink: string
   try {
-    // handle_new_user's default branch (migration 086) has no staff early return,
-    // so it fires for every new staff auth user — creating a phantom user_profiles
-    // + subscriptions row. Staff have NO artist profile; a lingering user_profiles
-    // row would even make the account wrongly Green-Room-eligible, so treat a
-    // cleanup error as fatal rather than ignoring it.
+    // Pre-migration-099, handle_new_user's default branch had no staff early
+    // return, so it fired for every new staff auth user — creating a phantom
+    // user_profiles + subscriptions row. Migration 099 adds a native staff
+    // branch that RETURNs NEW before any insert, so these deletes are now a
+    // defensive no-op (nothing to clean up) once 099 is live — kept for the
+    // window before it's pushed and for the Layer-3 gate-revert case
+    // (docs/BREAK-GLASS.md). Staff have NO artist profile; a lingering
+    // user_profiles row would even make the account wrongly Green-Room-
+    // eligible, so a cleanup error (on the rare path where it still applies)
+    // stays fatal rather than ignored.
     const { error: subErr } = await service.from('subscriptions').delete().eq('user_id', userId)
     if (subErr) throw new Error(`subscriptions cleanup failed: ${subErr.message}`)
     const { error: profErr } = await service.from('user_profiles').delete().eq('id', userId)
