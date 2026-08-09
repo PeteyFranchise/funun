@@ -763,13 +763,17 @@ bootstrap (rewire the `handle_new_user` buyer branch), likely subscription/check
 **Status:** ON HOLD pending a **business-model GSD discussion** (planned 2026-08-09 — owner). Self-serve is NOT
 to be planned/built until the business model is understood and a model + design + go-to-market game plan is agreed.
 The discussion must research and resolve:
+
 - **(a) Paid-tier membership / early access** — a subscription tier that lets buyers preview and "try out" tracks
   ahead of licensing (Musicbed / Marmoset / Artlist / Epidemic-style tiers). Research how those tiers are
   structured, priced, and what preview access they grant.
+
 - **(b) Content protection / anti-piracy** — how those companies stop members from placing preview or
   unlicensed tracks on YouTube, Facebook, and other platforms (e.g. YouTube Content ID / audio fingerprinting,
   watermarked previews, licence-gated downloads, takedown tooling). Determine what Funūn needs here.
+
 - **Deliverable:** a business model + design + game plan that (re)shapes this phase's scope.
+
 Sequenced after Model A (Phase 23, shipped). Original self-serve context in 24-CONTEXT.md; run as `/gsd-explore`
 (business-model ideation) before any `/gsd-discuss-phase 24`.
 
@@ -856,6 +860,7 @@ supply pipeline behind live catalogue data (Phase 22 · 22-05).
 **Plans:** 10 plans (3 waves)
 
 Plans:
+
 - [ ] 26-01-PLAN.md — Migration 096 (sync_listings state machine + capability_grants/vault_documents extensions) + [BLOCKING] human-gated schema push
 - [ ] 26-02-PLAN.md — Pure domain core: status state machine + eligibility predicate + shared types (TDD)
 - [ ] 26-03-PLAN.md — Artist self-apply submit (per-song, batched) + withdraw routes
@@ -898,16 +903,30 @@ collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*
 **Plans:** 11 plans (planned 2026-08-09)
 
 Plans:
+**Wave 1**
+
 - [ ] 27-01-PLAN.md — Invite & waitlist tables (migration 097) + invite schema module [wave 1]
 - [ ] 27-02-PLAN.md — Shared security + email utilities (rate-limit / turnstile / esc) [wave 1]
 - [ ] 27-03-PLAN.md — Collaborator-side invite prompt (D-08a) [wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 27-04-PLAN.md — Allowlist twin + server-authoritative gate (migration 098) [wave 2]
 - [ ] 27-05-PLAN.md — Three branded email templates (invite / spot-opened / reopened) [wave 2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 27-06-PLAN.md — Public signup routes (check-invite + deep-link resolve) [wave 3]
 - [ ] 27-07-PLAN.md — Waitlist + resubscribe routes (captcha + rate-limit) [wave 3]
 - [ ] 27-08-PLAN.md — Team Console invite routes (list/add · convert · broadcast) [wave 3]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 27-09-PLAN.md — Signup gate state machine + unsubscribe page [wave 4]
 - [ ] 27-10-PLAN.md — Team Console Artist Invites UI + nav [wave 4]
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 27-11-PLAN.md — Bootstrap + [BLOCKING] schema push + launch gates [wave 5]
 
 **Key open questions (27-CONTEXT):** the invite mechanism + enforcement point (an `artist_invites` allowlist
