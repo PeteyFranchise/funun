@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
 import { sendEmail } from '@/lib/email'
+import { esc } from '@/lib/email/esc'
 
 // ─── POST /api/collaborators/[id]/invite ─────────────────────────────────
 // Sends an educational IPI-invite email to the collaborator with a tokenized
 // link to /signup?invite=[token]. Enforces a 24h cooldown per collaborator+
 // inviting user pair to prevent duplicate emails (T-01-15, Pitfall 4).
+//
+// M6 (27-CODEX-REVIEW.md): collaborator.name is artist-entered, user-
+// controlled free text (lib/metadata's Composer/collaborator forms have no
+// HTML-safety constraint on it) and was previously interpolated into this
+// email's HTML body unescaped — an artist could plant markup/script in a
+// collaborator's name field that would render in the recipient's mail
+// client. Every interpolated value below is escaped via lib/email/esc.ts
+// (the same helper the branded artistInvite/artistSpotOpened/
+// artistReopened templates use).
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -80,11 +90,19 @@ export async function POST(
   const inviteUrl = `${appUrl}/signup?invite=${inviteToken}`
   const joinUrl = `${appUrl}/join/${inviteToken}`
 
+  // M6: escape every interpolated value before it lands in the HTML body —
+  // collaborator.name is artist-entered free text; joinUrl/inviteUrl embed
+  // a generated token but are escaped defensively too (esc() is a no-op on
+  // already-safe input).
+  const safeName = esc(collaborator.name)
+  const safeJoinUrl = esc(joinUrl)
+  const safeInviteUrl = esc(inviteUrl)
+
   const result = await sendEmail({
     to: collaborator.email,
     subject: `You've been added as a collaborator on Funūn — claim your profile`,
     html: `
-      <h2>Hi ${collaborator.name},</h2>
+      <h2>Hi ${safeName},</h2>
       <p>An artist has added you as a collaborator on <strong>Funūn</strong>. You can view your collaborator profile and make sure everything is accurate.</p>
 
       <h3>What is an IPI/CAE number?</h3>
@@ -103,11 +121,11 @@ export async function POST(
 
       <h3>View your collaborator profile</h3>
       <p>The artist has recorded your information. You can view it and flag any corrections here:</p>
-      <p><a href="${joinUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">View my collaborator profile</a></p>
+      <p><a href="${safeJoinUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">View my collaborator profile</a></p>
 
       <h3>Create your Funūn account</h3>
       <p>Join Funūn to manage your rights, track your registrations, and keep your collaborator data up to date:</p>
-      <p><a href="${inviteUrl}">Create your Funūn account →</a></p>
+      <p><a href="${safeInviteUrl}">Create your Funūn account →</a></p>
 
       <p style="color:#888;font-size:12px">This link expires in ${APPROVAL_TOKEN_EXPIRY_DAYS} days.</p>
     `,
