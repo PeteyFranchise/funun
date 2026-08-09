@@ -10,7 +10,7 @@
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
 export async function verifyTurnstileToken(token: string, remoteIp?: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY
+  const secret = process.env.TURNSTILE_SECRET
   if (!secret || !token) return false
 
   const body = new URLSearchParams({ secret, response: token })
@@ -22,8 +22,11 @@ export async function verifyTurnstileToken(token: string, remoteIp?: string): Pr
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     })
-    const data = (await res.json()) as { success: boolean }
-    return data.success === true
+    if (!res.ok) return false // fail closed — Cloudflare itself is unhappy
+
+    const data: unknown = await res.json().catch(() => null)
+    if (!data || typeof data !== 'object') return false // fail closed — malformed body
+    return (data as { success?: unknown }).success === true
   } catch {
     return false // fail closed
   }
