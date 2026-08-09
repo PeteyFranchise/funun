@@ -6,6 +6,7 @@ import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/cre
 import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { resolveLeadRecipient, buildLeadRoutedNotification } from '@/lib/staff/notifications'
 import { createNotification } from '@/lib/notifications'
+import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── POST /api/sync/register — public, unauthenticated (23-04 Task 3) ─────
 // The FIRST genuinely public write path in the buyer domain (RESEARCH
@@ -26,32 +27,12 @@ import { createNotification } from '@/lib/notifications'
 const ORG_SELECT_COLUMNS = 'id, name, ae_user_id'
 
 // ─── Rate limiting (Pitfall 7) ─────────────────────────────────────────────
-// Simple in-route, in-memory per-key window — reuses the *pattern* of
-// lib/social/dm.ts's cold-DM limiter (a per-key window), not its table.
-// Acceptable for beta per this plan's own directive; a warm serverless
-// instance shares this Map across requests it serves, degrading gracefully
-// (not failing open or closed) across cold starts/multiple instances.
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
-const RATE_LIMIT_MAX_ATTEMPTS = 5
-const rateLimitStore = new Map<string, number[]>()
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now()
-  const recent = (rateLimitStore.get(key) ?? []).filter(ts => now - ts < RATE_LIMIT_WINDOW_MS)
-  if (recent.length >= RATE_LIMIT_MAX_ATTEMPTS) {
-    rateLimitStore.set(key, recent)
-    return true
-  }
-  recent.push(now)
-  rateLimitStore.set(key, recent)
-  return false
-}
-
-function getClientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0]?.trim() || 'unknown'
-  return request.headers.get('x-real-ip') ?? 'unknown'
-}
+// Shared sliding-window limiter, extracted to lib/security/rate-limit.ts
+// (27-02) so check-invite/waitlist/resubscribe reuse the exact same
+// behavior instead of copy-pasting a 4th/5th limiter (RESEARCH "Don't
+// Hand-Roll"). Constants/behavior are unchanged from the original in-route
+// implementation — this route's own instance keeps its own Map.
+const rateLimiter = createRateLimiter()
 
 // ─── Best-effort lead routing (Phase 25 hook) ──────────────────────────────
 // Never throws — any failure here must never fail the signup it's attached
@@ -93,7 +74,7 @@ async function routeLead(
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (isRateLimited(`ip:${ip}`)) {
+  if (rateLimiter.isRateLimited(`ip:${ip}`)) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
@@ -117,7 +98,7 @@ export async function POST(request: Request) {
 
   // Second rate-limit dimension — same visitor retrying with a different
   // IP (or behind a shared IP) is still capped per email.
-  if (isRateLimited(`email:${payload.email}`)) {
+  if (rateLimiter.isRateLimited(`email:${payload.email}`)) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
