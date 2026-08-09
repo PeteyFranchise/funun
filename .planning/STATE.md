@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: Completed 27-07-PLAN.md
-last_updated: "2026-08-09T07:04:37.575Z"
+stopped_at: Completed 27-06-PLAN.md
+last_updated: "2026-08-09T07:16:53.060Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 28
   completed_phases: 23
   total_plans: 173
-  completed_plans: 163
+  completed_plans: 164
   percent: 82
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 27 (artist-invite-only-onboarding) — EXECUTING
-Plan: 7 of 11
+Plan: 8 of 11
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -188,6 +188,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 27 P04 | 35min | 3 tasks | 5 files |
 | Phase 27 P05 | 15min | 2 tasks | 4 files |
 | Phase 27 P07 | 20min | 2 tasks | 4 files |
+| Phase 27 P06 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -405,6 +406,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 27]: 27-05: Personal templates (A/B) omit unsubscribe; commercial reopen broadcast (C) mandates it in both html and text (D-19/CAN-SPAM)
 - [Phase 27]: 27-05: plan frontmatter references requirement INVITE-10 but REQUIREMENTS.md has no Phase 27 section registering it (requirements.mark-complete returned not_found) — same pre-existing gap noted at 16-03/16-11/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - [Phase 27-07]: Auto-resubscribe upsert implemented as select-by-email then branch (update/insert), not a literal ON CONFLICT — artist_waitlist's uniqueness (migration 097) is a functional index on LOWER(email), which PostgREST's on_conflict merge param can't target; sanitizeWaitlistEntry always lowercases email so a plain .eq('email', ...) select reliably finds the same row.
+- [Phase ?]: check-invite rate-limits ip then email and returns identical {allowed,existingAccount} shape for allowed/denied/malformed inputs (enumeration mitigation, T-27-02)
+- [Phase ?]: invite/[token] resolver checks artist_invites first then falls back to collaborator_invites; inviterName resolved best-effort via user_profiles.artist_name, never admits by token (T-27-03)
 
 ### Pending Todos
 
@@ -485,8 +488,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T07:04:37.549Z
-Stopped at: Completed 27-07-PLAN.md
+Last session: 2026-08-09T07:16:53.031Z
+Stopped at: Completed 27-06-PLAN.md
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
