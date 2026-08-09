@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: Completed 27-03-PLAN.md
-last_updated: "2026-08-09T06:36:20.891Z"
+stopped_at: Completed 27-04-PLAN.md
+last_updated: "2026-08-09T06:47:55.121Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 28
   completed_phases: 23
   total_plans: 173
-  completed_plans: 160
+  completed_plans: 161
   percent: 82
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 27 (artist-invite-only-onboarding) — EXECUTING
-Plan: 4 of 11
+Plan: 5 of 11
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -185,6 +185,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 27 P01 | 15min | 2 tasks | 3 files |
 | Phase 27 P02 | 10min | 3 tasks | 9 files |
 | Phase 27 P03 | 8min | 2 tasks | 2 files |
+| Phase 27 P04 | 35min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -397,6 +398,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 27]: 27-01: plan frontmatter references requirement INVITE-02 but REQUIREMENTS.md has no Phase 27 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
 - [Phase 27]: 27-02: lib/email/buyerInvite.ts's third esc() duplicate left untouched — plan scoped Task 3 to industryInvite.ts/staffInvite.ts only — Out-of-scope for this plan; not introduced or worsened by this work
 - [Phase 27]: 27-02: requirements.mark-complete returned not_found for INVITE-07/INVITE-10 — REQUIREMENTS.md has no Phase 27 section registering them — Same pre-existing gap noted at 16-03/16-11/22-01/22-02/22-03 — deferred to a future /gsd-docs-update pass, not fixed by this executor (out of this plan's scope)
+- [Phase 27]: Invite gate is the first statement inside handle_new_user()'s default (artist) branch only, after curator/buyer/industry RETURN NEW blocks — never a separate BEFORE INSERT trigger (D-02). — Matches RESEARCH Pattern 1; guarded by an automated placement test.
 
 ### Pending Todos
 
@@ -477,8 +479,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T06:36:20.853Z
-Stopped at: Completed 27-03-PLAN.md
+Last session: 2026-08-09T06:47:55.096Z
+Stopped at: Completed 27-04-PLAN.md
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
