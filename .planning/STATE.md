@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: "Phase 27 Plan 01 complete (migration 097 + lib/invites/schema.ts). NEXT: /gsd-execute-phase 27 (plan 02)."
-last_updated: "2026-08-09T06:22:01.204Z"
+stopped_at: "Phase 27 Plan 02 complete (shared rate-limit/turnstile/esc primitives). NEXT: /gsd-execute-phase 27 (plan 03)."
+last_updated: "2026-08-09T06:29:55.138Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 28
   completed_phases: 23
   total_plans: 173
-  completed_plans: 158
+  completed_plans: 159
   percent: 82
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 27 (artist-invite-only-onboarding) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
@@ -183,6 +183,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 23 P06 | 20min | 3 tasks | 6 files |
 | Phase 23-buyer-onboarding-login-register P07 | ~20min | 3 tasks | 4 files |
 | Phase 27 P01 | 15min | 2 tasks | 3 files |
+| Phase 27 P02 | 10min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -393,6 +394,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 23-07: SyncAuthCTAs.tsx added as a new client-boundary file beyond the plan's literal files_modified -- Next.js requires 'use client' at whole-module scope, so the server-component /sync landing page cannot inline modal-open state (Rule 3)
 - [Phase 27]: 27-01: REVOKE ALL (not DML-only REVOKE) applied to artist_invites/artist_waitlist from the outset, proactively closing the TRUNCATE/TRIGGER/REFERENCES gap migration 091 had to retroactively fix for funun_staff/staff_audit_log
 - [Phase 27]: 27-01: plan frontmatter references requirement INVITE-02 but REQUIREMENTS.md has no Phase 27 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap noted at 16-03/22-01/22-02/22-03, deferred to a future /gsd-docs-update pass, not fixed by this executor
+- [Phase 27]: 27-02: lib/email/buyerInvite.ts's third esc() duplicate left untouched — plan scoped Task 3 to industryInvite.ts/staffInvite.ts only — Out-of-scope for this plan; not introduced or worsened by this work
+- [Phase 27]: 27-02: requirements.mark-complete returned not_found for INVITE-07/INVITE-10 — REQUIREMENTS.md has no Phase 27 section registering them — Same pre-existing gap noted at 16-03/16-11/22-01/22-02/22-03 — deferred to a future /gsd-docs-update pass, not fixed by this executor (out of this plan's scope)
 
 ### Pending Todos
 
@@ -473,8 +476,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T06:22:01.179Z
-Stopped at: Phase 27 Plan 01 complete (migration 097 + lib/invites/schema.ts). NEXT: /gsd-execute-phase 27 (plan 02).
+Last session: 2026-08-09T06:29:39.492Z
+Stopped at: Phase 27 Plan 02 complete (shared rate-limit/turnstile/esc primitives). NEXT: /gsd-execute-phase 27 (plan 03).
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
