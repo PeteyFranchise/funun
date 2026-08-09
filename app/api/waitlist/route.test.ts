@@ -55,9 +55,9 @@ function mockService(
   const selectSpy = jest.fn(() => ({ eq: selectEqSpy }))
 
   const updateEqSpy = jest.fn(async () => ({ data: null, error: null }))
-  const updateSpy = jest.fn(() => ({ eq: updateEqSpy }))
+  const updateSpy = jest.fn((_patch: Record<string, unknown>) => ({ eq: updateEqSpy }))
 
-  const insertSpy = jest.fn(async () => ({ data: null, error: insertError }))
+  const insertSpy = jest.fn(async (_row: Record<string, unknown>) => ({ data: null, error: insertError }))
 
   const from = jest.fn((table: string) => {
     if (table === 'artist_waitlist') return { select: selectSpy, update: updateSpy, insert: insertSpy }
