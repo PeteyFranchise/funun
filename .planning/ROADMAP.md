@@ -900,7 +900,7 @@ seed the invite chain (artist signup is open today, so this seed can be created 
 **Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 086 current live body), the
 collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*`), Phase 25 (Team-Member invite source)
 
-**Plans:** 9/11 plans executed
+**Plans:** 10/11 plans executed
 
 Plans:
 **Wave 1**
@@ -923,7 +923,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 27-09-PLAN.md — Signup gate state machine + unsubscribe page [wave 4]
-- [ ] 27-10-PLAN.md — Team Console Artist Invites UI + nav [wave 4]
+- [x] 27-10-PLAN.md — Team Console Artist Invites UI + nav [wave 4]
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
