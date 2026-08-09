@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 27
 current_phase_name: artist-invite-only-onboarding
 status: pending
-stopped_at: Completed 27-10-PLAN.md
-last_updated: "2026-08-09T07:52:14.398Z"
+stopped_at: "Phase 27 waves 1-4 SHIPPED (10/11 plans on main, full suite green, /signup gate + /unsubscribe live-verified). NEXT = Wave 5 owner cutover (27-11): (1) confirm/seed owner bootstrap artist account, (2) provision Cloudflare Turnstile keys, (3) sign off 3 email templates, (4) [BLOCKING] supabase db push migrations 097+098 (flips gate LIVE), (5) smoke test. Migrations NOT yet pushed; gate NOT live. Then /gsd-docs-update to register INVITE-01..12, then /gsd-verify-work + /gsd-ship."
+last_updated: "2026-08-09T07:56:03.965Z"
 last_activity: 2026-08-09
 last_activity_desc: Phase 27 execution started
 progress:
@@ -498,9 +498,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T07:52:14.375Z
-Stopped at: Completed 27-10-PLAN.md
-Resume file: None
+Last session: 2026-08-09T07:56:03.943Z
+Stopped at: Phase 27 waves 1-4 SHIPPED (10/11 plans on main, full suite green, /signup gate + /unsubscribe live-verified). NEXT = Wave 5 owner cutover (27-11): (1) confirm/seed owner bootstrap artist account, (2) provision Cloudflare Turnstile keys, (3) sign off 3 email templates, (4) [BLOCKING] supabase db push migrations 097+098 (flips gate LIVE), (5) smoke test. Migrations NOT yet pushed; gate NOT live. Then /gsd-docs-update to register INVITE-01..12, then /gsd-verify-work + /gsd-ship.
+Resume file: .planning/phases/27-artist-invite-only-onboarding/27-11-PLAN.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
