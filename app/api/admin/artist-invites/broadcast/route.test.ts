@@ -6,13 +6,15 @@ import { sendEmail } from '@/lib/email'
 import { POST } from './route'
 
 // ─── POST /api/admin/artist-invites/broadcast (27-08 Task 3; B3/M5 fix
-// 27-CODEX-REVIEW.md) ───────────────────────────────────────────────────
+// 27-CODEX-REVIEW.md; follow-up review atomic-claim hardening) ────────────
 // Colocated route test, same mocked-dependency conventions as the sibling
 // artist-invites routes. Covers: leadership triggers send to eligible rows
-// only (query excludes opted-out/already-notified rows); each recipient's
-// invite is minted BEFORE the send (B3); a mint failure or a send failure
-// is counted as `failed` and leaves notified_reopen_at unstamped so the
-// row stays retryable (M5); a second call sends 0 delivered (idempotent);
+// only (query excludes opted-out/already-notified rows); each row is
+// atomically CLAIMED (notified_reopen_at stamped via a conditional
+// `UPDATE ... WHERE notified_reopen_at IS NULL`) BEFORE any mint/send work;
+// a mint failure or a send failure RESETS the claim (retryable) and is
+// counted as `failed`; a row whose claim is lost to a concurrent broadcast
+// run is skipped without mint/send and without being double-counted;
 // AE/BD get 403. The mint claim/rotate logic itself is tested in
 // lib/invites/mintInvite.test.ts — this file mocks that module.
 
@@ -39,29 +41,61 @@ jest.mock('@/lib/email', () => ({
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
 type WaitlistRow = { id: string; email: string; unsubscribe_token: string }
+type ClaimResult = { data: { id: string } | null; error: { message: string } | null }
 
-function mockService(options: { eligibleRows?: WaitlistRow[] } = {}) {
-  const { eligibleRows = [] } = options
+function mockService(
+  options: { eligibleRows?: WaitlistRow[]; claimResults?: ClaimResult[] } = {}
+) {
+  const { eligibleRows = [], claimResults } = options
 
   const auditInsert = jest.fn(async () => ({ error: null }))
-  const updateEq = jest.fn(async () => ({ error: null }))
-  const updateSpy = jest.fn(() => ({ eq: updateEq }))
-  // .select(...).is('unsubscribed_at', null).is('notified_reopen_at', null)
-  // resolves to the already-filtered eligible set — the DB does the
-  // filtering; this mock represents that resolved query result.
+
+  // ── update(...).eq(id).is('notified_reopen_at', null).select('id').maybeSingle()
+  // — the atomic claim. ── update(...).eq(id) alone (no further chaining,
+  // awaited directly) — the best-effort claim RESET on mint/send failure.
+  // Both paths share the same eq() return value; awaiting a plain object
+  // (the reset path never chains further) resolves immediately to itself.
+  let claimCallIndex = 0
+  const maybeSingleSpy = jest.fn(async () => {
+    if (claimResults) {
+      const result = claimResults[claimCallIndex] ?? claimResults[claimResults.length - 1]
+      claimCallIndex += 1
+      return result
+    }
+    return { data: { id: 'claimed' }, error: null }
+  })
+  const selectSpy = jest.fn(() => ({ maybeSingle: maybeSingleSpy }))
+  const isSpy = jest.fn(() => ({ select: selectSpy }))
+  const eqSpy = jest.fn(() => ({ is: isSpy }))
+  const updateSpy = jest.fn(() => ({ eq: eqSpy }))
+
+  // ── select('id, email, unsubscribe_token').is('unsubscribed_at', null)
+  // .is('notified_reopen_at', null) — the eligible-rows query. The DB does
+  // the filtering; this mock represents that resolved query result.
   const isInner = jest.fn(async () => ({ data: eligibleRows, error: null }))
   const isOuter = jest.fn(() => ({ is: isInner }))
-  const selectSpy = jest.fn(() => ({ is: isOuter }))
+  const selectQuerySpy = jest.fn(() => ({ is: isOuter }))
 
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
     if (table === 'artist_waitlist') {
-      return { select: selectSpy, update: updateSpy }
+      return { select: selectQuerySpy, update: updateSpy }
     }
     throw new Error(`Unexpected table: ${table}`)
   })
 
-  return { from, auditInsert, updateSpy, updateEq, selectSpy, isOuter, isInner }
+  return {
+    from,
+    auditInsert,
+    updateSpy,
+    eqSpy,
+    isSpy,
+    selectSpy,
+    maybeSingleSpy,
+    selectQuerySpy,
+    isOuter,
+    isInner,
+  }
 }
 
 beforeEach(() => {
@@ -77,7 +111,7 @@ beforeEach(() => {
 })
 
 describe('POST /api/admin/artist-invites/broadcast', () => {
-  it('mints an invite for each eligible row before sending, and delivers to all', async () => {
+  it('claims each row, mints an invite for it before sending, and delivers to all', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const eligibleRows: WaitlistRow[] = [
       { id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' },
@@ -95,6 +129,14 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
 
     expect(requireStaff).toHaveBeenCalledWith(['leadership'])
 
+    // Exactly one UPDATE per row (the claim) — no reset needed on success.
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ notified_reopen_at: expect.any(String) })
+    )
+    // The claim is conditioned on not-already-notified.
+    expect(service.isSpy).toHaveBeenCalledWith('notified_reopen_at', null)
+
     expect(mintOrRotateInvite).toHaveBeenCalledTimes(2)
     expect(mintOrRotateInvite).toHaveBeenNthCalledWith(1, service, {
       email: 'a@example.com',
@@ -110,11 +152,6 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     // The recipient's own minted token must be in the deep link they receive.
     expect((sendEmail as jest.Mock).mock.calls[0][0].html).toContain('tok-a@example.com')
 
-    expect(service.updateSpy).toHaveBeenCalledTimes(2)
-    expect(service.updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ notified_reopen_at: expect.any(String) })
-    )
-
     expect(logStaffAction).toHaveBeenCalledWith(service, {
       actorId: LEADERSHIP_UUID,
       action: 'artist_invite.broadcast',
@@ -123,7 +160,23 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     })
   })
 
-  it('counts a mint failure as failed, never sends, and never stamps notified_reopen_at (B3)', async () => {
+  it('claims the row BEFORE minting or sending (claim-before-send ordering)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'a@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({ eligibleRows })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    await POST()
+
+    const claimOrder = service.maybeSingleSpy.mock.invocationCallOrder[0]
+    const mintOrder = (mintOrRotateInvite as jest.Mock).mock.invocationCallOrder[0]
+    const sendOrder = (sendEmail as jest.Mock).mock.invocationCallOrder[0]
+
+    expect(claimOrder).toBeLessThan(mintOrder)
+    expect(mintOrder).toBeLessThan(sendOrder)
+  })
+
+  it('counts a mint failure as failed, never sends, and RESETS the claim (retryable)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'no-invite@example.com', unsubscribe_token: 'tok-a' }]
     const service = mockService({ eligibleRows })
@@ -137,10 +190,13 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     expect(body.delivered).toBe(0)
     expect(body.failed).toBe(1)
     expect(sendEmail).not.toHaveBeenCalled()
-    expect(service.updateSpy).not.toHaveBeenCalled()
+    // Claim (stamped), then reset (nulled) — two writes, not zero.
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({ notified_reopen_at: expect.any(String) }))
+    expect(service.updateSpy).toHaveBeenNthCalledWith(2, { notified_reopen_at: null })
   })
 
-  it('counts a send failure as failed and leaves notified_reopen_at unstamped (M5, retryable)', async () => {
+  it('counts a send failure as failed and RESETS the claim (M5, retryable)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'bounces@example.com', unsubscribe_token: 'tok-a' }]
     const service = mockService({ eligibleRows })
@@ -154,7 +210,54 @@ describe('POST /api/admin/artist-invites/broadcast', () => {
     expect(body.delivered).toBe(0)
     expect(body.failed).toBe(1)
     expect(mintOrRotateInvite).toHaveBeenCalledTimes(1)
-    expect(service.updateSpy).not.toHaveBeenCalled()
+    expect(service.updateSpy).toHaveBeenCalledTimes(2)
+    expect(service.updateSpy).toHaveBeenNthCalledWith(2, { notified_reopen_at: null })
+  })
+
+  it('skips a row whose claim is lost to a concurrent broadcast run, without mint/send or double-counting', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [
+      { id: 'w1', email: 'lost-race@example.com', unsubscribe_token: 'tok-a' },
+      { id: 'w2', email: 'wins-race@example.com', unsubscribe_token: 'tok-b' },
+    ]
+    const service = mockService({
+      eligibleRows,
+      claimResults: [
+        { data: null, error: null }, // w1: another concurrent run already claimed it
+        { data: { id: 'w2' }, error: null }, // w2: we win the claim
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.delivered).toBe(1)
+    expect(body.failed).toBe(0)
+    expect(mintOrRotateInvite).toHaveBeenCalledTimes(1)
+    expect(mintOrRotateInvite).toHaveBeenCalledWith(service, expect.objectContaining({ email: 'wins-race@example.com' }))
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect((sendEmail as jest.Mock).mock.calls[0][0].to).toBe('wins-race@example.com')
+  })
+
+  it('counts a claim UPDATE error as failed without minting or sending', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const eligibleRows: WaitlistRow[] = [{ id: 'w1', email: 'db-down@example.com', unsubscribe_token: 'tok-a' }]
+    const service = mockService({
+      eligibleRows,
+      claimResults: [{ data: null, error: { message: 'connection reset' } }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST()
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.delivered).toBe(0)
+    expect(body.failed).toBe(1)
+    expect(mintOrRotateInvite).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
   })
 
   it('queries with the opt-out + already-notified exclusion filters', async () => {

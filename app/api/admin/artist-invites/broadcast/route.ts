@@ -21,9 +21,21 @@ import { sendEmail } from '@/lib/email'
 // via the shared mintOrRotateInvite() claim (same helper the admin
 // issue-invite and convert routes use) BEFORE the send, so the link is one
 // the recipient is actually authorized to use. delivered/failed are
-// tracked SEPARATELY (M5): notified_reopen_at is stamped ONLY after a
-// successful send, so a mint or send failure leaves the row untouched and
-// retryable on the next broadcast run — never silently marked delivered.
+// tracked SEPARATELY (M5).
+//
+// (27-CODEX-REVIEW.md follow-up review — B3/M5 hardening) The original fix
+// selected eligible rows, then stamped notified_reopen_at AFTER a
+// successful send — not an atomic claim. Two overlapping broadcast runs
+// (a retry racing a still-in-flight leadership click, or two leadership
+// members triggering it near-simultaneously) could both select the SAME
+// unnotified row and both mint+email it before either stamp landed,
+// double-sending. Each row is now atomically CLAIMED (notified_reopen_at
+// stamped) BEFORE any mint/send work, via a single conditional
+// `UPDATE ... WHERE notified_reopen_at IS NULL` — Postgres executes that
+// as one statement, so only one concurrent caller can ever win the claim
+// for a given row. A mint or send failure RESETS the claim (sets
+// notified_reopen_at back to NULL) so the row stays retryable on the next
+// run instead of being silently marked delivered or permanently stuck.
 export async function POST() {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
@@ -46,9 +58,34 @@ export async function POST() {
   let failed = 0
 
   for (const row of eligible) {
-    // Mint/reuse/rotate this recipient's own authorizing invite BEFORE
-    // sending (B3) — a mint failure is recorded as failed and the row is
-    // left untouched (stays eligible for retry), never stamped.
+    // Atomically CLAIM this recipient BEFORE any mint/send work — the
+    // claim IS the stamp. A single conditional UPDATE is one statement in
+    // Postgres, so an overlapping broadcast run (or a retry racing this
+    // one) cannot also claim the same row (follow-up review B3/M5
+    // hardening). Checking the returned row (not just the error) is what
+    // makes this a claim rather than a blind write: no row back means
+    // someone else already owns it.
+    const claim = await service
+      .from('artist_waitlist')
+      .update({ notified_reopen_at: new Date().toISOString() })
+      .eq('id', row.id)
+      .is('notified_reopen_at', null)
+      .select('id')
+      .maybeSingle()
+
+    if (claim.error) {
+      failed += 1
+      continue
+    }
+    if (!claim.data) {
+      // Lost the claim race to a concurrent broadcast run — not this
+      // request's row to send; don't double-count it as failed, the
+      // request that won the claim is responsible for its outcome.
+      continue
+    }
+
+    // Mint/reuse/rotate this recipient's own authorizing invite now that
+    // we own the claim (B3).
     const mint = await mintOrRotateInvite(service, {
       email: row.email,
       source: 'staff',
@@ -56,6 +93,9 @@ export async function POST() {
     })
 
     if (!mint.ok) {
+      // Reset the claim so the row stays retryable on the next run
+      // instead of being stuck permanently "notified" with nothing sent.
+      await service.from('artist_waitlist').update({ notified_reopen_at: null }).eq('id', row.id)
       failed += 1
       continue
     }
@@ -67,16 +107,12 @@ export async function POST() {
     const sendResult = await sendEmail({ to: row.email, subject: template.subject, html: template.html, text: template.text })
 
     if (!sendResult.ok) {
-      // Send failed — leave notified_reopen_at unset (M5: a send failure
-      // must stay retryable, never silently marked delivered).
+      // Send failed — reset the claim (M5: a send failure must stay
+      // retryable, never silently marked delivered).
+      await service.from('artist_waitlist').update({ notified_reopen_at: null }).eq('id', row.id)
       failed += 1
       continue
     }
-
-    await service
-      .from('artist_waitlist')
-      .update({ notified_reopen_at: new Date().toISOString() })
-      .eq('id', row.id)
 
     delivered += 1
   }
