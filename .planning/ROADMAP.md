@@ -891,9 +891,24 @@ from **any collaborator** (an existing artist who names someone by email) **or a
 (Phase 25 staff). **Bootstrap:** the owner creates the **first artist account** with a **personal email** to
 seed the invite chain (artist signup is open today, so this seed can be created now; the gate governs *later* signups).
 
-**Requirements**: see `.planning/phases/27-artist-invite-only-onboarding/27-CONTEXT.md`
-**Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 001/039/075), the
+**Requirements**: provisional INVITE-01..12 (from 27-RESEARCH.md; register via /gsd-docs-update before phase close — Phase 26 SYNCLIB precedent). See `.planning/phases/27-artist-invite-only-onboarding/27-CONTEXT.md` (19 locked decisions D-01..D-19).
+**Depends on:** the artist auth flow + `handle_new_user` (`app/(auth)/signup`, migrations 086 current live body), the
 collaborator model + claim RPC (`lib/collaborators`, `components/collaborators/*`), Phase 25 (Team-Member invite source)
+
+**Plans:** 11 plans (planned 2026-08-09)
+
+Plans:
+- [ ] 27-01-PLAN.md — Invite & waitlist tables (migration 097) + invite schema module [wave 1]
+- [ ] 27-02-PLAN.md — Shared security + email utilities (rate-limit / turnstile / esc) [wave 1]
+- [ ] 27-03-PLAN.md — Collaborator-side invite prompt (D-08a) [wave 1]
+- [ ] 27-04-PLAN.md — Allowlist twin + server-authoritative gate (migration 098) [wave 2]
+- [ ] 27-05-PLAN.md — Three branded email templates (invite / spot-opened / reopened) [wave 2]
+- [ ] 27-06-PLAN.md — Public signup routes (check-invite + deep-link resolve) [wave 3]
+- [ ] 27-07-PLAN.md — Waitlist + resubscribe routes (captcha + rate-limit) [wave 3]
+- [ ] 27-08-PLAN.md — Team Console invite routes (list/add · convert · broadcast) [wave 3]
+- [ ] 27-09-PLAN.md — Signup gate state machine + unsubscribe page [wave 4]
+- [ ] 27-10-PLAN.md — Team Console Artist Invites UI + nav [wave 4]
+- [ ] 27-11-PLAN.md — Bootstrap + [BLOCKING] schema push + launch gates [wave 5]
 
 **Key open questions (27-CONTEXT):** the invite mechanism + enforcement point (an `artist_invites` allowlist
 checked in `handle_new_user`); whether adding a collaborator by email auto-creates an invite (reuse the existing
