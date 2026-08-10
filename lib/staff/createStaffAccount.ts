@@ -16,7 +16,7 @@ export class DuplicateStaffAccountError extends Error {}
 // creates a phantom user_profiles + subscriptions row this helper cleans up
 // below. What actually admits the account past migration 104's artist invite
 // gate is the account_provision_intents row that createUserWithProvisionIntent
-// writes (plus email_confirm:true), NOT the staff_role branch. The phantom-row
+// writes, NOT the staff_role branch. The phantom-row
 // cleanup below is therefore load-bearing, not a defensive no-op.
 //
 // app_metadata.staff_role is still set atomically inside createUser() (never a
@@ -33,10 +33,12 @@ export async function createStaffAccount(input: {
   const service = createServiceClient()
 
   // createUserWithProvisionIntent registers a service-role-only
-  // account_provision_intents row around createUser() so migration 104's gate
+  // account_provision_intents row around createUser() so migration 105's gate
   // exempts this staff account. app_metadata.staff_role is not visible to the
   // trigger at INSERT on this Supabase (applied after), so the staff branch
-  // cannot fire; the intent + email_confirm:true are what admit the account.
+  // cannot fire; the intent's unguessable id (carried in user_metadata) is what
+  // admits the account. email_confirm:true is passed for the account's own
+  // confirmation, not the gate (email_confirmed_at is not visible at INSERT — 27-13).
   const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,

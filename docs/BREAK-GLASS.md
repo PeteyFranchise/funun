@@ -16,12 +16,18 @@ INSERT, so `handle_new_user()`'s `role`/`staff_role` branches cannot fire at
 INSERT time — every admin-created account actually falls through to the
 artist branch. 098/099 relied on those branches to exempt the non-artist
 lanes, so the moment the gate went live it rejected buyer/staff/industry/
-curator creation (live smoke lane (d) = FAIL). Migration 104 fixes this: it
-exempts an account only when it sees BOTH (1) a row in the service-role-only
-`account_provision_intents` table (written by each `create*Account` helper
-immediately before `createUser()`) AND (2) `email_confirmed_at` set at INSERT
-(`email_confirm:true`). A self-serve signup can forge neither, and any
-missing signal fails **closed** (the invite gate still runs). The
+curator creation (live smoke lane (d) = FAIL). Migration 104 tried a two-signal
+exemption but was superseded by **migration 105** after the 27-11/27-12 cutovers:
+the 27-13 INSERT-time diagnostic proved that on this instance `email_confirmed_at`
+(like custom `app_metadata`) is NULL/absent in `NEW` at INSERT, while
+`user_metadata` IS visible. So migration 105 exempts an admin-provisioned account
+on a SINGLE unforgeable signal: a matching, unexpired row in the service-role-only
+`account_provision_intents` table, consumed by the row's unguessable 122-bit id,
+which each `create*Account` helper writes before `createUser()` and passes back
+through `user_metadata.provision_intent`. A self-serve signup controls its own
+`user_metadata` but cannot READ (the table is unreadable) or GUESS (122 bits) a
+valid id, so it can neither forge the exemption nor consume an admin's intent; a
+missing/absent/expired id fails **closed** (the invite gate still runs). The
 `role`/`staff_role` branches are kept as harmless defense-in-depth (correct
 automatically if a future GoTrue ever populates `app_metadata` at INSERT).
 
@@ -53,7 +59,7 @@ not share the service-role key or paste it into anything client-facing.
 
 Layers 1 and 2 are scoped and reversible (they don't touch the gate
 itself). Layer 3 is the nuclear option — it reopens *all* artist signup,
-with no invite required, until the gate (migration 104) is reapplied.
+with no invite required, until the gate (migration 105) is reapplied.
 Prefer Layer 1 or 2 whenever possible.
 
 ---
@@ -110,16 +116,16 @@ the normal artist signup form.
 
 ## Layer 2 — create an ungated admin (Team Member) account
 
-Under migration 104, a staff account is exempt from the artist gate because
+Under migration 105, a staff account is exempt from the artist gate because
 `createStaffAccount()` writes a service-role-only `account_provision_intents`
-row immediately before `auth.admin.createUser()` and creates the account
-email-confirmed (`email_confirm:true`) — the two signals the gate requires to
-exempt it. (The `app_metadata.staff_role` branch is *not* what exempts it on
-this Supabase — `app_metadata` isn't visible to the trigger at INSERT; see
-the top of this doc.) The **script path below writes that intent for you and
-always works.** The raw-SQL/Dashboard path does *not* — it has no way to
-write the intent before the Dashboard's INSERT fires the trigger — so read
-its caveat before relying on it.
+row immediately before `auth.admin.createUser()` and passes that row's
+unguessable id back through `user_metadata.provision_intent` — the single
+signal the gate consumes to exempt it. (The `app_metadata.staff_role` branch is
+*not* what exempts it on this Supabase — `app_metadata` isn't visible to the
+trigger at INSERT; see the top of this doc.) The **script path below writes
+that intent for you and always works.** The raw-SQL/Dashboard path does *not* —
+it has no way to write the intent (nor the matching `user_metadata`) before the
+Dashboard's INSERT fires the trigger — so read its caveat before relying on it.
 
 ### Script (works cleanly, gate live or not)
 
@@ -131,9 +137,9 @@ npm run break-glass -- create-staff you@example.com leadership
   `leadership`, `ae`, `bd` (see `lib/admin/staff-role.ts`).
 - Reuses `lib/staff/createStaffAccount.ts` — the same helper the Team
   Console's "invite staff" flow uses, including its rollback-on-partial-
-  failure discipline. It writes the `account_provision_intents` row and
-  creates the account email-confirmed, so migration 104's gate exempts it.
-  The trigger still runs its default branch, and the helper cleans up the
+  failure discipline. It writes the `account_provision_intents` row and passes
+  its id via `user_metadata.provision_intent`, so migration 105's gate exempts
+  it. The trigger still runs its default branch, and the helper cleans up the
   phantom `user_profiles`/`subscriptions` rows it leaves behind, as it always
   has.
 - Prints a one-time magic sign-in link directly to the terminal (in
@@ -151,7 +157,7 @@ generally only need Layer 2 once.
 
 **Caveat — the Dashboard path cannot satisfy the exemption, so grant an
 invite (Layer 1) first.** `auth.admin.createUser()` (the GoTrue admin API)
-isn't expressible as plain SQL, and migration 104's admin-provision exemption
+isn't expressible as plain SQL, and migration 105's admin-provision exemption
 is keyed to a SINGLE-USE intent id that the `create*Account` helper generates
 and passes through `user_metadata.provision_intent` at createUser() time. The
 Dashboard's **Authentication → Users → Add user** UI can set neither a
@@ -205,8 +211,8 @@ This is the last resort: it removes the invite requirement from artist
 signup completely by restoring `handle_new_user()` to its pre-gate body
 (migration 086's — curator → buyer → industry → default/artist, no gate,
 no staff branch). Every new artist signup is admitted again, exactly as it
-was before the gate shipped, until migration 104 is reapplied. This also
-removes migration 104's admin-provision exemption — but that only matters
+was before the gate shipped, until migration 105 is reapplied. This also
+removes migration 105's admin-provision exemption — but that only matters
 while the gate is on; with the gate off (this state) the default/artist
 branch admits everyone, so buyer/staff/industry/curator creation works too
 (the `create*Account` helpers' phantom-row cleanup runs as usual, and their
@@ -287,24 +293,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 After running this, artist signup at `/signup` is open to anyone again —
 no invite check. This is a deliberate, temporary state.
 
-**To restore the gate afterward, do NOT `db push` or re-run 098/099/104.**
-Once migration 104 has been applied, all three are already recorded in
-migration history, so `supabase db push` will not re-run any of them — and
-reapplying 098/099 by hand would reintroduce the exact non-artist provisioning
-outage 104 fixes (they exempt via the app_metadata branches this Supabase
-can't populate at INSERT — see the top of this doc). Restore the gate one of
-two ways instead:
+**To restore the gate afterward, do NOT `db push` or re-run 098/099/104/105.**
+Once a migration has been applied it is recorded in migration history, so
+`supabase db push` will not re-run it — and reapplying 098/099/104 by hand
+would reintroduce the exact non-artist provisioning outage (they exempt via
+signals this Supabase does not expose at INSERT — see the top of this doc).
+The corrected, working gate body is **migration 105**. Restore it one of two
+ways instead:
 
-- **Preferred:** add a NEW forward-numbered migration (e.g. `105_...`) whose
-  body is migration 104's corrected `CREATE OR REPLACE FUNCTION
-  public.handle_new_user()` (copy it verbatim, including the
-  account_provision_intents table if it was never created), and push that.
-- **In a pinch (raw):** paste migration 104's `CREATE OR REPLACE FUNCTION
+- **Preferred:** add a NEW forward-numbered migration (e.g. `106_...`) whose
+  body is migration 105's `CREATE OR REPLACE FUNCTION
+  public.handle_new_user()` (copy it verbatim; migration 105 already re-ensures
+  the account_provision_intents table with IF NOT EXISTS), and push that.
+- **In a pinch (raw):** paste migration 105's `CREATE OR REPLACE FUNCTION
   public.handle_new_user()` body directly into the Dashboard SQL editor, then
   reconcile it into a forward migration once you're back in the repo.
 
 Either way the corrected mechanism (account_provision_intents + the
-email-confirmed exemption) comes back with it — never the 098/099 bodies.
+intent-id exemption) comes back with it — never the 098/099 bodies.
 
 To confirm the revert took effect, check the function body in the
 Dashboard's SQL editor:

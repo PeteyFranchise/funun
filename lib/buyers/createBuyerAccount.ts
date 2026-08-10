@@ -15,7 +15,7 @@ export class DuplicateBuyerAccountError extends Error {}
 // default (artist) branch runs and creates a phantom user_profiles +
 // subscriptions row this helper deletes below. What admits the account past the
 // artist invite gate is the account_provision_intents token that
-// createUserWithProvisionIntent writes (plus email_confirm:true), NOT the buyer
+// createUserWithProvisionIntent writes, NOT the buyer
 // branch.
 //
 // app_metadata.role='buyer' is still set atomically inside createUser() (never
@@ -34,10 +34,13 @@ export async function createBuyerAccount(input: {
 
   // createUserWithProvisionIntent writes a service-role-only
   // account_provision_intents row before createUser() and clears it after, so
-  // migration 104's gate exempts this buyer from the artist invite gate. On
+  // migration 105's gate exempts this buyer from the artist invite gate. On
   // this Supabase, app_metadata is applied AFTER the auth.users INSERT, so the
   // trigger's buyer branch cannot fire and the account falls through to the
-  // gated artist branch — the intent + email_confirm:true are what admit it.
+  // gated artist branch — the intent's unguessable id (carried in user_metadata)
+  // is what admits it. email_confirm:true is still passed for the account's own
+  // confirmation, but is NOT a gate signal (email_confirmed_at is not visible at
+  // INSERT here — 27-13 diagnostic; that is why migration 105 dropped it).
   const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,

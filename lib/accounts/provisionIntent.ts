@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// ─── Admin account-provisioning intent (Phase 27 corrective, migration 104) ──
+// ─── Admin account-provisioning intent (Phase 27 corrective, migration 104/105) ──
 // Non-artist accounts (buyer/staff/industry/curator) are created via
 // service-role admin.createUser(). Because THIS Supabase instance applies
 // app_metadata AFTER the auth.users INSERT, handle_new_user()'s
@@ -10,10 +10,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // 098/099's invite gate would RAISE 'not_invited' and abort createUser()
 // (the 27-11 live-cutover regression).
 //
-// migration 104's gate exempts such an account only when it sees BOTH: (1) a
+// migration 105's gate exempts such an account on the intent id ALONE: a
 // matching, unexpired row in account_provision_intents — a service-role-only
 // table anon/authenticated cannot read or write — consumed by the row's
-// unguessable id, AND (2) the account being email-confirmed at INSERT.
+// unguessable 122-bit id, carried in user_metadata. (migration 104 also
+// required email_confirmed_at as a second factor, but the 27-13 diagnostic
+// proved that field — like custom app_metadata — is NULL in NEW at INSERT on
+// this instance, so that guard could never pass and was dropped; the id alone
+// is unforgeable and sufficient.)
 //
 // This module owns signal (1) as a SINGLE-USE, ATTEMPT-BOUND capability
 // (27-CODEX-REVIEW follow-up HIGH-1): it generates a fresh random id, inserts
@@ -32,7 +36,7 @@ type CreateUserResult = Awaited<ReturnType<SupabaseClient['auth']['admin']['crea
 
 /**
  * Runs `service.auth.admin.createUser(attrs)` bracketed by a single-use
- * provision-intent so migration 104's gate exempts the admin-created account
+ * provision-intent so migration 105's gate exempts the admin-created account
  * from the artist invite gate. The intent's random id is generated here,
  * inserted before createUser(), passed to the trigger via
  * user_metadata.provision_intent, and cleared by that exact id afterward.

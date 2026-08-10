@@ -24,8 +24,8 @@ export class DuplicateIndustryMemberError extends Error {}
 // the default (artist) branch creates a plain user_profiles row that this
 // function's reconciliation below UPGRADES to industry (member_type + roles +
 // capability grant). What admits the account past the artist invite gate is the
-// account_provision_intents token createUserWithProvisionIntent writes (plus
-// email_confirm:true); role_badges/profile_roles ride in user_metadata.
+// account_provision_intents token (its unguessable id) that
+// createUserWithProvisionIntent writes; role_badges/profile_roles ride in user_metadata.
 export async function provisionIndustryAccount(input: {
   email: string
   displayName: string
@@ -37,13 +37,14 @@ export async function provisionIndustryAccount(input: {
   const profileRoles = mapSlugsToProfileRoles(roleSlugs)
 
   // createUserWithProvisionIntent registers a service-role-only
-  // account_provision_intents row around createUser() so migration 104's gate
+  // account_provision_intents row around createUser() so migration 105's gate
   // exempts this account. app_metadata.role='industry' is not visible to the
   // trigger at INSERT on this Supabase (applied after), so the industry branch
   // cannot fire and the account falls through to the gated artist branch (then
-  // this function's reconciliation upgrades it) — the intent + email_confirm:
-  // true are what admit it. Also covers the curator-claim path, which mints
-  // its account through provisionIndustryAccount().
+  // this function's reconciliation upgrades it) — the intent's unguessable id
+  // (carried in user_metadata) is what admits it (email_confirm:true is for the
+  // account's own confirmation, not the gate — 27-13). Also covers the
+  // curator-claim path, which mints its account through provisionIndustryAccount().
   const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,
