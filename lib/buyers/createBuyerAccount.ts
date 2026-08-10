@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { createUserWithProvisionIntent } from '@/lib/accounts/provisionIntent'
 import { sendEmail } from '@/lib/email'
 import { buyerInviteEmail } from '@/lib/email/buyerInvite'
 import type { BuyerRole } from './schema'
@@ -8,17 +9,18 @@ export class DuplicateBuyerAccountError extends Error {}
 
 // ─── createBuyerAccount (D-11/D-12/D-13) ───────────────────────────────────
 // Standalone, reusable helper modelled line-for-line on
-// lib/industry/createIndustryMember.ts, with one critical divergence: buyers
-// follow the CURATOR early-return precedent, so this helper must NEVER
-// expect or create a user_profiles row — migration 080's handle_new_user()
-// buyer branch returns early with no user_profiles/subscriptions insert.
+// lib/industry/createIndustryMember.ts. Buyers get NO user_profiles row, but on
+// THIS Supabase app_metadata is applied AFTER the auth.users INSERT (migration
+// 104), so handle_new_user()'s buyer branch does NOT fire at INSERT — the
+// default (artist) branch runs and creates a phantom user_profiles +
+// subscriptions row this helper deletes below. What admits the account past the
+// artist invite gate is the account_provision_intents token that
+// createUserWithProvisionIntent writes (plus email_confirm:true), NOT the buyer
+// branch.
 //
-// app_metadata.role='buyer' MUST be set atomically inside
-// service.auth.admin.createUser() (never a post-insert UPDATE) so the
-// trigger's buyer branch fires in the same transaction with no phantom-row
-// race — the bug class this repo has already fixed twice (RESEARCH
-// Pitfall 1 / Pattern 2). display_name plus the org id and buyer tier are
-// passed through user_metadata for downstream display.
+// app_metadata.role='buyer' is still set atomically inside createUser() (never
+// a post-insert UPDATE) as defense in depth; the org id, buyer tier, and
+// display_name ride along in user_metadata for downstream display.
 export async function createBuyerAccount(input: {
   email: string
   displayName: string
@@ -30,7 +32,13 @@ export async function createBuyerAccount(input: {
   const { email, displayName, orgId, buyerRole, isOrgAdmin, invitedBy } = input
   const service = createServiceClient()
 
-  const { data: created, error: createError } = await service.auth.admin.createUser({
+  // createUserWithProvisionIntent writes a service-role-only
+  // account_provision_intents row before createUser() and clears it after, so
+  // migration 104's gate exempts this buyer from the artist invite gate. On
+  // this Supabase, app_metadata is applied AFTER the auth.users INSERT, so the
+  // trigger's buyer branch cannot fire and the account falls through to the
+  // gated artist branch — the intent + email_confirm:true are what admit it.
+  const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,
     app_metadata: { role: 'buyer' },
@@ -108,12 +116,34 @@ export async function createBuyerAccount(input: {
     }
     actionLink = link.properties.action_link
   } catch (err) {
+    // Checked compensation (HIGH-3, 27-CODEX-REVIEW follow-up): a buyer ghost
+    // is inert without a buyer_members row (the (buyer-portal) layout redirects
+    // it), but a failed deleteUser still leaves an orphaned auth user — inspect
+    // the result (Supabase returns { error }, doesn't throw) and surface it
+    // rather than reporting a clean failure while a stray account remains.
+    // cleanupFailed tracks only the AUTHORITATIVE cleanup (the auth deleteUser
+    // below). The buyer_members delete is best-effort and not folded in: it is
+    // non-authoritative AND cascaded by the auth delete (ON DELETE CASCADE on
+    // its auth.users FK), so folding it in would false-alarm on the common path.
+    let cleanupFailed = false
     try {
       await service.from('buyer_members').delete().eq('user_id', userId)
-    } catch {}
+    } catch {
+      // best-effort; cascaded by the auth deleteUser below (ON DELETE CASCADE)
+    }
     try {
-      await service.auth.admin.deleteUser(userId)
-    } catch {}
+      const { error: delErr } = await service.auth.admin.deleteUser(userId)
+      if (delErr) cleanupFailed = true
+    } catch {
+      cleanupFailed = true
+    }
+    if (cleanupFailed) {
+      throw new Error(
+        `Failed to create buyer account for ${email}, and cleanup did NOT complete — ` +
+          `an orphaned auth user may remain and should be removed manually. ` +
+          `Cause: ${err instanceof Error ? err.message : 'unknown error'}`
+      )
+    }
     throw new Error(
       `Failed to create buyer account: ${err instanceof Error ? err.message : 'unknown error'}`
     )

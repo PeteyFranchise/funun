@@ -30,24 +30,34 @@ function buildService(overrides: {
 
   const deleteEq = jest.fn(async () => ({ error: null }))
   const deleteUser = jest.fn(async () => ({ error: null }))
+  // HIGH-3: compensation clears staff_role before delete; default = success.
+  const updateUserById = jest.fn(async () => ({ error: null }))
   const fununStaffInsert = jest.fn(async () => overrides.fununStaffInsertResult ?? { error: null })
+  // account_provision_intents (migration 104): written before createUser() and
+  // cleared after by createUserWithProvisionIntent.
+  const intentInsert = jest.fn(async () => ({ error: null }))
 
   const from = jest.fn((table: string) => {
     // funun_staff supports both the insert and the compensation delete
     if (table === 'funun_staff') {
       return { insert: fununStaffInsert, delete: jest.fn(() => ({ eq: deleteEq })) }
     }
+    if (table === 'account_provision_intents') {
+      return { insert: intentInsert, delete: jest.fn(() => ({ eq: deleteEq })) }
+    }
     // subscriptions / user_profiles phantom-row cleanup
     return { delete: jest.fn(() => ({ eq: deleteEq })) }
   })
 
   return {
-    auth: { admin: { createUser, generateLink, deleteUser } },
+    auth: { admin: { createUser, generateLink, deleteUser, updateUserById } },
     from,
     createUser,
     generateLink,
     deleteUser,
+    updateUserById,
     fununStaffInsert,
+    intentInsert,
     deleteEq,
   }
 }
@@ -92,6 +102,12 @@ describe('createStaffAccount', () => {
       user_id: USER_ID,
       staff_role: 'bd',
       display_name: 'BD Person',
+    })
+    // migration 104: a single-use intent row (client-generated id + lower-cased
+    // email) admits this staff signup past the artist gate.
+    expect(service.intentInsert).toHaveBeenCalledWith({
+      id: expect.any(String),
+      email: 'bd@funun.studio',
     })
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: 'bd@funun.studio' })

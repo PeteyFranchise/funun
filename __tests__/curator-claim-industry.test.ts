@@ -26,21 +26,26 @@ const TOKEN = 'tok_abc123'
 
 function buildService({
   curatorRow,
-  claimedRow = { id: 'cur1' },
+  claimResults = [{ data: { id: 'cur1' }, error: null }],
+  deleteUserResult = { error: null },
   generateLinkResult = {
     data: { properties: { action_link: 'https://funun.app/magic' }, user: { id: 'existing-user-1' } },
     error: null,
   },
 }: {
   curatorRow: unknown
-  claimedRow?: unknown | null
+  claimResults?: Array<{ data: unknown; error: unknown }>
+  deleteUserResult?: { error: unknown }
   generateLinkResult?: unknown
 }) {
   const maybeSingleSelect = jest.fn(async () => ({ data: curatorRow, error: null }))
   const eqSelect = jest.fn(() => ({ maybeSingle: maybeSingleSelect }))
   const select = jest.fn(() => ({ eq: eqSelect }))
 
-  const maybeSingleUpdate = jest.fn(async () => ({ data: claimedRow, error: null }))
+  // Each claim CAS call (the primary attempt + any idempotent retry) consumes
+  // the next result; the last repeats if there are more calls than results.
+  let claimCall = 0
+  const maybeSingleUpdate = jest.fn(async () => claimResults[Math.min(claimCall++, claimResults.length - 1)])
   const selectUpdate = jest.fn(() => ({ maybeSingle: maybeSingleUpdate }))
   const isSpy = jest.fn(() => ({ select: selectUpdate }))
   const eqUpdate2 = jest.fn(() => ({ is: isSpy }))
@@ -48,16 +53,17 @@ function buildService({
   const update = jest.fn(() => ({ eq: eqUpdate1 }))
 
   const generateLink = jest.fn(async () => generateLinkResult)
+  const deleteUser = jest.fn(async () => deleteUserResult)
 
   const service = {
     from: jest.fn((table: string) => {
       if (table !== 'curators') throw new Error(`Unexpected table in mock: ${table}`)
       return { select, update }
     }),
-    auth: { admin: { generateLink } },
+    auth: { admin: { generateLink, deleteUser } },
   }
 
-  return { service, select, eqSelect, update, eqUpdate1, eqUpdate2, isSpy, generateLink, maybeSingleUpdate }
+  return { service, select, eqSelect, update, eqUpdate1, eqUpdate2, isSpy, generateLink, deleteUser, maybeSingleUpdate }
 }
 
 function req() {
@@ -135,7 +141,7 @@ describe('POST /api/curators/claim/[token]', () => {
     expect(sendEmail).toHaveBeenCalledTimes(1)
   })
 
-  it('returns 410 when the atomic conditional UPDATE matches zero rows (concurrent double-claim)', async () => {
+  it('returns 410 when the atomic conditional UPDATE matches zero rows (concurrent double-claim) — and does NOT delete the account (a concurrent claim reused it)', async () => {
     const curatorRow = {
       id: 'cur1',
       email: 'curator@example.com',
@@ -143,11 +149,90 @@ describe('POST /api/curators/claim/[token]', () => {
       claim_token_expires_at: null,
       claimed_by: null,
     }
-    const { service } = buildService({ curatorRow, claimedRow: null })
+    const { service, deleteUser } = buildService({ curatorRow, claimResults: [{ data: null, error: null }] })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
 
     const res = await POST(req(), params())
     expect(res.status).toBe(410)
+    // A zero-row result means the row is already linked to this same account —
+    // never delete it.
+    expect(deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('re-attempts the idempotent claim on an ambiguous transport error and succeeds — NEVER deletes (HIGH: no live-account deletion)', async () => {
+    const curatorRow = {
+      id: 'cur1',
+      email: 'curator@example.com',
+      name: 'Nova Curator',
+      claim_token_expires_at: null,
+      claimed_by: null,
+    }
+    // First claim CAS errors (ambiguous), the retry lands the claim.
+    const { service, deleteUser, maybeSingleUpdate } = buildService({
+      curatorRow,
+      claimResults: [
+        { data: null, error: { message: 'db down' } },
+        { data: { id: 'cur1' }, error: null },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+
+    const res = await POST(req(), params())
+    expect(res.status).toBe(200)
+    expect(maybeSingleUpdate).toHaveBeenCalledTimes(2) // primary + retry
+    expect(deleteUser).not.toHaveBeenCalled() // never delete on the ambiguous path
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('ambiguous error then a retry that finds the row already claimed (our own lost-response commit) → 200, sends once, never deletes', async () => {
+    const curatorRow = {
+      id: 'cur1',
+      email: 'curator@example.com',
+      name: 'Nova Curator',
+      claim_token_expires_at: null,
+      claimed_by: null,
+    }
+    // Primary errored (response lost after commit); retry finds zero rows
+    // because our own earlier UPDATE actually landed — treated as success.
+    const { service, deleteUser, maybeSingleUpdate } = buildService({
+      curatorRow,
+      claimResults: [
+        { data: null, error: { message: 'response lost' } },
+        { data: null, error: null },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+
+    const res = await POST(req(), params())
+    expect(res.status).toBe(200)
+    expect(maybeSingleUpdate).toHaveBeenCalledTimes(2)
+    expect(deleteUser).not.toHaveBeenCalled()
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces manual reconciliation (500) WITHOUT deleting when the claim errors twice', async () => {
+    const curatorRow = {
+      id: 'cur1',
+      email: 'curator@example.com',
+      name: 'Nova Curator',
+      claim_token_expires_at: null,
+      claimed_by: null,
+    }
+    const { service, deleteUser } = buildService({
+      curatorRow,
+      claimResults: [
+        { data: null, error: { message: 'db down' } },
+        { data: null, error: { message: 'still down' } },
+      ],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(provisionIndustryAccount as jest.Mock).mockResolvedValueOnce({ userId: 'u1' })
+
+    const res = await POST(req(), params())
+    expect(res.status).toBe(500)
+    expect(deleteUser).not.toHaveBeenCalled() // still never delete
   })
 })

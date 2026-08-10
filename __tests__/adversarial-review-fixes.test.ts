@@ -29,6 +29,8 @@ type GtCall = [string, unknown]
 type TestBuilder = {
   select: jest.Mock
   update: jest.Mock
+  insert: jest.Mock
+  delete: jest.Mock
   eq: jest.Mock
   gt: jest.Mock
   is: jest.Mock
@@ -59,6 +61,12 @@ function makeBuilder(result: unknown = { data: null, error: null }) {
   const builder: TestBuilder = {
     select: jest.fn(() => builder),
     update: jest.fn(() => builder),
+    // account_provision_intents (migration 104): the curator-claim path flows
+    // through provisionIndustryAccount → createUserWithProvisionIntent, which
+    // writes/clears an intent row. These make the generic builder absorb those
+    // calls (result is ignored by the wrapper).
+    insert: jest.fn(() => builder),
+    delete: jest.fn(() => builder),
     eq: jest.fn((column: string, value: unknown) => {
       eqCalls.push([column, value])
       return builder

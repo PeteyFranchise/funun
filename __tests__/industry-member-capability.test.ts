@@ -21,9 +21,16 @@ const mockGrantsSelect = jest.fn(() => {
   }
   return chain
 })
+// account_provision_intents (migration 104): createUserWithProvisionIntent
+// writes a row before createUser() and clears it after.
+const mockIntentInsert = jest.fn().mockResolvedValue({ error: null })
+const mockIntentDeleteEq = jest.fn().mockResolvedValue({ error: null })
+const mockIntentDelete = jest.fn(() => ({ eq: mockIntentDeleteEq }))
 const mockFrom = jest.fn((table: string) => {
   if (table === 'user_profiles') return { update: mockProfilesUpdate }
   if (table === 'capability_grants') return { select: mockGrantsSelect, insert: mockGrantsInsert }
+  if (table === 'account_provision_intents')
+    return { insert: mockIntentInsert, delete: mockIntentDelete }
   return {}
 })
 

@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { createUserWithProvisionIntent } from '@/lib/accounts/provisionIntent'
 import { sendEmail } from '@/lib/email'
 import { staffInviteEmail } from '@/lib/email/staffInvite'
 import type { StaffRole } from '@/lib/admin/gate'
@@ -8,24 +9,20 @@ export class DuplicateStaffAccountError extends Error {}
 
 // ─── createStaffAccount (Phase 25, D-01/D-02/D-04) ─────────────────────────
 // Standalone, reusable helper modelled line-for-line on
-// lib/buyers/createBuyerAccount.ts, with one critical divergence:
-// migrations 086-098 shipped handle_new_user() with NO staff branch — a new
-// staff account fell through to the default artist branch, inserting a
-// phantom user_profiles + subscriptions row and running
-// claim_collaborators() (and, once migration 098's invite gate went live,
-// getting REJECTED outright by it — 27-CODEX-REVIEW.md B1). Migration 099
-// adds a native staff early-return branch keyed on app_metadata.staff_role,
-// which this function sets atomically inside createUser() below, so as of
-// 099 the phantom-row cleanup further down never actually fires (the
-// trigger no longer creates those rows for a staff signup). It is left in
-// place as a defensive no-op: it costs nothing when there is nothing to
-// clean up, and keeps this helper correct for the window before 099 is
-// pushed, or if Layer 3 of docs/BREAK-GLASS.md is ever used to temporarily
-// revert the gate (which also reverts the staff branch).
+// lib/buyers/createBuyerAccount.ts. handle_new_user()'s staff branch is keyed
+// on app_metadata.staff_role, but on THIS Supabase app_metadata is applied
+// AFTER the auth.users INSERT (see migration 104), so that branch never fires
+// at INSERT — a new staff signup runs the DEFAULT (artist) branch, which
+// creates a phantom user_profiles + subscriptions row this helper cleans up
+// below. What actually admits the account past migration 104's artist invite
+// gate is the account_provision_intents row that createUserWithProvisionIntent
+// writes (plus email_confirm:true), NOT the staff_role branch. The phantom-row
+// cleanup below is therefore load-bearing, not a defensive no-op.
 //
-// app_metadata.staff_role MUST be set atomically inside
-// service.auth.admin.createUser() (never a post-insert UPDATE) — RESEARCH's
-// Anti-Pattern, mirrors every other account-creation helper in this repo.
+// app_metadata.staff_role is still set atomically inside createUser() (never a
+// post-insert UPDATE) so requireStaff() trusts it and the defense-in-depth
+// staff branch is correct if a future GoTrue ever exposes app_metadata at
+// INSERT — mirrors every other account-creation helper in this repo.
 export async function createStaffAccount(input: {
   email: string
   displayName: string
@@ -35,7 +32,12 @@ export async function createStaffAccount(input: {
   const { email, displayName, staffRole, invitedBy } = input
   const service = createServiceClient()
 
-  const { data: created, error: createError } = await service.auth.admin.createUser({
+  // createUserWithProvisionIntent registers a service-role-only
+  // account_provision_intents row around createUser() so migration 104's gate
+  // exempts this staff account. app_metadata.staff_role is not visible to the
+  // trigger at INSERT on this Supabase (applied after), so the staff branch
+  // cannot fire; the intent + email_confirm:true are what admit the account.
+  const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,
     app_metadata: { staff_role: staffRole },
@@ -71,16 +73,13 @@ export async function createStaffAccount(input: {
   // fatal-with-rollback.
   let actionLink: string
   try {
-    // Pre-migration-099, handle_new_user's default branch had no staff early
-    // return, so it fired for every new staff auth user — creating a phantom
-    // user_profiles + subscriptions row. Migration 099 adds a native staff
-    // branch that RETURNs NEW before any insert, so these deletes are now a
-    // defensive no-op (nothing to clean up) once 099 is live — kept for the
-    // window before it's pushed and for the Layer-3 gate-revert case
-    // (docs/BREAK-GLASS.md). Staff have NO artist profile; a lingering
-    // user_profiles row would even make the account wrongly Green-Room-
-    // eligible, so a cleanup error (on the rare path where it still applies)
-    // stays fatal rather than ignored.
+    // handle_new_user()'s staff branch can't fire at INSERT on this Supabase
+    // (app_metadata applied post-INSERT, migration 104), so the default branch
+    // creates a phantom user_profiles + subscriptions row for every new staff
+    // signup — these deletes are load-bearing, not a no-op. Staff have NO
+    // artist profile; a lingering user_profiles row would even make the account
+    // wrongly Green-Room-eligible, so a cleanup error stays fatal rather than
+    // ignored.
     const { error: subErr } = await service.from('subscriptions').delete().eq('user_id', userId)
     if (subErr) throw new Error(`subscriptions cleanup failed: ${subErr.message}`)
     const { error: profErr } = await service.from('user_profiles').delete().eq('id', userId)
@@ -104,13 +103,44 @@ export async function createStaffAccount(input: {
     }
     actionLink = link.properties.action_link
   } catch (err) {
-    // Best-effort compensation so a retry starts clean and no ghost principal remains.
+    // Compensation (HIGH-3, 27-CODEX-REVIEW follow-up): requireStaff() trusts
+    // app_metadata.staff_role, so a failed cleanup that leaves the auth user
+    // behind is a TRUSTED ghost principal, not an inert row. Clear the role
+    // FIRST (so even a later delete failure leaves nothing privileged), then
+    // remove the directory + auth rows. cleanupFailed tracks the AUTHORITATIVE
+    // results (role-clear + auth delete) — a miss on either surfaces as "manual
+    // intervention required" instead of a clean-looking failure. The funun_staff
+    // delete is best-effort and intentionally NOT folded in: it is
+    // non-authoritative AND its auth.users FK is ON DELETE CASCADE, so a
+    // successful auth delete removes it regardless — folding it in would raise a
+    // false alarm on the common path where deleteUser succeeds and cascades it.
+    let cleanupFailed = false
+    try {
+      const { error: roleErr } = await service.auth.admin.updateUserById(userId, {
+        app_metadata: { staff_role: null },
+      })
+      if (roleErr) cleanupFailed = true
+    } catch {
+      cleanupFailed = true
+    }
     try {
       await service.from('funun_staff').delete().eq('user_id', userId)
-    } catch {}
+    } catch {
+      // best-effort; cascaded by the auth deleteUser below (ON DELETE CASCADE)
+    }
     try {
-      await service.auth.admin.deleteUser(userId)
-    } catch {}
+      const { error: delErr } = await service.auth.admin.deleteUser(userId)
+      if (delErr) cleanupFailed = true
+    } catch {
+      cleanupFailed = true
+    }
+    if (cleanupFailed) {
+      throw new Error(
+        `Failed to create staff account for ${email}, and cleanup did NOT complete — ` +
+          `an auth user carrying app_metadata.staff_role may still exist and must be ` +
+          `removed manually. Cause: ${err instanceof Error ? err.message : 'unknown error'}`
+      )
+    }
     throw new Error(
       `Failed to create staff account: ${err instanceof Error ? err.message : 'unknown error'}`
     )

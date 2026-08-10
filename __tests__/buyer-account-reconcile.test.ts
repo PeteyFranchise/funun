@@ -13,11 +13,18 @@ const mockSubsDelete = jest.fn(() => ({ eq: mockSubsDeleteEq }))
 const mockProfilesDeleteEq = jest.fn().mockResolvedValue({ error: null })
 const mockProfilesDelete = jest.fn(() => ({ eq: mockProfilesDeleteEq }))
 const mockMembersInsert = jest.fn().mockResolvedValue({ error: null })
+// account_provision_intents (migration 104): createUserWithProvisionIntent
+// writes a row before createUser() and clears it after.
+const mockIntentInsert = jest.fn().mockResolvedValue({ error: null })
+const mockIntentDeleteEq = jest.fn().mockResolvedValue({ error: null })
+const mockIntentDelete = jest.fn(() => ({ eq: mockIntentDeleteEq }))
 
 const mockFrom = jest.fn((table: string) => {
   if (table === 'subscriptions') return { delete: mockSubsDelete }
   if (table === 'user_profiles') return { delete: mockProfilesDelete }
   if (table === 'buyer_members') return { insert: mockMembersInsert }
+  if (table === 'account_provision_intents')
+    return { insert: mockIntentInsert, delete: mockIntentDelete }
   return {}
 })
 
@@ -61,5 +68,13 @@ describe('createBuyerAccount — Bug-1 phantom-profile reconciliation', () => {
 
     // and it still creates the buyer_members row (unchanged behavior)
     expect(mockMembersInsert).toHaveBeenCalled()
+
+    // migration 104: a single-use intent row (client-generated id + lower-cased
+    // email) is written so the gate exempts this buyer, then cleared by that id.
+    expect(mockIntentInsert).toHaveBeenCalledWith({
+      id: expect.any(String),
+      email: 'buyer@example.com',
+    })
+    expect(mockIntentDeleteEq).toHaveBeenCalledWith('id', expect.any(String))
   })
 })

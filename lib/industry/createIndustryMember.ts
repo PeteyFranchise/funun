@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { createUserWithProvisionIntent } from '@/lib/accounts/provisionIntent'
 import { sendEmail } from '@/lib/email'
 import { industryInviteEmail } from '@/lib/email/industryInvite'
 import { mapSlugsToProfileRoles } from './roleMapping'
@@ -16,13 +17,15 @@ export class DuplicateIndustryMemberError extends Error {}
 // generateLink, no sendEmail. Enabling substrate for a future community/
 // Team-Member industry invite (INDUSTRY-03).
 //
-// app_metadata.role='industry' MUST be set atomically inside admin.createUser()
-// (never a post-insert UPDATE) — mirrors the curator-claim precedent so
-// handle_new_user()'s industry branch (migration 039) fires in the same
-// transaction and builds a real artist_profiles row + free subscription,
-// with no phantom-row race (RESEARCH Pitfall 2/3). This function does NOT
-// insert into artist_profiles or subscriptions itself — the trigger owns
-// those, reading role_badges and profile_roles back out of user_metadata.
+// app_metadata.role='industry' is set atomically inside admin.createUser()
+// (never a post-insert UPDATE) as defense in depth, but on THIS Supabase
+// app_metadata is applied AFTER the auth.users INSERT (migration 104), so
+// handle_new_user()'s industry branch (migration 039) does NOT fire at INSERT —
+// the default (artist) branch creates a plain user_profiles row that this
+// function's reconciliation below UPGRADES to industry (member_type + roles +
+// capability grant). What admits the account past the artist invite gate is the
+// account_provision_intents token createUserWithProvisionIntent writes (plus
+// email_confirm:true); role_badges/profile_roles ride in user_metadata.
 export async function provisionIndustryAccount(input: {
   email: string
   displayName: string
@@ -33,7 +36,15 @@ export async function provisionIndustryAccount(input: {
   const service = createServiceClient()
   const profileRoles = mapSlugsToProfileRoles(roleSlugs)
 
-  const { data: created, error: createError } = await service.auth.admin.createUser({
+  // createUserWithProvisionIntent registers a service-role-only
+  // account_provision_intents row around createUser() so migration 104's gate
+  // exempts this account. app_metadata.role='industry' is not visible to the
+  // trigger at INSERT on this Supabase (applied after), so the industry branch
+  // cannot fire and the account falls through to the gated artist branch (then
+  // this function's reconciliation upgrades it) — the intent + email_confirm:
+  // true are what admit it. Also covers the curator-claim path, which mints
+  // its account through provisionIndustryAccount().
+  const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,
     app_metadata: { role: 'industry' },
@@ -108,14 +119,25 @@ export async function provisionIndustryAccount(input: {
       if (grantErr) throw new Error(`capability_grants insert failed: ${grantErr.message}`)
     }
   } catch (err) {
-    // Best-effort compensation: remove the auth user (its trigger-created
-    // user_profiles row cascades via the auth.users FK) so no half-provisioned
-    // industry account is left behind.
+    // Checked compensation (HIGH-3, 27-CODEX-REVIEW follow-up): remove the auth
+    // user (its trigger-created user_profiles row + capability grant cascade
+    // via the auth.users FK) so no half-provisioned industry account is left
+    // behind — and inspect the result (Supabase returns { error }, doesn't
+    // throw) so a cleanup that didn't land surfaces instead of a clean-looking
+    // failure.
+    let cleanupFailed = false
     try {
-      await service.auth.admin.deleteUser(userId)
-    } catch {}
+      const { error: delErr } = await service.auth.admin.deleteUser(userId)
+      if (delErr) cleanupFailed = true
+    } catch {
+      cleanupFailed = true
+    }
     throw new Error(
-      `Failed to provision industry account: ${err instanceof Error ? err.message : 'unknown error'}`
+      cleanupFailed
+        ? `Failed to provision industry account for ${email}, and cleanup did NOT complete — ` +
+            `an orphaned auth user may remain and should be removed manually. ` +
+            `Cause: ${err instanceof Error ? err.message : 'unknown error'}`
+        : `Failed to provision industry account: ${err instanceof Error ? err.message : 'unknown error'}`
     )
   }
 
@@ -144,8 +166,24 @@ export async function createIndustryMember(input: {
     email,
   })
   if (linkError || !link?.properties?.action_link) {
+    // MEDIUM-3 (27-CODEX-REVIEW follow-up): the account was fully provisioned
+    // above, so a bare throw would leave it complete-but-unlinked and a retry
+    // would hit DuplicateIndustryMemberError. Compensate by removing it so a
+    // retry starts clean; inspect the delete result and surface loudly if the
+    // cleanup itself did not land.
+    let cleanupFailed = false
+    try {
+      const { error: delErr } = await service.auth.admin.deleteUser(userId)
+      if (delErr) cleanupFailed = true
+    } catch {
+      cleanupFailed = true
+    }
+    const cause = linkError?.message ?? 'could not generate invite link'
     throw new Error(
-      `Failed to create industry member: ${linkError?.message ?? 'could not generate invite link'}`
+      cleanupFailed
+        ? `Failed to create industry member for ${email}, and cleanup did NOT complete — ` +
+            `an orphaned account may remain and should be removed manually. Cause: ${cause}`
+        : `Failed to create industry member: ${cause}`
     )
   }
 

@@ -10,15 +10,18 @@ import { provisionIndustryAccount, DuplicateIndustryMemberError } from '@/lib/in
 // INDUSTRY-04. Public — no session required to call this route; the token
 // itself is the authentication.
 //
-// CRITICAL (RESEARCH.md Pitfall 1 / T-06-01 / T-28-03-02): app_metadata.role
-// MUST be set AT createUser() time, not via a post-insert UPDATE — that is
-// what makes handle_new_user()'s industry branch (migration 039) fire
-// correctly instead of racing a phantom-row. provisionIndustryAccount()
-// (lib/industry/createIndustryMember.ts) is the shared primitive that
-// enforces this; this route does NOT call admin.createUser() directly and
-// NEVER mints app_metadata.role='curator' again. It also does NOT call
-// createIndustryMember() wholesale — that would send its own cold-invite
-// email on top of this route's curator-claim copy (RESEARCH Pitfall 4).
+// NOTE (migration 104 / 27-CODEX-REVIEW follow-up): on this Supabase,
+// app_metadata is applied AFTER the auth.users INSERT, so handle_new_user()'s
+// industry branch (migration 039) does NOT fire at INSERT — the account is
+// created via the default branch and provisionIndustryAccount() reconciles it
+// to industry afterward. app_metadata.role='industry' is still set AT
+// createUser() time (never a post-insert UPDATE) as defense in depth, but what
+// actually admits the account past the artist invite gate is the single-use
+// account_provision_intents token that provisionIndustryAccount() writes (via
+// createUserWithProvisionIntent). This route does NOT call admin.createUser()
+// directly and NEVER mints app_metadata.role='curator'. It also does NOT call
+// createIndustryMember() wholesale — that would send its own cold-invite email
+// on top of this route's curator-claim copy (RESEARCH Pitfall 4).
 export async function POST(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const service = createServiceClient()
@@ -92,7 +95,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     return NextResponse.json({ ok: true })
   }
 
-  const { data: claimed, error: claimError } = await service
+  let { data: claimed, error: claimError } = await service
     .from('curators')
     .update({ claimed_by: userId, claim_token: null })
     .eq('id', curator.id)
@@ -100,7 +103,45 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     .is('claimed_by', null)
     .select('id')
     .maybeSingle()
-  if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
+
+  // We just created a NEW industry account (userId). A hard transport error on
+  // our claim UPDATE is AMBIGUOUS — the UPDATE may have COMMITTED (response
+  // lost), or a concurrent claim may have linked THIS SAME account (email is
+  // unique in auth.users, so a racing request reuses userId via the
+  // Duplicate→fallback path above). Deleting the account here is UNSAFE: it
+  // could destroy a legitimately-linked account, or one our own UPDATE actually
+  // committed (27-CODEX-REVIEW final review, HIGH). So NEVER delete — instead
+  // re-attempt the IDEMPOTENT claim once to resolve the true state. The retry
+  // either lands our claim, or no-ops because the row is already linked to this
+  // account (our earlier commit or a concurrent claim reusing userId); both are
+  // success. Only a second transport failure leaves it for manual
+  // reconciliation — still without deleting. (A zero-ROW result, `!claimed`, is
+  // likewise never an orphan and never deletes: it means the row is already
+  // claimed by this same account.)
+  if (claimError) {
+    const retry = await service
+      .from('curators')
+      .update({ claimed_by: userId, claim_token: null })
+      .eq('id', curator.id)
+      .eq('claim_token', token)
+      .is('claimed_by', null)
+      .select('id')
+      .maybeSingle()
+    if (retry.error) {
+      return NextResponse.json(
+        {
+          error:
+            `We couldn't confirm your account claim. Your account may already be ` +
+            `set up — try signing in, or contact support if no email arrives. ` +
+            `(${retry.error.message})`,
+        },
+        { status: 500 }
+      )
+    }
+    claimed = retry.data ?? { id: curator.id }
+    claimError = null
+  }
+
   if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
   // Send the actual magic link via Resend (lib/email), not Supabase's
