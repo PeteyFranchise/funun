@@ -1,7 +1,11 @@
 # 27-13 — INSERT-time diagnostic + migration 105 (id-only exemption)
 
-**Status:** built, unit-tested (171 suites / 2048 tests), typechecked (0 errors).
-NOT yet pushed. App is deployed. Awaiting review → push migration 105 → live smoke.
+**Status:** SHIPPED — migration 105 live in production (2026-08-10). Codex
+security confirm PASS (no blockers) + live acceptance smoke GREEN across all
+lanes (uninvited artist rejected; invited admitted; buyer/staff/industry/curator
+all create via the real helpers). No rollback needed. Committed db8ee97 on
+main/origin; app deployed. The invite-only artist gate is now live and enforced
+at the database, and non-artist provisioning works.
 
 ## Why 104 failed twice (27-11 and 27-12 cutovers)
 

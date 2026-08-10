@@ -1,6 +1,6 @@
 # Funūn — build status & next steps
 
-> Last updated: 2026-06-25 · Active branch: `main` · Latest: **Wave 1 complete** (PRs #3–#5 merged); Benchmarking + Antenna (PR #2) and redesign (PR #1) also merged
+> Last updated: 2026-08-10 · Active branch: `main` · **Live in production at [funun.studio](https://funun.studio)** (Vercel + Supabase) · Latest: **Wave 2 — Phase 27 (invite-only artist onboarding) shipped** — the artist signup gate is live in the database (migration 105). Wave 1 complete earlier (PRs #3–#5).
 > Repo: https://github.com/PeteyFranchise/funun
 
 A running handoff of where the build stands and what's next. Resume by opening a
@@ -10,6 +10,40 @@ Claude session **rooted in this repo** (see "Continue / resume" at the bottom).
 > onboarding: match existing patterns, comment the non-obvious *why*, keep these
 > docs + `.env.example` current, never commit secrets, and keep commits and PRs
 > small, clear, and scoped. Assume a new contributor reads this file first.
+
+---
+
+## Current state — 2026-08-10
+
+**Live in production at [funun.studio](https://funun.studio)** (Vercel + Supabase).
+**Wave 2 — Rights & Registration Rails** is underway; most recently shipped:
+
+### Phase 27 — Invite-only artist onboarding ✅ SHIPPED (2026-08-10)
+Artist self-serve signup is now **invite-only, enforced in the database** (the
+`handle_new_user()` trigger, migration 105). A new artist with no invite (and
+not in `collaborators`) can't create an account — they get the invite-only
+screen and can join the **waiting list**; invited artists get in. **Existing
+accounts are unaffected.**
+- Signup UX at `/signup`: invite-gate → `check-invite` → waitlist, Cloudflare
+  Turnstile–protected. Team Console (`/admin/artist-invites`) issues invites;
+  branded invite / "spot opened" / reopened emails; unsubscribe → resubscribe.
+- Non-artist lanes (buyer / staff / industry / curator) are **exempt** via a
+  single-use, service-role-only **provision-intent token** carried in
+  `user_metadata` (migration 105) — admin-provisioned accounts still create.
+- **Break-glass** self-lockout recovery: `docs/BREAK-GLASS.md` +
+  `scripts/break-glass.ts` (grant invite / create staff / revert gate).
+- Migrations **097–105** applied to the live DB; ~2,050 tests green.
+- The cutover took three attempts: this Supabase applies `app_metadata` **and**
+  `email_confirmed_at` *after* the `auth.users` INSERT — only `user_metadata`
+  is visible to the trigger at INSERT — so migration 105 keys the exemption on
+  the `user_metadata` intent-id. Full write-up:
+  `.planning/phases/27-artist-invite-only-onboarding/27-13-SUMMARY.md`.
+- **0 pending invites** by choice — signup is closed to brand-new self-serve
+  artists; the team issues invites going forward.
+
+> Earlier Wave 2 phases (collaborator profiles, document lifecycle / e-sign,
+> rights guidance, buyer / industry / staff onboarding — roughly Phases 21–26/28)
+> are not re-summarized here; see `.planning/` for their per-phase status.
 
 ---
 
@@ -98,10 +132,10 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
   - mailing address / country (registration + payouts)
   - Storage: a per-artist `collaborators` table (needs a migration) + auto-fill UI.
 - [ ] **Revoke the temp Supabase Management token** if still active (was used for migrations 016–017).
-- [ ] **Domain — `funun.studio`** (purchased via Squarespace, 2026-06-26). Point DNS at the
-      app host (e.g. Vercel), stand up branded email (hello@ / support@ / privacy@funun.studio),
-      and use HTTPS `funun.studio` URLs for OAuth + e-sign redirect URIs. Effectively locks the
-      brand to **Funūn**.
+- [x] **Domain — `funun.studio`** — **LIVE** on Vercel over HTTPS (app deploys here from
+      `main`). Brand locked to **Funūn**. Remaining: stand up branded email
+      (hello@ / support@ / privacy@funun.studio) and use `funun.studio` URLs for any OAuth /
+      e-sign redirect URIs.
 
 ### Parked ideas (revisit later)
 - **SpotPitch iterations** (Spotify pitch tool — v1 shipped in PR #10): personalize from real
