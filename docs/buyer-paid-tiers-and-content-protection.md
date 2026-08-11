@@ -158,6 +158,64 @@ resolve that first, then Phase 24 = Option B/D. If a **paid access/preview membe
 judged worth shipping on its own, it's the one piece that can move **now**, independent of counsel —
 and it seeds the buyer base + content-protection plumbing that B/D will reuse.
 
+## Owner direction — hybrid, phased (2026-08-10)
+
+The owner has chosen a **hybrid** model, built in two lanes as the catalogue grows. Both sit on the
+same **browsable catalogue = every song Funūn represents** (owned or not), shopped into sync deals
+against live client briefs.
+
+**Lane 1 — AE-negotiated per-deal (single-track) sync — NOW.** Mid-size deals (~$0–$100K, and Funūn
+won't turn down bigger) with agencies, film/TV, and brands. Priced per placement (scope × media ×
+reach); AEs run the negotiation and the deal room. **This lane works today** — it rides the existing
+artist blanket pre-authorization (terms agreed *except price*; price set per deal), so it is **not**
+blocked by the flat-rate signing question. This is the Phase 16 deal-room / license-request workflow.
+
+**Lane 2 — Subscription for small-audience buyers (Musicbed-style) — LATER.** Influencers and small
+creators pay a monthly fee — **freemium → ~$100+/mo (tiering TBD)** — to license up to N songs/month,
+scaled by audience size. **This lane is signing-model-gated:** a subscriber licenses *without* a
+per-deal negotiation, which requires artists to **opt a subset of tracks into flat-rate / blanket-price
+licensing** (Phase 29 + the sync-license signing model + explicit artist opt-in). It **also requires the
+Content ID clearance layer** (below) — subscription buyers post to YouTube at volume and can't dispute
+claims one by one.
+
+**Sequencing & coexistence.** Lane 1 launches now. Lane 2 follows once its three prerequisites are met:
+(a) the **flat-rate artist opt-in** model (signing model / Phase 29); (b) the **Content ID aggregator
+clearance** partnership; (c) the **subscription design** (tiers, per-month song caps, audience-scaling,
+freemium→$100+ pricing). The two then run side by side — bespoke/large = AE per-deal; standard/small =
+self-serve subscription.
+
+**This is Option D (hybrid) from §3**, sequenced sensibly. The one thing to internalize: **Lane 1 is
+unblocked and can proceed now; Lane 2 is the signing-model-gated piece** and cannot launch until artists
+opt in to flat-rate terms *and* the clearance layer exists.
+
+## Recommended content-protection architecture
+
+Three layers over one spine — the **license database** (buyer × track × scope × term × status), which
+every layer reads.
+
+1. **Distribution control — NOW, in-house (no ownership).** Every file a buyer receives is a
+   **watermarked preview**: an audible tag to deter, plus an inaudible **forensic** watermark keyed to
+   the buyer + deal so a leak traces to the exact recipient. The **clean master is released only on an
+   executed license**, and every delivered file carries a **Funūn license-ID in its metadata** (ID3/BWF)
+   for provenance. Protects what Funūn distributes; asserts no ownership.
+2. **Detection / monitoring — NOW→NEAR, partner API (no ownership).** Register represented tracks
+   (artist-authorized) as reference fingerprints with a monitor — **Pex/Vobile, ACRCloud, or Audible
+   Magic**. Ingest match reports across YouTube + social/UGC, **cross-reference against the license DB**,
+   and flag any use with no matching Funūn license (and not the artist's own) into a triage queue →
+   takedown / outreach / convert-to-license, acting on the artist's behalf per the agreement.
+3. **Clearance — LATER, aggregator partnership (required for Lane 2).** Plug the license DB into a
+   Content ID **aggregator** (AdRev/Symphonic, Pex/Vobile, Song Zu…) so a **licensed** buyer's YouTube
+   upload **auto-clears** (Musicbed SyncID-equivalent), with artist/distributor authorization. Funūn
+   never becomes the Content ID owner. **Carve-out:** for the **exclusive / unreleased** subset — tracks
+   where Funūn holds exclusive Content-ID admin and that aren't already registered elsewhere — Funūn
+   (via the aggregator) may hold the reference directly (§5).
+
+**Phasing tied to the lanes:** Lane 1 (AE per-deal) needs layers 1–2 + **per-deal manual clearance**
+(fine for occasional large placements). **Lane 2 (subscription) additionally requires layer 3** — at
+influencer volume, auto-clear is not optional. So the aggregator clearance is a **launch prerequisite
+for Lane 2, not for Lane 1**. **Never:** Funūn-owned Content ID for the general (non-exclusive) catalogue
+— that stays the artists' distributors' job.
+
 ## Sources
 - Epidemic Sound: [pricing](https://photutorial.com/epidemic-sound-pricing/) · [safelisting](https://help.epidemicsound.com/hc/en-us/articles/26248340314258-Safelisting)
 - Artlist: [plans](https://artlist.io/blog/artlist-pricing-and-plans-explained/) · [pricing](https://photutorial.com/artlist-pricing/)
