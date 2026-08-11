@@ -373,19 +373,19 @@ export function CatalogBrowserLight({
 
       <div className="wrap" onClick={e => e.stopPropagation()}>
         <div className="tabs" role="tablist">
-          <button className="tab on" type="button">Browse &amp;<br />Search</button>
-          <button className="tab" type="button">Similarity<br />Search</button>
-          <button className="tab" type="button">Funūn<br />Playlists</button>
-          <button className="tab dim" type="button">My<br />Playlists</button>
-          <button className="tab dim" type="button">My<br />Favorites</button>
+          <button className="tab on" type="button">Browse &amp; Search</button>
+          <button className="tab" type="button">Similarity Search</button>
+          <button className="tab" type="button">Funūn Playlists</button>
+          <button className="tab dim" type="button">My Playlists</button>
+          <button className="tab dim" type="button">My Favorites</button>
         </div>
 
-        <div className="searchrow">
-          <div className="searchbox">
+        <div className="sbar">
+          <div className="sfield">
             <svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
             <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search by song, artist or lyrics" aria-label="Search the catalogue" />
           </div>
-          <div className="alldd"><button className="allbtn" type="button"><span>All</span><svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></div>
+          <div className="scope"><button className="scopeb" type="button"><span>All</span><svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></div>
         </div>
 
         <div className="filters">
@@ -659,27 +659,27 @@ const CSS = `
 .fnbl .menu .mi:hover{background:var(--wash);color:var(--indigo);}
 .fnbl .menu .mi svg{width:20px;height:20px;stroke-width:1.9;color:var(--indigo);flex:none;}
 .fnbl .menu .msep{height:1px;background:var(--line);margin:7px 10px;}
-.fnbl .tabs{display:flex;align-items:stretch;background:var(--wash);border-radius:999px;padding:5px;margin:34px auto 0;max-width:1320px;}
-.fnbl .tab{flex:1;border:none;background:none;border-radius:999px;padding:17px 14px;font-size:14.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);line-height:1.25;text-align:center;}
+.fnbl .tabs{display:flex;background:var(--wash);border-radius:999px;padding:5px;margin:38px auto 0;gap:2px;}
+.fnbl .tab{flex:1;border:none;background:none;border-radius:999px;padding:14px 12px;font-size:13px;font-weight:800;letter-spacing:.075em;text-transform:uppercase;color:var(--indigo);white-space:nowrap;}
 .fnbl .tab:hover{background:var(--wash-2);}
-.fnbl .tab.on{background:var(--grad);color:#fff;box-shadow:0 10px 24px -10px rgba(109,90,224,.5);}
-.fnbl .tab.dim{color:#A9A2C9;}
-.fnbl .searchrow{display:flex;margin-top:38px;border-radius:999px;position:relative;}
-.fnbl .searchbox{flex:1;display:flex;align-items:center;gap:16px;background:var(--wash);border-radius:999px 0 0 999px;padding:0 10px 0 34px;min-width:0;}
-.fnbl .searchbox svg{width:30px;height:30px;color:var(--indigo);flex:none;stroke-width:2.1;}
-.fnbl .searchbox input{flex:1;min-width:0;background:none;border:none;outline:none;font:500 24px 'Inter',system-ui,sans-serif;color:var(--ink);padding:26px 0;}
-.fnbl .searchbox input::placeholder{color:var(--ink-3);}
-.fnbl .searchrow:focus-within .searchbox{background:var(--wash-2);}
-.fnbl .alldd{position:relative;flex:none;}
-.fnbl .allbtn{height:100%;display:flex;align-items:center;gap:16px;background:var(--grad);border:none;border-radius:0 999px 999px 0;padding:0 34px 0 40px;color:#fff;font-size:26px;font-weight:800;}
-.fnbl .allbtn svg{width:22px;height:22px;stroke:#fff;stroke-width:3;}
-.fnbl .filters{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:36px;}
-.fnbl .fdd{position:relative;}
-.fnbl .fbtn{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line-2);border-radius:999px;padding:15px 17px;font-size:14px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--indigo);white-space:nowrap;}
+.fnbl .tab.on{background:var(--grad);color:#fff;box-shadow:0 8px 20px -9px rgba(109,90,224,.55);}
+.fnbl .tab.dim{color:#9C95BE;}
+.fnbl .sbar{display:flex;margin-top:22px;background:var(--wash);border-radius:999px;padding:6px;gap:6px;transition:background .2s;}
+.fnbl .sbar:focus-within{background:var(--wash-2);}
+.fnbl .sfield{flex:1;display:flex;align-items:center;gap:14px;padding-left:22px;min-width:0;}
+.fnbl .sfield>svg{width:24px;height:24px;flex:none;color:var(--indigo);stroke-width:2.1;}
+.fnbl .sfield input{flex:1;min-width:0;background:none;border:none;outline:none;font:500 19px/1 'Inter',system-ui,sans-serif;color:var(--ink);padding:18px 0;}
+.fnbl .sfield input::placeholder{color:var(--ink-3);}
+.fnbl .scope{position:relative;flex:none;}
+.fnbl .scopeb{height:100%;display:flex;align-items:center;gap:12px;background:var(--grad);border:none;border-radius:999px;padding:0 26px;color:#fff;font-size:17px;font-weight:800;box-shadow:0 10px 24px -10px rgba(109,90,224,.55);}
+.fnbl .scopeb svg{width:17px;height:17px;stroke:#fff;stroke-width:3;}
+.fnbl .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:10px;margin-top:26px;}
+.fnbl .fdd{position:relative;min-width:0;}
+.fnbl .fbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1.5px solid var(--line-2);border-radius:999px;padding:13px 8px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);white-space:nowrap;min-width:0;}
 .fnbl .fbtn:hover{border-color:var(--indigo);background:var(--wash);}
 .fnbl .fbtn.on{background:var(--grad);border-color:transparent;color:#fff;}
-.fnbl .fbtn .n{font-size:11.5px;font-weight:800;background:rgba(255,255,255,.28);border-radius:999px;padding:2px 7px;}
-.fnbl .fbtn svg{width:13px;height:13px;stroke-width:3;opacity:.8;}
+.fnbl .fbtn .n{font-size:10.5px;font-weight:800;background:rgba(255,255,255,.3);border-radius:999px;padding:2px 6px;}
+.fnbl .fbtn svg{width:12px;height:12px;stroke-width:3;opacity:.75;flex:none;}
 .fnbl .panel{position:absolute;z-index:70;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;box-shadow:0 26px 60px -18px rgba(36,26,77,.28);display:none;min-width:230px;}
 .fnbl .panel.open{display:block;}
 .fnbl .panel .ph{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:var(--ink-3);padding:8px 12px 10px;}
