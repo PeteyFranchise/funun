@@ -70,19 +70,36 @@ the track in your edit before you license it for real.
   small deals, with AE-negotiated for premium/exclusive. The likely long-term end state — but it
   needs the signing model resolved for the flat-price lane.
 
-## Content protection (question b) — the standard playbook
+## Content protection (question b) — corrected for Funūn (does NOT own the catalog)
 
-1. **Register the catalog in YouTube Content ID + audio fingerprinting.** This is the anti-piracy
-   backbone: any use — licensed or not — is detected. Unlicensed uses get claimed/taken down.
-2. **Safelist / whitelist only on an actual license.** "Safelisting" connects a buyer's channel so
-   *licensed* use isn't false-claimed. Must be done **before publish**. Previews are **not** licensed
-   for publication → never whitelisted → if a preview is posted, Content ID claims it.
-3. **Watermark preview/comp downloads.** Audible tag (deters) and/or inaudible **forensic** watermark
-   tied to the recipient (traces the leaker). Survives compression/format conversion/re-recording.
+**CORRECTION (owner, 2026-08-10):** the subscription libraries above register their catalog in YouTube
+Content ID because they **own / exclusively license** it. **Funūn must NOT do this.** Funūn *represents*
+independent artists; it doesn't own the songs. Content ID requires verifiable ownership/exclusive
+rights, YouTube gates direct Content ID access to large owned-catalog rights holders (not attainable/
+appropriate for a representative), and the artists' released music is typically **already in Content ID
+via their own distributors** — so Funūn registering would double-claim, false-claim the artists' own or
+their fans' uses, or assert rights it doesn't hold. This is already an explicit out-of-scope constraint
+(16-CONTEXT: *"Direct Content ID administration."*).
 
-For Funūn: previews are watermarked + un-whitelisted; the catalog is Content-ID-registered; a real
-license flips on whitelisting for the buyer's channel. This is standard and buildable regardless of
-which paid-tier option is chosen.
+What Funūn does instead:
+
+1. **NOW — in-house, no ownership required:**
+   - **Watermarked preview vs clean-licensed download.** Buyers only ever get a **watermarked comp**
+     (audible tag deters; inaudible **forensic** watermark tied to the buyer traces a leaker; survives
+     compression/re-recording). The clean master is released **only after an executed per-deal license**.
+   - **Embedded license-ID metadata** in every delivered file — provenance tying the file to a specific,
+     verifiable license. Pure engineering, no vendor dependency; strengthens the "artists paid fairly,
+     everything documented, consent explicit" pitch.
+2. **LATER — partnership, NOT a Funūn build:** once catalog + deal volume justify it, partner with a
+   **Content ID aggregator** that already holds direct Content ID access (AdRev/Symphonic, Pex, Song Zu,
+   Too Lost) and plug Funūn's license DB in, so a *licensed* buyer's upload is auto-cleared (Musicbed's
+   **SyncID** model) — **with the artist/distributor's authorization**. Funūn never becomes the Content ID
+   owner. This is a partnership/negotiation task, not engineering.
+3. **The real wrinkle (ties to the signing model):** a released track is often already in the artist's
+   **distributor's** Content ID, so even a *licensed* buyer's video can get claimed by that distributor.
+   The per-deal license therefore needs a **clearance mechanism** — via the aggregator partner, or
+   coordinated per-deal with the artist/distributor — to release the claim on licensed use. Another
+   reason the sync-license signing/clearance model is load-bearing.
 
 ## Open questions for the business-model discussion
 
