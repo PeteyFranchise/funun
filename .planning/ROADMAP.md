@@ -28,8 +28,18 @@ per-phase entries below predate the Phase 27 cutover and read stale:
 - 📝 **Backlog / post-beta:** Phase 29 (flat-price self-serve sync licensing) — per-deal license
   model to resolve with counsel.
 
-**Likely next builds:** finish **Phase 16** (2 remaining plans) and **Phase 22** (1 plan) — the GTM
-buyer portal is close; then the **Phase 24** business-model decision gates buyer self-serve.
+**The frontier is mostly DECISION-gated, not build-gated.** The remaining plans are blocked on
+deliberations, not effort:
+- **16-09** (buyer-side e-sign signing architecture) — `status: deferred`, blocked on the
+  **sync-license signing model** (blanket vs per-deal vs hybrid; music/IP counsel).
+- **22-05** (buyer catalogue live data) — `blocked_by` the **buyer-catalogue-inclusion model** deliberation.
+- **Phase 24** (buyer self-serve) — the **business-model decision** (paid preview tier + content protection).
+- **Phase 29** (flat-price self-serve licensing) — the **per-deal license model** (counsel).
+
+The one arguably build-ready thread is **16-08** (Stripe Connect payouts — MONEY-01..03; migration 084
+exists, summary missing), but payouts are downstream of deals actually flowing (which needs the signing
+model). **Net: the highest-leverage next steps are the business/legal decisions, which then unblock the
+builds** — resolving the sync-license signing model alone unblocks both 16-09 and Phase 29.
 
 _This block is the current source of truth; the detailed per-phase entries below may lag._
 
