@@ -43,9 +43,12 @@ export type LoginRegisterModalProps = {
   open: boolean
   onClose: () => void
   initialTab?: Tab
+  // Which register variant to open on. 'sales_rep' lets a "Contact a sales rep"
+  // entry point land directly on the sales view instead of the register form.
+  initialSource?: RegisterSource
 }
 
-export function LoginRegisterModal({ open, onClose, initialTab = 'login' }: LoginRegisterModalProps) {
+export function LoginRegisterModal({ open, onClose, initialTab = 'login', initialSource = 'register' }: LoginRegisterModalProps) {
   const router = useRouter()
 
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -75,7 +78,7 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login' }: Logi
   useEffect(() => {
     if (!open) return
     setTab(initialTab)
-    setSource('register')
+    setSource(initialSource)
     setLoginError(null)
     setRegisterError(null)
     setRegisterSuccess(false)
@@ -90,7 +93,7 @@ export function LoginRegisterModal({ open, onClose, initialTab = 'login' }: Logi
       // pure UX affordance, never required for login to function.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialTab])
+  }, [open, initialTab, initialSource])
 
   if (!open) return null
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   USAGE_TYPE_VALUES,
   USAGE_TYPE_LABELS,
@@ -180,6 +181,19 @@ export function CatalogBrowserLight({
   // Login button — behind the Login/Register modal for a logged-out
   // visitor. Browsing + simulated playback stay ungated.
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  // Header burger menu (guest item set — signed-in variant is a later step).
+  const [menuOpen, setMenuOpen] = useState(false)
+  // Which view the auth modal opens on, so menu items can target login /
+  // register / "talk to a sales rep" directly.
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login')
+  const [authSource, setAuthSource] = useState<'register' | 'sales_rep'>('register')
+  const router = useRouter()
+  const openAuth = (tab: 'login' | 'register', src: 'register' | 'sales_rep' = 'register') => {
+    setAuthTab(tab)
+    setAuthSource(src)
+    setMenuOpen(false)
+    setAuthModalOpen(true)
+  }
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── slice 2c: License modal form state (wired to buildRequestBody) ──
@@ -317,19 +331,33 @@ export function CatalogBrowserLight({
   const activeCount = activeChips.length + (q.trim() ? 1 : 0)
 
   return (
-    <div className={embedded ? undefined : 'fnbl'} onClick={() => setOpen(null)}>
+    <div className={embedded ? undefined : 'fnbl'} onClick={() => { setOpen(null); setMenuOpen(false) }}>
       <style>{embedded ? CSS : `${FNBL_CSS}${CSS}`}</style>
 
       {!embedded && (
         <header className="top">
           <div className="l">
-            <button className="navlink" type="button"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
-            {isPublic && <button className="navlink" type="button" onClick={() => setAuthModalOpen(true)}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
+            <button className="navlink" type="button" onClick={() => { clearAll(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
+            {isPublic && <button className="navlink" type="button" onClick={() => openAuth('login')}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
           </div>
           <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
           <div className="r">
-            <button className="cart" type="button" aria-label="License queue"><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
-            <button className="burger" type="button" aria-label="Menu"><i /><i /><i /></button>
+            <button className="cart" type="button" aria-label="License queue" onClick={() => router.push('/sync/requests')}><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
+            <div className="menuwrap">
+              <button className="burger" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded={menuOpen} onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}><i /><i /><i /></button>
+              <div className={`menu ${menuOpen ? 'open' : ''}`} role="menu" onClick={e => e.stopPropagation()}>
+                {isPublic && (
+                  <>
+                    <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register')}><svg className="icn" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4" /><path d="M2.5 20a6.5 6.5 0 0 1 11-4.7" /><path d="M18 13v6M15 16h6" /></svg>Register</button>
+                    <button className="mi" type="button" role="menuitem" onClick={() => openAuth('login')}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>
+                    <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register', 'sales_rep')}><svg className="icn" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" /></svg>Contact a sales rep</button>
+                    <div className="msep" />
+                  </>
+                )}
+                <a className="mi" href="/help" role="menuitem" onClick={() => setMenuOpen(false)}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.2a2.5 2.5 0 0 1 4.6 1.3c0 1.6-2.2 2-2.2 3.6" /><path d="M12 17.2h.01" /></svg>Help / How licensing works</a>
+                <a className="mi" href="/blog" role="menuitem" onClick={() => setMenuOpen(false)}><svg className="icn" viewBox="0 0 24 24"><path d="M5 3.5h9L19 8v12.5H5z" /><path d="M9 12h6M9 15.5h6M9 8.5h3" /></svg>Blog</a>
+              </div>
+            </div>
           </div>
         </header>
       )}
@@ -569,7 +597,7 @@ export function CatalogBrowserLight({
       </div>
 
       {/* 23-07: Login/Register modal — the isPublic engagement gate */}
-      <LoginRegisterModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <LoginRegisterModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} initialTab={authTab} initialSource={authSource} />
     </div>
   )
 }
@@ -595,6 +623,13 @@ const CSS = `
 .fnbl .burger{display:flex;gap:4px;background:none;border:none;padding:2px 0;align-items:center;}
 .fnbl .burger i{width:3px;height:26px;border-radius:2px;background:var(--indigo);display:block;}
 .fnbl .burger:hover i{background:var(--fuchsia);}
+.fnbl .menuwrap{position:relative;display:flex;align-items:center;}
+.fnbl .menu{position:absolute;right:0;top:calc(100% + 14px);z-index:80;background:var(--page);border:1px solid var(--line);border-radius:16px;padding:8px;box-shadow:0 26px 60px -18px rgba(36,26,77,.28);min-width:252px;display:none;}
+.fnbl .menu.open{display:block;}
+.fnbl .menu .mi{display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:11px;font-size:15px;font-weight:600;color:var(--ink);background:none;border:none;width:100%;text-align:left;text-decoration:none;white-space:nowrap;}
+.fnbl .menu .mi:hover{background:var(--wash);color:var(--indigo);}
+.fnbl .menu .mi svg{width:20px;height:20px;stroke-width:1.9;color:var(--indigo);flex:none;}
+.fnbl .menu .msep{height:1px;background:var(--line);margin:7px 10px;}
 .fnbl .tabs{display:flex;align-items:stretch;background:var(--wash);border-radius:999px;padding:5px;margin:34px auto 0;max-width:1320px;}
 .fnbl .tab{flex:1;border:none;background:none;border-radius:999px;padding:17px 14px;font-size:14.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);line-height:1.25;text-align:center;}
 .fnbl .tab:hover{background:var(--wash-2);}
