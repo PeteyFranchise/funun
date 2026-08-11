@@ -371,7 +371,7 @@ export function CatalogBrowserLight({
         </header>
       )}
 
-      <div className="wrap" onClick={e => e.stopPropagation()}>
+      <div className="wrap">
         <div className="tabs" role="tablist">
           <button className="tab on" type="button">Browse &amp; Search</button>
           <button className="tab" type="button">Similarity Search</button>
@@ -393,10 +393,10 @@ export function CatalogBrowserLight({
             const count = sel[key].size
             return (
               <div className="fdd" key={key}>
-                <button className={`fbtn ${count ? 'on' : ''}`} type="button" onClick={() => setOpen(o => (o === key ? null : key))}>
+                <button className={`fbtn ${count ? 'on' : ''}`} type="button" onClick={e => { e.stopPropagation(); setOpen(o => (o === key ? null : key)) }}>
                   {key}{count > 0 && <span className="n">{count}</span>}<Chevron />
                 </button>
-                <div className={`panel ${open === key ? 'open' : ''}`} style={{ left: 0, top: 'calc(100% + 10px)' }}>
+                <div className={`panel ${open === key ? 'open' : ''}`} style={{ left: 0, top: 'calc(100% + 10px)' }} onClick={e => e.stopPropagation()}>
                   <div className="ph">{key}</div>
                   {FILTER_OPTIONS[key].map(opt => (
                     <button key={opt} className={`o ${sel[key].has(opt) ? 'on' : ''}`} type="button" onClick={() => toggle(key, opt)}>
@@ -412,8 +412,8 @@ export function CatalogBrowserLight({
             )
           })}
           <div className="fdd">
-            <button className="fbtn" type="button" onClick={() => setOpen(o => (o === 'Sort' ? null : 'Sort'))}>Sort by<Chevron /></button>
-            <div className={`panel ${open === 'Sort' ? 'open' : ''}`} style={{ right: 0, top: 'calc(100% + 10px)' }}>
+            <button className="fbtn" type="button" onClick={e => { e.stopPropagation(); setOpen(o => (o === 'Sort' ? null : 'Sort')) }}>Sort by<Chevron /></button>
+            <div className={`panel ${open === 'Sort' ? 'open' : ''}`} style={{ right: 0, top: 'calc(100% + 10px)' }} onClick={e => e.stopPropagation()}>
               <div className="ph">Sort by</div>
               {SORTS.map(s => (
                 <button key={s} className={`o ${sort === s ? 'on' : ''}`} type="button" onClick={() => { setSort(s); setOpen(null) }}>{s}<Tick /></button>
@@ -722,6 +722,13 @@ const CSS = `
 @media (max-width:1180px){.fnbl .meta .dyn{display:none;}}
 @media (max-width:1040px){.fnbl .meta .gen{display:none;}}
 @media (max-width:900px){.fnbl .meta .energy{display:none;}}
+@media (max-width:940px){.fnbl .tabs{overflow-x:auto;}.fnbl .tab{flex:0 0 auto;}}
+@media (max-width:640px){
+  .fnbl .cols{margin-top:16px;}
+  .fnbl .trow{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:12px;box-shadow:0 6px 18px -13px rgba(36,26,77,.2);}
+  .fnbl .trow:hover{background:#fff;}
+  .fnbl .art{width:56px;height:56px;}
+}
 @media (max-width:720px){
   .fnbl .trow{flex-wrap:wrap;gap:12px 16px;}
   .fnbl .song{flex:1 1 100%;}
