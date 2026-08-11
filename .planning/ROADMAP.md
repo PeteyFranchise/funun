@@ -11,6 +11,30 @@
 - 📝 **v1.3-pre — Split-Sheet Home** — Phase 18 (planned 2026-07-20; the living draft, Contract Locker as workspace, and song-level attachment — follows Phase 17, still ahead of Phase 16)
 - 📝 **v1.3 — GTM Beta Launch & Buyer Portal** — Phase 16 (planned 2026-07-18; integrated sync-buyer portal, license-request workflow, deal room, and GTM metrics)
 
+## Reconciled status — 2026-08-10 (Phases 16–29)
+
+Verified against actual execution state (plans → summaries) + production, because several
+per-phase entries below predate the Phase 27 cutover and read stale:
+
+- ✅ **Shipped / live:** Phase 19 (profile & identity cleanup), Phase 20 (table rename →
+  `user_profiles`, in production), Phase 21 (cross-account collaboration + sheet↔project sync),
+  Phase 23 (buyer onboarding, Model A), Phase 25 (Funūn team accounts + AE), Phase 26
+  (sync-library inclusion), **Phase 27 (invite-only artist onboarding — live via migration 105)**,
+  Phase 28 (industry accounts + Green Room access).
+- 🚧 **Partial:** Phase 16 (GTM beta buyer portal — **10/12 plans executed**), Phase 22 (buyer
+  catalogue + light-theme UI — **4/5 plans**).
+- ⏸ **On hold:** Phase 24 (buyer self-serve, Model B) — awaiting the **business-model decision**
+  (paid preview/early-access tier + content-protection).
+- 📝 **Backlog / post-beta:** Phase 29 (flat-price self-serve sync licensing) — per-deal license
+  model to resolve with counsel.
+
+**Likely next builds:** finish **Phase 16** (2 remaining plans) and **Phase 22** (1 plan) — the GTM
+buyer portal is close; then the **Phase 24** business-model decision gates buyer self-serve.
+
+_This block is the current source of truth; the detailed per-phase entries below may lag._
+
+---
+
 ## Phases
 
 <details>
@@ -927,15 +951,18 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 27-11-PLAN.md — Bootstrap + [BLOCKING] schema push + launch gates [wave 5]
+- [x] 27-11-PLAN.md — Bootstrap + [BLOCKING] schema push + launch gates [wave 5] — cutover shipped 2026-08-10 via corrective migrations **104→105** after two live-smoke failures (this Supabase applies app_metadata + email_confirmed_at post-INSERT; 105 keys the exemption on a `user_metadata` provision-intent). See 27-11/27-12/27-13-SUMMARY.md.
 
 **Key open questions (27-CONTEXT):** the invite mechanism + enforcement point (an `artist_invites` allowlist
 checked in `handle_new_user`); whether adding a collaborator by email auto-creates an invite (reuse the existing
 claim substrate) vs an explicit invite action; the Team-Member "Invite artist" action; bootstrap timing/retroactivity;
 abuse limits. **Distinct from** Phase 26's sync-library invite (that invites a song; this invites a person to create an account).
 
-**Status:** Full **GSD discussion planned 2026-08-09** (`/gsd-discuss-phase 27` — owner) before planning. Context captured (27-CONTEXT.md), **not yet planned**. Near-term growth control; the owner's seed-artist
-account can be created independently at any time.
+**Status:** ✅ **SHIPPED 2026-08-10.** Discussed → planned (11 plans) → executed → cutover. The artist invite
+gate is live in production (migration **105**); non-artist lanes (buyer/staff/industry/curator) are exempt via a
+service-role-only `user_metadata` provision-intent token; live acceptance smoke green across all lanes. **0
+pending invites** by choice (invite-only; team issues invites going forward). Standing items: reopen broadcast
+stays OFF until CAN-SPAM clearance; owner sign-off on the 3 branded emails (D-17).
 
 ### Account Taxonomy & Green Room Access (owner-confirmed 2026-08-05)
 
