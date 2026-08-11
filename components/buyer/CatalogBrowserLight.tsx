@@ -335,16 +335,23 @@ export function CatalogBrowserLight({
       <style>{embedded ? CSS : `${FNBL_CSS}${CSS}`}</style>
 
       {!embedded && (
-        <header className="top">
-          <div className="l">
-            <button className="navlink" type="button" onClick={() => { clearAll(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Browse</button>
-            {isPublic && <button className="navlink" type="button" onClick={() => openAuth('login')}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>}
-          </div>
-          <div><div className="brandmark gtext">FUNŪN</div><span className="brandsub">THE ARTS</span></div>
-          <div className="r">
-            <button className="cart" type="button" aria-label="License queue" onClick={() => router.push('/sync/requests')}><svg className="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.6 9H7.4z" /><circle cx="9" cy="20" r="1.6" /><circle cx="18" cy="20" r="1.6" /><path d="M6 6 5 2H2" /></svg><span className="b">0</span></button>
-            <div className="menuwrap">
-              <button className="burger" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded={menuOpen} onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}><i /><i /><i /></button>
+        <header>
+          <div className="bar">
+            <nav aria-label="Primary">
+              <button className="navb" type="button" onClick={() => { clearAll(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg><span>Browse</span></button>
+              {isPublic && <button className="navb" type="button" onClick={() => openAuth('login')}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg><span>Login</span></button>}
+            </nav>
+            <div className="lock">
+              <div className="mark">
+                <svg className="cratelogo" viewBox="0 0 48 48" role="img" aria-label="The Crate"><defs><linearGradient id="cratemk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#6D5AE0" /><stop offset="1" stopColor="#B22BC9" /></linearGradient></defs><rect x="11.4" y="8.6" width="12.2" height="15.4" rx="1.3" transform="rotate(-9 17.5 16.3)" fill="#fff" stroke="url(#cratemk)" strokeWidth="1.9" opacity=".52" /><rect x="24.4" y="8.6" width="12.2" height="15.4" rx="1.3" transform="rotate(9 30.5 16.3)" fill="#fff" stroke="url(#cratemk)" strokeWidth="1.9" opacity=".72" /><rect x="17.7" y="5.4" width="12.6" height="18.6" rx="1.3" fill="#fff" stroke="url(#cratemk)" strokeWidth="1.9" /><circle cx="24" cy="13.4" r="4.2" fill="none" stroke="url(#cratemk)" strokeWidth="1.9" /><circle cx="24" cy="13.4" r="1.5" fill="none" stroke="url(#cratemk)" strokeWidth="1.5" opacity=".65" /><rect x="3.4" y="23.2" width="41.2" height="4.3" rx="2.15" fill="url(#cratemk)" /><path d="M6.9 27.5h34.2l-2.6 11.1A2.9 2.9 0 0 1 35.7 41H12.3a2.9 2.9 0 0 1-2.8-2.4z" fill="url(#cratemk)" /><rect x="10.4" y="31.3" width="27.2" height="2" rx="1" fill="#fff" /><rect x="18.6" y="35.3" width="10.8" height="2.9" rx="1.45" fill="#fff" /></svg>
+                <div className="wordmark"><span className="the gtext">The</span><span className="gtext">Crate</span></div>
+              </div>
+              <div className="powered"><i />powered by <b>Funūn</b><i /></div>
+            </div>
+            <div className="right">
+              <button className="iconb" type="button" aria-label="License queue" onClick={() => router.push('/sync/requests')}><svg className="icn" viewBox="0 0 24 24"><path d="M6.5 7h14l-1.5 8.6a2 2 0 0 1-2 1.65H9.9a2 2 0 0 1-1.96-1.6L6.5 7z" /><path d="M6.5 7 5.6 3.4H2.8" /><circle cx="10" cy="20.4" r="1.5" /><circle cx="18" cy="20.4" r="1.5" /></svg><span className="cnt">0</span></button>
+              <div className="menuwrap">
+                <button className="iconb" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded={menuOpen} onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}><svg className="icn hamb" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
               <div className={`menu ${menuOpen ? 'open' : ''}`} role="menu" onClick={e => e.stopPropagation()}>
                 {isPublic && (
                   <>
@@ -359,6 +366,8 @@ export function CatalogBrowserLight({
               </div>
             </div>
           </div>
+          </div>
+          <p className="tagline">Dig for your sound — every track we represent, in one place.</p>
         </header>
       )}
 
@@ -442,8 +451,7 @@ export function CatalogBrowserLight({
             <button className="cta" type="button" onClick={clearAll}>Clear all filters</button>
           </div>
         ) : (
-          <div className="cols" style={{ marginTop: 22 }}>
-            <div className="thead"><div>Song / Artist</div><div>Versions</div><div>Genres</div><div>Dynamics</div><div>Energy</div><div>Length</div><div /><div /></div>
+          <div className="cols" style={{ marginTop: 8 }}>
             {filtered.map(row => (
               <div className={`trow ${playId === row.id ? 'playing' : ''}`} key={row.id}>
                 <div className="song">
@@ -454,19 +462,23 @@ export function CatalogBrowserLight({
                         : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
                     </button>
                   </div>
-                  <div>
+                  <div className="idt">
                     <div className="sname">{row.title}</div>
                     <div className="sby">by <b>{row.artist}</b></div>
                     <RightsBadge rights={row.rights} />
                   </div>
                 </div>
-                <div><button className="vers" type="button">+ {row.versions}</button></div>
-                <div className="gen">{row.genres}</div>
-                <div><DynGlyph shape={row.dynamics} /></div>
-                <div className="energy">{row.energy}</div>
-                <div className="len">{row.length}</div>
-                <div><button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button></div>
-                <div><button className="lic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(row.id))}>License</button></div>
+                <div className="meta">
+                  <div className="gen">{row.genres}</div>
+                  <div className="dyn"><DynGlyph shape={row.dynamics} /></div>
+                  <div className="energy">{row.energy}</div>
+                  <div className="len">{row.length}</div>
+                  <button className="vers" type="button">+ {row.versions}</button>
+                </div>
+                <div className="acts">
+                  <button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button>
+                  <button className="lic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(row.id))}>License</button>
+                </div>
               </div>
             ))}
           </div>
@@ -609,20 +621,37 @@ export function CatalogBrowserLight({
 const CSS = `
 .fnbl .wrap{max-width:1380px;margin:0 auto;padding:0 32px;}
 .fnbl button{font-family:inherit;cursor:pointer;}
-.fnbl .top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:26px 40px;}
-.fnbl .top .l{display:flex;align-items:center;gap:34px;}
-.fnbl .top .r{display:flex;align-items:center;gap:26px;justify-content:flex-end;}
-.fnbl .navlink{display:inline-flex;align-items:center;gap:11px;background:none;border:none;padding:0;color:var(--indigo);font-size:15.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
-.fnbl .navlink svg{width:25px;height:25px;stroke-width:1.9;}
-.fnbl .navlink:hover{color:var(--fuchsia);}
-.fnbl .brandmark{font-size:34px;font-weight:900;letter-spacing:.01em;line-height:1;}
-.fnbl .brandsub{display:block;text-align:center;font-size:9.5px;letter-spacing:.4em;font-weight:700;color:var(--ink-3);margin-top:5px;}
-.fnbl .cart{position:relative;background:none;border:none;padding:0;color:var(--indigo);}
-.fnbl .cart svg{width:28px;height:28px;stroke-width:1.9;}
-.fnbl .cart .b{position:absolute;top:-5px;right:-8px;min-width:19px;height:19px;border-radius:999px;background:var(--grad);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;}
-.fnbl .burger{display:flex;gap:4px;background:none;border:none;padding:2px 0;align-items:center;}
-.fnbl .burger i{width:3px;height:26px;border-radius:2px;background:var(--indigo);display:block;}
-.fnbl .burger:hover i{background:var(--fuchsia);}
+.fnbl{--gut:40px;}
+.fnbl .bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px;padding:22px var(--gut) 0;}
+.fnbl .bar nav{display:flex;align-items:center;gap:8px;}
+.fnbl .bar .right{justify-self:end;display:flex;align-items:center;gap:8px;}
+.fnbl .navb{display:inline-flex;align-items:center;gap:10px;background:none;border:none;border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);}
+.fnbl .navb svg{width:19px;height:19px;stroke-width:2;}
+.fnbl .navb:hover{background:var(--wash);color:var(--fuchsia);}
+.fnbl .iconb{position:relative;width:44px;height:44px;border-radius:11px;border:none;background:none;color:var(--indigo);display:flex;align-items:center;justify-content:center;}
+.fnbl .iconb svg{width:21px;height:21px;stroke-width:2;}
+.fnbl .iconb .hamb{stroke-width:2.6;}
+.fnbl .iconb:hover{background:var(--wash);color:var(--fuchsia);}
+.fnbl .iconb .cnt{position:absolute;top:3px;right:2px;min-width:18px;height:18px;border-radius:999px;background:var(--grad);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--page);}
+.fnbl .lock{display:flex;flex-direction:column;align-items:center;gap:0;}
+.fnbl .mark{display:flex;align-items:center;gap:13px;}
+.fnbl .cratelogo{width:44px;height:44px;flex:none;display:block;}
+.fnbl .wordmark{font-size:33px;font-weight:900;letter-spacing:-.022em;line-height:1;white-space:nowrap;}
+.fnbl .wordmark .the{font-size:16px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;vertical-align:5px;margin-right:6px;}
+.fnbl .powered{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:10.5px;font-weight:700;letter-spacing:.19em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
+.fnbl .powered i{display:block;width:16px;height:1px;background:var(--line-2);}
+.fnbl .powered b{font-weight:900;letter-spacing:.13em;}
+.fnbl .tagline{margin:16px auto 0;text-align:center;font-size:16.5px;color:var(--ink-2);max-width:52ch;line-height:1.5;padding:0 var(--gut);}
+@media (max-width:860px){
+  .fnbl{--gut:24px;}
+  .fnbl .bar{grid-template-columns:auto 1fr auto;}
+  .fnbl .lock{align-items:flex-start;}
+  .fnbl .bar nav .navb span{display:none;}
+  .fnbl .bar nav .navb{padding:11px;}
+  .fnbl .wordmark{font-size:26px;}
+  .fnbl .cratelogo{width:36px;height:36px;}
+  .fnbl .tagline{text-align:left;margin-left:0;font-size:15px;}
+}
 .fnbl .menuwrap{position:relative;display:flex;align-items:center;}
 .fnbl .menu{position:absolute;right:0;top:calc(100% + 14px);z-index:80;background:var(--page);border:1px solid var(--line);border-radius:16px;padding:8px;box-shadow:0 26px 60px -18px rgba(36,26,77,.28);min-width:252px;display:none;}
 .fnbl .menu.open{display:block;}
@@ -681,13 +710,33 @@ const CSS = `
 .fnbl .rmeta .s{font-size:15px;color:var(--ink-2);font-weight:500;}
 .fnbl .rmeta .fa{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:var(--indigo);background:var(--wash);border:1px solid var(--line);border-radius:999px;padding:6px 13px;white-space:nowrap;}
 .fnbl .rmeta .fa svg{width:13px;height:13px;stroke-width:2.6;}
-.fnbl .cols{--grid:minmax(340px,1.2fr) 104px minmax(190px,240px) 120px 122px 66px 40px 108px;}
-.fnbl .thead,.fnbl .trow{display:grid;grid-template-columns:var(--grid);gap:20px;align-items:center;}
-.fnbl .thead{padding:0 6px 16px;font-size:15px;font-weight:800;color:var(--ink);}
-.fnbl .trow{padding:16px 6px;border-top:1px solid var(--line);}
+.fnbl .cols{margin-top:8px;}
+.fnbl .trow{display:flex;align-items:center;gap:20px;padding:16px 6px;border-top:1px solid var(--line);}
+.fnbl .idt{min-width:0;}
+.fnbl .meta{display:flex;align-items:center;gap:20px;flex:0 1 auto;min-width:0;}
+.fnbl .meta .gen{width:170px;line-height:1.35;white-space:normal;}
+.fnbl .meta .dyn{width:104px;flex:none;}
+.fnbl .meta .energy{width:104px;}
+.fnbl .meta .len{width:52px;text-align:right;}
+.fnbl .acts{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto;}
+@media (max-width:1180px){.fnbl .meta .dyn{display:none;}}
+@media (max-width:1040px){.fnbl .meta .gen{display:none;}}
+@media (max-width:900px){.fnbl .meta .energy{display:none;}}
+@media (max-width:720px){
+  .fnbl .trow{flex-wrap:wrap;gap:12px 16px;}
+  .fnbl .song{flex:1 1 100%;}
+  .fnbl .meta{order:2;flex:1 1 auto;}
+  .fnbl .acts{order:3;flex:0 0 auto;margin-left:auto;}
+}
+@media (max-width:520px){
+  .fnbl .meta .len{display:none;}
+  .fnbl .acts{flex:1 1 100%;}
+  .fnbl .lic{flex:1 1 auto;width:auto;}
+  .fnbl .kebab{margin-left:auto;}
+}
 .fnbl .trow:hover{background:#FBFAFF;}
 .fnbl .trow.playing{background:linear-gradient(90deg,rgba(109,90,224,.09),rgba(178,43,201,.04) 62%,transparent);box-shadow:inset 3px 0 0 0 var(--indigo);}
-.fnbl .song{display:flex;align-items:center;gap:18px;min-width:0;}
+.fnbl .song{display:flex;align-items:center;gap:18px;min-width:0;flex:1 1 auto;}
 .fnbl .song>div:last-child{min-width:0;}
 .fnbl .art{width:66px;height:66px;border-radius:6px;flex:none;position:relative;background-size:cover;background-position:center;border:1px solid var(--line);overflow:hidden;}
 .fnbl .art .pb{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(36,26,77,.52);border:none;padding:0;opacity:0;transition:opacity .16s;}
@@ -706,7 +755,7 @@ const CSS = `
 .fnbl .kebab{width:34px;height:34px;border-radius:8px;border:none;background:none;color:var(--ink-3);display:flex;align-items:center;justify-content:center;margin:0 auto;}
 .fnbl .kebab:hover{background:var(--wash);color:var(--indigo);}
 .fnbl .kebab svg{width:20px;height:20px;}
-.fnbl .lic{border:none;border-radius:8px;background:var(--wash);color:var(--indigo);font-size:15px;font-weight:700;padding:14px 10px;width:100%;}
+.fnbl .lic{flex:none;width:124px;border:none;border-radius:10px;background:var(--wash);color:var(--indigo);font-size:14.5px;font-weight:800;padding:13px 0;text-align:center;}
 .fnbl .lic:hover{background:var(--grad);color:#fff;box-shadow:0 10px 24px -12px rgba(109,90,224,.6);}
 .fnbl .rights{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:4px 9px;border-radius:6px;margin-top:9px;letter-spacing:.02em;white-space:nowrap;}
 .fnbl .rights svg{width:12px;height:12px;stroke-width:2.4;flex:none;}
@@ -778,9 +827,6 @@ const CSS = `
 .fnbl .modal .mf .send:disabled{opacity:.6;cursor:not-allowed;}
 .fnbl .modal .mf .cancel{border:1.5px solid var(--line-2);background:#fff;border-radius:10px;color:var(--indigo);font-size:15px;font-weight:700;padding:15px 20px;flex:none;}
 @media (max-width:900px){
-  .fnbl .cols{--grid:1fr auto;}
-  .fnbl .thead{display:none;}
-  .fnbl .trow>div:nth-child(n+3){display:none;}
   .fnbl .f2{grid-template-columns:1fr;}
 }
 `
