@@ -101,6 +101,39 @@ What Funūn does instead:
    coordinated per-deal with the artist/distributor — to release the claim on licensed use. Another
    reason the sync-license signing/clearance model is load-bearing.
 
+## Follow-ups (owner Qs, 2026-08-10)
+
+**Q1 — Is there ANY scenario where Funūn should hold its own Content ID?** Yes, one narrow, legitimate
+case: tracks where Funūn holds **exclusive** sync + Content-ID-administration rights AND that are **not
+already registered in anyone else's Content ID** — i.e. **unreleased / Funūn-exclusive Sync Library
+catalog** (exactly how production-music libraries operate). Even then Funūn wouldn't get direct YouTube
+CMS access at its stage — it would register through a **Content ID aggregator** (AdRev/Symphonic,
+Pex/Vobile). Requirements: (a) an exclusive artist grant covering Content-ID admin; (b) no existing
+registration to conflict with — Content ID can't have two owners of the same reference in a territory;
+(c) aggregator access. For the **default** model (non-exclusive representation of already-distributed
+tracks) it stays a NO. **→ Signing-model decision: does Sync Library inclusion grant Funūn EXCLUSIVE
+rights (Content ID viable for that subset) or non-exclusive (not)?**
+
+**Q2 — How do we FLAG unlicensed use? What is MusicBed's "ID"?** Separate the two halves:
+- **Detection (flag *any* use).** Two ways: YouTube's own **Content ID** (requires ownership → not
+  Funūn) OR **third-party audio-fingerprint monitoring** — ACRCloud, Audible Magic, Gracenote,
+  **Pex (Vobile)** — which scan YouTube + dozens of social/UGC platforms for a track's fingerprint
+  **without any Content ID ownership**. Funūn (authorized by the artist) runs represented tracks through
+  one of these, cross-references hits against its **license database**, and flags any use with no Funūn
+  license (and not the artist's own authorized use) for follow-up. The **forensic watermark** in preview
+  files additionally pinpoints a leaked *preview* to the specific buyer.
+- **Clearance (release claims on *licensed* use) = MusicBed's "ID".** MusicBed's system is **SyncID**
+  (plus a "**SyncID Key**" — a code the buyer drops in the video description / dispute box). It is NOT a
+  detector — it's a **claim-clearing** service: it cross-references (linked channel) × (subscription) ×
+  (license) and auto-releases the Content ID claim in seconds for *licensed* users, leaving *unlicensed*
+  uses claimed. It works only because **MusicBed owns/registers its catalog in Content ID** (that
+  registration is what detects use; SyncID clears it for the licensed). Funūn can replicate this only for
+  the exclusive subset in Q1, via an aggregator, with artist/distributor authorization.
+
+**Net:** Funūn's flagging layer = **fingerprint monitoring (no ownership needed) + license-DB cross-ref +
+forensic preview watermark.** A SyncID-style auto-clear is only for the exclusive-catalog subset via an
+aggregator. Direct Funūn-owned Content ID stays off the table except for that exclusive/unreleased subset.
+
 ## Open questions for the business-model discussion
 
 1. **Will buyers pay for access if licensing is still per-deal (Option A)?** Or does a paid tier only
