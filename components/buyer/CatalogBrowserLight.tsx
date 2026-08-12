@@ -353,6 +353,7 @@ export function CatalogBrowserLight({
               <div className="menuwrap">
                 <button className="iconb" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded={menuOpen} onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}><svg className="icn hamb" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
               <div className={`menu ${menuOpen ? 'open' : ''}`} role="menu" onClick={e => e.stopPropagation()}>
+                <a className="mi" href="/sync/brief" role="menuitem" onClick={() => setMenuOpen(false)}><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>Build a brief</a>
                 {isPublic && (
                   <>
                     <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register')}><svg className="icn" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4" /><path d="M2.5 20a6.5 6.5 0 0 1 11-4.7" /><path d="M18 13v6M15 16h6" /></svg>Register</button>
@@ -387,6 +388,8 @@ export function CatalogBrowserLight({
           </div>
           <div className="scope"><button className="scopeb" type="button"><span>All</span><svg className="icn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg></button></div>
         </div>
+
+        <button type="button" className="describe" onClick={() => router.push('/sync/brief')}><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg><span>Not sure what you're looking for? <b>Describe your project</b> — we'll build a brief with AI</span><svg className="icn da" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
 
         <div className="filters">
           {FILTER_KEYS.map(key => {
@@ -673,6 +676,12 @@ const CSS = `
 .fnbl .scope{position:relative;flex:none;}
 .fnbl .scopeb{height:100%;display:flex;align-items:center;gap:12px;background:var(--grad);border:none;border-radius:999px;padding:0 26px;color:#fff;font-size:17px;font-weight:800;box-shadow:0 10px 24px -10px rgba(109,90,224,.55);}
 .fnbl .scopeb svg{width:17px;height:17px;stroke:#fff;stroke-width:3;}
+.fnbl .describe{display:flex;align-items:center;gap:13px;width:100%;margin-top:16px;background:var(--wash);border:1px solid var(--line);border-radius:14px;padding:15px 20px;color:var(--ink-2);font-size:15px;font-weight:500;text-align:left;}
+.fnbl .describe:hover{border-color:var(--indigo);background:var(--wash-2);}
+.fnbl .describe>svg:first-child{width:20px;height:20px;color:var(--fuchsia);stroke-width:2;flex:none;}
+.fnbl .describe b{color:var(--indigo);font-weight:800;}
+.fnbl .describe span{flex:1;min-width:0;}
+.fnbl .describe .da{width:18px;height:18px;color:var(--indigo);stroke-width:2.4;flex:none;}
 .fnbl .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:10px;margin-top:26px;}
 .fnbl .fdd{position:relative;min-width:0;}
 .fnbl .fbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1.5px solid var(--line-2);border-radius:999px;padding:13px 8px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--indigo);white-space:nowrap;min-width:0;}
