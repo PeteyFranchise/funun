@@ -114,3 +114,54 @@ export function briefToCrateFilters(
 
 // One-shot sessionStorage handoff key (BriefBuilder → Crate).
 export const BRIEF_APPLY_KEY = 'funun:brief:apply'
+
+// ── AI re-rank (v1.1) ──
+// After the brief's creative fields narrow the catalogue by filters, the
+// remaining candidates are re-ordered by fit to the WHOLE brief (prose/notes
+// included) via lib/buyer/brief-ai.ts. A compact per-track shape is sent to
+// the model — enough to judge fit, nothing sensitive.
+export type BriefCandidate = {
+  id: string
+  title: string
+  artist: string
+  genres: string
+  mood: string
+  energy: string
+  vocal: string
+  dynamics: string // human label, e.g. "Builds"
+  length: string
+  instruments: string[]
+}
+
+export type RankedItem = { id: string; reason: string }
+
+// Cap on how many candidates we hand the model per re-rank (bounds cost +
+// latency). The catalogue filters run first, so this trims an already-narrowed
+// set.
+export const RERANK_CAND_CAP = 40
+
+// Sanitise an untrusted candidate array (the re-rank route receives this from
+// the client). Drops anything without an id, caps the count and field lengths.
+export function coerceCandidates(raw: unknown): BriefCandidate[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .slice(0, RERANK_CAND_CAP)
+    .map(x => {
+      const o = (x ?? {}) as Record<string, unknown>
+      return {
+        id: String(o.id ?? ''),
+        title: String(o.title ?? '').slice(0, 120),
+        artist: String(o.artist ?? '').slice(0, 120),
+        genres: String(o.genres ?? '').slice(0, 120),
+        mood: String(o.mood ?? '').slice(0, 40),
+        energy: String(o.energy ?? '').slice(0, 40),
+        vocal: String(o.vocal ?? '').slice(0, 40),
+        dynamics: String(o.dynamics ?? '').slice(0, 40),
+        length: String(o.length ?? '').slice(0, 12),
+        instruments: Array.isArray(o.instruments)
+          ? o.instruments.map(i => String(i).slice(0, 40)).slice(0, 12)
+          : [],
+      }
+    })
+    .filter(c => c.id)
+}

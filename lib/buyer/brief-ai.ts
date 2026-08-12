@@ -17,6 +17,8 @@ import {
   BRIEF_TERMS,
   BRIEF_EXCLUSIVITY,
   type Brief,
+  type BriefCandidate,
+  type RankedItem,
 } from '@/lib/buyer/brief'
 
 const MODEL = 'claude-sonnet-4-6'
@@ -105,4 +107,104 @@ export async function draftBriefFromProse(prose: string): Promise<BriefDraftResu
     return { ok: false, error: 'Could not quite read that back — try describing it a different way.' }
   }
   return { ok: true, brief: coerceBrief(parsed) }
+}
+
+// ─── Re-rank (v1.1) ──────────────────────────────────────────────────────
+// Given a brief and a filtered candidate set, order the candidates by fit to
+// the WHOLE brief (creative tags + use + free-text notes), best first, with a
+// short reason each. Never drops or invents candidates — the result always
+// covers exactly the ids passed in.
+export type RerankResult = { ok: true; ranked: RankedItem[] } | { ok: false; error: string }
+
+function briefSummary(b: Brief): string {
+  const parts: string[] = []
+  if (b.creative.mood.length) parts.push(`Mood: ${b.creative.mood.join(', ')}`)
+  if (b.creative.genre.length) parts.push(`Genre: ${b.creative.genre.join(', ')}`)
+  if (b.creative.energy.length) parts.push(`Energy: ${b.creative.energy.join(', ')}`)
+  if (b.creative.vocals) parts.push(`Vocals: ${b.creative.vocals}`)
+  if (b.deal.use) parts.push(`Use: ${b.deal.use}`)
+  if (b.notes) parts.push(`Notes: ${b.notes}`)
+  return parts.length ? parts.join('\n') : '(no specifics given)'
+}
+
+function buildRerankPrompt(brief: Brief, candidates: BriefCandidate[]): string {
+  const compact = candidates.map(c => ({
+    id: c.id,
+    title: c.title,
+    artist: c.artist,
+    genres: c.genres,
+    mood: c.mood,
+    energy: c.energy,
+    vocal: c.vocal,
+    dynamics: c.dynamics,
+    length: c.length,
+    instruments: c.instruments,
+  }))
+  return `A buyer is choosing music to license. Here is their brief:
+
+${briefSummary(brief)}
+
+Here are the candidate tracks as JSON:
+${JSON.stringify(compact)}
+
+Order ALL of the candidates from best to worst fit to the WHOLE brief. Weigh the free-text notes and the intended use, not just the tags. Respond with ONLY a JSON object:
+{ "ranked": [ { "id": "<candidate id>", "reason": "<why it fits, 8 words max>" } ] }
+
+Rules:
+- Include every candidate id exactly once, best fit first.
+- Use only the ids provided; do not invent tracks.
+- "reason" must be under 8 words, concrete, and specific to that track.
+- Output JSON only, with no prose before or after.`
+}
+
+export async function rerankCandidates(brief: Brief, candidates: BriefCandidate[]): Promise<RerankResult> {
+  // Nothing to order.
+  if (candidates.length <= 1) {
+    return { ok: true, ranked: candidates.map(c => ({ id: c.id, reason: '' })) }
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    // Degrade to the incoming order rather than failing the whole browse.
+    return { ok: true, ranked: candidates.map(c => ({ id: c.id, reason: '' })) }
+  }
+
+  const anthropic = new Anthropic({ apiKey })
+  let parsed: Record<string, unknown> | null
+  try {
+    const message = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 1100,
+      messages: [{ role: 'user', content: buildRerankPrompt(brief, candidates) }],
+    })
+    const text = message.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map(b => b.text)
+      .join('')
+    parsed = extractJson(text)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Re-rank failed'
+    return { ok: false, error: msg }
+  }
+
+  // Coerce: keep only known ids, no dupes, model order first, then append any
+  // candidate the model dropped (in its original position) so nothing vanishes.
+  const rawRanked = Array.isArray((parsed as { ranked?: unknown })?.ranked)
+    ? ((parsed as { ranked: unknown[] }).ranked)
+    : []
+  const byId = new Set(candidates.map(c => c.id))
+  const seen = new Set<string>()
+  const ranked: RankedItem[] = []
+  for (const item of rawRanked) {
+    const o = (item ?? {}) as Record<string, unknown>
+    const id = String(o.id ?? '')
+    if (byId.has(id) && !seen.has(id)) {
+      seen.add(id)
+      ranked.push({ id, reason: typeof o.reason === 'string' ? o.reason.slice(0, 60) : '' })
+    }
+  }
+  for (const c of candidates) {
+    if (!seen.has(c.id)) ranked.push({ id: c.id, reason: '' })
+  }
+  return { ok: true, ranked }
 }

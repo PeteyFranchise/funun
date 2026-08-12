@@ -13,7 +13,7 @@ import {
 import { buildRequestBody } from '@/lib/deals/request-payload'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 import { LoginRegisterModal } from '@/components/buyer/LoginRegisterModal'
-import { BRIEF_APPLY_KEY, coerceBrief, briefToCrateFilters } from '@/lib/buyer/brief'
+import { BRIEF_APPLY_KEY, RERANK_CAND_CAP, coerceBrief, briefToCrateFilters, type BriefCandidate } from '@/lib/buyer/brief'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
@@ -80,6 +80,22 @@ const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as con
 const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contact required' }
 const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
+
+// A CatalogRow trimmed to what the AI re-rank needs to judge fit (v1.1).
+function toCandidate(r: CatalogRow): BriefCandidate {
+  return {
+    id: r.id,
+    title: r.title,
+    artist: r.artist,
+    genres: r.genres,
+    mood: r.mood,
+    energy: r.energy,
+    vocal: r.vocal,
+    dynamics: DYN_LABEL[r.dynamics],
+    length: r.length,
+    instruments: r.instruments,
+  }
+}
 
 const MEDIA = ['All media', 'Digital / online', 'Broadcast', 'Theatrical', 'Internal / non-broadcast']
 // Term select renders these labels but STORES the integer month count the
@@ -171,6 +187,12 @@ export function CatalogBrowserLight({
   const [sort, setSort] = useState<(typeof SORTS)[number]>('Best match')
   const [open, setOpen] = useState<string | null>(null)
 
+  // ── v1.1: AI re-rank of a brief's matches (best fit first) ──
+  const [rankOrder, setRankOrder] = useState<string[] | null>(null)
+  const [rankReason, setRankReason] = useState<Record<string, string>>({})
+  const [ranking, setRanking] = useState(false)
+  const [rankedForBrief, setRankedForBrief] = useState(false)
+
   // ── slice 2b: player + modal + toast state ──
   const [playId, setPlayId] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -213,8 +235,12 @@ export function CatalogBrowserLight({
     const out = rows.filter(r => rowMatches(r, sel, q))
     if (sort === 'Shortest first') out.sort((a, b) => lenToSeconds(a.length) - lenToSeconds(b.length))
     else if (sort === 'Newest') out.reverse()
+    else if (sort === 'Best match' && rankOrder) {
+      const idx = new Map(rankOrder.map((id, i) => [id, i]))
+      out.sort((a, b) => (idx.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (idx.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+    }
     return out
-  }, [rows, sel, q, sort])
+  }, [rows, sel, q, sort, rankOrder])
 
   const playRow = playId ? rows.find(r => r.id === playId) ?? null : null
   const modalRow = modalId ? rows.find(r => r.id === modalId) ?? null : null
@@ -261,19 +287,46 @@ export function CatalogBrowserLight({
       return
     }
     if (!raw) return
+
+    let brief
     try {
-      const applied = briefToCrateFilters(coerceBrief(JSON.parse(raw)), FILTER_OPTIONS as Record<string, string[]>)
-      const keys = Object.keys(applied) as FilterKey[]
-      if (!keys.length) return
-      setSel(prev => {
-        const next = { ...prev }
-        for (const k of keys) next[k] = new Set(applied[k])
-        return next
-      })
-      showToast('Filters set from your brief — tweak anything below.')
+      brief = coerceBrief(JSON.parse(raw))
     } catch {
-      /* malformed handoff — ignore */
+      return // malformed handoff — ignore
     }
+
+    // 1) Map the brief's creative fields onto the filter rail.
+    const applied = briefToCrateFilters(brief, FILTER_OPTIONS as Record<string, string[]>)
+    const keys = Object.keys(applied) as FilterKey[]
+    const briefSel = emptySel()
+    for (const k of keys) briefSel[k] = new Set(applied[k])
+    if (keys.length) {
+      setSel(briefSel)
+      showToast('Filters set from your brief — tweak anything below.')
+    }
+
+    // 2) Re-rank the resulting candidate set by fit to the whole brief.
+    const candidates = rows.filter(r => rowMatches(r, briefSel, '')).slice(0, RERANK_CAND_CAP).map(toCandidate)
+    if (candidates.length <= 1) return
+    setRanking(true)
+    fetch('/api/buyer/brief-rerank', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief, candidates }),
+    })
+      .then(res => res.json().catch(() => ({})))
+      .then((json: { data?: { ranked?: { id: string; reason: string }[] } }) => {
+        const ranked = json?.data?.ranked
+        if (Array.isArray(ranked) && ranked.length) {
+          setRankOrder(ranked.map(x => x.id))
+          setRankReason(Object.fromEntries(ranked.map(x => [x.id, x.reason])))
+          setRankedForBrief(true)
+        }
+      })
+      .catch(() => {
+        /* re-rank failed — the filtered list still stands */
+      })
+      .finally(() => setRanking(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -355,10 +408,19 @@ export function CatalogBrowserLight({
   function removeChip(key: FilterKey, value: string) {
     setSel(prev => { const n = new Set(prev[key]); n.delete(value); return { ...prev, [key]: n } })
   }
-  function clearAll() { setSel(emptySel()); setQ('') }
+  function clearAll() {
+    setSel(emptySel())
+    setQ('')
+    setRankOrder(null)
+    setRankReason({})
+    setRankedForBrief(false)
+  }
 
   const activeChips = FILTER_KEYS.flatMap(k => [...sel[k]].map(v => ({ key: k, value: v })))
   const activeCount = activeChips.length + (q.trim() ? 1 : 0)
+  // The AI ranking is "in effect" only while the Best match sort is selected —
+  // switching sort drops back to that ordering and hides the per-row reasons.
+  const rankActive = rankedForBrief && sort === 'Best match'
 
   return (
     <div className={embedded ? undefined : 'fnbl'} onClick={() => { setOpen(null); setMenuOpen(false) }}>
@@ -470,11 +532,21 @@ export function CatalogBrowserLight({
 
         <div className="rmeta">
           <span className="n">{filtered.length.toLocaleString()} tracks</span>
-          <span className="s">Sorted by {sort}</span>
+          <span className="s">Sorted by {rankActive ? 'best match to your brief' : sort}</span>
           {activeCount > 0 && (
             <span className="fa"><svg className="icn" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg>{activeCount} filter{activeCount === 1 ? '' : 's'} active</span>
           )}
         </div>
+
+        {(ranking || rankActive) && (
+          <div className="rankbar" role="status">
+            {ranking ? (
+              <><span className="rspin" aria-hidden="true" />Ranking these to your brief&hellip;</>
+            ) : (
+              <><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg><span>Ranked to your brief — <b>best fits first</b>.</span></>
+            )}
+          </div>
+        )}
 
         {filtered.length === 0 ? (
           <div className="empty show">
@@ -510,6 +582,9 @@ export function CatalogBrowserLight({
                     <div className="sname">{row.title}</div>
                     <div className="sby">by <b>{row.artist}</b></div>
                     <RightsBadge rights={row.rights} />
+                    {rankActive && rankReason[row.id] && (
+                      <div className="why"><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>{rankReason[row.id]}</div>
+                    )}
                   </div>
                 </div>
                 <div className="meta">
@@ -760,6 +835,13 @@ const CSS = `
 .fnbl .rmeta .s{font-size:15px;color:var(--ink-2);font-weight:500;}
 .fnbl .rmeta .fa{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:var(--indigo);background:var(--wash);border:1px solid var(--line);border-radius:999px;padding:6px 13px;white-space:nowrap;}
 .fnbl .rmeta .fa svg{width:13px;height:13px;stroke-width:2.6;}
+.fnbl .rankbar{display:flex;align-items:center;gap:10px;margin-top:14px;background:linear-gradient(90deg,rgba(109,90,224,.09),rgba(178,43,201,.05));border:1px solid var(--line);border-radius:12px;padding:11px 16px;font-size:13.5px;font-weight:700;color:var(--ink-2);}
+.fnbl .rankbar svg{width:16px;height:16px;color:var(--fuchsia);stroke-width:2;flex:none;}
+.fnbl .rankbar b{color:var(--ink);font-weight:800;}
+.fnbl .rspin{width:15px;height:15px;border:2px solid var(--line-2);border-top-color:var(--indigo);border-radius:50%;animation:fnspin .7s linear infinite;flex:none;}
+@keyframes fnspin{to{transform:rotate(360deg);}}
+.fnbl .why{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;line-height:1.4;color:var(--ink-3);font-style:italic;}
+.fnbl .why svg{width:13px;height:13px;stroke-width:2;color:var(--fuchsia);flex:none;}
 .fnbl .cols{margin-top:8px;}
 .fnbl .trow{display:flex;align-items:center;gap:20px;padding:16px 6px;border-top:1px solid var(--line);}
 .fnbl .idt{min-width:0;}
