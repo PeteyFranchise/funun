@@ -27,7 +27,7 @@ export default function BriefPage() {
           <h2>My briefs</h2>
           <div className="bp-empty">
             <div className="bp-ei"><svg className="icn" viewBox="0 0 24 24"><path d="M5 3.5h9L19 8v12.5H5z" /><path d="M9 12h6M9 15.5h6M9 8.5h3" /></svg></div>
-            <p>Briefs you build will live here — with their status as your AE works them (new → reviewing → selects sent → in deal → licensed). <Link href="/sync/catalog">Browse The Crate</Link> or build one above to get started.</p>
+            <p>Briefs you build will live here — with their status as your AE works them (new → reviewing → selects sent → in deal → licensed). Build one above, or go <Link href="/sync/catalog">dig through The Crate</Link>.</p>
           </div>
         </section>
       </main>

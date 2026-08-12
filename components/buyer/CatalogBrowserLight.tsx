@@ -307,7 +307,7 @@ export function CatalogBrowserLight({
       })
       const json = (await res.json().catch(() => ({}))) as { data?: { id: string }; error?: string }
       if (!res.ok || !json.data) {
-        setMuError(json.error ?? 'Failed to submit request. Please check your entries and try again.')
+        setMuError(json.error ?? 'That didn\'t go through — check your entries and give it another shot.')
         return
       }
       const successMessage = `License request sent to ${modalRow.artist || 'the artist'}`
@@ -358,7 +358,7 @@ export function CatalogBrowserLight({
                   <>
                     <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register')}><svg className="icn" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4" /><path d="M2.5 20a6.5 6.5 0 0 1 11-4.7" /><path d="M18 13v6M15 16h6" /></svg>Register</button>
                     <button className="mi" type="button" role="menuitem" onClick={() => openAuth('login')}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>Login</button>
-                    <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register', 'sales_rep')}><svg className="icn" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" /></svg>Contact a sales rep</button>
+                    <button className="mi" type="button" role="menuitem" onClick={() => openAuth('register', 'sales_rep')}><svg className="icn" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" /></svg>Talk to a rep</button>
                     <div className="msep" />
                   </>
                 )}
@@ -450,7 +450,7 @@ export function CatalogBrowserLight({
           <div className="empty show">
             <div className="ei"><svg className="icn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3M8 11h6" /></svg></div>
             <h3>No tracks match those filters</h3>
-            <p>Nothing in the catalogue fits every filter you have applied. Try removing one, or widen the mood and energy range.</p>
+            <p>Nothing fits all those filters at once. Drop one — or widen the mood or energy — and tracks come back.</p>
             <button className="cta" type="button" onClick={clearAll}>Clear all filters</button>
           </div>
         ) : (
@@ -540,7 +540,7 @@ export function CatalogBrowserLight({
               <button className="x" type="button" aria-label="Close" onClick={() => setModalId(null)}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div className="mb2">
-              <p className="lead">Tell the artist how you&rsquo;d use it. Within their pre-cleared terms this moves fast; anything below their floor routes to a quick negotiation.</p>
+              <p className="lead">Tell the artist how you&rsquo;ll use it. Inside their pre-cleared terms this moves fast — anything under their floor kicks off a quick back-and-forth.</p>
               <Field label="Tracks">
                 <div className="trklist">
                   {modalRow.tracks.map(t => (
@@ -608,7 +608,7 @@ export function CatalogBrowserLight({
               {muError && <p className="err">{muError}</p>}
             </div>
             <div className="mf">
-              <span className="note">You&rsquo;ll get a confirmation and can track this in your requests.</span>
+              <span className="note">We&rsquo;ll confirm it, and you can track it any time in your requests.</span>
               <button className="cancel" type="button" onClick={() => setModalId(null)}>Cancel</button>
               <button className="send" type="submit" disabled={muSubmitting}>{muSubmitting ? 'Sending…' : 'Send request'}</button>
             </div>
