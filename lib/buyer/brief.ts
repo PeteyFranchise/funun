@@ -115,6 +115,50 @@ export function briefToCrateFilters(
 // One-shot sessionStorage handoff key (BriefBuilder → Crate).
 export const BRIEF_APPLY_KEY = 'funun:brief:apply'
 
+// Cap on the free-text prose sent to the model / persisted (chars).
+export const BRIEF_PROSE_MAX = 1500
+
+// ── Persistence (v2) ──
+// buyer_briefs.status pipeline (migration 106) — the buyer's My Briefs list
+// and the AE Lead Engine both read this order.
+export const BRIEF_STATUS_ORDER = ['new', 'ae_reviewing', 'selects_sent', 'in_deal', 'licensed', 'closed'] as const
+export type BriefStatus = (typeof BRIEF_STATUS_ORDER)[number]
+
+export const BRIEF_STATUS_LABELS: Record<BriefStatus, string> = {
+  new: 'New',
+  ae_reviewing: 'Reviewing',
+  selects_sent: 'Selects sent',
+  in_deal: 'In deal',
+  licensed: 'Licensed',
+  closed: 'Closed',
+}
+
+// A persisted brief row as the buyer's My Briefs list needs it.
+export type SavedBrief = {
+  id: string
+  status: BriefStatus
+  title: string | null
+  brief: Brief
+  created_at: string
+}
+
+export function isBriefStatus(v: unknown): v is BriefStatus {
+  return typeof v === 'string' && (BRIEF_STATUS_ORDER as readonly string[]).includes(v)
+}
+
+// A short human label for a brief in a list — the intended use plus the top
+// mood/genre, falling back to a prose snippet. Server-derived at save time.
+export function deriveBriefTitle(brief: Brief, prose: string): string {
+  const bits: string[] = []
+  if (brief.deal.use) bits.push(brief.deal.use)
+  const vibe = [...brief.creative.mood.slice(0, 1), ...brief.creative.genre.slice(0, 1)].join(' ')
+  if (vibe) bits.push(vibe)
+  const joined = bits.join(' · ')
+  if (joined) return joined.slice(0, 80)
+  const snippet = prose.trim().replace(/\s+/g, ' ')
+  return snippet ? snippet.slice(0, 60) : 'Untitled brief'
+}
+
 // ── AI re-rank (v1.1) ──
 // After the brief's creative fields narrow the catalogue by filters, the
 // remaining candidates are re-ordered by fit to the WHOLE brief (prose/notes

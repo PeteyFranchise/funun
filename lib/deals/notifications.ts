@@ -87,3 +87,32 @@ export function buildDealStageChangedNotification(args: {
     actorAvatarUrl: args.actorAvatarUrl,
   }
 }
+
+// ─── brief_received ────────────────────────────────────────────────────────
+// Fires when a buyer sends a Brief Builder brief to their AE (Lane 1 v2).
+// Recipient is the org's assigned AE (buyer_orgs.ae_user_id); the headline
+// names the buyer COMPANY (D-13a), and actorId/actorName are the individual
+// buyer who sent it. Link points at the AE Lead Engine feed (next slice).
+// `type` is unconstrained TEXT on the notifications table — no migration.
+
+export function buildBriefReceivedNotification(args: {
+  recipientId: string
+  actorId: string
+  actorName: string
+  actorAvatarUrl: string | null
+  buyerCompanyName: string
+  briefTitle: string
+  briefId: string
+}): NotificationPayload {
+  return {
+    userId: args.recipientId,
+    type: 'brief_received',
+    title: `${args.buyerCompanyName} sent a brief: ${args.briefTitle}`,
+    body: `From ${args.actorName} at ${args.buyerCompanyName}`,
+    link: `/admin/lead-engine`,
+    data: { briefId: args.briefId, buyerCompanyName: args.buyerCompanyName },
+    actorId: args.actorId,
+    actorName: args.actorName,
+    actorAvatarUrl: args.actorAvatarUrl,
+  }
+}

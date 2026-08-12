@@ -8,6 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import {
   coerceBrief,
+  BRIEF_PROSE_MAX,
   BRIEF_MOODS,
   BRIEF_GENRES,
   BRIEF_ENERGY,
@@ -22,7 +23,9 @@ import {
 } from '@/lib/buyer/brief'
 
 const MODEL = 'claude-sonnet-4-6'
-export const BRIEF_PROSE_MAX = 1500
+// Re-exported so existing importers (app/api/buyer/brief-draft) are unaffected
+// now that the constant is single-sourced in lib/buyer/brief.
+export { BRIEF_PROSE_MAX }
 
 export type BriefDraftResult = { ok: true; brief: Brief } | { ok: false; error: string }
 
