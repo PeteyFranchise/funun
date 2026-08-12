@@ -50,7 +50,7 @@ export default function HelpPage() {
         <p className="help-eyebrow">Help</p>
         <h1 className="help-h1">How licensing works</h1>
         <p className="help-lead">
-          Funūn is where you license real music from independent artists for your videos, ads, films,
+          Funūn <span className="pron">(foo-NOON)</span> is where you license real music from independent artists for your videos, ads, films,
           shows, games and social. Here’s how a license goes from a track you love to files you can use.
         </p>
 
@@ -127,6 +127,7 @@ const HELP_CSS = `
 .fnbl .help-eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:800;color:var(--fuchsia);margin:0 0 10px;}
 .fnbl .help-h1{font-size:46px;font-weight:900;letter-spacing:-.01em;line-height:1.05;margin:0 0 18px;}
 .fnbl .help-lead{font-size:19px;line-height:1.6;color:var(--ink-2);margin:0 0 8px;}
+.fnbl .help-lead .pron{color:var(--ink-3);font-weight:500;letter-spacing:.01em;}
 .fnbl .help-sec{margin-top:48px;}
 .fnbl .help-sec>h2{font-size:24px;font-weight:800;margin:0 0 14px;}
 .fnbl .help-sec>p{font-size:16.5px;line-height:1.7;color:var(--ink-2);margin:0 0 12px;}
