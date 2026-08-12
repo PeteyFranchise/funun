@@ -13,6 +13,7 @@ import {
 import { buildRequestBody } from '@/lib/deals/request-payload'
 import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 import { LoginRegisterModal } from '@/components/buyer/LoginRegisterModal'
+import { BRIEF_APPLY_KEY, coerceBrief, briefToCrateFilters } from '@/lib/buyer/brief'
 
 // ─── CatalogBrowserLight ──────────────────────────────────────────────────
 // The buyer browse surface — a faithful recreation of Claude Design's LIGHT
@@ -246,6 +247,35 @@ export function CatalogBrowserLight({
     setMuTrackIds(row && row.tracks.length === 1 ? [row.tracks[0].id] : [])
     setMuError(null)
   }, [modalId, rows])
+
+  // Apply a brief handed off from the Brief Builder (/sync/brief). One-shot:
+  // read + clear the sessionStorage key on mount, map the brief's creative
+  // fields onto the filter rail, and surface a toast. Malformed or empty
+  // handoffs are ignored — the catalogue just opens unfiltered.
+  useEffect(() => {
+    let raw: string | null = null
+    try {
+      raw = sessionStorage.getItem(BRIEF_APPLY_KEY)
+      if (raw) sessionStorage.removeItem(BRIEF_APPLY_KEY)
+    } catch {
+      return
+    }
+    if (!raw) return
+    try {
+      const applied = briefToCrateFilters(coerceBrief(JSON.parse(raw)), FILTER_OPTIONS as Record<string, string[]>)
+      const keys = Object.keys(applied) as FilterKey[]
+      if (!keys.length) return
+      setSel(prev => {
+        const next = { ...prev }
+        for (const k of keys) next[k] = new Set(applied[k])
+        return next
+      })
+      showToast('Filters set from your brief — tweak anything below.')
+    } catch {
+      /* malformed handoff — ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function play(id: string) {
     if (id === playId) { setPlaying(p => !p); return }
