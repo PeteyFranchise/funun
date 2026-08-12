@@ -349,7 +349,7 @@ export function CatalogBrowserLight({
               <div className="powered"><i />powered by <b>Funūn</b><i /></div>
             </div>
             <div className="right">
-              <button className="iconb" type="button" aria-label="License queue" onClick={() => router.push('/sync/requests')}><svg className="icn" viewBox="0 0 24 24"><path d="M6.5 7h14l-1.5 8.6a2 2 0 0 1-2 1.65H9.9a2 2 0 0 1-1.96-1.6L6.5 7z" /><path d="M6.5 7 5.6 3.4H2.8" /><circle cx="10" cy="20.4" r="1.5" /><circle cx="18" cy="20.4" r="1.5" /></svg><span className="cnt">0</span></button>
+              {!isPublic && <button className="iconb" type="button" aria-label="License queue" onClick={() => router.push('/sync/requests')}><svg className="icn" viewBox="0 0 24 24"><path d="M6.5 7h14l-1.5 8.6a2 2 0 0 1-2 1.65H9.9a2 2 0 0 1-1.96-1.6L6.5 7z" /><path d="M6.5 7 5.6 3.4H2.8" /><circle cx="10" cy="20.4" r="1.5" /><circle cx="18" cy="20.4" r="1.5" /></svg><span className="cnt">0</span></button>}
               <div className="menuwrap">
                 <button className="iconb" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded={menuOpen} onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}><svg className="icn hamb" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
               <div className={`menu ${menuOpen ? 'open' : ''}`} role="menu" onClick={e => e.stopPropagation()}>
