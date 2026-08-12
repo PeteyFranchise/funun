@@ -21,8 +21,9 @@ Design the **brief schema (§1) once** in v1 so v2/v3 persist and render the sam
 - ✅ `lib/buyer/brief-ai.ts` + `POST /api/buyer/brief-draft` — Claude drafts a structured brief from free text (single-shot; public route, length-capped).
 - ✅ Brief Builder wired — "Draft the brief" fills the form; "See matches in The Crate" hands the brief off (sessionStorage) and the catalogue opens pre-filtered.
 - ✅ **AI re-rank shipped (v1.1, 2026-08-12):** `lib/buyer/brief-ai.ts rerankCandidates()` + `POST /api/buyer/brief-rerank` — after filters narrow the set, Claude orders the candidates by fit to the whole brief (incl. notes), best first, with a per-track "why it fits" reason. The Crate shows a "Ranked to your brief" banner + reasons while the Best match sort is active.
+- ✅ **v2 buyer half shipped (2026-08-12):** migration `106_buyer_briefs.sql` (**OWNER-RUN — awaiting the human-gated push**), `POST /api/buyer/briefs` (persist + best-effort AE notify), "Send to my AE" real for logged-in buyers (guests register-gate), and **My Briefs** on `/sync/brief` with live status. Buyer reads go through RLS (`is_buyer_org_member`); the full persist loop verifies live once 106 is run.
+- **v2 next slice — AE Lead Engine (§4):** the staff-gated (`requireStaff(['ae','leadership'])`) `/admin/lead-engine` feed of covered orgs' briefs (coverage = `buyer_orgs.ae_user_id` = me, or leadership) via a service-role route + brief-detail + status transitions. Everything it needs is in migration 106; blocked only on 106 being run so it can be verified live.
 - **Deferred to v1.2:** *conversational* multi-turn refine (draft is single-shot today) and a "copy brief" affordance.
-- **Deferred to v2 (needs persistence):** "Send to my AE" is an honest placeholder — no brief is routed/stored yet.
 - **Before live:** add rate-limiting to `/api/buyer/brief-draft` **and** `/api/buyer/brief-rerank` (both unauthenticated + call the model).
 
 **Placement (owner decision, 2026-08-11):** the Brief Builder is a first-class entry with **three front doors**, all rendering one `BriefBuilder` component:
