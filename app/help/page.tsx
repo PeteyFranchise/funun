@@ -50,7 +50,7 @@ export default function HelpPage() {
         <p className="help-eyebrow">Help</p>
         <h1 className="help-h1">How licensing works</h1>
         <p className="help-lead">
-          Funūn <span className="pron">(foo-NOON)</span> is where you license real music from independent artists for your videos, ads, films,
+          Funūn <span className="pron">(fuh-NOON)</span> is where you license real music from independent artists for your videos, ads, films,
           shows, games and social. Here’s how a license goes from a track you love to files you can use.
         </p>
 
