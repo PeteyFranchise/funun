@@ -94,6 +94,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           )}
           {/* Every staff role (leadership/AE/BD) sees these links. */}
+          <Link href="/admin/lead-engine" className={NAV_LINK_CLASS}>
+            Lead Engine
+          </Link>
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
           </Link>
