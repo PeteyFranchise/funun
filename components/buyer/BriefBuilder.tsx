@@ -164,7 +164,7 @@ export function BriefBuilder({ onClose, canSend = false }: { onClose?: () => voi
           ? <span className="bb-err" role="alert">{draftError}</span>
           : drafted
             ? <span className="bb-ok">Filled in below — tweak anything.</span>
-            : <span className="bb-soon">Claude drafts it; you refine it.</span>}
+            : <span className="bb-soon">AI drafts it; you refine it.</span>}
       </div>
 
       <div className="bb-grid">
