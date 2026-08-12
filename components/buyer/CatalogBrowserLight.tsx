@@ -455,6 +455,17 @@ export function CatalogBrowserLight({
           </div>
         ) : (
           <div className="cols" style={{ marginTop: 8 }}>
+            <div className="thead" aria-hidden="true">
+              <div className="h-song">Song / Artist</div>
+              <div className="h-meta">
+                <div className="h-gen">Genre</div>
+                <div className="h-dyn">Arc</div>
+                <div className="h-en">Energy</div>
+                <div className="h-len">Length</div>
+                <div className="h-vers">Versions</div>
+              </div>
+              <div className="h-acts" />
+            </div>
             {filtered.map(row => (
               <div className={`trow ${playId === row.id ? 'playing' : ''}`} key={row.id}>
                 <div className="song">
@@ -728,6 +739,21 @@ const CSS = `
 .fnbl .meta .energy{width:104px;}
 .fnbl .meta .len{width:52px;text-align:right;}
 .fnbl .acts{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto;}
+.fnbl .meta .vers{width:90px;justify-content:center;padding:7px 0;}
+.fnbl .thead{display:flex;align-items:center;gap:20px;padding:6px 6px 14px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+.fnbl .thead .h-song{flex:1 1 auto;min-width:0;}
+.fnbl .thead .h-meta{display:flex;align-items:center;gap:20px;flex:0 1 auto;}
+.fnbl .thead .h-gen{width:170px;}
+.fnbl .thead .h-dyn{width:104px;}
+.fnbl .thead .h-en{width:104px;}
+.fnbl .thead .h-len{width:52px;text-align:right;}
+.fnbl .thead .h-vers{width:90px;text-align:center;}
+.fnbl .thead .h-acts{flex:0 0 auto;width:166px;}
+@media (max-width:1180px){.fnbl .thead .h-dyn{display:none;}}
+@media (max-width:1040px){.fnbl .thead .h-gen{display:none;}}
+@media (max-width:900px){.fnbl .thead .h-en{display:none;}}
+@media (max-width:640px){.fnbl .thead{display:none;}}
+@media (max-width:520px){.fnbl .thead .h-len{display:none;}}
 @media (max-width:1180px){.fnbl .meta .dyn{display:none;}}
 @media (max-width:1040px){.fnbl .meta .gen{display:none;}}
 @media (max-width:900px){.fnbl .meta .energy{display:none;}}

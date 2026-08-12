@@ -54,7 +54,7 @@ export function BriefBuilder({ onClose }: { onClose?: () => void }) {
         </div>
         {onClose && <button type="button" className="bb-x" aria-label="Close" onClick={onClose}><svg className="icn" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg></button>}
       </div>
-      <p className="bb-lead">Tell us what you need in your own words — we'll shape it into a brief and match it to the catalogue. Not sure on a detail? Leave it; your AE fills the gaps.</p>
+      <p className="bb-lead">Tell us what you need in your own words. We'll shape it into a brief and match it to the catalogue. Not sure on a detail? Leave it; let us fill the gaps. We got you.</p>
 
       <div className="bb-ai">
         <textarea value={prose} onChange={e => setProse(e.target.value)} rows={3}
