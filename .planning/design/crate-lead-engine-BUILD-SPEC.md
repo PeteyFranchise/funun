@@ -16,6 +16,17 @@
 
 Design the **brief schema (§1) once** in v1 so v2/v3 persist and render the same shape.
 
+**Placement (owner decision, 2026-08-11):** the Brief Builder is a first-class entry with **three front doors**, all rendering one `BriefBuilder` component:
+1. **Search-anchored** — a "Describe your project" entry at the search in The Crate (`CatalogBrowserLight`) that opens the Builder as a **panel/overlay** over the catalogue; on finish it filters the catalogue behind it + offers "send to your AE."
+2. **Dedicated route `/sync/brief`** — standalone page (direct links + the guest-lead funnel; public, works signed-in or out like `/help`).
+3. **Hamburger menu** — a "Brief Builder" item → `/sync/brief`.
+The "Contact a sales rep" flow can also hand off to it. Guest = build free + see matches; register-gate only on send/save.
+
+**My Briefs + AE view (owner add, 2026-08-11):**
+- **Buyer — "My Briefs":** `/sync/brief` is the buyer's **My Briefs home** — a list of their briefs with live **status** (§9 pipeline) + a prominent "Build a new brief" (opens the Builder). Also surfaced as a **"My Briefs" tab** in The Crate's "My …" family (next to My Playlists / My Favorites).
+- **AE — all client briefs:** this *is* the **Lead Engine (§4)** — an AE views all their assigned/pod clients' briefs (intent-ranked, per-client), each opening to detail + the curation console (build a Selects). Same `buyer_briefs` object, two views.
+- **Dependency:** My Briefs list + AE feed both need persistence → **v2** (`buyer_briefs`). **v1** ships the Builder + the 3 entry points + apply-to-Crate + copyable brief (no list yet); My Briefs + AE feed arrive in v2.
+
 ---
 
 ## 1. Brief schema (jsonb, stable across all slices)
