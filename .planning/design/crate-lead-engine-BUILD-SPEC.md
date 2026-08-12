@@ -16,6 +16,14 @@
 
 Design the **brief schema (§1) once** in v1 so v2/v3 persist and render the same shape.
 
+**v1 status (2026-08-11) — SHIPPED (local, branch `feat/lane1-catalogue-menu-help`):**
+- ✅ `lib/buyer/brief.ts` — the §1 schema, canonical vocab, `coerceBrief()`, `briefToCrateFilters()`.
+- ✅ `lib/buyer/brief-ai.ts` + `POST /api/buyer/brief-draft` — Claude drafts a structured brief from free text (single-shot; public route, length-capped).
+- ✅ Brief Builder wired — "Draft the brief" fills the form; "See matches in The Crate" hands the brief off (sessionStorage) and the catalogue opens pre-filtered.
+- **Deferred to v1.1:** *conversational* multi-turn refine (draft is single-shot today), a "copy brief" affordance, and AI **re-rank** (matching is filters-only).
+- **Deferred to v2 (needs persistence):** "Send to my AE" is an honest placeholder — no brief is routed/stored yet.
+- **Before live:** add rate-limiting to `/api/buyer/brief-draft` (unauthenticated + calls the model).
+
 **Placement (owner decision, 2026-08-11):** the Brief Builder is a first-class entry with **three front doors**, all rendering one `BriefBuilder` component:
 1. **Search-anchored** — a "Describe your project" entry at the search in The Crate (`CatalogBrowserLight`) that opens the Builder as a **panel/overlay** over the catalogue; on finish it filters the catalogue behind it + offers "send to your AE."
 2. **Dedicated route `/sync/brief`** — standalone page (direct links + the guest-lead funnel; public, works signed-in or out like `/help`).
