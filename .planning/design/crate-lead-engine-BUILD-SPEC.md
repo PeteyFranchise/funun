@@ -20,9 +20,10 @@ Design the **brief schema (§1) once** in v1 so v2/v3 persist and render the sam
 - ✅ `lib/buyer/brief.ts` — the §1 schema, canonical vocab, `coerceBrief()`, `briefToCrateFilters()`.
 - ✅ `lib/buyer/brief-ai.ts` + `POST /api/buyer/brief-draft` — Claude drafts a structured brief from free text (single-shot; public route, length-capped).
 - ✅ Brief Builder wired — "Draft the brief" fills the form; "See matches in The Crate" hands the brief off (sessionStorage) and the catalogue opens pre-filtered.
-- **Deferred to v1.1:** *conversational* multi-turn refine (draft is single-shot today), a "copy brief" affordance, and AI **re-rank** (matching is filters-only).
+- ✅ **AI re-rank shipped (v1.1, 2026-08-12):** `lib/buyer/brief-ai.ts rerankCandidates()` + `POST /api/buyer/brief-rerank` — after filters narrow the set, Claude orders the candidates by fit to the whole brief (incl. notes), best first, with a per-track "why it fits" reason. The Crate shows a "Ranked to your brief" banner + reasons while the Best match sort is active.
+- **Deferred to v1.2:** *conversational* multi-turn refine (draft is single-shot today) and a "copy brief" affordance.
 - **Deferred to v2 (needs persistence):** "Send to my AE" is an honest placeholder — no brief is routed/stored yet.
-- **Before live:** add rate-limiting to `/api/buyer/brief-draft` (unauthenticated + calls the model).
+- **Before live:** add rate-limiting to `/api/buyer/brief-draft` **and** `/api/buyer/brief-rerank` (both unauthenticated + call the model).
 
 **Placement (owner decision, 2026-08-11):** the Brief Builder is a first-class entry with **three front doors**, all rendering one `BriefBuilder` component:
 1. **Search-anchored** — a "Describe your project" entry at the search in The Crate (`CatalogBrowserLight`) that opens the Builder as a **panel/overlay** over the catalogue; on finish it filters the catalogue behind it + offers "send to your AE."
