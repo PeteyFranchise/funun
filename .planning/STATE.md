@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 current_phase_name: production-observability-capacity-incident-readiness
 status: discussed
-stopped_at: Phase 32 Plan 01 Tasks 1-2 complete; Task 3 (migration 110 push) checkpoint open awaiting owner
-last_updated: "2026-08-13T17:16:15.502Z"
+stopped_at: Phase 32 Plan 05 complete (fanOutAlert + daily observability cron); Plan 01 Task 3 (migration 110 push) checkpoint still open awaiting owner
+last_updated: "2026-08-13T17:26:47.454Z"
 last_activity: 2026-08-13
-last_activity_desc: Phase 32 Plan 01 (D-10 observability config layer + drafted migration 110) Tasks 1-2 executed; Task 3 checkpoint open
+last_activity_desc: "Phase 32 Plan 01 (D-10 observability config layer: lib/observability/config.ts + drafted/text-tested migration 110) Tasks 1-2 executed; Task 3 (migration 110 review + push) is an open checkpoint:human-verify gate"
 progress:
   total_phases: 32
   completed_phases: 25
   total_plans: 192
-  completed_plans: 182
+  completed_plans: 183
   percent: 78
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 32 (production-observability-capacity-incident-readiness) — EXECUTING
-Next: /gsd-execute-phase 32 (Plan 32-01 Tasks 1-2 complete — 32-01-SUMMARY.md; Task 3 migration-110-push checkpoint OPEN, awaiting owner `supabase db push` + `supabase migration list` parity confirmation; next plan per 32-PLAN.md wave sequence)
+Next: /gsd-execute-phase 32 (Plans 32-01/32-03/32-05 executed — 32-01-SUMMARY.md, 32-03-SUMMARY.md, 32-05-SUMMARY.md; 32-01 Task 3 migration-110-push checkpoint still OPEN, awaiting owner `supabase db push` + `supabase migration list` parity confirmation; remaining plans per 32-PLAN.md wave sequence)
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
 Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
 (Historical Phase 10-13 notes below retained; counters approximate pending /gsd-docs-update recompute.)
@@ -197,6 +197,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 32 P02 | 5min | 2 tasks | 5 files |
 | Phase 32 P32-03 | 25min | 1 tasks | 2 files |
 | Phase 32 P01 | 20min | 2 tasks | 4 files |
+| Phase 32 P05 | 20min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -434,6 +435,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 32-02]: key-based scrub redaction with NFKC-normalized key match (encoding-agnostic); logWithCorrelation/correlation tests co-located in correlation.test.ts per plan's files_modified
 - [Phase ?]: 32-03: degraded Supabase check returns HTTP 503 (not 200) so Better Stack's status-code check treats it as down
 - [Phase ?]: Phase 32 Plan 01: D-10 config layer (lib/observability/config.ts) + drafted observability_recipients migration 110; Task 3 migration-push checkpoint open, awaiting owner
+- [Phase ?]: Phase 32 Plan 05: fanOutAlert always sends via config's growable recipient list, never a literal address (D-08); daily digest fans out unconditionally on an authorized run; spend line is tier-branched by a self-declared VERCEL_PLAN_TIER env var since no live Vercel spend API integration exists in this codebase.
 
 ### Pending Todos
 
@@ -514,8 +516,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-13T17:16:15.474Z
-Stopped at: Phase 32 Plan 01 Tasks 1-2 complete; Task 3 (migration 110 push) checkpoint open awaiting owner
+Last session: 2026-08-13T17:26:08.585Z
+Stopped at: Completed 32-05-PLAN.md (fanOutAlert + daily observability cron); Plan 01 Task 3 (migration 110 push) checkpoint still open awaiting owner
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
