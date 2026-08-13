@@ -48,6 +48,24 @@ export default async function AdminBuyerOrgsPage() {
         .from('buyer_members')
         .select('id', { count: 'exact', head: true })
         .eq('org_id', row.id)
+
+      // Primary contact = the org's first org-admin member. Its auth email is
+      // surfaced on the card so leadership can identify the company at a glance
+      // without expanding the member list.
+      const { data: adminMember } = await service
+        .from('buyer_members')
+        .select('user_id')
+        .eq('org_id', row.id)
+        .eq('is_org_admin', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      let adminEmail: string | null = null
+      if (adminMember?.user_id) {
+        const { data: authData } = await service.auth.admin.getUserById(adminMember.user_id as string)
+        adminEmail = authData?.user?.email ?? null
+      }
+
       return {
         id: row.id,
         name: row.name,
@@ -55,6 +73,7 @@ export default async function AdminBuyerOrgsPage() {
         verified: row.verified,
         created_at: row.created_at,
         memberCount: count ?? 0,
+        adminEmail,
         aeUserId: row.ae_user_id ?? null,
         aeName: row.ae_user_id ? staffNameById.get(row.ae_user_id) ?? null : null,
       }

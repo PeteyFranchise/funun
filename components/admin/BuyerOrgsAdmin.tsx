@@ -18,6 +18,9 @@ export type BuyerOrgRow = {
   verified: boolean
   created_at: string
   memberCount: number
+  // Primary contact email (the org's first org-admin member's auth email),
+  // shown on the card. Optional — callers that don't resolve it omit it.
+  adminEmail?: string | null
   // Leadership-only reassign control (25-09) — undefined/null for callers
   // that don't fetch AE assignment data.
   aeUserId?: string | null
@@ -171,7 +174,9 @@ export function BuyerOrgsAdmin({
         throw new Error(json.error ?? 'Something went wrong — please try again.')
       }
       if (json.data?.org) {
-        setOrgs(prev => [json.data!.org, ...prev])
+        // The POST response's org row doesn't carry adminEmail — fill it from
+        // the email just entered so the new card shows the contact right away.
+        setOrgs(prev => [{ ...json.data!.org, adminEmail: createForm.adminEmail.trim() }, ...prev])
       }
       setCreateForm(EMPTY_CREATE_FORM)
       setShowCreateForm(false)
@@ -353,8 +358,11 @@ export function BuyerOrgsAdmin({
                 onClick={() => handleExpandOrg(org.id)}
                 className="flex w-full items-center justify-between text-left"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="truncate text-[14px] font-bold text-white">{org.name}</p>
+                  {org.adminEmail && (
+                    <p className="mt-0.5 truncate text-[12px] text-white/55">{org.adminEmail}</p>
+                  )}
                   <p className="mt-0.5 text-[12px] text-lavdim">
                     {org.memberCount} member{org.memberCount !== 1 ? 's' : ''} · Created{' '}
                     {formatJoined(org.created_at)}
