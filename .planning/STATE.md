@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 30
 current_phase_name: the-crate-sync-library-catalogue-engine-sync-readiness
 status: executed
-stopped_at: "Phase 30 (The Crate — catalogue engine + Sync Readiness) EXECUTED 2026-08-13 — all 9 plans committed on feat/lane1-catalogue-menu-help (73 commits ahead of main; production build + 2141 tests + tsc green). Migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff adds 'anr' A&R role) + 109 (migration-005 column drift reconcile) LIVE on remote. CRATE-01..10 registered in REQUIREMENTS.md. DEPLOYED 2026-08-13 — feat fast-forwarded to main (7cb3902..64c5ca0), LIVE on funun.studio (production build green; funun.studio/help + /sync/catalog verified 200). PENDING: human staff-session UAT only — role-aware Crate staff layers, backstage curation leadership-vs-AE, tag-propose->approve, admit-409 — all session-gated, DEFERRED + tracked in 30-UAT.md (resume via /gsd-verify-work 30). NEXT: /gsd-plan-phase 31 (AE Client Workspace + Selects). NOTE: Lane 1 buyer/Crate work (Phases 22-30) ran after Phase 27; the current_phase pointer skipped 27->30. The progress: counters below are stale/approximate pending a full /gsd-docs-update recompute."
-last_updated: "2026-08-13T00:00:00.000Z"
-last_activity: 2026-08-13
-last_activity_desc: Phase 30 executed — The Crate catalogue engine + Sync Readiness (9/9 plans, migrations 107-109 live)
+stopped_at: Phase 32 context gathered
+last_updated: "2026-08-13T08:33:56.802Z"
+last_activity: 2026-08-09
+last_activity_desc: Phase 27 execution started
 progress:
-  total_phases: 28
-  completed_phases: 23
-  total_plans: 173
-  completed_plans: 167
-  percent: 82
+  total_phases: 32
+  completed_phases: 25
+  total_plans: 182
+  completed_plans: 179
+  percent: 78
 ---
 
 # Project State
@@ -507,9 +507,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-09T13:56:04.065Z
-Stopped at: Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted) + Turnstile scoped-hardening pass (env var renamed TURNSTILE_SECRET_KEY -> TURNSTILE_SECRET, fail-closed guards, action marker, widget reset-on-failure, token-aware submit gate). Migrations 097-103 written + tested (1971 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys -- set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET (corrected name) + SUPABASE_ACCESS_TOKEN, (2) approve 3 email copies, then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance.
-Resume file: None
+Last session: 2026-08-13T08:33:56.774Z
+Stopped at: Phase 32 context gathered
+Resume file: .planning/phases/32-production-observability-capacity-incident-readiness/32-CONTEXT.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
