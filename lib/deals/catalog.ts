@@ -3,12 +3,17 @@ import {
   MOOD_VALUES,
   ENERGY_VALUES,
   VOCAL_VALUES,
+  MOOD_LABELS,
+  ENERGY_LABELS,
+  VOCAL_LABELS,
+  INSTRUMENT_LABELS,
   readDescriptors,
   type Mood,
   type EnergyLevel,
   type VocalType,
 } from '@/lib/metadata/schema'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
+import { rightsBadge, RIGHTS_BADGE_TO_CATALOG_RIGHTS, type CatalogRightsCode } from '@/lib/sync-library/gate'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
@@ -243,15 +248,71 @@ export function projectMatchesUsageCleared(hasPreclearedTerms: boolean, filter: 
   return hasPreclearedTerms
 }
 
+// ─── descriptorsToDisplay (30-07) ──────────────────────────────────────────
+// Turns a track's CONFIRMED descriptors (readDescriptors — artist-authored,
+// never ai_suggested/pending) into the plain display strings CatalogRow
+// expects. CatalogRow.mood/energy/vocal are single display strings, not
+// lists, so the headline mood is the first confirmed mood (mirrors the
+// SAMPLE_CATALOG_ROWS fixture's one-mood-per-row shape). Untagged/missing
+// descriptors resolve to blank strings/empty array — never throw, never
+// synthesize a placeholder. Uses the SAME controlled vocab (MOOD_LABELS/
+// ENERGY_LABELS/VOCAL_LABELS/INSTRUMENT_LABELS, lib/metadata/schema.ts) the
+// artist-facing MetadataStudio and the buyer filters already share — no
+// second instrument/mood vocabulary defined here (30-RESEARCH "Layered
+// Tagging" gap, now closed by 30-02's INSTRUMENT_VALUES).
+export type CatalogDescriptorDisplay = {
+  mood: string
+  energy: string
+  vocal: string
+  instruments: string[]
+}
+
+export function descriptorsToDisplay(track: {
+  metadata?: Record<string, unknown> | null
+}): CatalogDescriptorDisplay {
+  const d = readDescriptors(track.metadata)
+  if (!d) return { mood: '', energy: '', vocal: '', instruments: [] }
+  return {
+    mood: d.moods.length > 0 ? MOOD_LABELS[d.moods[0]] : '',
+    energy: d.energy ? ENERGY_LABELS[d.energy] : '',
+    vocal: d.vocal ? VOCAL_LABELS[d.vocal] : '',
+    instruments: (d.instruments ?? []).map(i => INSTRUMENT_LABELS[i]),
+  }
+}
+
+// ─── catalogRightsFromStage3 (30-07) ───────────────────────────────────────
+// Maps an already-computed Stage3Result to the catalogue's tri-state rights
+// code via rightsBadge() (lib/sync-library/gate.ts, 30-01) — the SAME rights
+// authority the sync-library gate uses, never a second/hardcoded rights
+// definition (T-30-11). CatalogRightsCode ('ok'|'part'|'req') is imported,
+// not redefined, from gate.ts so CatalogCard.rights and CatalogBrowserLight's
+// CatalogRow.rights ('ok'|'part'|'req', components/buyer/CatalogBrowserLight.tsx)
+// stay structurally the SAME literal union rather than two hand-copied ones.
+export function catalogRightsFromStage3(stage3: Stage3Result): CatalogRightsCode {
+  return RIGHTS_BADGE_TO_CATALOG_RIGHTS[rightsBadge(stage3)]
+}
+
+export type { CatalogRightsCode }
+
 // ─── CatalogCard — client-safe display shape ───────────────────────────────
 // No owner contact details and no non-public availability signals (D-14a).
 // Shared between the API route and the server-rendered first page so both
 // surfaces agree on exactly what a buyer may see.
+//
+// 30-07: enriched additively with the real authored display fields (artist/
+// mood/energy/vocal/instruments) + the real tri-state rights code — the
+// minimal 22-05 slice. Still no owner contact details or non-public signal.
 export type CatalogCard = {
   id: string
   title: string
   type: string
   genre: string | null
   coverArtUrl: string | null
+  artist: string
+  mood: string
+  energy: string
+  vocal: string
+  instruments: string[]
+  rights: CatalogRightsCode
   tracks: { id: string; title: string | null; bpm: number | null; keySignature: string | null }[]
 }

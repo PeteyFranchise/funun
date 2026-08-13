@@ -6,6 +6,8 @@ import {
   projectMatchesKeyBpm,
   projectMatchesDescriptors,
   projectMatchesUsageCleared,
+  descriptorsToDisplay,
+  catalogRightsFromStage3,
   CATALOG_READINESS_THRESHOLD,
   type CatalogProjectLike,
   type CatalogTrackWithMetadata,
@@ -21,6 +23,27 @@ function stage3(canContinue: boolean): Stage3Result {
     requiredTotal: 0,
     canContinue,
     sampleBlock: false,
+  }
+}
+
+// Builds a Stage3Result exercising rightsBadge's three branches directly
+// (requiredComplete/requiredTotal/sampleBlock/canContinue), rather than
+// reusing the zero-requirements `stage3()` fixture above which always reads
+// as 'contact' (requiredComplete === 0).
+function stage3WithRequirements(opts: {
+  requiredComplete: number
+  requiredTotal: number
+  canContinue: boolean
+  sampleBlock?: boolean
+}): Stage3Result {
+  return {
+    required: [],
+    recommended: [],
+    complete: [],
+    requiredComplete: opts.requiredComplete,
+    requiredTotal: opts.requiredTotal,
+    canContinue: opts.canContinue,
+    sampleBlock: opts.sampleBlock ?? false,
   }
 }
 
@@ -252,5 +275,82 @@ describe('projectMatchesUsageCleared', () => {
     const filter = buildCatalogFilter({ usageCleared: 'true' })
     expect(projectMatchesUsageCleared(true, filter)).toBe(true)
     expect(projectMatchesUsageCleared(false, filter)).toBe(false)
+  })
+})
+
+describe('descriptorsToDisplay', () => {
+  it('turns a fully-tagged track into the expected display labels', () => {
+    const track = {
+      metadata: {
+        descriptors: {
+          moods: ['driving', 'chill'],
+          energy: 'high',
+          vocal: 'vocal',
+          instruments: ['piano', 'synth'],
+        },
+      },
+    }
+    expect(descriptorsToDisplay(track)).toEqual({
+      mood: 'Driving',
+      energy: 'High energy',
+      vocal: 'Vocal',
+      instruments: ['Piano', 'Synth'],
+    })
+  })
+
+  it('uses the FIRST confirmed mood as the headline mood', () => {
+    const track = { metadata: { descriptors: { moods: ['chill', 'driving'], energy: null, vocal: null } } }
+    expect(descriptorsToDisplay(track).mood).toBe('Chill')
+  })
+
+  it('returns blank/empty display fields for an untagged track', () => {
+    expect(descriptorsToDisplay({ metadata: null })).toEqual({
+      mood: '',
+      energy: '',
+      vocal: '',
+      instruments: [],
+    })
+    expect(descriptorsToDisplay({ metadata: {} })).toEqual({
+      mood: '',
+      energy: '',
+      vocal: '',
+      instruments: [],
+    })
+  })
+
+  it('drops off-vocabulary values rather than throwing', () => {
+    const track = {
+      metadata: {
+        descriptors: { moods: ['not-a-real-mood'], energy: 'extreme', vocal: 'both', instruments: ['kazoo'] },
+      },
+    }
+    expect(descriptorsToDisplay(track)).toEqual({ mood: '', energy: '', vocal: '', instruments: [] })
+  })
+})
+
+describe('catalogRightsFromStage3', () => {
+  it('maps a fully-cleared, all-required-complete stage3 to "ok"', () => {
+    const s3 = stage3WithRequirements({ requiredComplete: 3, requiredTotal: 3, canContinue: true })
+    expect(catalogRightsFromStage3(s3)).toBe('ok')
+  })
+
+  it('maps a partially-complete stage3 to "part"', () => {
+    const s3 = stage3WithRequirements({ requiredComplete: 1, requiredTotal: 3, canContinue: true })
+    expect(catalogRightsFromStage3(s3)).toBe('part')
+  })
+
+  it('maps a stage3 with nothing complete yet to "req"', () => {
+    const s3 = stage3WithRequirements({ requiredComplete: 0, requiredTotal: 3, canContinue: false })
+    expect(catalogRightsFromStage3(s3)).toBe('req')
+  })
+
+  it('maps a sample-blocked stage3 to "req" even if otherwise complete', () => {
+    const s3 = stage3WithRequirements({
+      requiredComplete: 3,
+      requiredTotal: 3,
+      canContinue: false,
+      sampleBlock: true,
+    })
+    expect(catalogRightsFromStage3(s3)).toBe('req')
   })
 })
