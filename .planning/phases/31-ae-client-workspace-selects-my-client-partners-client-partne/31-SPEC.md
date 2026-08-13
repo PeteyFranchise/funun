@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-13
 **Ambiguity score:** 0.13 (gate: ≤ 0.20)
-**Requirements:** 13 locked
+**Requirements:** 14 locked
 
 ## Goal
 
@@ -83,6 +83,11 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
     - Target: the player records per-track playback (plays, actual **audible** time, completions, replays) and marks a **qualified listen** when audible time crosses a configurable threshold (**default ≥30s**); attributed via the share token (a named recipient when logged in, otherwise the link/session); the AE sees a per-track + per-Selects engagement readout, and the signal feeds the Selects-seen metric (R2), Crate Requests (R10), Next action, and health (R3)
     - Acceptance: playing a track past the threshold records exactly one qualified listen for that track+viewer; scrubbing/seeking past the threshold without audible playback does NOT record a listen; a replay is counted distinctly; the AE's Selects view shows per-track plays / qualified-listens / replays and a Selects-level summary
 
+14. **Call/conversation Game Plan**: The AE plans and logs calls against a saved topic list in the individual client view.
+    - Current: only a free-text "log a conversation" note exists; there is no pre-call planning
+    - Target: in the person (individual client) view, the AE builds a **Game Plan** of **3–5 topics** to cover (create their own or select from suggested topics), **saves** it for the next planned call, then on/after the call checks off covered topics, adds notes, and logs the conversation — which writes a relationship-log entry recording how many topics were covered; a saved game plan persists until it is logged
+    - Acceptance: an AE can add/remove topics (guided toward 3–5), save a game plan that persists to the next call, check topics as covered, and "Log conversation" writes a relationship-log entry noting topics-covered + notes
+
 ## Boundaries
 
 **In scope:**
@@ -94,6 +99,8 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - Crate Requests demand inbox — absorbs the Lead Engine (R10)
 - Selects builder + the shareable player contract (R11, R12)
 - A CRM-lite **contact record** layer under `buyer_orgs` (people + relationship log + status)
+- Per-track Selects engagement tracking + the shareable player's listen telemetry (R13)
+- Call/conversation **Game Plan** — pre-call topic planning + logging in the client view (R14)
 
 **Out of scope:**
 - **AI-guided company knowledge wiki** (searchable, ask-a-question → routed to the right article/doc/video) — deferred to its own future phase; it is company-wide (all team members), not the AE engine. The Playbook is its seed.
@@ -128,10 +135,11 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - [ ] The Selects builder adds/removes Crate tracks with per-track + cover notes; an empty Selects cannot be sent; AI-draft populates a starter; Send mints a share link (R11)
 - [ ] The player plays watermarked previews only for a valid token, records reactions, and shows a safe state for an invalid/expired token (R12)
 - [ ] The player records a per-track qualified listen at the configured threshold (default ≥30s of audible time); scrubbing does not count; the AE's Selects view shows per-track plays/qualified-listens/replays + a Selects-level summary (R13)
+- [ ] The client view offers a Game Plan of 3–5 topics that saves for the next call; logging a conversation checks off covered topics and writes a relationship-log entry noting topics-covered + notes (R14)
 
 ## Edge Coverage
 
-**Coverage:** 21/21 applicable edges resolved · 0 unresolved
+**Coverage:** 22/22 applicable edges resolved · 0 unresolved
 
 | Category | Requirement | Status | Resolution / Reason |
 |----------|-------------|--------|---------------------|
@@ -156,6 +164,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | unclassified | R11 | ✅ covered | Empty Selects cannot be sent; re-adding an existing track is idempotent; a not-rights-ready track is flagged before send. |
 | unclassified | R12 | ✅ covered | An invalid/expired token shows a safe "unavailable" state and leaks nothing; only watermarked previews are ever served. |
 | precision | R13 | ✅ covered | Only actual audible time counts toward the ≥30s qualified-listen bar (scrub/seek excluded); a replay is a distinct count. |
+| boundary | R14 | ✅ covered | The Game Plan guides to 3–5 topics (soft cap at 5); logging a call with 0 topics checked is allowed but the entry records "0 of N covered", never a silent blank. |
 
 ## Prohibitions (must-NOT)
 
@@ -179,7 +188,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | Goal Clarity       | 0.90  | 0.75 | ✓      | Outcome-language goal; the AE motion end-to-end is concrete        |
 | Boundary Clarity   | 0.88  | 0.70 | ✓      | Explicit in/out; wiki + GTM + Deals + peripherals excluded         |
 | Constraint Clarity | 0.80  | 0.65 | ✓      | Access scoping, data reuse, content-protection, Team Console locked |
-| Acceptance Criteria| 0.85  | 0.70 | ✓      | 14 pass/fail criteria + 21 edges + 7 prohibitions                  |
+| Acceptance Criteria| 0.85  | 0.70 | ✓      | 15 pass/fail criteria + 22 edges + 7 prohibitions                  |
 | **Ambiguity**      | 0.13  | ≤0.20| ✓      | Gate passed on the strength of the full design session             |
 
 ## Interview Log
