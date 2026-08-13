@@ -17,10 +17,23 @@ import type { SyncListingEntrySource, SyncListingStatus } from '@/types'
 // separate lane. Only `pending_admit` rows carry Admit/Reject actions —
 // the backing route's isValidTransition() (lib/sync-library/submission.ts)
 // is the sole legal authority; this UI mirrors that edge set for display
-// only. The leadership-only Remove action is rendered ONLY when
-// `isLeadership` is true — the remove route independently enforces
-// requireStaff(['leadership']) regardless (T-26-35), so hiding the button
-// here is a UX nicety, not the security boundary.
+// only.
+//
+// LEADERSHIP-ONLY CURATION (30-CONTEXT.md access decision, 30-09-PLAN.md):
+// Admit/Reject and the leadership-only Remove action are all rendered ONLY
+// when `isLeadership` is true — an AE browses the queue (sees status,
+// entry source, age) but never sees a curation control. This is a UX
+// mirror, NOT the security boundary: both the admit/reject route
+// (requireStaff(['leadership'])) and the remove route independently
+// enforce leadership-only access regardless (T-26-35 / T-30-06), so
+// hiding these buttons here is defense-in-depth, never the sole gate.
+//
+// Admitting is additionally gated server-side by the inclusion gate
+// (evaluateInclusionGate, 30-04) — an admit attempt on a track that hasn't
+// finished its Sync Readiness checklist / quality review returns 409 with
+// a "needs completion" message; the UI surfaces that inline on the row
+// (never a generic error) and leaves the row's status unchanged — the
+// track stays in the Sync Readiness worklist, not rejected.
 
 export type SyncLibraryQueueRow = {
   listingId: string
@@ -144,6 +157,11 @@ export function SyncLibraryAdmin({
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [reasonByListing, setReasonByListing] = useState<Record<string, string>>({})
+  // Per-row "needs completion" message from the admit route's 409 gate
+  // response (30-04) — kept separate from actionError so it renders inline
+  // on the specific row rather than as a page-level banner, and the row's
+  // status stays untouched (CONTEXT.md "Incomplete ≠ rejected").
+  const [needsCompletionByListing, setNeedsCompletionByListing] = useState<Record<string, string>>({})
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null)
   const [removeReasonByListing, setRemoveReasonByListing] = useState<Record<string, string>>({})
 
@@ -173,6 +191,11 @@ export function SyncLibraryAdmin({
   const handleDecision = async (listingId: string, decision: 'admit' | 'reject') => {
     setPendingId(listingId)
     setActionError(null)
+    setNeedsCompletionByListing(prev => {
+      const next = { ...prev }
+      delete next[listingId]
+      return next
+    })
     try {
       const reason = decision === 'reject' ? reasonByListing[listingId]?.trim() : undefined
       const res = await fetch(`/api/sync-library/admin/${listingId}`, {
@@ -180,6 +203,19 @@ export function SyncLibraryAdmin({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision, ...(reason ? { reason } : {}) }),
       })
+      // 30-04's admit route returns 409 when the inclusion gate isn't clear
+      // yet (checklist incomplete and/or quality review not passed) — this
+      // is NOT a failure, it's "not yet eligible." Surface it inline on
+      // the row, pointing at the Sync Readiness worklist, and leave the
+      // row's status untouched rather than throwing a generic error.
+      if (res.status === 409 && decision === 'admit') {
+        const json = await res.json().catch(() => ({}))
+        const message =
+          (json as { error?: string }).error ??
+          'This track needs to finish its Sync Readiness checklist and/or pass quality review before it can be admitted.'
+        setNeedsCompletionByListing(prev => ({ ...prev, [listingId]: message }))
+        return
+      }
       if (!res.ok) throw new Error(await parseError(res))
       const nextStatus: SyncListingStatus = decision === 'admit' ? 'admitted' : 'rejected'
       setRows(prev =>
@@ -409,7 +445,16 @@ export function SyncLibraryAdmin({
                       <p className="mt-2 text-[11px] text-[color:var(--rose-fg)]">Reason: {row.removalReason}</p>
                     )}
 
-                    {row.status === 'pending_admit' && (
+                    {row.status === 'pending_admit' && needsCompletionByListing[row.listingId] && (
+                      <p className="mt-2 text-[11px] text-[color:var(--amber-fg)]">
+                        {needsCompletionByListing[row.listingId]} See the Sync Readiness worklist below.
+                      </p>
+                    )}
+
+                    {/* Admit/Reject — LEADERSHIP-ONLY, mirroring the Remove
+                        action below; the route independently enforces this
+                        (T-30-06) regardless of what renders here. */}
+                    {row.status === 'pending_admit' && isLeadership && (
                       <div className="mt-3">
                         <input
                           value={reasonByListing[row.listingId] ?? ''}
@@ -438,6 +483,11 @@ export function SyncLibraryAdmin({
                           </button>
                         </div>
                       </div>
+                    )}
+                    {row.status === 'pending_admit' && !isLeadership && (
+                      <p className="mt-3 text-[11px] text-[color:var(--ink-3)]">
+                        Awaiting a leadership admit/reject decision.
+                      </p>
                     )}
 
                     {/* Leadership-only takedown — rendered ONLY when isLeadership;
