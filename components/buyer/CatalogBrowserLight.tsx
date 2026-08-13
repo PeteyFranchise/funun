@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { StaffRole } from '@/lib/admin/staff-role'
 import {
   USAGE_TYPE_VALUES,
   USAGE_TYPE_LABELS,
@@ -35,6 +36,17 @@ import { BRIEF_APPLY_KEY, RERANK_CAND_CAP, coerceBrief, briefToCrateFilters, typ
 // so it renders inside the shared BuyerTopNav shell without drawing a
 // second, competing header or re-injecting the layout's already-injected
 // FNBL_CSS base tokens (nav-reconciliation Option A).
+//
+// 30-08: role-aware staff layers on this SAME surface — never a forked
+// component. The optional `staffMode` prop is SERVER-RESOLVED (via
+// getStaffRole(user) in app/sync/catalog/page.tsx, never a client flag —
+// T-30-02) and rows optionally carry a `staff` object (attached server-side
+// ONLY for a staff visitor, lib/deals/catalog-query.ts). When staffMode is
+// absent (every buyer/anon render), the render path is byte-identical to
+// before this plan — the staff panel below is additive and conditional.
+// Staff chrome uses ONLY .fnbl light tokens (Pitfall 4) — it must never
+// reach for the dark Team Console's .fncon tokens, which would not resolve
+// inside this light-themed component.
 
 export type CatalogRights = 'ok' | 'part' | 'req'
 export type Dynamics = 'twin' | 'steady' | 'build' | 'fade' | 'peak'
@@ -60,6 +72,16 @@ export type CatalogRow = {
   // over the fixture is expected to 404 at the route's authorization gate).
   vaultProjectId: string
   tracks: { id: string; title: string }[]
+  // 30-08: staff-only layer — populated server-side ONLY when a
+  // server-resolved staffMode was passed to loadCatalogPage. Absent for
+  // every buyer/anon row. NEVER derive/trust this from client state — it
+  // must always come through as server-computed row data.
+  staff?: {
+    readinessStatus: string
+    rightsDetail: string
+    artistNotes: string | null
+    inProgress: boolean
+  }
 }
 
 type FilterKey = 'Vocals' | 'Mood' | 'Dynamics' | 'Energy' | 'Length' | 'Instruments' | 'Genres' | 'Rights'
@@ -80,6 +102,13 @@ const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as con
 const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contact required' }
 const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
+// 30-08: staff-only readinessStatus display labels — falls back to the raw
+// value for any status this map doesn't recognize (never throws).
+const READINESS_STATUS_LABEL: Record<string, string> = {
+  admitted: 'Admitted — live in the Crate',
+  pending_admit: 'Ready — awaiting admit',
+  needs_completion: 'Needs completion',
+}
 
 // A CatalogRow trimmed to what the AI re-rank needs to judge fit (v1.1).
 function toCandidate(r: CatalogRow): BriefCandidate {
@@ -170,6 +199,7 @@ export function CatalogBrowserLight({
   rows,
   isPublic = false,
   embedded = false,
+  staffMode = null,
 }: {
   rows: CatalogRow[]
   isPublic?: boolean
@@ -179,6 +209,11 @@ export function CatalogBrowserLight({
   // or re-inject the base tokens. The non-embedded branch (isPublic) stays
   // fully self-contained for the currently-unused public route.
   embedded?: boolean
+  // 30-08: server-resolved staff role (never client-derived — see the
+  // header comment). When set AND a row carries a `staff` object, an
+  // additional staff-only panel renders below that row. Absent/null keeps
+  // the buyer render path exactly as it was before this plan.
+  staffMode?: StaffRole | null
 }) {
   const emptySel = () => FILTER_KEYS.reduce((a, k) => ({ ...a, [k]: new Set<string>() }), {} as Record<FilterKey, Set<string>>)
 
@@ -569,36 +604,51 @@ export function CatalogBrowserLight({
               <div className="h-acts" />
             </div>
             {filtered.map(row => (
-              <div className={`trow ${playId === row.id ? 'playing' : ''}`} key={row.id}>
-                <div className="song">
-                  <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
-                    <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
-                      {playId === row.id && playing
-                        ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
-                        : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
-                    </button>
+              <Fragment key={row.id}>
+                <div className={`trow ${playId === row.id ? 'playing' : ''}`}>
+                  <div className="song">
+                    <div className="art" style={row.coverUrl ? { backgroundImage: `url('${row.coverUrl}')` } : { background: row.gradient }}>
+                      <button className="pb" type="button" aria-label={playId === row.id && playing ? `Pause ${row.title}` : `Play ${row.title}`} onClick={() => play(row.id)}>
+                        {playId === row.id && playing
+                          ? (<svg viewBox="0 0 24 24"><path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z" /></svg>)
+                          : (<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>)}
+                      </button>
+                    </div>
+                    <div className="idt">
+                      <div className="sname">{row.title}</div>
+                      <div className="sby">by <b>{row.artist}</b></div>
+                      <RightsBadge rights={row.rights} />
+                      {rankActive && rankReason[row.id] && (
+                        <div className="why"><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>{rankReason[row.id]}</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="idt">
-                    <div className="sname">{row.title}</div>
-                    <div className="sby">by <b>{row.artist}</b></div>
-                    <RightsBadge rights={row.rights} />
-                    {rankActive && rankReason[row.id] && (
-                      <div className="why"><svg className="icn" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2.2 2.2M15.8 15.8 18 18M18 6l-2.2 2.2M8.2 15.8 6 18" /></svg>{rankReason[row.id]}</div>
-                    )}
+                  <div className="meta">
+                    <div className="gen">{row.genres}</div>
+                    <div className="dyn"><DynGlyph shape={row.dynamics} /></div>
+                    <div className="energy">{row.energy}</div>
+                    <div className="len">{row.length}</div>
+                    <button className="vers" type="button">+ {row.versions}</button>
+                  </div>
+                  <div className="acts">
+                    <button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button>
+                    <button className="lic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(row.id))}>License</button>
                   </div>
                 </div>
-                <div className="meta">
-                  <div className="gen">{row.genres}</div>
-                  <div className="dyn"><DynGlyph shape={row.dynamics} /></div>
-                  <div className="energy">{row.energy}</div>
-                  <div className="len">{row.length}</div>
-                  <button className="vers" type="button">+ {row.versions}</button>
-                </div>
-                <div className="acts">
-                  <button className="kebab" type="button" aria-label={`More options for ${row.title}`}><svg className="icn" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></svg></button>
-                  <button className="lic" type="button" onClick={() => (isPublic ? setAuthModalOpen(true) : setModalId(row.id))}>License</button>
-                </div>
-              </div>
+                {/* 30-08: staff-only layer — renders ONLY when this component
+                    was mounted with a server-resolved staffMode AND this row
+                    carries a `staff` object (loadCatalogPage, staff-mode
+                    only). Absent for every buyer/anon render — the `.trow`
+                    above is untouched, so the buyer path stays byte-identical. */}
+                {staffMode && row.staff && (
+                  <div className="staffpanel" role="note" aria-label={`Staff details for ${row.title}`}>
+                    <span><b>Readiness:</b> {READINESS_STATUS_LABEL[row.staff.readinessStatus] ?? row.staff.readinessStatus}</span>
+                    <span><b>Rights:</b> {row.staff.rightsDetail}</span>
+                    {row.staff.artistNotes && <span><b>Notes:</b> {row.staff.artistNotes}</span>}
+                    {row.staff.inProgress && <span className="sp-badge">Other tracks in progress</span>}
+                  </div>
+                )}
+              </Fragment>
             ))}
           </div>
         )}
@@ -916,6 +966,10 @@ const CSS = `
 .fnbl .rights.ok{color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-line);}
 .fnbl .rights.part{color:var(--part-fg);background:var(--part-bg);border:1px solid var(--part-line);}
 .fnbl .rights.req{color:var(--req-fg);background:var(--req-bg);border:1px solid var(--req-line);}
+/* 30-08: staff-only panel — light .fnbl tokens ONLY, never .fncon (Pitfall 4). */
+.fnbl .staffpanel{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:-2px 6px 4px;padding:12px 16px;border-radius:10px;background:var(--wash);border:1px dashed var(--line-2);font-size:12.5px;color:var(--ink-2);}
+.fnbl .staffpanel b{color:var(--ink);font-weight:700;}
+.fnbl .staffpanel .sp-badge{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--part-fg);background:var(--part-bg);border:1px solid var(--part-line);border-radius:999px;padding:3px 10px;}
 .fnbl .loadmore{display:block;margin:44px auto 0;border:1.5px solid var(--line-2);background:#fff;border-radius:999px;padding:16px 42px;font-size:14.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--indigo);white-space:nowrap;}
 .fnbl .loadmore:hover{border-color:var(--indigo);background:var(--wash);}
 .fnbl .empty{display:none;flex-direction:column;align-items:center;text-align:center;padding:86px 20px 60px;}
