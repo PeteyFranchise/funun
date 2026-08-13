@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-13
 **Ambiguity score:** 0.13 (gate: ≤ 0.20)
-**Requirements:** 12 locked
+**Requirements:** 13 locked
 
 ## Goal
 
@@ -78,6 +78,11 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
     - Target: a token-addressed page where the client plays **watermarked previews** only, reacts per track (love/pass/more-like-this), and approves / requests changes / licenses; rich unfurl (OpenGraph) for forwarding
     - Acceptance: opening a valid share link plays watermarked previews and records per-track reactions; an invalid/expired token shows a safe "link unavailable" state and leaks no data; clean master audio is never served through the player
 
+13. **Selects engagement tracking**: The player records which tracks the client actually listened to, not just that a Selects was shown.
+    - Current: only "shown" is known (a Selects was sent); there is no per-track listening data behind the "Selects seen" metric
+    - Target: the player records per-track playback (plays, actual **audible** time, completions, replays) and marks a **qualified listen** when audible time crosses a configurable threshold (**default ≥30s**); attributed via the share token (a named recipient when logged in, otherwise the link/session); the AE sees a per-track + per-Selects engagement readout, and the signal feeds the Selects-seen metric (R2), Crate Requests (R10), Next action, and health (R3)
+    - Acceptance: playing a track past the threshold records exactly one qualified listen for that track+viewer; scrubbing/seeking past the threshold without audible playback does NOT record a listen; a replay is counted distinctly; the AE's Selects view shows per-track plays / qualified-listens / replays and a Selects-level summary
+
 ## Boundaries
 
 **In scope:**
@@ -104,6 +109,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - **Access scoping (hard):** an AE reads only their own assigned clients' data; leadership reads all. `ae_user_id` stays staff-private (never in an authenticated buyer GRANT).
 - **Content protection:** the shareable player serves only watermarked previews via an unguessable token; never clean masters.
 - **Per-AE persistence** (column order/visibility, sort) uses the same per-member mechanism as the console theme cookie.
+- **Engagement threshold** — the qualified-listen bar (default 30s of audible time) is owner-editable config, same "one place to adjust as we grow" pattern as the health rules.
 - Founder / small-team scale — every surface must be usable without a dedicated operator.
 
 ## Acceptance Criteria
@@ -121,10 +127,11 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - [ ] Crate Requests ranks buyer activity by intent, tags each item to a client, and offers a per-item action; a guest signal appears as a "new lead" (R10)
 - [ ] The Selects builder adds/removes Crate tracks with per-track + cover notes; an empty Selects cannot be sent; AI-draft populates a starter; Send mints a share link (R11)
 - [ ] The player plays watermarked previews only for a valid token, records reactions, and shows a safe state for an invalid/expired token (R12)
+- [ ] The player records a per-track qualified listen at the configured threshold (default ≥30s of audible time); scrubbing does not count; the AE's Selects view shows per-track plays/qualified-listens/replays + a Selects-level summary (R13)
 
 ## Edge Coverage
 
-**Coverage:** 20/20 applicable edges resolved · 0 unresolved
+**Coverage:** 21/21 applicable edges resolved · 0 unresolved
 
 | Category | Requirement | Status | Resolution / Reason |
 |----------|-------------|--------|---------------------|
@@ -148,10 +155,11 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | concurrency | R10 | 🧪 backstop | Intent ranking is stable and de-duped under concurrent activity inserts — held-out ranking-stability test in plan-phase. |
 | unclassified | R11 | ✅ covered | Empty Selects cannot be sent; re-adding an existing track is idempotent; a not-rights-ready track is flagged before send. |
 | unclassified | R12 | ✅ covered | An invalid/expired token shows a safe "unavailable" state and leaks nothing; only watermarked previews are ever served. |
+| precision | R13 | ✅ covered | Only actual audible time counts toward the ≥30s qualified-listen bar (scrub/seek excluded); a replay is a distinct count. |
 
 ## Prohibitions (must-NOT)
 
-**Coverage:** 6/6 applicable prohibitions resolved · 0 unresolved
+**Coverage:** 7/7 applicable prohibitions resolved · 0 unresolved
 *(Canon-referral: generic injection/XSS/CSRF/secret-management/authz-framework hardening is owned by `/gsd-secure-phase` + lint — not minted here. Rows below are the bespoke privacy/access/content-protection must-NOTs this phase introduces.)*
 
 | Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
@@ -162,6 +170,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | MUST NOT make a Selects reachable without its unguessable share token (no id enumeration). | R11/R12 | resolved | test — an unauthenticated request without a valid token is rejected |
 | MUST NOT allow a non-leadership/ops role to edit The Playbook SOPs or the health-rules config. | R4/R9 | resolved | test — role-gate test on the edit endpoints |
 | MUST NOT reassign or move an account without a leadership action AND an audit-log entry. | R7 | resolved | judgment — every assignment writes a relationship-log/audit record |
+| MUST NOT attribute an anonymous/forwarded listen to a specific named contact it cannot verify. | R13 | resolved | judgment — attribution falls back to the link/session when the viewer is not an authenticated recipient |
 
 ## Ambiguity Report
 
@@ -170,7 +179,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | Goal Clarity       | 0.90  | 0.75 | ✓      | Outcome-language goal; the AE motion end-to-end is concrete        |
 | Boundary Clarity   | 0.88  | 0.70 | ✓      | Explicit in/out; wiki + GTM + Deals + peripherals excluded         |
 | Constraint Clarity | 0.80  | 0.65 | ✓      | Access scoping, data reuse, content-protection, Team Console locked |
-| Acceptance Criteria| 0.85  | 0.70 | ✓      | 13 pass/fail criteria + 20 edges + 6 prohibitions                  |
+| Acceptance Criteria| 0.85  | 0.70 | ✓      | 14 pass/fail criteria + 21 edges + 7 prohibitions                  |
 | **Ambiguity**      | 0.13  | ≤0.20| ✓      | Gate passed on the strength of the full design session             |
 
 ## Interview Log
