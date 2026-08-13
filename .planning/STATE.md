@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 30
-current_phase_name: the-crate-sync-library-catalogue-engine-sync-readiness
-status: executed
+current_phase: 32
+current_phase_name: production-observability-capacity-incident-readiness
+status: discussed
 stopped_at: Phase 32 context gathered
 last_updated: "2026-08-13T08:33:56.802Z"
-last_activity: 2026-08-09
-last_activity_desc: Phase 27 execution started
+last_activity: 2026-08-13
+last_activity_desc: Phase 32 spec + context gathered (discuss-phase complete); ready for /gsd-plan-phase 32 --research
 progress:
   total_phases: 32
   completed_phases: 25
@@ -24,14 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 30 — The Crate (catalogue engine + Sync Readiness) — EXECUTED 2026-08-13; deploy + human staff-session UAT pending
+**Current focus:** Phase 32 — Production Observability, Capacity & Incident Readiness — SPEC + CONTEXT committed 2026-08-13; ready for planning
 
 ## Current Position
 
-Phase: 30 (the-crate-sync-library-catalogue-engine-sync-readiness) — EXECUTED 2026-08-13
-Plan: 9 of 9 (all committed on feat/lane1-catalogue-menu-help; 73 commits ahead of main; not pushed)
-Migrations 107/108/109 live on remote; CRATE-01..10 registered. DEPLOYED 2026-08-13 (main 64c5ca0 → live on funun.studio). Pending: human staff-session UAT only (30-UAT.md, DEFERRED — resume via /gsd-verify-work 30). Next: /gsd-plan-phase 31 (AE Client Workspace + Selects).
-(Historical Phase 10-13 notes below retained; counters stale pending /gsd-docs-update recompute.)
+Phase: 32 (production-observability-capacity-incident-readiness) — SPEC + CONTEXT committed 2026-08-13; ready for planning
+Next: /gsd-plan-phase 32 --research  (resume file: .planning/phases/32-production-observability-capacity-incident-readiness/32-CONTEXT.md)
+Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
+Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
+(Historical Phase 10-13 notes below retained; counters approximate pending /gsd-docs-update recompute.)
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
