@@ -73,7 +73,18 @@ Turn the represented catalogue into a **managed engine** with three faces of ONE
 ## Deferred Ideas
 - AE workspace, Selects build/send, Client Partners rooms → **Phase 31**.
 - Peripheral admin rooms (Green Room, etc.) → tabled (see review note).
+- 22-05 scope BEYOND "live rows show their authored tags + staff layers" → stays separate.
 </deferred>
+
+<resolved_after_research>
+## Resolved after research (2026-08-12) — planner MUST honor these
+
+- **Staff-layered Crate location:** the **same `/sync/catalog` surface, role-aware** — team members see extra layers (rights details, readiness status, artist notes, in-progress tracks) on the very page buyers browse. NOT a separate `/admin/crate` route.
+- **Live-data enrichment (Phase 22 "22-05"):** **INCLUDE the minimal slice** Phase 30 needs — live catalogue rows must render their real authored tags + the staff layers. The role-aware Crate and visible tagging cannot be delivered on fixtures alone. Defer any broader 22-05 scope.
+- **Sync Library access (fix shipped mismatch):** implement the review decision — **leadership = full curation (admit/reject/remove); AE = browse & pull only.** The shipped `app/api/sync-library/admin/[listingId]/route.ts` currently grants AE full admit/reject via `requireStaff(['leadership','ae'])` — **tighten admit/reject to leadership-only**; AE keeps browse + pull-into-Selects (no curation writes).
+- **Readiness granularity:** Sync Readiness is **per-track** (`sync_listings` is track-level). **Derive** per-track readiness from the existing project-level readiness engine + legal-doc gate (compose them — do NOT invent a 4th independent readiness signal); Phase 18's `coverageTier()` is the closest precedent for the track-vs-project reconciliation. Planner resolves the exact derivation.
+- **Quality bar signal:** treat as a **manual staff judgment** at the gate for v1 (no automated audio-quality analysis) unless the planner finds a cheap existing signal.
+</resolved_after_research>
 
 ---
 
