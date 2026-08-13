@@ -1107,3 +1107,48 @@ Partner accounts), the per-deal licensing/signing model (`sync-license-signing-m
 per-deal license must be resolved), Stripe (payments).
 
 **Status:** Backlog — owner-requested 2026-08-07 during Phase 26 planning. Not yet scoped; post-beta.
+
+### Phase 30: The Crate + Sync Library — Catalogue Engine & Sync Readiness
+
+**Goal:** Turn the catalogue into a managed engine: a staff **inclusion gate** (rights + quality + metadata), a
+**Sync Readiness** pipeline — a sync-specific *subset* of the Sound Vault readiness that the Funūn team uses to
+guide artists/artist-teams to sync-ready, worked from a **worklist queue** — layered **AI + artist + staff
+tagging**, and **one role-aware Crate** (clean storefront for buyers; the same surface with staff-only layers —
+rights, readiness, notes, in-progress — for the team, where AEs curate Selects). Inclusion is **both** (artists
+submit AND staff curate) behind the gate; incomplete ≠ rejected — it enters the Sync Readiness pipeline.
+
+**Why:** The catalogue is what every buyer + AE surface pulls from. Today inclusion is undecided and there is no
+completion pipeline, so incomplete tracks stall instead of getting finished. A Sync Readiness workflow + layered
+tagging + a single role-aware Crate makes supply reliable, findable, and curate-ready.
+
+**Depends on:** Phase 22 (Crate UI), Phase 26 (Sync Library inclusion — extends it), the Wave 1 readiness engine.
+
+**Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dive #1).
+
+**Status:** Scoped via /gsd-explore 2026-08-12; not yet planned.
+
+### Phase 31: AE Client Workspace + Selects (My Client Partners / Client Partners)
+
+**Goal:** Build the AE sales engine as working rooms. **My Client Partners** = an AE's own-clients workspace: a
+**Contacts CRM record** (basics + reach-out, history with us, relationship log, status), the **Selects** motion
+(build from scratch / AI-drafted / straight off a brief → shareable player link with watermarked previews + notes
+→ client reacts / approves / licenses → deal), plus activity + notes/status. **Client Partners** = the leadership
+control tower (the same workspace on ANY client + assign/route AEs, health-at-a-glance, performance metrics,
+company management). **Lead Engine** = the cross-client action inbox (open client / build & send Selects / set
+status).
+
+**Why:** This is the AE's day-to-day — how they run client relationships and move demand (briefs) to deals (via
+Selects). Today these rooms are thin (a list + inline rename). This turns them into the surfaces the whole AE-led
+(Lane 1) motion actually needs.
+
+**Depends on:** Phase 30 (catalogue/Crate to curate from), Phase 16 (deals / license requests), Brief Builder v2 +
+Lead Engine + `buyer_briefs` (shipped this session, branch `feat/lane1-catalogue-menu-help`), the Selects design
+in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
+
+**Access model (spec for both phases):** role×room — **AE** = their OWN assigned clients' view/work; **leadership**
+= ALL clients + oversight/assignment; **BD** = ops rooms (Team Members, Verification, Reports); model is
+**extensible for future roles** (e.g. a verification/ops role). Full matrix in the review note.
+
+**Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dives #2/#3 + access model).
+
+**Status:** Scoped via /gsd-explore 2026-08-12; not yet planned.
