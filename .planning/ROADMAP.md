@@ -1182,11 +1182,20 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 
 ### Phase 32: Production Observability, Capacity & Incident Readiness
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Funūn moves from zero formal monitoring to a founder-maintainable observability system: owned, minute-latency alerts for outages / elevated error rates / slow routes / Vercel throttling / Supabase pressure / unexpected spend; a tested read-only `/api/health`; privacy-scrubbed Sentry server+browser monitoring; a minimal correlation-ID logging convention; a non-prod k6 harness that finds the real capacity ceiling; baseline-validated thresholds + a SEV-1..4 model; a tabletop-tested incident runbook; and a named-owner operating rhythm — all tunable from one owner-editable config layer (D-10).
+**Requirements**: R1–R10 (SPEC-locked; see 32-SPEC.md)
 **Depends on:** Phase 31
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 32 to break down)
+- [ ] 32-01-PLAN.md — Central config layer (D-10) + observability_recipients migration (R1/R8/R10)
+- [ ] 32-02-PLAN.md — PII scrub + correlation-ID / structured-logging primitives (R5/R6)
+- [ ] 32-03-PLAN.md — Read-only, secret-safe /api/health endpoint (R4)
+- [ ] 32-04-PLAN.md — Vercel cost controls + Supabase health review [vendor + docs] (R1/R2)
+- [ ] 32-05-PLAN.md — Extensible alert fan-out + daily observability cron (R1/R8/R10)
+- [ ] 32-06-PLAN.md — Sentry error monitoring: wiring + scrubbing + owner setup (R5)
+- [ ] 32-07-PLAN.md — Better Stack external uptime monitor + status page (R3)
+- [ ] 32-08-PLAN.md — Thresholds table + SEV-1..4 model doc (R8)
+- [ ] 32-09-PLAN.md — k6 non-prod load harness + capacity report (R7)
+- [ ] 32-10-PLAN.md — Incident runbook + operating rhythm (R9/R10)
