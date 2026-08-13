@@ -4,6 +4,7 @@ import { buildCatalogFilter } from '@/lib/deals/catalog'
 import { loadCatalogPage } from '@/lib/deals/catalog-query'
 import { CatalogBrowserLight } from '@/components/buyer/CatalogBrowserLight'
 import { mapCardsToLightRows, SAMPLE_CATALOG_ROWS } from '@/lib/deals/catalog-sample'
+import { getStaffRole } from '@/lib/admin/gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,17 @@ export const dynamic = 'force-dynamic'
 // there are no live rights-ready rows we render the representative fixture so
 // the design shows in full — enriching the query + wiring live filter/pagination
 // + the player/modal is slice 1.5/2.
+//
+// 30-08: role-aware staff layers on this SAME surface. staffMode is
+// resolved SERVER-SIDE ONLY via getStaffRole(user) (never a client
+// flag/query-param — T-30-02, the same authority app/(admin)/admin/
+// sync-library/page.tsx uses). A staff visitor (leadership/ae/bd/anr) sees
+// the layered Crate on this exact URL; a buyer or logged-out visitor sees
+// the unchanged clean storefront. A staff account that is NOT also a
+// buyer_members row bypasses the /sync/access redirect below (a pure staff
+// account has no reason to hold buyer membership) but is never passed as
+// loadCatalogPage's buyerUserId — no block-list resolution runs against a
+// staff account, matching the anonymous-visitor path above.
 export default async function CatalogPage() {
   const supabase = await createServerClient()
   const {
@@ -40,6 +52,7 @@ export default async function CatalogPage() {
   } = await supabase.auth.getUser()
   const service = createServiceClient()
   const filter = buildCatalogFilter({})
+  const staffRole = user ? getStaffRole(user) : null
 
   if (!user) {
     const initial = await loadCatalogPage(service, null, filter, 1)
@@ -53,12 +66,18 @@ export default async function CatalogPage() {
     .select('org_id')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (!member) redirect('/sync/access')
+  if (!member && !staffRole) redirect('/sync/access')
 
-  const initial = await loadCatalogPage(service, user.id, filter, 1)
+  const initial = await loadCatalogPage(service, member ? user.id : null, filter, 1, staffRole)
 
   const liveRows = mapCardsToLightRows(initial.data)
-  const rows = liveRows.length > 0 ? liveRows : SAMPLE_CATALOG_ROWS
+  // 30-08: carry the server-attached staff object through onto each
+  // CatalogRow by id — mapCardsToLightRows' declared return type is
+  // CatalogCard[] (it must stay ignorant of the staff-only shape), so the
+  // staff layer is zipped on here instead of widening that shared mapper.
+  const staffById = new Map(initial.data.map(c => [c.id, c.staff]))
+  const rows0 = staffRole ? liveRows.map(r => ({ ...r, staff: staffById.get(r.id) })) : liveRows
+  const rows = rows0.length > 0 ? rows0 : SAMPLE_CATALOG_ROWS
 
-  return <CatalogBrowserLight rows={rows} embedded />
+  return <CatalogBrowserLight rows={rows} embedded staffMode={staffRole} />
 }
