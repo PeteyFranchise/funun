@@ -589,6 +589,50 @@ The curated sync-library supply pipeline — how songs get into the buyer catalo
 - Phase 26 requirement IDs: 15 total
 - Complete (code + automated): 15 — all built; 1723 tests + tsc + build green; deployed via PR #59. Live-env UAT (11 flow tests in 26-UAT.md) BLOCKED pending real auth/data; live DocuSeal sign round-trip deferred; counsel-approved agreement swap-in pending.
 
+## v1.2 — Phase 30: The Crate — Catalogue Engine & Sync Readiness Requirements
+
+Turns the catalogue from a passive list into a managed engine. A staff **inclusion gate** (rights + quality + metadata) decides what is browsable; **Sync Readiness** — a sync-specific *subset* of the Sound Vault readiness — routes incomplete tracks into a **worklist queue** the Funūn team works to guide artists to sync-ready (incomplete ≠ rejected). **Layered tagging** lets AI, artist, and staff tags coexist non-destructively, with AE tag proposals gated behind Leadership/A&R approval. **One role-aware Crate** serves a clean storefront to buyers and staff-only layers (rights, readiness, notes, in-progress) to the team on the SAME `/sync/catalog` surface. Backed by migrations 107 (`sync_listings` quality-review columns + `staff_notes`), 108 (`funun_staff` CHECK adds the `anr` A&R role), 109 (migration-005 column drift reconcile) — all live on the remote. Built on `feat/lane1-catalogue-menu-help` (2141 tests + tsc + production build green). Scope source: `.planning/notes/team-member-rooms-review.md` (Deep Dive #1).
+
+### Sync Readiness & inclusion gate
+- **CRATE-01**: Sync Readiness per-track derivation — a sync-specific *subset* of the Sound Vault readiness (`lib/sync-library/readiness.ts`: `syncReadinessForTrack`, `missingSyncItems`, `isSyncMetadataComplete`) that COMPOSES the existing `readinessItemsForProject`, so there is one readiness source of truth
+- **CRATE-02**: Inclusion-gate predicate + rights badge — `evaluateInclusionGate` returns `admit_eligible | needs_completion` (never auto-reject; incomplete ≠ rejected) and `rightsBadge` derives the tri-state catalogue rights code (`lib/sync-library/gate.ts`)
+- **CRATE-04**: Catalogue admission wired to the gate — admission runs through the single inclusion-gate predicate; admitting an incomplete track is a non-terminal 409 (routes it into the Sync Readiness pipeline) rather than a rejection
+
+### Sync Readiness worklist (completion pipeline)
+- **CRATE-03**: Sync Readiness worklist queue — a staff-gated worklist (pure shaper `lib/sync-library/worklist.ts` + batched GET `app/api/sync-library/worklist`) listing each incomplete listing with its EXACT missing items, so the Funūn team can guide artists/artist-teams to sync-ready
+
+### Curation & quality (leadership)
+- **CRATE-05**: Leadership-only curation — admit/reject gated to `requireStaff(['leadership'])`, plus a leadership-only quality review (pass/fail + staff notes) surfaced in the Sync Library backstage UI
+- **CRATE-09**: `sync_listings` quality-review columns + `staff_notes` + access control — migration 107 adds 5 additive nullable quality/notes columns; the quality/notes write route is leadership-only
+
+### Layered tagging (AI + artist + staff)
+- **CRATE-06**: Layered tagging — INSTRUMENT vocabulary + AI tag-suggest (`lib/tagging/ai-tag.ts`) + NON-DESTRUCTIVE merge onto artist/staff tags (`lib/tagging/tag-merge.ts`), so AI, artist, and staff tags coexist without overwrite
+- **CRATE-10**: Descriptor provenance + A&R role + tag-approval workflow — descriptor v2 carries `ai_suggested`/`staff_refined_by`/`pending` provenance; an AE tag proposal enters `pending`; Leadership OR the new A&R (`anr`) role approves/rejects (migration 108 adds `anr`; `TAG_APPROVER_ROLES=['leadership','anr']`)
+
+### One role-aware Crate
+- **CRATE-07**: One role-aware Crate — the SAME `/sync/catalog` surface renders a clean storefront for buyers and staff-only layers (rights, readiness, notes, in-progress) for the team, server-resolved via `staffMode` (`getStaffRole`), no fork
+- **CRATE-08**: Live-data slice (deferred Phase 22 "22-05") — live catalogue rows render REAL authored tags + REAL tri-state rights via `loadCatalogPage` enrichment, replacing fixture-only display
+
+**Traceability (Phase 30):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| CRATE-01 | Phase 30 | 30-01 | Complete (code) |
+| CRATE-02 | Phase 30 | 30-01 | Complete (code) |
+| CRATE-03 | Phase 30 | 30-05, 30-09 | Complete (code; UI UAT deferred) |
+| CRATE-04 | Phase 30 | 30-04 | Complete (code) |
+| CRATE-05 | Phase 30 | 30-04, 30-09 | Complete (code; UI UAT deferred) |
+| CRATE-06 | Phase 30 | 30-02, 30-06 | Complete (code) |
+| CRATE-07 | Phase 30 | 30-08 | Complete (code; UAT deferred) |
+| CRATE-08 | Phase 30 | 30-07, 30-08 | Complete (code) |
+| CRATE-09 | Phase 30 | 30-03, 30-04 | Complete (code; migration 107 live) |
+| CRATE-10 | Phase 30 | 30-02, 30-03, 30-06 | Complete (code; migration 108 live) |
+
+**Coverage (Phase 30):**
+
+- Phase 30 requirement IDs: 10 total
+- Complete (code + automated): 10 — all built; 2141 tests + tsc + production build green; committed on `feat/lane1-catalogue-menu-help`. Migrations 107/108/109 live on the remote. Human staff-session UAT (role-aware Crate staff layers; backstage curation leadership-vs-AE; live tag-propose→approve; admit-409 on an incomplete track) DEFERRED — tracked in `30-UAT.md`, resumable via `/gsd-verify-work 30`.
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-08 — Phase 26 registered all 15 SYNCLIB requirement IDs (curated sync-library supply pipeline: submit/invite, sign-once blanket agreement, staff admit/reject + leadership removal, catalogue admission gate, artist + admin UI), all code-Complete and deployed via PR #59; live-env UAT pending*
+*Last updated: 2026-08-13 — Phase 30 registered CRATE-01..10 (The Crate catalogue engine: Sync Readiness inclusion gate + worklist completion pipeline, leadership-only curation + quality review, layered AI/artist/staff tagging with A&R-gated AE proposals, one role-aware Crate), all code-Complete on `feat/lane1-catalogue-menu-help`; migrations 107/108/109 live; human staff-session UAT deferred (30-UAT.md)*

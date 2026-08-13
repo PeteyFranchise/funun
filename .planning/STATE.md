@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 27
-current_phase_name: artist-invite-only-onboarding
-status: pending
-stopped_at: "Phase 27 CODE-COMPLETE + hardened through 3 Codex review rounds (all findings resolved; L2 accepted) + Turnstile scoped-hardening pass (env var renamed TURNSTILE_SECRET_KEY -> TURNSTILE_SECRET, fail-closed guards, action marker, widget reset-on-failure, token-aware submit gate). Migrations 097-103 written + tested (1971 green), NOT pushed. Break-glass in place (docs/BREAK-GLASS.md). NEXT = owner cutover (27-11): (1) Cloudflare Turnstile keys -- set NEXT_PUBLIC_TURNSTILE_SITE_KEY + TURNSTILE_SECRET (corrected name) + SUPABASE_ACCESS_TOKEN, (2) approve 3 email copies, then Codex Prompt 1 (read-only pre-flight) -> Prompt 2 (supabase db push 097-103 + gate smoke). Bootstrap already safe (owner has 2 artist accounts). THEN /gsd-docs-update (register INVITE-01..12), /gsd-verify-work, /gsd-ship. HOLD the reopen broadcast until BD/counsel CAN-SPAM clearance."
-last_updated: "2026-08-09T13:56:04.140Z"
-last_activity: 2026-08-09
-last_activity_desc: Phase 27 execution started
+current_phase: 30
+current_phase_name: the-crate-sync-library-catalogue-engine-sync-readiness
+status: executed
+stopped_at: "Phase 30 (The Crate — catalogue engine + Sync Readiness) EXECUTED 2026-08-13 — all 9 plans committed on feat/lane1-catalogue-menu-help (73 commits ahead of main; production build + 2141 tests + tsc green). Migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff adds 'anr' A&R role) + 109 (migration-005 column drift reconcile) LIVE on remote. CRATE-01..10 registered in REQUIREMENTS.md. PENDING: (1) deploy decision — feat is a clean fast-forward over main (funun.studio deploys from main), not yet pushed; (2) human staff-session UAT — role-aware Crate staff layers, backstage curation leadership-vs-AE, tag-propose->approve, admit-409 — all session-gated, DEFERRED + tracked in 30-UAT.md (resume via /gsd-verify-work 30). NEXT: /gsd-plan-phase 31 (AE Client Workspace + Selects). NOTE: Lane 1 buyer/Crate work (Phases 22-30) ran after Phase 27; the current_phase pointer skipped 27->30. The progress: counters below are stale/approximate pending a full /gsd-docs-update recompute."
+last_updated: "2026-08-13T00:00:00.000Z"
+last_activity: 2026-08-13
+last_activity_desc: Phase 30 executed — The Crate catalogue engine + Sync Readiness (9/9 plans, migrations 107-109 live)
 progress:
   total_phases: 28
   completed_phases: 23
@@ -24,13 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 27 — artist-invite-only-onboarding
+**Current focus:** Phase 30 — The Crate (catalogue engine + Sync Readiness) — EXECUTED 2026-08-13; deploy + human staff-session UAT pending
 
 ## Current Position
 
-Phase: 27 (artist-invite-only-onboarding) — EXECUTING
-Plan: 11 of 11
-BLOCKING human-verify checkpoint (supabase db push + live smoke) — see 28-05-SUMMARY.md "Checkpoint" section.
+Phase: 30 (the-crate-sync-library-catalogue-engine-sync-readiness) — EXECUTED 2026-08-13
+Plan: 9 of 9 (all committed on feat/lane1-catalogue-menu-help; 73 commits ahead of main; not pushed)
+Migrations 107/108/109 live on remote; CRATE-01..10 registered. Pending: (1) deploy decision — feat is a clean fast-forward over main; (2) human staff-session UAT (30-UAT.md, DEFERRED — resume via /gsd-verify-work 30). Next: /gsd-plan-phase 31 (AE Client Workspace + Selects).
+(Historical Phase 10-13 notes below retained; counters stale pending /gsd-docs-update recompute.)
 (DISCOVER-04, SAFETY-01..04) satisfied per 13-VERIFICATION.md (9/9 must-haves
 verified in code; 46 suites / 450+ tests, tsc/lint clean). Phases 11-13 merged
 to main via PR #37 (1db5fbf, 2026-07-18). Migrations 058-061 live — 061 closed
