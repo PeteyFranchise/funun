@@ -21,17 +21,22 @@ per-phase entries below predate the Phase 27 cutover and read stale:
   Phase 23 (buyer onboarding, Model A), Phase 25 (Funūn team accounts + AE), Phase 26
   (sync-library inclusion), **Phase 27 (invite-only artist onboarding — live via migration 105)**,
   Phase 28 (industry accounts + Green Room access).
+
 - 🚧 **Partial:** Phase 16 (GTM beta buyer portal — **10/12 plans executed**), Phase 22 (buyer
   catalogue + light-theme UI — **4/5 plans**).
+
 - ⏸ **On hold:** Phase 24 (buyer self-serve, Model B) — awaiting the **business-model decision**
   (paid preview/early-access tier + content-protection).
+
 - 📝 **Backlog / post-beta:** Phase 29 (flat-price self-serve sync licensing) — per-deal license
   model to resolve with counsel.
 
 **The frontier is mostly DECISION-gated, not build-gated.** The remaining plans are blocked on
 deliberations, not effort:
+
 - **16-09** (buyer-side e-sign signing architecture) — `status: deferred`, blocked on the
   **sync-license signing model** (blanket vs per-deal vs hybrid; music/IP counsel).
+
 - **22-05** (buyer catalogue live data) — `blocked_by` the **buyer-catalogue-inclusion model** deliberation.
 - **Phase 24** (buyer self-serve) — the **business-model decision** (paid preview tier + content protection).
 - **Phase 29** (flat-price self-serve licensing) — the **per-deal license model** (counsel).
@@ -1130,17 +1135,20 @@ tagging + a single role-aware Crate makes supply reliable, findable, and curate-
 **Plans:** 9 plans (3 waves)
 
 Wave 1 (pure core + migration drafts):
+
 - [ ] 30-01-PLAN.md — Sync Readiness per-track derivation (subset of Wave 1 engine) + inclusion-gate predicate + rights badge (Jest-tested). [CRATE-01, CRATE-02]
 - [ ] 30-02-PLAN.md — Layered tagging foundation: INSTRUMENT vocab + descriptor v2 (ai_suggested/pending provenance) + AI tag-suggest + non-destructive merge + pending→approved transition (Jest-tested). [CRATE-06, CRATE-10]
 - [ ] 30-03-PLAN.md — OWNER-RUN migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff CHECK adds `anr` A&R role) + StaffRole code. [CRATE-09, CRATE-10]
 
 Wave 2 (backend, depends on Wave 1):
+
 - [ ] 30-04-PLAN.md — Inclusion-gate wiring + access fix (admit/reject → leadership-only) + leadership-only quality/notes route. [CRATE-04, CRATE-05, CRATE-09]
 - [ ] 30-05-PLAN.md — Sync Readiness worklist backend: pure shaper (Jest) + staff-gated batched GET route. [CRATE-03]
 - [ ] 30-06-PLAN.md — Layered tagging routes: AI tag-suggest + tag-propose (AE→pending, leadership/A&R→auto-confirm) + tag-approve (leadership/A&R only). [CRATE-06, CRATE-10]
 - [ ] 30-07-PLAN.md — Minimal live-data slice (Phase 22 "22-05"): live catalogue rows render real authored tags + real tri-state rights. [CRATE-08]
 
 Wave 3 (surfaces, depends on Wave 2):
+
 - [ ] 30-08-PLAN.md — Role-aware Crate on the SAME /sync/catalog surface: server-resolved staff layers, no fork, light-theme chrome. [CRATE-07, CRATE-08]
 - [ ] 30-09-PLAN.md — Sync Library backstage UI: Sync Readiness worklist + leadership-only curation UX. [CRATE-03, CRATE-05]
 
@@ -1169,3 +1177,16 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 **Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dives #2/#3 + access model).
 
 **Status:** Scoped via /gsd-explore 2026-08-12; not yet planned.
+
+---
+
+### Phase 32: Production Observability, Capacity & Incident Readiness
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 31
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 32 to break down)

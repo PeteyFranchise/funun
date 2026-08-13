@@ -196,6 +196,11 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 32 added (2026-08-13): **Production Observability, Capacity & Incident Readiness** — appended to the roadmap tail via `/gsd-phase`; folder `.planning/phases/32-production-observability-capacity-incident-readiness/`. Next: `/gsd-spec-phase 32 --text`.
+- Roadmap/folder reconcile (2026-08-13): materialized empty phase folders for the two scoped-but-unbuilt headings — Phase 29 (Self-Serve Flat-Price Sync) and Phase 31 (AE Client Workspace + Selects) — so folders match ROADMAP headings 8–31. Required because `phase.add` numbers by folder (max was 30) and first collided at 31; with 29/31 materialized it correctly assigned 32. The auto-inserted heading landed mid-roadmap (stale "current milestone" = Green Room) and was relocated to the end after Phase 31.
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
