@@ -289,13 +289,13 @@ export function BuyerOrgsAdmin({
           }}
           className="mb-4 rounded-lg bg-grad px-4 py-2.5 text-[13px] font-bold text-white shadow transition hover:opacity-90"
         >
-          Create buyer company
+          Create Client Partner
         </button>
       )}
 
       {showCreateForm && (
         <div className="mt-1 mb-2 rounded-[10px] border border-brandindigo/30 bg-[#0a0a0f] p-4">
-          <h3 className="mb-3 text-[13px] font-bold text-white/70">Create a buyer company</h3>
+          <h3 className="mb-3 text-[13px] font-bold text-white/70">Create a Client Partner</h3>
           {createError && <p className="mb-3 text-[13px] text-rose-400">{createError}</p>}
           <div className="grid gap-3">
             <div>
@@ -349,7 +349,7 @@ export function BuyerOrgsAdmin({
       )}
 
       {orgs.length === 0 ? (
-        <p className="mt-4 text-[14px] text-white/50">No buyer companies yet. Create the first one above.</p>
+        <p className="mt-4 text-[14px] text-white/50">No Client Partners yet. Create the first one above.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {orgs.map(org => (

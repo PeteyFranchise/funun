@@ -82,7 +82,7 @@ export default async function AdminBuyerOrgsPage() {
 
   return (
     <div className="flex-1 px-9 py-[30px]">
-      <h1 className="text-2xl font-bold text-white">Buyer Orgs</h1>
+      <h1 className="text-2xl font-bold text-white">Client Partners</h1>
       <BuyerOrgsAdmin initialOrgs={orgRows} isLeadership={isLeadership} aePool={aePool} />
     </div>
   )
