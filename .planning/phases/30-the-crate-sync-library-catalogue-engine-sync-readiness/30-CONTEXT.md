@@ -1,0 +1,81 @@
+# Phase 30: The Crate + Sync Library — Catalogue Engine & Sync Readiness - Context
+
+**Gathered:** 2026-08-12
+**Status:** Ready for planning
+**Source:** /gsd-explore — Team Member rooms review (`.planning/notes/team-member-rooms-review.md`, Deep Dive #1)
+
+<domain>
+## Phase Boundary
+
+Turn the represented catalogue into a **managed engine** with three faces of ONE catalogue:
+- **The Crate** (buyer storefront) — clean browse/search/filter of live, rights-ready tracks (already built, Phase 22).
+- **The Crate + staff layers** (team view) — the SAME surface, role-aware, with staff-only info; where AEs curate Selects.
+- **Sync Library** (backstage) — the inclusion gate, the Sync-Readiness worklist, and tag curation.
+
+**In scope:** the inclusion gate, the Sync Readiness pipeline + worklist, layered tagging, and role-aware Crate layering.
+**Out of scope:** the AE workspace / Selects / Client Partners rooms and the shareable Selects player — those are **Phase 31**.
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### Inclusion
+- **Both, with a gate:** artists submit (mark a Vault track for sync) AND staff curate tracks in; everything passes a **staff review gate** before it goes live.
+- **Incomplete ≠ rejected:** incomplete tracks enter a completion pipeline, not a bin.
+
+### The gate checks
+- **Rights are clear** → drives the rights badge (ready / partial / contact).
+- **Quality bar** → audio quality + genuine sync fit.
+- **Metadata complete** → tags, splits, ISRCs, etc.
+
+### Sync Readiness (the completion pipeline)
+- A **sync-specific readiness checklist** — a *subset* of the existing Sound Vault readiness engine (Wave 1). **Reuse that engine; do not rebuild it.**
+- The **Funūn team guides the artist / artist team** to close gaps (collaborative — not just kick-it-back).
+- A **worklist queue** in Sync Library lists every incomplete track + exactly what's missing, worked down over time.
+
+### Tagging (the mood/genre/energy/etc. behind filters, search, brief-matching)
+- **Layered, all three:** AI suggests (auto-listen), artist provides/confirms, staff curate/refine for consistency.
+
+### Role-aware Crate (admin ↔ buyer split)
+- **ONE catalogue surface** (The Crate). **Buyers** see the clean storefront; **team members** see the same surface with **staff-only layers** (rights details, readiness status, artist notes, in-progress tracks).
+- **Sync Library** = backstage management of that same catalogue.
+
+### Access
+- **Sync Library curation:** leadership = full curation; **AE = browse & pull only** (into Selects). Two ability levels, one room.
+- Staff-layered Crate view = team members; clean Crate = public/buyer.
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Scope + decisions
+- `.planning/notes/team-member-rooms-review.md` — the exploration this phase is scoped from (Deep Dive #1 = the catalogue). Read the "Catalogue summary" block.
+
+### Existing systems to EXTEND / REUSE (do NOT rebuild)
+- **Phase 26** (`.planning/phases/26-sync-library-inclusion/`) — the existing Sync Library inclusion work; extend it, don't duplicate.
+- **Wave 1 readiness engine** (`lib/vault/readiness.ts` + `types/index.ts` READINESS_ITEMS) — Sync Readiness is a *subset* of this.
+- **The Crate UI** — `components/buyer/CatalogBrowserLight.tsx`, `components/buyer/fnbl-theme.ts` — the surface staff layers attach to.
+- **Catalogue data layer** — `lib/deals/catalog*.ts` (query / sample / filter) + `lib/sync-library/*`.
+- **AI tagging** — the existing Anthropic SDK usage (`lib/anthropic/`, `lib/buyer/brief-ai.ts`) as the pattern.
+- **Staff gate** — `lib/admin/gate.ts` (`requireStaff`) for the Sync Library room + staff layers.
+</canonical_refs>
+
+<specifics>
+## Specific Ideas
+- Rights badge (ready/partial/contact) is a function of the gate's rights check.
+- AEs build Selects from the staff-layered Crate — Phase 31 consumes this surface.
+- The Sync Library room's access was set in the review: leadership curates, AE browses & pulls.
+</specifics>
+
+<deferred>
+## Deferred Ideas
+- AE workspace, Selects build/send, Client Partners rooms → **Phase 31**.
+- Peripheral admin rooms (Green Room, etc.) → tabled (see review note).
+</deferred>
+
+---
+
+*Phase: 30-the-crate-sync-library-catalogue-engine-sync-readiness*
+*Context gathered: 2026-08-12 via /gsd-explore*
