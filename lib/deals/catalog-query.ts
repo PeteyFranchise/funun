@@ -1,8 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { VaultProjectType } from '@/types'
+import type { StaffRole } from '@/lib/admin/staff-role'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { loadBlockedIds } from '@/lib/green-room/discover'
 import { readDescriptors } from '@/lib/metadata/schema'
+import { syncReadinessForTrack, missingSyncItems } from '@/lib/sync-library/readiness'
 import {
   isRightsReady,
   projectMatchesKeyBpm,
@@ -57,13 +60,24 @@ import {
 // computed for the isRightsReady gate via catalogRightsFromStage3(), never
 // recomputed or hardcoded. loadCatalogPage stays the single implementation
 // — no parallel query module.
+//
+// 30-08: role-aware staff layers on this SAME query. When a caller passes a
+// non-null, SERVER-RESOLVED staffMode (app/sync/catalog/page.tsx resolves
+// this via getStaffRole(user) — never a client flag, T-30-02), each card
+// additionally carries an optional `staff` object (readinessStatus,
+// rightsDetail, artistNotes, inProgress) via ONE extra batched sync_listings
+// query scoped to this page's project ids. When staffMode is null (every
+// buyer/anon call, unchanged), no extra query runs and no card carries
+// `staff` — the buyer-facing output stays byte-identical to before this
+// plan. isRightsReady/isAdmittedToSyncLibrary above are NOT touched by
+// staffMode — the buyer-visible row SET never changes for staff.
 
 const PAGE_SIZE = 20
 
 const PROJECT_COLUMNS = `
   id, title, type, genre, vault_readiness_score, user_id,
   cover_art_url, content_id_registered, content_id_dismissed_until,
-  tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+  tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details, isrc, iswc),
   vault_documents (id, type, status, track_id, document_data)
 `
 
@@ -89,6 +103,8 @@ type CatalogProjectRow = {
     mastering_engineer: string | null
     has_sample: boolean | null
     sample_details: string | null
+    isrc: string | null
+    iswc: string | null
   }[]
   vault_documents: {
     id: string
@@ -99,13 +115,41 @@ type CatalogProjectRow = {
   }[]
 }
 
-export type CatalogPageResult = { data: CatalogCard[]; page: number; pageSize: number }
+// ─── CatalogStaffLayer (30-08) ─────────────────────────────────────────
+// Attached to a CatalogCard ONLY when loadCatalogPage's staffMode param is
+// a server-resolved role — buyers/anon never see this field (T-30-02).
+// readinessStatus: 'admitted' when the representative track's own
+// sync_listings row is admitted; otherwise derived from
+// syncReadinessForTrack (30-01, the sync-specific subset of the Wave 1
+// engine) — 'needs_completion' when anything is missing, 'pending_admit'
+// when the track's own readiness checklist is clear but not yet admitted.
+// rightsDetail summarizes the SAME stage3 already computed above for the
+// isRightsReady gate (never a second rights definition). artistNotes is
+// sync_listings.staff_notes (migration 107). inProgress flags a project
+// with another listing still moving through the gate (non-admitted,
+// non-terminal — T-30-12), which the buyer-visible row set never surfaces.
+export type CatalogStaffLayer = {
+  readinessStatus: 'admitted' | 'pending_admit' | 'needs_completion'
+  rightsDetail: string
+  artistNotes: string | null
+  inProgress: boolean
+}
+
+type CatalogCardWithStaff = CatalogCard & { staff?: CatalogStaffLayer }
+
+// Non-admitted, non-terminal listing statuses (mirrors LEGAL_TRANSITIONS'
+// pre-admission states, lib/sync-library/submission.ts) — a project with
+// any listing in one of these is "in progress" toward admission.
+const IN_PROGRESS_LISTING_STATUSES = new Set(['applied', 'invited', 'agreement_pending', 'pending_admit'])
+
+export type CatalogPageResult = { data: CatalogCardWithStaff[]; page: number; pageSize: number }
 
 export async function loadCatalogPage(
   service: SupabaseClient,
   buyerUserId: string | null,
   filter: CatalogFilter,
-  page: number
+  page: number,
+  staffMode: StaffRole | null = null
 ): Promise<CatalogPageResult> {
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
@@ -141,6 +185,36 @@ export async function loadCatalogPage(
   const admittedProjectIds = new Set(
     ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
   )
+
+  // 30-08: staff-layer batch — ONE additional batched query, scoped to this
+  // page's project ids, run ONLY when staffMode is a server-resolved role.
+  // Selects EVERY status (not just 'admitted') so readinessStatus/
+  // inProgress can see in-flight listings the buyer-facing admittedRows
+  // query above deliberately excludes. Buyer/anon calls (staffMode null)
+  // never run this query.
+  const listingsByProject = new Map<
+    string,
+    { status: string; track_id: string; staff_notes: string | null }[]
+  >()
+  if (staffMode) {
+    const { data: staffListingRows } = await service
+      .from('sync_listings')
+      .select('vault_project_id, status, track_id, staff_notes')
+      .in(
+        'vault_project_id',
+        projects.map(p => p.id)
+      )
+    for (const row of (staffListingRows ?? []) as {
+      vault_project_id: string
+      status: string
+      track_id: string
+      staff_notes: string | null
+    }[]) {
+      const list = listingsByProject.get(row.vault_project_id) ?? []
+      list.push({ status: row.status, track_id: row.track_id, staff_notes: row.staff_notes })
+      listingsByProject.set(row.vault_project_id, list)
+    }
+  }
 
   // Batch owner visibility + artist-name resolution (T-16-17/T-16-18,
   // 30-07) in the SAME single user_profiles query — no second batched
@@ -184,7 +258,7 @@ export async function loadCatalogPage(
     )
   }
 
-  const cards: CatalogCard[] = []
+  const cards: CatalogCardWithStaff[] = []
   for (const project of projects) {
     // Buyers are a fully separate account model (D-11) — never a follower
     // or connection of the artist, so viewerIsOwner/viewerIsConnection are
@@ -212,7 +286,7 @@ export async function loadCatalogPage(
       ? descriptorsToDisplay(representativeTrack)
       : { mood: '', energy: '', vocal: '', instruments: [] }
 
-    cards.push({
+    const card: CatalogCardWithStaff = {
       id: project.id,
       title: project.title,
       type: project.type,
@@ -225,7 +299,44 @@ export async function loadCatalogPage(
       instruments: display.instruments,
       rights: catalogRightsFromStage3(stage3),
       tracks: tracks.map(t => ({ id: t.id, title: t.title, bpm: t.bpm, keySignature: t.key_signature })),
-    })
+    }
+
+    // 30-08: attach the staff-only layer — never for buyers/anon (staffMode
+    // null skips this block entirely, leaving `card.staff` undefined).
+    if (staffMode) {
+      const projectListings = listingsByProject.get(project.id) ?? []
+      const inProgress = projectListings.some(l => IN_PROGRESS_LISTING_STATUSES.has(l.status))
+      const repListing = representativeTrack
+        ? projectListings.find(l => l.track_id === representativeTrack.id) ?? null
+        : null
+      const artistNotes =
+        repListing?.staff_notes ?? projectListings.find(l => l.staff_notes != null)?.staff_notes ?? null
+
+      let readinessStatus: CatalogStaffLayer['readinessStatus']
+      if (repListing?.status === 'admitted') {
+        readinessStatus = 'admitted'
+      } else if (representativeTrack) {
+        const items = syncReadinessForTrack({
+          type: project.type as VaultProjectType,
+          track: {
+            id: representativeTrack.id,
+            isrc: representativeTrack.isrc,
+            iswc: representativeTrack.iswc,
+            metadata: representativeTrack.metadata,
+          },
+          documents: project.vault_documents ?? [],
+        })
+        readinessStatus = missingSyncItems(items).length > 0 ? 'needs_completion' : 'pending_admit'
+      } else {
+        readinessStatus = 'needs_completion'
+      }
+
+      const rightsDetail = `${stage3.requiredComplete}/${stage3.requiredTotal} required rights documents signed${stage3.sampleBlock ? ' — sample clearance blocking' : ''}`
+
+      card.staff = { readinessStatus, rightsDetail, artistNotes, inProgress }
+    }
+
+    cards.push(card)
   }
 
   return { data: cards, page, pageSize: PAGE_SIZE }
