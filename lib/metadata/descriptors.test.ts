@@ -3,6 +3,7 @@ import {
   MOODS_MAX,
   ENERGY_VALUES,
   VOCAL_VALUES,
+  INSTRUMENT_VALUES,
   readDescriptors,
   sanitizeDescriptors,
 } from './schema'
@@ -107,5 +108,110 @@ describe('readDescriptors', () => {
       vocal: 'instrumental',
       updated_at: '2026-01-01T00:00:00.000Z',
     })
+  })
+
+  it('a blob with a valid instruments array returns those instruments, off-vocab dropped, capped', () => {
+    const valid = INSTRUMENT_VALUES[0]
+    const tooMany = INSTRUMENT_VALUES.slice(0, MOODS_MAX + 5)
+    const result = readDescriptors({
+      descriptors: { moods: [MOOD_VALUES[0]], instruments: [valid, 'kazoo-solo', ...tooMany] },
+    })
+    expect(result?.instruments).toBeDefined()
+    expect(result?.instruments).not.toContain('kazoo-solo')
+    expect(result?.instruments?.every(i => (INSTRUMENT_VALUES as string[]).includes(i))).toBe(true)
+    expect(result?.instruments?.length).toBeLessThanOrEqual(MOODS_MAX)
+  })
+
+  it('a blob with no instruments returns an empty/absent instruments field without breaking existing reads', () => {
+    const term = MOOD_VALUES[0]
+    const result = readDescriptors({ descriptors: { moods: [term], energy: 'low', vocal: 'vocal' } })
+    expect(result?.instruments ?? []).toEqual([])
+    expect(result?.moods).toEqual([term])
+    expect(result?.energy).toBe('low')
+    expect(result?.vocal).toBe('vocal')
+  })
+
+  it('a blob carrying ai_suggested returns the ai_suggested sub-object vocab-coerced, confirmed values unchanged', () => {
+    const confirmedMood = MOOD_VALUES[0]
+    const suggestedMood = MOOD_VALUES[1]
+    const result = readDescriptors({
+      descriptors: {
+        moods: [confirmedMood],
+        energy: 'low',
+        vocal: 'vocal',
+        ai_suggested: {
+          moods: [suggestedMood, 'not-a-real-mood'],
+          energy: 'high',
+          vocal: 'instrumental',
+          instruments: [INSTRUMENT_VALUES[0], 'fake-instrument'],
+          suggested_at: '2026-08-13T00:00:00.000Z',
+          model: 'claude-sonnet-4-20250514',
+        },
+      },
+    })
+    expect(result?.moods).toEqual([confirmedMood])
+    expect(result?.energy).toBe('low')
+    expect(result?.vocal).toBe('vocal')
+    expect(result?.ai_suggested).toEqual({
+      moods: [suggestedMood],
+      energy: 'high',
+      vocal: 'instrumental',
+      instruments: [INSTRUMENT_VALUES[0]],
+      suggested_at: '2026-08-13T00:00:00.000Z',
+      model: 'claude-sonnet-4-20250514',
+    })
+  })
+
+  it('a blob carrying a pending sub-object returns it vocab-coerced WITHOUT altering confirmed moods/energy/vocal', () => {
+    const confirmedMood = MOOD_VALUES[0]
+    const proposedMood = MOOD_VALUES[2]
+    const result = readDescriptors({
+      descriptors: {
+        moods: [confirmedMood],
+        energy: 'medium',
+        vocal: 'vocal',
+        pending: {
+          moods: [proposedMood, 'nonsense'],
+          energy: 'low',
+          vocal: 'instrumental',
+          instruments: [],
+          proposed_by: 'ae-user-1',
+          proposed_at: '2026-08-13T01:00:00.000Z',
+        },
+      },
+    })
+    expect(result?.moods).toEqual([confirmedMood])
+    expect(result?.energy).toBe('medium')
+    expect(result?.vocal).toBe('vocal')
+    expect(result?.pending).toEqual({
+      moods: [proposedMood],
+      energy: 'low',
+      vocal: 'instrumental',
+      instruments: [],
+      proposed_by: 'ae-user-1',
+      proposed_at: '2026-08-13T01:00:00.000Z',
+    })
+  })
+})
+
+describe('sanitizeDescriptors — descriptor v2 additive behavior', () => {
+  it('never emits ai_suggested or pending from artist input, even if present in the raw input', () => {
+    const result = sanitizeDescriptors({
+      moods: [MOOD_VALUES[0]],
+      ai_suggested: { moods: [MOOD_VALUES[1]], energy: 'high', vocal: 'vocal', instruments: [], suggested_at: 'x', model: 'x' },
+      pending: { moods: [MOOD_VALUES[2]], energy: 'low', vocal: 'instrumental', instruments: [], proposed_by: 'x', proposed_at: 'x' },
+    })
+    expect(result).not.toHaveProperty('ai_suggested')
+    expect(result).not.toHaveProperty('pending')
+  })
+
+  it('still returns null for a fully-untagged input, even with an empty instruments array', () => {
+    expect(sanitizeDescriptors({ instruments: [] })).toBeNull()
+  })
+
+  it('accepts and normalizes a valid instruments array, dropping off-vocab values', () => {
+    const valid = INSTRUMENT_VALUES[0]
+    const result = sanitizeDescriptors({ moods: [MOOD_VALUES[0]], instruments: [valid, 'not-real'] })
+    expect(result?.instruments).toEqual([valid])
   })
 })
