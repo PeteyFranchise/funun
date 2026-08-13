@@ -6,14 +6,14 @@ current_phase: 32
 current_phase_name: production-observability-capacity-incident-readiness
 status: discussed
 stopped_at: Phase 32 context gathered
-last_updated: "2026-08-13T08:33:56.802Z"
+last_updated: "2026-08-13T17:02:24.896Z"
 last_activity: 2026-08-13
-last_activity_desc: Phase 32 spec + context gathered (discuss-phase complete); ready for /gsd-plan-phase 32 --research
+last_activity_desc: Phase 32 Plan 02 (scrub + correlation/logging primitives) executed
 progress:
   total_phases: 32
   completed_phases: 25
-  total_plans: 182
-  completed_plans: 179
+  total_plans: 192
+  completed_plans: 180
   percent: 78
 ---
 
@@ -24,12 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 32 — Production Observability, Capacity & Incident Readiness — SPEC + CONTEXT committed 2026-08-13; ready for planning
+**Current focus:** Phase 32 — production-observability-capacity-incident-readiness
 
 ## Current Position
 
-Phase: 32 (production-observability-capacity-incident-readiness) — SPEC + CONTEXT committed 2026-08-13; ready for planning
-Next: /gsd-plan-phase 32 --research  (resume file: .planning/phases/32-production-observability-capacity-incident-readiness/32-CONTEXT.md)
+Phase: 32 (production-observability-capacity-incident-readiness) — EXECUTING
+Next: /gsd-execute-phase 32 (Plan 32-02 complete — 32-02-SUMMARY.md; Plan 32-03 next per 32-PLAN.md wave sequence)
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
 Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
 (Historical Phase 10-13 notes below retained; counters approximate pending /gsd-docs-update recompute.)
@@ -48,7 +48,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-09 — Phase 27 execution started
+Last activity: 2026-08-13 — Phase 32 Plan 02 (scrub + correlation/logging primitives) executed
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -194,6 +194,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 27 P08 | 30min | 3 tasks | 6 files |
 | Phase 27 P09 | 20min | 2 tasks | 2 files |
 | Phase 27 P10 | 25min | 2 tasks | 3 files |
+| Phase 32 P02 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -428,6 +429,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 27-10: Search input reuses StaffAdmin's panel-2/border input treatment; no literal var(--input) token exists in console-theme.ts
 - [Phase 27]: 27-CODEX-REVIEW.md pre-cutover DB-gate fixes (B1/M1/M2/M3/M4/L1) landed via a fix-forward migration 099 (never edits 098 in place — mirrors the 085→086 pattern): (1) B1 — added a dedicated staff early-return branch to handle_new_user() keyed on app_metadata.staff_role, positioned before the artist gate, closing the bug where createStaffAccount.ts's staff_role (not role) fell through to the gated artist branch; (2) M3 — the gate now identifies and consumes only the ONE specific active artist_invites row that authorized a signup (v_invite_id), never a blanket "every pending row for this email" update, and never touches an invite row when admission came from a collaborators match; (3) M4 — added a partial UNIQUE index on lower(email) scoped to status='pending' to close a concurrent-duplicate-invite race (index predicates must be IMMUTABLE, so expiry can't be folded in — a follow-up expired-invite-reissue flow, H1, stays out of scope); (4) L1 — redefined email_has_account() with search_path='' + pg_catalog-qualified lower(); (5) M1 — lib/invites/allowlist.ts's isArtistEmailAllowed() now escapes ILIKE wildcard characters (single shared exactCaseInsensitiveEmailPattern() helper) instead of passing raw user input to .ilike(), matching the SQL gate's exact-equality semantics; (6) M2 — __tests__/migration-099-gate.test.ts (new, authoritative parity test; migration-098-gate.test.ts untouched, still valid for 098's frozen text — mirrors the 085-test/086-test split) adds structural whole-branch-body comparison against migration 086 plus a hand-authored executable behavioral model of the gate algorithm; lib/invites/allowlist.test.ts's ILIKE mock was upgraded to genuinely simulate Postgres wildcard semantics, with 4 new wildcard-injection regression fixtures added to the shared lib/invites/invite-fixtures.ts twin table. docs/BREAK-GLASS.md Layer 2 updated to reflect the script path now creates zero phantom rows and to flag a caveat the fix does NOT close: the raw-SQL/Dashboard "Add user" fallback still can't set app_metadata at creation time, so it still needs the phantom-row cleanup and can still be rejected by the gate if used cold. Migration 099 is TEXT/TEST-ONLY, matching 097/098's standing human-gated convention — NOT pushed to the live DB; full suite (162 suites / 1905 tests), tsc, lint, and build all verified clean.
 - [Phase 27]: 27-CODEX-REVIEW.md Blocker B2 fix (unsubscribe never set unsubscribed_at): added POST /api/waitlist/unsubscribe, symmetrical with resubscribe/route.ts — filters ONLY on unsubscribe_token (never id/email, T-27-05 IDOR mitigation), rate-limited via the shared ip limiter, generic 404 on invalid/missing token, and idempotent (looks up the row first so an already-unsubscribed row is a true no-op and never overwrites the original opt-out timestamp). app/unsubscribe/page.tsx no longer renders the confirmation on load — added a 'checking' state that calls the new endpoint and only shows "You've unsubscribed" after the mutation succeeds; missing/invalid token still falls to the pre-existing error state. No client-testing-library infra exists in this repo, so the page's on-load call is exercised only by TypeScript + manual verification, not a rendered-component test; the route itself has full unit coverage. 163 suites / 1912 tests, tsc, lint, build all clean. No migration involved — not gated on the live DB push.
+- [Phase ?]: [Phase 32-02]: key-based scrub redaction with NFKC-normalized key match (encoding-agnostic); logWithCorrelation/correlation tests co-located in correlation.test.ts per plan's files_modified
 
 ### Pending Todos
 
@@ -508,7 +510,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-13T08:33:56.774Z
+Last session: 2026-08-13T17:01:41.663Z
 Stopped at: Phase 32 context gathered
 Resume file: .planning/phases/32-production-observability-capacity-incident-readiness/32-CONTEXT.md
 Last session: 2026-08-06T01:06:36.617Z
