@@ -5,14 +5,34 @@ import { getStaffRole } from '@/lib/admin/gate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { SyncLibraryAdmin } from '@/components/admin/SyncLibraryAdmin'
 import type { ArtistPickOption, SyncLibraryQueueRow } from '@/components/admin/SyncLibraryAdmin'
-import type { SyncListingEntrySource, SyncListingStatus } from '@/types'
+import { SyncReadinessWorklist } from '@/components/admin/SyncReadinessWorklist'
+import {
+  buildWorklist,
+  type WorklistListingRow,
+  type WorklistLookups,
+  type WorklistProjectInput,
+  type WorklistTrackInput,
+} from '@/lib/sync-library/worklist'
+import type { SyncListingEntrySource, SyncListingStatus, VaultProjectType } from '@/types'
 
 // ─── /admin/sync-library ────────────────────────────────────────────────
-// Staff curation surface (26-10-PLAN.md). Gated to leadership + ae — the
-// exact role set the backing routes allow (requireStaff(['leadership','ae'])
-// in app/api/sync-library/invite and .../admin/[listingId]; only the
-// remove route is tighter, leadership-only). bd is not part of the
+// Staff curation surface (26-10-PLAN.md), extended (30-09-PLAN.md) with the
+// Sync Readiness worklist. Gated to leadership + ae — the exact role set
+// the backing routes allow (requireStaff(['leadership','ae']) in
+// app/api/sync-library/invite; admit/reject and quality-review are now
+// leadership-only per 30-CONTEXT.md's access decision — see
+// app/api/sync-library/admin/[listingId]/route.ts and .../quality/route.ts;
+// the remove route stays leadership-only, unchanged). bd is not part of the
 // "broader permissioned-staff curation role" per 26-CONTEXT.md.
+//
+// The worklist section below is built server-side via buildWorklist() over
+// data this page already batch-loads (listings/tracks/projects/artists),
+// widened minimally with the sync-readiness-specific columns
+// (quality_ok/staff_notes, isrc/iswc/metadata, project type, per-project
+// documents) — avoiding a client round-trip to GET /api/sync-library/
+// worklist while reusing the exact same pure shaper (30-05) so the two
+// surfaces never drift (30-CONTEXT.md "Reuse that engine; do not rebuild
+// it").
 
 type ListingRow = {
   id: string
@@ -24,6 +44,8 @@ type ListingRow = {
   applied_at: string
   rejection_reason: string | null
   removal_reason: string | null
+  quality_ok: boolean | null
+  staff_notes: string | null
 }
 
 // Bounds the invite picker's artist pool query — a client-filtered picker,
@@ -48,7 +70,7 @@ export default async function AdminSyncLibraryPage() {
   const { data: listingsRaw } = await service
     .from('sync_listings')
     .select(
-      'id, status, entry_source, artist_user_id, track_id, vault_project_id, applied_at, rejection_reason, removal_reason'
+      'id, status, entry_source, artist_user_id, track_id, vault_project_id, applied_at, rejection_reason, removal_reason, quality_ok, staff_notes'
     )
     .order('applied_at', { ascending: true })
 
@@ -58,21 +80,79 @@ export default async function AdminSyncLibraryPage() {
   const projectIds = Array.from(new Set(listings.map(l => l.vault_project_id)))
   const artistIds = Array.from(new Set(listings.map(l => l.artist_user_id)))
 
-  const [{ data: trackRows }, { data: projectRows }, { data: artistProfiles }] = await Promise.all([
-    trackIds.length > 0
-      ? service.from('tracks').select('id, title').in('id', trackIds)
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
-    projectIds.length > 0
-      ? service.from('vault_projects').select('id, title').in('id', projectIds)
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
-    artistIds.length > 0
-      ? service.from('user_profiles').select('id, artist_name').in('id', artistIds)
-      : Promise.resolve({ data: [] as { id: string; artist_name: string | null }[] }),
-  ])
+  // Widened over the pre-30-09 shape (was: 'id, title' for both tracks and
+  // projects) to also carry the Sync Readiness worklist's inputs
+  // (isrc/iswc/metadata per track, type per project) — one extra
+  // vault_documents query for the shared, project-level readiness signals
+  // syncReadinessForTrack() needs (mirrors GET /api/sync-library/worklist's
+  // own batching exactly).
+  const [{ data: trackRows }, { data: projectRows }, { data: artistProfiles }, { data: documentRows }] =
+    await Promise.all([
+      trackIds.length > 0
+        ? service.from('tracks').select('id, title, isrc, iswc, metadata').in('id', trackIds)
+        : Promise.resolve({
+            data: [] as { id: string; title: string | null; isrc: string | null; iswc: string | null; metadata: Record<string, unknown> | null }[],
+          }),
+      projectIds.length > 0
+        ? service.from('vault_projects').select('id, title, type').in('id', projectIds)
+        : Promise.resolve({ data: [] as { id: string; title: string | null; type: VaultProjectType }[] }),
+      artistIds.length > 0
+        ? service.from('user_profiles').select('id, artist_name').in('id', artistIds)
+        : Promise.resolve({ data: [] as { id: string; artist_name: string | null }[] }),
+      projectIds.length > 0
+        ? service.from('vault_documents').select('project_id, type, status').in('project_id', projectIds)
+        : Promise.resolve({ data: [] as { project_id: string | null; type: string; status: string }[] }),
+    ])
 
   const trackTitleById = new Map((trackRows ?? []).map(t => [t.id, t.title]))
   const projectTitleById = new Map((projectRows ?? []).map(p => [p.id, p.title]))
   const artistNameById = new Map((artistProfiles ?? []).map(p => [p.id, p.artist_name]))
+
+  // ─── Sync Readiness worklist assembly ──────────────────────────────────
+  // buildWorklist() (30-05) is the single shaper — its own internal
+  // isTerminal()/'admitted' filter narrows the full listings list down to
+  // exactly the open (applied/invited/agreement_pending/pending_admit) rows
+  // the worklist route also returns, so the full listings array can be
+  // passed straight through without a second query.
+  const documentsByProject = new Map<string, { type: string; status: string }[]>()
+  for (const doc of documentRows ?? []) {
+    if (!doc.project_id) continue
+    const list = documentsByProject.get(doc.project_id) ?? []
+    list.push({ type: doc.type, status: doc.status })
+    documentsByProject.set(doc.project_id, list)
+  }
+
+  const worklistTracksById = new Map<string, WorklistTrackInput>(
+    (trackRows ?? []).map(t => [
+      t.id,
+      { id: t.id, title: t.title, isrc: t.isrc, iswc: t.iswc, metadata: t.metadata },
+    ])
+  )
+  const worklistProjectsById = new Map<string, WorklistProjectInput>(
+    (projectRows ?? []).map(p => [
+      p.id,
+      { title: p.title, type: p.type, documents: documentsByProject.get(p.id) ?? [] },
+    ])
+  )
+
+  const worklistListings: WorklistListingRow[] = listings.map(l => ({
+    id: l.id,
+    status: l.status,
+    trackId: l.track_id,
+    projectId: l.vault_project_id,
+    artistUserId: l.artist_user_id,
+    appliedAt: l.applied_at,
+    qualityOk: l.quality_ok,
+    staffNotes: l.staff_notes,
+  }))
+
+  const worklistLookups: WorklistLookups = {
+    tracksById: worklistTracksById,
+    projectsById: worklistProjectsById,
+    artistNameById,
+  }
+
+  const worklistRows = buildWorklist(worklistListings, worklistLookups)
 
   // user_profiles has no email column (it lives on auth.users) — attach it
   // per-artist via the admin API, mirroring app/(admin)/admin/deals/page.tsx
@@ -137,6 +217,15 @@ export default async function AdminSyncLibraryPage() {
         invited and self-applied songs alike, oldest first.
       </p>
       <SyncLibraryAdmin initialRows={rows} artistPool={artistPool} isLeadership={isLeadership} />
+
+      <h2 className="mt-10 text-xl font-semibold text-[color:var(--ink)]">Sync Readiness</h2>
+      <p className="mt-2 max-w-2xl text-[13px] text-[color:var(--ink-3)]">
+        Every incomplete track, with exactly what&apos;s missing. Guide the artist team through the
+        gaps — incomplete isn&apos;t rejected.
+      </p>
+      <div className="mt-6">
+        <SyncReadinessWorklist rows={worklistRows} isLeadership={isLeadership} />
+      </div>
     </div>
   )
 }
