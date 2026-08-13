@@ -2,11 +2,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { loadBlockedIds } from '@/lib/green-room/discover'
+import { readDescriptors } from '@/lib/metadata/schema'
 import {
   isRightsReady,
   projectMatchesKeyBpm,
   projectMatchesDescriptors,
   projectMatchesUsageCleared,
+  descriptorsToDisplay,
+  catalogRightsFromStage3,
   type CatalogFilter,
   type CatalogCard,
 } from '@/lib/deals/catalog'
@@ -44,6 +47,16 @@ import {
 // so the fix is to skip block resolution entirely when buyerUserId is
 // null — NOT to fork a parallel public implementation (single-
 // implementation doctrine, see the paragraph above).
+//
+// 30-07: enriches each CatalogCard with the real authored display fields
+// (artist/mood/energy/vocal/instruments) and the real tri-state rights code
+// — the minimal 22-05 slice this phase needs. artist resolves from the SAME
+// batched user_profiles query already run for visibility (no new query);
+// mood/energy/vocal/instruments come from the project's first descriptor-
+// tagged track via descriptorsToDisplay(); rights reuses the stage3 already
+// computed for the isRightsReady gate via catalogRightsFromStage3(), never
+// recomputed or hardcoded. loadCatalogPage stays the single implementation
+// — no parallel query module.
 
 const PAGE_SIZE = 20
 
@@ -129,19 +142,27 @@ export async function loadCatalogPage(
     ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
   )
 
-  // Batch owner visibility + block resolution (T-16-17/T-16-18) — one
-  // query each, never per-row.
+  // Batch owner visibility + artist-name resolution (T-16-17/T-16-18,
+  // 30-07) in the SAME single user_profiles query — no second batched
+  // query, and no per-row lookup (mirrors app/(admin)/admin/sync-library/
+  // page.tsx's artistNameById pattern, folded into the existing select).
   const ownerIds = Array.from(new Set(projects.map(p => p.user_id)))
   const { data: ownerRows } = await service
     .from('user_profiles')
-    .select('id, profile_visibility')
+    .select('id, profile_visibility, artist_name')
     .in('id', ownerIds)
+  const ownerProfileRows = (ownerRows ?? []) as {
+    id: string
+    profile_visibility: string | null
+    artist_name: string | null
+  }[]
   const visibilityByOwner = new Map(
-    ((ownerRows ?? []) as { id: string; profile_visibility: string | null }[]).map(o => [
+    ownerProfileRows.map(o => [
       o.id,
       o.profile_visibility === 'connections_only' ? ('connections_only' as const) : ('public' as const),
     ])
   )
+  const artistNameByOwner = new Map(ownerProfileRows.map(o => [o.id, o.artist_name ?? '']))
   // Anonymous visitor: skip block resolution entirely (Pitfall 3) — there
   // is no real account id to check blocks against, and blockedIds stays
   // an empty set so the exclusion check below is inert for anon reads.
@@ -181,12 +202,28 @@ export async function loadCatalogPage(
     if (!projectMatchesDescriptors(tracks, filter)) continue
     if (!projectMatchesUsageCleared(preclearedProjectIds.has(project.id), filter)) continue
 
+    // 30-07: enriched display fields — the representative track is the
+    // FIRST track carrying confirmed descriptors (readDescriptors non-null),
+    // falling back to the project's first track (blank display) when none
+    // of its tracks are tagged yet. rights reuses the SAME stage3 already
+    // computed above for the isRightsReady gate — never recomputed.
+    const representativeTrack = tracks.find(t => readDescriptors(t.metadata) != null) ?? tracks[0]
+    const display = representativeTrack
+      ? descriptorsToDisplay(representativeTrack)
+      : { mood: '', energy: '', vocal: '', instruments: [] }
+
     cards.push({
       id: project.id,
       title: project.title,
       type: project.type,
       genre: project.genre,
       coverArtUrl: project.cover_art_url,
+      artist: artistNameByOwner.get(project.user_id) ?? '',
+      mood: display.mood,
+      energy: display.energy,
+      vocal: display.vocal,
+      instruments: display.instruments,
+      rights: catalogRightsFromStage3(stage3),
       tracks: tracks.map(t => ({ id: t.id, title: t.title, bpm: t.bpm, keySignature: t.key_signature })),
     })
   }
