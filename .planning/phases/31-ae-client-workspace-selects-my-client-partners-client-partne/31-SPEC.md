@@ -70,13 +70,13 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 
 11. **Selects builder**: The AE curate-and-send console.
     - Current: no Selects builder exists
-    - Target: build a Selects by pulling tracks from The Crate (add/remove, per-track note, cover note), via three methods (from scratch / off a brief / AI-drafted from a brief); rights-readiness badges are shown; target client + optional brief link; status draft → sent → approved/changes; **Send** mints the shareable player link
-    - Acceptance: an AE can add/remove Crate tracks and per-track notes; an empty Selects cannot be sent; adding a track already present is idempotent; the AI-draft action populates a starter tracklist + notes; Send produces a shareable link
+    - Target: build a Selects by pulling tracks from The Crate (add/remove, per-track note, cover note), via three methods (from scratch / off a brief / AI-drafted from a brief); rights-readiness badges are shown; target client + optional brief link; status draft → sent → approved/changes; **Send** mints the shareable player link. Drafts **auto-save** continuously as the AE works (a manual save is also available); the Crate search supports **saved and team-shared searches** an AE can recall in one click.
+    - Acceptance: an AE can add/remove Crate tracks and per-track notes; an empty Selects cannot be sent; adding a track already present is idempotent; the AI-draft action populates a starter tracklist + notes; Send produces a shareable link; editing a Selects **auto-saves** the draft (with a manual save available); an AE can **save a Crate search and re-apply it**, and a saved search can be **shared with the team**
 
 12. **Shareable Selects player**: The client receives and acts on a Selects. *(UI design pending — contract locked here.)*
     - Current: no player exists
-    - Target: a token-addressed page where the client plays **watermarked previews** only, reacts per track (love/pass/more-like-this), and approves / requests changes / licenses; rich unfurl (OpenGraph) for forwarding
-    - Acceptance: opening a valid share link plays watermarked previews and records per-track reactions; an invalid/expired token shows a safe "link unavailable" state and leaks no data; clean master audio is never served through the player
+    - Target: a token-addressed page where the client plays **watermarked previews** only, reacts per track (love/pass/more-like-this), and approves / requests changes / licenses; can **download the watermarked file** (never a clean master) to test-sync it into a rough cut; rich unfurl (OpenGraph) for forwarding
+    - Acceptance: opening a valid share link plays watermarked previews and records per-track reactions; an invalid/expired token shows a safe "link unavailable" state and leaks no data; clean master audio is never served through the player; downloading a track yields a watermarked file only, never a clean master
 
 13. **Selects engagement tracking**: The player records which tracks the client actually listened to, not just that a Selects was shown.
     - Current: only "shown" is known (a Selects was sent); there is no per-track listening data behind the "Selects seen" metric
@@ -101,6 +101,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - A CRM-lite **contact record** layer under `buyer_orgs` (people + relationship log + status)
 - Per-track Selects engagement tracking + the shareable player's listen telemetry (R13)
 - Call/conversation **Game Plan** — pre-call topic planning + logging in the client view (R14)
+- Auto-saving Selects drafts + saved/team-shared Crate searches (R11); watermarked download from the player (R12)
 
 **Out of scope:**
 - **AI-guided company knowledge wiki** (searchable, ask-a-question → routed to the right article/doc/video) — deferred to its own future phase; it is company-wide (all team members), not the AE engine. The Playbook is its seed.
@@ -136,6 +137,9 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 - [ ] The player plays watermarked previews only for a valid token, records reactions, and shows a safe state for an invalid/expired token (R12)
 - [ ] The player records a per-track qualified listen at the configured threshold (default ≥30s of audible time); scrubbing does not count; the AE's Selects view shows per-track plays/qualified-listens/replays + a Selects-level summary (R13)
 - [ ] The client view offers a Game Plan of 3–5 topics that saves for the next call; logging a conversation checks off covered topics and writes a relationship-log entry noting topics-covered + notes (R14)
+- [ ] Selects drafts auto-save as the AE edits, with a manual save also available (R11)
+- [ ] An AE can save a Crate search and re-apply it in one click; a saved search can be shared with the team (R11)
+- [ ] A client can download a watermarked file (never a clean master) from the player to test-sync (R12)
 
 ## Edge Coverage
 
@@ -175,7 +179,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 |----------------------------------|-------------|--------|------------------------|
 | MUST NOT show an AE any client/company/contact/brief/Selects/health data outside their own assigned book. | R5/R6 | resolved | test — access test asserts an AE query returns only own-assigned accounts |
 | MUST NOT expose the staff-private `ae_user_id` (or other routing internals) to a buyer / authenticated non-staff caller. | R7 | resolved | test — grant/RLS test asserts `ae_user_id` is not authenticated-readable |
-| MUST NOT serve clean master audio through the shareable player — watermarked previews only. | R12 | resolved | judgment — data-flow review of what the token route returns |
+| MUST NOT serve clean master audio through the shareable player, by stream OR download — watermarked previews only. | R12 | resolved | judgment — data-flow review of what the token route streams and what the download returns |
 | MUST NOT make a Selects reachable without its unguessable share token (no id enumeration). | R11/R12 | resolved | test — an unauthenticated request without a valid token is rejected |
 | MUST NOT allow a non-leadership/ops role to edit The Playbook SOPs or the health-rules config. | R4/R9 | resolved | test — role-gate test on the edit endpoints |
 | MUST NOT reassign or move an account without a leadership action AND an audit-log entry. | R7 | resolved | judgment — every assignment writes a relationship-log/audit record |
@@ -188,7 +192,7 @@ Grounded in the codebase + this session's design work (2026-08-13). The AE rooms
 | Goal Clarity       | 0.90  | 0.75 | ✓      | Outcome-language goal; the AE motion end-to-end is concrete        |
 | Boundary Clarity   | 0.88  | 0.70 | ✓      | Explicit in/out; wiki + GTM + Deals + peripherals excluded         |
 | Constraint Clarity | 0.80  | 0.65 | ✓      | Access scoping, data reuse, content-protection, Team Console locked |
-| Acceptance Criteria| 0.85  | 0.70 | ✓      | 15 pass/fail criteria + 22 edges + 7 prohibitions                  |
+| Acceptance Criteria| 0.85  | 0.70 | ✓      | 18 pass/fail criteria + 22 edges + 7 prohibitions                  |
 | **Ambiguity**      | 0.13  | ≤0.20| ✓      | Gate passed on the strength of the full design session             |
 
 ## Interview Log
