@@ -1188,14 +1188,21 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 **Plans:** 10 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 32-01-PLAN.md — Central config layer (D-10) + observability_recipients migration (R1/R8/R10)
 - [ ] 32-02-PLAN.md — PII scrub + correlation-ID / structured-logging primitives (R5/R6)
 - [ ] 32-03-PLAN.md — Read-only, secret-safe /api/health endpoint (R4)
 - [ ] 32-04-PLAN.md — Vercel cost controls + Supabase health review [vendor + docs] (R1/R2)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 32-05-PLAN.md — Extensible alert fan-out + daily observability cron (R1/R8/R10)
 - [ ] 32-06-PLAN.md — Sentry error monitoring: wiring + scrubbing + owner setup (R5)
 - [ ] 32-07-PLAN.md — Better Stack external uptime monitor + status page (R3)
 - [ ] 32-08-PLAN.md — Thresholds table + SEV-1..4 model doc (R8)
 - [ ] 32-09-PLAN.md — k6 non-prod load harness + capacity report (R7)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 32-10-PLAN.md — Incident runbook + operating rhythm (R9/R10)
