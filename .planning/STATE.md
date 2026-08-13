@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 current_phase_name: production-observability-capacity-incident-readiness
-status: discussed
-stopped_at: Phase 32 Plan 08 complete (docs/observability/THRESHOLDS-AND-SEVERITY.md — thresholds table + SEV-1..4 model); Plan 01 Task 3 (migration 110 push) checkpoint still open awaiting owner
+status: in_progress
+stopped_at: Phase 32 paused by owner after 5/10 plans (32-01/02/03/05/08 complete, all autonomous code green). Remaining 5 (32-04/06/07/09/10) are owner-gated integration plans deferred to a later session. Open checkpoint: Plan 01 Task 3 (migration 110 `supabase db push`) awaiting owner.
 last_updated: "2026-08-13T17:31:25.908Z"
 last_activity: 2026-08-13
 last_activity_desc: "Phase 32 Plan 01 (D-10 observability config layer: lib/observability/config.ts + drafted/text-tested migration 110) Tasks 1-2 executed; Task 3 (migration 110 review + push) is an open checkpoint:human-verify gate"
