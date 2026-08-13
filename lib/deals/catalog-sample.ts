@@ -3,12 +3,16 @@ import type { CatalogCard } from '@/lib/deals/catalog'
 
 // ─── Buyer-catalogue light view-model ─────────────────────────────────────
 // The buyer browse renders the faithful light table from a CatalogRow
-// view-model. The live CatalogCard shape (id/title/type/genre/coverArtUrl/
-// tracks) does NOT yet carry artist name, energy, aggregate length, mood,
-// vocal, instruments, or the tri-state rights signal — enriching the catalog
-// query with those is slice 1.5. Until then, mapCardsToLightRows maps what
-// exists and the page falls back to SAMPLE_CATALOG_ROWS (representative, real
-// album-art covers) so the design + the working filters render in full.
+// view-model. 30-07 (the minimal 22-05 slice): the live CatalogCard shape
+// now carries the real authored artist name, mood/energy/vocal/instruments
+// (from the project's tagged track's descriptors), and the real tri-state
+// rights code (derived from the SAME rights signal the sync-library gate
+// uses) — mapCardsToLightRows maps these through instead of synthesizing
+// blanks or a hardcoded 'ok'. Aggregate length/versions/dynamics are still
+// NOT carried by CatalogCard (out of this slice's scope). SAMPLE_CATALOG_ROWS
+// remains only the EMPTY-STATE fallback (representative, real album-art
+// covers) for when there are zero live rights-ready rows, so the design +
+// the working filters still render in full.
 
 const GRADIENTS = [
   'linear-gradient(150deg,#3b4ad0,#818cf8 60%,#c4b5fd)',
@@ -25,25 +29,26 @@ function gradientFor(id: string): string {
   return GRADIENTS[h % GRADIENTS.length]
 }
 
-// Best-effort mapping from the live catalog data. Fields the live shape does
-// not yet carry (artist, energy, length, mood, vocal, instruments) render
-// blank until slice 1.5 enriches the query.
+// Maps the live, enriched catalog data (30-07) into the Crate's CatalogRow
+// view-model. length/versions/dynamics are still not carried by CatalogCard
+// (out of the minimal 22-05 slice) — versions falls back to the track count
+// and length/dynamics stay their prior placeholder values.
 export function mapCardsToLightRows(cards: CatalogCard[]): CatalogRow[] {
   return cards.map(c => ({
     id: c.id,
     title: c.title,
-    artist: '',
+    artist: c.artist,
     coverUrl: c.coverArtUrl,
     gradient: gradientFor(c.id),
     genres: c.genre ?? '',
-    energy: '',
+    energy: c.energy,
     length: '',
     versions: Math.max(1, c.tracks.length),
-    rights: 'ok' as const, // the live query only returns rights-ready catalog today
+    rights: c.rights, // real tri-state, derived from the sync-library rights signal
     dynamics: 'steady' as const,
-    mood: '',
-    vocal: '',
-    instruments: [],
+    mood: c.mood,
+    vocal: c.vocal,
+    instruments: c.instruments,
     // 22-02 — real ids so the License modal can POST a request that passes
     // the route's authorizeRequestTarget + track-membership checks.
     vaultProjectId: c.id,
