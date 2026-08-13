@@ -11,8 +11,9 @@ Going room by room through the admin Team Console: what each room is *for*, its 
 ## Roles in play
 - **leadership** — full oversight + control.
 - **ae** — Account Executive; manages their OWN assigned Client Partners.
-- **bd** — Business Development.
-- (future roles possible)
+- **bd** — Business Development (ops: Team Members, Verification, Reports).
+- **anr** — **A&R** (new, 2026-08-13). Approval authority for AE tag proposals (Phase 30); more powers TBD.
+- (more roles possible — the model is extensible; plan roles as data, not hard-coded.)
 
 ---
 
