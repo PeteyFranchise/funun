@@ -226,11 +226,103 @@ export const VOCAL_LABELS: Record<VocalType, string> = {
 
 export const VOCAL_VALUES = Object.keys(VOCAL_LABELS) as VocalType[]
 
+// Instrumentation — mirrors CatalogBrowserLight's FILTER_OPTIONS.Instruments
+// fixture (Piano, Strings, Guitar, Synth, Brass) plus a modest superset, now
+// as a real shared controlled vocab so AI-suggested instruments are
+// filter-visible rather than free-text (30-RESEARCH "Layered Tagging" gap).
+export type Instrument =
+  | 'piano' | 'strings' | 'guitar' | 'synth' | 'brass'
+  | 'drums' | 'bass' | 'keys' | 'vocals' | 'percussion' | 'woodwinds'
+
+export const INSTRUMENT_LABELS: Record<Instrument, string> = {
+  piano: 'Piano',
+  strings: 'Strings',
+  guitar: 'Guitar',
+  synth: 'Synth',
+  brass: 'Brass',
+  drums: 'Drums',
+  bass: 'Bass',
+  keys: 'Keys',
+  vocals: 'Vocals',
+  percussion: 'Percussion',
+  woodwinds: 'Woodwinds',
+}
+
+export const INSTRUMENT_VALUES = Object.keys(INSTRUMENT_LABELS) as Instrument[]
+
+// ─── Descriptor v2: provenance-tracked layers over the SAME shape ─────
+// `ai_suggested` (AI-proposed, unconfirmed) and `pending` (an AE's tag
+// proposal awaiting a leadership/A&R approve action) sit ALONGSIDE the
+// confirmed moods/energy/vocal/instruments — they are never read as the
+// confirmed value and never overwrite it. See lib/tagging/tag-merge.ts for
+// the pure functions that write these sub-objects; this module only reads
+// and vocab-coerces whatever is already stored.
+export type AiSuggestedTags = {
+  moods: Mood[]
+  energy: EnergyLevel | null
+  vocal: VocalType | null
+  instruments: Instrument[]
+  suggested_at: string
+  model: string
+}
+
+export type PendingTagProposal = {
+  moods: Mood[]
+  energy: EnergyLevel | null
+  vocal: VocalType | null
+  instruments: Instrument[]
+  proposed_by: string
+  proposed_at: string
+}
+
 export type TrackDescriptors = {
   moods: Mood[]
   energy?: EnergyLevel | null
   vocal?: VocalType | null
+  /** Artist/staff-confirmed instruments — additive (30-02), same coercion discipline as moods. */
+  instruments?: Instrument[]
   updated_at?: string
+  /** AI-proposed tags — never the confirmed value; see lib/tagging/tag-merge.ts's mergeAiSuggestion. */
+  ai_suggested?: AiSuggestedTags
+  /** Staff user id of whoever last confirmed/refined the tags above (see applyStaffRefinement). */
+  staff_refined_by?: string
+  /** An AE's tag proposal awaiting leadership/A&R approval — NEVER the confirmed value until approved. */
+  pending?: PendingTagProposal
+}
+
+// ─── Vocab-coercion helpers (shared by readDescriptors/sanitizeDescriptors
+// AND lib/tagging/tag-merge.ts, so every write path — artist, AI, staff —
+// drops off-vocabulary values the same way). Pure, never throw. ──────────
+export function coerceMoods(raw: unknown): Mood[] {
+  const arr = Array.isArray(raw) ? raw : []
+  const seen = new Set<Mood>()
+  for (const m of arr) {
+    if (typeof m !== 'string') continue
+    if (!MOOD_VALUES.includes(m as Mood)) continue // free text / retired terms dropped silently
+    seen.add(m as Mood)
+    if (seen.size >= MOODS_MAX) break
+  }
+  return Array.from(seen)
+}
+
+export function coerceEnergy(raw: unknown): EnergyLevel | null {
+  return ENERGY_VALUES.includes(raw as EnergyLevel) ? (raw as EnergyLevel) : null
+}
+
+export function coerceVocal(raw: unknown): VocalType | null {
+  return VOCAL_VALUES.includes(raw as VocalType) ? (raw as VocalType) : null
+}
+
+export function coerceInstruments(raw: unknown): Instrument[] {
+  const arr = Array.isArray(raw) ? raw : []
+  const seen = new Set<Instrument>()
+  for (const i of arr) {
+    if (typeof i !== 'string') continue
+    if (!INSTRUMENT_VALUES.includes(i as Instrument)) continue
+    seen.add(i as Instrument)
+    if (seen.size >= MOODS_MAX) break
+  }
+  return Array.from(seen)
 }
 
 /** Read typed descriptors out of a loose metadata JSONB blob (null if absent). */
@@ -239,41 +331,66 @@ export function readDescriptors(
 ): TrackDescriptors | null {
   const raw = metadata?.descriptors as Record<string, unknown> | undefined
   if (!raw) return null
-  const rawMoods = Array.isArray(raw.moods) ? raw.moods : []
-  const moods = Array.from(
-    new Set(
-      rawMoods.filter(
-        (m): m is Mood => typeof m === 'string' && MOOD_VALUES.includes(m as Mood)
-      )
-    )
-  ).slice(0, MOODS_MAX)
-  const energy = ENERGY_VALUES.includes(raw.energy as EnergyLevel) ? (raw.energy as EnergyLevel) : null
-  const vocal = VOCAL_VALUES.includes(raw.vocal as VocalType) ? (raw.vocal as VocalType) : null
-  return {
+  const moods = coerceMoods(raw.moods)
+  const energy = coerceEnergy(raw.energy)
+  const vocal = coerceVocal(raw.vocal)
+  const result: TrackDescriptors = {
     moods,
     energy,
     vocal,
     updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
   }
+
+  const instruments = coerceInstruments(raw.instruments)
+  if (instruments.length > 0) result.instruments = instruments
+
+  const aiRaw = raw.ai_suggested as Record<string, unknown> | undefined
+  if (aiRaw) {
+    result.ai_suggested = {
+      moods: coerceMoods(aiRaw.moods),
+      energy: coerceEnergy(aiRaw.energy),
+      vocal: coerceVocal(aiRaw.vocal),
+      instruments: coerceInstruments(aiRaw.instruments),
+      suggested_at: typeof aiRaw.suggested_at === 'string' ? aiRaw.suggested_at : '',
+      model: typeof aiRaw.model === 'string' ? aiRaw.model : '',
+    }
+  }
+
+  const pendingRaw = raw.pending as Record<string, unknown> | undefined
+  if (pendingRaw) {
+    result.pending = {
+      moods: coerceMoods(pendingRaw.moods),
+      energy: coerceEnergy(pendingRaw.energy),
+      vocal: coerceVocal(pendingRaw.vocal),
+      instruments: coerceInstruments(pendingRaw.instruments),
+      proposed_by: typeof pendingRaw.proposed_by === 'string' ? pendingRaw.proposed_by : '',
+      proposed_at: typeof pendingRaw.proposed_at === 'string' ? pendingRaw.proposed_at : '',
+    }
+  }
+
+  if (typeof raw.staff_refined_by === 'string' && raw.staff_refined_by) {
+    result.staff_refined_by = raw.staff_refined_by
+  }
+
+  return result
 }
 
-/** Validate + normalize descriptors input from the client (null clears them). */
+/**
+ * Validate + normalize descriptors input from the client (null clears them).
+ * Artist input only — NEVER emits ai_suggested or pending (those sub-objects
+ * are written by the tagging routes/lib/tagging/tag-merge.ts, not here).
+ */
 export function sanitizeDescriptors(input: unknown): TrackDescriptors | null {
   const o = (input ?? {}) as Record<string, unknown>
-  const rawMoods = Array.isArray(o.moods) ? o.moods : []
-  const seen = new Set<Mood>()
-  for (const m of rawMoods) {
-    if (typeof m !== 'string') continue
-    if (!MOOD_VALUES.includes(m as Mood)) continue // free text / retired terms dropped silently
-    seen.add(m as Mood)
-    if (seen.size >= MOODS_MAX) break
-  }
-  const moods = Array.from(seen)
-  const energy = ENERGY_VALUES.includes(o.energy as EnergyLevel) ? (o.energy as EnergyLevel) : null
-  const vocal = VOCAL_VALUES.includes(o.vocal as VocalType) ? (o.vocal as VocalType) : null
-  const hasAny = moods.length > 0 || energy !== null || vocal !== null
+  const moods = coerceMoods(o.moods)
+  const energy = coerceEnergy(o.energy)
+  const vocal = coerceVocal(o.vocal)
+  const instruments = coerceInstruments(o.instruments)
+  const hasAny = moods.length > 0 || energy !== null || vocal !== null || instruments.length > 0
   if (!hasAny) return null // "untagged" — not an empty object
-  return { moods, energy, vocal, updated_at: new Date().toISOString() }
+  const result: TrackDescriptors = { moods, energy, vocal, updated_at: new Date().toISOString() }
+  if (instruments.length > 0) result.instruments = instruments
+  return result
 }
 
 // Shape we read out of (and write into) tracks.metadata JSONB.
