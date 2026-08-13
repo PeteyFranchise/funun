@@ -1125,7 +1125,7 @@ tagging + a single role-aware Crate makes supply reliable, findable, and curate-
 
 **Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dive #1).
 
-**Status:** **Executed 2026-08-13** — all 9 plans committed on `feat/lane1-catalogue-menu-help` (not pushed); migrations 107 + 108 + 109 applied + verified live on the remote; full suite 2141 tests green throughout. **Pending:** human staff-session UAT (role-aware Crate staff layers; backstage curation leadership-vs-AE; the live tag-propose/approve + admit-409 flows — all session-gated, unreachable from the executor sandbox) + STATE.md / REQUIREMENTS.md reconcile (register CRATE-01..10, STATE.md still tracks Phase 27). Planned 2026-08-12 (9 plans, 3 waves); revised 2026-08-13 (real Jest verification; A&R tag-approval workflow).
+**Status:** **Executed + Deployed 2026-08-13** — all 9 plans merged to `main` (fast-forward `7cb3902..64c5ca0`) and **live on funun.studio** (production build + 2141 tests + tsc green); migrations 107 + 108 + 109 applied + verified live on the remote. CRATE-01..10 registered in REQUIREMENTS.md; STATE.md pointer moved to Phase 30. **Pending:** human staff-session UAT only (role-aware Crate staff layers; backstage curation leadership-vs-AE; the live tag-propose/approve + admit-409 flows — all session-gated, unreachable from the executor sandbox) — DEFERRED, tracked in `30-UAT.md` (resume via `/gsd-verify-work 30`). Planned 2026-08-12 (9 plans, 3 waves); revised 2026-08-13 (real Jest verification; A&R tag-approval workflow).
 
 **Plans:** 9 plans (3 waves)
 

@@ -4,7 +4,7 @@ slug: the-crate-sync-library-catalogue-engine-sync-readiness
 status: deferred
 started: 2026-08-13
 tester: pete (leadership @ pete@funun.studio)
-environment: localhost:3000 (branch feat/lane1-catalogue-menu-help — NOT deployed)
+environment: DEPLOYED 2026-08-13 to funun.studio (main 64c5ca0); also on localhost:3000. Staff-session UAT can run against either — log in as pete@funun.studio (leadership).
 ---
 
 # Phase 30 — UAT
