@@ -1125,19 +1125,19 @@ tagging + a single role-aware Crate makes supply reliable, findable, and curate-
 
 **Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dive #1).
 
-**Status:** Planned 2026-08-12 (9 plans, 3 waves). Provisional requirement IDs CRATE-01..09 (register via `/gsd-docs-update` before phase close).
+**Status:** Planned 2026-08-12 (9 plans, 3 waves); revised 2026-08-13 (real Jest verification; A&R tag-approval workflow). Provisional requirement IDs CRATE-01..10 (register via `/gsd-docs-update` before phase close).
 
 **Plans:** 9 plans (3 waves)
 
-Wave 1 (pure core + migration draft):
-- [ ] 30-01-PLAN.md — Sync Readiness per-track derivation (subset of Wave 1 engine) + inclusion-gate predicate + rights badge. [CRATE-01, CRATE-02]
-- [ ] 30-02-PLAN.md — Layered tagging foundation: INSTRUMENT vocab + descriptor v2 (provenance) + AI tag-suggest + non-destructive merge. [CRATE-06]
-- [ ] 30-03-PLAN.md — OWNER-RUN migration 107: additive sync_listings quality-review + staff_notes columns (no status/CHECK widening). [CRATE-09]
+Wave 1 (pure core + migration drafts):
+- [ ] 30-01-PLAN.md — Sync Readiness per-track derivation (subset of Wave 1 engine) + inclusion-gate predicate + rights badge (Jest-tested). [CRATE-01, CRATE-02]
+- [ ] 30-02-PLAN.md — Layered tagging foundation: INSTRUMENT vocab + descriptor v2 (ai_suggested/pending provenance) + AI tag-suggest + non-destructive merge + pending→approved transition (Jest-tested). [CRATE-06, CRATE-10]
+- [ ] 30-03-PLAN.md — OWNER-RUN migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff CHECK adds `anr` A&R role) + StaffRole code. [CRATE-09, CRATE-10]
 
 Wave 2 (backend, depends on Wave 1):
 - [ ] 30-04-PLAN.md — Inclusion-gate wiring + access fix (admit/reject → leadership-only) + leadership-only quality/notes route. [CRATE-04, CRATE-05, CRATE-09]
-- [ ] 30-05-PLAN.md — Sync Readiness worklist backend: pure shaper + staff-gated batched GET route. [CRATE-03]
-- [ ] 30-06-PLAN.md — Layered tagging routes: staff AI tag-suggest + staff tag-refine (provenance-preserving, vocab-safe, audited). [CRATE-06]
+- [ ] 30-05-PLAN.md — Sync Readiness worklist backend: pure shaper (Jest) + staff-gated batched GET route. [CRATE-03]
+- [ ] 30-06-PLAN.md — Layered tagging routes: AI tag-suggest + tag-propose (AE→pending, leadership/A&R→auto-confirm) + tag-approve (leadership/A&R only). [CRATE-06, CRATE-10]
 - [ ] 30-07-PLAN.md — Minimal live-data slice (Phase 22 "22-05"): live catalogue rows render real authored tags + real tri-state rights. [CRATE-08]
 
 Wave 3 (surfaces, depends on Wave 2):

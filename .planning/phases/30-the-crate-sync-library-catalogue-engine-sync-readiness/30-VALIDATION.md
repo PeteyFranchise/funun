@@ -47,9 +47,10 @@ plans_aligned: 2026-08-13
 | Sync Readiness per-track derivation (30-01) | unit | `npx jest lib/sync-library/readiness.test.ts` |
 | Inclusion-gate predicate + rights badge (30-01/30-04) | unit | `npx jest` on the gate module |
 | Tag vocab + non-destructive merge / coerce (30-02) | unit | `npx jest lib/tagging/*.test.ts` |
+| Tag pending→approved transition + auto-confirm-for-approvers (30-02) | unit | `npx jest lib/tagging/tag-merge.test.ts` (proposeStaffRefinement/approvePendingTags/rejectPendingTags/isTagApprover) |
 | Worklist shaper (pure) (30-05) | unit | `npx jest` on the shaper |
-| AI tag-suggest / tag-refine routes (30-06) | manual + unit | route round-trip (service-role) + unit on the coercion |
-| Migration 107 (30-03) | live-verify | OWNER pushes; agent verifies columns live (service-role) |
+| AI tag-suggest / tag-propose / tag-approve routes (30-06) | manual + unit | route round-trip (service-role: AE→pending, leadership/A&R→confirm, AE-approve→403) + unit on the transition/coercion |
+| Migration 107 + 108 (30-03) | live-verify | OWNER pushes BOTH; agent verifies sync_listings columns + funun_staff 'anr' CHECK live (service-role) |
 | Role-aware Crate layers (30-08) | manual | browser preview: buyer clean vs staff layered |
 | Sync Library backstage UI + worklist (30-09) | manual | browser preview + DB state |
 
@@ -73,6 +74,7 @@ plans_aligned: 2026-08-13
 | Sync Readiness worklist surfaces incomplete tracks + gaps | UI + DB state | Seed an incomplete track; confirm it appears in the worklist with the exact missing items |
 | Gate: incomplete track can't go live; enters pipeline (409, non-terminal) | DB state machine | Attempt to admit an incomplete track; confirm it routes to Sync Readiness, not live, not auto-rejected |
 | AE cannot admit/reject (leadership-only); AE can browse & pull | RLS / route gate | As an AE, confirm admit/reject is denied and browse + pull-into-Selects works |
+| AE tag proposal requires approval; leadership/A&R auto-confirm; AE cannot approve | RLS / route gate + DB state | As an AE, propose tags → lands `pending` (not live); as leadership/A&R, propose → auto-confirms and approve/reject a pending proposal works; as an AE, approve → 403 |
 
 ---
 
