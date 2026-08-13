@@ -8,6 +8,10 @@ import {
   buildSyncLibraryRejectedNotification,
 } from '@/lib/social/notifications'
 import { isValidTransition } from '@/lib/sync-library/submission'
+import { evaluateInclusionGate, type GateSignal } from '@/lib/sync-library/gate'
+import { syncReadinessForTrack, isSyncMetadataComplete } from '@/lib/sync-library/readiness'
+import { computeStage3 } from '@/lib/vault/stage3'
+import type { VaultProjectType } from '@/types'
 
 // ─── POST /api/sync-library/admin/[listingId] ──────────────────────────
 // The SINGLE staff curation gate — admit or reject a song, invited OR
@@ -16,23 +20,84 @@ import { isValidTransition } from '@/lib/sync-library/submission'
 // app/api/capabilities/approve/[grantId]/route.ts's staff-gate-first +
 // DB-loaded-target + double-decide doctrine exactly.
 //
-// T-26-17/T-26-18: requireStaff() is the FIRST statement. Curation stays
-// with the broader permissioned-staff role (leadership + ae) — only
-// REMOVAL (a separate route) is leadership-only.
+// T-30-06 (Elevation of Privilege): requireStaff(['leadership']) is the
+// FIRST statement, before any DB read — LEADERSHIP-ONLY (30-CONTEXT.md
+// access decision, tightened from the Phase 26 leadership+ae grant; AE
+// keeps browse & pull only, no curation writes). This route now matches
+// the REMOVAL route's (already leadership-only) access level.
+//
+// Gate precondition (30-04): admitting ADDITIONALLY requires
+// evaluateInclusionGate() (lib/sync-library/gate.ts) to return
+// 'admit_eligible' — computed server-side from computeStage3() (rights),
+// the listing's persisted quality_ok (quality), and
+// isSyncMetadataComplete(syncReadinessForTrack(...)) (metadata complete).
+// A 'needs_completion' verdict returns 409 and leaves the listing's
+// status UNCHANGED — never auto-rejected (30-CONTEXT.md "Incomplete ≠
+// rejected": incomplete tracks stay in the completion pipeline, not a
+// bin). isValidTransition() remains the single legal-transition
+// authority (T-26-22) — the gate is an ADDITIONAL admit precondition on
+// top of it, never a replacement.
 
 const VALID_DECISIONS = ['admit', 'reject'] as const
 const REASON_MAX_LENGTH = 500
 
 type RequestBody = { decision?: unknown; reason?: unknown }
-type ListingRow = { id: string; status: string; artist_user_id: string; track_id: string }
+type ListingRow = {
+  id: string
+  status: string
+  artist_user_id: string
+  track_id: string
+  vault_project_id: string
+  quality_ok: boolean | null
+}
 type TrackRow = { title: string }
+
+// Gate-input columns for a single project — mirrors lib/deals/catalog-
+// query.ts's PROJECT_COLUMNS (the batched shape computeStage3 already
+// consumes), plus isrc/iswc which syncReadinessForTrack additionally
+// needs (catalog-query.ts's rights-only query doesn't select those).
+const PROJECT_GATE_COLUMNS = `
+  id, title, type, vault_readiness_score,
+  content_id_registered, content_id_dismissed_until,
+  tracks (id, title, isrc, iswc, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+  vault_documents (id, type, status, track_id, document_data)
+`
+
+type GateProjectRow = {
+  id: string
+  title: string
+  type: VaultProjectType
+  vault_readiness_score: number | null
+  content_id_registered: boolean | null
+  content_id_dismissed_until: string | null
+  tracks: {
+    id: string
+    title: string | null
+    isrc: string | null
+    iswc: string | null
+    metadata: Record<string, unknown> | null
+    writers: string[] | null
+    producers: string[] | null
+    mixing_engineer: string | null
+    mastering_engineer: string | null
+    has_sample: boolean | null
+    sample_details: string | null
+  }[]
+  vault_documents: {
+    id: string
+    type: string
+    status: string
+    track_id: string | null
+    document_data: Record<string, unknown> | null
+  }[]
+}
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ listingId: string }> }
 ) {
-  // T-26-17: staff-gate-first — precedes any DB read.
-  const auth = await requireStaff(['leadership', 'ae'])
+  // T-30-06: staff-gate-first, leadership-only — precedes any DB read.
+  const auth = await requireStaff(['leadership'])
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -63,7 +128,7 @@ export async function POST(
   // carries a listing/artist identity.
   const { data: listingRaw, error: listingError } = await service
     .from('sync_listings')
-    .select('id, status, artist_user_id, track_id')
+    .select('id, status, artist_user_id, track_id, vault_project_id, quality_ok')
     .eq('id', listingId)
     .maybeSingle()
   if (listingError) {
@@ -97,6 +162,60 @@ export async function POST(
   const nowIso = new Date().toISOString()
 
   if (decision === 'admit') {
+    // Gate precondition (30-04): admit is additionally gated on
+    // evaluateInclusionGate() — signals recomputed server-side from a
+    // fresh, DB-loaded project/track fetch, never trusted from the
+    // request body or from row's already-loaded fields alone.
+    const { data: projectRaw, error: projectError } = await service
+      .from('vault_projects')
+      .select(PROJECT_GATE_COLUMNS)
+      .eq('id', row.vault_project_id)
+      .maybeSingle()
+    if (projectError) {
+      return NextResponse.json({ error: projectError.message }, { status: 500 })
+    }
+    const project = projectRaw as unknown as GateProjectRow | null
+    const track = project?.tracks?.find(t => t.id === row.track_id) ?? null
+    if (!project || !track) {
+      return NextResponse.json(
+        { error: "This song's project could not be loaded — cannot evaluate the inclusion gate." },
+        { status: 500 }
+      )
+    }
+
+    const stage3 = computeStage3(
+      project,
+      project.tracks,
+      project.vault_documents ?? [],
+      project.vault_readiness_score ?? 0
+    )
+    const rightsClear = stage3.canContinue
+
+    const syncItems = syncReadinessForTrack({
+      type: project.type,
+      track: { id: track.id, isrc: track.isrc, iswc: track.iswc, metadata: track.metadata },
+      documents: project.vault_documents ?? [],
+    })
+    const metadataComplete = isSyncMetadataComplete(syncItems)
+
+    const qualityOk = row.quality_ok === true
+
+    const gateSignal: GateSignal = { rightsClear, qualityOk, metadataComplete }
+    const verdict = evaluateInclusionGate(gateSignal)
+    if (verdict === 'needs_completion') {
+      // CONTEXT.md: "Incomplete ≠ rejected" — refuse to admit, but leave
+      // the listing's status untouched. It stays in the Sync Readiness
+      // completion pipeline, never auto-rejected.
+      return NextResponse.json(
+        {
+          error:
+            'This track needs to finish the Sync Readiness checklist and/or pass quality review before it can go live.',
+          data: { listingId, status: row.status, gate: gateSignal },
+        },
+        { status: 409 }
+      )
+    }
+
     // T-26-20: fixed allowlisted column set — never spread the request body.
     const { error: updateError } = await service
       .from('sync_listings')
@@ -135,13 +254,14 @@ export async function POST(
       }
     }
 
-    // T-26-21: UNCONDITIONAL, after the write.
+    // T-26-21: UNCONDITIONAL, after the write. Extended (30-04) to record
+    // the gate verdict that cleared this admit.
     await logStaffAction(service, {
       actorId: auth.user.id,
       action: 'sync_library.admit',
       targetType: 'sync_listing',
       targetId: listingId,
-      changes: { previousStatus: row.status },
+      changes: { previousStatus: row.status, gate: gateSignal },
     })
 
     return NextResponse.json({ data: { listingId, status: 'admitted' as const } })

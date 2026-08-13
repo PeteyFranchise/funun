@@ -27,10 +27,10 @@ jest.mock('@/lib/notifications', () => ({
 }))
 
 const LEADERSHIP_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-const BD_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 const ARTIST_UUID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
 const LISTING_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 const TRACK_UUID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+const PROJECT_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
 
 function jsonRequest(body: unknown) {
   return new Request(`http://t.local/api/sync-library/admin/${LISTING_UUID}`, {
@@ -79,6 +79,52 @@ const PENDING_ADMIT_ROW = {
   status: 'pending_admit',
   artist_user_id: ARTIST_UUID,
   track_id: TRACK_UUID,
+  vault_project_id: PROJECT_UUID,
+  quality_ok: true,
+}
+
+// A gate-eligible project/track — rightsClear (readiness >= 60, no sample
+// block) AND metadataComplete (isrc/iswc present, composer splits total
+// 100%) so evaluateInclusionGate() returns 'admit_eligible' when combined
+// with PENDING_ADMIT_ROW's quality_ok: true.
+const READY_PROJECT_ROW = {
+  id: PROJECT_UUID,
+  title: 'Midnight Run EP',
+  type: 'single',
+  vault_readiness_score: 100,
+  content_id_registered: false,
+  content_id_dismissed_until: null,
+  tracks: [
+    {
+      id: TRACK_UUID,
+      title: 'Midnight Run',
+      isrc: 'US1234567890',
+      iswc: 'T-034524680-1',
+      metadata: { composers: [{ name: 'Artist One', split: 100 }] },
+      writers: ['Artist One'],
+      producers: [],
+      mixing_engineer: null,
+      mastering_engineer: null,
+      has_sample: false,
+      sample_details: null,
+    },
+  ],
+  vault_documents: [],
+}
+
+// Same project, but with no ISRC/ISWC/composer splits captured — fails
+// the gate's metadataComplete signal, so evaluateInclusionGate() returns
+// 'needs_completion'.
+const INCOMPLETE_PROJECT_ROW = {
+  ...READY_PROJECT_ROW,
+  tracks: [
+    {
+      ...READY_PROJECT_ROW.tracks[0],
+      isrc: null,
+      iswc: null,
+      metadata: {},
+    },
+  ],
 }
 
 beforeEach(() => {
@@ -97,10 +143,19 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('returns 403 for staff outside leadership/ae', async () => {
+  it('returns 403 for staff outside leadership (30-04: AE no longer admits/rejects)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
 
     const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+    expect(res.status).toBe(403)
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 for staff outside leadership on reject too (leadership-only covers the whole route)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
+
+    const res = await POST(jsonRequest({ decision: 'reject' }), params())
 
     expect(res.status).toBe(403)
     expect(createServiceClient).not.toHaveBeenCalled()
@@ -161,6 +216,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
         { data: [{ id: LISTING_UUID }], error: null }, // admitted-count recheck — exactly 1
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: READY_PROJECT_ROW, error: null }],
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
@@ -186,7 +242,10 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
       action: 'sync_library.admit',
       targetType: 'sync_listing',
       targetId: LISTING_UUID,
-      changes: { previousStatus: 'pending_admit' },
+      changes: {
+        previousStatus: 'pending_admit',
+        gate: { rightsClear: true, qualityOk: true, metadataComplete: true },
+      },
     })
   })
 
@@ -199,6 +258,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
         { data: [{ id: 'other-listing' }, { id: LISTING_UUID }], error: null }, // count === 2
       ],
       tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: READY_PROJECT_ROW, error: null }],
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
@@ -207,6 +267,48 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     expect(res.status).toBe(200)
     expect(createNotification).not.toHaveBeenCalled()
     expect(logStaffAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 409 admitting a gate-failing (incomplete metadata) listing and does NOT reject or write', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService({
+      sync_listings: [{ data: PENDING_ADMIT_ROW, error: null }], // load only — no update expected
+      tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: INCOMPLETE_PROJECT_ROW, error: null }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.data).toEqual({
+      listingId: LISTING_UUID,
+      status: 'pending_admit', // untouched — CONTEXT.md: incomplete ≠ rejected
+      gate: { rightsClear: true, qualityOk: true, metadataComplete: false },
+    })
+
+    // No admit write and no reject write occurred — only the initial load.
+    expect(service.builders.sync_listings).toHaveLength(1)
+    expect(logStaffAction).not.toHaveBeenCalled()
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('returns 409 admitting a listing whose staff quality review has not passed', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService({
+      sync_listings: [{ data: { ...PENDING_ADMIT_ROW, quality_ok: null }, error: null }],
+      tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: READY_PROJECT_ROW, error: null }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.data.gate).toEqual({ rightsClear: true, qualityOk: false, metadataComplete: true })
+    expect(logStaffAction).not.toHaveBeenCalled()
   })
 
   it('rejects a listing with an optional reason, surfaces it to the artist, and audits', async () => {
@@ -249,7 +351,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
   })
 
   it('rejects a listing with no reason — rejection_reason is stored as null', async () => {
-    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: BD_UUID }, staffRole: 'ae' })
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const service = mockService({
       sync_listings: [
         { data: { ...PENDING_ADMIT_ROW, status: 'invited' }, error: null },
