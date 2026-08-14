@@ -37,6 +37,12 @@ section{margin-top:34px}
 .opt-label{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--indigo)}
 .opt-label .n{width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
 .opt-desc{color:var(--dim);font-size:13px;margin:8px 0 15px;line-height:1.5;max-width:720px}
+.roomhead{display:flex;align-items:center;gap:12px;margin:6px 0 14px}
+.rhtitle{font-size:15px}.rhtitle .dim{color:var(--dim);font-weight:400;font-size:13px}
+.viewseg{margin-left:auto;display:inline-flex;background:var(--panel-2);border-radius:999px;padding:4px;gap:2px}
+.vseg{border:0;background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:6px 14px;border-radius:999px;cursor:pointer}
+.vseg:hover{color:var(--text)}
+.vseg.on{background:var(--grad);color:#fff}
 
 /* ── shared bits ── */
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap;flex:0 0 auto}
@@ -96,17 +102,21 @@ section{margin-top:34px}
 <div class="wrap" id="wrap">
   <div class="top">
     <div>
-      <h1>Selects pipeline — two options</h1>
-      <p class="sub">Same logic — <b>Lead → Build → Move → Close</b> — shown two ways. Option 1 keeps the list you have and layers guidance on top. Option 2 makes the funnel the whole view.</p>
+      <h1>Selects</h1>
+      <p class="sub">The cross-client pipeline hub — <b>Lead → Build → Move → Close</b>. Same Selects, two lenses: a guided <b>List</b> (funnel strip + next-best-action) or a <b>Board</b> (stages you can drag through). Toggle, top-right.</p>
     </div>
     <button class="themebtn" id="themebtn">☾ Dark</button>
   </div>
 
-  <!-- ═══ OPTION 1 ═══ -->
-  <section>
-    <div class="opt-label"><span class="n">1</span>Guided Selects room</div>
-    <p class="opt-desc">The cross-client list you already have, plus a <b>funnel strip</b> across the top (where every Selects sits) and a <b>next-best-action</b> on each row — the exact move that pushes it toward the deal. Low-change, high-guidance.</p>
+  <div class="roomhead">
+    <div class="rhtitle"><b>My Selects</b> <span class="dim">· 5 in flight · 2 awaiting client</span></div>
+    <div class="viewseg" role="tablist" aria-label="View">
+      <button class="vseg on" data-view="list" role="tab">☰ List</button>
+      <button class="vseg" data-view="board" role="tab">▦ Board</button>
+    </div>
+  </div>
 
+  <div id="view-list">
     <div class="funnel">
       <button class="fstep"><span class="fc">2</span>Leads</button><span class="fsep">›</span>
       <button class="fstep"><span class="fc">2</span>Drafts</button><span class="fsep">›</span>
@@ -148,13 +158,9 @@ section{margin-top:34px}
         <div class="nba"><button class="btn">Finish &amp; send</button><div class="nbahint">3 in, off his warm-acoustic brief</div></div>
       </div>
     </div>
-  </section>
+  </div><!-- #view-list -->
 
-  <!-- ═══ OPTION 2 ═══ -->
-  <section>
-    <div class="opt-label"><span class="n">2</span>Kanban pipeline board</div>
-    <p class="opt-desc">The funnel <b>is</b> the view. Every Selects is a card in a stage column; you drag it rightward as it advances — <b>Lead → Draft → Awaiting → Changes → Approved → Deal</b>. Best for seeing the whole book at a glance and what’s stuck where.</p>
-
+  <div id="view-board" hidden>
     <div class="board">
       <div class="kcol stg-lead">
         <div class="kch"><span class="stagedot"></span>Leads<span class="kcount">2</span></div>
@@ -183,13 +189,19 @@ section{margin-top:34px}
         <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#E06AA6,#7A3FA0)"></span><div class="kt">Nike spot</div><div class="ks">Maya Osei · Sunset Lane</div><div class="kmeta">“Ember” · licensing <span class="pill p-deal"><span class="d"></span>In deal</span></div><div class="kact">Open Deal room ›</div></div>
       </div>
     </div>
-    <p class="legend">Drag a card right as it advances · a Selects the client approves auto-moves to <b>Approved</b> · licensing a track opens the <b>Deal</b> column.</p>
-  </section>
+    <p class="legend"><b>Cards advance automatically</b> as things happen — AE sends → Awaiting · client approves → Approved · a track gets licensed → Deal. <b>Drag only to override</b> (park or correct a stage).</p>
+  </div><!-- #view-board -->
 </div>
 
 <script>
   var root=document.body,tb=document.getElementById('themebtn');
   tb.addEventListener('click',function(){var d=root.getAttribute('data-theme')==='light';root.setAttribute('data-theme',d?'dark':'light');tb.textContent=d?'☀ Light':'☾ Dark';});
   document.querySelectorAll('.funnel .fstep').forEach(function(s){s.addEventListener('click',function(){document.querySelectorAll('.funnel .fstep').forEach(function(x){x.classList.remove('on')});s.classList.add('on');});});
+  document.querySelectorAll('.vseg').forEach(function(v){v.addEventListener('click',function(){
+    document.querySelectorAll('.vseg').forEach(function(x){x.classList.remove('on')});v.classList.add('on');
+    var board=v.dataset.view==='board';
+    document.getElementById('view-list').hidden=board;
+    document.getElementById('view-board').hidden=!board;
+  });});
 </script>
 </body></html>
