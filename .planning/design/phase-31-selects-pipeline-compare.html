@@ -1,0 +1,195 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Selects pipeline — two options</title>
+<style>
+:root{
+  --ground:#0a0a0f;--panel:#0E0D1E;--panel-2:#1A1838;
+  --text:#FFFFFF;--lav:#C7CBF7;--dim:#7c80b4;
+  --line:rgba(199,203,247,.12);--line2:rgba(199,203,247,.22);
+  --indigo:#818CF8;--fuchsia:#D946EF;--money:#F4C77B;
+  --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+  --green-fg:#34D399;--green-bg:rgba(52,211,153,.11);--green-line:rgba(52,211,153,.3);
+  --amber-fg:#F4C77B;--amber-bg:rgba(245,158,11,.11);--amber-line:rgba(245,158,11,.3);
+  --rose-fg:#F9A8C0;--rose-bg:rgba(244,63,94,.1);--rose-line:rgba(244,63,94,.3);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+}
+[data-theme=light]{
+  --ground:#FFFFFF;--panel:#F1EDFE;--panel-2:#E7E1FC;
+  --text:#241A4D;--lav:#5F5885;--dim:#8B85AB;
+  --line:#DED7FB;--line2:#CFC5F7;
+  --indigo:#6D5AE0;--fuchsia:#B22BC9;--money:#8A5B04;
+  --grad:linear-gradient(105deg,#6D5AE0 0%,#B22BC9 100%);
+  --green-fg:#0B7A57;--green-bg:#E4F6EF;--green-line:#B6E4D3;
+  --amber-fg:#8A5B04;--amber-bg:#FDF3E0;--amber-line:#F0DCB2;
+  --rose-fg:#A62742;--rose-bg:#FDEBEF;--rose-line:#F5C9D3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:24px 22px 90px}
+.top{display:flex;align-items:flex-start;gap:12px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--dim);font-size:13.5px;margin:0;max-width:660px;line-height:1.5}
+.themebtn{margin-left:auto;flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:12.5px;padding:7px 13px;border-radius:999px;cursor:pointer}
+.themebtn:hover{background:var(--panel-2)}
+section{margin-top:34px}
+.opt-label{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--indigo)}
+.opt-label .n{width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.opt-desc{color:var(--dim);font-size:13px;margin:8px 0 15px;line-height:1.5;max-width:720px}
+
+/* ── shared bits ── */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap;flex:0 0 auto}
+.pill .d{width:6px;height:6px;border-radius:50%}
+.p-good{background:var(--green-bg);color:var(--green-fg);border-color:var(--green-line)} .p-good .d{background:var(--green-fg)}
+.p-warn{background:var(--amber-bg);color:var(--amber-fg);border-color:var(--amber-line)} .p-warn .d{background:var(--amber-fg)}
+.p-risk{background:var(--rose-bg);color:var(--rose-fg);border-color:var(--rose-line)} .p-risk .d{background:var(--rose-fg)}
+.p-new{background:var(--panel-2);color:var(--indigo);border-color:var(--line2)} .p-new .d{background:var(--indigo)}
+.p-deal{background:var(--grad);color:#fff} .p-deal .d{background:#fff}
+.btn{border:1px solid var(--line2);background:transparent;color:var(--text);font:inherit;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--panel-2)}
+.btn.grad{background:var(--grad);color:#fff;border-color:transparent}
+.btn.sm{font-size:12px;padding:6px 11px}
+
+/* ── Option 1: guided Selects room ── */
+.funnel{display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px}
+.fstep{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer}
+.fstep:hover{border-color:var(--line2);color:var(--text)}
+.fstep.on{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--indigo);border-color:transparent}
+.fstep .fc{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--panel-2);color:var(--text);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.fstep.grad{background:var(--grad);color:#fff;border-color:transparent}.fstep.grad .fc{background:rgba(255,255,255,.25);color:#fff}
+.fstep.green .fc{background:var(--green-bg);color:var(--green-fg)}
+.fstep.amber .fc{background:var(--amber-bg);color:var(--amber-fg)}
+.fstep.rose .fc{background:var(--rose-bg);color:var(--rose-fg)}
+.fsep{color:var(--dim);font-size:13px;opacity:.7}
+.listcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px}
+.item{display:flex;align-items:center;gap:13px;padding:13px 12px}.item+.item{border-top:1px solid var(--line)}
+.cov{width:40px;height:40px;border-radius:10px;flex:0 0 auto}
+.grow{flex:1;min-width:0}
+.it{font-size:14px;font-weight:500}
+.is{font-size:12px;color:var(--dim);margin-top:2px}
+.act{font-size:11.5px;margin-top:5px}.act.new{color:var(--indigo)}.act.dim{color:var(--dim)}
+.mid{flex:0 0 auto;display:flex;justify-content:center;width:132px}
+.nba{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:0 0 auto;width:216px}
+.nbahint{font-size:11px;color:var(--dim);text-align:right;line-height:1.35}
+
+/* ── Option 2: kanban board ── */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px}
+.kcol{flex:0 0 208px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:9px;align-self:flex-start}
+.kch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;padding:2px 4px 8px;border-bottom:1px solid var(--line)}
+.stagedot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+.kcount{margin-left:auto;color:var(--dim);font-size:11.5px;background:var(--panel-2);border-radius:999px;padding:1px 8px}
+.kcard{background:var(--ground);border:1px solid var(--line);border-radius:11px;padding:10px;cursor:grab}
+.kcard:hover{border-color:var(--line2)}
+.kcov{width:100%;height:50px;border-radius:8px;margin-bottom:9px}
+.kt{font-size:13px;font-weight:500}
+.ks{font-size:11px;color:var(--dim);margin-top:2px}
+.kmeta{font-size:11px;color:var(--dim);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kact{font-size:11.5px;color:var(--indigo);margin-top:9px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+.stg-lead .stagedot{background:var(--dim)} .stg-draft .stagedot{background:var(--indigo)}
+.stg-await .stagedot{background:var(--amber-fg)} .stg-change .stagedot{background:var(--rose-fg)}
+.stg-appr .stagedot{background:var(--green-fg)} .stg-deal .stagedot{background:var(--fuchsia)}
+.legend{color:var(--dim);font-size:12px;margin:10px 2px 0}
+</style>
+</head>
+<body data-theme="light">
+<div class="wrap" id="wrap">
+  <div class="top">
+    <div>
+      <h1>Selects pipeline — two options</h1>
+      <p class="sub">Same logic — <b>Lead → Build → Move → Close</b> — shown two ways. Option 1 keeps the list you have and layers guidance on top. Option 2 makes the funnel the whole view.</p>
+    </div>
+    <button class="themebtn" id="themebtn">☾ Dark</button>
+  </div>
+
+  <!-- ═══ OPTION 1 ═══ -->
+  <section>
+    <div class="opt-label"><span class="n">1</span>Guided Selects room</div>
+    <p class="opt-desc">The cross-client list you already have, plus a <b>funnel strip</b> across the top (where every Selects sits) and a <b>next-best-action</b> on each row — the exact move that pushes it toward the deal. Low-change, high-guidance.</p>
+
+    <div class="funnel">
+      <button class="fstep"><span class="fc">2</span>Leads</button><span class="fsep">›</span>
+      <button class="fstep"><span class="fc">2</span>Drafts</button><span class="fsep">›</span>
+      <button class="fstep amber on"><span class="fc">1</span>Awaiting</button><span class="fsep">›</span>
+      <button class="fstep rose"><span class="fc">1</span>Changes</button><span class="fsep">›</span>
+      <button class="fstep green"><span class="fc">1</span>Approved</button><span class="fsep">›</span>
+      <button class="fstep grad"><span class="fc">1</span>Deals</button>
+    </div>
+
+    <div class="listcard">
+      <div class="item">
+        <span class="cov" style="background:linear-gradient(135deg,#9aa0b8,#6b7089)"></span>
+        <div class="grow"><div class="it">Sam Okafor <span style="color:var(--dim);font-weight:400">· new lead</span></div><div class="is">Meridian &amp; Co · searched “warm acoustic 15–30s” ×4 today</div><div class="act dim">No Selects started yet</div></div>
+        <div class="mid"><span class="pill p-new"><span class="d"></span>Lead</span></div>
+        <div class="nba"><button class="btn grad">Build Selects for Sam ›</button><div class="nbahint">He’s searching hard — get ahead of the brief</div></div>
+      </div>
+      <div class="item">
+        <span class="cov" style="background:linear-gradient(135deg,#F0854E,#C43D6B)"></span>
+        <div class="grow"><div class="it">Late-night drive</div><div class="is">Sunset Lane Media · Maya Osei · 4 tracks</div><div class="act new">Maya loved 2 · added Coastline from The Crate · 2h ago</div></div>
+        <div class="mid"><span class="pill p-warn"><span class="d"></span>Sent · awaiting</span></div>
+        <div class="nba"><button class="btn grad">Nudge Maya to approve</button><div class="nbahint">2 loved, sent 2h ago — a nudge usually lands</div></div>
+      </div>
+      <div class="item">
+        <span class="cov" style="background:linear-gradient(135deg,#5B6BD6,#2E2A66)"></span>
+        <div class="grow"><div class="it">Holiday social</div><div class="is">Sunset Lane Media · Devin Cross · 6 tracks</div><div class="act new">Devin asked: “warmer, more acoustic” · 1d ago</div></div>
+        <div class="mid"><span class="pill p-risk"><span class="d"></span>Changes</span></div>
+        <div class="nba"><button class="btn">Review &amp; re-send</button><div class="nbahint">Swap 2 for warmer picks, then resend</div></div>
+      </div>
+      <div class="item">
+        <span class="cov" style="background:linear-gradient(135deg,#4FB8A0,#2E7A8C)"></span>
+        <div class="grow"><div class="it">Renewal picks</div><div class="is">Lumen Films · Nadia Roos · 5 tracks</div><div class="act dim">Approved · reopened 3× · 3d ago</div></div>
+        <div class="mid"><span class="pill p-good"><span class="d"></span>Approved</span></div>
+        <div class="nba"><button class="btn grad">Open the deal ›</button><div class="nbahint">She’s ready — take it to the Deal room</div></div>
+      </div>
+      <div class="item">
+        <span class="cov" style="background:linear-gradient(135deg,#F0B24E,#D9772E)"></span>
+        <div class="grow"><div class="it">Q4 auto</div><div class="is">Meridian &amp; Co · Sam Okafor · 3 tracks</div><div class="act dim">Draft · not sent · saved 5h ago</div></div>
+        <div class="mid"><span class="pill p-new"><span class="d"></span>Draft</span></div>
+        <div class="nba"><button class="btn">Finish &amp; send</button><div class="nbahint">3 in, off his warm-acoustic brief</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ OPTION 2 ═══ -->
+  <section>
+    <div class="opt-label"><span class="n">2</span>Kanban pipeline board</div>
+    <p class="opt-desc">The funnel <b>is</b> the view. Every Selects is a card in a stage column; you drag it rightward as it advances — <b>Lead → Draft → Awaiting → Changes → Approved → Deal</b>. Best for seeing the whole book at a glance and what’s stuck where.</p>
+
+    <div class="board">
+      <div class="kcol stg-lead">
+        <div class="kch"><span class="stagedot"></span>Leads<span class="kcount">2</span></div>
+        <div class="kcard"><div class="kt">Sam Okafor</div><div class="ks">Meridian &amp; Co</div><div class="kmeta">searched “warm acoustic” ×4 <span class="pill p-deal"><span class="d"></span>Hot</span></div><div class="kact">Build Selects ›</div></div>
+        <div class="kcard"><div class="kt">Guest visitor</div><div class="ks">via shared Crate link</div><div class="kmeta">“epic orchestral trailer” <span class="pill p-new"><span class="d"></span>New</span></div><div class="kact">See lead ›</div></div>
+      </div>
+      <div class="kcol stg-draft">
+        <div class="kch"><span class="stagedot"></span>Drafts<span class="kcount">2</span></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#F0B24E,#D9772E)"></span><div class="kt">Q4 auto</div><div class="ks">Sam Okafor · Meridian</div><div class="kmeta">3 tracks · not sent</div><div class="kact">Finish &amp; send ›</div></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#8A5BD6,#4A3A9E)"></span><div class="kt">Trailer moods</div><div class="ks">Iris Chen · Northwind</div><div class="kmeta">2 tracks · not sent</div><div class="kact">Finish draft ›</div></div>
+      </div>
+      <div class="kcol stg-await">
+        <div class="kch"><span class="stagedot"></span>Awaiting<span class="kcount">1</span></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#F0854E,#C43D6B)"></span><div class="kt">Late-night drive</div><div class="ks">Maya Osei · Sunset Lane</div><div class="kmeta">4 tracks · <span style="color:var(--indigo)">loved 2 · 2h ago</span></div><div class="kact">Nudge to approve ›</div></div>
+      </div>
+      <div class="kcol stg-change">
+        <div class="kch"><span class="stagedot"></span>Changes<span class="kcount">1</span></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#5B6BD6,#2E2A66)"></span><div class="kt">Holiday social</div><div class="ks">Devin Cross · Sunset Lane</div><div class="kmeta">6 tracks · <span style="color:var(--rose-fg)">“warmer”</span></div><div class="kact">Review &amp; re-send ›</div></div>
+      </div>
+      <div class="kcol stg-appr">
+        <div class="kch"><span class="stagedot"></span>Approved<span class="kcount">1</span></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#4FB8A0,#2E7A8C)"></span><div class="kt">Renewal picks</div><div class="ks">Nadia Roos · Lumen Films</div><div class="kmeta">5 tracks · reopened 3×</div><div class="kact">Open the deal ›</div></div>
+      </div>
+      <div class="kcol stg-deal">
+        <div class="kch"><span class="stagedot"></span>Deal<span class="kcount">1</span></div>
+        <div class="kcard"><span class="kcov" style="background:linear-gradient(135deg,#E06AA6,#7A3FA0)"></span><div class="kt">Nike spot</div><div class="ks">Maya Osei · Sunset Lane</div><div class="kmeta">“Ember” · licensing <span class="pill p-deal"><span class="d"></span>In deal</span></div><div class="kact">Open Deal room ›</div></div>
+      </div>
+    </div>
+    <p class="legend">Drag a card right as it advances · a Selects the client approves auto-moves to <b>Approved</b> · licensing a track opens the <b>Deal</b> column.</p>
+  </section>
+</div>
+
+<script>
+  var root=document.body,tb=document.getElementById('themebtn');
+  tb.addEventListener('click',function(){var d=root.getAttribute('data-theme')==='light';root.setAttribute('data-theme',d?'dark':'light');tb.textContent=d?'☀ Light':'☾ Dark';});
+  document.querySelectorAll('.funnel .fstep').forEach(function(s){s.addEventListener('click',function(){document.querySelectorAll('.funnel .fstep').forEach(function(x){x.classList.remove('on')});s.classList.add('on');});});
+</script>
+</body></html>
