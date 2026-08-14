@@ -402,6 +402,43 @@ valid token.
 > not a full-bleed hero. Build to that file; the notes below are the contract it encodes. Its
 > functional base is still `CatalogBrowserLight.tsx` (playback) per `crate-lead-engine-BUILD-SPEC.md` §6.
 
+### What a "Selects" is — naming & collaboration model  (owner-locked 2026-08-14)
+
+**Name.** The surface is a **Selects** — the client opens *"a Selects"* ("Jae sent you a Selects").
+It is the client-facing player for a **curated set**, and **only** that — it is **not** The Crate.
+
+- **Selects** = a curated, shareable set of tracks in this player (this surface).
+- **The Crate** = the **whole catalogue**, browsable by clients (`/sync/catalog`, `CatalogBrowserLight.tsx`).
+- **Collection term** = **"Selects"** (plural), each individually AE-named, grouped under the project
+  (*"the Nike Selects"*). **Not** "Selects Playlists" — a Selects already *is* a playlist.
+
+**Two ways a Selects is born (both open this same player):**
+1. **AE-initiated** — the AE builds it in the Team Console (Selects builder, R11) and sends it.
+2. **Client-originated** — a logged-in client builds their own Selects **while browsing The Crate**;
+   it **saves to their account** (Crate-side authoring — [[project_client_playlists_in_crate]]).
+
+**Collaboration = live, full co-edit** (owner decision 2026-08-14):
+- **One live shared list**; the AE **and** the client both **add / remove** tracks.
+- **Attribution:** every track shows **who added it** (AE badge vs client avatar). Near-live, with a
+  *"N added · M removed since you last opened"* diff so nothing changes silently.
+- **Soft removes:** a pulled track goes to a **Removed tray** (who/when, recoverable) — never
+  hard-deleted, so co-edit can't wipe curation. The client's **👎 pass** *is* their remove.
+- **"Approve these" = the checkpoint:** it **snapshots** the exact set the client greenlights; any
+  **material change after** re-opens it (*"the set changed since you approved"*).
+- **The AE still runs the deal:** co-edit shapes the **set**; license / cart / Deals-room stay
+  AE/Funūn-controlled. Content protection (watermark + download/license gate) is untouched.
+
+**OPEN sub-decision — may a client add *outside* (non-catalogue) tracks?** (see [[project_selects_live_coedit_model]])
+- **A · catalogue-only adds** (simplest): clients add only from The Crate / Suggested → every track
+  is licensable, no extra tagging.
+- **B · allow references** (owner-recommended): clients may drop in outside songs, tagged
+  **"Reference — not for license"** (a brief-by-example signal to the AE), kept visually distinct and
+  **blocked from license / approval**. This **catalog-vs-reference provenance** is what lets co-edit
+  coexist with licensing. *Owner deciding A vs B.*
+
+**Mockup gap (next player pass):** the current built reference does **not** yet show attribution, the
+**Removed tray**, or the **Reference** tag — those land in the next pass on the player file.
+
 ### Overall shape
 
 One centered, dark player page. Top → bottom: **app bar** · **Glow Up View toggle** · **hero**
