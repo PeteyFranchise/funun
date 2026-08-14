@@ -31,13 +31,21 @@ player base (`CatalogBrowserLight.tsx`) — it does not invent new tokens.
   brand-critical, client-facing surface** in the phase and the reason `31-CONTEXT.md` D-13
   routed it through `/gsd-ui-phase` before build — it gets the most detail below.
 
-**Visual source of truth:** the interactive mockup produced 2026-08-13
-(`claude.ai/code/artifact/0ac07e60-412d-4f4c-98bc-9074c3982314`) — My Client Partners list +
+**Visual source of truth:** the interactive mockup, now saved in-repo at
+**`.planning/design/phase-31-my-client-partners-mockup.html`** (renders standalone — open it
+side-by-side during the build; mirror of artifact `0ac07e60-…`). Covers My Client Partners list +
 workspace, Crate Requests, Selects builder, assign-to-AE, The Playbook, health-rules settings,
-role toggle, light/dark, collapsible rail. **Build to match this look.** This document
-translates that mockup into the project's existing token vocabulary; where the mockup and this
-contract conflict on a token value, this contract (grounded in shipped code) wins — file the
-discrepancy rather than inventing a third value.
+role toggle, light/dark, collapsible rail. **Build to match this look.**
+
+**Reconciled against the mockup 2026-08-13 (owner decision — hybrid: mockup look, light discipline).**
+A full token diff found the **color palette byte-identical** to the codebase, dark + light — zero
+conflict. The real divergences were **typography** (the mockup is 400/500 medium with *no bold* —
+this contract now follows it) and **spacing** (the mockup is off-grid — this contract now treats
+the 8-pt scale as a default and the mockup as truth). Minor: earnings render in the lighter
+`#F4C77B`; the mockup's `--text/--lav/--dim/--line` CSS-var names map to the build's
+`--ink/--ink-2/--ink-3/--border` (identical values); the mockup adds a `14px` small-card radius
+alongside the `18px` card. Rule of thumb where they still differ: the **shipped-code token wins on
+naming; the mockup wins on look** (weight, spacing, radius).
 
 ---
 
@@ -50,6 +58,7 @@ discrepancy rather than inventing a third value.
 | Component library | none — hand-rolled React + Tailwind, matches every prior shipped phase |
 | Icon library | inline stroked SVG, `.icn` class (`stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round`) — confirmed via grep, no icon package installed (`lucide-react`: 0 matches) |
 | Font | `var(--font-sans)` (Tailwind `font-sans`, `tailwind.config.ts`) |
+| Card radius | `18px` primary (`rounded-card` / mockup `--r2`) + `14px` small (stat tiles, history cells, glance stats / mockup `--r`) — capture both |
 
 Two token sources govern this phase, both pre-existing, both dual-theme (dark base +
 `[data-theme="light"]` override on the same custom-property names):
@@ -64,6 +73,19 @@ Two token sources govern this phase, both pre-existing, both dual-theme (dark ba
    minimal, always-dark theme** (Section "Client-Facing Player," below) built from the same raw
    hex values `.fnbl[data-theme="dark"]` already declares, plus the immersive-player layout
    already proven in `~/Desktop/design_handoff_funun_app/music-player-playlists.html`.
+
+**Token-name mapping (mockup → build).** The mockup's CSS-var names differ from the shipped
+`console-theme.ts` names but carry **identical values** — use the *build* names; pasting the
+mockup's verbatim introduces undefined variables:
+
+| Mockup var | Build var (`console-theme.ts`) | Value (dark / light) |
+|---|---|---|
+| `--text` | `--ink` | `#FFFFFF` / `#241A4D` |
+| `--lav` | `--ink-2` | `#C7CBF7` / `#5F5885` |
+| `--dim` | `--ink-3` | `#7c80b4` / `#8B85AB` |
+| `--line` | `--border` | `rgba(199,203,247,.12)` / `#DED7FB` |
+| `--line2` | `--border-2` | `rgba(199,203,247,.22)` / `#CFC5F7` |
+| `--money` | Tailwind `money2` | `#F4C77B` / `#8A5B04` (the lighter gold — **not** the primary `money #F59E0B`) |
 
 **Registry Safety:** not applicable — shadcn is not used anywhere in this codebase; no registry
 lookups, no third-party blocks, no vetting gate required for this phase.
@@ -94,45 +116,65 @@ UI-SPEC (Phases 5, 8, 9, 27):
 | 6px | Health-rules distribution-preview bar segment gaps | Matches existing `.tabs{padding:5px}` pill-cluster density in `FNBL_CSS` |
 | `px-9 py-[30px]` (36px/30px) | Room page container (`My Client Partners`, `Client Partners`) | Existing, shipped page-wrapper convention — reuse verbatim (`app/(admin)/admin/my-client-partners/page.tsx` line 47) |
 
+**Light discipline (owner decision, 2026-08-13).** The mockup
+(`.planning/design/phase-31-my-client-partners-mockup.html`) is the visual source of truth and
+does **not** sit on a strict 4px grid — its base container padding is `14px` and component
+paddings run 6 / 7 / 9 / 11 / 13 / 15px. The 8-point scale above is the **default reach-for** for
+net-new layout; where matching the mockup means an off-grid value, **the mockup wins** and that
+value is sanctioned, not a violation to "fix." Round to the grid only when it doesn't fight the
+mockup. This makes the `gsd-ui-checker` Spacing dimension **advisory** on this phase's
+mockup-derived surfaces, not a gate.
+
 ---
 
 ## Typography
 
-Base scale for Family A (Team Console rooms). Matches the codebase's shipped informal scale —
-no new sizes introduced beyond what the client player needs (declared separately below since
-it is a visually distinct, brand-critical hero surface, same pattern Phase 9 used for its
-public player).
+Base scale for Family A (Team Console rooms), **reconciled against the Phase-31 mockup**
+(`.planning/design/phase-31-my-client-partners-mockup.html`) per the owner's 2026-08-13 hybrid
+decision — *mockup look, light discipline*. The mockup uses a fluid ~18-size range at **medium
+(500)** weight; this table curates that to **five roles** while preserving the mockup's exact
+weight feel. The client player keeps its own scale (Family B, below).
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 14px (`text-[14px]`) | 400 (regular) | 1.5 |
-| Label | 12px (`text-[12px]`) uppercase, `tracking-[.14em]` for section eyebrows / column headers; no tracking for inline labels | 600 (semibold) | 1.4 |
-| Heading | 20px (`text-[20px]`) | 700 (bold) | 1.25 |
-| Display (page h1) | 24px (`text-2xl`) | 700 (bold) | 1.2 |
+| Label / eyebrow | 10.5px, uppercase, `tracking-[.13em]` (section eyebrows, column headers, nav labels) | 500 (medium) | 1.4 |
+| Meta / caption | 12–12.5px (`--dim` sub-text, table meta, hints) | 400 (regular) | 1.4 |
+| Body | 13–14px (default; table cells 13px, prose 14px) | 400 (regular) | 1.5 |
+| Heading | 17–19px (workspace/section h2, stat values, Selects name) | 500 (medium) | 1.3 |
+| Display (page h1) | 21px (room title — `My Client Partners`, `Client Partners`) | 500 (medium) | 1.25 |
 
-Permitted weights across Family A: **400 (regular)** and **700 (bold)** only, matching the
-existing `MyCompanies.tsx` / admin-page convention (`text-2xl font-bold` page titles,
-regular-weight body). Do not introduce a 500/600 weight into Family A components other than the
-12px label row noted above, which already exists in the mockup as a semibold eyebrow — treat it
-as the one sanctioned exception, not a precedent to add more weights.
+**Permitted weights across Family A: `400` (regular) + `500` (medium) only — no bold (`700`).**
+Verified against the mockup: **35 uses of weight-500, zero of 700**. Medium weight is the
+mockup's defining visual signal — its refined feel comes entirely from 500 standing in for what a
+generic design system would set bold. Do **not** substitute 600/700 anywhere in Family A. This
+deliberately relaxes the generic "2 weights incl. bold" convention; the relaxation is the owner's
+hybrid decision, not an oversight, so the `gsd-ui-checker` Typography dimension is **advisory** on
+this axis for this phase, not a gate.
 
 Numeric values (health thresholds, days-in-stage, lifetime value, listen counts, durations) use
 `font-variant-numeric: tabular-nums` — existing codebase convention (Phase 9 precedent).
 
 ### Typography — Client-Facing Player (exception, Family B)
 
-The player is a full-bleed immersive hero surface, not a data table — it inherits the **public
-player's** already-locked scale (`music-player-playlists.html`, Phase 9's public-player
-precedent), not the console's 4-size table above:
+The player is a full-bleed immersive hero surface, not a data table — it may carry heavier display
+type than the console's medium-weight rooms (a hero is the one sanctioned place for weight > 500),
+but it is capped at **700** to stay in family with the 400/500 app — no 900/black:
 
 | Role | Size | Weight | Line Height | Where |
 |------|------|--------|-------------|-------|
-| Eyebrow | 14px, uppercase, `tracking-[.2em]` | 700 | 1.2 | "SELECTS" / "A SELECTS FROM {AE}" kicker above the title |
-| Selects title (display) | 40–58px (scale down on mobile to 32px) | 900 | 1.0 | The Selects name, hero position |
-| AE byline | 16–19px | 600 | 1.3 | "Curated by {AE name}" |
-| Track title | 17px | 600 | 1.3 | Track-list rows |
+| Eyebrow | 14px, uppercase, `tracking-[.2em]` | 600 | 1.2 | "SELECTS" / "A SELECTS FROM {AE}" kicker above the title |
+| Selects title (display) | 40–58px (scale down on mobile to 32px) | 700 | 1.0 | The Selects name, hero position |
+| AE byline | 16–19px | 500 | 1.3 | "Curated by {AE name}" |
+| Track title | 17px | 500 | 1.3 | Track-list rows |
 | Track meta / notes | 14px | 400 | 1.5 | "Why this fits" per-track note, durations, cover note body |
-| Micro (Preview badge, timestamps) | 12–14px | 700 (badge) / 400 (timestamps, tabular-nums) | 1.2 | "Preview" pill, scrub-bar times |
+| Micro (Preview badge, timestamps) | 12–14px | 600 (badge) / 400 (timestamps, tabular-nums) | 1.2 | "Preview" pill, scrub-bar times |
+
+> **Player fidelity note (2026-08-13):** the Phase-31 mockup renders the player as a *compact*
+> `max-width:560px` card (title 19px/500, 38px play button) — a lightweight placeholder built to
+> show the send→player→react **flow**, not the final surface. The immersive spec above (from the
+> `music-player-playlists.html` ref + `CatalogBrowserLight`) is the build target for this
+> brand-critical surface; the mockup card is the flow reference. If direction shifts to the
+> mockup's restraint, the compact card is the sanctioned fallback — both are on-brand.
 
 ---
 
@@ -461,4 +503,10 @@ line at the top ("{N} of {M} tracks qualified-listened"). Use tabular-nums, `--i
 - [x] Dimension 5 Spacing: PASS
 - [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** approved 2026-08-13 (gsd-ui-checker, 6/6 dimensions, no blocking issues, no recommendations)
+**Approval:** approved 2026-08-13 (gsd-ui-checker, 6/6 dimensions, no blocking issues, no recommendations).
+
+**Post-approval reconciliation 2026-08-13 (owner):** token-diffed against the in-repo mockup
+(`.planning/design/phase-31-my-client-partners-mockup.html`). Color/Copywriting/Visuals/Registry
+unchanged (palette was already byte-identical). Typography + Spacing were revised to the mockup
+per the owner's **hybrid** decision (mockup look, light discipline) — those two dimensions are now
+**advisory** for this phase (medium-weight type, off-grid mockup spacing are intended), not gates.
