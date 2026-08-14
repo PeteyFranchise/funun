@@ -439,11 +439,21 @@ client approving something Funūn can't deliver.
 show "the vibe" with an outside song (Spotify / Apple Music / YouTube link), that happens in the
 **Brief Builder** as a brief-by-example to the AE — a **separate Crate/buyer-side capability**, not
 part of this player build (scoped like client-built playlists — [[project_client_playlists_in_crate]]).
-The AE then curates Crate matches back into a Selects.
+The AE then curates Crate matches back into a Selects. **Future tool — "Vibe Match"** (owner idea
+2026-08-14): a reference→catalogue matcher in the Brief Builder that turns the client's outside "vibe"
+track into ranked **rights-ready catalogue** matches — its own AI-integration phase; Suggested Songs
+is a lightweight seed of it. See [[project_vibe_match_tool]].
 
-**Mockup gap (next player pass):** the current built reference does **not** yet show **attribution**
-(who added each track) or the **Removed tray** — those land in the next pass on the player file.
-*(No Reference tag — catalogue-only.)*
+**Co-edit UI (now in the build reference, 2026-08-14):** the player shows **attribution with
+provenance** — client-added rows carry the adder's avatar, and the ••• sheet reads *"Added by Mara
+Lin · from The Crate"* / *"· from Suggested"* (**who AND where from** — the source is always a
+catalogue surface, which doubles as the licensing-safety signal); AE curation stays clean. Plus a
+collapsible **Removed tray** (soft-removed, recoverable — who/when + Restore) and a **"Here's the vibe
+I want →"** doorway out to the Brief Builder. *(No Reference tag — catalogue-only.)*
+
+A client can only add from two catalogue surfaces: **Suggested Songs** (the in-player `+`) or **The
+Crate** (browsing the full catalogue). Every client-add records its source, so a track can never
+appear in a Selects without a licensable origin.
 
 ### Overall shape
 

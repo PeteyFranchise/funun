@@ -237,6 +237,48 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 .sgadd svg{width:16px;height:16px;}
 .sgadd.added{background:var(--green-bg);border-color:transparent;color:var(--green);}
 
+/* ─── attribution: who added a track (client adds get a badge; AE stays clean) ─── */
+.art .who{position:absolute;right:2px;bottom:2px;width:17px;height:17px;border-radius:50%;z-index:3;
+  display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;letter-spacing:.02em;color:#fff;
+  border:1.5px solid rgba(8,7,13,.72);box-shadow:0 1px 4px rgba(0,0,0,.55);}
+.art .who.client{background:linear-gradient(150deg,#34D399,#0e7490);}
+.art .who.ae{background:var(--grad);}
+.sheet .sh .shby{font-size:11.5px;color:var(--lavdim);margin-top:4px;}
+.sheet .sh .shby b{color:var(--lav);font-weight:600;}
+
+/* ─── removed tray (soft-removed, recoverable — co-edit can't wipe curation) ─── */
+.removed{margin-top:12px;}
+.rmvhead{display:flex;align-items:center;gap:9px;width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--border);
+  background:rgba(255,255,255,.02);color:var(--lavdim);font-size:13px;}
+.rmvhead:hover{background:rgba(255,255,255,.045);color:var(--lav);}
+.rmvhead .chev{width:16px;height:16px;transition:transform .2s ease;flex:none;}
+.rmvhead[aria-expanded="true"] .chev{transform:rotate(90deg);}
+.rmvhead .rl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;}
+.rmvhead .rc{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--panel3);color:var(--lav);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.rmvhead .rhint{margin-left:auto;font-size:11px;color:var(--lavdim2);}
+.rmvbody{display:none;padding:5px 2px 2px;}
+.rmvbody.open{display:block;}
+.rmvrow{display:grid;grid-template-columns:38px 1fr auto;gap:11px;align-items:center;padding:9px 8px;border-radius:10px;}
+.rmvrow:hover{background:rgba(255,255,255,.03);}
+.rmvrow .rth{width:38px;height:38px;border-radius:8px;position:relative;overflow:hidden;flex:none;filter:grayscale(.5) opacity(.78);}
+.rmvrow .rinfo{min-width:0;}
+.rmvrow .rt2{font-size:14px;font-weight:600;color:var(--lav);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rmvrow .rsub{font-size:11.5px;color:var(--lavdim2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.restore{padding:7px 14px;border-radius:999px;border:1px solid var(--border2);background:none;color:var(--lav);font-size:12.5px;font-weight:600;flex:none;}
+.restore:hover{border-color:var(--indigo);color:#fff;background:rgba(129,140,248,.12);}
+
+/* ─── "Here's the vibe I want" doorway → Brief Builder (outside refs live there, not here) ─── */
+.vibe{display:flex;align-items:center;gap:14px;width:100%;margin-top:14px;padding:15px 16px;border-radius:var(--r2);text-align:left;
+  border:1.5px dashed var(--border2);background:rgba(129,140,248,.05);color:#fff;transition:background .16s ease,border-color .16s ease;}
+.vibe:hover{background:rgba(129,140,248,.1);border-color:var(--indigo);}
+.vibe .vic{width:42px;height:42px;border-radius:12px;background:rgba(129,140,248,.16);color:var(--indigo);display:flex;align-items:center;justify-content:center;flex:none;}
+.vibe .vic svg{width:21px;height:21px;}
+.vibe .vtx{min-width:0;flex:1;}
+.vibe .vt{font-size:15.5px;font-weight:700;}
+.vibe .vs{font-size:12.5px;color:var(--lavdim);margin-top:2px;line-height:1.45;}
+.vibe .varr{width:20px;height:20px;color:var(--lavdim);flex:none;}
+.vibe:hover .varr{color:var(--indigo);}
+
 /* ─── fidelity polish ─────────────────────────────────────────────────── */
 .playpill,.hc,.rnd,.mplay,.mnext,.cbtn,.gbtn,.pill-btn,.srow,.trk{transition:transform .14s cubic-bezier(.2,.8,.2,1), background .16s ease, color .16s ease, border-color .16s ease, box-shadow .3s ease;}
 .playpill:active,.gbtn:active,.trk:active{transform:scale(.965);}
@@ -336,6 +378,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
   <div class="listcol">
   <div class="listhead"><span class="l">Curated Tracks</span><span class="cnt">5 songs · 17 min</span><span class="wm"><span class="d"></span>Previews watermarked</span></div>
   <div id="tracks"></div>
+  <div class="removed" id="removedTray"></div>
 
   <!-- algorithm-curated suggestions (Apple Music-style) -->
   <div class="suggest">
@@ -345,6 +388,13 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
     </div>
     <div id="suggestList"></div>
   </div>
+
+  <!-- "Here's the vibe I want" — doorway OUT to the Brief Builder (outside refs live there) -->
+  <button class="vibe" id="vibeBtn">
+    <span class="vic"><svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r=".6" fill="currentColor"/></svg></span>
+    <span class="vtx"><span class="vt">Here’s the vibe I want</span><span class="vs">Point us to a track from anywhere — Spotify, Apple Music, a link — and we’ll match it to rights-ready songs in the catalogue.</span></span>
+    <svg class="varr icn" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+  </button>
   </div>
 </div>
 
@@ -363,7 +413,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
 <div class="sheetbg" id="sheetBg"></div>
 <div class="sheet" id="sheet">
   <div class="grip"></div>
-  <div class="sh"><div class="th" id="shThumb"></div><div><div class="nm" id="shTitle">Ember</div><div class="ar" id="shArtist">Kaya Vale</div></div></div>
+  <div class="sh"><div class="th" id="shThumb"></div><div><div class="nm" id="shTitle">Ember</div><div class="ar" id="shArtist">Kaya Vale</div><div class="shby" id="shBy"></div></div></div>
   <div class="trio">
     <button id="shLove"><svg class="icn" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Keep</button>
     <button id="shPass"><svg class="icn" viewBox="0 0 24 24"><path d="M17 14V3H8.5a2 2 0 0 0-2 1.6l-1.2 6A2 2 0 0 0 7.3 13H12l-1 4.2A1.9 1.9 0 0 0 14.6 18z"/><path d="M17 3h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/></svg>Pass</button>
@@ -401,11 +451,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
 
 <script>
 const TRACKS = [
-  {t:"Ember", a:"Kaya Vale", desc:"cinematic alt-pop · builds to a huge final-cut hook", d:"3:12", why:"Why Jae picked this: the hook lands at 0:42 and builds big for the final cut — rights-ready.", img:"art/ember.jpg", accent:"#e8934a", g:"linear-gradient(150deg,#D946EF,#7c3aed 55%,#1e1b4b)"},
-  {t:"Slow Signal", a:"Mønroe", desc:"moody synth · instrumental · night-driving", d:"2:48", why:"Moodier alt take — great for the night-driving shots and lower-energy cutdowns.", img:"art/slow-signal.jpg", accent:"#7c8cf0", g:"linear-gradient(150deg,#6366F1,#312e81 60%,#0b1020)"},
-  {t:"Paper", a:"Maya Reyes", desc:"alt-pop · vocal · huge chorus", d:"3:24", why:"Rights-ready with a huge chorus — my pick if you want lift right at the logo.", img:"art/paper.jpg", accent:"#e0557a", g:"linear-gradient(150deg,#F472B6,#be185d 55%,#3b0764)"},
-  {t:"Golden Hour", a:"Sable", desc:"dream-pop · warm · sunset energy", d:"4:11", why:"Warmer, sunset energy — a B-option if the tone softens in the edit.", img:"art/golden-hour.jpg", accent:"#ef6ea0", g:"linear-gradient(150deg,#FBBF77,#b45309 55%,#3b1a06)"},
-  {t:"Neon Static", a:"VÆL", desc:"electronic · driving · brandy", d:"3:38", why:"Pulsing and brandy — sits great under fast cuts and product beauty shots.", img:"art/neon-static.jpg", accent:"#34d0e0", g:"linear-gradient(150deg,#22D3EE,#0e7490 55%,#062a33)"},
+  {t:"Ember", a:"Kaya Vale", desc:"cinematic alt-pop · builds to a huge final-cut hook", d:"3:12", why:"Why Jae picked this: the hook lands at 0:42 and builds big for the final cut — rights-ready.", img:"art/ember.jpg", accent:"#e8934a", g:"linear-gradient(150deg,#D946EF,#7c3aed 55%,#1e1b4b)", by:{n:"Jae Tran",i:"JT",k:"ae"}},
+  {t:"Slow Signal", a:"Mønroe", desc:"moody synth · instrumental · night-driving", d:"2:48", why:"Moodier alt take — great for the night-driving shots and lower-energy cutdowns.", img:"art/slow-signal.jpg", accent:"#7c8cf0", g:"linear-gradient(150deg,#6366F1,#312e81 60%,#0b1020)", by:{n:"Jae Tran",i:"JT",k:"ae"}},
+  {t:"Paper", a:"Maya Reyes", desc:"alt-pop · vocal · huge chorus", d:"3:24", why:"Rights-ready with a huge chorus — my pick if you want lift right at the logo.", img:"art/paper.jpg", accent:"#e0557a", g:"linear-gradient(150deg,#F472B6,#be185d 55%,#3b0764)", by:{n:"Jae Tran",i:"JT",k:"ae"}},
+  {t:"Golden Hour", a:"Sable", desc:"dream-pop · warm · sunset energy", d:"4:11", why:"Warmer, sunset energy — a B-option if the tone softens in the edit.", img:"art/golden-hour.jpg", accent:"#ef6ea0", g:"linear-gradient(150deg,#FBBF77,#b45309 55%,#3b1a06)", by:{n:"Mara Lin",i:"ML",k:"client",from:"The Crate"}},
+  {t:"Neon Static", a:"VÆL", desc:"electronic · driving · brandy", d:"3:38", why:"Pulsing and brandy — sits great under fast cuts and product beauty shots.", img:"art/neon-static.jpg", accent:"#34d0e0", g:"linear-gradient(150deg,#22D3EE,#0e7490 55%,#062a33)", by:{n:"Jae Tran",i:"JT",k:"ae"}},
 ];
 function bgFor(tr){ return (tr.img ? "url('"+tr.img+"') center/cover, " : "") + tr.g; }
 const IC = {
@@ -427,7 +477,7 @@ function render(){
   tracksEl.innerHTML=TRACKS.map((tr,i)=>{
     const r=reactions[i];
     return `<div class="trk ${i===playingIdx&&playing?'on':''}" data-i="${i}">
-      <button class="art" data-play="${i}" style="background:${bgFor(tr)}"><span class="eq"><i></i><i></i><i></i></span></button>
+      <button class="art" data-play="${i}" style="background:${bgFor(tr)}"><span class="eq"><i></i><i></i><i></i></span>${tr.by&&tr.by.k==='client'?`<span class="who client" title="Added by ${tr.by.n}${tr.by.from?' from '+tr.by.from:''}">${tr.by.i}</span>`:''}</button>
       <div class="info" data-play="${i}">
         <div class="t">${tr.t}</div>
         <div class="sub"><span class="artist">${tr.a}</span><span class="dot">·</span><span class="desc"><span>${tr.desc} &nbsp;•&nbsp; ${tr.desc}</span></span></div>
@@ -493,6 +543,7 @@ function openSheet(i){ sheetIdx=i; const tr=TRACKS[i];
   paint(document.getElementById('shThumb'), tr.g);
   document.getElementById('shTitle').textContent=tr.t;
   document.getElementById('shArtist').textContent=tr.a+' · '+tr.d;
+  document.getElementById('shBy').innerHTML=tr.by?((tr.by.k==='client'?'Added by ':'Curated by ')+'<b>'+tr.by.n+'</b>'+(tr.by.from?' · from '+tr.by.from:'')):'';
   document.getElementById('shNote').textContent='“'+tr.why+'”';
   document.getElementById('shLove').classList.toggle('on', reactions[i]==='love');
   document.getElementById('shDlRt').textContent=isCP?'':'needs account';
@@ -563,7 +614,7 @@ document.getElementById('suggestList').addEventListener('click', e=>{
   const add=e.target.closest('[data-add]'), row=e.target.closest('[data-si]');
   if(add){ const i=+add.dataset.add, s=SUGGESTED[i]; if(s.added) return;
     s.added=true;
-    TRACKS.push({t:s.t,a:s.a,desc:"added from suggestions",d:s.d,why:"Added from the algorithm’s suggestions — curate before send.",img:s.img||null,accent:s.accent,g:s.g||("linear-gradient(150deg,"+s.accent+",#1e1b4b)")});
+    TRACKS.push({t:s.t,a:s.a,desc:"added from suggestions",d:s.d,why:"Added from the algorithm’s suggestions — curate before send.",img:s.img||null,accent:s.accent,g:s.g||("linear-gradient(150deg,"+s.accent+",#1e1b4b)"),by:{n:"Mara Lin",i:"ML",k:"client",from:"Suggested"}});
     render(); renderSuggest();
     const cnt=document.querySelector('.listhead .cnt'); if(cnt) cnt.textContent=TRACKS.length+' songs';
     toast('Added — <b>'+s.t+'</b>'); return; }
@@ -571,8 +622,29 @@ document.getElementById('suggestList').addEventListener('click', e=>{
 });
 document.getElementById('sgRefresh').onclick=()=>{ for(let i=SUGGESTED.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[SUGGESTED[i],SUGGESTED[j]]=[SUGGESTED[j],SUGGESTED[i]];} renderSuggest(); toast('Refreshed suggestions'); };
 
+// ─── removed tray (soft-removed, recoverable) ───
+let REMOVED=[{t:"Overpass",a:"Kite",d:"3:16",g:"linear-gradient(150deg,#64748b,#334155 60%,#0b1020)",accent:"#64748b",by:{n:"Mara Lin",i:"ML",k:"client",from:"The Crate"},when:"2h ago"}];
+let removedOpen=false;
+function updateCount(){ const c=document.querySelector('.listhead .cnt'); if(c) c.textContent=TRACKS.length+' songs'; }
+function renderRemoved(){
+  const el=document.getElementById('removedTray');
+  if(!REMOVED.length){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='';
+  el.innerHTML=`<button class="rmvhead" id="rmvHead" aria-expanded="${removedOpen}"><svg class="chev icn" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg><span class="rl">Removed</span><span class="rc">${REMOVED.length}</span><span class="rhint">Soft-removed · nothing’s lost</span></button><div class="rmvbody ${removedOpen?'open':''}">${REMOVED.map((r,i)=>`<div class="rmvrow"><div class="rth" style="background:${r.img?`url('${r.img}') center/cover`:r.g}"></div><div class="rinfo"><div class="rt2">${r.t}</div><div class="rsub">${r.a} · removed by ${r.by.n} · ${r.when}</div></div><button class="restore" data-restore="${i}">Restore</button></div>`).join('')}</div>`;
+}
+document.getElementById('removedTray').addEventListener('click',e=>{
+  const res=e.target.closest('[data-restore]'), head=e.target.closest('#rmvHead');
+  if(res){ const i=+res.dataset.restore, r=REMOVED.splice(i,1)[0];
+    TRACKS.push({t:r.t,a:r.a,desc:"restored to the set",d:r.d,why:"Restored from the Removed tray.",img:r.img||null,accent:r.accent,g:r.g,by:r.by});
+    render(); renderRemoved(); updateCount(); toast('Restored — <b>'+r.t+'</b>'); return; }
+  if(head){ removedOpen=!removedOpen; renderRemoved(); }
+});
+
+// "Here's the vibe I want" → Brief Builder (outside references live in the brief, not this player)
+document.getElementById('vibeBtn').onclick=()=>toast('Opening the <b>Brief Builder</b> — drop a reference and we’ll match the vibe in the catalogue');
+
 // init — Paper (Maya Reyes) playing so its artwork fills the hero
-playingIdx=2; current=TRACKS[2]; playing=true; updateNow(); syncCart(); syncIcons(); render(); renderSuggest();
+playingIdx=2; current=TRACKS[2]; playing=true; updateNow(); syncCart(); syncIcons(); render(); renderSuggest(); renderRemoved();
 </script>
 </body>
 </html>
