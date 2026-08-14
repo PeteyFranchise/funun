@@ -412,6 +412,29 @@ One centered, dark player page. Top → bottom: **app bar** · **Glow Up View to
   The **hero is capped ~600px centered**; the **track list runs full-width** (edge-to-edge minus
   the 24px gutter) — owner decision 2026-08-14.
 
+That is the **mobile / narrow** shape (a single immersive column). It is **one responsive file**
+that reflows at **≥ 900px** into the desktop split-screen below.
+
+### Desktop layout — split-screen (≥ 900px)  (owner decision 2026-08-14)
+
+Two panes below a clean app bar; the page itself does **not** scroll.
+
+- **App bar (fixed, top):** back + brand **FUNŪN (fuh-NOON)** on the left, the **Glow Up View**
+  toggle **centered**, account / cart / share on the right. Both panes start **below** the app bar
+  (content is not tucked behind it).
+- **Left pane (fixed — does not scroll):** a **large rounded album card** (~440px, centered, the
+  currently-playing track's art with its color-matched glow shadow), then the meta **centered
+  below it** (FUNŪN·Selects chip · title · curator ✓ · "Updated…" · cover note), then the
+  **centered** play controls (shuffle · play · download), then **Approve these / Request changes**.
+- **Right pane (scrolls on its own):** **CURATED TRACKS** list + **Suggested Songs**, with its own
+  independent scrollbar (`overflow-y:auto`); the body is `overflow:hidden`, so the left pane stays
+  put while only the list scrolls.
+- **Mini-player pill:** docked full-width across the bottom, spanning both panes.
+- **Dropped alternative:** a **full-bleed edge-to-edge banner** on the left was tried; its hard
+  right edge landed at the column boundary and read as a "split down the center," so the **large
+  centered card** is the locked left-pane treatment. The **Glow Up** look still blooms the ambient
+  in either layout.
+
 ### App bar (sticky)
 
 - Left: round back button + brand **"FUNŪN (fuh-NOON)"** — the phonetic matches `app/help/page.tsx`.
