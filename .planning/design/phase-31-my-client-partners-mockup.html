@@ -421,6 +421,34 @@
   .tnote::placeholder{color:var(--dim)}
   .sb-empty{padding:34px 20px;text-align:center;color:var(--dim);font-size:13px}
   .sb-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12.5px}
+  /* co-edit: per-track attribution + client reaction chips */
+  .strk .smeta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:7px 2px 0 30px}
+  .addby{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .addby .dot{width:5px;height:5px;border-radius:50%;background:var(--indigo)}
+  .addby.client{color:var(--indigo);border-color:var(--line2);background:var(--panel-2)}
+  .rxchip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid transparent}
+  .rxchip.love{background:var(--rose-bg);color:var(--rose-fg);border-color:var(--rose-line)}
+  .rxchip.pass{background:var(--panel-2);color:var(--dim)}
+  /* co-edit: removed tray (soft-removed, recoverable) */
+  .sb-removed:not(:empty){border-top:1px solid var(--line)}
+  .sb-removed .rmvh{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;background:transparent;border:0;color:var(--dim);font:inherit;cursor:pointer;text-align:left}
+  .sb-removed .rmvh:hover{color:var(--lav)}
+  .sb-removed .rvchev{font-size:10px;width:10px;flex:0 0 auto}
+  .sb-removed .rl{letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+  .sb-removed .rc{background:var(--panel-2);color:var(--lav);border-radius:999px;padding:1px 7px;font-size:11px}
+  .sb-removed .rh{margin-left:auto;font-size:11px}
+  .sb-removed .rmvbody{display:none;padding:0 8px 8px}.sb-removed .rmvbody.on{display:block}
+  .rmv-row{display:flex;align-items:center;gap:11px;padding:8px 6px}
+  .rmv-row .rmi{flex:1;min-width:0}
+  .rmv-row .rmi .tn{font-size:12.5px;color:var(--lav)}
+  .rmv-row .rmi .ta{font-size:11px;color:var(--dim);margin-top:1px}
+  .rmv-row .restore{border:1px solid var(--line2);background:transparent;color:var(--text);font:inherit;font-size:11.5px;padding:4px 11px;border-radius:8px;cursor:pointer;flex:0 0 auto}
+  .rmv-row .restore:hover{background:var(--panel-2);color:var(--indigo);border-color:var(--indigo)}
+  /* cross-client Selects queue room */
+  #selects-queue .cov{width:38px;height:38px;border-radius:10px;flex:0 0 auto}
+  #selects-queue .act{font-size:11.5px}
+  #selects-queue .act.new{color:var(--indigo)}
+  #selects-queue .act.dim{color:var(--dim)}
   @media(max-width:860px){.sb-panes{grid-template-columns:1fr}}
   @media(max-width:860px){.setwrap{grid-template-columns:1fr}}
   @media(max-width:860px){.app{grid-template-columns:1fr}.rail{display:none}.glance{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}.hist{grid-template-columns:1fr}}
@@ -432,6 +460,7 @@
   <nav class="screennav" aria-label="Phase 31 screens">
     <span class="brandmark" aria-hidden="true"></span>
     <button class="sc" data-ready="1" aria-selected="true" data-screen="workspace"><span class="dot"></span>My Client Partners</button>
+    <button class="sc" data-ready="1" data-screen="selectslist"><span class="dot"></span>Selects</button>
     <button class="sc" data-ready="1" data-screen="selects"><span class="dot"></span>Selects builder</button>
     <button class="sc" data-ready="1" data-screen="player"><span class="dot"></span>Shareable player</button>
     <button class="sc" id="chip-leadership" data-screen="leadership"><span class="dot"></span>Client Partners · leadership</button>
@@ -449,6 +478,7 @@
         <a class="on" href="#"><span class="ic">◈</span>My Client Partners<span class="cnt">7</span></a>
         <a href="#" id="nav-cp"><span class="ic">▤</span>Client Partners</a>
         <a href="#" id="nav-crate"><span class="ic">◲</span>Crate Requests<span class="cnt">6</span></a>
+        <a href="#" id="nav-selects"><span class="ic">❏</span>Selects<span class="cnt">5</span></a>
         <a href="#"><span class="ic">◇</span>Deals<span class="cnt">3</span></a>
         <a href="#"><span class="ic">♫</span>Sync Library</a>
         <a href="#"><span class="ic">▦</span>GTM Metrics</a>
@@ -652,6 +682,44 @@
             <div class="sbh"><b>Your Selects</b><span id="sel-count" class="muted" style="margin-left:auto;font-size:12px">0 tracks</span></div>
             <div id="sel-list"></div>
             <div class="sb-foot" id="sel-foot"></div>
+            <div class="sb-removed" id="sel-removed"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panelwrap" id="screen-selectslist">
+        <div class="listhead"><h1>Selects</h1><span class="cnt">5 Selects · 2 awaiting client</span></div>
+        <div style="color:var(--dim);font-size:12.5px;margin:-4px 2px 14px;max-width:680px">Every Selects you’ve built, across clients — drafts, what’s out for approval, and what the client just touched. New co-edit activity shows up here first.</div>
+        <div class="filters"><span class="fchip" style="border-color:var(--indigo);color:var(--text)">All</span><span class="fchip">Drafts</span><span class="fchip">Sent · awaiting</span><span class="fchip">Changes requested</span><span class="fchip">Approved</span><span class="fchip" style="margin-left:auto">My clients only</span></div>
+        <div class="listcard" id="selects-queue">
+          <div class="item">
+            <span class="cov" style="background:linear-gradient(135deg,#F0854E,#C43D6B)"></span>
+            <div style="min-width:0;flex:1"><div class="it">Late-night drive</div><div class="is">Sunset Lane Media · Maya Osei · 4 tracks</div></div>
+            <div class="rt"><span class="pill p-warn"><span class="d"></span>Sent · awaiting</span><span class="act new">Maya added Coastline · loved 2 · removed 1 · 2h ago</span></div>
+            <button class="btn grad" data-open-builder style="white-space:nowrap">Open</button>
+          </div>
+          <div class="item">
+            <span class="cov" style="background:linear-gradient(135deg,#5B6BD6,#2E2A66)"></span>
+            <div style="min-width:0;flex:1"><div class="it">Holiday social</div><div class="is">Sunset Lane Media · Devin Cross · 6 tracks</div></div>
+            <div class="rt"><span class="pill p-risk"><span class="d"></span>Changes requested</span><span class="act new">Devin: “warmer, more acoustic” · 1d ago</span></div>
+            <button class="btn" data-open-builder style="white-space:nowrap">Review</button>
+          </div>
+          <div class="item">
+            <span class="cov" style="background:linear-gradient(135deg,#4FB8A0,#2E7A8C)"></span>
+            <div style="min-width:0;flex:1"><div class="it">Renewal picks</div><div class="is">Lumen Films · Nadia Roos · 5 tracks</div></div>
+            <div class="rt"><span class="pill p-good"><span class="d"></span>Approved</span><span class="act dim">Approved · reopened 3× · licensing started · 3d ago</span></div>
+            <button class="btn" style="white-space:nowrap">Open deal ›</button>
+          </div>
+          <div class="item">
+            <span class="cov" style="background:linear-gradient(135deg,#F0B24E,#D9772E)"></span>
+            <div style="min-width:0;flex:1"><div class="it">Q4 auto</div><div class="is">Meridian &amp; Co · Sam Okafor · 3 tracks</div></div>
+            <div class="rt"><span class="pill p-new"><span class="d"></span>Draft</span><span class="act dim">Not sent yet · saved 5h ago</span></div>
+            <button class="btn" data-open-builder style="white-space:nowrap">Continue</button>
+          </div>
+          <div class="item">
+            <span class="cov" style="background:linear-gradient(135deg,#8A5BD6,#4A3A9E)"></span>
+            <div style="min-width:0;flex:1"><div class="it">Trailer moods</div><div class="is">Northwind Studios · Iris Chen · 2 tracks</div></div>
+            <div class="rt"><span class="pill p-new"><span class="d"></span>Draft</span><span class="act dim">Not sent · saved yesterday</span></div>
+            <button class="btn" data-open-builder style="white-space:nowrap">Continue</button>
           </div>
         </div>
       </div>
@@ -968,8 +1036,11 @@
     {id:'coast',tt:'Coastline',ar:'Ari Fenn',ta:'warm indie · vocal',dur:'3:30',rights:'ok',art:'linear-gradient(135deg,#4FB8A0,#2E7A8C)'},
     {id:'static',tt:'Static Bloom',ar:'Mønroe',ta:'synthwave · driving',dur:'3:01',rights:'ok',art:'linear-gradient(135deg,#8A5BD6,#4A3A9E)'}
   ];
-  var SEL=['ember','slow','after'];
-  var NOTES={ember:'Lead option — the hook lands at 0:42, builds big for the final cut.',slow:'Moodier alt take; great for the night-driving shots.',after:'Backup swell if they want something warmer.'};
+  var SEL=['ember','slow','after','coast'];
+  var NOTES={ember:'Lead option — the hook lands at 0:42, builds big for the final cut.',slow:'Moodier alt take; great for the night-driving shots.',after:'Backup swell if they want something warmer.',coast:'Maya added this from The Crate — a warmer indie option she wants in the mix.'};
+  var META={ember:{by:'ae',react:'love'},slow:{by:'ae',react:null},after:{by:'ae',react:null},coast:{by:'client',who:'Maya',from:'The Crate',react:'love'}};
+  var REMOVED_SB=[{id:'golden',by:'client',who:'Maya',from:'The Crate',when:'yesterday'}];
+  var removedOpenSB=false;
   function secs(d){var p=d.split(':');return (+p[0])*60+(+p[1])}
   function fmt(s){var m=Math.floor(s/60),ss=s%60;return m+':'+(ss<10?'0':'')+ss}
   function trackById(id){return CRATE.filter(function(t){return t.id===id})[0]}
@@ -983,14 +1054,26 @@
   function renderSel(){
     var el=document.getElementById('sel-list'); if(!el)return; var h='';
     if(!SEL.length){h='<div class="sb-empty">Add tracks from The Crate — or hit “✨ Draft from brief” to start from Maya’s Q4 brief.</div>';}
-    SEL.forEach(function(id,i){var t=trackById(id); if(!t)return; var note=(NOTES[id]||'').replace(/"/g,'&quot;');
-      h+='<div class="strk"><div class="top"><span class="num">'+(i+1)+'</span><span class="art sm" style="background:'+t.art+'"><span class="pll">▶</span></span><div style="flex:1;min-width:0"><div class="tn" style="font-size:13px">'+t.tt+' — '+t.ar+'</div><div class="ta" style="font-size:11.5px;color:var(--dim)">'+t.ta+' · '+t.dur+'</div></div><button class="dlb icon" title="Download watermarked preview" aria-label="Download watermarked preview">'+DL+'</button><button class="rm" data-rm="'+id+'" aria-label="Remove">×</button></div><input class="tnote" data-note="'+id+'" placeholder="Why you picked this — the client sees it…" value="'+note+'"></div>';});
+    SEL.forEach(function(id,i){var t=trackById(id); if(!t)return; var note=(NOTES[id]||'').replace(/"/g,'&quot;'); var m=META[id]||{by:'ae'};
+      var add=m.by==='client'?'<span class="addby client"><span class="dot"></span>'+(m.who||'Client')+' added · from '+(m.from||'The Crate')+'</span>':'<span class="addby">You added</span>';
+      var rx=m.react==='love'?'<span class="rxchip love">♥ '+(m.who||'Maya')+' loved</span>':(m.react==='pass'?'<span class="rxchip pass">'+(m.who||'Maya')+' passed</span>':'');
+      h+='<div class="strk"><div class="top"><span class="num">'+(i+1)+'</span><span class="art sm" style="background:'+t.art+'"><span class="pll">▶</span></span><div style="flex:1;min-width:0"><div class="tn" style="font-size:13px">'+t.tt+' — '+t.ar+'</div><div class="ta" style="font-size:11.5px;color:var(--dim)">'+t.ta+' · '+t.dur+'</div></div><button class="dlb icon" title="Download watermarked preview" aria-label="Download watermarked preview">'+DL+'</button><button class="rm" data-rm="'+id+'" aria-label="Remove">×</button></div><div class="smeta">'+add+rx+'</div><input class="tnote" data-note="'+id+'" placeholder="Why you picked this — the client sees it…" value="'+note+'"></div>';});
     el.innerHTML=h;
-    el.querySelectorAll('[data-rm]').forEach(function(b){b.addEventListener('click',function(){SEL=SEL.filter(function(x){return x!==b.dataset.rm});renderCrate();renderSel();markSaved()})});
+    el.querySelectorAll('[data-rm]').forEach(function(b){b.addEventListener('click',function(){var id=b.dataset.rm;var mm=META[id]||{by:'ae'};SEL=SEL.filter(function(x){return x!==id});REMOVED_SB.unshift({id:id,by:'ae',who:'You',from:null,when:'just now',meta:mm});renderCrate();renderSel();markSaved()})});
     el.querySelectorAll('[data-note]').forEach(function(inp){inp.addEventListener('input',function(){NOTES[inp.dataset.note]=inp.value;markSaved()})});
     var tot=SEL.reduce(function(a,id){var t=trackById(id);return a+(t?secs(t.dur):0)},0);
     var cnt=document.getElementById('sel-count'); if(cnt)cnt.textContent=SEL.length+' track'+(SEL.length===1?'':'s');
-    var ft=document.getElementById('sel-foot'); if(ft)ft.innerHTML=SEL.length?('<span>'+SEL.length+' tracks · '+fmt(tot)+'</span><span style="margin-left:auto">Watermarked previews · client can react + license</span>'):'';
+    var ft=document.getElementById('sel-foot'); if(ft)ft.innerHTML=SEL.length?('<span>'+SEL.length+' tracks · '+fmt(tot)+'</span><span style="margin-left:auto">Watermarked previews · live co-edit — client can add, react + license</span>'):'';
+    renderRemovedSB();
+  }
+  function renderRemovedSB(){
+    var el=document.getElementById('sel-removed'); if(!el)return;
+    if(!REMOVED_SB.length){el.innerHTML='';return;}
+    var body=REMOVED_SB.map(function(r,i){var t=trackById(r.id)||{tt:r.id,ar:'',art:'linear-gradient(135deg,#4A4468,#1E1B33)'};
+      return '<div class="rmv-row"><span class="art sm" style="background:'+t.art+'"></span><div class="rmi"><div class="tn">'+t.tt+(t.ar?' — '+t.ar:'')+'</div><div class="ta">removed by '+r.who+(r.from?' · from '+r.from:'')+' · '+r.when+'</div></div><button class="restore" data-restore="'+i+'">Restore</button></div>';}).join('');
+    el.innerHTML='<button class="rmvh" id="rmvh-btn" aria-expanded="'+(removedOpenSB?'true':'false')+'"><span class="rvchev">'+(removedOpenSB?'▾':'▸')+'</span><span class="rl">Removed</span><span class="rc">'+REMOVED_SB.length+'</span><span class="rh">Soft-removed · nothing’s lost</span></button><div class="rmvbody'+(removedOpenSB?' on':'')+'">'+body+'</div>';
+    var hb=document.getElementById('rmvh-btn'); if(hb)hb.addEventListener('click',function(){removedOpenSB=!removedOpenSB;renderRemovedSB()});
+    el.querySelectorAll('[data-restore]').forEach(function(b){b.addEventListener('click',function(){var i=+b.dataset.restore;var r=REMOVED_SB.splice(i,1)[0];if(SEL.indexOf(r.id)<0)SEL.push(r.id);if(r.meta)META[r.id]=r.meta;else if(r.by==='client')META[r.id]={by:'client',who:r.who,from:r.from,react:null};renderCrate();renderSel();markSaved()})});
   }
   var aid=document.getElementById('ai-draft'); if(aid) aid.addEventListener('click',function(){SEL=['ember','after','paper'];NOTES={ember:'AI pick — strongest match to “cinematic alt-pop, builds.” Hook at 0:42.',after:'AI pick — warmer swell option in the same family.',paper:'AI pick — brighter dream-pop build if they want lift.'};renderCrate();renderSel();markSaved()});
   renderCrate();renderSel();
@@ -1059,6 +1142,9 @@
   document.querySelectorAll('.rseg').forEach(function(b){b.addEventListener('click',function(){setRole(b.dataset.role)})});
   var np=document.getElementById('nav-playbook');
   if(np)np.addEventListener('click',function(e){e.preventDefault();var chip=document.querySelector('.sc[data-screen="sops"]');if(chip)chip.click();});
+  var nselx=document.getElementById('nav-selects');
+  if(nselx)nselx.addEventListener('click',function(e){e.preventDefault();var chip=document.querySelector('.sc[data-screen="selectslist"]');if(chip)chip.click();});
+  document.querySelectorAll('#screen-selectslist [data-open-builder]').forEach(function(b){b.addEventListener('click',function(){var chip=document.querySelector('.sc[data-screen="selects"]');if(chip)chip.click();})});
   var railtog=document.getElementById('rail-toggle'),appEl=document.getElementById('app');
   function toggleRail(){if(!appEl)return;var col=appEl.classList.toggle('collapsed');var ic=document.getElementById('rt-ic');if(ic)ic.textContent=col?'»':'«';if(railtog){var lbl=railtog.querySelector('.rtlbl');if(lbl)lbl.textContent=col?'Expand':'Collapse menu';}var t=document.getElementById('rail-collapse-top');if(t)t.setAttribute('aria-label',col?'Expand menu':'Collapse menu');}
   if(railtog&&appEl)railtog.addEventListener('click',toggleRail);
