@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Funūn — Shareable Music Player (Selects)</title>
+<style>
+:root{
+  --ground:#08070d; --panel:#0E0D1E; --panel2:#151330; --panel3:#1c1940;
+  --ink:#ffffff; --lav:#C7CBF7; --lavdim:#8b8fbf; --lavdim2:#6a6d99;
+  --border:rgba(199,203,247,.12); --border2:rgba(199,203,247,.22);
+  --indigo:#818CF8; --fuchsia:#D946EF; --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+  --green:#34D399; --green-bg:rgba(52,211,153,.14);
+  --rose:#F9A8C0; --rose-bg:rgba(244,63,94,.14);
+  --amber:#F4C77B; --r:14px; --r2:20px;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+}
+*{box-sizing:border-box;} html,body{margin:0;padding:0;}
+body{color:var(--ink);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;
+  padding-bottom:104px;background:var(--ground);position:relative;overflow-x:hidden;}
+/* ambient blurred art fills desktop width */
+#ambient{position:fixed;inset:-20% -10%;z-index:-1;filter:blur(90px) saturate(1.3);opacity:.5;transition:background .6s;
+  background:radial-gradient(60% 55% at 30% 20%,#7c3aed,transparent 60%),radial-gradient(55% 55% at 80% 15%,#D946EF,transparent 60%),#08070d;}
+.icn{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+button{font-family:inherit;cursor:pointer;color:inherit;}
+
+/* app bar */
+.appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:14px 20px;
+  backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(8,7,13,.7),rgba(8,7,13,0));}
+.rnd{width:38px;height:38px;border-radius:50%;background:rgba(10,9,16,.5);border:1px solid rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;color:#fff;flex:none;}
+.rnd:hover{background:rgba(30,27,60,.7);}
+.rnd svg{width:18px;height:18px;}
+.brandmini{display:flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.brandmini .mk{width:20px;height:20px;border-radius:6px;background:var(--grad);}
+.spacer{flex:1;}
+.acct{display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--border2);border-radius:999px;
+  padding:6px 11px;background:rgba(10,9,16,.4);color:var(--lav);font-size:12px;}
+.acct .dot{width:7px;height:7px;border-radius:50%;background:var(--lavdim);}
+.acct.pro .dot{background:var(--green);} .acct b{color:#fff;} .acct .demo{font-size:9.5px;letter-spacing:.1em;color:var(--lavdim2);}
+.cartbtn{position:relative;}
+.cartbtn .badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:var(--grad);
+  color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;
+  opacity:0;transform:scale(.6);transition:.18s;box-shadow:0 4px 12px -2px rgba(217,70,239,.7);}
+.cartbtn.has .badge{opacity:1;transform:scale(1);}
+
+/* layout: centered immersive column */
+.col{max-width:720px;margin:0 auto;padding:0 20px;}
+
+/* hero */
+.hero{padding-top:8px;}
+.cover{width:min(300px,64vw);aspect-ratio:1/1;border-radius:var(--r2);margin:6px auto 0;position:relative;overflow:hidden;
+  border:1px solid var(--border);box-shadow:0 30px 80px -28px rgba(0,0,0,.85);transition:background .5s;}
+.cover .grain{position:absolute;inset:0;opacity:.4;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");}
+.cover .previewpill{position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+  border-radius:999px;background:rgba(10,9,16,.6);backdrop-filter:blur(8px);border:1px solid rgba(199,203,247,.28);
+  font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff;}
+.cover .previewpill .d{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+.herotext{text-align:center;margin-top:20px;}
+.chip-funun{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;background:rgba(10,9,16,.5);
+  border:1px solid rgba(199,203,247,.22);font-size:12.5px;font-weight:700;letter-spacing:.04em;color:#fff;}
+.chip-funun .logo{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;letter-spacing:.06em;}
+.chip-funun .sep{opacity:.4;} .chip-funun .sub{font-weight:600;color:var(--lav);}
+.title{font-size:34px;font-weight:900;letter-spacing:-.02em;line-height:1.05;margin:14px 0 0;}
+.byline{margin-top:8px;font-size:15px;color:var(--lav);display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;}
+.byline .vf{width:16px;height:16px;color:var(--indigo);}
+.byline .ml{color:var(--lavdim);}
+.updated{margin-top:5px;font-size:12.5px;color:var(--lavdim2);}
+.note{margin:14px auto 0;max-width:520px;font-size:14px;line-height:1.55;color:var(--lav);}
+
+/* hero controls: shuffle · white Play pill · download */
+.herorow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:20px;}
+.hc{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;color:#fff;flex:none;}
+.hc:hover{background:rgba(255,255,255,.12);}
+.hc svg{width:19px;height:19px;}
+.hc.locked{color:var(--lavdim);}
+.playpill{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#fff;color:#0a0812;border:0;
+  border-radius:999px;padding:13px 34px;font-weight:700;font-size:15.5px;min-width:150px;box-shadow:0 14px 34px -16px rgba(255,255,255,.5);}
+.playpill:hover{transform:translateY(-1px);} .playpill svg{width:17px;height:17px;fill:#0a0812;}
+
+/* business-flow row (kept up top) */
+.bizrow{display:flex;gap:10px;margin-top:16px;}
+.gbtn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;
+  font-size:14px;font-weight:600;border:1px solid var(--border2);background:rgba(255,255,255,.03);color:#fff;}
+.gbtn:hover{background:var(--panel2);} .gbtn svg{width:16px;height:16px;}
+.gbtn.primary{background:var(--grad);border:0;box-shadow:0 14px 34px -16px rgba(217,70,239,.6);}
+
+/* list */
+.listhead{display:flex;align-items:center;gap:10px;padding:24px 4px 6px;}
+.listhead .l{font-size:12px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;color:var(--lavdim);}
+.listhead .cnt{font-size:12px;color:var(--lavdim2);}
+.listhead .wm{margin-left:auto;font-size:11.5px;color:var(--lavdim);display:inline-flex;align-items:center;gap:6px;}
+.listhead .wm .d{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+
+/* dense Apple-Music rows: height ≈ artwork */
+.trk{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;padding:7px 6px;border-radius:11px;
+  transition:background .12s;cursor:pointer;}
+.trk:hover{background:rgba(255,255,255,.05);}
+.trk.on{background:rgba(129,140,248,.1);}
+.art{width:46px;height:46px;border-radius:9px;border:0;padding:0;position:relative;overflow:hidden;flex:none;}
+.art .eq{position:absolute;inset:0;display:none;align-items:flex-end;justify-content:center;gap:2px;background:rgba(8,7,13,.42);}
+.trk.on .art .eq{display:flex;} .art .eq i{width:3px;background:#fff;border-radius:2px;animation:eq .9s ease-in-out infinite;}
+.art .eq i:nth-child(1){height:7px;animation-delay:-.2s} .art .eq i:nth-child(2){height:14px;animation-delay:-.5s} .art .eq i:nth-child(3){height:9px;}
+@keyframes eq{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+.info{min-width:0;} .info .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.trk.on .info .t{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.info .sub{display:flex;align-items:center;gap:7px;margin-top:1px;min-width:0;}
+.info .artist{font-size:12.5px;color:var(--lavdim);white-space:nowrap;flex:none;}
+.info .dot{color:var(--lavdim2);font-size:12px;flex:none;}
+.desc{font-size:12.5px;color:var(--lavdim2);overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);}
+.desc span{display:inline-block;padding-right:40px;}
+.trk.on .desc span,.trk:hover .desc span{animation:marq 11s linear infinite;}
+@keyframes marq{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ctrls{display:flex;align-items:center;gap:2px;flex:none;}
+.cbtn{width:34px;height:34px;border-radius:50%;background:none;border:0;color:var(--lavdim);display:flex;align-items:center;justify-content:center;}
+.cbtn:hover{color:#fff;background:rgba(255,255,255,.07);} .cbtn svg{width:17px;height:17px;}
+.cbtn.love.on{color:var(--rose);} .cbtn.love.on svg{fill:var(--rose);}
+.cbtn.pass.on{color:var(--lav);} .cbtn.pass.on svg{fill:currentColor;}
+.cbtn.dl svg{width:19px;height:19px;} .cbtn.dl.locked{color:var(--lavdim2);}
+.cbtn.mm{color:var(--lavdim);}
+
+.footer{max-width:720px;margin:22px auto 0;padding:0 20px;text-align:center;color:var(--lavdim2);font-size:12px;line-height:1.7;}
+.footer .d{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber);vertical-align:middle;margin:0 8px;}
+
+/* bottom mini-player pill */
+.miniwrap{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:12px 16px;
+  background:linear-gradient(180deg,transparent,var(--ground) 40%);}
+.mini{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:12px;background:rgba(28,25,64,.72);
+  backdrop-filter:blur(20px);border:1px solid var(--border2);border-radius:16px;padding:9px 12px;box-shadow:0 18px 44px -18px rgba(0,0,0,.7);}
+.mini .mth{width:44px;height:44px;border-radius:10px;overflow:hidden;position:relative;flex:none;}
+.mini .mtx{min-width:0;flex:1;} .mini .mtt{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini .mta{font-size:12px;color:var(--lav);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;display:flex;align-items:center;gap:7px;}
+.mini .mprev{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:999px;border:1px solid var(--border2);
+  font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);}
+.mini .mplay{width:44px;height:44px;border-radius:50%;background:var(--grad);border:0;display:flex;align-items:center;justify-content:center;flex:none;
+  box-shadow:0 10px 26px -10px rgba(217,70,239,.7);} .mini .mplay svg{width:19px;height:19px;fill:#fff;}
+.mini .mscrub{position:absolute;left:12px;right:12px;bottom:3px;height:2px;border-radius:2px;background:rgba(199,203,247,.14);}
+.mini .mfill{position:absolute;left:0;top:0;bottom:0;width:34%;border-radius:2px;background:var(--grad);}
+
+/* ••• sheet (Apple-Music-style) */
+.sheetbg{position:fixed;inset:0;background:rgba(4,3,10,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.2s;z-index:45;}
+.sheetbg.on{opacity:1;pointer-events:auto;}
+.sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,102%);width:min(460px,100%);z-index:55;
+  background:var(--panel);border:1px solid var(--border2);border-bottom:0;border-radius:22px 22px 0 0;padding:10px 16px 22px;
+  transition:transform .26s cubic-bezier(.4,0,.2,1);}
+.sheet.on{transform:translate(-50%,0);}
+.sheet .grip{width:38px;height:4px;border-radius:2px;background:var(--border2);margin:2px auto 14px;}
+.sheet .sh{display:flex;align-items:center;gap:12px;padding:0 4px 14px;border-bottom:1px solid var(--border);}
+.sheet .sh .th{width:46px;height:46px;border-radius:10px;overflow:hidden;position:relative;flex:none;}
+.sheet .sh .nm{font-size:15px;font-weight:700;} .sheet .sh .ar{font-size:12.5px;color:var(--lavdim);margin-top:2px;}
+.sheet .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 0;border-bottom:1px solid var(--border);}
+.sheet .trio button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 6px;border-radius:12px;background:var(--panel2);border:1px solid var(--border);font-size:12px;color:#fff;}
+.sheet .trio button:hover{background:var(--panel3);} .sheet .trio button.on{color:var(--rose);border-color:rgba(249,168,192,.4);}
+.sheet .trio svg{width:20px;height:20px;}
+.sheet .note{margin:14px 4px 4px;font-size:12.5px;line-height:1.5;color:var(--lav);border-left:2px solid var(--border2);padding-left:11px;text-align:left;max-width:none;}
+.sheet .rows{padding:8px 0 0;}
+.sheet .srow{display:flex;align-items:center;gap:13px;width:100%;padding:13px 6px;border:0;background:none;font-size:14.5px;color:#fff;text-align:left;border-radius:10px;}
+.sheet .srow:hover{background:var(--panel2);} .sheet .srow svg{width:20px;height:20px;color:var(--lav);flex:none;}
+.sheet .srow.primary svg{color:var(--indigo);} .sheet .srow .sub{font-size:11.5px;color:var(--lavdim);margin-top:1px;}
+.sheet .srow .rt{margin-left:auto;font-size:12px;color:var(--lavdim);}
+
+/* cart / deals drawer */
+.scrim-bg{position:fixed;inset:0;background:rgba(4,3,10,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.2s;z-index:40;}
+.scrim-bg.on{opacity:1;pointer-events:auto;}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:#0a0912;border-left:1px solid var(--border);
+  z-index:50;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
+.drawer.on{transform:none;}
+.drawer .dh{display:flex;align-items:center;gap:12px;padding:20px 20px;border-bottom:1px solid var(--border);}
+.drawer .dh .ic{width:36px;height:36px;border-radius:10px;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--indigo);}
+.drawer .dh h3{margin:0;font-size:16px;font-weight:700;} .drawer .dh .sub{font-size:12px;color:var(--lavdim);margin-top:2px;}
+.drawer .dh .x{margin-left:auto;background:none;border:0;color:var(--lavdim);width:32px;height:32px;border-radius:8px;font-size:20px;line-height:1;}
+.drawer .body{flex:1;overflow-y:auto;padding:14px 16px;}
+.cartrow{display:flex;align-items:center;gap:12px;padding:11px;border-radius:12px;background:var(--panel);border:1px solid var(--border);margin-bottom:9px;}
+.cartrow .th{width:40px;height:40px;border-radius:9px;overflow:hidden;position:relative;flex:none;}
+.cartrow .nm{font-size:13.5px;font-weight:600;} .cartrow .mt{font-size:11.5px;color:var(--lavdim);margin-top:2px;}
+.cartrow .rm{margin-left:auto;background:none;border:0;color:var(--lavdim);font-size:16px;}
+.cartempty{text-align:center;color:var(--lavdim);padding:48px 20px;font-size:13.5px;line-height:1.6;}
+.drawer .df{padding:16px 18px;border-top:1px solid var(--border);}
+.drawer .df .go{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:14px;border-radius:13px;border:0;
+  background:var(--grad);color:#fff;font-size:14.5px;font-weight:600;box-shadow:0 14px 34px -16px rgba(217,70,239,.6);}
+.drawer .df .go:disabled{opacity:.4;box-shadow:none;} .drawer .df .hint{text-align:center;font-size:11.5px;color:var(--lavdim);margin-top:10px;}
+
+/* download gate */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(4,3,10,.68);backdrop-filter:blur(4px);}
+.modal.on{display:flex;}
+.mcard{width:min(420px,100%);background:#0a0912;border:1px solid var(--border2);border-radius:var(--r2);padding:26px;text-align:center;box-shadow:0 40px 90px -30px rgba(0,0,0,.85);}
+.mcard .ic{width:54px;height:54px;border-radius:16px;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--amber);margin:0 auto 16px;}
+.mcard .ic svg{width:25px;height:25px;} .mcard h3{margin:0 0 8px;font-size:19px;font-weight:700;} .mcard p{margin:0 0 20px;font-size:14px;line-height:1.55;color:var(--lav);}
+.mcard .make{width:100%;padding:14px;border-radius:13px;border:0;background:var(--grad);color:#fff;font-size:14.5px;font-weight:600;margin-bottom:10px;}
+.mcard .later{width:100%;padding:12px;border-radius:13px;border:1px solid var(--border2);background:transparent;color:var(--lav);font-size:13.5px;}
+.mcard .fine{margin-top:14px;font-size:11.5px;color:var(--lavdim);line-height:1.5;}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,16px);z-index:70;background:var(--panel3);border:1px solid var(--border2);
+  border-radius:999px;padding:11px 20px;font-size:13.5px;display:flex;align-items:center;gap:9px;opacity:0;pointer-events:none;transition:.22s;box-shadow:0 20px 50px -20px rgba(0,0,0,.7);}
+.toast.on{opacity:1;transform:translate(-50%,0);} .toast .d{width:7px;height:7px;border-radius:50%;background:var(--green);} .toast b{font-weight:600;}
+
+@media (max-width:600px){
+  .title{font-size:30px;} .cover{width:76vw;}
+  .col{padding:0 16px;} .mini{border-radius:14px;}
+}
+</style>
+</head>
+<body>
+<div id="ambient"></div>
+
+<div class="appbar">
+  <button class="rnd" title="Back"><svg class="icn" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+  <div class="brandmini"><span class="mk"></span><span>Funūn</span></div>
+  <div class="spacer"></div>
+  <button id="acct" class="acct" title="Demo: toggle account state"><span class="dot"></span><span class="lbl">Guest</span><span class="demo">demo</span></button>
+  <button class="rnd cartbtn" id="cartBtn" title="Licensing cart"><svg class="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/></svg><span class="badge" id="cartBadge">0</span></button>
+  <button class="rnd" id="shareSelects" title="Share this Selects"><svg class="icn" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+</div>
+
+<div class="col">
+  <div class="hero">
+    <div class="cover" id="cover"><div class="grain"></div><div class="previewpill"><span class="d"></span>Preview</div></div>
+    <div class="herotext">
+      <div class="chip-funun"><span class="logo">FUNŪN</span><span class="sep">·</span><span class="sub">Selects</span></div>
+      <h1 class="title">Late-night drive</h1>
+      <div class="byline"><b>Jae Tran</b><svg class="vf icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg><span class="ml">· for Sunset Lane Media</span></div>
+      <div class="updated">Updated just now · by Jae Tran</div>
+      <div class="note">Maya — cinematic alt-pop that builds, all rights-ready. Top three are my picks for the Nike spot.</div>
+    </div>
+
+    <div class="herorow">
+      <button class="hc" id="shuffleBtn" title="Shuffle"><svg class="icn" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 6h4a4 4 0 0 1 4 4"/><path d="M17 22l4-4-4-4"/><path d="M21 18H7a4 4 0 0 1-4-4"/></svg></button>
+      <button class="playpill" id="playPill"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span id="playPillLbl">Play</span></button>
+      <button class="hc" id="dlAll" title="Download all (watermarked)"><svg class="icn" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.4A3.5 3.5 0 0 1 18 18"/><path d="M12 11v6"/><path d="m9.5 14.5 2.5 2.5 2.5-2.5"/></svg></button>
+    </div>
+
+    <div class="bizrow">
+      <button class="gbtn primary" id="approveBtn"><svg class="icn" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Approve these</button>
+      <button class="gbtn" id="changesBtn"><svg class="icn" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Request changes</button>
+    </div>
+  </div>
+
+  <div class="listhead"><span class="l">Tracks</span><span class="cnt">5 songs · 17 min</span><span class="wm"><span class="d"></span>Previews watermarked</span></div>
+  <div id="tracks"></div>
+</div>
+
+<div class="footer">Previews are watermarked<span class="d"></span>Play, keep &amp; pass freely — no login<span class="d"></span>Downloading needs a free Client Partner account</div>
+
+<!-- mini player pill -->
+<div class="miniwrap"><div class="mini">
+  <div class="mth" id="mThumb"></div>
+  <div class="mtx"><div class="mtt" id="mTitle">Ember</div><div class="mta"><span id="mArtist">Kaya Vale</span><span class="mprev">Preview</span></div></div>
+  <button class="mplay" id="miniPlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+  <div class="mscrub"><div class="mfill" id="mFill"></div></div>
+</div></div>
+
+<!-- ••• sheet -->
+<div class="sheetbg" id="sheetBg"></div>
+<div class="sheet" id="sheet">
+  <div class="grip"></div>
+  <div class="sh"><div class="th" id="shThumb"></div><div><div class="nm" id="shTitle">Ember</div><div class="ar" id="shArtist">Kaya Vale</div></div></div>
+  <div class="trio">
+    <button id="shLove"><svg class="icn" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-9.5-8.6C.9 9.6 2.3 6 5.6 6c2 0 3.2 1.2 3.9 2.2C10.2 7.2 11.4 6 13.4 6c3.3 0 4.7 3.6 3.1 6.4C19 16.6 12 21 12 21z"/></svg>Keep</button>
+    <button id="shPass"><svg class="icn" viewBox="0 0 24 24"><path d="M17 14V3H8.5a2 2 0 0 0-2 1.6l-1.2 6A2 2 0 0 0 7.3 13H12l-1 4.2A1.9 1.9 0 0 0 14.6 18z"/><path d="M17 3h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/></svg>Pass</button>
+    <button id="shShare"><svg class="icn" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+  </div>
+  <div class="note" id="shNote"></div>
+  <div class="rows">
+    <button class="srow primary" id="shLicense"><svg class="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/></svg><div><div>License this track</div><div class="sub">Adds to your cart · opens the Deals room</div></div></button>
+    <button class="srow" id="shMore"><svg class="icn" viewBox="0 0 24 24"><path d="M12 3l2.2 5.9L20 11l-5.8 2.1L12 19l-2.2-5.9L4 11l5.8-2.1z"/></svg><div>More like this</div></button>
+    <button class="srow" id="shCredits"><svg class="icn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16" r=".6" fill="currentColor"/></svg><div>View credits &amp; rights</div></button>
+    <button class="srow" id="shDownload"><svg class="icn" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.4A3.5 3.5 0 0 1 18 18"/><path d="M12 11v6"/><path d="m9.5 14.5 2.5 2.5 2.5-2.5"/></svg><div>Download watermarked preview</div><span class="rt" id="shDlRt">needs account</span></button>
+  </div>
+</div>
+
+<!-- cart / deals drawer -->
+<div class="scrim-bg" id="scrimBg"></div>
+<div class="drawer" id="drawer">
+  <div class="dh"><div class="ic"><svg class="icn" viewBox="0 0 24 24" style="width:19px;height:19px"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/></svg></div><div><h3>Licensing cart</h3><div class="sub">Opens your deal in the Deals room</div></div><button class="x" id="drawerClose">×</button></div>
+  <div class="body" id="cartBody"></div>
+  <div class="df"><button class="go" id="goDeal" disabled><svg class="icn" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>Go to deal</button><div class="hint">You’ll finish the license terms in the Deals room.</div></div>
+</div>
+
+<!-- download gate -->
+<div class="modal" id="gate"><div class="mcard">
+  <div class="ic"><svg class="icn" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+  <h3>Create a Client Partner account to download</h3>
+  <p>Play, keep, pass, and approve freely — no login. Downloading a watermarked file to test-sync just needs a free Client Partner account.</p>
+  <button class="make" id="makeAcct">Create Client Partner account</button>
+  <button class="later" id="gateLater">Maybe later</button>
+  <div class="fine">Downloads are always watermarked previews — never clean masters. The same rule applies in The Crate.</div>
+</div></div>
+
+<div class="toast" id="toast"><span class="d"></span><span id="toastMsg"></span></div>
+
+<script>
+const TRACKS = [
+  {t:"Ember", a:"Kaya Vale", desc:"cinematic alt-pop · builds to a huge final-cut hook", d:"3:12", why:"Why Jae picked this: the hook lands at 0:42 and builds big for the final cut — rights-ready.", img:"art/ember.jpg", g:"linear-gradient(150deg,#D946EF,#7c3aed 55%,#1e1b4b)"},
+  {t:"Slow Signal", a:"Mønroe", desc:"moody synth · instrumental · night-driving", d:"2:48", why:"Moodier alt take — great for the night-driving shots and lower-energy cutdowns.", img:"art/slow-signal.jpg", g:"linear-gradient(150deg,#6366F1,#312e81 60%,#0b1020)"},
+  {t:"Paper", a:"Maya Reyes", desc:"alt-pop · vocal · huge chorus", d:"3:24", why:"Rights-ready with a huge chorus — my pick if you want lift right at the logo.", img:"art/paper.jpg", g:"linear-gradient(150deg,#F472B6,#be185d 55%,#3b0764)"},
+  {t:"Golden Hour", a:"Sable", desc:"dream-pop · warm · sunset energy", d:"4:11", why:"Warmer, sunset energy — a B-option if the tone softens in the edit.", img:"art/golden-hour.jpg", g:"linear-gradient(150deg,#FBBF77,#b45309 55%,#3b1a06)"},
+  {t:"Neon Static", a:"VÆL", desc:"electronic · driving · brandy", d:"3:38", why:"Pulsing and brandy — sits great under fast cuts and product beauty shots.", img:"art/neon-static.jpg", g:"linear-gradient(150deg,#22D3EE,#0e7490 55%,#062a33)"},
+];
+function bgFor(tr){ return "url('"+tr.img+"') center/cover, "+tr.g; }
+const IC = {
+  more:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
+  love:'<svg class="icn" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-9.5-8.6C.9 9.6 2.3 6 5.6 6c2 0 3.2 1.2 3.9 2.2C10.2 7.2 11.4 6 13.4 6c3.3 0 4.7 3.6 3.1 6.4C19 16.6 12 21 12 21z"/></svg>',
+  pass:'<svg class="icn" viewBox="0 0 24 24"><path d="M17 14V3H8.5a2 2 0 0 0-2 1.6l-1.2 6A2 2 0 0 0 7.3 13H12l-1 4.2A1.9 1.9 0 0 0 14.6 18z"/><path d="M17 3h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/></svg>',
+  dl:'<svg class="icn" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.4A3.5 3.5 0 0 1 18 18"/><path d="M12 11v6"/><path d="m9.5 14.5 2.5 2.5 2.5-2.5"/></svg>',
+  lock:'<svg class="icn" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="8.5" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>',
+};
+const PLAY='<path d="M8 5v14l11-7z"/>', PAUSE='<path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z"/>';
+
+let isCP=false, playingIdx=0, playing=false, sheetIdx=0;
+const cart=new Map(), reactions={};
+
+const tracksEl=document.getElementById('tracks');
+function render(){
+  tracksEl.innerHTML=TRACKS.map((tr,i)=>{
+    const r=reactions[i], lock=!isCP;
+    return `<div class="trk ${i===playingIdx&&playing?'on':''}" data-i="${i}">
+      <button class="art" data-play="${i}" style="background:${bgFor(tr)}"><span class="eq"><i></i><i></i><i></i></span></button>
+      <div class="info" data-play="${i}">
+        <div class="t">${tr.t}</div>
+        <div class="sub"><span class="artist">${tr.a}</span><span class="dot">·</span><span class="desc"><span>${tr.desc} &nbsp;•&nbsp; ${tr.desc}</span></span></div>
+      </div>
+      <div class="ctrls">
+        <button class="cbtn mm" data-menu="${i}" title="More">${IC.more}</button>
+        <button class="cbtn love ${r==='love'?'on':''}" data-rx="love" data-i="${i}" title="Keep">${IC.love}</button>
+        <button class="cbtn pass ${r==='pass'?'on':''}" data-rx="pass" data-i="${i}" title="Pass">${IC.pass}</button>
+        <button class="cbtn dl ${lock?'locked':''}" data-dl="${i}" title="Download">${lock?IC.lock:IC.dl}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+render();
+
+function syncIcons(){
+  document.querySelector('#playPill svg').innerHTML=playing?PAUSE:PLAY;
+  document.getElementById('playPillLbl').textContent=playing?'Pause':'Play';
+  document.querySelector('#miniPlay svg').innerHTML=playing?PAUSE:PLAY;
+}
+function paint(el,tr){ el.style.background=bgFor(tr); }
+function updateNow(){
+  const tr=TRACKS[playingIdx];
+  paint(document.getElementById('cover'), tr);
+  paint(document.getElementById('ambient'), tr);
+  paint(document.getElementById('mThumb'), tr);
+  document.getElementById('mTitle').textContent=tr.t;
+  document.getElementById('mArtist').textContent=tr.a;
+}
+function playTrack(i){ if(i===playingIdx){ playing=!playing; } else { playingIdx=i; playing=true; } updateNow(); syncIcons(); render(); }
+function togglePlay(){ playing=!playing; syncIcons(); render(); }
+
+tracksEl.addEventListener('click',e=>{
+  const menu=e.target.closest('[data-menu]'), rx=e.target.closest('[data-rx]'), dl=e.target.closest('[data-dl]'), play=e.target.closest('[data-play]');
+  if(menu){ openSheet(+menu.dataset.menu); return; }
+  if(rx){ const i=+rx.dataset.i; reactions[i]=reactions[i]===rx.dataset.rx?null:rx.dataset.rx; render();
+    if(reactions[i]==='love') toast('Kept — <b>'+TRACKS[i].t+'</b>'); else if(reactions[i]==='pass') toast('Passed — <b>'+TRACKS[i].t+'</b>'); return; }
+  if(dl){ const i=+dl.dataset.dl; isCP?toast('Downloading watermarked preview — <b>'+TRACKS[i].t+'</b>'):openGate(); return; }
+  if(play){ playTrack(+play.dataset.play); return; }
+});
+
+// hero + mini controls
+document.getElementById('playPill').onclick=()=>{ if(!playing && !TRACKS[playingIdx]) playingIdx=0; togglePlay(); };
+document.getElementById('miniPlay').onclick=togglePlay;
+document.getElementById('shuffleBtn').onclick=()=>{ playingIdx=Math.floor(Math.random()*TRACKS.length); playing=true; updateNow(); syncIcons(); render(); toast('Shuffling — <b>'+TRACKS[playingIdx].t+'</b>'); };
+document.getElementById('dlAll').onclick=()=> isCP?toast('Downloading all watermarked previews…'):openGate();
+document.getElementById('approveBtn').onclick=()=>toast('Sent <b>Approve these</b> to Jae');
+document.getElementById('changesBtn').onclick=()=>toast('Opened <b>Request changes</b>');
+document.getElementById('shareSelects').onclick=()=>toast('Copied link to this <b>Selects</b>');
+
+// ••• sheet
+const sheet=document.getElementById('sheet'), sheetBg=document.getElementById('sheetBg');
+function openSheet(i){ sheetIdx=i; const tr=TRACKS[i];
+  paint(document.getElementById('shThumb'), tr.g);
+  document.getElementById('shTitle').textContent=tr.t;
+  document.getElementById('shArtist').textContent=tr.a+' · '+tr.d;
+  document.getElementById('shNote').textContent='“'+tr.why+'”';
+  document.getElementById('shLove').classList.toggle('on', reactions[i]==='love');
+  document.getElementById('shDlRt').textContent=isCP?'':'needs account';
+  sheet.classList.add('on'); sheetBg.classList.add('on');
+}
+function closeSheet(){ sheet.classList.remove('on'); sheetBg.classList.remove('on'); }
+sheetBg.onclick=closeSheet;
+document.getElementById('shLove').onclick=()=>{ reactions[sheetIdx]=reactions[sheetIdx]==='love'?null:'love'; render(); openSheet(sheetIdx); };
+document.getElementById('shPass').onclick=()=>{ reactions[sheetIdx]=reactions[sheetIdx]==='pass'?null:'pass'; render(); toast('Passed — <b>'+TRACKS[sheetIdx].t+'</b>'); closeSheet(); };
+document.getElementById('shShare').onclick=()=>{ toast('Copied link to <b>'+TRACKS[sheetIdx].t+'</b>'); };
+document.getElementById('shLicense').onclick=()=>{ addToCart(sheetIdx); closeSheet(); };
+document.getElementById('shMore').onclick=()=>{ toast('Finding more like <b>'+TRACKS[sheetIdx].t+'</b>'); closeSheet(); };
+document.getElementById('shCredits').onclick=()=>{ toast('Opening credits & rights…'); };
+document.getElementById('shDownload').onclick=()=>{ isCP?toast('Downloading watermarked preview — <b>'+TRACKS[sheetIdx].t+'</b>'):(closeSheet(),openGate()); };
+
+// cart / deals
+function addToCart(i){ if(!cart.has(i)){ cart.set(i,TRACKS[i]); toast('Added to licensing cart — <b>'+TRACKS[i].t+'</b>'); } syncCart(); }
+function syncCart(){ const n=cart.size, b=document.getElementById('cartBtn');
+  document.getElementById('cartBadge').textContent=n; b.classList.toggle('has',n>0);
+  const body=document.getElementById('cartBody'), go=document.getElementById('goDeal');
+  if(n===0){ body.innerHTML='<div class="cartempty">No tracks yet.<br>Use <b>License</b> in a track’s ••• menu to line up a deal.</div>'; go.disabled=true; }
+  else { body.innerHTML=[...cart.entries()].map(([i,tr])=>`<div class="cartrow"><div class="th" style="background:${bgFor(tr)}"></div><div><div class="nm">${tr.t}</div><div class="mt">${tr.a} · ${tr.desc.split(' · ')[0]}</div></div><button class="rm" data-rm="${i}">×</button></div>`).join(''); go.disabled=false; }
+}
+document.getElementById('cartBody').addEventListener('click',e=>{ const rm=e.target.closest('[data-rm]'); if(rm){ cart.delete(+rm.dataset.rm); syncCart(); } });
+function openDrawer(){ document.getElementById('drawer').classList.add('on'); document.getElementById('scrimBg').classList.add('on'); }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('on'); document.getElementById('scrimBg').classList.remove('on'); }
+document.getElementById('cartBtn').onclick=openDrawer;
+document.getElementById('drawerClose').onclick=closeDrawer;
+document.getElementById('scrimBg').onclick=closeDrawer;
+document.getElementById('goDeal').onclick=()=>{ closeDrawer(); toast('Opening your deal in the <b>Deals room</b>…'); };
+
+// download gate
+function openGate(){ document.getElementById('gate').classList.add('on'); }
+function closeGate(){ document.getElementById('gate').classList.remove('on'); }
+document.getElementById('gateLater').onclick=closeGate;
+document.getElementById('makeAcct').onclick=()=>{ isCP=true; setAcct(); closeGate(); toast('Client Partner account created — downloads unlocked'); render(); };
+function setAcct(){ const a=document.getElementById('acct'); a.classList.toggle('pro',isCP); a.querySelector('.lbl').textContent=isCP?'Client Partner':'Guest'; }
+document.getElementById('acct').onclick=()=>{ isCP=!isCP; setAcct(); render(); toast(isCP?'Now viewing as <b>Client Partner</b>':'Now viewing as <b>Guest</b>'); };
+
+// scrub animation
+let prog=.34; const mFill=document.getElementById('mFill');
+setInterval(()=>{ if(!playing) return; prog+=.0016; if(prog>1) prog=0; mFill.style.width=(prog*100)+'%'; },900);
+
+// toast
+function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').innerHTML=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),2400); }
+
+// init — Paper (Maya Reyes) playing so its artwork fills the hero
+playingIdx=2; playing=true; updateNow(); syncCart(); syncIcons(); render();
+</script>
+</body>
+</html>
