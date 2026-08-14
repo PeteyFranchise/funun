@@ -310,6 +310,28 @@ website for the company workspace. Render as a **secondary tab row inside the wo
 an underline indicator in `--indigo`, not a full pill). Person workspace mirrors the same four
 tabs, person-scoped, plus the **Game Plan** panel (R14, person view only).
 
+### Selects — cross-client pipeline room (owner decisions 2026-08-14)
+
+A dedicated nav room (sits between **Crate Requests** and **Deals** — the nav order encodes the funnel)
+that is the AE's **pipeline hub**: every Selects across all clients, driven by **Lead → Build → Move →
+Close** ([[project_ae_pipeline_funnel]]). **Two lenses, one dataset — a List / Board toggle:**
+
+- **List** (default): a **funnel strip** (Leads · Drafts · Awaiting · Changes · Approved · Deals, with
+  counts) that **click-filters** the list to a stage (+ "show all"). Each row shows co-edit activity, a
+  **next-best-action** in a **casual-coach voice**, and a **"Questions to ask ▾"** reveal — 2–3
+  **stage-tailored open-ended questions**, each with **"+ Game Plan"** (diagnose → options/differentiators
+  → remove obstacles — [[project_ae_coaching_questions]]).
+- **Board**: six stage columns; cards **auto-advance on events** (AE Send → Awaiting, client Approve →
+  Approved, track licensed → Deal). **Drag is a manual override only** — stages are event-derived, never a
+  hand-maintained position.
+- **Guest leads** enter the **Lead** stage; **"See lead"** opens a **consent-first** panel (what they did
+  + who forwarded the link + reach paths: ask the sharer / capture prompt / build on spec) — never
+  fingerprinting or bought data ([[project_guest_lead_identification]]).
+
+Per-client Selects still live in the workspace **Curation · Selects** tab (four jobs); this room is the
+**cross-client** working queue. Build reference: `phase-31-my-client-partners-mockup.html` (Selects room,
+folded in) + `phase-31-selects-pipeline-compare.html` (standalone prototype).
+
 ### Insight columns — show/hide, reorder, sort (R2)
 
 - A **"Columns" control** (gear/sliders icon button, top-right of the table) opens a popover
