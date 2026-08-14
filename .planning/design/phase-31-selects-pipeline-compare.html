@@ -2,7 +2,7 @@
 <html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Selects pipeline — two options</title>
+<title>Selects — pipeline room</title>
 <style>
 :root{
   --ground:#0a0a0f;--panel:#0E0D1E;--panel-2:#1A1838;
@@ -30,21 +30,16 @@ body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans)
 .wrap{max-width:1120px;margin:0 auto;padding:24px 22px 90px}
 .top{display:flex;align-items:flex-start;gap:12px}
 h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
-.sub{color:var(--dim);font-size:13.5px;margin:0;max-width:660px;line-height:1.5}
+.sub{color:var(--dim);font-size:13.5px;margin:0;max-width:680px;line-height:1.5}
 .themebtn{margin-left:auto;flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:12.5px;padding:7px 13px;border-radius:999px;cursor:pointer}
 .themebtn:hover{background:var(--panel-2)}
-section{margin-top:34px}
-.opt-label{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--indigo)}
-.opt-label .n{width:22px;height:22px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
-.opt-desc{color:var(--dim);font-size:13px;margin:8px 0 15px;line-height:1.5;max-width:720px}
-.roomhead{display:flex;align-items:center;gap:12px;margin:6px 0 14px}
+.roomhead{display:flex;align-items:center;gap:12px;margin:18px 0 14px}
 .rhtitle{font-size:15px}.rhtitle .dim{color:var(--dim);font-weight:400;font-size:13px}
 .viewseg{margin-left:auto;display:inline-flex;background:var(--panel-2);border-radius:999px;padding:4px;gap:2px}
 .vseg{border:0;background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:6px 14px;border-radius:999px;cursor:pointer}
-.vseg:hover{color:var(--text)}
-.vseg.on{background:var(--grad);color:#fff}
+.vseg:hover{color:var(--text)} .vseg.on{background:var(--grad);color:#fff}
 
-/* ── shared bits ── */
+/* shared */
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap;flex:0 0 auto}
 .pill .d{width:6px;height:6px;border-radius:50%}
 .p-good{background:var(--green-bg);color:var(--green-fg);border-color:var(--green-line)} .p-good .d{background:var(--green-fg)}
@@ -53,63 +48,87 @@ section{margin-top:34px}
 .p-new{background:var(--panel-2);color:var(--indigo);border-color:var(--line2)} .p-new .d{background:var(--indigo)}
 .p-deal{background:var(--grad);color:#fff} .p-deal .d{background:#fff}
 .btn{border:1px solid var(--line2);background:transparent;color:var(--text);font:inherit;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
-.btn:hover{background:var(--panel-2)}
-.btn.grad{background:var(--grad);color:#fff;border-color:transparent}
-.btn.sm{font-size:12px;padding:6px 11px}
+.btn:hover{background:var(--panel-2)} .btn.grad{background:var(--grad);color:#fff;border-color:transparent}
 
-/* ── Option 1: guided Selects room ── */
+/* funnel strip */
 .funnel{display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px}
 .fstep{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer}
 .fstep:hover{border-color:var(--line2);color:var(--text)}
 .fstep.on{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--indigo);border-color:transparent}
 .fstep .fc{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--panel-2);color:var(--text);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
-.fstep.grad{background:var(--grad);color:#fff;border-color:transparent}.fstep.grad .fc{background:rgba(255,255,255,.25);color:#fff}
-.fstep.green .fc{background:var(--green-bg);color:var(--green-fg)}
-.fstep.amber .fc{background:var(--amber-bg);color:var(--amber-fg)}
-.fstep.rose .fc{background:var(--rose-bg);color:var(--rose-fg)}
+.fstep.grad .fc{background:var(--grad);color:#fff} .fstep.green .fc{background:var(--green-bg);color:var(--green-fg)}
+.fstep.amber .fc{background:var(--amber-bg);color:var(--amber-fg)} .fstep.rose .fc{background:var(--rose-bg);color:var(--rose-fg)}
 .fsep{color:var(--dim);font-size:13px;opacity:.7}
+.filterclear{margin-left:6px;font-size:11.5px;color:var(--indigo);cursor:pointer;background:none;border:0}
+
+/* list */
 .listcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px}
-.item{display:flex;align-items:center;gap:13px;padding:13px 12px}.item+.item{border-top:1px solid var(--line)}
+.selrow+.selrow{border-top:1px solid var(--line)}
+.item{display:flex;align-items:center;gap:13px;padding:13px 12px}
 .cov{width:40px;height:40px;border-radius:10px;flex:0 0 auto}
 .grow{flex:1;min-width:0}
 .it{font-size:14px;font-weight:500}
 .is{font-size:12px;color:var(--dim);margin-top:2px}
 .act{font-size:11.5px;margin-top:5px}.act.new{color:var(--indigo)}.act.dim{color:var(--dim)}
-.mid{flex:0 0 auto;display:flex;justify-content:center;width:132px}
-.nba{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:0 0 auto;width:216px}
+.mid{flex:0 0 auto;display:flex;justify-content:center;width:128px}
+.nba{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto;width:222px}
 .nbahint{font-size:11px;color:var(--dim);text-align:right;line-height:1.35}
+.qtoggle{margin-top:3px;background:none;border:0;color:var(--indigo);font:inherit;font-size:11.5px;cursor:pointer;padding:0}
+.qtoggle:hover{text-decoration:underline}
+.qbox{margin:0 12px 12px 63px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:11px 14px}
+.qh{font-size:11px;color:var(--dim);margin-bottom:8px}
+.qq{display:flex;align-items:center;gap:10px;padding:7px 0}.qq+.qq{border-top:1px solid var(--line)}
+.qtext{flex:1;font-size:13px;color:var(--text)}
+.qadd{flex:0 0 auto;border:1px solid var(--line2);background:transparent;color:var(--indigo);font:inherit;font-size:11.5px;padding:4px 10px;border-radius:8px;cursor:pointer}
+.qadd:hover{background:var(--ground)} .qadd.added{background:var(--green-bg);color:var(--green-fg);border-color:var(--green-line)}
 
-/* ── Option 2: kanban board ── */
+/* board */
 .board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px}
-.kcol{flex:0 0 208px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:9px;align-self:flex-start}
+.kcol{flex:0 0 206px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:9px;align-self:flex-start}
 .kch{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;padding:2px 4px 8px;border-bottom:1px solid var(--line)}
 .stagedot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto}
 .kcount{margin-left:auto;color:var(--dim);font-size:11.5px;background:var(--panel-2);border-radius:999px;padding:1px 8px}
 .kcard{background:var(--ground);border:1px solid var(--line);border-radius:11px;padding:10px;cursor:grab}
 .kcard:hover{border-color:var(--line2)}
-.kcov{width:100%;height:50px;border-radius:8px;margin-bottom:9px}
-.kt{font-size:13px;font-weight:500}
-.ks{font-size:11px;color:var(--dim);margin-top:2px}
+.kcov{width:100%;height:48px;border-radius:8px;margin-bottom:9px}
+.kt{font-size:13px;font-weight:500}.ks{font-size:11px;color:var(--dim);margin-top:2px}
 .kmeta{font-size:11px;color:var(--dim);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.kact{font-size:11.5px;color:var(--indigo);margin-top:9px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
-.stg-lead .stagedot{background:var(--dim)} .stg-draft .stagedot{background:var(--indigo)}
-.stg-await .stagedot{background:var(--amber-fg)} .stg-change .stagedot{background:var(--rose-fg)}
-.stg-appr .stagedot{background:var(--green-fg)} .stg-deal .stagedot{background:var(--fuchsia)}
-.legend{color:var(--dim);font-size:12px;margin:10px 2px 0}
+.kact{font-size:11.5px;color:var(--indigo);margin-top:9px;font-weight:500;cursor:pointer}
+.stg-lead .stagedot{background:var(--dim)}.stg-draft .stagedot{background:var(--indigo)}
+.stg-await .stagedot{background:var(--amber-fg)}.stg-change .stagedot{background:var(--rose-fg)}
+.stg-appr .stagedot{background:var(--green-fg)}.stg-deal .stagedot{background:var(--fuchsia)}
+.legend{color:var(--dim);font-size:12px;margin:10px 2px 0;line-height:1.5}
+
+/* guest lead panel */
+.scrim{position:fixed;inset:0;background:rgba(6,5,12,.55);z-index:40}
+[data-theme=light] .scrim{background:rgba(60,50,90,.32)}
+.leadpanel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;width:min(452px,92vw);max-height:88vh;overflow:auto;background:var(--ground);border:1px solid var(--line2);border-radius:18px;padding:20px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6)}
+.lph{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+.lpt{font-size:17px;font-weight:600}.lps{font-size:12.5px;color:var(--dim);margin-top:3px}
+.lpx{margin-left:auto;background:none;border:0;color:var(--dim);font-size:22px;line-height:1;cursor:pointer}
+.lpsec{margin-top:15px}
+.lpk{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.lpul{margin:0;padding-left:18px;font-size:13px;line-height:1.75}
+.lprow{font-size:13px}.lprow b{font-weight:600}
+.lpaction{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px 13px;margin-top:8px;cursor:pointer;color:var(--text)}
+.lpaction:hover{border-color:var(--line2);background:var(--panel-2)}
+.lpaction b{font-size:13.5px}.lpaction span{display:block;font-size:11.5px;color:var(--dim);margin-top:2px}
+.lpnote{font-size:11px;color:var(--dim);margin-top:16px;line-height:1.5;border-top:1px solid var(--line);padding-top:12px}
+[hidden]{display:none !important}
 </style>
 </head>
 <body data-theme="light">
-<div class="wrap" id="wrap">
+<div class="wrap">
   <div class="top">
     <div>
       <h1>Selects</h1>
-      <p class="sub">The cross-client pipeline hub — <b>Lead → Build → Move → Close</b>. Same Selects, two lenses: a guided <b>List</b> (funnel strip + next-best-action) or a <b>Board</b> (stages you can drag through). Toggle, top-right.</p>
+      <p class="sub">The cross-client pipeline hub — <b>Lead → Build → Move → Close</b>. Same Selects, two lenses: a guided <b>List</b> (funnel filter + next-best-action + questions to ask) or a <b>Board</b> (stages that auto-advance). Toggle, top-right.</p>
     </div>
     <button class="themebtn" id="themebtn">☾ Dark</button>
   </div>
 
   <div class="roomhead">
-    <div class="rhtitle"><b>My Selects</b> <span class="dim">· 5 in flight · 2 awaiting client</span></div>
+    <div class="rhtitle"><b>My Selects</b> <span class="dim">· 8 in flight · 2 awaiting client</span></div>
     <div class="viewseg" role="tablist" aria-label="View">
       <button class="vseg on" data-view="list" role="tab">☰ List</button>
       <button class="vseg" data-view="board" role="tab">▦ Board</button>
@@ -117,55 +136,16 @@ section{margin-top:34px}
   </div>
 
   <div id="view-list">
-    <div class="funnel">
-      <button class="fstep"><span class="fc">2</span>Leads</button><span class="fsep">›</span>
-      <button class="fstep"><span class="fc">2</span>Drafts</button><span class="fsep">›</span>
-      <button class="fstep amber on"><span class="fc">1</span>Awaiting</button><span class="fsep">›</span>
-      <button class="fstep rose"><span class="fc">1</span>Changes</button><span class="fsep">›</span>
-      <button class="fstep green"><span class="fc">1</span>Approved</button><span class="fsep">›</span>
-      <button class="fstep grad"><span class="fc">1</span>Deals</button>
-    </div>
-
-    <div class="listcard">
-      <div class="item">
-        <span class="cov" style="background:linear-gradient(135deg,#9aa0b8,#6b7089)"></span>
-        <div class="grow"><div class="it">Sam Okafor <span style="color:var(--dim);font-weight:400">· new lead</span></div><div class="is">Meridian &amp; Co · searched “warm acoustic 15–30s” ×4 today</div><div class="act dim">No Selects started yet</div></div>
-        <div class="mid"><span class="pill p-new"><span class="d"></span>Lead</span></div>
-        <div class="nba"><button class="btn grad">Build Selects for Sam ›</button><div class="nbahint">He’s searching hard — get ahead of the brief</div></div>
-      </div>
-      <div class="item">
-        <span class="cov" style="background:linear-gradient(135deg,#F0854E,#C43D6B)"></span>
-        <div class="grow"><div class="it">Late-night drive</div><div class="is">Sunset Lane Media · Maya Osei · 4 tracks</div><div class="act new">Maya loved 2 · added Coastline from The Crate · 2h ago</div></div>
-        <div class="mid"><span class="pill p-warn"><span class="d"></span>Sent · awaiting</span></div>
-        <div class="nba"><button class="btn grad">Nudge Maya to approve</button><div class="nbahint">2 loved, sent 2h ago — a nudge usually lands</div></div>
-      </div>
-      <div class="item">
-        <span class="cov" style="background:linear-gradient(135deg,#5B6BD6,#2E2A66)"></span>
-        <div class="grow"><div class="it">Holiday social</div><div class="is">Sunset Lane Media · Devin Cross · 6 tracks</div><div class="act new">Devin asked: “warmer, more acoustic” · 1d ago</div></div>
-        <div class="mid"><span class="pill p-risk"><span class="d"></span>Changes</span></div>
-        <div class="nba"><button class="btn">Review &amp; re-send</button><div class="nbahint">Swap 2 for warmer picks, then resend</div></div>
-      </div>
-      <div class="item">
-        <span class="cov" style="background:linear-gradient(135deg,#4FB8A0,#2E7A8C)"></span>
-        <div class="grow"><div class="it">Renewal picks</div><div class="is">Lumen Films · Nadia Roos · 5 tracks</div><div class="act dim">Approved · reopened 3× · 3d ago</div></div>
-        <div class="mid"><span class="pill p-good"><span class="d"></span>Approved</span></div>
-        <div class="nba"><button class="btn grad">Open the deal ›</button><div class="nbahint">She’s ready — take it to the Deal room</div></div>
-      </div>
-      <div class="item">
-        <span class="cov" style="background:linear-gradient(135deg,#F0B24E,#D9772E)"></span>
-        <div class="grow"><div class="it">Q4 auto</div><div class="is">Meridian &amp; Co · Sam Okafor · 3 tracks</div><div class="act dim">Draft · not sent · saved 5h ago</div></div>
-        <div class="mid"><span class="pill p-new"><span class="d"></span>Draft</span></div>
-        <div class="nba"><button class="btn">Finish &amp; send</button><div class="nbahint">3 in, off his warm-acoustic brief</div></div>
-      </div>
-    </div>
-  </div><!-- #view-list -->
+    <div class="funnel" id="funnel"></div>
+    <div class="listcard" id="list-rows"></div>
+  </div>
 
   <div id="view-board" hidden>
     <div class="board">
       <div class="kcol stg-lead">
         <div class="kch"><span class="stagedot"></span>Leads<span class="kcount">2</span></div>
         <div class="kcard"><div class="kt">Sam Okafor</div><div class="ks">Meridian &amp; Co</div><div class="kmeta">searched “warm acoustic” ×4 <span class="pill p-deal"><span class="d"></span>Hot</span></div><div class="kact">Build Selects ›</div></div>
-        <div class="kcard"><div class="kt">Guest visitor</div><div class="ks">via shared Crate link</div><div class="kmeta">“epic orchestral trailer” <span class="pill p-new"><span class="d"></span>New</span></div><div class="kact">See lead ›</div></div>
+        <div class="kcard"><div class="kt">Guest visitor</div><div class="ks">via shared Crate link</div><div class="kmeta">“epic orchestral trailer” <span class="pill p-new"><span class="d"></span>New</span></div><div class="kact" data-guest="1">See lead ›</div></div>
       </div>
       <div class="kcol stg-draft">
         <div class="kch"><span class="stagedot"></span>Drafts<span class="kcount">2</span></div>
@@ -190,18 +170,90 @@ section{margin-top:34px}
       </div>
     </div>
     <p class="legend"><b>Cards advance automatically</b> as things happen — AE sends → Awaiting · client approves → Approved · a track gets licensed → Deal. <b>Drag only to override</b> (park or correct a stage).</p>
-  </div><!-- #view-board -->
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="leadpanel" id="leadpanel" hidden role="dialog" aria-modal="true">
+  <div class="lph"><div><div class="lpt">Guest lead</div><div class="lps">Anonymous · arrived via a shared Crate link</div></div><button class="lpx" id="lpx" aria-label="Close">×</button></div>
+  <div class="lpsec">
+    <div class="lpk">What they did</div>
+    <ul class="lpul">
+      <li>Searched <b>“epic orchestral trailer”</b> — 3 times</li>
+      <li>Played 4 previews · replayed <b>“Ember”</b> ×2</li>
+      <li>Opened the <b>“Late-night drive”</b> Selects</li>
+    </ul>
+  </div>
+  <div class="lpsec">
+    <div class="lpk">How they got here</div>
+    <div class="lprow"><b>Maya Osei</b> · Sunset Lane forwarded the link · 2d ago</div>
+  </div>
+  <div class="lpsec">
+    <div class="lpk">Reach them — consent-first</div>
+    <button class="lpaction"><b>Ask Maya to intro ›</b><span>She forwarded it — the warm path to whoever’s picking</span></button>
+    <button class="lpaction"><b>Turn on a capture prompt ›</b><span>They self-identify when they download or save a shortlist</span></button>
+    <button class="lpaction"><b>Build a Selects on spec ›</b><span>Get ahead of it — “epic orchestral,” ready to send via Maya</span></button>
+  </div>
+  <div class="lpnote">Only what they did here + who shared the link. No device fingerprinting, no bought data.</div>
 </div>
 
 <script>
   var root=document.body,tb=document.getElementById('themebtn');
   tb.addEventListener('click',function(){var d=root.getAttribute('data-theme')==='light';root.setAttribute('data-theme',d?'dark':'light');tb.textContent=d?'☀ Light':'☾ Dark';});
-  document.querySelectorAll('.funnel .fstep').forEach(function(s){s.addEventListener('click',function(){document.querySelectorAll('.funnel .fstep').forEach(function(x){x.classList.remove('on')});s.classList.add('on');});});
   document.querySelectorAll('.vseg').forEach(function(v){v.addEventListener('click',function(){
     document.querySelectorAll('.vseg').forEach(function(x){x.classList.remove('on')});v.classList.add('on');
     var board=v.dataset.view==='board';
-    document.getElementById('view-list').hidden=board;
-    document.getElementById('view-board').hidden=!board;
+    document.getElementById('view-list').hidden=board;document.getElementById('view-board').hidden=!board;
   });});
+
+  var STAGES=[{k:'lead',l:'Leads',c:''},{k:'draft',l:'Drafts',c:''},{k:'await',l:'Awaiting',c:'amber'},{k:'change',l:'Changes',c:'rose'},{k:'appr',l:'Approved',c:'green'},{k:'deal',l:'Deals',c:'grad'}];
+  var SELECTS=[
+    {stage:'lead',name:'Sam Okafor',sub:'Meridian & Co · searched “warm acoustic 15–30s” ×4 today',act:'No Selects started yet',isnew:false,cover:'linear-gradient(135deg,#9aa0b8,#6b7089)',pill:['p-new','Lead'],nba:['grad','Build Selects for Sam ›'],hint:'He’s searching hard — get ahead of the brief',q:['What’s the campaign trying to make people feel?','Where’s it running, and for how long?','Who else is weighing in on the final pick?']},
+    {stage:'lead',name:'Guest visitor',sub:'via a shared Crate link · “epic orchestral trailer”',act:'Anonymous · no account yet',isnew:false,cover:'linear-gradient(135deg,#9aa0b8,#6b7089)',pill:['p-new','New lead'],nba:['','See lead'],hint:'Reach them through whoever shared the link',guest:true,q:[]},
+    {stage:'await',name:'Late-night drive',sub:'Sunset Lane Media · Maya Osei · 4 tracks',act:'Maya loved 2 · added Coastline from The Crate · 2h ago',isnew:true,cover:'linear-gradient(135deg,#F0854E,#C43D6B)',pill:['p-warn','Sent · awaiting'],nba:['grad','Nudge Maya to approve'],hint:'2 loved, sent 2h ago — a nudge usually lands',q:['What would make this an easy yes for the team?','Which one’s closest to the picture in your head?','Is there a cut you’re still unsure about?']},
+    {stage:'change',name:'Holiday social',sub:'Sunset Lane Media · Devin Cross · 6 tracks',act:'Devin asked: “warmer, more acoustic” · 1d ago',isnew:true,cover:'linear-gradient(135deg,#5B6BD6,#2E2A66)',pill:['p-risk','Changes'],nba:['','Review & re-send'],hint:'Swap 2 for warmer picks, then resend',q:['When you say warmer — more acoustic, or more nostalgic?','Is there a track you already love that nails the feel?','What scene does it play under?']},
+    {stage:'appr',name:'Renewal picks',sub:'Lumen Films · Nadia Roos · 5 tracks',act:'Approved · reopened 3× · 3d ago',isnew:false,cover:'linear-gradient(135deg,#4FB8A0,#2E7A8C)',pill:['p-good','Approved'],nba:['grad','Open the deal ›'],hint:'She’s ready — take it to the Deal room',q:['What’s your timeline to lock the license?','Any usage beyond what we scoped — social cutdowns, extensions?','Who signs off on the deal?']},
+    {stage:'draft',name:'Q4 auto',sub:'Meridian & Co · Sam Okafor · 3 tracks',act:'Draft · not sent · saved 5h ago',isnew:false,cover:'linear-gradient(135deg,#F0B24E,#D9772E)',pill:['p-new','Draft'],nba:['','Finish & send'],hint:'3 in, off his warm-acoustic brief',q:['Anything on the brief still unclear before I send?','Want a safe option and a bold one side by side?']},
+    {stage:'draft',name:'Trailer moods',sub:'Northwind Studios · Iris Chen · 2 tracks',act:'Draft · not sent · saved yesterday',isnew:false,cover:'linear-gradient(135deg,#8A5BD6,#4A3A9E)',pill:['p-new','Draft'],nba:['','Finish draft'],hint:'2 in — needs a couple more',q:['What’s the trailer’s turning point we should hit?','Any temp track they’re already cutting to?']},
+    {stage:'deal',name:'Nike spot',sub:'Sunset Lane Media · Maya Osei · “Ember”',act:'In licensing · deal open',isnew:false,cover:'linear-gradient(135deg,#E06AA6,#7A3FA0)',pill:['p-deal','In deal'],nba:['','Open Deal room ›'],hint:'Finish the terms in the Deal room',q:['What’s the final usage + term we’re locking?','Any other spots in this campaign we should bundle?']}
+  ];
+  var filter=null;
+  var funnelEl=document.getElementById('funnel'),listEl=document.getElementById('list-rows');
+
+  function renderFunnel(){
+    var h=STAGES.map(function(s,i){
+      var n=SELECTS.filter(function(x){return x.stage===s.k}).length;
+      var step='<button class="fstep '+s.c+(filter===s.k?' on':'')+'" data-stage="'+s.k+'"><span class="fc">'+n+'</span>'+s.l+'</button>';
+      return step+(i<STAGES.length-1?'<span class="fsep">›</span>':'');
+    }).join('');
+    if(filter) h+='<button class="filterclear" id="fclear">show all</button>';
+    funnelEl.innerHTML=h;
+    funnelEl.querySelectorAll('.fstep').forEach(function(b){b.addEventListener('click',function(){filter=(filter===b.dataset.stage)?null:b.dataset.stage;renderFunnel();renderList();});});
+    var fc=document.getElementById('fclear'); if(fc)fc.addEventListener('click',function(){filter=null;renderFunnel();renderList();});
+  }
+  function renderList(){
+    var rows=SELECTS.map(function(s,i){return {s:s,i:i}}).filter(function(o){return !filter||o.s.stage===filter});
+    listEl.innerHTML=rows.map(function(o){var s=o.s,i=o.i;
+      var qtoggle=(s.q&&s.q.length)?'<button class="qtoggle" data-q="'+i+'">💬 Questions to ask ▾</button>':'';
+      var item='<div class="item"><span class="cov" style="background:'+s.cover+'"></span>'+
+        '<div class="grow"><div class="it">'+s.name+'</div><div class="is">'+s.sub+'</div><div class="act '+(s.isnew?'new':'dim')+'">'+s.act+'</div></div>'+
+        '<div class="mid"><span class="pill '+s.pill[0]+'"><span class="d"></span>'+s.pill[1]+'</span></div>'+
+        '<div class="nba"><button class="btn '+s.nba[0]+'"'+(s.guest?' data-guest="1"':'')+'>'+s.nba[1]+'</button><div class="nbahint">'+s.hint+'</div>'+qtoggle+'</div></div>';
+      var qbox=(s.q&&s.q.length)?'<div class="qbox" id="qbox-'+i+'" hidden><div class="qh">Open-ended questions to move this forward — ask, or add to the Game Plan</div>'+
+        s.q.map(function(q){return '<div class="qq"><span class="qtext">“'+q+'”</span><button class="qadd">+ Game Plan</button></div>'}).join('')+'</div>':'';
+      return '<div class="selrow">'+item+qbox+'</div>';
+    }).join('');
+    listEl.querySelectorAll('.qtoggle').forEach(function(b){b.addEventListener('click',function(){var box=document.getElementById('qbox-'+b.dataset.q);if(!box)return;box.hidden=!box.hidden;b.innerHTML='💬 Questions to ask '+(box.hidden?'▾':'▴');});});
+    listEl.querySelectorAll('.qadd').forEach(function(b){b.addEventListener('click',function(){var on=b.classList.toggle('added');b.textContent=on?'✓ In Game Plan':'+ Game Plan';});});
+    listEl.querySelectorAll('[data-guest]').forEach(function(b){b.addEventListener('click',openLead);});
+  }
+
+  function openLead(){document.getElementById('scrim').hidden=false;document.getElementById('leadpanel').hidden=false;}
+  function closeLead(){document.getElementById('scrim').hidden=true;document.getElementById('leadpanel').hidden=true;}
+  document.getElementById('lpx').addEventListener('click',closeLead);
+  document.getElementById('scrim').addEventListener('click',closeLead);
+  document.querySelectorAll('#view-board [data-guest]').forEach(function(b){b.addEventListener('click',openLead);});
+
+  renderFunnel();renderList();
 </script>
 </body></html>
