@@ -428,16 +428,22 @@ It is the client-facing player for a **curated set**, and **only** that — it i
 - **The AE still runs the deal:** co-edit shapes the **set**; license / cart / Deals-room stay
   AE/Funūn-controlled. Content protection (watermark + download/license gate) is untouched.
 
-**OPEN sub-decision — may a client add *outside* (non-catalogue) tracks?** (see [[project_selects_live_coedit_model]])
-- **A · catalogue-only adds** (simplest): clients add only from The Crate / Suggested → every track
-  is licensable, no extra tagging.
-- **B · allow references** (owner-recommended): clients may drop in outside songs, tagged
-  **"Reference — not for license"** (a brief-by-example signal to the AE), kept visually distinct and
-  **blocked from license / approval**. This **catalog-vs-reference provenance** is what lets co-edit
-  coexist with licensing. *Owner deciding A vs B.*
+**RESOLVED — catalogue-only (Option A), owner 2026-08-14.** A Selects **only ever holds tracks from
+The Crate** — rights-ready (or near-rights-ready) tracks from artists' Sound Vaults, curated by the
+Funūn team. So **every track in a Selects is licensable by construction**, and co-edit needs **no**
+in-player catalog-vs-reference tagging: when a client adds, it can only come from **The Crate /
+Suggested**. The premium player stays pure inventory — no "not for license" asterisks, no risk of a
+client approving something Funūn can't deliver.
 
-**Mockup gap (next player pass):** the current built reference does **not** yet show attribution, the
-**Removed tray**, or the **Reference** tag — those land in the next pass on the player file.
+**Outside references live in the Brief Builder, NOT here** (owner 2026-08-14). If a client wants to
+show "the vibe" with an outside song (Spotify / Apple Music / YouTube link), that happens in the
+**Brief Builder** as a brief-by-example to the AE — a **separate Crate/buyer-side capability**, not
+part of this player build (scoped like client-built playlists — [[project_client_playlists_in_crate]]).
+The AE then curates Crate matches back into a Selects.
+
+**Mockup gap (next player pass):** the current built reference does **not** yet show **attribution**
+(who added each track) or the **Removed tray** — those land in the next pass on the player file.
+*(No Reference tag — catalogue-only.)*
 
 ### Overall shape
 
