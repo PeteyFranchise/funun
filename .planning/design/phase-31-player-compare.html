@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Funūn Player — three looks</title>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;background:#050409;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:26px 16px 70px;}
+  h1{text-align:center;font-size:22px;font-weight:800;letter-spacing:-.01em;margin:6px 0 4px;}
+  .sub{text-align:center;color:#8b8fbf;font-size:13px;margin:0 0 30px;}
+  .cmp{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:36px;}
+  .lbl{display:flex;align-items:baseline;gap:11px;margin:0 0 10px 4px;}
+  .lbl .n{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(105deg,#818CF8,#D946EF);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .lbl b{font-size:16px;font-weight:700;}
+  .lbl span{font-size:12.5px;color:#8b8fbf;}
+  .frame{position:relative;border:1px solid rgba(199,203,247,.16);border-radius:22px;overflow:hidden;height:668px;background:#08070d;box-shadow:0 34px 80px -34px rgba(0,0,0,.85);}
+  iframe{width:100%;height:100%;border:0;display:block;}
+  .open{position:absolute;top:13px;right:15px;z-index:2;font-size:12px;color:#C7CBF7;text-decoration:none;background:rgba(10,9,16,.55);border:1px solid rgba(199,203,247,.24);border-radius:999px;padding:5px 12px;}
+  .open:hover{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>Funūn player — three looks</h1>
+  <p class="sub">Same player, three ambient treatments. Scroll each; “Open ↗” for the full page.</p>
+  <div class="cmp">
+    <section>
+      <div class="lbl"><span class="n">Look 1</span><b>Heavy glow + frosted glass</b><span>artwork blooms behind everything, blurred nav &amp; player</span></div>
+      <div class="frame"><a class="open" href="phase-31-shareable-music-player.html?look=1" target="_blank" rel="noopener">Open ↗</a><iframe src="phase-31-shareable-music-player.html?look=1" title="Look 1"></iframe></div>
+    </section>
+    <section>
+      <div class="lbl"><span class="n">Look 2</span><b>No glow — flat dark</b><span>pure dark background, artwork only in the cover</span></div>
+      <div class="frame"><a class="open" href="phase-31-shareable-music-player.html?look=2" target="_blank" rel="noopener">Open ↗</a><iframe src="phase-31-shareable-music-player.html?look=2" title="Look 2"></iframe></div>
+    </section>
+    <section>
+      <div class="lbl"><span class="n">Look 3</span><b>Masked glow — fades by the Approve area</b><span>artwork glow up top, blending to dark mid-hero</span></div>
+      <div class="frame"><a class="open" href="phase-31-shareable-music-player.html?look=3" target="_blank" rel="noopener">Open ↗</a><iframe src="phase-31-shareable-music-player.html?look=3" title="Look 3"></iframe></div>
+    </section>
+  </div>
+</body>
+</html>

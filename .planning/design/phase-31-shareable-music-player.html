@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" /><meta http-equiv="Expires" content="0" />
 <title>Funūn — Shareable Music Player (Selects)</title>
 <style>
 :root{
@@ -19,25 +21,33 @@
 body{color:var(--ink);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;
   padding-bottom:104px;background:var(--ground);position:relative;overflow-x:hidden;}
 /* ambient blurred art fills desktop width */
-#ambient{position:fixed;inset:-20% -10%;z-index:-1;filter:blur(90px) saturate(1.3);opacity:.5;transition:background .6s;
+#ambient{position:fixed;inset:0;z-index:-1;opacity:.9;transition:background .6s;filter:blur(80px) saturate(1.25);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 26%,transparent 74%);mask-image:linear-gradient(to bottom,#000 0%,#000 26%,transparent 74%);
   background:radial-gradient(60% 55% at 30% 20%,#7c3aed,transparent 60%),radial-gradient(55% 55% at 80% 15%,#D946EF,transparent 60%),#08070d;}
 .icn{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+/* look variants (?look=1 heavy · 2 no-glow · 3 masked-glow[default]) */
+.look-2 #ambient{display:none;}
+.look-1 #ambient{filter:blur(94px) saturate(1.35);-webkit-mask-image:none;mask-image:none;opacity:.62;}
+.look-1 .appbar{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.look-1 .mini{-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);background:rgba(28,25,64,.72);}
 button{font-family:inherit;cursor:pointer;color:inherit;}
 
 /* app bar */
-.appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:14px 20px;
-  backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(8,7,13,.7),rgba(8,7,13,0));}
+.appbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:14px 24px;
+  background:linear-gradient(180deg,rgba(8,7,13,.88),rgba(8,7,13,.12));}
 .rnd{width:38px;height:38px;border-radius:50%;background:rgba(10,9,16,.5);border:1px solid rgba(255,255,255,.14);
   display:flex;align-items:center;justify-content:center;color:#fff;flex:none;}
 .rnd:hover{background:rgba(30,27,60,.7);}
 .rnd svg{width:18px;height:18px;}
 .brandmini{display:flex;align-items:center;gap:8px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);}
+.brandmini .phon{text-transform:none;letter-spacing:normal;font-size:11px;font-weight:400;color:var(--lavdim2);margin-left:-3px;}
 .brandmini .mk{width:20px;height:20px;border-radius:6px;background:var(--grad);}
 .spacer{flex:1;}
-.acct{display:inline-flex;align-items:center;gap:7px;border:1px dashed var(--border2);border-radius:999px;
-  padding:6px 11px;background:rgba(10,9,16,.4);color:var(--lav);font-size:12px;}
-.acct .dot{width:7px;height:7px;border-radius:50%;background:var(--lavdim);}
-.acct.pro .dot{background:var(--green);} .acct b{color:#fff;} .acct .demo{font-size:9.5px;letter-spacing:.1em;color:var(--lavdim2);}
+/* account = round avatar toggle (dashed ring flags the demo control) */
+.acct{border-style:dashed;border-color:var(--border2);color:var(--lav);}
+.acct .guestic{width:18px;height:18px;} .acct .proav{display:none;}
+.acct.pro{background:var(--grad);border:1px solid transparent;}
+.acct.pro .guestic{display:none;}
+.acct.pro .proav{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:11px;font-weight:800;color:#12102b;}
 .cartbtn{position:relative;}
 .cartbtn .badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:var(--grad);
   color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;
@@ -45,10 +55,16 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 .cartbtn.has .badge{opacity:1;transform:scale(1);}
 
 /* layout: centered immersive column */
-.col{max-width:720px;margin:0 auto;padding:0 20px;}
+.col{max-width:1280px;margin:0 auto;padding:0 24px;}
 
 /* hero */
-.hero{padding-top:8px;}
+.hero{padding-top:8px;max-width:600px;margin:0 auto;}
+.glowbar{display:flex;justify-content:center;padding:12px 0 2px;}
+.glowbtn{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--lav);font-size:13px;font-weight:600;transition:transform .13s ease,background .15s ease,color .15s ease,box-shadow .3s ease;}
+.glowbtn:hover{background:var(--panel2);color:#fff;}
+.glowbtn:active{transform:scale(.95);}
+.glowbtn svg{width:16px;height:16px;}
+.glowbtn.on{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 12px 32px -12px rgba(217,70,239,.65);}
 .cover{width:min(300px,64vw);aspect-ratio:1/1;border-radius:var(--r2);margin:6px auto 0;position:relative;overflow:hidden;
   border:1px solid var(--border);box-shadow:0 30px 80px -28px rgba(0,0,0,.85);transition:background .5s;}
 .cover .grain{position:absolute;inset:0;opacity:.4;mix-blend-mode:overlay;
@@ -127,8 +143,8 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 /* bottom mini-player pill */
 .miniwrap{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:12px 16px;
   background:linear-gradient(180deg,transparent,var(--ground) 40%);}
-.mini{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:12px;background:rgba(28,25,64,.72);
-  backdrop-filter:blur(20px);border:1px solid var(--border2);border-radius:16px;padding:9px 12px;box-shadow:0 18px 44px -18px rgba(0,0,0,.7);}
+.mini{max-width:700px;margin:0 auto;display:flex;align-items:center;gap:12px;background:rgba(24,21,52,.95);
+  border:1px solid var(--border2);border-radius:16px;padding:9px 12px;box-shadow:0 18px 44px -18px rgba(0,0,0,.7);}
 .mini .mth{width:44px;height:44px;border-radius:10px;overflow:hidden;position:relative;flex:none;}
 .mini .mtx{min-width:0;flex:1;} .mini .mtt{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mini .mta{font-size:12px;color:var(--lav);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;display:flex;align-items:center;gap:7px;}
@@ -189,7 +205,9 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 .mcard .ic{width:54px;height:54px;border-radius:16px;background:var(--panel2);display:flex;align-items:center;justify-content:center;color:var(--amber);margin:0 auto 16px;}
 .mcard .ic svg{width:25px;height:25px;} .mcard h3{margin:0 0 8px;font-size:19px;font-weight:700;} .mcard p{margin:0 0 20px;font-size:14px;line-height:1.55;color:var(--lav);}
 .mcard .make{width:100%;padding:14px;border-radius:13px;border:0;background:var(--grad);color:#fff;font-size:14.5px;font-weight:600;margin-bottom:10px;}
-.mcard .later{width:100%;padding:12px;border-radius:13px;border:1px solid var(--border2);background:transparent;color:var(--lav);font-size:13.5px;}
+.mcard .login{width:100%;padding:13px;border-radius:13px;border:1px solid var(--border2);background:transparent;color:#fff;font-size:14px;font-weight:600;margin-bottom:12px;}
+.mcard .login:hover{background:var(--panel2);}
+.mcard .later{background:none;border:0;color:var(--lavdim);font-size:13px;}
 .mcard .fine{margin-top:14px;font-size:11.5px;color:var(--lavdim);line-height:1.5;}
 
 /* toast */
@@ -197,9 +215,59 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
   border-radius:999px;padding:11px 20px;font-size:13.5px;display:flex;align-items:center;gap:9px;opacity:0;pointer-events:none;transition:.22s;box-shadow:0 20px 50px -20px rgba(0,0,0,.7);}
 .toast.on{opacity:1;transform:translate(-50%,0);} .toast .d{width:7px;height:7px;border-radius:50%;background:var(--green);} .toast b{font-weight:600;}
 
+/* ─── suggested songs (algorithm-curated, Apple Music-style) ──────────── */
+.suggest{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);margin-top:20px;padding:4px 6px 8px;}
+.sgh{display:flex;align-items:flex-start;gap:12px;padding:16px 14px 12px;}
+.sgt{font-size:17px;font-weight:700;letter-spacing:-.01em;}
+.sgs{font-size:12.5px;color:var(--lavdim);margin-top:2px;}
+.sgref{margin-left:auto;width:34px;height:34px;border-radius:50%;background:none;border:0;color:var(--lav);display:flex;align-items:center;justify-content:center;flex:none;}
+.sgref:hover{color:#fff;background:var(--panel2);} .sgref svg{width:17px;height:17px;}
+.srow2{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;padding:9px 14px;cursor:pointer;transition:background .12s ease;}
+.srow2:hover{background:rgba(255,255,255,.05);}
+.srow2 .sth::after{content:"";position:absolute;inset:0;border-radius:9px;background:rgba(8,7,13,.5) center/17px no-repeat;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");opacity:0;transition:opacity .12s ease;}
+.srow2:hover .sth::after{opacity:1;}
+.srow2.nowprev .sth::after{opacity:1;background-color:rgba(8,7,13,.35);}
+.srow2+.srow2{border-top:1px solid var(--border);}
+.srow2 .sth{width:46px;height:46px;border-radius:9px;overflow:hidden;position:relative;border:1px solid var(--border);flex:none;}
+.srow2 .sinfo{min-width:0;}
+.srow2 .stt{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.srow2 .sta{font-size:12.5px;color:var(--lavdim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sgadd{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border2);background:none;color:var(--lav);display:flex;align-items:center;justify-content:center;flex:none;}
+.sgadd:hover{border-color:var(--indigo);color:var(--indigo);background:rgba(129,140,248,.12);}
+.sgadd svg{width:16px;height:16px;}
+.sgadd.added{background:var(--green-bg);border-color:transparent;color:var(--green);}
+
+/* ─── fidelity polish ─────────────────────────────────────────────────── */
+.playpill,.hc,.rnd,.mplay,.mnext,.cbtn,.gbtn,.pill-btn,.srow,.trk{transition:transform .14s cubic-bezier(.2,.8,.2,1), background .16s ease, color .16s ease, border-color .16s ease, box-shadow .3s ease;}
+.playpill:active,.gbtn:active,.trk:active{transform:scale(.965);}
+.cbtn:active,.rnd:active,.hc:active,.mplay:active,.mnext:active{transform:scale(.88);}
+.cover{transition:box-shadow .55s ease, background .55s ease;}
+.cover::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,255,255,.05);}
+.title{letter-spacing:-.035em;}
+/* edge vignette for depth */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(135% 95% at 50% -12%, transparent 52%, rgba(0,0,0,.42));}
+
+/* mini-player skip control */
+.mnext{width:40px;height:40px;border-radius:50%;background:none;border:0;color:var(--lav);display:flex;align-items:center;justify-content:center;flex:none;}
+.mnext:hover{color:#fff;} .mnext svg{width:20px;height:20px;fill:currentColor;}
+
+/* scroll-aware app bar: title fades in, bar solidifies */
+.abtitle{position:absolute;left:64px;right:152px;top:50%;transform:translateY(-50%) translateY(4px);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;text-align:center;font-size:15px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;}
+.appbar{transition:background .25s ease, border-color .25s ease;border-bottom:1px solid transparent;}
+.appbar.solid{background:rgba(8,7,13,.9);border-bottom-color:var(--border);}
+.appbar.solid .abtitle{opacity:1;transform:translateY(-50%);}
+.brandmini{transition:opacity .22s ease;} .appbar.solid .brandmini{opacity:0;pointer-events:none;}
+
+@media (prefers-reduced-motion:reduce){*{transition:none !important;} .art .eq i{animation:none;} .desc span{animation:none !important;}}
+
 @media (max-width:600px){
-  .title{font-size:30px;} .cover{width:76vw;}
-  .col{padding:0 16px;} .mini{border-radius:14px;}
+  .title{font-size:30px;} .cover{width:72vw;}
+  /* wider, unified side gutters (Apple Music-style breathing room) */
+  .col{padding:0 24px;} .appbar{padding:14px 24px;} .miniwrap{padding:12px 24px;} .footer{padding:0 24px;}
+  .mini{border-radius:16px;}
+  .listhead .wm{display:none;} /* "Curated Tracks" needs the room; watermark note stays in the footer */
 }
 </style>
 </head>
@@ -208,14 +276,16 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 
 <div class="appbar">
   <button class="rnd" title="Back"><svg class="icn" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-  <div class="brandmini"><span class="mk"></span><span>Funūn</span></div>
+  <div class="brandmini"><span class="mk"></span><span>Funūn</span><span class="phon">(fuh-NOON)</span></div>
+  <div class="abtitle" id="abTitle">Late-night drive</div>
   <div class="spacer"></div>
-  <button id="acct" class="acct" title="Demo: toggle account state"><span class="dot"></span><span class="lbl">Guest</span><span class="demo">demo</span></button>
+  <button id="acct" class="rnd acct" title="Demo: Guest — tap to switch to Client Partner"><svg class="icn guestic" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.2"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/></svg><span class="proav">JT</span></button>
   <button class="rnd cartbtn" id="cartBtn" title="Licensing cart"><svg class="icn" viewBox="0 0 24 24"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/></svg><span class="badge" id="cartBadge">0</span></button>
   <button class="rnd" id="shareSelects" title="Share this Selects"><svg class="icn" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
 </div>
 
 <div class="col">
+  <div class="glowbar"><button class="glowbtn" id="glowBtn"><svg class="icn" viewBox="0 0 24 24"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"/><path d="M18.7 15.4l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/></svg><span>Glow Up View</span></button></div>
   <div class="hero">
     <div class="cover" id="cover"><div class="grain"></div><div class="previewpill"><span class="d"></span>Preview</div></div>
     <div class="herotext">
@@ -238,8 +308,19 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
     </div>
   </div>
 
-  <div class="listhead"><span class="l">Tracks</span><span class="cnt">5 songs · 17 min</span><span class="wm"><span class="d"></span>Previews watermarked</span></div>
+  <div class="listcol">
+  <div class="listhead"><span class="l">Curated Tracks</span><span class="cnt">5 songs · 17 min</span><span class="wm"><span class="d"></span>Previews watermarked</span></div>
   <div id="tracks"></div>
+
+  <!-- algorithm-curated suggestions (Apple Music-style) -->
+  <div class="suggest">
+    <div class="sgh">
+      <div><div class="sgt">Suggested Songs</div><div class="sgs">More the algorithm found that could work for this project</div></div>
+      <button class="sgref" id="sgRefresh" title="Refresh suggestions"><svg class="icn" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.7-6.4"/><path d="M21 3v5h-5"/></svg></button>
+    </div>
+    <div id="suggestList"></div>
+  </div>
+  </div>
 </div>
 
 <div class="footer">Previews are watermarked<span class="d"></span>Play, keep &amp; pass freely — no login<span class="d"></span>Downloading needs a free Client Partner account</div>
@@ -249,6 +330,7 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
   <div class="mth" id="mThumb"></div>
   <div class="mtx"><div class="mtt" id="mTitle">Ember</div><div class="mta"><span id="mArtist">Kaya Vale</span><span class="mprev">Preview</span></div></div>
   <button class="mplay" id="miniPlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+  <button class="mnext" id="miniNext" title="Next"><svg viewBox="0 0 24 24"><path d="M5 5v14l11-7zM16 5h2v14h-2z"/></svg></button>
   <div class="mscrub"><div class="mfill" id="mFill"></div></div>
 </div></div>
 
@@ -258,7 +340,7 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
   <div class="grip"></div>
   <div class="sh"><div class="th" id="shThumb"></div><div><div class="nm" id="shTitle">Ember</div><div class="ar" id="shArtist">Kaya Vale</div></div></div>
   <div class="trio">
-    <button id="shLove"><svg class="icn" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-9.5-8.6C.9 9.6 2.3 6 5.6 6c2 0 3.2 1.2 3.9 2.2C10.2 7.2 11.4 6 13.4 6c3.3 0 4.7 3.6 3.1 6.4C19 16.6 12 21 12 21z"/></svg>Keep</button>
+    <button id="shLove"><svg class="icn" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>Keep</button>
     <button id="shPass"><svg class="icn" viewBox="0 0 24 24"><path d="M17 14V3H8.5a2 2 0 0 0-2 1.6l-1.2 6A2 2 0 0 0 7.3 13H12l-1 4.2A1.9 1.9 0 0 0 14.6 18z"/><path d="M17 3h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/></svg>Pass</button>
     <button id="shShare"><svg class="icn" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
   </div>
@@ -282,9 +364,10 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 <!-- download gate -->
 <div class="modal" id="gate"><div class="mcard">
   <div class="ic"><svg class="icn" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
-  <h3>Create a Client Partner account to download</h3>
-  <p>Play, keep, pass, and approve freely — no login. Downloading a watermarked file to test-sync just needs a free Client Partner account.</p>
-  <button class="make" id="makeAcct">Create Client Partner account</button>
+  <h3>Log in to download</h3>
+  <p>Play, keep, pass, and approve freely — no login. Downloading a watermarked file to test-sync just needs a free Client Partner account — log in, or create one in seconds.</p>
+  <button class="make" id="makeAcct">Create Free Client Partner Account</button>
+  <button class="login" id="loginBtn">Log in</button>
   <button class="later" id="gateLater">Maybe later</button>
   <div class="fine">Downloads are always watermarked previews — never clean masters. The same rule applies in The Crate.</div>
 </div></div>
@@ -293,29 +376,31 @@ button{font-family:inherit;cursor:pointer;color:inherit;}
 
 <script>
 const TRACKS = [
-  {t:"Ember", a:"Kaya Vale", desc:"cinematic alt-pop · builds to a huge final-cut hook", d:"3:12", why:"Why Jae picked this: the hook lands at 0:42 and builds big for the final cut — rights-ready.", img:"art/ember.jpg", g:"linear-gradient(150deg,#D946EF,#7c3aed 55%,#1e1b4b)"},
-  {t:"Slow Signal", a:"Mønroe", desc:"moody synth · instrumental · night-driving", d:"2:48", why:"Moodier alt take — great for the night-driving shots and lower-energy cutdowns.", img:"art/slow-signal.jpg", g:"linear-gradient(150deg,#6366F1,#312e81 60%,#0b1020)"},
-  {t:"Paper", a:"Maya Reyes", desc:"alt-pop · vocal · huge chorus", d:"3:24", why:"Rights-ready with a huge chorus — my pick if you want lift right at the logo.", img:"art/paper.jpg", g:"linear-gradient(150deg,#F472B6,#be185d 55%,#3b0764)"},
-  {t:"Golden Hour", a:"Sable", desc:"dream-pop · warm · sunset energy", d:"4:11", why:"Warmer, sunset energy — a B-option if the tone softens in the edit.", img:"art/golden-hour.jpg", g:"linear-gradient(150deg,#FBBF77,#b45309 55%,#3b1a06)"},
-  {t:"Neon Static", a:"VÆL", desc:"electronic · driving · brandy", d:"3:38", why:"Pulsing and brandy — sits great under fast cuts and product beauty shots.", img:"art/neon-static.jpg", g:"linear-gradient(150deg,#22D3EE,#0e7490 55%,#062a33)"},
+  {t:"Ember", a:"Kaya Vale", desc:"cinematic alt-pop · builds to a huge final-cut hook", d:"3:12", why:"Why Jae picked this: the hook lands at 0:42 and builds big for the final cut — rights-ready.", img:"art/ember.jpg", accent:"#e8934a", g:"linear-gradient(150deg,#D946EF,#7c3aed 55%,#1e1b4b)"},
+  {t:"Slow Signal", a:"Mønroe", desc:"moody synth · instrumental · night-driving", d:"2:48", why:"Moodier alt take — great for the night-driving shots and lower-energy cutdowns.", img:"art/slow-signal.jpg", accent:"#7c8cf0", g:"linear-gradient(150deg,#6366F1,#312e81 60%,#0b1020)"},
+  {t:"Paper", a:"Maya Reyes", desc:"alt-pop · vocal · huge chorus", d:"3:24", why:"Rights-ready with a huge chorus — my pick if you want lift right at the logo.", img:"art/paper.jpg", accent:"#e0557a", g:"linear-gradient(150deg,#F472B6,#be185d 55%,#3b0764)"},
+  {t:"Golden Hour", a:"Sable", desc:"dream-pop · warm · sunset energy", d:"4:11", why:"Warmer, sunset energy — a B-option if the tone softens in the edit.", img:"art/golden-hour.jpg", accent:"#ef6ea0", g:"linear-gradient(150deg,#FBBF77,#b45309 55%,#3b1a06)"},
+  {t:"Neon Static", a:"VÆL", desc:"electronic · driving · brandy", d:"3:38", why:"Pulsing and brandy — sits great under fast cuts and product beauty shots.", img:"art/neon-static.jpg", accent:"#34d0e0", g:"linear-gradient(150deg,#22D3EE,#0e7490 55%,#062a33)"},
 ];
-function bgFor(tr){ return "url('"+tr.img+"') center/cover, "+tr.g; }
+function bgFor(tr){ return (tr.img ? "url('"+tr.img+"') center/cover, " : "") + tr.g; }
 const IC = {
   more:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
-  love:'<svg class="icn" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-9.5-8.6C.9 9.6 2.3 6 5.6 6c2 0 3.2 1.2 3.9 2.2C10.2 7.2 11.4 6 13.4 6c3.3 0 4.7 3.6 3.1 6.4C19 16.6 12 21 12 21z"/></svg>',
+  love:'<svg class="icn" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
   pass:'<svg class="icn" viewBox="0 0 24 24"><path d="M17 14V3H8.5a2 2 0 0 0-2 1.6l-1.2 6A2 2 0 0 0 7.3 13H12l-1 4.2A1.9 1.9 0 0 0 14.6 18z"/><path d="M17 3h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/></svg>',
   dl:'<svg class="icn" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1 0-8 5 5 0 0 1 9.6-1.4A3.5 3.5 0 0 1 18 18"/><path d="M12 11v6"/><path d="m9.5 14.5 2.5 2.5 2.5-2.5"/></svg>',
   lock:'<svg class="icn" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="8.5" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>',
 };
 const PLAY='<path d="M8 5v14l11-7z"/>', PAUSE='<path d="M8 5h3.2v14H8zM12.8 5H16v14h-3.2z"/>';
 
-let isCP=false, playingIdx=0, playing=false, sheetIdx=0;
+let isCP=false, playingIdx=0, playing=false, sheetIdx=0, current;
+let look = new URLSearchParams(location.search).get('look') || '2';
+document.body.classList.add('look-'+look);
 const cart=new Map(), reactions={};
 
 const tracksEl=document.getElementById('tracks');
 function render(){
   tracksEl.innerHTML=TRACKS.map((tr,i)=>{
-    const r=reactions[i], lock=!isCP;
+    const r=reactions[i];
     return `<div class="trk ${i===playingIdx&&playing?'on':''}" data-i="${i}">
       <button class="art" data-play="${i}" style="background:${bgFor(tr)}"><span class="eq"><i></i><i></i><i></i></span></button>
       <div class="info" data-play="${i}">
@@ -326,7 +411,7 @@ function render(){
         <button class="cbtn mm" data-menu="${i}" title="More">${IC.more}</button>
         <button class="cbtn love ${r==='love'?'on':''}" data-rx="love" data-i="${i}" title="Keep">${IC.love}</button>
         <button class="cbtn pass ${r==='pass'?'on':''}" data-rx="pass" data-i="${i}" title="Pass">${IC.pass}</button>
-        <button class="cbtn dl ${lock?'locked':''}" data-dl="${i}" title="Download">${lock?IC.lock:IC.dl}</button>
+        <button class="cbtn dl" data-dl="${i}" title="Download watermarked preview">${IC.dl}</button>
       </div>
     </div>`;
   }).join('');
@@ -340,14 +425,16 @@ function syncIcons(){
 }
 function paint(el,tr){ el.style.background=bgFor(tr); }
 function updateNow(){
-  const tr=TRACKS[playingIdx];
-  paint(document.getElementById('cover'), tr);
-  paint(document.getElementById('ambient'), tr);
+  const tr=current||TRACKS[playingIdx]||TRACKS[0];
+  const cover=document.getElementById('cover');
+  paint(cover, tr);
+  cover.style.boxShadow='0 26px 60px -22px '+tr.accent+'aa, 0 44px 96px -36px rgba(0,0,0,.8)';
+  if(look!=='2') paint(document.getElementById('ambient'), tr);
   paint(document.getElementById('mThumb'), tr);
   document.getElementById('mTitle').textContent=tr.t;
   document.getElementById('mArtist').textContent=tr.a;
 }
-function playTrack(i){ if(i===playingIdx){ playing=!playing; } else { playingIdx=i; playing=true; } updateNow(); syncIcons(); render(); }
+function playTrack(i){ if(i===playingIdx){ playing=!playing; } else { playingIdx=i; current=TRACKS[i]; playing=true; document.querySelectorAll('.srow2.nowprev').forEach(r=>r.classList.remove('nowprev')); } updateNow(); syncIcons(); render(); }
 function togglePlay(){ playing=!playing; syncIcons(); render(); }
 
 tracksEl.addEventListener('click',e=>{
@@ -362,8 +449,15 @@ tracksEl.addEventListener('click',e=>{
 // hero + mini controls
 document.getElementById('playPill').onclick=()=>{ if(!playing && !TRACKS[playingIdx]) playingIdx=0; togglePlay(); };
 document.getElementById('miniPlay').onclick=togglePlay;
-document.getElementById('shuffleBtn').onclick=()=>{ playingIdx=Math.floor(Math.random()*TRACKS.length); playing=true; updateNow(); syncIcons(); render(); toast('Shuffling — <b>'+TRACKS[playingIdx].t+'</b>'); };
+document.getElementById('miniNext').onclick=()=>{ playingIdx=((playingIdx<0?0:playingIdx)+1)%TRACKS.length; current=TRACKS[playingIdx]; playing=true; updateNow(); syncIcons(); render(); };
+// scroll-aware app bar (title + solid background once past the hero)
+const _appbar=document.querySelector('.appbar');
+addEventListener('scroll',()=>{ _appbar.classList.toggle('solid', window.scrollY>300); },{passive:true});
+document.getElementById('shuffleBtn').onclick=()=>{ playingIdx=Math.floor(Math.random()*TRACKS.length); current=TRACKS[playingIdx]; playing=true; updateNow(); syncIcons(); render(); toast('Shuffling — <b>'+TRACKS[playingIdx].t+'</b>'); };
 document.getElementById('dlAll').onclick=()=> isCP?toast('Downloading all watermarked previews…'):openGate();
+const glowBtn=document.getElementById('glowBtn');
+glowBtn.classList.toggle('on', look==='1');
+glowBtn.onclick=()=>{ look=(look==='1'?'2':'1'); document.body.classList.remove('look-1','look-2','look-3'); document.body.classList.add('look-'+look); glowBtn.classList.toggle('on', look==='1'); updateNow(); toast(look==='1'?'✨ Glow Up View — on':'Flat view'); };
 document.getElementById('approveBtn').onclick=()=>toast('Sent <b>Approve these</b> to Jae');
 document.getElementById('changesBtn').onclick=()=>toast('Opened <b>Request changes</b>');
 document.getElementById('shareSelects').onclick=()=>toast('Copied link to this <b>Selects</b>');
@@ -409,8 +503,9 @@ document.getElementById('goDeal').onclick=()=>{ closeDrawer(); toast('Opening yo
 function openGate(){ document.getElementById('gate').classList.add('on'); }
 function closeGate(){ document.getElementById('gate').classList.remove('on'); }
 document.getElementById('gateLater').onclick=closeGate;
-document.getElementById('makeAcct').onclick=()=>{ isCP=true; setAcct(); closeGate(); toast('Client Partner account created — downloads unlocked'); render(); };
-function setAcct(){ const a=document.getElementById('acct'); a.classList.toggle('pro',isCP); a.querySelector('.lbl').textContent=isCP?'Client Partner':'Guest'; }
+document.getElementById('makeAcct').onclick=()=>{ isCP=true; setAcct(); closeGate(); toast('Free Client Partner account created — downloads unlocked'); render(); };
+document.getElementById('loginBtn').onclick=()=>{ isCP=true; setAcct(); closeGate(); toast('Logged in — downloads unlocked'); render(); };
+function setAcct(){ const a=document.getElementById('acct'); a.classList.toggle('pro',isCP); a.title=isCP?'Demo: Client Partner — tap to switch to Guest':'Demo: Guest — tap to switch to Client Partner'; }
 document.getElementById('acct').onclick=()=>{ isCP=!isCP; setAcct(); render(); toast(isCP?'Now viewing as <b>Client Partner</b>':'Now viewing as <b>Guest</b>'); };
 
 // scrub animation
@@ -420,8 +515,39 @@ setInterval(()=>{ if(!playing) return; prog+=.0016; if(prog>1) prog=0; mFill.sty
 // toast
 function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').innerHTML=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),2400); }
 
+// ─── suggested songs (algorithm-curated) ───
+const SUGGESTED = [
+  {t:"Coastline", a:"Jonah Wilde", d:"3:05", img:"art/jonah.jpg", accent:"#5aa0c8"},
+  {t:"Midnight Ride", a:"The Vega Kids", d:"3:42", img:"art/midnight-ride.jpg", accent:"#8a6ad0"},
+  {t:"Reverie", a:"Maya Reyes", d:"2:58", img:"art/reverie.jpg", accent:"#d06a8a"},
+  {t:"Afterglow", a:"Halcyon", d:"3:20", g:"linear-gradient(150deg,#f0a35a,#b0507a 60%,#2a1030)", accent:"#f0a35a"},
+  {t:"Undertow", a:"Nova Reef", d:"3:11", g:"linear-gradient(150deg,#34d0e0,#2a6a9a 60%,#0b2030)", accent:"#34d0e0"},
+];
+const PLUS='<svg class="icn" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+const CHECK='<svg class="icn" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+function sBg(s){ return s.img ? "url('"+s.img+"') center/cover" : s.g; }
+function renderSuggest(){
+  document.getElementById('suggestList').innerHTML = SUGGESTED.map((s,i)=>`
+    <div class="srow2" data-si="${i}">
+      <div class="sth" style="background:${sBg(s)}"></div>
+      <div class="sinfo"><div class="stt">${s.t}</div><div class="sta">${s.a}</div></div>
+      <button class="sgadd ${s.added?'added':''}" data-add="${i}" title="${s.added?'Added':'Add to the list'}">${s.added?CHECK:PLUS}</button>
+    </div>`).join('');
+}
+document.getElementById('suggestList').addEventListener('click', e=>{
+  const add=e.target.closest('[data-add]'), row=e.target.closest('[data-si]');
+  if(add){ const i=+add.dataset.add, s=SUGGESTED[i]; if(s.added) return;
+    s.added=true;
+    TRACKS.push({t:s.t,a:s.a,desc:"added from suggestions",d:s.d,why:"Added from the algorithm’s suggestions — curate before send.",img:s.img||null,accent:s.accent,g:s.g||("linear-gradient(150deg,"+s.accent+",#1e1b4b)")});
+    render(); renderSuggest();
+    const cnt=document.querySelector('.listhead .cnt'); if(cnt) cnt.textContent=TRACKS.length+' songs';
+    toast('Added — <b>'+s.t+'</b>'); return; }
+  if(row){ const i=+row.dataset.si; current=SUGGESTED[i]; playingIdx=-1; playing=true; document.querySelectorAll('.srow2.nowprev').forEach(r=>r.classList.remove('nowprev')); row.classList.add('nowprev'); updateNow(); syncIcons(); render(); toast('Previewing — <b>'+SUGGESTED[i].t+'</b>'); }
+});
+document.getElementById('sgRefresh').onclick=()=>{ for(let i=SUGGESTED.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[SUGGESTED[i],SUGGESTED[j]]=[SUGGESTED[j],SUGGESTED[i]];} renderSuggest(); toast('Refreshed suggestions'); };
+
 // init — Paper (Maya Reyes) playing so its artwork fills the hero
-playingIdx=2; playing=true; updateNow(); syncCart(); syncIcons(); render();
+playingIdx=2; current=TRACKS[2]; playing=true; updateNow(); syncCart(); syncIcons(); render(); renderSuggest();
 </script>
 </body>
 </html>
