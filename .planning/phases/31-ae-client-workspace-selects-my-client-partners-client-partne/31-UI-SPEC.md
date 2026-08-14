@@ -154,27 +154,24 @@ this axis for this phase, not a gate.
 Numeric values (health thresholds, days-in-stage, lifetime value, listen counts, durations) use
 `font-variant-numeric: tabular-nums` — existing codebase convention (Phase 9 precedent).
 
-### Typography — Client-Facing Player (exception, Family B)
+### Typography — Client-Facing Player (Family B)
 
-The player is a full-bleed immersive hero surface, not a data table — it may carry heavier display
-type than the console's medium-weight rooms (a hero is the one sanctioned place for weight > 500),
-but it is capped at **700** to stay in family with the 400/500 app — no 900/black:
+Reconciled to the **built player** (`.planning/design/phase-31-shareable-music-player.html`,
+2026-08-14). The hero title is the one **black (900)** display moment — a sanctioned exception to
+the app's 400/500 — and everything else runs the medium/regular scale:
 
-| Role | Size | Weight | Line Height | Where |
-|------|------|--------|-------------|-------|
-| Eyebrow | 14px, uppercase, `tracking-[.2em]` | 600 | 1.2 | "SELECTS" / "A SELECTS FROM {AE}" kicker above the title |
-| Selects title (display) | 40–58px (scale down on mobile to 32px) | 700 | 1.0 | The Selects name, hero position |
-| AE byline | 16–19px | 500 | 1.3 | "Curated by {AE name}" |
-| Track title | 17px | 500 | 1.3 | Track-list rows |
-| Track meta / notes | 14px | 400 | 1.5 | "Why this fits" per-track note, durations, cover note body |
-| Micro (Preview badge, timestamps) | 12–14px | 600 (badge) / 400 (timestamps, tabular-nums) | 1.2 | "Preview" pill, scrub-bar times |
+| Role | Size | Weight | Where |
+|------|------|--------|-------|
+| Selects title (display) | 34px (30px mobile), `tracking:-.035em` | 900 | the hero title |
+| Chip / section labels | 12–17px, uppercase for labels | 700 | "FUNŪN · Selects", "CURATED TRACKS", "Suggested Songs" |
+| Curator / byline | 15px (name 700, rest 400) | 400 / 700 | "Jae Tran ✓ · for {client}" |
+| Updated line | 12.5px | 400 | "Updated … · by {AE}" |
+| Track / suggested title | 15–16px (mini-player title 14/700) | 600 | list rows |
+| Body / notes / meta | 12.5–14px | 400 | cover note, marquee "why it fits", artist, durations |
+| Micro (Preview pill, timestamps) | 11–12px | 700 (badge) / 400 (times, tabular-nums) | preview pill, progress |
 
-> **Player fidelity note (2026-08-13):** the Phase-31 mockup renders the player as a *compact*
-> `max-width:560px` card (title 19px/500, 38px play button) — a lightweight placeholder built to
-> show the send→player→react **flow**, not the final surface. The immersive spec above (from the
-> `music-player-playlists.html` ref + `CatalogBrowserLight`) is the build target for this
-> brand-critical surface; the mockup card is the flow reference. If direction shifts to the
-> mockup's restraint, the compact card is the sanctioned fallback — both are on-brand.
+> The earlier "immersive 40–58px hero" concept is retired — the built player is the compact,
+> Apple-Music-native surface documented in Family B's Surface Spec below.
 
 ---
 
@@ -395,32 +392,89 @@ tabs, person-scoped, plus the **Game Plan** panel (R14, person view only).
 
 ## Surface Spec — Family B: Client-Facing Selects Player (`/selects/[token]`)
 
-**The one brand-critical surface in this phase.** SSR, service-role read, no login required for
-a valid token. Base layout: the full-bleed immersive hero player already proven in
-`~/Desktop/design_handoff_funun_app/music-player-playlists.html` (art/gradient hero → scrub →
-transport → tracklist), re-skinned for a curated multi-track Selects instead of a single artist
-profile, using `CatalogBrowserLight.tsx`'s existing player mechanics as the functional base
-(per `crate-lead-engine-BUILD-SPEC.md` §6 reuse note).
+**The one brand-critical surface in this phase.** SSR, service-role read, no login required for a
+valid token.
 
-### Layout
+> **BUILT REFERENCE — source of truth:** `.planning/design/phase-31-shareable-music-player.html`
+> — a working, interactive mockup produced and iterated with the owner across 2026-08-13/14. It
+> **supersedes the earlier "immersive artist-profile hero" concept.** The client surface is an
+> **Apple-Music-native player** (dense tap-to-play list, docked mini-player pill, `•••` sheet),
+> not a full-bleed hero. Build to that file; the notes below are the contract it encodes. Its
+> functional base is still `CatalogBrowserLight.tsx` (playback) per `crate-lead-engine-BUILD-SPEC.md` §6.
 
-1. **App bar** (translucent, blurred pill buttons, `rgba(10,9,16,.5)` + `backdrop-filter:
-   blur(8px)`) — back/close on the left, a "Now playing" or Selects-name label center, a
-   share/overflow icon on the right.
-2. **Hero** — cover art/collage (Selects tracks' artwork composited, or a branded gradient card
-   if no artwork), scrim gradient to the page background at the bottom for text legibility.
-3. **Meta block** (over the hero scrim, bottom-anchored): the `chip-funun`-style pill ("FUNŪN ·
-   A Selects") + eyebrow ("SELECTS") + Selects title (display type) + AE byline ("Curated by
-   {AE name}") + a small **Preview** badge (see below).
-4. **AE cover note** — a short paragraph, `--ink-2` colored, directly under the meta block.
-5. **Player** — scrub bar + transport controls, exact visual spec from the design ref (6px bar,
-   15px knob, `--grad` fill, 78px circular play button with `box-shadow: 0 18px 44px -12px
-   rgba(217,70,239,.65)`).
-6. **Track list** — each row: artwork thumb, title, "why this fits" note (muted caption), per-
-   track reaction icons (love/pass/more-like-this, icon-only, 44px touch targets), duration.
-7. **Response bar** — sticky bottom action row (mirrors `.fnbl .mini` bottom-sheet pattern):
-   Request changes (ghost) · Approve (solid indigo) · License (primary gradient) · Download to
-   test-sync (secondary, icon+label).
+### Overall shape
+
+One centered, dark player page. Top → bottom: **app bar** · **Glow Up View toggle** · **hero**
+(cover + meta + cover note) · **primary controls** · **Approve these / Request changes** ·
+**CURATED TRACKS** list · **Suggested Songs** · docked **mini-player pill**.
+
+- **Width:** centered column, `max-width: 1280px`, **24px** side gutters that match the app bar.
+  The **hero is capped ~600px centered**; the **track list runs full-width** (edge-to-edge minus
+  the 24px gutter) — owner decision 2026-08-14.
+
+### App bar (sticky)
+
+- Left: round back button + brand **"FUNŪN (fuh-NOON)"** — the phonetic matches `app/help/page.tsx`.
+- Right: **three equal round icon buttons** — account (a dashed-ring avatar = the demo/sign-in
+  state) · cart (licensing) · share-Selects. (Balanced three-circle cluster, owner-requested.)
+- On scroll the bar **solidifies** and reveals the Selects title centered; the brand fades out to
+  avoid collision.
+- **Back-arrow behavior is still open** (see the earlier note): on a cold forwarded link there is
+  no in-app back — hide it or make it a `history.back()` "close"; for a signed-in viewer, return
+  to the referring room.
+
+### Look system — "Glow Up View" toggle (owner decision 2026-08-14)
+
+A small centered pill, **"✨ Glow Up View,"** sits at the very top of the content and flips a
+`look-2` ⇄ `look-1` body class.
+
+- **Default = Look 2 — flat dark:** *no ambient glow* (`#ambient` hidden); pure `--ground` canvas;
+  the cover carries only a neutral drop shadow. Clean, crisp, legible. **This is the default.**
+- **Toggle on = Look 1 — glow up:** the current track's **artwork blooms** behind the page
+  (heavily-blurred, art-derived ambient) and the app bar + mini-player gain **frosted glass**
+  (`backdrop-filter`). Richer / more immersive.
+- A third "masked glow" variant (glow fading to dark by the Approve area) exists as `?look=3` for
+  reference and on the compare page (`phase-31-player-compare.html`) but is **not** in the shipped
+  toggle.
+- **Build note:** keep all `backdrop-filter` / blur-`filter` layers **OFF in Look 2** — they are
+  the only compositing-heavy elements and Look 2 must stay flat. (A double-render seen in the
+  preview pane during design was a pane artifact — `file://` + `localhost` tabs overlapping — not
+  the page; ignore it.)
+
+### Hero
+
+- Cover art of the **currently-playing track**, and it **swaps as playback moves** (the hero photo
+  tracks the song — intentional, owner-confirmed). ~300–380px, rounded, with a **color-matched drop
+  shadow** derived from the track accent.
+- A small **"Preview"** pill (amber dot, translucent) on the cover — the watermarked-preview
+  signal (D-01), unobtrusive.
+- Meta: `FUNŪN · Selects` chip · **title** (display, ~34px, weight 900) · **curator** row
+  ("Jae Tran ✓ · for Sunset Lane Media") · an **"Updated … · by {AE}"** line (Apple Music's
+  owner/updated slot) · the AE **cover note** (`--lav`).
+
+### Primary controls + deal actions
+
+- A centered row: **shuffle · white "Play/Pause" pill · download-all** (gated — see Download).
+- Immediately below, kept **prominent, not buried**: **Approve these** (gradient primary) ·
+  **Request changes** (ghost). These deal-flow actions stay above the list (owner: "keep the
+  business-flow buttons up top").
+
+### CURATED TRACKS (dense, tap-to-play, full-width)
+
+- Header: **"CURATED TRACKS"** · count · "Previews watermarked". The "CURATED" wording signals the
+  AE did the work (owner); the watermark tag hides on mobile (stays in the footer).
+- **Apple-Music dense** rows (row height ≈ artwork; ~14 fit an iPhone 14 Plus), running full-width.
+  **No per-row play button — tap the artwork or the row to play** (the thumb shows an equalizer
+  while playing).
+- Each row: artwork · **title + artist + a small marquee "why it fits"** (scrolls on the active/
+  hover row) · then the control cluster **`•••` · ♥ love (keep) · 👎 thumbs-down (pass) · ⬇ download**
+  (owner: `•••` sits leftmost of the cluster).
+  - **Reactions:** ♥ = keep (filled rose when on) · 👎 = pass. Uses the clean **favorite heart**
+    (Material shape) — the hand-drawn one was replaced.
+  - **`•••` sheet** (Apple-Music bottom sheet): a Keep / Pass / Share trio · the AE's full
+    **per-track note** · **License this track** (→ cart → Deals room) · More like this · View
+    credits & rights · Download.
+  - The row **download icon is always the cloud-download** — never a lock.
 
 ### "Preview" affordance (D-01)
 
@@ -441,24 +495,40 @@ decision, not a pixel one — flagged here only so the UI contract (the "Preview
 the actual audio treatment stay conceptually aligned. **Source: default — Claude's discretion,
 confirm with Pete before the watermarking research task locks it in.**
 
-### Reactions
+### Download gate (R12, D-01/D-02/D-03) — owner-revised 2026-08-14
 
-Three icon-only buttons per track row: love / pass / more-like-this. No text labels (matches the
-mockup). Selected state: filled icon in `--indigo`; unselected: outlined `--ink-3`. 44×44px
-touch target each, tight visual footprint (icons themselves ~20px).
+The **row / hero / ••• download control is always the cloud-download icon** — never a lock. Access:
 
-### Download (R12, D-01/D-02/D-03)
+- **Guest (no login) taps download** → a **gate modal** opens (the lock lives here, and *only*
+  here): heading *"Log in to download,"* then **Create Free Client Partner Account** (primary
+  gradient) · **Log in** (secondary) · Maybe later. Fine print: *"always watermarked previews —
+  never clean masters; the same rule applies in The Crate."*
+- **Signed-in Client Partner** taps download → it downloads immediately — the **watermarked** file
+  (never a clean master; a data-flow guarantee, not a UI toggle).
+- **Open to everyone with no login:** play · keep · pass · **Approve these** · **Request changes**
+  — so a forwarded link works for e.g. a commercial director. Only **download** (and licensing /
+  checkout) requires the free Client Partner account.
+- AE-configured **disable / length-cap** at send time still applies (the served file reflects it);
+  when off, the affordance stays visible-but-disabled, not hidden.
 
-- Button: **"Download to test-sync"**, secondary weight (not the primary gradient — License
-  keeps that slot).
-- Helper microcopy directly below: "Forensically watermarked — good for cutting into your edit,
-  not for release."
-- **Disabled state** (AE turned it off at send time, or length-capped): button renders greyed
-  (`opacity-40`, disabled cursor) with microcopy swapped to: "Download's off for this Selects —
-  stream only." Never hide the button entirely — a visibly-disabled affordance communicates the
-  boundary better than an absent one.
-- The file served is **never** a clean master, by design (prohibition table, R12) — this is a
-  data-flow guarantee, not a UI toggle; the UI only reflects whatever the AE configured at send.
+### Suggested Songs (algorithm-curated — shown to everyone) — owner decision 2026-08-14
+
+A card at the very bottom (Apple-Music "Suggested Songs" pattern): header **"Suggested Songs" /
+"More the algorithm found that could work for this project"** + a refresh control, then rows
+(artwork · title · artist · **"+"**).
+
+- **Shown to AE, guest, and client alike** — exploratory "more options that could fit the
+  project," not gated to any role.
+- Rows are **previewable**: tap a row → it plays in the mini-player exactly like a curated track
+  (hover shows a play affordance; the previewing row is marked). The **"+"** adds the track up
+  into the list (count updates). (For an AE this reads as "add to the Selects"; the action is the
+  same for everyone.)
+
+### Mini-player (docked pill)
+
+A rounded pill fixed at the bottom (Apple-Music mini-player): artwork · **bold title / artist** ·
+a **"Preview"** tag · **play-pause** + **skip** on the right · a thin progress line. Reflects the
+current track — curated **or** suggested.
 
 ### Invalid / expired token state (R12, safe failure)
 
@@ -510,3 +580,14 @@ line at the top ("{N} of {M} tracks qualified-listened"). Use tabular-nums, `--i
 unchanged (palette was already byte-identical). Typography + Spacing were revised to the mockup
 per the owner's **hybrid** decision (mockup look, light discipline) — those two dimensions are now
 **advisory** for this phase (medium-weight type, off-grid mockup spacing are intended), not gates.
+
+**Client-player build reconciliation 2026-08-14 (owner):** the Family B client-facing player was
+designed and built as a working, interactive mockup
+(`.planning/design/phase-31-shareable-music-player.html`) — now the **locked build reference**.
+Decisions folded into the spec above: Apple-Music-native player (dense tap-to-play list, docked
+mini-player pill, `•••` sheet) **replacing** the immersive-hero concept; **default Look 2 (flat
+dark) + "Glow Up View" toggle to Look 1 (glow + frosted glass)**; full-width rows with 24px
+gutters; balanced three-circle app bar; favorite-heart keep/pass reactions; cloud-download with a
+**Log in / Create Free Client Partner Account** gate (play/keep/pass/approve open to all, download
+gated); **previewable Suggested Songs** shown to everyone; **"FUNŪN (fuh-NOON)"** phonetic. Looks
+1/2/3 sit side-by-side on the compare page (`.planning/design/phase-31-player-compare.html`).
