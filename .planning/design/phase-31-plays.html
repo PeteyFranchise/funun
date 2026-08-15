@@ -1,0 +1,172 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Plays — leadership → team</title>
+<style>
+:root{
+  --ground:#0a0a0f;--panel:#0E0D1E;--panel-2:#1A1838;
+  --text:#FFFFFF;--lav:#C7CBF7;--dim:#7c80b4;
+  --line:rgba(199,203,247,.12);--line2:rgba(199,203,247,.22);
+  --indigo:#818CF8;--fuchsia:#D946EF;
+  --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+  --green-fg:#34D399;--green-bg:rgba(52,211,153,.11);--green-line:rgba(52,211,153,.3);
+  --amber-fg:#F4C77B;--amber-bg:rgba(245,158,11,.11);--amber-line:rgba(245,158,11,.3);
+  --rose-fg:#F9A8C0;--rose-bg:rgba(244,63,94,.1);--rose-line:rgba(244,63,94,.3);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+}
+[data-theme=light]{
+  --ground:#FFFFFF;--panel:#F1EDFE;--panel-2:#E7E1FC;
+  --text:#241A4D;--lav:#5F5885;--dim:#8B85AB;
+  --line:#DED7FB;--line2:#CFC5F7;
+  --indigo:#6D5AE0;--fuchsia:#B22BC9;
+  --green-fg:#0B7A57;--green-bg:#E4F6EF;--green-line:#B6E4D3;
+  --amber-fg:#8A5B04;--amber-bg:#FDF3E0;--amber-line:#F0DCB2;
+  --rose-fg:#A62742;--rose-bg:#FDEBEF;--rose-line:#F5C9D3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:24px 22px 90px}
+.top{display:flex;align-items:flex-start;gap:12px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--dim);font-size:13.5px;margin:0;line-height:1.5;max-width:600px}
+.themebtn{margin-left:auto;flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:12.5px;padding:7px 13px;border-radius:999px;cursor:pointer}
+.themebtn:hover{background:var(--panel-2)}
+.rolelbl{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--indigo);margin:26px 2px 0;display:flex;align-items:center;gap:8px}
+.rolelbl span.tag{font-weight:400;color:var(--dim);letter-spacing:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:10px}
+.cardh{font-size:15px;font-weight:600}
+.cardsub{color:var(--dim);font-size:12.5px;margin:4px 0 12px;line-height:1.5}
+
+/* play library */
+.playlib{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.playcard{text-align:left;border:1px solid var(--line);background:var(--ground);border-radius:13px;padding:12px;cursor:pointer;color:var(--text);font:inherit;transition:border-color .14s,box-shadow .14s}
+.playcard:hover{border-color:var(--line2)}
+.playcard.on{border-color:transparent;box-shadow:inset 0 0 0 1.5px var(--indigo)}
+.pcname{font-size:13.5px;font-weight:600}
+.tgt{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:999px;margin-top:7px;border:1px solid transparent}
+.tgt .d{width:6px;height:6px;border-radius:50%}
+.tgt.amber{background:var(--amber-bg);color:var(--amber-fg);border-color:var(--amber-line)}.tgt.amber .d{background:var(--amber-fg)}
+.tgt.rose{background:var(--rose-bg);color:var(--rose-fg);border-color:var(--rose-line)}.tgt.rose .d{background:var(--rose-fg)}
+.tgt.green{background:var(--green-bg);color:var(--green-fg);border-color:var(--green-line)}.tgt.green .d{background:var(--green-fg)}
+.tgt.indigo{background:var(--panel-2);color:var(--indigo);border-color:var(--line2)}.tgt.indigo .d{background:var(--indigo)}
+.pcdesc{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.5}
+
+.composer{display:flex;gap:9px;margin-top:14px;align-items:center}
+.plinput{flex:1;background:var(--ground);border:1px solid var(--line);border-radius:10px;color:var(--text);font:inherit;font-size:13px;padding:10px 12px}
+.plinput:focus{outline:none;border-color:var(--indigo)}
+.pubbtn{border:0;background:var(--grad);color:#fff;font:inherit;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:11px;cursor:pointer;white-space:nowrap;box-shadow:0 12px 30px -12px rgba(217,70,239,.5)}
+.pubbtn:active{transform:scale(.98)}
+
+.logh{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 2px 4px}
+.logrow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-top:1px solid var(--line);font-size:13px}
+.logrow:first-child{border-top:0}
+.logrow .lw{margin-left:auto;color:var(--dim);font-size:11.5px}
+.logrow .dot{width:8px;height:8px;border-radius:50%;background:var(--indigo);flex:0 0 auto}
+
+/* AE home + today's play banner */
+.aehome{border:1px dashed var(--line2);border-radius:18px;padding:12px;margin-top:10px;background:linear-gradient(180deg,rgba(129,140,248,.04),transparent 60%)}
+.banner{display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--indigo);border-radius:14px;padding:13px 15px;box-shadow:0 10px 30px -18px rgba(129,140,248,.5)}
+.banner.done{border-left-color:var(--green-fg);opacity:.9}
+.bic{font-size:20px;flex:0 0 auto}
+.btx{flex:1;min-width:0}
+.bt{font-size:14px}
+.bs{font-size:12px;color:var(--dim);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.bsee{border:0;background:var(--grad);color:#fff;font:inherit;font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;flex:0 0 auto}
+.bdone{border:1px solid var(--line2);background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:8px 12px;border-radius:10px;cursor:pointer;flex:0 0 auto}
+.bdone:hover{color:var(--text);background:var(--panel-2)}
+.fauxhead{display:flex;align-items:center;gap:10px;margin:14px 6px 8px;opacity:.55}
+.fauxhead .ft{font-size:16px;font-weight:600}.fauxhead .fc{font-size:12px;color:var(--dim)}
+.fauxrow{display:flex;align-items:center;gap:11px;padding:9px 8px;opacity:.5;font-size:12.5px;color:var(--dim)}
+.fauxrow .av{width:26px;height:26px;border-radius:8px;background:var(--panel-2);flex:0 0 auto}
+.fauxrow .yc{margin-left:auto;font-size:11px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--panel-2);border:1px solid var(--line2);border-radius:999px;padding:10px 18px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;box-shadow:0 18px 40px -18px rgba(0,0,0,.5)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:560px){.playlib{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-theme="light">
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Plays</h1>
+      <p class="sub"><b>Leadership calls a play → every AE sees it.</b> A play is a directed team action with a target (e.g. <i>“call your yellow contacts”</i>). Reusable ones live in The Playbook; leadership publishes one as <b>today’s play</b>, and it lands atop each AE’s My Client Partners.</p>
+    </div>
+    <button class="themebtn" id="themebtn">☾ Dark</button>
+  </div>
+
+  <div class="rolelbl">👑 Leadership <span class="tag">· The Playbook → Plays</span></div>
+  <div class="card">
+    <div class="cardh">Call today’s play</div>
+    <p class="cardsub">Pick a reusable play (or write one), add a note to the team, and publish. It updates every AE’s home instantly.</p>
+    <div class="playlib" id="playlib"></div>
+    <div class="composer"><input class="plinput" id="plnote" placeholder="Add a note to the team…" value="Weather’s turning — let’s not lose momentum. Quick calls, log every one."><button class="pubbtn" id="pubbtn">Publish to team ›</button></div>
+  </div>
+  <div class="card">
+    <div class="logh">Plays called</div>
+    <div id="calledlog"></div>
+  </div>
+
+  <div class="rolelbl">🎧 AE <span class="tag">· top of My Client Partners</span></div>
+  <div class="aehome">
+    <div id="banner"></div>
+    <div class="fauxhead"><span class="ft">My Client Partners</span><span class="fc">7 clients · 7 companies</span></div>
+    <div class="fauxrow"><span class="av"></span>Devin Cross · Sunset Lane<span class="yc" style="color:var(--green-fg)">● Champion</span></div>
+    <div class="fauxrow"><span class="av"></span>Theo Marsh · Cabot &amp; Reyes<span class="yc" style="color:var(--amber-fg)">● Gone quiet</span></div>
+    <div class="fauxrow"><span class="av"></span>Priya Raman · Sunset Lane<span class="yc" style="color:var(--indigo)">● New</span></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var root=document.body,tb=document.getElementById('themebtn');
+  tb.addEventListener('click',function(){var d=root.getAttribute('data-theme')==='light';root.setAttribute('data-theme',d?'dark':'light');tb.textContent=d?'☀ Light':'☾ Dark';});
+
+  var PLAYS=[
+    {id:'yellow',name:'Call your yellow contacts',target:'warning-health contacts',count:7,dot:'amber',desc:'Every account trending to warning — a quick call resets the clock.'},
+    {id:'red',name:'Re-engage at-risk',target:'at-risk (red) accounts',count:3,dot:'rose',desc:'Red accounts — offer a fresh Selects or a call this week.'},
+    {id:'q4',name:'Push the Q4 campaign',target:'champions + engaged',count:12,dot:'green',desc:'Warm accounts with open briefs — pitch the Q4 Selects now.'},
+    {id:'await',name:'Chase awaiting approvals',target:'Selects sent · awaiting',count:5,dot:'indigo',desc:'Sent Selects with no answer yet — nudge for the approval.'}
+  ];
+  var selected='yellow';
+  var published={play:PLAYS[0],note:'Weather’s turning — let’s not lose momentum. Quick calls, log every one.',by:'Ava Chen',done:false};
+  var CALLED=[{name:'Chase awaiting approvals',by:'Ava Chen',when:'Mon'}];
+  var libEl=document.getElementById('playlib'),bannerEl=document.getElementById('banner'),calledEl=document.getElementById('calledlog');
+
+  function playById(id){return PLAYS.filter(function(p){return p.id===id})[0]}
+  function renderLib(){
+    libEl.innerHTML=PLAYS.map(function(p){
+      return '<button class="playcard'+(p.id===selected?' on':'')+'" data-play="'+p.id+'"><div class="pcname">'+p.name+'</div>'+
+        '<span class="tgt '+p.dot+'"><span class="d"></span>'+p.count+' '+p.target+'</span><div class="pcdesc">'+p.desc+'</div></button>';
+    }).join('');
+    libEl.querySelectorAll('[data-play]').forEach(function(b){b.addEventListener('click',function(){selected=b.dataset.play;renderLib();});});
+  }
+  function renderBanner(){
+    if(!published){bannerEl.innerHTML='<div class="banner" style="border-left-color:var(--line2);color:var(--dim)"><span class="bic">📭</span><div class="btx"><div class="bt">No play called yet today.</div></div></div>';return;}
+    var p=published.play;
+    bannerEl.innerHTML='<div class="banner'+(published.done?' done':'')+'"><span class="bic">'+(published.done?'✅':'📣')+'</span>'+
+      '<div class="btx"><div class="bt">Today’s play — <b>'+p.name+'</b></div>'+
+      '<div class="bs">from '+published.by+' <span class="tgt '+p.dot+'"><span class="d"></span>'+p.count+' '+p.target+'</span>'+(published.note?'· “'+published.note+'”':'')+'</div></div>'+
+      (published.done?'<button class="bdone" data-undone="1">Reopen</button>':'<button class="bsee" data-see="1">See them ›</button><button class="bdone" data-done="1">Mark done</button>')+'</div>';
+    var see=bannerEl.querySelector('[data-see]');if(see)see.addEventListener('click',function(){toast('Filtering My Client Partners to <b>'+p.count+'</b> '+p.target+' →');});
+    var dn=bannerEl.querySelector('[data-done]');if(dn)dn.addEventListener('click',function(){published.done=true;renderBanner();toast('Nice — play marked done ✓');});
+    var ud=bannerEl.querySelector('[data-undone]');if(ud)ud.addEventListener('click',function(){published.done=false;renderBanner();});
+  }
+  function renderCalled(fresh){
+    calledEl.innerHTML=CALLED.map(function(e,i){return '<div class="logrow"><span class="dot"></span>'+e.name+'<span class="lw">'+e.by+' · '+e.when+'</span></div>'}).join('');
+  }
+
+  document.getElementById('pubbtn').addEventListener('click',function(){
+    var p=playById(selected),note=document.getElementById('plnote').value.trim();
+    published={play:p,note:note,by:'Ava Chen',done:false};
+    CALLED.unshift({name:p.name,by:'Ava Chen',when:'just now'});
+    renderBanner();renderCalled(true);
+    toast('Published “<b>'+p.name+'</b>” to the team — every AE sees it now ✓');
+  });
+
+  function toast(msg){var t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on')},2800);}
+  renderLib();renderBanner();renderCalled(false);
+})();
+</script>
+</body></html>

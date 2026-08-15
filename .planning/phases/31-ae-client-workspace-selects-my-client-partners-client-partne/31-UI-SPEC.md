@@ -400,6 +400,15 @@ folded in) + `phase-31-selects-pipeline-compare.html` (standalone prototype).
   assignment," "existing-account assignment"). Leadership/ops-only edit affordance; AE view is
   read-only (steps visible, no edit controls rendered at all — not just disabled).
 
+**The Playbook holds three asset types** (owner, 2026-08-14): **SOPs** (above), **Topics** (coaching
+bundles — a heading + open-ended questions that feed the Game Plan — [[project_ae_coaching_questions]]),
+and **Plays** (leadership-directed team actions with a **target** — [[project_playbook_plays]]).
+**Leadership calls a play**: picks/writes one, sets a target segment (e.g. warning-health contacts),
+and **publishes it to the team** as **today's play**. Each AE then sees a **"Today's play" banner at the
+top of My Client Partners** (*"📣 From Ava: Call your 7 yellow contacts → See them"*); **See them**
+filters the list to the targets, and it can pre-load a matching Game Plan topic. Build reference:
+`phase-31-plays.html` (leadership publish + AE banner, end-to-end).
+
 ### Game Plan — pre-call topic planning (R14)
 
 - Person workspace panel: a list of 3–5 topic chips (add via a text input + "suggested topics"
