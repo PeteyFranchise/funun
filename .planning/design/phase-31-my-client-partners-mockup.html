@@ -316,6 +316,48 @@
   .gpnotes::placeholder{color:var(--dim)}
   .gpfoot{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;align-items:center}
   .gpmsg{font-size:12px;color:var(--green-fg)}
+  /* Game Plan — topic heading + open-ended questions */
+  .gptopic{display:flex;align-items:flex-start;gap:10px;padding:11px 8px;border-top:1px solid var(--line);border-radius:0}
+  .gptopics .gptopic:first-child{border-top:0}
+  .gptopic:hover{background:transparent}
+  .gptbody{flex:1;min-width:0}
+  .gpthd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .gpttopic{font-size:13.5px;font-weight:600}
+  .gptopic.done .gpttopic{color:var(--dim)}
+  .gptsrc{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--indigo);background:var(--panel);border-radius:999px;padding:2px 8px}
+  .gptqs{margin:6px 0 0;padding:0;list-style:none}
+  .gptqs li{position:relative;padding-left:14px;font-size:12px;color:var(--lav);line-height:1.55}
+  .gptqs li::before{content:"";position:absolute;left:3px;top:8px;width:3.5px;height:3.5px;border-radius:50%;background:var(--indigo);opacity:.7}
+  .gptnote{margin-top:8px;width:100%;background:transparent;border:0;border-bottom:1px dashed var(--line2);color:var(--text);font:inherit;font-size:12px;padding:2px 0}
+  .gptnote:focus{outline:none;border-bottom-color:var(--indigo)} .gptnote::placeholder{color:var(--dim)}
+  .gpaddrow{display:flex;gap:8px;margin-top:12px}
+  .gpin{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--text);font:inherit;font-size:12.5px;padding:8px 11px}
+  .gpin:focus{outline:none;border-color:var(--indigo)}
+  .gpsuglbl{font-size:11px;color:var(--dim);margin:13px 0 7px}
+  .gpsugrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .gpsugcard{text-align:left;border:1px dashed var(--line2);background:transparent;border-radius:11px;padding:9px 11px;cursor:pointer;color:var(--text);font:inherit}
+  .gpsugcard:hover{border-style:solid;border-color:var(--indigo);background:var(--panel)}
+  .gpsugcard .st{font-size:12.5px;font-weight:600}.gpsugcard .st::before{content:"+ ";color:var(--indigo)}
+  .gpsugcard .ss{display:block;font-size:10px;color:var(--dim);margin-top:2px}
+  /* Plays — library cards + AE 'today's play' banner */
+  .playlib{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+  .playcard{text-align:left;border:1px solid var(--line);background:var(--ground);border-radius:12px;padding:11px;cursor:pointer;color:var(--text);font:inherit}
+  .playcard:hover{border-color:var(--line2)}
+  .playcard.on{border-color:transparent;box-shadow:inset 0 0 0 1.5px var(--indigo)}
+  .playcard .pcn{font-size:13px;font-weight:600}
+  .playcard .pcd{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.45}
+  .tgt{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 9px;border-radius:999px;margin-top:7px;border:1px solid transparent}
+  .tgt .d{width:6px;height:6px;border-radius:50%}
+  .tgt.amber{background:var(--amber-bg);color:var(--amber-fg);border-color:var(--amber-line)}.tgt.amber .d{background:var(--amber-fg)}
+  .tgt.rose{background:var(--rose-bg);color:var(--rose-fg);border-color:var(--rose-line)}.tgt.rose .d{background:var(--rose-fg)}
+  .tgt.green{background:var(--green-bg);color:var(--green-fg);border-color:var(--green-line)}.tgt.green .d{background:var(--green-fg)}
+  .tgt.indigo{background:var(--panel-2);color:var(--indigo);border-color:var(--line2)}.tgt.indigo .d{background:var(--indigo)}
+  #pb-plays .composer{display:flex;gap:9px;margin-top:8px;align-items:center}
+  .playban{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--indigo);border-radius:14px;padding:12px 14px;margin:0 2px 14px;box-shadow:0 10px 30px -20px rgba(129,140,248,.5)}
+  .playban.done{border-left-color:var(--green-fg)}
+  .pbic{font-size:19px;flex:0 0 auto}
+  .pbx{background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer;flex:0 0 auto;line-height:1}
+  .pbx:hover{color:var(--text)}
   .pipe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
   .step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);background:var(--panel-2);padding:8px 13px;border-radius:999px}
   .step.done{color:var(--lav)} .step.done .sd{background:var(--green-fg)} .step.cur{color:#fff;background:var(--grad);font-weight:500}
@@ -556,6 +598,7 @@
               <button class="mtab" role="tab" aria-selected="false" data-mtab="companies">Companies <span class="n" id="ct-companies">7</span></button>
             </div>
           </div>
+          <div class="playban" id="playban"></div>
           <div class="ldbanner" id="ldbanner" hidden><div class="lbt"><b>Your held accounts.</b> New leads awaiting routing, plus coverage while an AE is out — work them, or assign them on.</div><div class="chips"><span class="pill p-new"><span class="d"></span>2 unassigned</span><span class="pill p-warn"><span class="d"></span>Covering · Jae Tran out to Aug 20</span></div></div>
           <div class="filters" id="filters"></div>
           <div class="tablecard"><div id="tablehost"></div></div>
@@ -678,12 +721,13 @@
                 <div class="tli"><span class="dot"></span><div><div class="tx">Intro call — she owns music at Sunset Lane; wants a go‑to for auto + tech brands.</div><div class="dt">Aug 5 · call</div></div></div>
               </div>
               <div class="gp">
-                <div class="gph"><span style="color:var(--indigo)">◎</span><b>Game plan — next call with Maya</b><span class="gpcount" id="gp-count">0 / 0 covered</span></div>
-                <div class="gpsub">Pick 3–5 things to cover. Save it for your next call, then check them off and log the conversation.</div>
+                <div class="gph"><span style="color:var(--indigo)">◎</span><b>Game plan — next call with Maya</b><span class="gpcount" id="gp-count">1 of 5</span></div>
+                <div class="gpsub">Each item is a <b>topic</b> (a theme) with open-ended questions underneath — from The Playbook, Leadership, or the Selects pipeline.</div>
                 <div class="gptopics" id="gp-topics"></div>
-                <div class="gpadd"><span style="font-size:11px;color:var(--dim)">Add:</span><span class="gpsug" data-t="Confirm the Q4 brief + timeline">Confirm brief + timeline</span><span class="gpsug" data-t="Walk the Selects engagement — Ember standout">Review Selects engagement</span><span class="gpsug" data-t="Discuss budget">Budget</span><span class="gpsug" data-t="Agree next steps">Next steps</span><span class="gpsug" data-t="Ask for a referral / intro">Ask for referral</span></div>
-                <textarea class="gpnotes" id="gp-notes" placeholder="Notes from the call…"></textarea>
-                <div class="gpfoot"><button class="btn grad" id="gp-log">Log conversation</button><button class="btn" id="gp-save">Save game plan</button><span class="gpmsg" id="gp-msg" style="display:none"></span></div>
+                <div class="gpaddrow"><input class="gpin" id="gp-input" placeholder="Add your own topic…"><button class="btn" id="gp-add">Add</button></div>
+                <div class="gpsuglbl">Suggested topics — from The Playbook &amp; Leadership</div>
+                <div class="gpsugrow" id="gp-sugrow"></div>
+                <div class="gpfoot"><button class="btn grad" id="gp-log">Log conversation</button><span class="gpmsg" id="gp-msg" style="display:none"></span></div>
               </div>
             </div>
           </div>
@@ -821,14 +865,24 @@
       </div>
 
       <div class="panelwrap" id="screen-sops">
-        <div class="listhead"><h1>The Playbook</h1><span class="cnt">3 SOPs · feed emails + tasks</span></div>
-        <div style="color:var(--dim);font-size:12.5px;margin:-4px 2px 12px;max-width:660px">Short, repeatable checklists your team runs on key moments — assignment, onboarding, at-risk recovery. Edit one here and it updates everywhere it's used: the assignment email, and the task it creates.</div>
-        <div class="sopwrap">
-          <div class="setcard" style="padding:8px">
-            <div class="soplist" id="sop-list"></div>
-            <button class="btn" style="width:calc(100% - 8px);margin:8px 4px 4px">＋ New SOP</button>
+        <div class="listhead"><h1>The Playbook</h1><span class="cnt">Your team's reusable library</span><span class="grow"></span><div class="viewseg"><button class="vseg on" data-pbview="sops">SOPs</button><button class="vseg" data-pbview="plays">Plays</button></div></div>
+        <div id="pb-sops">
+          <div style="color:var(--dim);font-size:12.5px;margin:-4px 2px 12px;max-width:660px">Short, repeatable checklists your team runs on key moments — assignment, onboarding, at-risk recovery. Edit one here and it updates everywhere it's used: the assignment email, and the task it creates.</div>
+          <div class="sopwrap">
+            <div class="setcard" style="padding:8px">
+              <div class="soplist" id="sop-list"></div>
+              <button class="btn" style="width:calc(100% - 8px);margin:8px 4px 4px">＋ New SOP</button>
+            </div>
+            <div class="setcard" id="sop-editor"></div>
           </div>
-          <div class="setcard" id="sop-editor"></div>
+        </div>
+        <div id="pb-plays" hidden>
+          <div style="color:var(--dim);font-size:12.5px;margin:-4px 2px 12px;max-width:680px">Reusable <b>plays</b> — directed team actions with a target. Leadership publishes one as <b>today's play</b> and it lands atop every AE's My Client Partners.</div>
+          <div class="setcard">
+            <div style="font-size:14px;font-weight:600">Call today's play</div>
+            <div class="playlib" id="pb-playlib"></div>
+            <div class="composer"><input class="gpin" id="pb-plnote" style="flex:1" placeholder="Add a note to the team…" value="Weather's turning — quick calls, log every one."><button class="btn grad" id="pb-pub" style="white-space:nowrap">Publish to team ›</button></div>
+          </div>
         </div>
       </div>
 
@@ -1259,6 +1313,32 @@
   var sqsc=document.getElementById('sq-scrim');if(sqsc)sqsc.addEventListener('click',sqCloseLead);
   document.querySelectorAll('#sq-board [data-guest]').forEach(function(b){b.addEventListener('click',sqOpenLead);});
   sqRenderFunnel();sqRenderList();
+  // ── Plays (The Playbook → Plays + AE 'Today's play' banner) ──
+  var PLAYS=[
+    {id:'yellow',name:'Call your yellow contacts',target:'warning-health contacts',count:7,dot:'amber',desc:'Every account trending to warning — a quick call resets the clock.'},
+    {id:'red',name:'Re-engage at-risk',target:'at-risk (red) accounts',count:3,dot:'rose',desc:'Red accounts — offer a fresh Selects or a call this week.'},
+    {id:'q4',name:'Push the Q4 campaign',target:'champions + engaged',count:12,dot:'green',desc:'Warm accounts with open briefs — pitch the Q4 Selects now.'},
+    {id:'await',name:'Chase awaiting approvals',target:'Selects sent · awaiting',count:5,dot:'indigo',desc:'Sent Selects with no answer yet — nudge for the approval.'}
+  ];
+  var pbSelected='yellow';
+  var PUBLISHED={play:PLAYS[0],note:'Weather’s turning — quick calls, log every one.',by:'Ava Chen',done:false};
+  function pbPlay(id){return PLAYS.filter(function(p){return p.id===id})[0]}
+  function renderPlaylib(){var el=document.getElementById('pb-playlib');if(!el)return;
+    el.innerHTML=PLAYS.map(function(p){return '<button class="playcard'+(p.id===pbSelected?' on':'')+'" data-play="'+p.id+'"><div class="pcn">'+p.name+'</div><span class="tgt '+p.dot+'"><span class="d"></span>'+p.count+' '+p.target+'</span><div class="pcd">'+p.desc+'</div></button>'}).join('');
+    el.querySelectorAll('[data-play]').forEach(function(b){b.addEventListener('click',function(){pbSelected=b.dataset.play;renderPlaylib()})});
+  }
+  function renderPlayban(){var el=document.getElementById('playban');if(!el)return;
+    if(!PUBLISHED){el.style.display='none';return;}el.style.display='';
+    var p=PUBLISHED.play;el.className='playban'+(PUBLISHED.done?' done':'');
+    el.innerHTML='<span class="pbic">'+(PUBLISHED.done?'✅':'📣')+'</span><div style="flex:1;min-width:0"><div style="font-size:13.5px">Today’s play — <b>'+p.name+'</b></div><div style="font-size:12px;color:var(--dim);margin-top:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap">from '+PUBLISHED.by+' · <span class="tgt '+p.dot+'" style="margin-top:0"><span class="d"></span>'+p.count+' '+p.target+'</span>'+(PUBLISHED.note?' · “'+PUBLISHED.note+'”':'')+'</div></div>'+(PUBLISHED.done?'<button class="btn" id="pb-reopen" style="white-space:nowrap">Reopen</button>':'<button class="btn grad" id="pb-see" style="white-space:nowrap">See them ›</button><button class="btn" id="pb-mark" style="white-space:nowrap">Mark done</button>')+'<button class="pbx" id="pb-hide" aria-label="Dismiss">×</button>';
+    var see=document.getElementById('pb-see');if(see)see.addEventListener('click',function(){var o=see.textContent;see.textContent='Filtering to '+p.count+'…';setTimeout(function(){see.textContent=o},1500)});
+    var mk=document.getElementById('pb-mark');if(mk)mk.addEventListener('click',function(){PUBLISHED.done=true;renderPlayban()});
+    var ro=document.getElementById('pb-reopen');if(ro)ro.addEventListener('click',function(){PUBLISHED.done=false;renderPlayban()});
+    var hd=document.getElementById('pb-hide');if(hd)hd.addEventListener('click',function(){el.style.display='none'});
+  }
+  var pbpub=document.getElementById('pb-pub');if(pbpub)pbpub.addEventListener('click',function(){var p=pbPlay(pbSelected),nt=document.getElementById('pb-plnote'),note=nt?nt.value.trim():'';PUBLISHED={play:p,note:note,by:'Ava Chen',done:false};renderPlayban();});
+  document.querySelectorAll('#screen-sops .vseg[data-pbview]').forEach(function(v){v.addEventListener('click',function(){document.querySelectorAll('#screen-sops .vseg[data-pbview]').forEach(function(x){x.classList.remove('on')});v.classList.add('on');var plays=v.dataset.pbview==='plays';var so=document.getElementById('pb-sops'),pl=document.getElementById('pb-plays');if(so)so.hidden=plays;if(pl)pl.hidden=!plays})});
+  renderPlaylib();renderPlayban();
   var railtog=document.getElementById('rail-toggle'),appEl=document.getElementById('app');
   function toggleRail(){if(!appEl)return;var col=appEl.classList.toggle('collapsed');var ic=document.getElementById('rt-ic');if(ic)ic.textContent=col?'»':'«';if(railtog){var lbl=railtog.querySelector('.rtlbl');if(lbl)lbl.textContent=col?'Expand':'Collapse menu';}var t=document.getElementById('rail-collapse-top');if(t)t.setAttribute('aria-label',col?'Expand menu':'Collapse menu');}
   if(railtog&&appEl)railtog.addEventListener('click',toggleRail);
@@ -1267,28 +1347,44 @@
   document.querySelectorAll('#screen-player .plreact').forEach(function(grp){grp.querySelectorAll('.plrx').forEach(function(b){b.addEventListener('click',function(){grp.querySelectorAll('.plrx').forEach(function(x){x.classList.remove('on')});b.classList.add('on')})})});
 
   var GP=[
-    {t:'Confirm the Q4 brief + timeline',done:false},
-    {t:'Walk the “Late-night drive” engagement — Ember is the standout (replayed 3×)',done:true},
-    {t:'Pitch 2 more cinematic options',done:false}
+    {topic:'Confirm the brief',src:null,questions:['Confirm the Q4 brief + timeline','Anything changed since we scoped it?'],covered:false,note:''},
+    {topic:'Nail the vibe',src:'Selects · Holiday social',questions:['When you say warmer — more acoustic, or more nostalgic?','What scene does it play under?'],covered:true,note:''}
+  ];
+  var GPSUG=[
+    {topic:'Budget & Scope',src:'The Playbook',questions:['What’s the budget range for the sync?','Any usage beyond what we scoped — social cutdowns, extensions?']},
+    {topic:'Decision-makers',src:'The Playbook',questions:['Who else signs off on the picks?','Who owns the final yes?']},
+    {topic:'Pipeline ahead',src:'Leadership',questions:['Any other campaigns this quarter?','What’s coming we should pre-build for?']},
+    {topic:'Lock the license',src:'The Playbook',questions:['What’s your timeline to lock the license?','Any blockers to signing?']}
   ];
   function gpFlash(msg,warn){var m=document.getElementById('gp-msg');if(!m)return;m.textContent=msg;m.style.display='inline';m.style.color=warn?'var(--amber-fg)':'var(--green-fg)';clearTimeout(m._t);m._t=setTimeout(function(){m.style.display='none'},2600)}
   function renderGP(){var el=document.getElementById('gp-topics');if(!el)return;
-    el.innerHTML=GP.map(function(g,i){return '<div class="gptopic'+(g.done?' done':'')+'"><span class="gpck'+(g.done?' on':'')+'" data-ck="'+i+'">✓</span><span class="gptx">'+g.t+'</span><button class="gprm" data-rm="'+i+'" aria-label="Remove">×</button></div>'}).join('');
-    el.querySelectorAll('[data-ck]').forEach(function(c){c.addEventListener('click',function(){GP[+c.dataset.ck].done=!GP[+c.dataset.ck].done;renderGP()})});
+    el.innerHTML=GP.map(function(g,i){var qs=g.questions.map(function(q){return '<li>'+q+'</li>'}).join('');
+      return '<div class="gptopic'+(g.covered?' done':'')+'"><span class="gpck'+(g.covered?' on':'')+'" data-ck="'+i+'">✓</span>'+
+        '<div class="gptbody"><div class="gpthd"><span class="gpttopic">'+g.topic+'</span>'+(g.src?'<span class="gptsrc">↳ '+g.src+'</span>':'')+'</div>'+
+        (qs?'<ul class="gptqs">'+qs+'</ul>':'')+
+        '<input class="gptnote" data-note="'+i+'" placeholder="Add a note from the call…" value="'+(g.note||'').replace(/"/g,'&quot;')+'"></div>'+
+        '<button class="gprm" data-rm="'+i+'" aria-label="Remove">×</button></div>'}).join('');
+    el.querySelectorAll('[data-ck]').forEach(function(c){c.addEventListener('click',function(){GP[+c.dataset.ck].covered=!GP[+c.dataset.ck].covered;renderGP()})});
+    el.querySelectorAll('[data-note]').forEach(function(inp){inp.addEventListener('input',function(){GP[+inp.dataset.note].note=inp.value})});
     el.querySelectorAll('[data-rm]').forEach(function(b){b.addEventListener('click',function(){GP.splice(+b.dataset.rm,1);renderGP()})});
-    var done=GP.filter(function(g){return g.done}).length;var hint=GP.length<3?' · add '+(3-GP.length)+' more':(GP.length>5?' · trim to 5':'');
-    var cnt=document.getElementById('gp-count');if(cnt)cnt.textContent=done+' / '+GP.length+' covered'+hint;
+    var done=GP.filter(function(g){return g.covered}).length,n=GP.length;
+    var cnt=document.getElementById('gp-count');if(cnt)cnt.textContent=(n>5?n+' topics · aim ~5':done+' of '+n+' covered');
   }
-  document.querySelectorAll('#mcp-person .gpsug').forEach(function(s){s.addEventListener('click',function(){if(GP.length>=5){gpFlash('Keep it to 5 topics',1);return}GP.push({t:s.dataset.t,done:false});renderGP()})});
-  var gpsave=document.getElementById('gp-save');if(gpsave)gpsave.addEventListener('click',function(){gpFlash('✓ Game plan saved for your next call')});
+  function renderGPSug(){var el=document.getElementById('gp-sugrow');if(!el)return;
+    el.innerHTML=GPSUG.map(function(s,i){return '<button class="gpsugcard" data-sug="'+i+'"><span class="st">'+s.topic+'</span><span class="ss">'+s.src+' · '+s.questions.length+' questions</span></button>'}).join('')||'<span style="font-size:11.5px;color:var(--dim)">All added.</span>';
+    el.querySelectorAll('[data-sug]').forEach(function(b){b.addEventListener('click',function(){var i=+b.dataset.sug,s=GPSUG[i];GP.push({topic:s.topic,src:s.src,questions:s.questions.slice(),covered:false,note:''});GPSUG.splice(i,1);renderGP();renderGPSug()})});
+  }
+  var gpadd=document.getElementById('gp-add'),gpinput=document.getElementById('gp-input');
+  function gpAddCustom(){if(!gpinput)return;var v=(gpinput.value||'').trim();if(!v)return;GP.push({topic:v,src:null,questions:[],covered:false,note:''});gpinput.value='';renderGP()}
+  if(gpadd)gpadd.addEventListener('click',gpAddCustom);
+  if(gpinput)gpinput.addEventListener('keydown',function(e){if(e.key==='Enter')gpAddCustom()});
   var gplog=document.getElementById('gp-log');if(gplog)gplog.addEventListener('click',function(){
-    var done=GP.filter(function(g){return g.done});var nt=document.getElementById('gp-notes');var notes=nt?nt.value.trim():'';
+    var done=GP.filter(function(g){return g.covered}).length,n=GP.length;
     var log=document.getElementById('pe-log');
-    if(log){var el=document.createElement('div');el.className='tli';el.innerHTML='<span class="dot"></span><div><div class="tx">Logged a call — covered '+done.length+' of '+GP.length+' game-plan topics'+(notes?': '+notes:'.')+'</div><div class="dt">Just now · call</div></div>';log.insertBefore(el,log.firstChild)}
-    gpFlash('✓ Conversation logged to the relationship log');
-    GP.forEach(function(g){g.done=false});if(nt)nt.value='';renderGP();
+    if(log){var el=document.createElement('div');el.className='tli';el.innerHTML='<span class="dot"></span><div><div class="tx">Game plan — covered '+done+' of '+n+' topics on the call with Maya.</div><div class="dt">Just now · call</div></div>';log.insertBefore(el,log.firstChild)}
+    gpFlash('✓ Logged '+done+' of '+n+' topics to the relationship log');
   });
-  renderGP();
+  renderGP();renderGPSug();
 
   setRole('ae');
 })();
