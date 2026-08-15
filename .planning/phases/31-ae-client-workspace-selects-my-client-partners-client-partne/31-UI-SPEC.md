@@ -410,8 +410,10 @@ folded in) + `phase-31-selects-pipeline-compare.html` (standalone prototype).
   **Log conversation** is the primary CTA that closes the loop, writing "{N} of {M} covered" +
   notes to the relationship log — 0-of-N is a valid, clearly-labeled log entry, never a blank.
 
-Topics can be **seeded from the Selects pipeline** — a next-best-action's **"+ Game Plan"** question
-drops in as a topic tagged its source (*"↳ from Selects · Holiday social"* — [[project_ae_coaching_questions]]).
+Each item is a **topic** (a theme, e.g. "Budget & Scope") with its pertaining **open-ended questions**
+underneath; "covered" + the note sit at the topic level. Topics are **reusable bundles** sourced from
+**The Playbook**, **Leadership**, or the **Selects pipeline** (a next-best-action's **"+ Game Plan"** drops
+the topic in, tagged its source — *"↳ Selects · Holiday social"* — [[project_ae_coaching_questions]]).
 Build reference (full lifecycle, build → call → log): `phase-31-game-plan.html`.
 
 ---

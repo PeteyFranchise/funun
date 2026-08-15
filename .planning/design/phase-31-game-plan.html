@@ -28,16 +28,15 @@ body{margin:0;background:var(--ground);color:var(--text);font-family:var(--sans)
 .wrap{max-width:720px;margin:0 auto;padding:24px 22px 90px}
 .top{display:flex;align-items:flex-start;gap:12px}
 h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
-.sub{color:var(--dim);font-size:13.5px;margin:0;line-height:1.5;max-width:560px}
+.sub{color:var(--dim);font-size:13.5px;margin:0;line-height:1.5;max-width:580px}
 .themebtn{margin-left:auto;flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:12.5px;padding:7px 13px;border-radius:999px;cursor:pointer}
 .themebtn:hover{background:var(--panel-2)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 16px;margin-top:18px}
 
-/* header + phases */
 .gph{display:flex;align-items:flex-start;gap:12px}
 .gpt{font-size:16px;font-weight:600}
 .gps{font-size:12.5px;color:var(--dim);margin-top:3px}
-.cap{margin-left:auto;flex:0 0 auto;font-size:12px;color:var(--dim);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+.cap{margin-left:auto;flex:0 0 auto;font-size:12px;color:var(--dim);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;white-space:nowrap}
 .cap.over{color:var(--amber-fg);border-color:var(--amber-line);background:var(--amber-bg)}
 .phases{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap}
 .phase{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
@@ -45,41 +44,45 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
 .phase .num{width:16px;height:16px;border-radius:50%;background:var(--panel-2);color:var(--indigo);display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700}
 .phsep{color:var(--line2)}
 
-/* topics */
-.topics{margin-top:4px}
-.topic{display:flex;align-items:flex-start;gap:11px;padding:11px 4px;border-top:1px solid var(--line)}
+/* topic (heading + its open-ended questions) */
+.topic{display:flex;align-items:flex-start;gap:11px;padding:12px 4px;border-top:1px solid var(--line)}
 .chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line2);flex:0 0 auto;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent}
 .chk:hover{border-color:var(--indigo)}
 .chk.on{background:var(--grad);border-color:transparent;color:#fff}
 .chk svg{width:13px;height:13px}
 .tbody{flex:1;min-width:0}
-.ttext{font-size:14px;line-height:1.4}
-.topic.done .ttext{color:var(--dim)}
-.tsrc{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--indigo);background:var(--panel-2);border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:1px}
-.tnote{margin-top:7px;width:100%;background:transparent;border:0;border-bottom:1px dashed var(--line2);color:var(--text);font:inherit;font-size:12.5px;padding:2px 0}
+.thead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ttopic{font-size:14px;font-weight:600}
+.topic.done .ttopic{color:var(--dim)}
+.tsrc{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--indigo);background:var(--panel-2);border-radius:999px;padding:2px 8px}
+.tqs{margin:6px 0 0;padding:0;list-style:none}
+.tqs li{position:relative;padding-left:15px;font-size:12.5px;color:var(--lav);line-height:1.6}
+.tqs li::before{content:"";position:absolute;left:3px;top:9px;width:4px;height:4px;border-radius:50%;background:var(--indigo);opacity:.7}
+.tnote{margin-top:9px;width:100%;background:transparent;border:0;border-bottom:1px dashed var(--line2);color:var(--text);font:inherit;font-size:12.5px;padding:2px 0}
 .tnote::placeholder{color:var(--dim)} .tnote:focus{outline:none;border-bottom-color:var(--indigo)}
 .trm{background:none;border:0;color:var(--dim);font-size:16px;cursor:pointer;flex:0 0 auto;padding:0 4px;line-height:1}
 .trm:hover{color:var(--fuchsia)}
 
-/* add + suggested */
-.addrow{display:flex;gap:8px;margin-top:12px}
+/* add + suggested topics */
+.addrow{display:flex;gap:8px;margin-top:13px}
 .gpinput{flex:1;background:var(--ground);border:1px solid var(--line);border-radius:10px;color:var(--text);font:inherit;font-size:13px;padding:9px 12px}
 .gpinput:focus{outline:none;border-color:var(--indigo)}
 .addbtn{border:1px solid var(--line2);background:transparent;color:var(--text);font:inherit;font-size:13px;padding:9px 15px;border-radius:10px;cursor:pointer}
 .addbtn:hover{background:var(--panel-2)}
-.suglbl{font-size:11px;color:var(--dim);margin:14px 0 7px}
-.sugrow{display:flex;flex-wrap:wrap;gap:7px}
-.sug{border:1px dashed var(--line2);background:transparent;color:var(--lav);font:inherit;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer}
-.sug:hover{border-style:solid;border-color:var(--indigo);color:var(--text);background:var(--panel-2)}
-.sug::before{content:"+ ";color:var(--indigo)}
+.suglbl{font-size:11px;color:var(--dim);margin:15px 0 8px}
+.sugrow{display:flex;flex-wrap:wrap;gap:8px}
+.sug{border:1px dashed var(--line2);background:transparent;color:var(--lav);font:inherit;font-size:12.5px;padding:7px 12px;border-radius:11px;cursor:pointer;text-align:left;max-width:230px}
+.sug:hover{border-style:solid;border-color:var(--indigo);background:var(--panel-2)}
+.sug .st{font-weight:600;color:var(--text)}
+.sug .st::before{content:"+ ";color:var(--indigo)}
+.sug .ss{display:block;font-size:10.5px;color:var(--dim);margin-top:3px}
+.sug .sq{display:block;font-size:11px;color:var(--lav);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* footer */
 .gpf{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
 .logbtn{border:0;background:var(--grad);color:#fff;font:inherit;font-size:14px;font-weight:600;padding:11px 20px;border-radius:11px;cursor:pointer;box-shadow:0 12px 30px -12px rgba(217,70,239,.5)}
 .logbtn:active{transform:scale(.98)}
 .gpf .fhint{font-size:11.5px;color:var(--dim);line-height:1.4}
 
-/* relationship log */
 .logh{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 2px 4px}
 .logentry{display:flex;gap:11px;padding:12px 4px;border-top:1px solid var(--line)}
 .logentry:first-child{border-top:0}
@@ -89,7 +92,7 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
 @keyframes pop{from{background:var(--green-bg)}to{background:transparent}}
 .logtx{font-size:13.5px;line-height:1.45}
 .logmeta{font-size:11.5px;color:var(--dim);margin-top:3px}
-.lognotes{font-size:12px;color:var(--lav);margin-top:5px;padding-left:11px;border-left:2px solid var(--line2)}
+.lognotes{font-size:12px;color:var(--lav);margin-top:6px;padding-left:11px;border-left:2px solid var(--line2);line-height:1.6}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--panel-2);border:1px solid var(--line2);border-radius:999px;padding:10px 18px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;box-shadow:0 18px 40px -18px rgba(0,0,0,.5)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 [hidden]{display:none !important}
@@ -100,7 +103,7 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
   <div class="top">
     <div>
       <h1>Game Plan</h1>
-      <p class="sub">Pre-call topic planning in the person workspace (R14). Build a short list — some from the <b>Selects → “+ Game Plan”</b> flow — cover them on the call, then <b>Log conversation</b> to write it to the relationship log.</p>
+      <p class="sub">Pre-call topic planning (R14). Each item is a <b>topic</b> (a theme) with its pertaining <b>open-ended questions</b> underneath — pulled from <b>The Playbook</b>, <b>Leadership</b>, or the <b>Selects</b> pipeline. Cover them on the call, then <b>Log conversation</b>.</p>
     </div>
     <button class="themebtn" id="themebtn">☾ Dark</button>
   </div>
@@ -108,7 +111,7 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
   <div class="card">
     <div class="gph">
       <div><div class="gpt">Game plan — next call with Maya Osei</div><div class="gps">Sunset Lane Media · re: the “Late-night drive” Selects</div></div>
-      <span class="cap" id="cap">3 of 5</span>
+      <span class="cap" id="cap">2 of 5</span>
     </div>
     <div class="phases">
       <span class="phase"><span class="num">1</span><b>Build the plan</b></span><span class="phsep">›</span>
@@ -116,8 +119,8 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
       <span class="phase"><span class="num">3</span>Log it</span>
     </div>
     <div class="topics" id="topics"></div>
-    <div class="addrow"><input class="gpinput" id="gpinput" placeholder="Add a topic to cover…"><button class="addbtn" id="addbtn">Add</button></div>
-    <div class="suglbl">Suggested topics</div>
+    <div class="addrow"><input class="gpinput" id="gpinput" placeholder="Add your own topic…"><button class="addbtn" id="addbtn">Add</button></div>
+    <div class="suglbl">Suggested topics — from The Playbook &amp; Leadership</div>
     <div class="sugrow" id="sugrow"></div>
     <div class="gpf"><button class="logbtn" id="logbtn">Log conversation</button><div class="fhint" id="fhint"></div></div>
   </div>
@@ -136,32 +139,38 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
 
   var CAP=5;
   var TOPICS=[
-    {text:'Confirm the Q4 brief + timeline',covered:false,note:'',src:null},
-    {text:'When you say warmer — more acoustic, or more nostalgic?',covered:false,note:'',src:'Holiday social'},
-    {text:'What scene does it play under?',covered:false,note:'',src:'Holiday social'}
+    {topic:'Confirm the brief',src:null,questions:['Confirm the Q4 brief + timeline','Anything changed since we scoped it?'],covered:false,note:''},
+    {topic:'Nail the vibe',src:'Selects · Holiday social',questions:['When you say warmer — more acoustic, or more nostalgic?','What scene does it play under?'],covered:false,note:''}
   ];
-  var SUGGESTED=['Who else signs off on the picks?','Any other campaigns this quarter?','Budget range for the sync?','Timeline to lock the license?'];
+  var SUGGESTED=[
+    {topic:'Budget & Scope',src:'The Playbook',questions:['What’s the budget range for the sync?','Any usage beyond what we scoped — social cutdowns, extensions?']},
+    {topic:'Decision-makers',src:'The Playbook',questions:['Who else signs off on the picks?','Who owns the final yes?']},
+    {topic:'Pipeline ahead',src:'Leadership',questions:['Any other campaigns this quarter?','What’s coming we should pre-build for?']},
+    {topic:'Lock the license',src:'The Playbook',questions:['What’s your timeline to lock the license?','Any blockers to signing?']}
+  ];
   var LOG=[
     {type:'note',text:'Loved the moody-synth Selects — forwarding for the Nike spot.',when:'Aug 12',notes:''},
     {type:'call',text:'Intro call — she owns music at Sunset Lane; wants a go-to for auto + tech brands.',when:'Aug 5',notes:''}
   ];
   var CHK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   var topicsEl=document.getElementById('topics'),sugEl=document.getElementById('sugrow'),logEl=document.getElementById('log'),capEl=document.getElementById('cap'),fhintEl=document.getElementById('fhint');
+  function esc(s){return (s||'').replace(/"/g,'&quot;')}
 
   function updateCap(){
     var n=TOPICS.length;
-    capEl.textContent=n+' of '+CAP;
+    capEl.textContent=(n>CAP)?(n+' topics · aim for ~'+CAP):(n+' of '+CAP);
     capEl.classList.toggle('over',n>CAP);
-    if(n>CAP)capEl.textContent=n+' topics · aim for ~'+CAP;
     var cov=TOPICS.filter(function(t){return t.covered}).length;
-    fhintEl.innerHTML='Writes <b>'+cov+' of '+n+' covered</b> + your notes to the relationship log.';
+    fhintEl.innerHTML='Writes <b>'+cov+' of '+n+' topics covered</b> + your notes to the relationship log.';
   }
   function renderTopics(){
     topicsEl.innerHTML=TOPICS.map(function(t,i){
+      var qs=t.questions.map(function(q){return '<li>'+q+'</li>'}).join('');
       return '<div class="topic'+(t.covered?' done':'')+'">'+
         '<button class="chk'+(t.covered?' on':'')+'" data-chk="'+i+'" aria-label="Covered">'+CHK+'</button>'+
-        '<div class="tbody"><div class="ttext">'+t.text+(t.src?'<span class="tsrc">↳ from Selects · '+t.src+'</span>':'')+'</div>'+
-        '<input class="tnote" data-note="'+i+'" placeholder="Add a note from the call…" value="'+(t.note||'').replace(/"/g,'&quot;')+'"></div>'+
+        '<div class="tbody"><div class="thead"><span class="ttopic">'+t.topic+'</span>'+(t.src?'<span class="tsrc">↳ '+t.src+'</span>':'')+'</div>'+
+        (qs?'<ul class="tqs">'+qs+'</ul>':'')+
+        '<input class="tnote" data-note="'+i+'" placeholder="Add a note from the call…" value="'+esc(t.note)+'"></div>'+
         '<button class="trm" data-rm="'+i+'" aria-label="Remove">×</button></div>';
     }).join('');
     topicsEl.querySelectorAll('[data-chk]').forEach(function(b){b.addEventListener('click',function(){TOPICS[+b.dataset.chk].covered=!TOPICS[+b.dataset.chk].covered;renderTopics();updateCap();});});
@@ -169,8 +178,10 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
     topicsEl.querySelectorAll('[data-rm]').forEach(function(b){b.addEventListener('click',function(){TOPICS.splice(+b.dataset.rm,1);renderTopics();updateCap();});});
   }
   function renderSuggested(){
-    sugEl.innerHTML=SUGGESTED.map(function(s,i){return '<button class="sug" data-sug="'+i+'">'+s+'</button>'}).join('')||'<span style="font-size:12px;color:var(--dim)">All added.</span>';
-    sugEl.querySelectorAll('[data-sug]').forEach(function(b){b.addEventListener('click',function(){var i=+b.dataset.sug;addTopic(SUGGESTED[i],null);SUGGESTED.splice(i,1);renderSuggested();});});
+    sugEl.innerHTML=SUGGESTED.map(function(s,i){
+      return '<button class="sug" data-sug="'+i+'"><span class="st">'+s.topic+'</span><span class="ss">'+s.src+' · '+s.questions.length+' questions</span><span class="sq">'+s.questions[0]+'</span></button>';
+    }).join('')||'<span style="font-size:12px;color:var(--dim)">All added.</span>';
+    sugEl.querySelectorAll('[data-sug]').forEach(function(b){b.addEventListener('click',function(){var i=+b.dataset.sug,s=SUGGESTED[i];TOPICS.push({topic:s.topic,src:s.src,questions:s.questions.slice(),covered:false,note:''});SUGGESTED.splice(i,1);renderTopics();renderSuggested();updateCap();});});
   }
   function renderLog(freshId){
     logEl.innerHTML=LOG.map(function(e,i){
@@ -179,18 +190,18 @@ h1{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
         (e.notes?'<div class="lognotes">'+e.notes+'</div>':'')+'</div></div>';
     }).join('');
   }
-  function addTopic(text,src){text=(text||'').trim();if(!text)return;TOPICS.push({text:text,covered:false,note:'',src:src});renderTopics();updateCap();}
 
-  document.getElementById('addbtn').addEventListener('click',function(){var inp=document.getElementById('gpinput');addTopic(inp.value,null);inp.value='';inp.focus();});
-  document.getElementById('gpinput').addEventListener('keydown',function(e){if(e.key==='Enter'){var inp=e.target;addTopic(inp.value,null);inp.value='';}});
+  document.getElementById('addbtn').addEventListener('click',addCustom);
+  document.getElementById('gpinput').addEventListener('keydown',function(e){if(e.key==='Enter')addCustom();});
+  function addCustom(){var inp=document.getElementById('gpinput');var v=(inp.value||'').trim();if(!v)return;TOPICS.push({topic:v,src:null,questions:[],covered:false,note:''});inp.value='';renderTopics();updateCap();inp.focus();}
 
   function toast(msg){var t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on')},2600);}
   document.getElementById('logbtn').addEventListener('click',function(){
     var n=TOPICS.length,cov=TOPICS.filter(function(t){return t.covered}).length;
-    var noted=TOPICS.filter(function(t){return t.note&&t.note.trim()}).map(function(t){return '“'+t.text.replace(/\?$/,'')+'”: '+t.note.trim()});
-    var entry={type:'call',text:'Game plan — <b>'+cov+' of '+n+' covered</b> on the call with Maya.',when:'just now',notes:noted.join(' · ')};
+    var noted=TOPICS.filter(function(t){return t.note&&t.note.trim()}).map(function(t){return '<b>'+t.topic+'</b> — '+t.note.trim()});
+    var entry={type:'call',text:'Game plan — <b>'+cov+' of '+n+' topics covered</b> on the call with Maya.',when:'just now',notes:noted.join('<br>')};
     LOG.unshift(entry);renderLog(0);
-    toast(cov===0?'Logged — 0 of '+n+' covered (still a valid log)':'Logged '+cov+' of '+n+' to the relationship log ✓');
+    toast(cov===0?'Logged — 0 of '+n+' covered (still a valid log)':'Logged '+cov+' of '+n+' topics to the relationship log ✓');
   });
 
   renderTopics();renderSuggested();renderLog(-1);updateCap();
