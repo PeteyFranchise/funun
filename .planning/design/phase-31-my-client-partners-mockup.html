@@ -358,6 +358,42 @@
   .pbic{font-size:19px;flex:0 0 auto}
   .pbx{background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer;flex:0 0 auto;line-height:1}
   .pbx:hover{color:var(--text)}
+  /* ── Team page (roles & permissions), scoped ── */
+  #screen-team .adminchip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--fuchsia);background:var(--panel);border:1px solid var(--line2);border-radius:999px;padding:5px 11px;margin:2px 2px 4px}
+  #screen-team .adminchip .d{width:6px;height:6px;border-radius:50%;background:var(--fuchsia)}
+  #screen-team .tmlbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:20px 2px 9px}
+  #screen-team .rolelegend{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #screen-team .rolecard{border:1px solid var(--line);background:var(--panel);border-radius:13px;padding:12px 13px}
+  #screen-team .rolecard .rh{display:flex;align-items:center;gap:8px}
+  #screen-team .rdot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+  #screen-team .rname{font-size:13.5px;font-weight:600}
+  #screen-team .rolecard .ru{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.5}
+  #screen-team .r-ae .rdot{background:var(--indigo)} #screen-team .r-leadership .rdot{background:var(--green-fg)}
+  #screen-team .r-ops .rdot{background:var(--amber-fg)} #screen-team .r-admin .rdot{background:var(--fuchsia)}
+  #screen-team .roster{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px 8px}
+  #screen-team .mrow{display:flex;align-items:center;gap:13px;padding:13px 8px}#screen-team .mrow+.mrow{border-top:1px solid var(--line)}
+  #screen-team .tmav{width:36px;height:36px;border-radius:10px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--lav);flex:0 0 auto}
+  #screen-team .mid2{min-width:0;width:190px;flex:0 0 auto}
+  #screen-team .mn{font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:7px}
+  #screen-team .you{font-size:10px;color:var(--fuchsia);background:var(--panel-2);border-radius:999px;padding:1px 7px}
+  #screen-team .me{font-size:11.5px;color:var(--dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #screen-team .rtogs{flex:1;display:flex;gap:6px;flex-wrap:wrap}
+  #screen-team .rtog{font:inherit;font-size:11.5px;padding:5px 11px;border-radius:999px;cursor:pointer;border:1px dashed var(--line2);background:transparent;color:var(--dim)}
+  #screen-team .rtog:hover{color:var(--text)}
+  #screen-team .rtog.on{border-style:solid;border-color:transparent;color:#fff}
+  #screen-team .rtog.on.r-ae{background:var(--indigo)} #screen-team .rtog.on.r-leadership{background:var(--green-fg)}
+  #screen-team .rtog.on.r-ops{background:var(--amber-fg);color:#3a2a05} #screen-team .rtog.on.r-admin{background:var(--fuchsia)}
+  #screen-team .mstat{width:78px;flex:0 0 auto;text-align:right;font-size:11.5px;color:var(--dim)}
+  #screen-team .mstat .inv{color:var(--amber-fg)}
+  #screen-team .audit{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 12px}
+  #screen-team .arow{display:flex;gap:10px;padding:10px 4px;font-size:12.5px;border-top:1px solid var(--line)}
+  #screen-team .arow:first-child{border-top:0}
+  #screen-team .arow .adot{width:7px;height:7px;border-radius:50%;background:var(--indigo);flex:0 0 auto;margin-top:5px}
+  #screen-team .arow.fresh{animation:tmpop .5s ease}
+  #screen-team .arow .aw{margin-left:auto;color:var(--dim);font-size:11px;white-space:nowrap}
+  @keyframes tmpop{from{background:var(--green-bg)}to{background:transparent}}
+  #tm-toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:80;background:var(--panel-2);border:1px solid var(--line2);border-radius:999px;padding:10px 18px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;box-shadow:0 18px 40px -18px rgba(0,0,0,.5)}
+  #tm-toast.on{opacity:1;transform:translate(-50%,0)} #tm-toast.warn{border-color:var(--amber-line);color:var(--amber-fg)}
   .pipe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
   .step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim);background:var(--panel-2);padding:8px 13px;border-radius:999px}
   .step.done{color:var(--lav)} .step.done .sd{background:var(--green-fg)} .step.cur{color:#fff;background:var(--grad);font-weight:500}
@@ -560,6 +596,7 @@
     <button class="sc" data-ready="1" data-screen="crate"><span class="dot"></span>Crate Requests</button>
     <button class="sc" data-screen="health"><span class="dot" style="background:var(--indigo)"></span>Health rules · settings</button>
     <button class="sc" data-screen="sops"><span class="dot" style="background:var(--indigo)"></span>The Playbook</button>
+    <button class="sc" data-screen="team"><span class="dot" style="background:var(--fuchsia)"></span>Team</button>
     <button class="themebtn" id="themebtn" aria-label="Toggle light or dark theme"><span id="themeic">☾</span><span id="themetx">Dark</span></button>
   </nav>
 
@@ -577,7 +614,7 @@
         <a href="#"><span class="ic">▦</span>GTM Metrics</a>
       </div>
       <div class="navlbl">Ops</div>
-      <div class="nav"><a href="#"><span class="ic">◷</span>Verification</a><a href="#"><span class="ic">▣</span>Reports</a><a href="#" id="nav-playbook"><span class="ic">☰</span>The Playbook</a></div>
+      <div class="nav"><a href="#"><span class="ic">◷</span>Verification</a><a href="#"><span class="ic">▣</span>Reports</a><a href="#" id="nav-playbook"><span class="ic">☰</span>The Playbook</a><a href="#" id="nav-team"><span class="ic">⚇</span>Team</a></div>
       <div class="aecard"><span class="av" id="ae-av">JT</span><div><div style="font-size:12.5px" id="ae-nm">Jae Tran</div><div class="muted" style="font-size:11px" id="ae-rl">Account exec</div></div></div>
       <button class="railtoggle" id="rail-toggle" aria-label="Collapse or expand menu"><span class="ic" id="rt-ic">«</span><span class="rtlbl">Collapse menu</span></button>
     </aside>
@@ -886,6 +923,23 @@
         </div>
       </div>
 
+      <div class="panelwrap" id="screen-team">
+        <div class="listhead"><h1>Team</h1><span class="cnt">Roles &amp; permissions</span></div>
+        <div style="color:var(--dim);font-size:12.5px;margin:-4px 2px 8px;max-width:650px">One account per person, keyed to their <b>company email</b> — it never changes. What changes is which <b>roles</b> the account holds; each turns on and off, and a person can hold several at once.</div>
+        <div class="adminchip"><span class="d"></span>You're an <b>Admin</b> · Ava Chen — only Admins can change roles</div>
+        <div class="tmlbl">What each role unlocks</div>
+        <div class="rolelegend">
+          <div class="rolecard r-ae"><div class="rh"><span class="rdot"></span><span class="rname">AE</span></div><div class="ru">Works a book of clients — My Client Partners, Selects, Crate Requests, Deals.</div></div>
+          <div class="rolecard r-leadership"><div class="rh"><span class="rdot"></span><span class="rname">Leadership</span></div><div class="ru">The control tower — assign/route AEs, Health rules, publish Plays, team-wide views.</div></div>
+          <div class="rolecard r-ops"><div class="rh"><span class="rdot"></span><span class="rname">Ops</span></div><div class="ru">Verification, Reports, and editing The Playbook (SOPs, Topics, Plays).</div></div>
+          <div class="rolecard r-admin"><div class="rh"><span class="rdot"></span><span class="rname">Admin / Owner</span></div><div class="ru">Manage team roles (this page) + settings &amp; billing. Only Admins can toggle roles.</div></div>
+        </div>
+        <div class="tmlbl">Team · 6 people</div>
+        <div class="roster" id="tm-roster"></div>
+        <div class="tmlbl">Recent role changes</div>
+        <div class="audit" id="tm-audit"></div>
+        <div id="tm-toast"></div>
+      </div>
       <div class="panelwrap" id="screen-health">
         <div class="setwrap">
           <div class="setcard">
@@ -1339,6 +1393,37 @@
   var pbpub=document.getElementById('pb-pub');if(pbpub)pbpub.addEventListener('click',function(){var p=pbPlay(pbSelected),nt=document.getElementById('pb-plnote'),note=nt?nt.value.trim():'';PUBLISHED={play:p,note:note,by:'Ava Chen',done:false};renderPlayban();});
   document.querySelectorAll('#screen-sops .vseg[data-pbview]').forEach(function(v){v.addEventListener('click',function(){document.querySelectorAll('#screen-sops .vseg[data-pbview]').forEach(function(x){x.classList.remove('on')});v.classList.add('on');var plays=v.dataset.pbview==='plays';var so=document.getElementById('pb-sops'),pl=document.getElementById('pb-plays');if(so)so.hidden=plays;if(pl)pl.hidden=!plays})});
   renderPlaylib();renderPlayban();
+  // ── Team page (roles & permissions) ──
+  var TM_ROLES=[{k:'ae',l:'AE'},{k:'leadership',l:'Leadership'},{k:'ops',l:'Ops'},{k:'admin',l:'Admin'}];
+  var TM_MEMBERS=[
+    {name:'Ava Chen',email:'ava@funun.co',roles:{ae:false,leadership:true,ops:false,admin:true},status:'Active',me:true},
+    {name:'Jae Tran',email:'jae@funun.co',roles:{ae:true,leadership:false,ops:false,admin:false},status:'Active'},
+    {name:'Marcus Webb',email:'marcus@funun.co',roles:{ae:true,leadership:true,ops:false,admin:false},status:'Active'},
+    {name:'Nadia Roos',email:'nadia@funun.co',roles:{ae:true,leadership:false,ops:false,admin:false},status:'Active'},
+    {name:'Sam Okoro',email:'sam.ops@funun.co',roles:{ae:false,leadership:false,ops:true,admin:false},status:'Active'},
+    {name:'Priya Raman',email:'priya@funun.co',roles:{ae:true,leadership:false,ops:false,admin:false},status:'Invited'}
+  ];
+  var TM_AUDIT=[{tx:'<b>Ava Chen</b> turned <b>ON</b> Leadership for <b>Marcus Webb</b>',when:'2h ago'},{tx:'<b>Ava Chen</b> invited <b>Priya Raman</b> as AE',when:'yesterday'}];
+  function tmInit(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()}
+  function tmAdminCount(){return TM_MEMBERS.filter(function(m){return m.roles.admin}).length}
+  function tmToast(msg,warn){var t=document.getElementById('tm-toast');if(!t)return;t.innerHTML=msg;t.className=(warn?'warn ':'')+'on';clearTimeout(t._h);t._h=setTimeout(function(){t.className=''},3000)}
+  function tmRenderRoster(){var el=document.getElementById('tm-roster');if(!el)return;
+    el.innerHTML=TM_MEMBERS.map(function(m,i){var togs=TM_ROLES.map(function(r){return '<button class="rtog r-'+r.k+(m.roles[r.k]?' on':'')+'" data-tm="'+i+'" data-tr="'+r.k+'">'+r.l+'</button>'}).join('');
+      return '<div class="mrow"><span class="tmav">'+tmInit(m.name)+'</span><div class="mid2"><div class="mn">'+m.name+(m.me?'<span class="you">You</span>':'')+'</div><div class="me">'+m.email+'</div></div><div class="rtogs">'+togs+'</div><div class="mstat">'+(m.status==='Invited'?'<span class="inv">Invited</span>':'Active')+'</div></div>';
+    }).join('');
+    el.querySelectorAll('[data-tr]').forEach(function(b){b.addEventListener('click',function(){tmToggle(+b.dataset.tm,b.dataset.tr)})});
+  }
+  function tmToggle(mi,rk){var m=TM_MEMBERS[mi],on=m.roles[rk],role=TM_ROLES.filter(function(r){return r.k===rk})[0].l;
+    if(rk==='admin'&&on){if(m.me){tmToast('You can’t remove your own Admin — ask another Admin.',1);return}if(tmAdminCount()<=1){tmToast('At least one Admin is required.',1);return}}
+    m.roles[rk]=!on;tmRenderRoster();
+    TM_AUDIT.unshift({tx:'<b>Ava Chen</b> turned <b>'+(on?'OFF':'ON')+'</b> '+role+' for <b>'+m.name+'</b>',when:'just now'});tmRenderAudit(0);
+    tmToast((on?'Removed ':'Added ')+role+' — '+m.name+' · same login, access updates on next load');
+  }
+  function tmRenderAudit(fresh){var el=document.getElementById('tm-audit');if(!el)return;
+    el.innerHTML=TM_AUDIT.map(function(a,i){return '<div class="arow'+(i===fresh?' fresh':'')+'"><span class="adot"></span><div>'+a.tx+'</div><span class="aw">'+a.when+'</span></div>'}).join('');
+  }
+  tmRenderRoster();tmRenderAudit(-1);
+  var nteam=document.getElementById('nav-team');if(nteam)nteam.addEventListener('click',function(e){e.preventDefault();var chip=document.querySelector('.sc[data-screen="team"]');if(chip)chip.click();});
   var railtog=document.getElementById('rail-toggle'),appEl=document.getElementById('app');
   function toggleRail(){if(!appEl)return;var col=appEl.classList.toggle('collapsed');var ic=document.getElementById('rt-ic');if(ic)ic.textContent=col?'»':'«';if(railtog){var lbl=railtog.querySelector('.rtlbl');if(lbl)lbl.textContent=col?'Expand':'Collapse menu';}var t=document.getElementById('rail-collapse-top');if(t)t.setAttribute('aria-label',col?'Expand menu':'Collapse menu');}
   if(railtog&&appEl)railtog.addEventListener('click',toggleRail);
