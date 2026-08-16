@@ -276,10 +276,12 @@ function NotesJob({
   orgId,
   companyStatus,
   initialLog,
+  contactId,
 }: {
   orgId: string
   companyStatus: BuyerOrgStatus
   initialLog: ClientRelationshipLogEntry[]
+  contactId?: string
 }) {
   const [log, setLog] = useState<ClientRelationshipLogEntry[]>(initialLog)
   const [kind, setKind] = useState<'note' | 'conversation'>('note')
@@ -295,7 +297,7 @@ function NotesJob({
       const res = await fetch(`/api/admin/client-partners/${orgId}/relationship-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, body: body.trim() }),
+        body: JSON.stringify({ kind, body: body.trim(), contact_id: contactId ?? null }),
       })
       const json = (await res.json().catch(() => ({}))) as {
         data?: ClientRelationshipLogEntry
@@ -445,7 +447,12 @@ export function ClientWorkspace({
         {activeJob === 'curation' && <CurationJob orgId={orgId} initialSelects={initialSelects} />}
 
         {activeJob === 'notes' && (
-          <NotesJob orgId={orgId} companyStatus={companyStatus} initialLog={initialRelationshipLog} />
+          <NotesJob
+            orgId={orgId}
+            companyStatus={companyStatus}
+            initialLog={initialRelationshipLog}
+            contactId={personContact?.id}
+          />
         )}
       </div>
 

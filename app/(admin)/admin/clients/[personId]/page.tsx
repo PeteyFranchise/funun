@@ -5,23 +5,23 @@ import { notFound, redirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getStaffRole } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
-import { listContacts, listRelationshipLog } from '@/lib/client-partners/contacts'
+import { CONTACT_COLUMNS, listRelationshipLog } from '@/lib/client-partners/contacts'
+import type { BuyerOrgContact } from '@/lib/client-partners/contacts'
 import type { BuyerOrgStatus } from '@/lib/buyers/schema'
 import type { Selects } from '@/lib/selects/types'
 import { ClientWorkspace } from '@/components/admin/ClientWorkspace'
 import type { ActivityBriefItem, ActivityLicenseRequestItem } from '@/components/admin/ClientWorkspace'
 
-// ─── Client Partner (company) workspace page (31-09, R1) ──────────────────
-// Rebuilds the former ClientPartnerDetail member-list page into the
-// four-job ClientWorkspace: Contacts (D-05/D-08/D-09) · Activity · Curation
-// (Selects, 31-04) · Notes+status (31-06 relationship log). Own-book-scoped
-// exactly like the page it replaces (23-06): leadership sees any org;
-// AE/BD/ANR only an org assigned to them (isAssignedToOrg) — scope denial
-// resolves to notFound(), never a role-specific redirect, so org existence
-// is never leaked (T-31-21).
+// ─── Client (person) workspace page (31-09, R1 adjacency edge) ────────────
+// New route: /admin/clients/[personId], personId = buyer_org_contacts.id.
+// Resolves the person -> their buyer_org, then applies the SAME own-book
+// notFound() gate the company page uses (on that org) — so the Clients-tab
+// entry and the Companies-tab contact entry resolve to ONE shared contact
+// record (adjacency edge, R1): there is no separate "person" table, this
+// page is just ClientWorkspace mode="person" scoped to one
+// buyer_org_contacts row.
 
-const ORG_COLUMNS =
-  'id, name, is_personal, verified, created_at, status, use_case, contact_name, contact_email, contact_phone, contact_role, source, ae_user_id, website'
+const ORG_COLUMNS = 'id, name, status, ae_user_id, website'
 
 const SELECTS_COLUMNS =
   'id, buyer_org_id, created_by, brief_id, name, cover_note, share_token, status, download_enabled, download_max_seconds, created_at, updated_at, sent_at'
@@ -34,15 +34,13 @@ type OrgRow = {
   website: string | null
 }
 
-export default async function ClientPartnerWorkspacePage({
+export default async function ClientPersonWorkspacePage({
   params,
 }: {
-  params: Promise<{ orgId: string }>
+  params: Promise<{ personId: string }>
 }) {
-  const { orgId } = await params
+  const { personId } = await params
 
-  // Explicit per-page staff check — layout redirect alone is not relied
-  // upon as the authority decision (project convention; see lib/admin/gate.ts).
   const supabase = await createServerClient()
   const {
     data: { user },
@@ -52,25 +50,44 @@ export default async function ClientPartnerWorkspacePage({
   if (!staffRole) redirect('/')
 
   const service = createServiceClient()
-  const { data: orgRow } = await service.from('buyer_orgs').select(ORG_COLUMNS).eq('id', orgId).maybeSingle()
+  const { data: contactRow } = await service
+    .from('buyer_org_contacts')
+    .select(CONTACT_COLUMNS)
+    .eq('id', personId)
+    .maybeSingle()
+
+  if (!contactRow) notFound()
+  const contact = contactRow as BuyerOrgContact
+
+  const { data: orgRow } = await service
+    .from('buyer_orgs')
+    .select(ORG_COLUMNS)
+    .eq('id', contact.buyer_org_id)
+    .maybeSingle()
 
   if (!orgRow) notFound()
   const org = orgRow as OrgRow
+  // Same own-book gate as the company workspace, applied on the person's org
+  // (T-31-21): a non-leadership AE not assigned to this org gets notFound(),
+  // never a role-specific redirect.
   if (staffRole !== 'leadership' && !isAssignedToOrg(org, user.id)) notFound()
 
-  const [contacts, relationshipLog, selectsResult, briefsResult, licenseRequestsResult] = await Promise.all([
-    listContacts(service, orgId),
-    listRelationshipLog(service, orgId),
-    service.from('selects').select(SELECTS_COLUMNS).eq('buyer_org_id', orgId).order('created_at', { ascending: false }),
+  const [relationshipLog, selectsResult, briefsResult, licenseRequestsResult] = await Promise.all([
+    listRelationshipLog(service, org.id, { contactId: contact.id }),
+    service
+      .from('selects')
+      .select(SELECTS_COLUMNS)
+      .eq('buyer_org_id', org.id)
+      .order('created_at', { ascending: false }),
     service
       .from('buyer_briefs')
       .select('id, title, status, created_at')
-      .eq('buyer_org_id', orgId)
+      .eq('buyer_org_id', org.id)
       .order('created_at', { ascending: false }),
     service
       .from('license_requests')
       .select('id, stage, vault_project_id, created_at, vault_projects(title)')
-      .eq('buyer_org_id', orgId)
+      .eq('buyer_org_id', org.id)
       .order('created_at', { ascending: false }),
   ])
 
@@ -101,12 +118,13 @@ export default async function ClientPartnerWorkspacePage({
       </Link>
       <div className="mt-4">
         <ClientWorkspace
-          mode="company"
+          mode="person"
           orgId={org.id}
           companyName={org.name}
           companyStatus={org.status}
           companyWebsite={org.website}
-          contacts={contacts}
+          personName={contact.name}
+          contacts={[contact]}
           initialSelects={(selectsResult.data ?? []) as Selects[]}
           initialRelationshipLog={relationshipLog}
           briefs={briefs}
