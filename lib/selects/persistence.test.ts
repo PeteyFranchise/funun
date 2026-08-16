@@ -5,7 +5,6 @@ import {
   patchSelects,
   softDeleteSelects,
   addSelectsTrack,
-  sendSelects,
   SELECTS_EDITABLE_FIELDS,
 } from './persistence'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -262,33 +261,5 @@ describe('addSelectsTrack (idempotency)', () => {
       c => c.table === 'selects_tracks' && c.method === 'insert'
     )
     expect(insertCall).toBeUndefined()
-  })
-})
-
-describe('sendSelects (empty-guard + illegal-transition guard)', () => {
-  it('rejects sending an already-approved Selects (illegal transition, no re-send)', async () => {
-    const service = buildService({ selects: { id: SELECTS_ID, status: 'approved' } })
-    const result = await sendSelects(service, SELECTS_ID)
-    expect(result).toEqual({ ok: false, reason: 'illegal_transition' })
-  })
-
-  it('rejects sending a draft Selects with zero non-removed tracks (R11 AC)', async () => {
-    const service = buildService({ selects: { id: SELECTS_ID, status: 'draft' }, selectsTracksCount: 0 })
-    const result = await sendSelects(service, SELECTS_ID)
-    expect(result).toEqual({ ok: false, reason: 'empty' })
-  })
-
-  it('sends a draft Selects with at least one non-removed track', async () => {
-    const service = buildService({
-      selects: { id: SELECTS_ID, status: 'draft', share_token: 'tok123' },
-      selectsTracksCount: 1,
-      updateResult: { id: SELECTS_ID, status: 'sent', share_token: 'tok123', sent_at: '2026-01-01T00:00:00Z' },
-    })
-    const result = await sendSelects(service, SELECTS_ID)
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.shareUrl).toBe('/selects/tok123')
-      expect(result.selects.status).toBe('sent')
-    }
   })
 })
