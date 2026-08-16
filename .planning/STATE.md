@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 32
-current_phase_name: production-observability-capacity-incident-readiness
+current_phase: 31
+current_phase_name: ae-client-workspace-selects-my-client-partners-client-partne
 status: in_progress
 stopped_at: Phase 31 UI-SPEC approved
-last_updated: "2026-08-14T00:15:58.507Z"
-last_activity: 2026-08-13
-last_activity_desc: "Phase 32 Plan 01 (D-10 observability config layer: lib/observability/config.ts + drafted/text-tested migration 110) Tasks 1-2 executed; Task 3 (migration 110 review + push) is an open checkpoint:human-verify gate"
+last_updated: "2026-08-16T01:46:27.420Z"
+last_activity: 2026-08-16
+last_activity_desc: Phase 31 execution started
 progress:
   total_phases: 32
   completed_phases: 25
-  total_plans: 192
-  completed_plans: 184
+  total_plans: 205
+  completed_plans: 185
   percent: 78
 ---
 
@@ -24,11 +24,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 32 — production-observability-capacity-incident-readiness
+**Current focus:** Phase 31 — ae-client-workspace-selects-my-client-partners-client-partne
 
 ## Current Position
 
-Phase: 32 (production-observability-capacity-incident-readiness) — EXECUTING
+Phase: 31 (ae-client-workspace-selects-my-client-partners-client-partne) — EXECUTING
 Next: /gsd-execute-phase 32 (Plans 32-01/32-02/32-03/32-05/32-08 executed — 32-01-SUMMARY.md, 32-02-SUMMARY.md, 32-03-SUMMARY.md, 32-05-SUMMARY.md, 32-08-SUMMARY.md; 32-01 Task 3 migration-110-push checkpoint still OPEN, awaiting owner `supabase db push` + `supabase migration list` parity confirmation; remaining plans (32-04, 32-06, 32-07, 32-09, 32-10) per 32-PLAN.md wave sequence)
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
 Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
@@ -48,7 +48,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-13 — Phase 32 Plan 01 (D-10 observability config layer: lib/observability/config.ts + drafted/text-tested migration 110) Tasks 1-2 executed; Task 3 (migration 110 review + push) is an open checkpoint:human-verify gate
+Last activity: 2026-08-16 — Phase 31 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -199,6 +199,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 32 P01 | 20min | 2 tasks | 4 files |
 | Phase 32 P05 | 20min | 2 tasks | 5 files |
 | Phase 32 P08 | 8min | 1 tasks | 1 files |
+| Phase 31 P03 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -438,6 +439,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: Phase 32 Plan 01: D-10 config layer (lib/observability/config.ts) + drafted observability_recipients migration 110; Task 3 migration-push checkpoint open, awaiting owner
 - [Phase ?]: Phase 32 Plan 05: fanOutAlert always sends via config's growable recipient list, never a literal address (D-08); daily digest fans out unconditionally on an authorized run; spend line is tier-branched by a self-declared VERCEL_PLAN_TIER env var since no live Vercel spend API integration exists in this codebase.
 - [Phase 32]: 32-08: THRESHOLDS-AND-SEVERITY.md states no numeric value is authoritative on its own -- always defers to lib/observability/config.ts (update config.ts first, doc second, same change)
+- [Phase 31]: 31-03: isLegalSelectsTransition implemented as a Record<SelectsStatus, Set<SelectsStatus>> edge table (not an ordered forward-pipeline array like lib/deals/) since the Selects graph branches (sent -> two legal targets) and loops (changes_requested -> sent)
 
 ### Pending Todos
 
@@ -518,7 +520,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-14T00:15:58.485Z
+Last session: 2026-08-16T01:46:01.725Z
 Stopped at: Phase 31 UI-SPEC approved
 Resume file: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
