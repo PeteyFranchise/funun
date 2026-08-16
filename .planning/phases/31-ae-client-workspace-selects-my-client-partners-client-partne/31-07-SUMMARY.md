@@ -164,6 +164,18 @@ None - no external service configuration required. (Migrations 106/111 that this
 - The `action.type === 'build_selects'` descriptor (`{buyerOrgId, briefId}`) is ready for 31-04's `POST /api/admin/selects` once that plan lands — no coupling exists yet since 31-04's routes are not in this worktree.
 - Blocker/concern: the two pre-existing Phase 32 build failures block a clean `npm run build` for the WHOLE repo until fixed (see deferred-items.md) — this does not block Phase 31 plans individually (each verified via `tsc --noEmit` + targeted `jest`), but the orchestrator/owner should be aware the full-build acceptance criterion cannot pass repo-wide until Phase 32 is patched.
 
+## Self-Check: PASSED
+
+- FOUND: lib/crate-requests/ranking.ts
+- FOUND: lib/crate-requests/ranking.test.ts
+- FOUND: app/api/admin/crate-requests/route.ts
+- FOUND: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-07-SUMMARY.md
+- FOUND: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/deferred-items.md
+- FOUND commit: eeec27a (test — RED)
+- FOUND commit: d8180c2 (feat — GREEN)
+- FOUND commit: a4268bc (feat — route)
+- FOUND commit: 40c565c (docs — deferred-items follow-up)
+
 ---
 *Phase: 31-ae-client-workspace-selects-my-client-partners-client-partne*
 *Completed: 2026-08-16*
