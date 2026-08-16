@@ -1,7 +1,9 @@
 # Watermark pipeline — approach + decision record
 
-Status: **A2 — flagged for owner confirmation** at the Task 2 blocking-human checkpoint
-(31-01-PLAN.md). Nothing in this record is locked until the owner approves it.
+Status: **LOCKED — owner-approved 2026-08-16** at the Task 2 blocking-human checkpoint
+(31-01-PLAN.md). The recommended default below was approved as-is (in-house, no package
+installed). Vercel tier confirmed **Hobby (10s cap)**, so async/pre-computed rendering is
+**required, not optional** for 31-12.
 
 This is a decision record, not code. The type contract lives in
 [`lib/watermark/provider.ts`](./provider.ts) — that is what 31-12 (render pipeline) and
@@ -51,9 +53,10 @@ synchronously inside a request handler. The contract in `provider.ts` reflects t
 - `WatermarkRenderStatus` (`pending` / `ready` / `failed`) exists so the UI can show an
   interim "processing" state instead of blocking on the render.
 
-**Re-verify at the Task 2 checkpoint:** if the deployment has since moved to Vercel Pro /
-Fluid Compute, the urgency of async rendering is lower (though still good practice for cost
-and UX) — 31-12 can simplify accordingly, but the interface itself does not need to change.
+**Confirmed at the Task 2 checkpoint (2026-08-16):** Vercel tier is **Hobby (10s cap)**, so
+async/pre-computed rendering is **required** — 31-12 must NOT run an inline per-request
+transcode. If the tier is later upgraded to Pro / Fluid Compute, async stays good practice
+(cost/UX) but the hard requirement relaxes; the interface itself does not change either way.
 
 ## Sequencing (A2)
 
