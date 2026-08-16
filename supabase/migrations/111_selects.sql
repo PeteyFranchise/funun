@@ -54,6 +54,14 @@
 -- edit migrations 001-110 (already landed).
 -- ============================================================
 
+-- ─── (0) extensions ─────────────────────────────────────────────────────
+-- gen_random_bytes() is a pgcrypto function; Supabase installs pgcrypto in the
+-- `extensions` schema, which is NOT on the migration-apply search_path (unlike
+-- gen_random_uuid(), which is core/pg_catalog and always resolves). Ensure the
+-- extension exists and schema-qualify every gen_random_bytes() call below so the
+-- share_token DEFAULT resolves at CREATE TABLE time regardless of search_path.
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- ─── (a) selects ────────────────────────────────────────────────────────
 CREATE TABLE public.selects (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,7 +70,7 @@ CREATE TABLE public.selects (
   brief_id            UUID REFERENCES public.buyer_briefs ON DELETE SET NULL,
   name                TEXT NOT NULL,
   cover_note          TEXT,
-  share_token         TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+  share_token         TEXT NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(16), 'hex'),
   status              TEXT NOT NULL DEFAULT 'draft' CHECK (status IN (
                         'draft', 'sent', 'approved', 'changes_requested'
                       )),

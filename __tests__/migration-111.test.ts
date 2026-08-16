@@ -27,7 +27,7 @@ describe('111', () => {
   })
 
   it('share_token is an unguessable UNIQUE token, never a sequential id', () => {
-    expect(migration111).toContain("UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex')")
+    expect(migration111).toContain("UNIQUE DEFAULT encode(extensions.gen_random_bytes(16), 'hex')")
   })
 
   it('carries the D-02 download-gate columns', () => {
