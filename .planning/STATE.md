@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 current_phase_name: production-observability-capacity-incident-readiness
 status: in_progress
-stopped_at: Phase 31 context gathered
-last_updated: "2026-08-13T23:48:37.762Z"
+stopped_at: Phase 31 UI-SPEC approved
+last_updated: "2026-08-14T00:15:58.507Z"
 last_activity: 2026-08-13
 last_activity_desc: "Phase 32 Plan 01 (D-10 observability config layer: lib/observability/config.ts + drafted/text-tested migration 110) Tasks 1-2 executed; Task 3 (migration 110 review + push) is an open checkpoint:human-verify gate"
 progress:
@@ -518,9 +518,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-13T23:48:37.730Z
-Stopped at: Phase 31 context gathered
-Resume file: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-CONTEXT.md
+Last session: 2026-08-14T00:15:58.485Z
+Stopped at: Phase 31 UI-SPEC approved
+Resume file: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`

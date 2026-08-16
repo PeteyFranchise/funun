@@ -158,3 +158,14 @@ None — discussion stayed within phase scope (the above are pre-existing SPEC o
 
 *Phase: 31-ae-client-workspace-selects-my-client-partners-client-partne*
 *Context gathered: 2026-08-13*
+
+---
+
+## Slice split (2026-08-15, via /gsd-plan-phase — owner-approved)
+
+Phase 31 was sized at ~19 full-fidelity plans and split along **D-04** into two phases (nothing dropped):
+
+- **Phase 31 = Slice 1 (this phase — planned + checker-verified):** R1, R2, R5, R10, R11, R12 · decisions D-01, D-02, D-03, D-05, D-08, D-09, D-11, D-12, D-13.
+- **Phase 31.1 = Slice 2 (deferred; plans after 31 ships):** R3, R4, R6, R7, R8, R9, R13, R14 · decisions **D-06, D-07, D-10** + the roles-as-a-set Team model.
+
+**D-04** (the slicing decision) is honored *by* this split; **D-06, D-07, D-10** are intentionally carried to Phase 31.1 (recorded in ROADMAP.md). The decision-coverage gate flags D-04/D-06/D-07 here as expected — owner accepted the documented deferral on 2026-08-15.
