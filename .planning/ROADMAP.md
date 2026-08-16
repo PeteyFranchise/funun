@@ -1174,9 +1174,27 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 = ALL clients + oversight/assignment; **BD** = ops rooms (Team Members, Verification, Reports); model is
 **extensible for future roles** (e.g. a verification/ops role). Full matrix in the review note.
 
-**Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dives #2/#3 + access model).
+**Scope source:** `.planning/notes/team-member-rooms-review.md` (Deep Dives #2/#3 + access model). UI locked in `31-UI-SPEC.md` + `.planning/design/phase-31-*.html` (this session).
 
-**Status:** Scoped via /gsd-explore 2026-08-12; not yet planned.
+**Slice split (2026-08-15, via /gsd-plan-phase):** the planner sized this at ~19 full-fidelity plans, so it was split along the locked **D-04** boundary into two phases (nothing dropped). **Phase 31 now = Slice 1** — the outbound Selects motion a client can receive: **R1, R2, R5, R10, R11, R12** (+ D-01, D-02, D-03, D-05, D-08, D-09, D-11, D-12, D-13). Schema `111_selects.sql`, `112_client_partners_crm.sql`. **Slice 2 → Phase 31.1** (below).
+
+**Status:** Scoped via /gsd-explore 2026-08-12; **split + planning Slice 1 on 2026-08-15.**
+
+---
+
+### Phase 31.1: AE Console — Health, Leadership Tower, Telemetry & Team RBAC
+
+**Goal (Slice 2 of Phase 31, per D-04):** leadership routes the book and the coaching loop closes. The **Client Partners leadership tower** (same workspace on ANY client + assign/route AEs), **relationship health** computed live + leadership-only rules config, **The Playbook** (SOPs + Topics + Plays, incl. leadership's "today's play" → AE banner), the call **Game Plan**, **Selects engagement telemetry**, and the **Team roles-as-a-set** model (one account = stable company email; roles are a togglable set; admin-tier manages).
+
+**Requirements:** R3, R4, R6, R7, R8, R9, R13, R14. **Decisions:** D-06, D-07, D-10 + roles-as-a-set (from the locked `phase-31-team.html` mockup).
+
+**Schema:** `113_staff_roles_set.sql` (roles-as-a-set + `lib/admin/staff-role` refactor across ≥5 call sites; `bd`/`ops` reconcile), `114_console_config_playbook.sql` (`health_rules_config`, `pipeline_stages`, `playbook_sops`/topics/plays, `game_plans`, `staff_tasks` queue).
+
+**Depends on:** **Phase 31** (reuses its list component, relationship log, and the Selects/player schema). Within 31.1, the roles-as-a-set refactor (mig 113) must land before the R6–R9 leadership/ops gating.
+
+**Design:** same locked `31-UI-SPEC.md` (Family A rooms) + `phase-31-*.html` mockups. **Watch-out (research):** R13 needs a genuine audible-time accumulator (not a naive timer); coordinate migration numbering with Phase 32.
+
+**Status:** Split out of Phase 31 on 2026-08-15; plans after Phase 31 (Slice 1) ships.
 
 ---
 
