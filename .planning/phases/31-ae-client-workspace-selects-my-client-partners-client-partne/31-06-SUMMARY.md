@@ -144,3 +144,14 @@ None - no external service configuration required. (Migration 112 itself is huma
 ---
 *Phase: 31-ae-client-workspace-selects-my-client-partners-client-partne*
 *Completed: 2026-08-15*
+
+## Self-Check: PASSED
+
+- FOUND: lib/client-partners/contacts.ts
+- FOUND: app/api/admin/client-partners/[orgId]/contacts/route.ts
+- FOUND: app/api/admin/client-partners/[orgId]/relationship-log/route.ts
+- FOUND: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-06-SUMMARY.md
+- FOUND commit bbb506f (Task 1)
+- FOUND commit 4c0cd9c (Task 2)
+- FOUND commit a9704b7 (deferred-items docs)
+- FOUND commit c7a0f31 (SUMMARY docs)
