@@ -99,10 +99,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Sync Library
             </Link>
           )}
-          {/* Every staff role (leadership/AE/BD) sees these links. */}
-          <Link href="/admin/lead-engine" className={NAV_LINK_CLASS}>
-            Lead Engine
-          </Link>
+          {/* Lead Engine retired into Crate Requests (31-11, R10) — its page
+              now redirects there; the nav link is removed. Every staff role
+              (leadership/AE/BD) sees the links below. */}
           {/* Slice-1 rooms (31-08, R1/R5): nav order encodes the AE
               pipeline funnel — Crate Requests (demand inbox, absorbs the
               Lead Engine per 31-SPEC R10) precedes Selects (the
@@ -115,15 +114,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
-          </Link>
-          {/* Selects (31-10) — the AE's curate-and-send console + own-book
-              list. Reachability fix (deviation, Rule 2): the builder/list
-              pages this phase ships had no nav entry point. Sits next to My
-              Client Partners for now; the 31-UI-SPEC's full nav ordering
-              (between Crate Requests and Deals) lands once those
-              Phase-31/31.1 rooms exist. */}
-          <Link href="/admin/selects" className={NAV_LINK_CLASS}>
-            Selects
           </Link>
           <Link href="/admin/directory" className={NAV_LINK_CLASS}>
             Directory
