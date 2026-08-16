@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { SUPABASE_CHECK_TIMEOUT_MS } from './constants'
 import { createServiceClient } from '@/lib/supabase/server'
 
 // ─── GET /api/health — public, unauthenticated, read-only (32-03 Task 1) ──
@@ -15,8 +16,6 @@ import { createServiceClient } from '@/lib/supabase/server'
 // an unhandled 500 or crashes — any failure (timeout, network, unexpected
 // exception) is caught and reported as a deliberate, handled 503 degraded
 // response instead.
-export const SUPABASE_CHECK_TIMEOUT_MS = 2000
-
 type CheckOutcome = { error: { message: string } | null }
 
 export async function GET() {

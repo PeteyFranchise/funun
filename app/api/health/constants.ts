@@ -1,0 +1,1 @@
+export const SUPABASE_CHECK_TIMEOUT_MS = 2000

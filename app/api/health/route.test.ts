@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import { GET, SUPABASE_CHECK_TIMEOUT_MS } from './route'
+import { SUPABASE_CHECK_TIMEOUT_MS } from './constants'
+import { GET } from './route'
 
 // ─── GET /api/health (32-03 Task 1) ────────────────────────────────────────
 // Mirrors app/api/waitlist/route.test.ts's mock-the-client-factory style.

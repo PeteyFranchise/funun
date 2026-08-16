@@ -20,7 +20,7 @@ import { THRESHOLDS, classifyThreshold, SPEND_HEADS_UP_USD, type ThresholdMetric
 // every THRESHOLDS entry legitimately classifies as 'unknown' via
 // classifyThreshold's null/undefined -> 'unknown' rule ("no-data is never
 // silently healthy") rather than being fabricated as healthy.
-export const DOC_PATH = 'docs/observability/VERCEL-ALERTS-RESPONSE.md'
+const DOC_PATH = 'docs/observability/VERCEL-ALERTS-RESPONSE.md'
 
 // Self-declared tier flag (no live Vercel API integration exists in this
 // codebase — Spend Management is a vendor-dashboard-only alert per R1).
