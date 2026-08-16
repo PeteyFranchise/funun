@@ -446,6 +446,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Resolve during Phase 8 planning: industry-member signup/routing flow (where `app_metadata.role` is set, post-auth redirect, distinct onboarding), and a reserved-handle list (squatting risk MINOR-3) — product decision, not purely engineering
 - Confirm during Phase 12 planning: pg_trgm/tsvector performance at 10K+ profiles via EXPLAIN ANALYZE before committing to plain GIN-index approach
 - Confirm during Phase 13 planning: verified-badge grant is admin-manual (no self-application UI) — explicit, not silent deferral
+- [2026-08-16] Research watermarking alternatives & competitor content-protection services — Phase 31 gap G1 (in-house tag is WAV-only; MP3/AAC previews untagged); survey 3rd-party forensic/audible SDKs that cover compressed audio + what competitors use for preview protection & leak tracing → `.planning/todos/pending/2026-08-16-research-watermarking-alternatives-and-competitor-content-pr.md`
 
 ### Blockers/Concerns
 
