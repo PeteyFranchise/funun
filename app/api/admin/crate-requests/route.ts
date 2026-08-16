@@ -152,7 +152,10 @@ async function fetchGuestReactionItems(
 
 // ─── per-row one-click action (UI-consumable, no page URL guessed here — ─
 // the builder UI (31-10) and its route wiring land in a later plan) ────────
-type RowAction =
+// Exported so the Crate Requests room (31-11, CrateRequestsFeed.tsx) can
+// type its fetched rows against this route's exact response shape instead
+// of re-declaring a parallel type that could drift.
+export type RowAction =
   | { type: 'see_lead' }
   | { type: 'build_selects'; buyerOrgId: string; briefId: string }
   | { type: 'follow_up'; buyerOrgId: string }
