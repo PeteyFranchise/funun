@@ -148,3 +148,14 @@ None - no external service configuration required. The private `selects-stream-p
 ---
 *Phase: 31-ae-client-workspace-selects-my-client-partners-client-partne*
 *Completed: 2026-08-15*
+
+## Self-Check: PASSED
+
+- FOUND: lib/watermark/stream-preview.ts
+- FOUND: lib/watermark/signed-url.ts
+- FOUND: lib/watermark/signed-url.test.ts
+- FOUND: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-12-SUMMARY.md
+- FOUND commit: 5982ba9 (Task 1)
+- FOUND commit: 83acfa1 (Task 2 RED)
+- FOUND commit: 5af3997 (Task 2 GREEN)
+- FOUND commit: 1d17c14 (SUMMARY.md)
