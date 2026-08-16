@@ -633,6 +633,42 @@ Turns the catalogue from a passive list into a managed engine. A staff **inclusi
 - Phase 30 requirement IDs: 10 total
 - Complete (code + automated): 10 — all built; 2141 tests + tsc + production build green; committed on `feat/lane1-catalogue-menu-help`. Migrations 107/108/109 live on the remote. Human staff-session UAT (role-aware Crate staff layers; backstage curation leadership-vs-AE; live tag-propose→approve; admit-409 on an incomplete track) DEFERRED — tracked in `30-UAT.md`, resumable via `/gsd-verify-work 30`.
 
+## v1.2 — Phase 31: AE Client Workspace + Selects (Slice 1) Requirements
+
+**Defined:** 2026-08-16 (registered at phase-execution close; the IDs were locked in `31-SPEC.md` at plan time, 2026-08-15). **Source:** `.planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-SPEC.md` — 14 locked requirements (R1–R14). Phase 31 was split along the locked **D-04** boundary into two slices; **this phase = Slice 1** and delivered **R1, R2, R5, R10, R11, R12** (the outbound Selects motion a client can receive). The rest — R3/R4 (relationship health + rules), R6/R7 (leadership control tower + assign-to-AE), R8/R9 (assignment email + The Playbook SOPs), R13 (Selects engagement tracking), R14 (call Game Plan) — are **Slice 2 → Phase 31.1**, not yet built.
+
+**ID-namespace note (collision resolution):** these R-IDs are **phase-scoped**, per this file's per-phase-section convention. Phase 31's `R1`/`R2`/`R5` are DISTINCT from Phase 19's `R1`/`R2`/`R5` (profile/split-sheet cleanup) — they share only the bare letter-number token, never a meaning; qualify as "Phase 31 R5" when referenced outside this section. The `D-NN` codes below are `31-CONTEXT.md` decision IDs the requirements embody (also phase-local; unrelated to Phase 16's D-01..D-20).
+
+Backed by migrations **111** (`selects` / `selects_tracks`→`tracks.id` / `selects_reactions` / `selects_saved_searches`), **112** (`buyer_org_contacts` multi-contact-one-primary / `client_relationship_log` / `buyer_orgs.website`), and **113** (`selects.changes_requested_reason`) — all live (`LOCAL=REMOTE` through 113, owner-pushed 2026-08-16). Built on `feat/lane1-catalogue-menu-help`; `tsc` clean + full suite 2280/2280 green. Goal-verified 10/10 must-haves (`31-VERIFICATION.md`); status `human_needed` — 4 live-app UAT items in `31-UAT.md`.
+
+### My Client Partners (workspace + list)
+- **R1**: My Client Partners list (Clients + Companies tabs) → drill into a person/company workspace of four jobs (Contacts CRM · Activity · Curation/Selects · Notes+status) + company website; own-book-scoped, rich multi-contact CRM with a one-primary invariant and an append-only relationship log (D-05/D-08/D-09). — *Impl complete; goal-verified; live UAT pending (31-UAT.md #2)*
+- **R2**: Insight columns — show/hide + drag-reorder + per-column click-sort, persisted per AE, identity column pinned, equal sort keys resolve to a stable identity tiebreak. — *Impl complete; goal-verified; live UAT pending (31-UAT.md #2)*
+- **R5**: Role-aware navigation — an AE sees only their own assigned book; the "Client Partners" leadership tower + its nav item are hidden for the AE role; unassigned accounts never appear in an AE's list; the role model is extensible. — *Impl complete; goal-verified; live UAT pending (31-UAT.md #2)*
+
+### Demand inbox
+- **R10**: Crate Requests — an intent-ranked feed of buyer activity (briefs > repeat searches > Selects re-opens > tag browsing), each tagged to a client with one dominant one-click action; guest/anonymous demand surfaces as a distinct "new lead" row. Absorbs and retires the read-only Lead Engine (its page now redirects here). — *Impl complete; goal-verified; live UAT pending (31-UAT.md #2)*
+
+### Selects (the outbound motion)
+- **R11**: Selects builder — curate from The Crate (idempotent add / soft-remove / reorder / per-track + cover notes), three build methods incl. AI-draft off a brief (D-11), rights-ready badges, continuous auto-save + manual save, saved/team-shared Crate searches (D-12), a pure status state machine (draft → sent → approved/changes_requested), and Send (disabled until ≥1 track) that mints the share link. — *Impl complete; goal-verified; live UAT pending (31-UAT.md #3)*
+- **R12**: Shareable Selects player — token-addressed public SSR page (D-13 Family B) that plays **watermarked previews only** (D-01 layered watermark; D-03 forensic payload keyed to the Selects + share-token), records reactions, offers approve / request-changes, shows a leaks-nothing state for an invalid/expired token, and gates download behind an account (D-02 disable / length-cap) — never a clean master, by stream or download. — *Impl complete; goal-verified; live UAT pending (31-UAT.md #1, #4). **Known partial (G1):** the audible preview tag currently applies to WAV sources only; compressed sources (mp3/aac/…) are structurally protected (never-master, tested) but untagged — owner decision open, non-blocking (31-VERIFICATION.md).*
+
+**Traceability (Phase 31 — Slice 1):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| R1 | Phase 31 | 31-02, 31-06, 31-08, 31-09 | Impl complete; goal-verified; UAT pending (31-UAT.md #2) |
+| R2 | Phase 31 | 31-08 | Impl complete; goal-verified; UAT pending (31-UAT.md #2) |
+| R5 | Phase 31 | 31-08 | Impl complete; goal-verified; UAT pending (31-UAT.md #2) |
+| R10 | Phase 31 | 31-07, 31-11 | Impl complete; goal-verified; UAT pending (31-UAT.md #2) |
+| R11 | Phase 31 | 31-02, 31-03, 31-04, 31-05, 31-10 | Impl complete; goal-verified; UAT pending (31-UAT.md #3) |
+| R12 | Phase 31 | 31-01, 31-02, 31-12, 31-13 | Impl complete; goal-verified; UAT pending (31-UAT.md #1, #4); WAV-only audible tag partial (G1) |
+
+**Coverage (Phase 31 — Slice 1):**
+
+- Phase 31 Slice-1 requirement IDs: **6** (R1, R2, R5, R10, R11, R12). Slice-2 IDs (R3, R4, R6–R9, R13, R14) → Phase 31.1, not built.
+- Complete (code + automated): **6** — all goal-verified (10/10 must-haves, `31-VERIFICATION.md`); `tsc` clean; full suite 2280/2280 green; committed on `feat/lane1-catalogue-menu-help`. Migrations 111/112/113 live. One partial (R12 audible tag WAV-only, G1 — non-blocking; the never-master guarantee holds for every format). Live-app UAT (4 items in `31-UAT.md`) DEFERRED — resumable via `/gsd-verify-work 31`.
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-13 — Phase 30 registered CRATE-01..10 (The Crate catalogue engine: Sync Readiness inclusion gate + worklist completion pipeline, leadership-only curation + quality review, layered AI/artist/staff tagging with A&R-gated AE proposals, one role-aware Crate), all code-Complete on `feat/lane1-catalogue-menu-help`; migrations 107/108/109 live; human staff-session UAT deferred (30-UAT.md)*
+*Last updated: 2026-08-16 — Phase 31 (Slice 1) registered R1/R2/R5/R10/R11/R12 (AE Client Workspace + Selects: My Client Partners workspace/list + insight columns + role-aware nav, Crate Requests demand inbox, Selects builder + shareable watermarked player), all goal-verified + code-Complete on `feat/lane1-catalogue-menu-help`; migrations 111/112/113 live; R12 audible-tag WAV-only partial (G1); live-app UAT deferred (31-UAT.md). Phase-scoped IDs — Phase 31 R1/R2/R5 are distinct from Phase 19's.*
