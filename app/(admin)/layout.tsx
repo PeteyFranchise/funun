@@ -59,6 +59,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/team-members" className={NAV_LINK_CLASS}>
                 Team Members
               </Link>
+              {/* R5 (31-08): the leadership control tower is hidden from
+                  every non-leadership staff role — an AE's own book lives
+                  at /admin/my-client-partners below, visible to all staff.
+                  This link stays leadership-only alongside the other
+                  leadership-only rooms above (unchanged behavior, just
+                  now paired with the explicit R5 rationale). */}
               <Link href="/admin/buyer-orgs" className={NAV_LINK_CLASS}>
                 Client Partners
               </Link>
@@ -96,6 +102,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {/* Every staff role (leadership/AE/BD) sees these links. */}
           <Link href="/admin/lead-engine" className={NAV_LINK_CLASS}>
             Lead Engine
+          </Link>
+          {/* Slice-1 rooms (31-08, R1/R5): nav order encodes the AE
+              pipeline funnel — Crate Requests (demand inbox, absorbs the
+              Lead Engine per 31-SPEC R10) precedes Selects (the
+              cross-client pipeline hub). Every staff role sees both. */}
+          <Link href="/admin/crate-requests" className={NAV_LINK_CLASS}>
+            Crate Requests
+          </Link>
+          <Link href="/admin/selects" className={NAV_LINK_CLASS}>
+            Selects
           </Link>
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
