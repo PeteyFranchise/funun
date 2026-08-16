@@ -18,7 +18,10 @@ export function NewSelectsForm({ orgs }: { orgs: { id: string; name: string }[] 
   const defaultOrgId = searchParams.get('orgId') ?? ''
   const briefId = searchParams.get('briefId')
 
-  const [open, setOpen] = useState(false)
+  // Deep-linked from Crate Requests' "Build Selects" (31-11) via ?orgId=
+  // (+ optional ?briefId=) — open pre-filled instead of leaving the AE to
+  // find and click the collapsed "+ Build Selects" toggle themselves.
+  const [open, setOpen] = useState(Boolean(defaultOrgId))
   const [orgId, setOrgId] = useState(defaultOrgId)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
