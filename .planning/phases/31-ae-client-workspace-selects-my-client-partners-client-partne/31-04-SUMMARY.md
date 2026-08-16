@@ -180,3 +180,12 @@ None - no external service configuration required.
 ---
 *Phase: 31-ae-client-workspace-selects-my-client-partners-client-partne*
 *Completed: 2026-08-16*
+
+## Self-Check: PASSED
+
+All 9 created files confirmed present on disk (`lib/selects/persistence.ts`,
+`lib/selects/persistence.test.ts`, `app/api/admin/selects/route.ts`,
+`app/api/admin/selects/[id]/route.ts`, `app/api/admin/selects/[id]/tracks/route.ts`,
+`app/api/admin/selects/[id]/send/route.ts`, `app/api/admin/selects/[id]/send/route.test.ts`,
+`deferred-items.md`, this SUMMARY.md). All 4 referenced commit hashes
+(`3f30f63`, `52ed8bb`, `7e74270`, `7bff410`) confirmed present via `git log`.
