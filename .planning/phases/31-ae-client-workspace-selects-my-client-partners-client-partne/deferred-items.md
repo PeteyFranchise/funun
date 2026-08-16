@@ -35,3 +35,14 @@ scope-boundary rule (not fixed — pre-existing, unrelated to the plan that foun
   only export the HTTP method handlers plus a small allow-listed set of config
   fields (`dynamic`, `runtime`, etc.); any other named export is rejected by
   the App Router's route-type validation. Owned by whoever resumes Phase 32.
+
+- **Second instance of the same class of bug, found once `npm run build`
+  generated `.next/types/`:** `app/api/health/route.ts` exports
+  `SUPABASE_CHECK_TIMEOUT_MS` (a plain `const`, same problem as `DOC_PATH`
+  above). Origin: commit `32d2d6a` — `feat(32-03): implement read-only,
+  timeout-bounded /api/health route` — also present at the 31-07 worktree's
+  base commit, also Phase 32, also not touched by this plan. A repo-wide
+  grep for `^export const [A-Z_]+` across every `app/api/**/route.ts`
+  confirms these are the ONLY two instances of the pattern — no other route
+  file in the repo exports a non-handler uppercase const, so fixing these
+  two is sufficient to clear this class of build failure.
