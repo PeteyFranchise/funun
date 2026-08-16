@@ -1178,7 +1178,7 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 
 **Slice split (2026-08-15, via /gsd-plan-phase):** the planner sized this at ~19 full-fidelity plans, so it was split along the locked **D-04** boundary into two phases (nothing dropped). **Phase 31 now = Slice 1** — the outbound Selects motion a client can receive: **R1, R2, R5, R10, R11, R12** (+ D-01, D-02, D-03, D-05, D-08, D-09, D-11, D-12, D-13). Schema `111_selects.sql`, `112_client_partners_crm.sql`. **Slice 2 → Phase 31.1** (below).
 
-**Plans:** 12/13 plans executed
+**Plans:** 13/13 plans complete
 
 Plans:
 
@@ -1192,7 +1192,7 @@ Plans:
 - [x] 31-08-PLAN.md — My Client Partners list+tabs+insight-columns + R5 nav gating (R1/R2/R5; A1) [wave 3]
 - [x] 31-09-PLAN.md — Company/person workspace (4 jobs) + Contacts CRM UI + relationship log (R1) [wave 3]
 - [x] 31-10-PLAN.md — Selects builder UI: curate/notes/badges/auto-save/AI-draft/Send (R11) [wave 3]
-- [ ] 31-11-PLAN.md — Crate Requests room UI + Lead Engine retire (R10) [wave 3]
+- [x] 31-11-PLAN.md — Crate Requests room UI + Lead Engine retire (R10) [wave 3]
 - [x] 31-12-PLAN.md — Watermark stream-preview render pipeline + never-master signed-URL accessor (R12/D-01) [wave 4]
 - [x] 31-13-PLAN.md — Public /selects/[token] SSR player: watermarked playback, react/respond, download gate, OG, safe invalid-token (R12/D-13) [wave 4]
 
