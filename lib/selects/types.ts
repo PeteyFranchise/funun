@@ -33,11 +33,17 @@ export type Selects = {
   created_at: string
   updated_at: string
   sent_at: string | null
+  /** 31-13/migration 113 — best-effort, may be absent before the migration lands. */
+  changes_requested_reason?: string | null
 }
 
 // ─── SelectsTrack — mirrors migration 111's selects_tracks columns ───────
 export const SELECTS_TRACK_SOURCE_VALUES = ['crate', 'suggested'] as const
 export type SelectsTrackSource = (typeof SELECTS_TRACK_SOURCE_VALUES)[number]
+
+// ─── selects_reactions.reaction — mirrors migration 111's CHECK (31-13) ──
+export const SELECTS_REACTION_VALUES = ['love', 'pass', 'more_like_this'] as const
+export type SelectsReaction = (typeof SELECTS_REACTION_VALUES)[number]
 
 export type SelectsTrack = {
   id: string
