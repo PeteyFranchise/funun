@@ -100,6 +100,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
             My Client Partners
           </Link>
+          {/* Selects (31-10) — the AE's curate-and-send console + own-book
+              list. Reachability fix (deviation, Rule 2): the builder/list
+              pages this phase ships had no nav entry point. Sits next to My
+              Client Partners for now; the 31-UI-SPEC's full nav ordering
+              (between Crate Requests and Deals) lands once those
+              Phase-31/31.1 rooms exist. */}
+          <Link href="/admin/selects" className={NAV_LINK_CLASS}>
+            Selects
+          </Link>
           <Link href="/admin/directory" className={NAV_LINK_CLASS}>
             Directory
           </Link>
