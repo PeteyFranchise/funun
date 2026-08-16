@@ -1178,7 +1178,26 @@ in `.planning/design/crate-lead-engine-BUILD-SPEC.md`.
 
 **Slice split (2026-08-15, via /gsd-plan-phase):** the planner sized this at ~19 full-fidelity plans, so it was split along the locked **D-04** boundary into two phases (nothing dropped). **Phase 31 now = Slice 1** — the outbound Selects motion a client can receive: **R1, R2, R5, R10, R11, R12** (+ D-01, D-02, D-03, D-05, D-08, D-09, D-11, D-12, D-13). Schema `111_selects.sql`, `112_client_partners_crm.sql`. **Slice 2 → Phase 31.1** (below).
 
-**Status:** Scoped via /gsd-explore 2026-08-12; **split + planning Slice 1 on 2026-08-15.**
+**Plans:** 13 plans (Slice 1, planned 2026-08-15) across 4 waves.
+
+Plans:
+- [ ] 31-01-PLAN.md — Watermarking spike + WatermarkProvider interface + Package Legitimacy checkpoint (D-01/D-03; A2) [wave 1]
+- [ ] 31-02-PLAN.md — Schema: mig 111 (selects/tracks→tracks.id/reactions/saved-searches) + mig 112 (CRM contacts/relationship-log/buyer_orgs.website) + text-tests + [BLOCKING] owner push [wave 1]
+- [ ] 31-03-PLAN.md — Wave-0 pure logic: Selects status state machine (R11) [wave 1]
+- [ ] 31-04-PLAN.md — Selects builder API core: CRUD + idempotent add/soft-remove/reorder + Send/mint-token (R11, own-book) [wave 2]
+- [ ] 31-05-PLAN.md — Selects AI-draft (D-11) + saved/team-shared searches (D-12) API [wave 2]
+- [ ] 31-06-PLAN.md — CRM-lite contacts (one-primary) + relationship-log API (R1/D-08/D-09) [wave 2]
+- [ ] 31-07-PLAN.md — Crate Requests ranked feed API (R10; absorbs Lead Engine; stability + guest-lead) [wave 2]
+- [ ] 31-08-PLAN.md — My Client Partners list+tabs+insight-columns + R5 nav gating (R1/R2/R5; A1) [wave 3]
+- [ ] 31-09-PLAN.md — Company/person workspace (4 jobs) + Contacts CRM UI + relationship log (R1) [wave 3]
+- [ ] 31-10-PLAN.md — Selects builder UI: curate/notes/badges/auto-save/AI-draft/Send (R11) [wave 3]
+- [ ] 31-11-PLAN.md — Crate Requests room UI + Lead Engine retire (R10) [wave 3]
+- [ ] 31-12-PLAN.md — Watermark stream-preview render pipeline + never-master signed-URL accessor (R12/D-01) [wave 4]
+- [ ] 31-13-PLAN.md — Public /selects/[token] SSR player: watermarked playback, react/respond, download gate, OG, safe invalid-token (R12/D-13) [wave 4]
+
+**Execution shape:** Wave 1 → 31-01 ‖ 31-02 ‖ 31-03 (spike, schema+owner-push, pure logic — disjoint files). Wave 2 → 31-04 ‖ 31-05 ‖ 31-06 ‖ 31-07 (API, all on the pushed schema). Wave 3 → 31-08 ‖ 31-09 ‖ 31-10 ‖ 31-11 (UI; nav edits confined to 31-08). Wave 4 → 31-12 → 31-13 (watermark render, then the player). 31-01 + 31-02 carry blocking-human checkpoints (`autonomous: false`). Migration numbers 111/112 must be reconciled against the concurrently-executing Phase 32 before the owner push.
+
+**Status:** Scoped via /gsd-explore 2026-08-12; **split + Slice 1 planned (13 plans) 2026-08-15.**
 
 ---
 
