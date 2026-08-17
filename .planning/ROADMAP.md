@@ -1223,7 +1223,7 @@ Plans:
 **Goal:** Funūn moves from zero formal monitoring to a founder-maintainable observability system: owned, minute-latency alerts for outages / elevated error rates / slow routes / Vercel throttling / Supabase pressure / unexpected spend; a tested read-only `/api/health`; privacy-scrubbed Sentry server+browser monitoring; a minimal correlation-ID logging convention; a non-prod k6 harness that finds the real capacity ceiling; baseline-validated thresholds + a SEV-1..4 model; a tabletop-tested incident runbook; and a named-owner operating rhythm — all tunable from one owner-editable config layer (D-10).
 **Requirements**: R1–R10 (SPEC-locked; see 32-SPEC.md)
 **Depends on:** Phase 31
-**Plans:** 6/10 plans executed
+**Plans:** 7/10 plans executed
 
 Plans:
 **Wave 1**
@@ -1237,7 +1237,7 @@ Plans:
 
 - [x] 32-05-PLAN.md — Extensible alert fan-out + daily observability cron (R1/R8/R10)
 - [ ] 32-06-PLAN.md — Sentry error monitoring: wiring + scrubbing + owner setup (R5)
-- [ ] 32-07-PLAN.md — Better Stack external uptime monitor + status page (R3)
+- [x] 32-07-PLAN.md — Better Stack external uptime monitor + status page (R3)
 - [x] 32-08-PLAN.md — Thresholds table + SEV-1..4 model doc (R8)
 - [ ] 32-09-PLAN.md — k6 non-prod load harness + capacity report (R7)
 

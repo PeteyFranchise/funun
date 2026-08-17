@@ -19,6 +19,8 @@ Four production routes are polled by Better Stack:
 | 3 | `https://www.funun.studio/sync/catalog` | Buyer-facing catalogue browse — confirms the core buyer flow is up |
 | 4 | `https://www.funun.studio/api/health` | Dedicated health-check API (Plan 03) — confirms app + DB connectivity, not just page rendering |
 
+**Live status (2026-08-16):** Monitors 1–3 (`/`, `/signin`, `/sync/catalog`) are **live** in Better Stack — set up on the apex **`funun.studio`** (not `www`; the apex resolves Up and follow-redirects is on), all green, 3-min interval, **Confirmation period 3 min** (alerts after 2 consecutive failed checks), 4 regions (EU/NA/Asia/AU). Alerts route to **`it@funun.studio`** — verified end-to-end via a delivered test alert. Monitor 4 (`/api/health`) is **deferred until this branch deploys** — the route ships in Phase 32 on `feat/lane1-catalogue-menu-help` and isn't on production yet; add it (as a **503-as-down** status-code check) once deployed.
+
 ## Check interval (D-05)
 
 Better Stack's **free tier** polls each monitor at a **3-minute interval**. This is a deliberate, documented relaxation of the SPEC's 1–2 minute target — the free tier does not offer sub-3-minute checks.
@@ -48,7 +50,7 @@ The route deliberately never returns an unhandled `500` — every failure path i
 
 A public status page is enabled in Better Stack (e.g. `status.funun.studio`) surfacing up/down state and response time for the four monitored routes. It is buyer-facing: it shows only up/down + response-time, never internal error detail (the `/api/health` response body is already minimal and secret-safe per Plan 03, so a status-page probe reveals nothing sensitive — see threat T-32-11 in the Plan 07 threat register).
 
-**Status page URL:** _to be recorded once the owner enables it in Better Stack (see Task 1 checkpoint)._
+**Status page URL:** **https://funun.betteruptime.com** — live, enabled by the owner 2026-08-16 (displays `funun.studio`, `/signin`, `/sync/catalog`, each with status history). A custom `status.funun.studio` domain is a later DNS-CNAME follow-up.
 
 ## Summary
 
@@ -60,5 +62,5 @@ A public status page is enabled in Better Stack (e.g. `status.funun.studio`) sur
 | Alert threshold | 2–3 consecutive failures |
 | Unreachable target | Always counts as a failure, never "unknown" |
 | `/api/health` semantics | Status-code check: 200 = up, 503 = down |
-| Public status page | Enabled (URL recorded once live) |
+| Public status page | Live: https://funun.betteruptime.com |
 | Alert routing | See `lib/observability/config.ts` + `docs/observability/THRESHOLDS-AND-SEVERITY.md` |
