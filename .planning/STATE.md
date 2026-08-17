@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 current_phase_name: production-observability-capacity-incident-readiness
 status: in_progress
-stopped_at: Phase 31 UI-SPEC approved
-last_updated: "2026-08-17T05:12:41.337Z"
+stopped_at: Phase 33 context gathered
+last_updated: "2026-08-17T23:52:42.851Z"
 last_activity: 2026-08-17
 last_activity_desc: Phase 32 execution started
 progress:
-  total_phases: 32
+  total_phases: 33
   completed_phases: 26
   total_plans: 205
   completed_plans: 199
-  percent: 81
+  percent: 79
 ---
 
 # Project State
@@ -525,9 +525,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-17T05:12:41.310Z
-Stopped at: Phase 31 UI-SPEC approved
-Resume file: .planning/phases/31-ae-client-workspace-selects-my-client-partners-client-partne/31-UI-SPEC.md
+Last session: 2026-08-17T23:52:42.812Z
+Stopped at: Phase 33 context gathered
+Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-CONTEXT.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
