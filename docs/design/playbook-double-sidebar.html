@@ -1,0 +1,209 @@
+<style>
+  :root{
+    --ink:#0a0a0f; --card:#0E0D1E; --card2:#1A1838; --card3:#131128;
+    --white:#fff; --lav:#C7CBF7; --lavdim:#7c80b4;
+    --indigo:#818CF8; --fuchsia:#D946EF;
+    --emerald:#34D399; --amber:#F59E0B; --rose:#F43F5E; --money:#F4C77B;
+    --hair:rgba(199,203,247,.12); --hairstrong:rgba(199,203,247,.22);
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+    --nav:linear-gradient(180deg,#0d0c1c 0%,#09080f 100%);
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  html,body{background:var(--ink);}
+  .pb *{box-sizing:border-box;}
+  .pb{background:var(--ink); color:var(--lav); font-family:var(--ui); min-height:100vh; display:grid; grid-template-columns:210px 238px 1fr; line-height:1.5; -webkit-font-smoothing:antialiased;}
+  .pb a{color:inherit; text-decoration:none;}
+  .pb ::selection{background:rgba(217,70,239,.28);}
+  @keyframes pulse{50%{opacity:.4;}}
+
+  /* ── RAIL 1: main admin sidebar ─────────────────── */
+  .rail1{background:var(--nav); border-right:1px solid var(--hair); padding:20px 12px; display:flex; flex-direction:column; gap:3px; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .rail1 .word{font-size:19px; font-weight:800; letter-spacing:-.01em; padding:0 8px 4px; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .rail1 .lbl{font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:12px 8px 4px;}
+  .rail1 a{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; font-size:13px; color:var(--lav); font-weight:500; transition:background .13s,color .13s;}
+  .rail1 a:hover{background:rgba(199,203,247,.05); color:var(--white);}
+  .rail1 a .chev{margin-left:auto; color:var(--lavdim); font-size:15px; line-height:1;}
+  .rail1 a.active{background:var(--card2); color:var(--white); font-weight:700; position:relative;}
+  .rail1 a.active::before{content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:3px; background:var(--grad);}
+  .rail1 a.active .chev{color:var(--fuchsia);}
+  .rail1 .book{width:16px; height:16px; flex:none;}
+  .rail1 .divider{height:1px; background:var(--hair); margin:8px 6px;}
+  .rail1 .foot{margin-top:auto; border-top:1px solid var(--hair); padding-top:10px; display:flex; align-items:center; gap:9px;}
+  .rail1 .foot .av{width:28px;height:28px;border-radius:50%;background:var(--grad);display:grid;place-items:center;color:#0a0a0f;font-weight:800;font-size:12px;flex:none;}
+  .rail1 .foot .nm{font-size:12.5px;color:var(--white);font-weight:600;line-height:1.1;}
+  .rail1 .foot .rl{font-size:10.5px;color:var(--lavdim);}
+
+  /* ── RAIL 2: secondary (The Playbook) ───────────── */
+  .rail2{background:var(--card); border-right:1px solid var(--hair); padding:20px 14px; display:flex; flex-direction:column; gap:2px; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .rail2 .r2head{display:flex; align-items:center; gap:9px; padding:0 8px 4px;}
+  .rail2 .r2head .t{font-size:15px; font-weight:800; color:var(--white); letter-spacing:-.01em;}
+  .rail2 .r2head .b{width:18px;height:18px;color:var(--fuchsia);flex:none;}
+  .rail2 .r2sub{font-size:11px; color:var(--lavdim); padding:0 8px 12px; border-bottom:1px solid var(--hair); margin-bottom:8px;}
+  .rail2 .rlabel{font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:10px 8px 4px;}
+  .rail2 a.room{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:9px; font-size:13.5px; color:var(--lav); font-weight:500;}
+  .rail2 a.room:hover{background:rgba(199,203,247,.05); color:var(--white);}
+  .rail2 a.room .dot{width:6px;height:6px;border-radius:50%;background:var(--lavdim);flex:none;}
+  .rail2 a.room.active{background:var(--card2); color:var(--white); font-weight:700; position:relative;}
+  .rail2 a.room.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--grad);}
+  .rail2 a.room.active .dot{background:var(--fuchsia); box-shadow:0 0 7px rgba(217,70,239,.7);}
+  .rail2 .sub{display:flex; flex-direction:column; gap:1px; margin:2px 0 4px 19px; padding-left:10px; border-left:1px solid var(--hair);}
+  .rail2 .sub a{display:flex; align-items:center; gap:7px; padding:6px 9px; border-radius:8px; font-size:12.5px; color:var(--lavdim);}
+  .rail2 .sub a:hover{color:var(--lav);}
+  .rail2 .sub a.on{color:var(--white); font-weight:600; background:rgba(129,140,248,.12);}
+  .rail2 .sub a .live{margin-left:auto; font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--emerald); font-weight:700; display:flex; align-items:center; gap:4px;}
+  .rail2 .sub a .live .pd{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);animation:pulse 2s infinite;}
+
+  /* ── CONTENT ────────────────────────────────────── */
+  .content{min-width:0;}
+  .ctop{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:12px; padding:16px 28px; background:rgba(10,10,15,.82); backdrop-filter:blur(8px); border-bottom:1px solid var(--hair); flex-wrap:wrap;}
+  .ctop .crumb{font-family:var(--mono); font-size:12px; color:var(--lavdim);}
+  .ctop .crumb b{color:var(--lav); font-weight:600;}
+  .ctop .acl{margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--indigo); background:rgba(129,140,248,.10); border:1px solid rgba(129,140,248,.30); padding:5px 10px; border-radius:20px;}
+  .ctop .livechip{display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--emerald); font-weight:700; letter-spacing:.05em; text-transform:uppercase;}
+  .ctop .livechip .pd{width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald);animation:pulse 2s infinite;}
+  .cwrap{padding:22px 28px 60px; max-width:900px;}
+  .h1{font-size:24px; font-weight:800; color:var(--white); letter-spacing:-.02em; margin:0 0 16px;}
+
+  .banner{display:flex; align-items:center; gap:13px; border:1px solid rgba(52,211,153,.35); background:linear-gradient(120deg,rgba(52,211,153,.10),rgba(129,140,248,.04)); border-radius:15px; padding:14px 18px; margin-bottom:20px;}
+  .banner .bd{width:11px;height:11px;border-radius:50%;background:var(--emerald);box-shadow:0 0 12px var(--emerald);flex:none;}
+  .banner .bt{color:var(--white); font-weight:700; font-size:15px;}
+  .banner .bs{color:var(--lav); font-size:12.5px; margin-top:1px;}
+
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px;}
+  .tile{background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:14px 15px; position:relative; overflow:hidden;}
+  .tile .stripe{position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .tile.good .stripe{background:var(--emerald);} .tile.info .stripe{background:var(--indigo);} .tile.money .stripe{background:var(--money);}
+  .tile .tl{font-size:11px; color:var(--lavdim); letter-spacing:.03em; text-transform:uppercase; font-weight:700;}
+  .tile .tv{font-size:22px; font-weight:800; color:var(--white); font-variant-numeric:tabular-nums; margin-top:7px; line-height:1; display:flex; align-items:baseline; gap:6px;}
+  .tile .tv .u{font-size:12px; font-weight:600; color:var(--lavdim);}
+  .tile .ts{font-size:11.5px; margin-top:6px;} .tile .ts.ok{color:var(--emerald);} .tile .ts.mut{color:var(--lavdim);}
+
+  .panel{background:var(--card); border:1px solid var(--hair); border-radius:16px; overflow:hidden;}
+  .ph{display:flex; align-items:center; gap:9px; padding:13px 16px; border-bottom:1px solid var(--hair);}
+  .ph h2{font-size:13.5px; font-weight:700; color:var(--white); margin:0;}
+  .ph .src{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--lavdim); border:1px solid var(--hair); border-radius:6px; padding:2px 7px;}
+  .urow{display:flex; align-items:center; gap:13px; padding:11px 16px; border-bottom:1px solid var(--hair);}
+  .urow:last-child{border-bottom:0;}
+  .urow .ud{width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald);flex:none;}
+  .urow .un{color:var(--white);font-weight:600;font-size:13px;font-family:var(--mono);}
+  .urow .us{font-size:11px;color:var(--lavdim);margin-top:1px;}
+  .urow .spark{margin-left:auto;flex:none;}
+  .urow .up{font-variant-numeric:tabular-nums;color:var(--emerald);font-weight:700;font-size:12.5px;width:54px;text-align:right;flex:none;}
+
+  .calloutp{margin-top:20px; font-size:12px; color:var(--lavdim); background:var(--card); border:1px dashed var(--hairstrong); border-radius:12px; padding:12px 15px;}
+  .calloutp b{color:var(--fuchsia);}
+
+  svg.ic{fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;}
+
+  @media (max-width:1000px){
+    .pb{grid-template-columns:1fr;}
+    .rail1{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:12px;}
+    .rail1 .lbl,.rail1 .divider,.rail1 .foot{display:none;}
+    .rail2{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:12px;}
+    .rail2 .r2sub,.rail2 .rlabel,.rail2 .sub{display:none;}
+    .tiles{grid-template-columns:1fr 1fr;}
+    .cwrap,.ctop{padding-left:16px;padding-right:16px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .pb *{animation:none !important; transition:none !important;} }
+  .pb a:focus-visible{outline:2px solid var(--indigo); outline-offset:2px; border-radius:8px;}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-book" viewBox="0 0 24 24"><path class="ic" d="M5 5a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path class="ic" d="M5 19a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path class="ic" d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+</svg>
+
+<div class="pb">
+
+  <!-- ══ RAIL 1 — main admin sidebar (everyone) ══ -->
+  <aside class="rail1">
+    <div class="word">Funūn</div>
+    <div class="lbl">Admin</div>
+
+    <a class="active" href="#"><svg class="book ic"><use href="#i-book"/></svg> The Playbook <span class="chev">›</span></a>
+
+    <div class="divider"></div>
+
+    <a href="#">Crate Requests</a>
+    <a href="#">Selects</a>
+    <a href="#">My Client Partners</a>
+    <a href="#">Client Partners</a>
+    <a href="#">Deals</a>
+    <a href="#">GTM Metrics</a>
+    <a href="#">Sync Library</a>
+    <a href="#">Reports</a>
+    <a href="#">Verification</a>
+    <a href="#">Team Members</a>
+    <a href="#">Directory</a>
+
+    <div class="foot"><span class="av">P</span><div><div class="nm">Pete</div><div class="rl">Owner · IT</div></div></div>
+  </aside>
+
+  <!-- ══ RAIL 2 — secondary: The Playbook rooms ══ -->
+  <aside class="rail2">
+    <div class="r2head"><svg class="b ic"><use href="#i-book"/></svg><span class="t">The Playbook</span></div>
+    <div class="r2sub">Company wiki · SOPs, topics &amp; plays</div>
+
+    <div class="rlabel">Rooms</div>
+    <a class="room" href="#"><span class="dot"></span> Company-wide</a>
+    <a class="room" href="#"><span class="dot"></span> A&amp;R</a>
+    <a class="room" href="#"><span class="dot"></span> AE / Sales</a>
+
+    <a class="room active" href="#"><span class="dot"></span> IT Team</a>
+    <div class="sub">
+      <a href="#">Vendor Directory</a>
+      <a href="#">Incident Runbook</a>
+      <a href="#">Operating Rhythm</a>
+      <a href="#">Thresholds &amp; Severity</a>
+      <a class="on" href="#">Monitoring Dashboard <span class="live"><span class="pd"></span> Live</span></a>
+    </div>
+
+    <a class="room" href="#"><span class="dot"></span> TMS</a>
+    <div class="sub"><a href="#">Training</a></div>
+
+    <a class="room" href="#"><span class="dot"></span> Leadership</a>
+  </aside>
+
+  <!-- ══ CONTENT ══ -->
+  <main class="content">
+    <div class="ctop">
+      <span class="crumb">The Playbook / IT Team / <b>Monitoring</b></span>
+      <span class="acl">🔒 IT + Leadership</span>
+      <span class="livechip"><span class="pd"></span> Live</span>
+    </div>
+
+    <div class="cwrap">
+      <h1 class="h1">Monitoring Dashboard</h1>
+
+      <div class="banner">
+        <span class="bd"></span>
+        <div><div class="bt">All systems operational</div><div class="bs">3/3 uptime monitors up · /api/health healthy · no open incidents</div></div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile good"><span class="stripe"></span><div class="tl">App Health</div><div class="tv">Healthy</div><div class="ts ok">/api/health → 200</div></div>
+        <div class="tile good"><span class="stripe"></span><div class="tl">Uptime 30d</div><div class="tv">99.9<span class="u">%</span></div><div class="ts ok">3/3 up</div></div>
+        <div class="tile money"><span class="stripe"></span><div class="tl">Spend</div><div class="tv">$—<span class="u">/ $200</span></div><div class="ts mut">v2 live figure</div></div>
+        <div class="tile info"><span class="stripe"></span><div class="tl">Incidents</div><div class="tv">0</div><div class="ts mut">none active</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><span style="color:var(--emerald)"><svg class="ic" width="16" height="16"><use href="#i-pulse"/></svg></span><h2>Uptime — production routes</h2><span class="src">Better Stack</span></div>
+        <div class="urow"><span class="ud"></span><div><div class="un">funun.studio</div><div class="us">apex · 3-min · 4 regions</div></div>
+          <svg class="spark" width="110" height="28" viewBox="0 0 110 28"><polyline points="0,20 14,18 28,19 42,16 56,17 70,15 84,16 97,14 110,15" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="110" cy="15" r="2.3" fill="#34D399"/></svg>
+          <span class="up">99.98%</span></div>
+        <div class="urow"><span class="ud"></span><div><div class="un">/signin</div><div class="us">auth entry</div></div>
+          <svg class="spark" width="110" height="28" viewBox="0 0 110 28"><polyline points="0,17 14,18 28,16 42,17 56,15 70,16 84,14 97,15 110,14" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="110" cy="14" r="2.3" fill="#34D399"/></svg>
+          <span class="up">99.95%</span></div>
+        <div class="urow"><span class="ud"></span><div><div class="un">/sync/catalog</div><div class="us">buyer browse</div></div>
+          <svg class="spark" width="110" height="28" viewBox="0 0 110 28"><polyline points="0,19 14,17 28,18 42,15 56,16 70,17 84,15 97,16 110,15" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="110" cy="15" r="2.3" fill="#34D399"/></svg>
+          <span class="up">99.97%</span></div>
+      </div>
+
+      <div class="calloutp">
+        <b>How to read this:</b> the <b>main sidebar</b> (left) is your existing admin console — every staff member sees <b>The Playbook</b> there. Clicking it opened this <b>secondary sidebar</b> (its rooms + sub-rooms). Other structured rooms (e.g. Client Partners, Selects) could open their own secondary sidebar the same way.
+      </div>
+    </div>
+  </main>
+</div>

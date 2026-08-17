@@ -1,0 +1,292 @@
+<style>
+  :root{
+    --ink:#0a0a0f; --card:#0E0D1E; --card2:#1A1838;
+    --white:#fff; --lav:#C7CBF7; --lavdim:#7c80b4;
+    --indigo:#818CF8; --fuchsia:#D946EF;
+    --emerald:#34D399; --amber:#F59E0B; --rose:#F43F5E; --money:#F4C77B;
+    --hair:rgba(199,203,247,.12); --hairstrong:rgba(199,203,247,.22);
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+    --nav:linear-gradient(180deg,#0d0c1c 0%,#09080f 100%);
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  html,body{background:var(--ink);}
+  .pb *{box-sizing:border-box;}
+  .pb{background:var(--ink); color:var(--lav); font-family:var(--ui); min-height:100vh; display:grid; grid-template-columns:250px 1fr; line-height:1.5; -webkit-font-smoothing:antialiased;}
+  .pb a{color:inherit; text-decoration:none;}
+  .pb ::selection{background:rgba(217,70,239,.28);}
+
+  /* rail */
+  .rail{background:var(--nav); border-right:1px solid var(--hair); padding:22px 16px; display:flex; flex-direction:column; gap:20px; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .brand{display:flex; flex-direction:column; gap:2px; padding:0 6px;}
+  .brand .word{font-size:20px; font-weight:800; letter-spacing:-.01em; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .brand .sub{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--lavdim); font-weight:600;}
+  .search{display:flex; align-items:center; gap:8px; padding:9px 11px; background:var(--card); border:1px solid var(--hair); border-radius:11px; color:var(--lavdim); font-size:13px;}
+  .search input{all:unset; flex:1; color:var(--lav); font-family:var(--ui); font-size:13px; min-width:0;}
+  .search input::placeholder{color:var(--lavdim);}
+  .search .slash{font-family:var(--mono); font-size:11px; border:1px solid var(--hair); border-radius:5px; padding:1px 5px; color:var(--lavdim);}
+  .navlabel{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:0 8px; margin-bottom:2px;}
+  .nav{display:flex; flex-direction:column; gap:2px;}
+  .nav a.room{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px; font-size:14px; color:var(--lav); font-weight:500;}
+  .nav a.room:hover{background:rgba(199,203,247,.05); color:var(--white);}
+  .nav a.room .dotroom{width:7px; height:7px; border-radius:50%; background:var(--lavdim); flex:none;}
+  .nav a.room.active{background:var(--card2); color:var(--white); font-weight:700; position:relative;}
+  .nav a.room.active::before{content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--grad);}
+  .nav a.room.active .dotroom{background:var(--fuchsia); box-shadow:0 0 8px rgba(217,70,239,.7);}
+  .subnav{display:flex; flex-direction:column; gap:1px; margin:3px 0 4px 20px; padding-left:10px; border-left:1px solid var(--hair);}
+  .subnav a{display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px; font-size:13px; color:var(--lavdim);}
+  .subnav a:hover{color:var(--lav);}
+  .subnav a.on{color:var(--white); font-weight:600; background:rgba(129,140,248,.12);}
+  .subnav a .live{margin-left:auto; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--emerald); font-weight:700; display:flex; align-items:center; gap:4px;}
+  .subnav a .live .pd{width:6px; height:6px; border-radius:50%; background:var(--emerald); box-shadow:0 0 7px var(--emerald); animation:pulse 2s infinite;}
+  @keyframes pulse{50%{opacity:.4;}}
+  .who{margin-top:auto; display:flex; align-items:center; gap:10px; padding:9px 8px; border-top:1px solid var(--hair);}
+  .who .av{width:30px; height:30px; border-radius:50%; background:var(--grad); flex:none; display:grid; place-items:center; color:#0a0a0f; font-weight:800; font-size:13px;}
+  .who .nm{font-size:13px; color:var(--white); font-weight:600; line-height:1.2;}
+  .who .rl{font-size:11px; color:var(--lavdim);}
+
+  /* main */
+  .main{min-width:0;}
+  .top{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; padding:18px 34px; background:rgba(10,10,15,.82); backdrop-filter:blur(8px); border-bottom:1px solid var(--hair); flex-wrap:wrap;}
+  .top .crumb{font-family:var(--mono); font-size:12px; color:var(--lavdim);}
+  .top .crumb b{color:var(--lav); font-weight:600;}
+  .top h1{font-size:22px; font-weight:800; color:var(--white); letter-spacing:-.01em; margin:0; width:100%;}
+  .top .meta{display:flex; align-items:center; gap:12px; margin-left:auto; font-size:12px; color:var(--lavdim);}
+  .acl{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--indigo); background:rgba(129,140,248,.10); border:1px solid rgba(129,140,248,.30); padding:5px 10px; border-radius:20px;}
+  .livechip{display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--emerald); font-weight:700; letter-spacing:.05em; text-transform:uppercase;}
+  .livechip .pd{width:7px; height:7px; border-radius:50%; background:var(--emerald); box-shadow:0 0 8px var(--emerald); animation:pulse 2s infinite;}
+
+  .wrap{padding:24px 34px 70px; max-width:1080px;}
+
+  .banner{display:flex; align-items:center; gap:14px; border:1px solid rgba(52,211,153,.35); background:linear-gradient(120deg,rgba(52,211,153,.10),rgba(129,140,248,.04)); border-radius:16px; padding:16px 20px; margin-bottom:22px;}
+  .banner .bd{width:12px; height:12px; border-radius:50%; background:var(--emerald); box-shadow:0 0 12px var(--emerald); flex:none;}
+  .banner .bt{color:var(--white); font-weight:700; font-size:16px;}
+  .banner .bs{color:var(--lav); font-size:13px; margin-top:1px;}
+  .banner .bwhen{margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--lavdim); white-space:nowrap;}
+
+  .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px;}
+  .tile{background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:16px 17px; position:relative; overflow:hidden;}
+  .tile .tl{font-size:11.5px; color:var(--lavdim); letter-spacing:.03em; text-transform:uppercase; font-weight:700;}
+  .tile .tv{font-size:26px; font-weight:800; color:var(--white); font-variant-numeric:tabular-nums; margin-top:8px; line-height:1; display:flex; align-items:baseline; gap:7px;}
+  .tile .tv .u{font-size:13px; font-weight:600; color:var(--lavdim);}
+  .tile .ts{font-size:12px; margin-top:7px;}
+  .tile .ts.ok{color:var(--emerald);} .tile .ts.mut{color:var(--lavdim);}
+  .tile .stripe{position:absolute; left:0; top:0; bottom:0; width:3px;}
+  .tile.good .stripe{background:var(--emerald);} .tile.info .stripe{background:var(--indigo);} .tile.money .stripe{background:var(--money);}
+
+  .grid2{display:grid; grid-template-columns:1.35fr 1fr; gap:18px; margin-bottom:18px;}
+  .panel{background:var(--card); border:1px solid var(--hair); border-radius:18px; padding:0; overflow:hidden;}
+  .ph{display:flex; align-items:center; gap:10px; padding:15px 18px; border-bottom:1px solid var(--hair);}
+  .ph h2{font-size:14px; font-weight:700; color:var(--white); margin:0;}
+  .ph .src{margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--lavdim); border:1px solid var(--hair); border-radius:6px; padding:2px 7px;}
+  .ph .v2{margin-left:auto; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--fuchsia); background:rgba(217,70,239,.10); border:1px solid rgba(217,70,239,.32); border-radius:20px; padding:3px 9px;}
+  .pb-body{padding:8px 10px;}
+
+  /* uptime rows */
+  .urow{display:flex; align-items:center; gap:14px; padding:12px 10px; border-bottom:1px solid var(--hair);}
+  .urow:last-child{border-bottom:0;}
+  .urow .ud{width:9px; height:9px; border-radius:50%; background:var(--emerald); box-shadow:0 0 8px var(--emerald); flex:none;}
+  .urow .un{color:var(--white); font-weight:600; font-size:13.5px; font-family:var(--mono);}
+  .urow .us{font-size:11.5px; color:var(--lavdim); margin-top:1px;}
+  .urow .spark{margin-left:auto; flex:none;}
+  .urow .up{font-variant-numeric:tabular-nums; color:var(--emerald); font-weight:700; font-size:13px; width:58px; text-align:right; flex:none;}
+
+  /* vendor grid */
+  .vgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px;}
+  .vcell{display:flex; align-items:center; gap:10px; padding:10px 11px; border:1px solid var(--hair); border-radius:12px; background:var(--card2);}
+  .vcell .vd{width:8px; height:8px; border-radius:50%; flex:none;}
+  .vcell .vd.crit{background:var(--rose);} .vcell .vd.norm{background:var(--lavdim);}
+  .vcell .vn{color:var(--white); font-weight:600; font-size:13px;}
+  .vcell .vf{font-size:10.5px; color:var(--lavdim);}
+  .vcell .vlink{margin-left:auto; color:var(--indigo); font-size:14px; flex:none;}
+  .vnote{padding:0 12px 12px; font-size:11.5px; color:var(--lavdim);}
+  .vnote b{color:var(--fuchsia); font-weight:700;}
+
+  /* thresholds */
+  .trow{display:grid; grid-template-columns:1.4fr .8fr auto; gap:10px; align-items:center; padding:11px 12px; border-bottom:1px solid var(--hair); font-size:13px;}
+  .trow:last-child{border-bottom:0;}
+  .trow .tn{color:var(--lav);}
+  .trow .tval{font-family:var(--mono); font-size:12px; color:var(--lavdim);}
+  .trow .band{font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 8px; border-radius:20px; justify-self:end;}
+  .band.await{color:var(--fuchsia); background:rgba(217,70,239,.10); border:1px solid rgba(217,70,239,.30);}
+  .sevlegend{display:flex; gap:14px; flex-wrap:wrap; padding:12px 14px; font-size:11.5px; color:var(--lavdim); border-top:1px solid var(--hair);}
+  .sevlegend span{display:inline-flex; align-items:center; gap:6px;}
+  .sevlegend .dot{width:8px; height:8px; border-radius:50%;}
+
+  /* digest */
+  .drow{display:flex; gap:12px; padding:11px 12px; border-bottom:1px solid var(--hair); align-items:flex-start;}
+  .drow:last-child{border-bottom:0;}
+  .drow .dwhen{font-family:var(--mono); font-size:11px; color:var(--lavdim); white-space:nowrap; padding-top:2px; width:58px; flex:none;}
+  .drow .dstat{width:8px; height:8px; border-radius:50%; margin-top:6px; flex:none;}
+  .drow .dtxt{font-size:12.5px; color:var(--lav);}
+  .drow .dtxt b{color:var(--white); font-weight:600;}
+
+  /* quick links */
+  .qlinks{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:18px;}
+  .ql{display:flex; align-items:center; gap:11px; padding:13px 15px; border:1px solid var(--hair); border-radius:13px; background:var(--card); transition:border-color .15s, transform .1s;}
+  .ql:hover{border-color:var(--hairstrong); transform:translateY(-1px);}
+  .ql .qi{width:32px; height:32px; border-radius:9px; background:var(--card2); display:grid; place-items:center; color:var(--indigo); flex:none;}
+  .ql .qt{color:var(--white); font-weight:600; font-size:13px;}
+  .ql .qs{color:var(--lavdim); font-size:11px;}
+  .ql .qgo{margin-left:auto; color:var(--lavdim);}
+
+  .sechead{font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--lavdim); font-weight:700; margin:8px 2px 12px;}
+
+  svg.ic{fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+
+  @media (max-width:900px){
+    .pb{grid-template-columns:1fr;}
+    .rail{position:static; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; gap:12px; padding:16px;}
+    .rail .navlabel,.subnav,.who{display:none;}
+    .nav{flex-direction:row; flex-wrap:wrap; gap:6px;}
+    .search{order:3; flex-basis:100%;}
+    .tiles{grid-template-columns:1fr 1fr;}
+    .grid2{grid-template-columns:1fr;}
+    .vgrid{grid-template-columns:1fr;}
+    .wrap,.top{padding-left:18px; padding-right:18px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .pb *{animation:none !important; transition:none !important;} }
+  .pb a:focus-visible,.pb input:focus-visible{outline:2px solid var(--indigo); outline-offset:2px; border-radius:8px;}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-book" viewBox="0 0 24 24"><path class="ic" d="M5 5a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path class="ic" d="M5 19a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="i-vendor" viewBox="0 0 24 24"><rect class="ic" x="3" y="5" width="18" height="14" rx="2.5"/><path class="ic" d="M7 9.5h6M7 13h10M7 16h7"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path class="ic" d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path class="ic" d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path class="ic" d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+  <symbol id="i-go" viewBox="0 0 24 24"><path class="ic" d="M7 17L17 7M9 7h8v8"/></symbol>
+</svg>
+
+<div class="pb">
+  <!-- rail -->
+  <aside class="rail">
+    <div class="brand"><span class="word">Funūn</span><span class="sub">The Playbook</span></div>
+    <label class="search"><span>⌕</span><input placeholder="Search the wiki…" aria-label="Search the wiki" /><span class="slash">/</span></label>
+    <div>
+      <div class="navlabel">Team Rooms</div>
+      <nav class="nav">
+        <a class="room" href="#"><span class="dotroom"></span> Company-wide</a>
+        <a class="room" href="#"><span class="dotroom"></span> A&amp;R</a>
+        <a class="room" href="#"><span class="dotroom"></span> AE / Sales</a>
+        <a class="room active" href="#"><span class="dotroom"></span> IT Team</a>
+        <div class="subnav">
+          <a href="#">Vendor Directory</a>
+          <a href="#">Incident Runbook</a>
+          <a href="#">Operating Rhythm</a>
+          <a href="#">Thresholds &amp; Severity</a>
+          <a class="on" href="#">Monitoring Dashboard <span class="live"><span class="pd"></span> Live</span></a>
+        </div>
+        <a class="room" href="#"><span class="dotroom"></span> TMS</a>
+        <div class="subnav"><a href="#">Training</a></div>
+        <a class="room" href="#"><span class="dotroom"></span> Leadership</a>
+      </nav>
+    </div>
+    <div class="who"><div class="av">P</div><div><div class="nm">Pete</div><div class="rl">Owner · IT</div></div></div>
+  </aside>
+
+  <!-- main -->
+  <main class="main">
+    <div class="top">
+      <h1>Monitoring Dashboard</h1>
+      <span class="crumb">The Playbook / <b>IT Team</b> / Monitoring</span>
+      <div class="meta">
+        <span class="acl">🔒 IT + Leadership</span>
+        <span class="livechip"><span class="pd"></span> Live</span>
+        <span style="font-family:var(--mono)">updated 12s ago</span>
+      </div>
+    </div>
+
+    <div class="wrap">
+
+      <!-- global status -->
+      <div class="banner">
+        <span class="bd"></span>
+        <div>
+          <div class="bt">All systems operational</div>
+          <div class="bs">3/3 uptime monitors up · /api/health healthy · no open incidents</div>
+        </div>
+        <span class="bwhen">last check 06:00 UTC digest</span>
+      </div>
+
+      <!-- stat tiles -->
+      <div class="tiles">
+        <div class="tile good"><span class="stripe"></span><div class="tl">App Health</div><div class="tv">Healthy</div><div class="ts ok">/api/health → 200</div></div>
+        <div class="tile good"><span class="stripe"></span><div class="tl">Uptime (30d)</div><div class="tv">99.9<span class="u">%</span></div><div class="ts ok">3/3 monitors up</div></div>
+        <div class="tile money"><span class="stripe"></span><div class="tl">Spend this mo.</div><div class="tv">$—<span class="u">/ $200 cap</span></div><div class="ts mut">notify-only · v2 live figure</div></div>
+        <div class="tile info"><span class="stripe"></span><div class="tl">Open incidents</div><div class="tv">0</div><div class="ts mut">SEV-1..4 · none active</div></div>
+      </div>
+
+      <div class="grid2">
+        <!-- uptime -->
+        <div class="panel">
+          <div class="ph"><span style="color:var(--emerald)"><svg class="ic" width="17" height="17"><use href="#i-pulse"/></svg></span><h2>Uptime — production routes</h2><span class="src">Better Stack</span></div>
+          <div class="pb-body">
+            <div class="urow"><span class="ud"></span><div><div class="un">funun.studio</div><div class="us">apex · 3-min · 4 regions</div></div>
+              <svg class="spark" width="120" height="30" viewBox="0 0 120 30"><polyline points="0,22 15,20 30,21 45,18 60,19 75,17 90,18 105,16 120,17" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="120" cy="17" r="2.4" fill="#34D399"/></svg>
+              <span class="up">99.98%</span></div>
+            <div class="urow"><span class="ud"></span><div><div class="un">/signin</div><div class="us">auth entry</div></div>
+              <svg class="spark" width="120" height="30" viewBox="0 0 120 30"><polyline points="0,19 15,20 30,18 45,19 60,17 75,18 90,16 105,17 120,16" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="120" cy="16" r="2.4" fill="#34D399"/></svg>
+              <span class="up">99.95%</span></div>
+            <div class="urow"><span class="ud"></span><div><div class="un">/sync/catalog</div><div class="us">buyer browse</div></div>
+              <svg class="spark" width="120" height="30" viewBox="0 0 120 30"><polyline points="0,21 15,19 30,20 45,17 60,18 75,19 90,17 105,18 120,17" fill="none" stroke="#34D399" stroke-width="1.6"/><circle cx="120" cy="17" r="2.4" fill="#34D399"/></svg>
+              <span class="up">99.97%</span></div>
+          </div>
+        </div>
+
+        <!-- thresholds -->
+        <div class="panel">
+          <div class="ph"><span style="color:var(--indigo)"><svg class="ic" width="17" height="17"><use href="#i-shield"/></svg></span><h2>Thresholds &amp; severity</h2><span class="v2">Live values · v2</span></div>
+          <div>
+            <div class="trow"><span class="tn">Vercel 5xx rate</span><span class="tval">warn 1% · crit 5%</span><span class="band await">awaiting feed</span></div>
+            <div class="trow"><span class="tn">Route p95 latency</span><span class="tval">warn 800ms · crit 2s</span><span class="band await">awaiting feed</span></div>
+            <div class="trow"><span class="tn">Supabase CPU</span><span class="tval">warn 70% · crit 90%</span><span class="band await">awaiting feed</span></div>
+            <div class="trow"><span class="tn">DB connections</span><span class="tval">warn 50 · crit 70</span><span class="band await">awaiting feed</span></div>
+          </div>
+          <div class="sevlegend">
+            <span><span class="dot" style="background:var(--rose)"></span> SEV-1/2 critical</span>
+            <span><span class="dot" style="background:var(--amber)"></span> SEV-3 warning</span>
+            <span><span class="dot" style="background:var(--emerald)"></span> healthy</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- vendors -->
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="ph"><span style="color:var(--lav)"><svg class="ic" width="17" height="17"><use href="#i-vendor"/></svg></span><h2>Vendors</h2><span class="src">directory + deep links</span></div>
+        <div class="vgrid">
+          <a class="vcell" href="#"><span class="vd crit"></span><div><div class="vn">Vercel</div><div class="vf">Hosting · functions · CDN</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd crit"></span><div><div class="vn">Supabase</div><div class="vf">DB · Auth · Storage</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd crit"></span><div><div class="vn">DNS / Registrar</div><div class="vf">funun.studio resolution</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Sentry</div><div class="vf">Error monitoring</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Better Stack</div><div class="vf">Uptime + status page</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Stripe</div><div class="vf">Payments</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Resend</div><div class="vf">Transactional email</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Anthropic</div><div class="vf">AI tools</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">DocuSeal</div><div class="vf">E-signature</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+          <a class="vcell" href="#"><span class="vd norm"></span><div><div class="vn">Google Places</div><div class="vf">Address autocomplete</div></div><span class="vlink"><svg class="ic" width="15" height="15"><use href="#i-go"/></svg></span></a>
+        </div>
+        <div class="vnote">🔴 = site-critical (down = full outage). Per-vendor <b>live status dots arrive in v2</b> (their status APIs); for now each tile deep-links to that vendor's own dashboard + status page.</div>
+      </div>
+
+      <!-- daily digest -->
+      <div class="panel">
+        <div class="ph"><span style="color:var(--money)"><svg class="ic" width="17" height="17"><use href="#i-pulse"/></svg></span><h2>Daily digest</h2><span class="src">cron · 06:00 UTC</span></div>
+        <div>
+          <div class="drow"><span class="dwhen">Aug 17</span><span class="dstat" style="background:var(--emerald)"></span><div class="dtxt"><b>Healthy.</b> /api/health 200 · 3/3 monitors up · spend check manual (v2 wires the live figure) · no throttles.</div></div>
+          <div class="drow"><span class="dwhen">Aug 16</span><span class="dstat" style="background:var(--emerald)"></span><div class="dtxt"><b>Healthy.</b> All routes up · thresholds reported <span style="font-family:var(--mono)">unknown</span> (no live telemetry yet — v2).</div></div>
+          <div class="drow"><span class="dwhen">Aug 15</span><span class="dstat" style="background:var(--amber)"></span><div class="dtxt"><b>Watch.</b> One transient /signin blip — self-recovered before the 2-failure alert threshold. No action.</div></div>
+        </div>
+      </div>
+
+      <!-- quick links -->
+      <div class="sechead" style="margin-top:26px;">Jump to</div>
+      <div class="qlinks">
+        <a class="ql" href="#"><span class="qi"><svg class="ic" width="16" height="16"><use href="#i-shield"/></svg></span><div><div class="qt">Incident Runbook</div><div class="qs">triage → rollback → review</div></div><span class="qgo"><svg class="ic" width="14" height="14"><use href="#i-go"/></svg></span></a>
+        <a class="ql" href="#"><span class="qi"><svg class="ic" width="16" height="16"><use href="#i-vendor"/></svg></span><div><div class="qt">Vendor Directory</div><div class="qs">where to look on failure</div></div><span class="qgo"><svg class="ic" width="14" height="14"><use href="#i-go"/></svg></span></a>
+        <a class="ql" href="#"><span class="qi"><svg class="ic" width="16" height="16"><use href="#i-pulse"/></svg></span><div><div class="qt">Status page</div><div class="qs">funun.betteruptime.com</div></div><span class="qgo"><svg class="ic" width="14" height="14"><use href="#i-go"/></svg></span></a>
+        <a class="ql" href="#"><span class="qi"><svg class="ic" width="16" height="16"><use href="#i-book"/></svg></span><div><div class="qt">Operating Rhythm</div><div class="qs">daily · weekly · monthly</div></div><span class="qgo"><svg class="ic" width="14" height="14"><use href="#i-go"/></svg></span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
