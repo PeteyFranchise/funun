@@ -1216,6 +1216,24 @@ Plans:
 
 **Status:** Split out of Phase 31 on 2026-08-15; plans after Phase 31 (Slice 1) ships.
 
+### Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1)
+
+**Goal:** Introduce **The Playbook** as a new internal Team-Member admin surface using a **double-sidebar nav** — a "The Playbook" item on the main admin sidebar (visible to all staff) opens a secondary sidebar of rooms/sub-rooms. Ship the **IT Team room read-only**: render the existing `docs/observability/` docs (Vendor Directory, Incident Runbook, Operating Rhythm, Thresholds & Severity) as pages, with a live **single-pane Monitoring Dashboard** as its opening page (health via `/api/health`, Better Stack uptime, the daily-observability-check digest, vendor grid + deep links, thresholds/severity reference — no new vendor-API integration).
+
+**Scope boundary (owner-decided 2026-08-17):** READ-ONLY viewing only, role-gated to leadership (+ optionally a new `it` StaffRole — confirm in discuss-phase). **Explicitly DEFERRED to follow-on phases:** in-app authoring (block editor + create/edit/publish), the rooms→sub-groups→entries RBAC permission model, DB-stored entry content, the other rooms' content, and Observability Dashboard v2 (live metrics/charts).
+
+**Implementation shape:** nested Next.js layout under `/admin/playbook/*` renders the secondary rail (URL-driven, no client state), reusing the existing `requireStaff` role-gating in `app/(admin)/layout.tsx`.
+
+**Design references:** `docs/design/playbook-double-sidebar.html` (two-level nav), `docs/design/observability-dashboard.html` (dashboard), `docs/design/playbook-it-team-room.html` (IT room). **Related:** `.planning/deliberations/team-member-rbac-access-model.md` (RBAC forks for the authoring follow-on), `.planning/todos/pending/2026-08-17-observability-dashboard-v2-live-metrics.md` (v2).
+
+**Requirements**: TBD (register during planning)
+**Depends on:** Phase 32
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run `/gsd-discuss-phase 33` to scope, then `/gsd-plan-phase 33`)
+
 ---
 
 ### Phase 32: Production Observability, Capacity & Incident Readiness
