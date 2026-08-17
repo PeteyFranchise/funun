@@ -15,7 +15,7 @@ This document satisfies SPEC R1's acceptance criteria: a written table mapping e
 **Configured (32-04 Task 2):** Spend Management is live — **On-Demand Budget $200 USD, notify-only**, with **"Pause production deployment" OFF** (D-07 — a spend cap must never take production down). Personal notifications (Team Settings → My Notifications): **Email + Web ON** for **Usage → "75% of included credit"** and **Team → Spend Management**.
 
 **Open items:**
-- The notification email is the owner's Vercel account address (`peter.zora@gmail.com` as of 2026-08-16), not a company/ops inbox — confirm this is where ops alerts should land, or change it under My Notifications → Email.
+- **Notification email — owner decision 2026-08-16:** left as the owner's personal Vercel account address (`peter.zora@gmail.com`) for now. **Revisit as the team grows** — add a shared IT/ops account (a `funun.studio` ops inbox/group) as a Vercel team member so alerts reach on-call rather than one person's inbox. Tracked as a todo, and an input to the access-model / RBAC discussion (the "IT team member" role).
 - Set the env var **`VERCEL_PLAN_TIER=pro`** on the Vercel project so the daily digest cron (`app/api/cron/daily-observability-check/route.ts` → `isProTier()`) switches its `monthly_spend_usd` line to the Spend-Management (Pro) branch instead of the "spend detection unavailable on Hobby tier" fallback.
 
 Vercel's actual usage alert is a single **"75% of included credit"** threshold (not a configurable 50/75/100% — an earlier draft assumed the latter).

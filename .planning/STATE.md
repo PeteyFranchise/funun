@@ -447,6 +447,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - Confirm during Phase 12 planning: pg_trgm/tsvector performance at 10K+ profiles via EXPLAIN ANALYZE before committing to plain GIN-index approach
 - Confirm during Phase 13 planning: verified-badge grant is admin-manual (no self-application UI) — explicit, not silent deferral
 - [2026-08-16] Research watermarking alternatives & competitor content-protection services — Phase 31 gap G1 (in-house tag is WAV-only; MP3/AAC previews untagged); survey 3rd-party forensic/audible SDKs that cover compressed audio + what competitors use for preview protection & leak tracing → `.planning/todos/pending/2026-08-16-research-watermarking-alternatives-and-competitor-content-pr.md`
+- [2026-08-16] Add shared IT/ops account for vendor alert notifications (as team grows) — Vercel/Sentry/Better Stack/Supabase alerts route to Pete's personal email; per-user routing = they die if he's out. Decision: personal for now, add a shared IT/ops account as the team grows (input to the access-model/RBAC discussion) → `.planning/todos/pending/2026-08-16-shared-it-ops-account-for-vendor-notifications.md`
 
 ### Blockers/Concerns
 
