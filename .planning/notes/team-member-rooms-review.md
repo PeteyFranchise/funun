@@ -158,3 +158,7 @@ Inherits the **full AE workspace on ANY client** (contacts CRM, Selects, activit
 ---
 
 _Access matrix (roles × rooms) — to be finalized after all rooms are reviewed._
+
+---
+
+**→ Continued in** `.planning/deliberations/team-member-rbac-access-model.md` (2026-08-17) — the RBAC / access-model deliberation brief that carries this forward: adds The Playbook's create/edit/publish permission gradient and consolidates the open forks for the discussion.
