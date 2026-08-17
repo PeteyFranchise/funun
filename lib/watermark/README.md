@@ -2,8 +2,10 @@
 
 Status: **LOCKED — owner-approved 2026-08-16** at the Task 2 blocking-human checkpoint
 (31-01-PLAN.md). The recommended default below was approved as-is (in-house, no package
-installed). Vercel tier confirmed **Hobby (10s cap)**, so async/pre-computed rendering is
-**required, not optional** for 31-12.
+installed). Vercel tier confirmed **Pro** (live billing dashboard, 2026-08-16) — so the Hobby
+10s function cap does NOT bind. Async/pre-computed rendering stays the chosen design (cost/UX +
+keeping a clean-master transcode out of the request path), but as a good-practice choice, not a
+forced requirement. 31-12's async implementation stands unchanged.
 
 This is a decision record, not code. The type contract lives in
 [`lib/watermark/provider.ts`](./provider.ts) — that is what 31-12 (render pipeline) and
@@ -53,10 +55,12 @@ synchronously inside a request handler. The contract in `provider.ts` reflects t
 - `WatermarkRenderStatus` (`pending` / `ready` / `failed`) exists so the UI can show an
   interim "processing" state instead of blocking on the render.
 
-**Confirmed at the Task 2 checkpoint (2026-08-16):** Vercel tier is **Hobby (10s cap)**, so
-async/pre-computed rendering is **required** — 31-12 must NOT run an inline per-request
-transcode. If the tier is later upgraded to Pro / Fluid Compute, async stays good practice
-(cost/UX) but the hard requirement relaxes; the interface itself does not change either way.
+**Corrected 2026-08-16 (live-dashboard check):** Vercel tier is **Pro** (Pro Plan — Active),
+NOT Hobby — an earlier checkpoint answer said Hobby, but the billing dashboard shows Pro. So the
+10s function cap does NOT bind. Async/pre-computed rendering remains the design (keeps a heavy
+clean-master transcode out of the request path, and is better for cost/UX), but it is a
+good-practice choice rather than a hard requirement. 31-12's async implementation stands; the
+interface does not change either way.
 
 ## Sequencing (A2)
 

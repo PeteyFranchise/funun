@@ -8,16 +8,17 @@ This document satisfies SPEC R1's acceptance criteria: a written table mapping e
 
 ---
 
-## 0. Plan tier status — PENDING OWNER CONFIRMATION
+## 0. Plan tier status — CONFIRMED PRO (2026-08-16)
 
-**Last recorded tier:** Hobby (`.planning/STATE.md`, Phase 14 note, 2026-07-06).
+**Live tier:** **Pro Plan — Active** (confirmed against the Vercel billing dashboard, 2026-08-16). Supersedes the earlier "Hobby" note (Phase 14 / an earlier checkpoint answer that turned out wrong).
 
-**This is not yet reconfirmed for Phase 32.** `32-04-PLAN.md` Task 1 (a `checkpoint:human-verify`) and Task 2 (a `checkpoint:human-action` dashboard-configuration step) are the mechanism for that reconfirmation and the live Vercel notification setup — both are **deferred** in this draft-first pass (see `32-04-DRAFT.md` in the phase directory for what remains outstanding). This document is authored to be correct under **either** answer so it does not block on the checkpoint result:
+**Configured (32-04 Task 2):** Spend Management is live — **On-Demand Budget $200 USD, notify-only**, with **"Pause production deployment" OFF** (D-07 — a spend cap must never take production down). Personal notifications (Team Settings → My Notifications): **Email + Web ON** for **Usage → "75% of included credit"** and **Team → Spend Management**.
 
-- **If confirmed Hobby:** Spend Management is unavailable (Pro/Enterprise-only feature). The `$100` monthly-spend heads-up (D-09) is tracked as a **manual owner habit** — Pete checks the Vercel Usage tab and the Supabase billing page during the weekly operating-rhythm review (R10) rather than relying on a native Spend Management alert. This is also the self-declared fallback baked into the code: `app/api/cron/daily-observability-check/route.ts`'s `isProTier()` defaults to `false` (Hobby-safe) unless `VERCEL_PLAN_TIER=pro` is explicitly set, and its digest states "spend detection unavailable on Hobby tier — see `docs/observability/VERCEL-ALERTS-RESPONSE.md` manual check" when so.
-- **If confirmed Pro:** Spend Management is available and should be configured per Task 2 below (threshold `$100`, destination `pete@funun.studio`, "Pause production deployment" left **OFF** per D-07) — set `VERCEL_PLAN_TIER=pro` so the daily digest cron switches its `monthly_spend_usd` line to the Spend Management branch.
+**Open items:**
+- The notification email is the owner's Vercel account address (`peter.zora@gmail.com` as of 2026-08-16), not a company/ops inbox — confirm this is where ops alerts should land, or change it under My Notifications → Email.
+- Set the env var **`VERCEL_PLAN_TIER=pro`** on the Vercel project so the daily digest cron (`app/api/cron/daily-observability-check/route.ts` → `isProTier()`) switches its `monthly_spend_usd` line to the Spend-Management (Pro) branch instead of the "spend detection unavailable on Hobby tier" fallback.
 
-Usage notifications (50/75/100% of plan quota) are available on **both** tiers and are not gated by this open question — see §2.
+Vercel's actual usage alert is a single **"75% of included credit"** threshold (not a configurable 50/75/100% — an earlier draft assumed the latter).
 
 ---
 
