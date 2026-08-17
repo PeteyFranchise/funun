@@ -1,0 +1,375 @@
+<style>
+  :root{
+    --ink:#0a0a0f; --card:#0E0D1E; --card2:#1A1838;
+    --white:#fff; --lav:#C7CBF7; --lavdim:#7c80b4;
+    --indigo:#818CF8; --fuchsia:#D946EF;
+    --emerald:#34D399; --amber:#F59E0B; --rose:#F43F5E; --money:#F4C77B;
+    --hair:rgba(199,203,247,.12); --hairstrong:rgba(199,203,247,.22);
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+    --nav:linear-gradient(180deg,#0d0c1c 0%,#09080f 100%);
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  /* Funūn is a deliberately dark brand — this mockup commits to that one visual world. */
+  html,body{background:var(--ink);}
+  .pb *{box-sizing:border-box;}
+  .pb{
+    background:var(--ink); color:var(--lav); font-family:var(--ui);
+    min-height:100vh; display:grid; grid-template-columns:250px 1fr;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .pb a{color:inherit; text-decoration:none;}
+  .pb ::selection{background:rgba(217,70,239,.28);}
+
+  /* ── rail ───────────────────────────────────────────── */
+  .rail{
+    background:var(--nav); border-right:1px solid var(--hair);
+    padding:22px 16px; display:flex; flex-direction:column; gap:20px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{display:flex; flex-direction:column; gap:2px; padding:0 6px;}
+  .brand .word{
+    font-size:20px; font-weight:800; letter-spacing:-.01em;
+    background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .brand .sub{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--lavdim); font-weight:600;}
+
+  .search{
+    display:flex; align-items:center; gap:8px; padding:9px 11px;
+    background:var(--card); border:1px solid var(--hair); border-radius:11px;
+    color:var(--lavdim); font-size:13px;
+  }
+  .search input{
+    all:unset; flex:1; color:var(--lav); font-family:var(--ui); font-size:13px; min-width:0;
+  }
+  .search input::placeholder{color:var(--lavdim);}
+  .search .slash{font-family:var(--mono); font-size:11px; border:1px solid var(--hair); border-radius:5px; padding:1px 5px; color:var(--lavdim);}
+
+  .navlabel{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:0 8px; margin-bottom:2px;}
+  .nav{display:flex; flex-direction:column; gap:2px;}
+  .nav a.room{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
+    font-size:14px; color:var(--lav); font-weight:500; transition:background .15s,color .15s;
+  }
+  .nav a.room:hover{background:rgba(199,203,247,.05); color:var(--white);}
+  .nav a.room .dotroom{width:7px; height:7px; border-radius:50%; background:var(--lavdim); flex:none;}
+  .nav a.room.active{
+    background:var(--card2); color:var(--white); font-weight:700;
+    box-shadow:inset 3px 0 0 0 transparent; position:relative;
+  }
+  .nav a.room.active::before{
+    content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--grad);
+  }
+  .nav a.room.active .dotroom{background:var(--fuchsia); box-shadow:0 0 8px rgba(217,70,239,.7);}
+  .subnav{display:flex; flex-direction:column; gap:1px; margin:3px 0 4px 20px; padding-left:10px; border-left:1px solid var(--hair);}
+  .subnav a{
+    display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px;
+    font-size:13px; color:var(--lavdim); transition:color .15s,background .15s;
+  }
+  .subnav a:hover{color:var(--lav); background:rgba(199,203,247,.04);}
+  .subnav a.on{color:var(--white); font-weight:600; background:rgba(129,140,248,.12);}
+  .subnav a .live{margin-left:auto; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--emerald); font-weight:700;}
+
+  .who{margin-top:auto; display:flex; align-items:center; gap:10px; padding:9px 8px; border-top:1px solid var(--hair);}
+  .who .av{width:30px; height:30px; border-radius:50%; background:var(--grad); flex:none; display:grid; place-items:center; color:#0a0a0f; font-weight:800; font-size:13px;}
+  .who .nm{font-size:13px; color:var(--white); font-weight:600; line-height:1.2;}
+  .who .rl{font-size:11px; color:var(--lavdim);}
+
+  /* ── main ───────────────────────────────────────────── */
+  .main{padding:34px 40px 60px; max-width:940px;}
+  .crumb{font-family:var(--mono); font-size:12px; color:var(--lavdim); letter-spacing:.02em; margin-bottom:14px;}
+  .crumb b{color:var(--lav); font-weight:600;}
+  h1{font-size:30px; line-height:1.1; font-weight:800; color:var(--white); letter-spacing:-.02em; margin:0 0 8px; text-wrap:balance;}
+  .lede{font-size:15px; color:var(--lav); max-width:64ch; margin:0 0 24px;}
+  .lede .owner{color:var(--lavdim);}
+
+  /* first move banner */
+  .firstmove{
+    display:flex; gap:16px; align-items:flex-start;
+    background:linear-gradient(120deg,rgba(129,140,248,.10),rgba(217,70,239,.06));
+    border:1px solid var(--hairstrong); border-radius:16px; padding:18px 20px; margin-bottom:22px; position:relative; overflow:hidden;
+  }
+  .firstmove::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--grad);}
+  .firstmove .fm-k{font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--fuchsia); font-weight:700; margin-bottom:5px;}
+  .firstmove .fm-t{color:var(--white); font-weight:600; font-size:15px; margin-bottom:4px;}
+  .firstmove .fm-d{font-size:13.5px; color:var(--lav);}
+  .fm-btn{
+    flex:none; align-self:center; display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+    background:var(--card2); border:1px solid var(--hairstrong); border-radius:10px; padding:9px 13px;
+    font-family:var(--mono); font-size:12.5px; color:var(--white); font-weight:600; transition:border-color .15s, transform .1s;
+  }
+  .fm-btn:hover{border-color:var(--fuchsia); transform:translateY(-1px);}
+  .fm-btn .glow{width:7px; height:7px; border-radius:50%; background:var(--emerald); box-shadow:0 0 8px var(--emerald);}
+
+  /* stats */
+  .stats{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:30px;}
+  .stat{background:var(--card); border:1px solid var(--hair); border-radius:12px; padding:11px 15px; min-width:120px;}
+  .stat .n{font-size:21px; font-weight:800; color:var(--white); font-variant-numeric:tabular-nums; line-height:1;}
+  .stat .n.crit{color:var(--rose);}
+  .stat .l{font-size:11.5px; color:var(--lavdim); margin-top:5px; letter-spacing:.02em;}
+  .stat .l a{color:var(--indigo); font-family:var(--mono); font-size:11px;}
+
+  .sechead{display:flex; align-items:baseline; gap:12px; margin:0 0 12px;}
+  .sechead h2{font-size:13px; letter-spacing:.15em; text-transform:uppercase; color:var(--lavdim); font-weight:700; margin:0;}
+  .sechead .rule{flex:1; height:1px; background:var(--hair);}
+
+  /* vendor list */
+  .vlist{background:var(--card); border:1px solid var(--hair); border-radius:16px; overflow:hidden; margin-bottom:34px;}
+  .vrow{display:flex; gap:14px; padding:14px 18px; border-bottom:1px solid var(--hair); align-items:flex-start; transition:background .13s;}
+  .vrow:last-child{border-bottom:0;}
+  .vrow:hover{background:rgba(199,203,247,.03);}
+  .vtile{flex:none; width:34px; height:34px; border-radius:9px; background:var(--card2); border:1px solid var(--hair); display:grid; place-items:center; font-family:var(--mono); font-weight:700; font-size:14px; color:var(--lav);}
+  .vbody{flex:1; min-width:0;}
+  .vtop{display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap;}
+  .vname{color:var(--white); font-weight:700; font-size:15px;}
+  .vfn{color:var(--lav); font-size:12.5px; margin-top:1px;}
+  .vlook{color:var(--lavdim); font-size:12px; margin-top:7px; font-family:var(--mono); letter-spacing:.01em;}
+  .vlook a{color:var(--indigo);}
+  .vlook .arrow{color:var(--lav);}
+
+  .chip{flex:none; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:4px 9px; border-radius:20px; white-space:nowrap;}
+  .chip.crit{color:var(--rose); background:rgba(244,63,94,.10); border:1px solid rgba(244,63,94,.35);}
+  .chip.feat{color:var(--lav); background:rgba(199,203,247,.06); border:1px solid var(--hair);}
+  .chip.mon{color:var(--emerald); background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.30);}
+  .chip.build{color:var(--money2,#F4C77B); background:rgba(244,199,123,.07); border:1px solid rgba(244,199,123,.28);}
+
+  /* full entries */
+  .cards2{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:30px;}
+  .fcard{background:var(--card); border:1px solid var(--hair); border-radius:16px; padding:18px 19px;}
+  .fcard .fh{display:flex; align-items:center; gap:11px; margin-bottom:14px;}
+  .fcard .fh .vtile{width:38px; height:38px; font-size:15px;}
+  .fcard .fh .nm{color:var(--white); font-weight:800; font-size:17px;}
+  .fcard .fh .fn{color:var(--lavdim); font-size:12px; margin-top:1px;}
+  .fcard .fh .chip{margin-left:auto;}
+  .frow{display:flex; flex-direction:column; gap:3px; padding:10px 0; border-top:1px solid var(--hair);}
+  .frow .fk{font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--lavdim); font-weight:700;}
+  .frow .fv{font-size:13.5px; color:var(--lav);}
+  .frow .fv.mono{font-family:var(--mono); font-size:12px; color:var(--lav); word-break:break-word;}
+  .frow .fv .hot{color:var(--white); font-weight:600;}
+  .frow .fv a{color:var(--indigo); font-family:var(--mono); font-size:12px;}
+
+  .foot{border-top:1px solid var(--hair); padding-top:18px; color:var(--lavdim); font-size:12.5px; display:flex; flex-direction:column; gap:8px;}
+  .foot .tag{font-family:var(--mono); font-size:11px; color:var(--lav);}
+  .foot .confirm{color:var(--amber);}
+
+  @media (max-width:820px){
+    .pb{grid-template-columns:1fr;}
+    .rail{position:static; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; gap:12px; padding:16px;}
+    .rail .navlabel,.subnav,.who{display:none;}
+    .nav{flex-direction:row; flex-wrap:wrap; gap:6px;}
+    .search{order:3; flex-basis:100%;}
+    .main{padding:26px 20px 50px;}
+    .cards2{grid-template-columns:1fr;}
+    h1{font-size:25px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .pb *{transition:none !important;} }
+  .pb a:focus-visible,.pb input:focus-visible{outline:2px solid var(--indigo); outline-offset:2px; border-radius:8px;}
+</style>
+
+<div class="pb">
+  <!-- ── LEFT RAIL ─────────────────────────────── -->
+  <aside class="rail">
+    <div class="brand">
+      <span class="word">Funūn</span>
+      <span class="sub">The Playbook</span>
+    </div>
+
+    <label class="search">
+      <span>⌕</span>
+      <input placeholder="Search the wiki…" aria-label="Search the wiki" />
+      <span class="slash">/</span>
+    </label>
+
+    <div>
+      <div class="navlabel">Team Rooms</div>
+      <nav class="nav">
+        <a class="room" href="#"><span class="dotroom"></span> Company-wide</a>
+        <a class="room" href="#"><span class="dotroom"></span> A&amp;R</a>
+        <a class="room" href="#"><span class="dotroom"></span> AE / Sales</a>
+        <a class="room active" href="#"><span class="dotroom"></span> IT Team</a>
+        <div class="subnav">
+          <a class="on" href="#">Vendor Directory</a>
+          <a href="#">Incident Runbook</a>
+          <a href="#">Operating Rhythm</a>
+          <a href="#">Thresholds &amp; Severity</a>
+          <a href="#">Monitoring Dashboard <span class="live">Live</span></a>
+        </div>
+        <a class="room" href="#"><span class="dotroom"></span> TMS</a>
+        <div class="subnav">
+          <a href="#">Training</a>
+        </div>
+        <a class="room" href="#"><span class="dotroom"></span> Leadership</a>
+      </nav>
+    </div>
+
+    <div class="who">
+      <div class="av">P</div>
+      <div>
+        <div class="nm">Pete</div>
+        <div class="rl">Owner · IT</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ──────────────────────────────────── -->
+  <main class="main">
+    <div class="crumb">The Playbook / <b>IT Team</b> / Vendor Directory</div>
+    <h1>SaaS &amp; Infra Vendor Directory</h1>
+    <p class="lede">Every external service Funūn runs on — what it does for us, and where to look the moment it breaks. <span class="owner">Owner: Pete · single-owner, no backup yet.</span></p>
+
+    <div class="firstmove">
+      <div>
+        <div class="fm-k">First move · any outage</div>
+        <div class="fm-t">Read the external uptime monitor before anything else.</div>
+        <div class="fm-d">A check hosted on Vercel can't report a Vercel outage. The outside monitor is the only read that tells you the <em>whole</em> site is down vs. one route failing.</div>
+      </div>
+      <a class="fm-btn" href="#"><span class="glow"></span> funun.betteruptime.com</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n">11</div><div class="l">vendors tracked</div></div>
+      <div class="stat"><div class="n crit">3</div><div class="l">site-critical (down = outage)</div></div>
+      <div class="stat"><div class="n">4</div><div class="l">regions monitored</div></div>
+      <div class="stat"><div class="n" style="font-size:13px;padding-top:5px">Status</div><div class="l"><a href="#">funun.betteruptime.com</a></div></div>
+    </div>
+
+    <div class="sechead"><h2>At a glance</h2><span class="rule"></span></div>
+    <div class="vlist">
+
+      <div class="vrow">
+        <div class="vtile">V</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Vercel</span><span class="chip crit">Site-critical</span></div>
+          <div class="vfn">Hosting · serverless functions · edge · CDN — runs every request. Pro plan.</div>
+          <div class="vlook"><span class="arrow">look →</span> Dashboard → Observability · <a href="#">vercel-status.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">S</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Supabase</span><span class="chip crit">Site-critical</span></div>
+          <div class="vfn">Postgres · Auth · Storage · Realtime · API — the system of record.</div>
+          <div class="vlook"><span class="arrow">look →</span> Database → Reports · Auth/API logs · <a href="#">status.supabase.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">@</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">DNS / Registrar</span><span class="chip crit">Site-critical</span></div>
+          <div class="vfn">Resolves funun.studio &amp; www → Vercel. Breaks = unreachable even if all else is healthy.</div>
+          <div class="vlook"><span class="arrow">look →</span> dig funun.studio · Vercel → Domains · <span class="confirm" style="color:#F59E0B">registrar [confirm]</span></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">Se</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Sentry</span><span class="chip feat">Feature · degrades open</span></div>
+          <div class="vfn">Error monitoring — server + browser, correlation-ID tagged. Org funun / javascript-nextjs.</div>
+          <div class="vlook"><span class="arrow">look →</span> funun.sentry.io → Issues · <a href="#">status.sentry.io</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">B</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Better Stack</span><span class="chip mon">Monitoring</span></div>
+          <div class="vfn">External uptime + public status page — the one check that catches a Vercel-wide outage.</div>
+          <div class="vlook"><span class="arrow">look →</span> betterstack.com · alerts → it@funun.studio</div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">St</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Stripe</span><span class="chip feat">Feature · checkout</span></div>
+          <div class="vfn">Payments &amp; subscriptions (founding / pro / studio tiers).</div>
+          <div class="vlook"><span class="arrow">look →</span> dashboard.stripe.com → Webhooks · <a href="#">status.stripe.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">R</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Resend</span><span class="chip feat">Feature · async</span></div>
+          <div class="vfn">Transactional email — pitch confirmations, notifications. Async, never blocks a request.</div>
+          <div class="vlook"><span class="arrow">look →</span> resend.com → Logs · <a href="#">status.resend.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">A</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Anthropic</span><span class="chip feat">Feature · AI tools</span></div>
+          <div class="vfn">Powers PitchPlug email gen &amp; contract analysis.</div>
+          <div class="vlook"><span class="arrow">look →</span> console.anthropic.com · <a href="#">status.anthropic.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">D</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">DocuSeal</span><span class="chip feat">Feature · e-sign</span></div>
+          <div class="vfn">E-signature (current provider; Dropbox Sign is the future swap-in).</div>
+          <div class="vlook"><span class="arrow">look →</span> DocuSeal dashboard · <span style="color:#F59E0B">status [confirm]</span></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">G</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">Google Places</span><span class="chip feat">Feature · input</span></div>
+          <div class="vfn">Address / location autocomplete on address fields (client-side).</div>
+          <div class="vlook"><span class="arrow">look →</span> Google Cloud Console · <a href="#">status.cloud.google.com</a></div>
+        </div>
+      </div>
+
+      <div class="vrow">
+        <div class="vtile">Gh</div>
+        <div class="vbody">
+          <div class="vtop"><span class="vname">GitHub</span><span class="chip build">Deploy-time</span></div>
+          <div class="vfn">Source control + build trigger. Down = can't ship new deploys; running site unaffected.</div>
+          <div class="vlook"><span class="arrow">look →</span> repo · <a href="#">githubstatus.com</a> · rollback still works without it</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sechead"><h2>Full entry · anatomy</h2><span class="rule"></span></div>
+    <div class="cards2">
+
+      <div class="fcard">
+        <div class="fh">
+          <div class="vtile">V</div>
+          <div><div class="nm">Vercel</div><div class="fn">Hosting · functions · edge · CDN</div></div>
+          <span class="chip crit">Site-critical</span>
+        </div>
+        <div class="frow"><div class="fk">Where to look</div><div class="fv">Dashboard → <span class="hot">Observability</span> (Errors / Functions / Latency); Deployments; Spend Management.</div></div>
+        <div class="frow"><div class="fk">On failure</div><div class="fv">Monitor first → 5xx spike or <span class="hot">FUNCTION_THROTTLED</span> → is the last deploy the cause? → roll back per Runbook §3.</div></div>
+        <div class="frow"><div class="fk">Config</div><div class="fv mono">VERCEL_PLAN_TIER=pro · Spend cap $200 (notify-only, pause OFF)</div></div>
+        <div class="frow"><div class="fk">Deep dive</div><div class="fv"><a href="#">VERCEL-ALERTS-RESPONSE.md</a></div></div>
+      </div>
+
+      <div class="fcard">
+        <div class="fh">
+          <div class="vtile">S</div>
+          <div><div class="nm">Supabase</div><div class="fn">Postgres · Auth · Storage · API</div></div>
+          <span class="chip crit">Site-critical</span>
+        </div>
+        <div class="frow"><div class="fk">Where to look</div><div class="fv">Database → <span class="hot">Reports</span> (CPU / connections / disk); Auth logs; API logs; Query Performance Advisor.</div></div>
+        <div class="frow"><div class="fk">On failure</div><div class="fv">Check bands in Thresholds &amp; Severity. DB-level recovery lives <span class="hot">only</span> in BREAK-GLASS.md — go there, don't improvise.</div></div>
+        <div class="frow"><div class="fk">Config</div><div class="fv mono">project ref wgfjakfiyeewzfuxkgyo · service-role key server-only</div></div>
+        <div class="frow"><div class="fk">Deep dive</div><div class="fv"><a href="#">SUPABASE-HEALTH-REVIEW.md</a></div></div>
+      </div>
+
+    </div>
+
+    <div class="foot">
+      <div>Every vendor gets one entry: <span class="tag">function · where to look · on failure · config · deep-dive</span>. Adding a vendor or rotating a key updates this page and Vercel env vars together.</div>
+      <div class="confirm">⚑ Open gaps to resolve once: DNS registrar · DocuSeal status URL.</div>
+      <div class="tag">Seed content for the IT Team room · The Playbook (company wiki)</div>
+    </div>
+  </main>
+</div>

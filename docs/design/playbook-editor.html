@@ -1,0 +1,265 @@
+<style>
+  :root{
+    --ink:#0a0a0f; --card:#0E0D1E; --card2:#1A1838;
+    --white:#fff; --lav:#C7CBF7; --lavdim:#7c80b4;
+    --indigo:#818CF8; --fuchsia:#D946EF;
+    --emerald:#34D399; --amber:#F59E0B; --rose:#F43F5E;
+    --hair:rgba(199,203,247,.12); --hairstrong:rgba(199,203,247,.22);
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
+    --nav:linear-gradient(180deg,#0d0c1c 0%,#09080f 100%);
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  html,body{background:var(--ink);}
+  .pb *{box-sizing:border-box;}
+  .pb{background:var(--ink); color:var(--lav); font-family:var(--ui); min-height:100vh; display:grid; grid-template-columns:250px 1fr; line-height:1.5; -webkit-font-smoothing:antialiased;}
+  .pb a{color:inherit; text-decoration:none;}
+  .pb ::selection{background:rgba(217,70,239,.28);}
+
+  /* rail (same shell as the room view) */
+  .rail{background:var(--nav); border-right:1px solid var(--hair); padding:22px 16px; display:flex; flex-direction:column; gap:20px; position:sticky; top:0; height:100vh; overflow-y:auto;}
+  .brand{display:flex; flex-direction:column; gap:2px; padding:0 6px;}
+  .brand .word{font-size:20px; font-weight:800; letter-spacing:-.01em; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .brand .sub{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--lavdim); font-weight:600;}
+  .search{display:flex; align-items:center; gap:8px; padding:9px 11px; background:var(--card); border:1px solid var(--hair); border-radius:11px; color:var(--lavdim); font-size:13px;}
+  .search input{all:unset; flex:1; color:var(--lav); font-family:var(--ui); font-size:13px; min-width:0;}
+  .search input::placeholder{color:var(--lavdim);}
+  .search .slash{font-family:var(--mono); font-size:11px; border:1px solid var(--hair); border-radius:5px; padding:1px 5px; color:var(--lavdim);}
+  .navlabel{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:0 8px; margin-bottom:2px;}
+  .nav{display:flex; flex-direction:column; gap:2px;}
+  .nav a.room{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px; font-size:14px; color:var(--lav); font-weight:500;}
+  .nav a.room:hover{background:rgba(199,203,247,.05); color:var(--white);}
+  .nav a.room .dotroom{width:7px; height:7px; border-radius:50%; background:var(--lavdim); flex:none;}
+  .nav a.room.active{background:var(--card2); color:var(--white); font-weight:700; position:relative;}
+  .nav a.room.active::before{content:""; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px; background:var(--grad);}
+  .nav a.room.active .dotroom{background:var(--fuchsia); box-shadow:0 0 8px rgba(217,70,239,.7);}
+  .subnav{display:flex; flex-direction:column; gap:1px; margin:3px 0 4px 20px; padding-left:10px; border-left:1px solid var(--hair);}
+  .subnav a{display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px; font-size:13px; color:var(--lavdim);}
+  .subnav a:hover{color:var(--lav);}
+  .subnav a.draft{color:var(--white); font-weight:600; background:rgba(129,140,248,.12);}
+  .subnav a .dtag{margin-left:auto; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--amber); font-weight:700;}
+  .who{margin-top:auto; display:flex; align-items:center; gap:10px; padding:9px 8px; border-top:1px solid var(--hair);}
+  .who .av{width:30px; height:30px; border-radius:50%; background:var(--grad); flex:none; display:grid; place-items:center; color:#0a0a0f; font-weight:800; font-size:13px;}
+  .who .nm{font-size:13px; color:var(--white); font-weight:600; line-height:1.2;}
+  .who .rl{font-size:11px; color:var(--lavdim);}
+
+  /* editor */
+  .ed{padding:0; display:flex; flex-direction:column; min-width:0;}
+  .ed-top{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; padding:16px 34px; background:rgba(10,10,15,.82); backdrop-filter:blur(8px); border-bottom:1px solid var(--hair);}
+  .ed-crumb{font-family:var(--mono); font-size:12px; color:var(--lavdim);}
+  .ed-crumb b{color:var(--lav); font-weight:600;}
+  .ed-actions{margin-left:auto; display:flex; align-items:center; gap:10px;}
+  .schip{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--amber); background:rgba(245,158,11,.10); border:1px solid rgba(245,158,11,.32); padding:5px 10px; border-radius:20px;}
+  .schip .d{width:6px; height:6px; border-radius:50%; background:var(--amber);}
+  .btn{font-family:var(--ui); font-size:13px; font-weight:600; padding:8px 14px; border-radius:10px; border:1px solid var(--hairstrong); background:transparent; color:var(--lav); cursor:pointer;}
+  .btn:hover{color:var(--white); border-color:var(--lav);}
+  .btn-primary{border:none; color:#0a0a0f; background:var(--grad); box-shadow:0 10px 24px -12px rgba(217,70,239,.6);}
+  .btn-primary:hover{color:#0a0a0f; transform:translateY(-1px);}
+
+  .canvas{max-width:760px; width:100%; margin:0 auto; padding:30px 34px 80px;}
+  .ed-title{font-size:30px; font-weight:800; color:var(--white); letter-spacing:-.02em; line-height:1.15; margin:6px 0 8px; text-wrap:balance;}
+  .ed-title .cursor{display:inline-block; width:2px; height:.95em; background:var(--fuchsia); vertical-align:-2px; margin-left:2px; animation:blink 1.1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .ed-meta{font-size:12.5px; color:var(--lavdim); margin-bottom:26px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .ed-meta .rvw{color:var(--lav);}
+  .ed-meta .dot{color:var(--lavdim);}
+
+  /* rendered blocks */
+  .blk{position:relative; margin:0 0 16px; padding-left:8px;}
+  .blk:hover .handle{opacity:1;}
+  .handle{position:absolute; left:-24px; top:2px; opacity:0; display:flex; gap:2px; color:var(--lavdim); font-size:15px; transition:opacity .12s;}
+  .handle .plus{cursor:pointer;}
+  .p{font-size:15.5px; color:var(--lav);}
+  .h2{font-size:19px; font-weight:700; color:var(--white); margin:8px 0 2px;}
+  .callout{display:flex; gap:12px; background:linear-gradient(120deg,rgba(245,158,11,.10),rgba(217,70,239,.05)); border:1px solid var(--hairstrong); border-radius:14px; padding:14px 16px;}
+  .callout::before{content:""; width:3px; align-self:stretch; border-radius:3px; background:var(--amber); flex:none;}
+  .callout .ct{color:var(--white); font-weight:600; font-size:14px;}
+  .callout .cd{color:var(--lav); font-size:13.5px; margin-top:2px;}
+  .check{display:flex; flex-direction:column; gap:9px;}
+  .ci{display:flex; align-items:flex-start; gap:11px; font-size:15px;}
+  .box{flex:none; width:19px; height:19px; border-radius:6px; border:1.5px solid var(--hairstrong); margin-top:1px; display:grid; place-items:center;}
+  .box.on{background:var(--grad); border:none;}
+  .box.on svg{width:12px; height:12px; color:#0a0a0f;}
+  .ci.done .tx{color:var(--lavdim); text-decoration:line-through;}
+  .ci .tx{color:var(--lav);}
+  .link-card{display:flex; align-items:center; gap:13px; border:1px solid var(--hair); border-radius:13px; padding:13px 15px; background:var(--card);}
+  .link-card .lic{width:34px; height:34px; border-radius:9px; background:var(--card2); display:grid; place-items:center; color:var(--indigo); flex:none;}
+  .link-card .lt{color:var(--white); font-weight:600; font-size:14px;}
+  .link-card .lu{color:var(--indigo); font-family:var(--mono); font-size:12px; margin-top:1px;}
+  .link-card .go{margin-left:auto; color:var(--lavdim);}
+  .video{border:1px solid var(--hair); border-radius:14px; overflow:hidden; background:var(--card);}
+  .video .frame{aspect-ratio:16/7; background:radial-gradient(120% 120% at 50% 40%,rgba(129,140,248,.18),rgba(14,13,30,.6)); display:grid; place-items:center; position:relative;}
+  .video .play{width:52px; height:52px; border-radius:50%; background:var(--grad); display:grid; place-items:center; box-shadow:0 12px 30px -8px rgba(217,70,239,.55);}
+  .video .play svg{width:20px; height:20px; color:#0a0a0f; margin-left:3px;}
+  .video .vcap{padding:11px 15px; font-size:13px; color:var(--lav); border-top:1px solid var(--hair); display:flex; gap:8px; align-items:center;}
+  .video .vcap .src{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--lavdim);}
+
+  /* insertion point + block menu */
+  .insert{display:flex; align-items:center; gap:10px; color:var(--lavdim); font-size:14px; margin:6px 0 12px; padding-left:8px;}
+  .insert .addbtn{width:22px; height:22px; border-radius:6px; border:1px solid var(--hairstrong); display:grid; place-items:center; color:var(--lav); background:var(--card2);}
+  .insert .slashtip{font-family:var(--mono); font-size:12px;}
+  .insert .slashtip .k{border:1px solid var(--hair); border-radius:5px; padding:1px 5px; color:var(--lav);}
+  .insert .caret{width:2px; height:18px; background:var(--fuchsia); animation:blink 1.1s steps(1) infinite;}
+
+  .imenu{border:1px solid var(--hairstrong); border-radius:16px; background:#100E22; box-shadow:0 24px 60px -20px rgba(0,0,0,.75); overflow:hidden; max-width:440px;}
+  .im-search{display:flex; align-items:center; gap:9px; padding:12px 15px; border-bottom:1px solid var(--hair); color:var(--lavdim); font-size:13px; font-family:var(--mono);}
+  .im-search .bar{flex:1; color:var(--lav);}
+  .im-scroll{max-height:360px; overflow-y:auto; padding:8px;}
+  .im-grp{font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--lavdim); font-weight:700; padding:10px 10px 5px;}
+  .im-item{display:flex; align-items:center; gap:12px; padding:8px 10px; border-radius:10px; cursor:pointer;}
+  .im-item:hover,.im-item.hot{background:var(--card2);}
+  .im-item.hot{outline:1px solid rgba(129,140,248,.4);}
+  .im-ic{flex:none; width:32px; height:32px; border-radius:9px; background:var(--card); border:1px solid var(--hair); display:grid; place-items:center; color:var(--lav);}
+  .im-ic svg{width:17px; height:17px;}
+  .im-item.key .im-ic{color:var(--fuchsia); border-color:rgba(217,70,239,.35);}
+  .im-tx{display:flex; flex-direction:column; min-width:0;}
+  .im-tx b{color:var(--white); font-weight:600; font-size:13.5px;}
+  .im-tx i{color:var(--lavdim); font-style:normal; font-size:12px;}
+  .im-tx i em{color:var(--indigo); font-style:normal;}
+
+  svg.ic{width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+
+  @media (max-width:860px){
+    .pb{grid-template-columns:1fr;}
+    .rail{position:static; height:auto; flex-direction:row; flex-wrap:wrap; align-items:center; gap:12px; padding:16px;}
+    .rail .navlabel,.subnav,.who{display:none;}
+    .nav{flex-direction:row; flex-wrap:wrap; gap:6px;}
+    .search{order:3; flex-basis:100%;}
+    .ed-top{padding:14px 18px;}
+    .canvas{padding:24px 18px 60px;}
+    .ed-title{font-size:24px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .pb *,.ed-title .cursor,.insert .caret{animation:none !important; transition:none !important;} }
+  .pb a:focus-visible,.pb input:focus-visible,.btn:focus-visible,.im-item:focus-visible{outline:2px solid var(--indigo); outline-offset:2px; border-radius:8px;}
+</style>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-text" viewBox="0 0 24 24"><path class="ic" d="M5 7h14M5 12h14M5 17h9"/></symbol>
+  <symbol id="i-head" viewBox="0 0 24 24"><path class="ic" d="M6 5v14M18 5v14M6 12h12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><rect class="ic" x="3" y="4.5" width="8" height="8" rx="2"/><path class="ic" d="M5 8.5l1.6 1.6L10 6.6M15 7h5M15 11h4"/></symbol>
+  <symbol id="i-bullet" viewBox="0 0 24 24"><path class="ic" d="M9 7h11M9 13h11M9 18h8"/><circle cx="4.5" cy="7" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="13" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-num" viewBox="0 0 24 24"><path class="ic" d="M10 7h10M10 13h10M10 18h8M4 5.5h1.6V10M4 16h2l-2 2.4h2"/></symbol>
+  <symbol id="i-div" viewBox="0 0 24 24"><path class="ic" d="M4 12h6M14 12h6"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24"><rect class="ic" x="3" y="5" width="18" height="14" rx="2.5"/><circle class="ic" cx="8.5" cy="10" r="1.6"/><path class="ic" d="M5.5 17l4-3.5 3 2.5 3-3 3 3"/></symbol>
+  <symbol id="i-vid" viewBox="0 0 24 24"><rect class="ic" x="3" y="5" width="18" height="14" rx="3"/><path d="M11 9l4.5 3-4.5 3z" fill="currentColor"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path class="ic" d="M13 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path class="ic" d="M13 4v5h5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path class="ic" d="M9.5 14.5l5-5M8 12l-1.6 1.6a3.2 3.2 0 0 0 4.5 4.5L12.5 16.5M15.5 12l1.6-1.6a3.2 3.2 0 0 0-4.5-4.5L11 7.5"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect class="ic" x="3" y="5" width="18" height="14" rx="2"/><path class="ic" d="M3 10h18M3 14.5h18M9.5 5v14M15 5v14"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path class="ic" d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></symbol>
+  <symbol id="i-page" viewBox="0 0 24 24"><path class="ic" d="M12 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/><path class="ic" d="M14 4h6v6M20 4l-8 8"/></symbol>
+  <symbol id="i-call" viewBox="0 0 24 24"><circle class="ic" cx="12" cy="12" r="8.5"/><path class="ic" d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="i-sop" viewBox="0 0 24 24"><circle class="ic" cx="6" cy="7" r="2.4"/><circle class="ic" cx="6" cy="16" r="2.4"/><path class="ic" d="M11 7h9M11 16h9M6 9.4v4.2"/></symbol>
+  <symbol id="i-vendor" viewBox="0 0 24 24"><rect class="ic" x="3" y="5" width="18" height="14" rx="2.5"/><path class="ic" d="M7 9.5h6M7 13h10M7 16h7"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><path class="ic" d="M5 12.5l4 4 10-10"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 6l11 6-11 6z" fill="currentColor"/></symbol>
+</svg>
+
+<div class="pb">
+  <!-- rail -->
+  <aside class="rail">
+    <div class="brand"><span class="word">Funūn</span><span class="sub">The Playbook</span></div>
+    <label class="search"><span>⌕</span><input placeholder="Search the wiki…" aria-label="Search the wiki" /><span class="slash">/</span></label>
+    <div>
+      <div class="navlabel">Team Rooms</div>
+      <nav class="nav">
+        <a class="room" href="#"><span class="dotroom"></span> Company-wide</a>
+        <a class="room" href="#"><span class="dotroom"></span> A&amp;R</a>
+        <a class="room" href="#"><span class="dotroom"></span> AE / Sales</a>
+        <a class="room active" href="#"><span class="dotroom"></span> IT Team</a>
+        <div class="subnav">
+          <a href="#">Vendor Directory</a>
+          <a href="#">Incident Runbook</a>
+          <a href="#">Operating Rhythm</a>
+          <a href="#">Thresholds &amp; Severity</a>
+          <a class="draft" href="#">Vercel 5xx — SOP <span class="dtag">Draft</span></a>
+        </div>
+        <a class="room" href="#"><span class="dotroom"></span> TMS</a>
+        <div class="subnav"><a href="#">Training</a></div>
+        <a class="room" href="#"><span class="dotroom"></span> Leadership</a>
+      </nav>
+    </div>
+    <div class="who"><div class="av">P</div><div><div class="nm">Pete</div><div class="rl">Owner · IT</div></div></div>
+  </aside>
+
+  <!-- editor -->
+  <main class="ed">
+    <div class="ed-top">
+      <div class="ed-crumb">The Playbook / IT Team / <b>New entry</b></div>
+      <div class="ed-actions">
+        <span class="schip"><span class="d"></span> Draft</span>
+        <button class="btn">Preview</button>
+        <button class="btn btn-primary">Publish</button>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="ed-title">Vercel 5xx spike — response SOP<span class="cursor"></span></div>
+      <div class="ed-meta"><span>Draft by Pete</span><span class="dot">·</span><span>IT Team</span><span class="dot">·</span><span class="rvw">Publishes after room-lead review</span></div>
+
+      <!-- rendered content blocks -->
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div>
+        <div class="callout"><div><div class="ct">First move — before you touch Vercel</div><div class="cd">Read the external uptime monitor. A Vercel-hosted check can't report a Vercel outage, so it's the only read that tells you whole-site vs. one route.</div></div></div>
+      </div>
+
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div>
+        <div class="p">Use this when Vercel → Observability shows a 5xx spike or a <b style="color:#fff">FUNCTION_THROTTLED</b> event. The goal is to confirm blast radius, find the cause, and decide roll-back vs. forward-fix.</div>
+      </div>
+
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div><div class="h2">Steps</div></div>
+
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div>
+        <div class="check">
+          <div class="ci done"><span class="box on"><svg class="ic"><use href="#i-ok"/></svg></span><span class="tx">Check funun.betteruptime.com — whole site, or one route?</span></div>
+          <div class="ci done"><span class="box on"><svg class="ic"><use href="#i-ok"/></svg></span><span class="tx">Open Vercel → Observability → Errors; identify the failing route(s)</span></div>
+          <div class="ci"><span class="box"></span><span class="tx">Does the last deploy correlate? (Deployments timeline)</span></div>
+          <div class="ci"><span class="box"></span><span class="tx">Decide: roll back (Runbook §3) or forward-fix — mind the schema-ahead caveat</span></div>
+        </div>
+      </div>
+
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div>
+        <div class="link-card"><span class="lic"><svg class="ic"><use href="#i-link"/></svg></span><div><div class="lt">Vercel Status</div><div class="lu">vercel-status.com</div></div><span class="go">↗</span></div>
+      </div>
+
+      <div class="blk"><div class="handle"><span class="plus">+</span>⋮⋮</div>
+        <div class="video"><div class="frame"><div class="play"><svg class="ic"><use href="#i-play"/></svg></div></div><div class="vcap">Walkthrough — rolling back a bad deploy <span class="src">Loom · 3:12</span></div></div>
+      </div>
+
+      <!-- insertion point -->
+      <div class="insert"><span class="addbtn">+</span><span class="caret"></span><span class="slashtip">Type <span class="k">/</span> to add a block</span></div>
+
+      <!-- the block menu (open) -->
+      <div class="imenu" role="menu" aria-label="Insert block">
+        <div class="im-search"><span>/</span><span class="bar">Filter blocks…</span></div>
+        <div class="im-scroll">
+
+          <div class="im-grp">Basic</div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-text"/></svg></span><span class="im-tx"><b>Text</b><i>Plain paragraph</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-head"/></svg></span><span class="im-tx"><b>Heading</b><i>Section title</i></span></div>
+          <div class="im-item key"><span class="im-ic"><svg class="ic"><use href="#i-check"/></svg></span><span class="im-tx"><b>Checklist</b><i>Tasks with checkboxes — <em>great for SOPs</em></i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-bullet"/></svg></span><span class="im-tx"><b>Bulleted list</b><i>Simple bullets</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-num"/></svg></span><span class="im-tx"><b>Numbered list</b><i>Ordered items</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-div"/></svg></span><span class="im-tx"><b>Divider</b><i>Visual break</i></span></div>
+
+          <div class="im-grp">Media</div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-img"/></svg></span><span class="im-tx"><b>Image</b><i>Upload or embed</i></span></div>
+          <div class="im-item key"><span class="im-ic"><svg class="ic"><use href="#i-vid"/></svg></span><span class="im-tx"><b>Video</b><i>Loom / YouTube embed — <em>for Training</em></i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-file"/></svg></span><span class="im-tx"><b>File</b><i>Attach a document</i></span></div>
+
+          <div class="im-grp">Reference</div>
+          <div class="im-item key"><span class="im-ic"><svg class="ic"><use href="#i-link"/></svg></span><span class="im-tx"><b>Link / Bookmark</b><i>Rich link card — <em>status pages, dashboards</em></i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-table"/></svg></span><span class="im-tx"><b>Table</b><i>Rows &amp; columns</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-code"/></svg></span><span class="im-tx"><b>Code</b><i>Monospaced block — e.g. <em>dig</em> commands</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-page"/></svg></span><span class="im-tx"><b>Page link</b><i>Link another Playbook entry</i></span></div>
+
+          <div class="im-grp">Playbook templates</div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-call"/></svg></span><span class="im-tx"><b>Callout</b><i>Note / warning banner</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-sop"/></svg></span><span class="im-tx"><b>SOP steps</b><i>Numbered procedure template</i></span></div>
+          <div class="im-item"><span class="im-ic"><svg class="ic"><use href="#i-vendor"/></svg></span><span class="im-tx"><b>Vendor card</b><i>Function · where to look · on failure</i></span></div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
