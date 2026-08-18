@@ -33,13 +33,15 @@ const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   ae: 'Account Executive',
   bd: 'BD',
   anr: 'A&R',
+  it: 'IT',
 }
 
-// 'anr' (A&R, Phase 30) is deliberately excluded from the create-staff
-// dropdown until migration 108 is owner-applied — funun_staff's
-// staff_role CHECK rejects 'anr' until then, so offering it here would
-// let leadership submit a create that 500s on the DB write. Re-add once
-// 108 is live (30-03-SUMMARY.md).
+// 'anr' (A&R, Phase 30) and 'it' (IT, Phase 33) are deliberately excluded
+// from the create-staff dropdown until their respective owner-applied
+// migrations (108, 114) land — funun_staff's staff_role CHECK rejects
+// each until then, so offering them here would let leadership submit a
+// create that 500s on the DB write. Re-add once each migration is live
+// (30-03-SUMMARY.md / 33-01-SUMMARY.md).
 const STAFF_ROLE_VALUES: StaffRole[] = ['leadership', 'ae', 'bd']
 
 function formatJoined(dateString: string): string {
