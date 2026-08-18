@@ -669,6 +669,47 @@ Backed by migrations **111** (`selects` / `selects_tracks`→`tracks.id` / `sele
 - Phase 31 Slice-1 requirement IDs: **6** (R1, R2, R5, R10, R11, R12). Slice-2 IDs (R3, R4, R6–R9, R13, R14) → Phase 31.1, not built.
 - Complete (code + automated): **6** — all goal-verified (10/10 must-haves, `31-VERIFICATION.md`); `tsc` clean; full suite 2280/2280 green; committed on `feat/lane1-catalogue-menu-help`. Migrations 111/112/113 live. One partial (R12 audible tag WAV-only, G1 — non-blocking; the never-master guarantee holds for every format). Live-app UAT (4 items in `31-UAT.md`) DEFERRED — resumable via `/gsd-verify-work 31`.
 
+## v1.2 — Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1) Requirements
+
+**Defined:** 2026-08-17 (registered at plan time — no SPEC.md for this phase; IDs derived from `33-CONTEXT.md`'s ten locked decisions D-01..D-10 and the ROADMAP Phase 33 goal). **Source:** `.planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/` (CONTEXT + RESEARCH + PATTERNS + UI-SPEC + VALIDATION). Read-only v1: a double-sidebar Playbook shell + the IT Team room (4 rendered-markdown doc pages + one bespoke live Monitoring Dashboard). **Explicitly deferred** (NOT requirements here): in-app authoring, the rooms→sub-groups→entries RBAC editor, DB-stored content, the five non-IT rooms' content, and Observability Dashboard v2.
+
+**ID-namespace note:** `PLAYBOOK-NN` IDs are phase-scoped to Phase 33. The `D-NN` codes referenced below are `33-CONTEXT.md` decision IDs (phase-local; unrelated to any other phase's D-NN).
+
+### Access & roles
+- **PLAYBOOK-01**: `it` StaffRole added to the `StaffRole` union + `ALL_STAFF_ROLES` + recognized by `getStaffRole()`, backed by the OWNER-RUN migration `114_it_staff_role.sql` widening the `funun_staff` `staff_role` CHECK to admit `'it'` (D-01). Single-role model stands for v1 — `it` is one more possible value of the single slot, never combined with `leadership` (D-03). Code recognizing `it` before the migration is applied is safe (no `funun_staff` row can hold it until the owner assigns it — the `anr`/108 precedent).
+- **PLAYBOOK-04**: Every one of the 5 IT-room pages carries its own inline `requireStaff(['leadership','it'])`-equivalent page guard, fail-closed BEFORE any content read; the shell/layout gate is never the sole authority (D-02). Owner (`is_admin=true → leadership`) is admitted via the leadership branch.
+
+### The Playbook shell + Rail 2 rooms
+- **PLAYBOOK-02**: Rail 1 "The Playbook" entry, visible to ALL staff, opens `/admin/playbook/*`; scoped active-state styling on that single link only (D-04).
+- **PLAYBOOK-03**: Rail 2 double-sidebar — all six mockup rooms; the five non-IT rooms render as inert non-clickable "Coming soon" ghosts (D-05); the IT Team room is role-conditional — rendered (enterable, with its 5 ordered sub-pages: Monitoring Dashboard · Vendor Directory · Incident Runbook · Operating Rhythm · Thresholds & Severity) only for `leadership + it`, and **omitted from the DOM entirely** (hidden, not locked) for other staff (D-06).
+
+### Doc-page rendering
+- **PLAYBOOK-05**: The 4 IT doc pages render straight from `docs/observability/{VENDOR-DIRECTORY,RUNBOOK,OPERATING-RHYTHM,THRESHOLDS-AND-SEVERITY}.md` via a React-element markdown renderer (`react-markdown` + `remark-gfm`, no raw-HTML injection); the `.md` files stay the single source of truth, styled to the dark Playbook theme (D-10).
+- **PLAYBOOK-06**: `docs/observability/*.md` resolve at runtime in the deployed Vercel serverless bundle via a `next.config.mjs` `outputFileTracingIncludes` entry (mirrors the fonts precedent), build-trace verified against `.next/server/**/*.nft.json` before merge (RESEARCH's #1 deployment risk).
+
+### Monitoring Dashboard (live health + honest reference, D-07)
+- **PLAYBOOK-07**: Live App Health tile + global status banner via an in-process `/api/health` re-check (`import { GET as checkHealth }` — never a self-HTTP fetch), with healthy / degraded / unreachable states (D-07).
+- **PLAYBOOK-08**: One live daily-digest "today" row reusing the cron's `checkHealthStatus()` + `classifyThreshold(metric, undefined)` summary logic WITHOUT sending email (`fanOutAlert` deliberately not reused), plus a muted "full digest history arrives in v2" note (D-08).
+- **PLAYBOOK-09**: Thresholds panel renders the real `THRESHOLDS` warn/crit values as a 7-row allowlist (excludes `monthly_spend_usd` + `uptime_consecutive_failures`); the live-readings column is a badged v2 placeholder (D-07, D-09).
+- **PLAYBOOK-10**: Uptime tile + panel replaced with a Better Stack link-out to `https://funun.betteruptime.com` (no fabricated per-route %s / sparklines); vendors grid of live deep-links; v2-deferred tiles (Spend, per-vendor status dots, live readings) shown with explicit "v2" badges (D-07, D-09).
+
+**Traceability (Phase 33):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| PLAYBOOK-01 | Phase 33 | 33-01, 33-02 | Planned |
+| PLAYBOOK-02 | Phase 33 | 33-04, 33-05 | Planned |
+| PLAYBOOK-03 | Phase 33 | 33-04, 33-05 | Planned |
+| PLAYBOOK-04 | Phase 33 | 33-01, 33-06, 33-08 | Planned |
+| PLAYBOOK-05 | Phase 33 | 33-03, 33-06 | Planned |
+| PLAYBOOK-06 | Phase 33 | 33-03, 33-06 | Planned |
+| PLAYBOOK-07 | Phase 33 | 33-07, 33-08 | Planned |
+| PLAYBOOK-08 | Phase 33 | 33-07, 33-08 | Planned |
+| PLAYBOOK-09 | Phase 33 | 33-07, 33-08 | Planned |
+| PLAYBOOK-10 | Phase 33 | 33-08 | Planned |
+
+**Coverage (Phase 33):** 10 requirement IDs (PLAYBOOK-01..10), every ID assigned to ≥1 plan across 8 plans / 2 waves. Deferred items (authoring, RBAC editor, DB content, other rooms, Observability v2) are explicitly OUT of scope and are NOT requirements.
+
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-16 — Phase 31 (Slice 1) registered R1/R2/R5/R10/R11/R12 (AE Client Workspace + Selects: My Client Partners workspace/list + insight columns + role-aware nav, Crate Requests demand inbox, Selects builder + shareable watermarked player), all goal-verified + code-Complete on `feat/lane1-catalogue-menu-help`; migrations 111/112/113 live; R12 audible-tag WAV-only partial (G1); live-app UAT deferred (31-UAT.md). Phase-scoped IDs — Phase 31 R1/R2/R5 are distinct from Phase 19's.*
+*Last updated: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*

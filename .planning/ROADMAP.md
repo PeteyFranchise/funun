@@ -1226,13 +1226,24 @@ Plans:
 
 **Design references:** `docs/design/playbook-double-sidebar.html` (two-level nav), `docs/design/observability-dashboard.html` (dashboard), `docs/design/playbook-it-team-room.html` (IT room). **Related:** `.planning/deliberations/team-member-rbac-access-model.md` (RBAC forks for the authoring follow-on), `.planning/todos/pending/2026-08-17-observability-dashboard-v2-live-metrics.md` (v2).
 
-**Requirements**: TBD (register during planning)
+**Requirements**: PLAYBOOK-01..10 (registered in REQUIREMENTS.md; derived from 33-CONTEXT.md D-01..D-10)
 **Depends on:** Phase 32
-**Plans:** 0 plans
+**Plans:** 8 plans
 
 Plans:
+**Wave 1** *(foundation — parallel, disjoint files)*
 
-- [ ] TBD (run `/gsd-discuss-phase 33` to scope, then `/gsd-plan-phase 33`)
+- [ ] 33-01-PLAN.md — `it` StaffRole union + `requireStaffPage()` page guard (PLAYBOOK-01/04)
+- [ ] 33-02-PLAN.md — Owner-run migration 114 (`it` staff_role CHECK widen) — author + apply checkpoint (PLAYBOOK-01)
+- [ ] 33-03-PLAN.md — Markdown renderer (react-markdown+remark-gfm) + Vercel file-tracing + build-trace verify (PLAYBOOK-05/06)
+- [ ] 33-04-PLAN.md — Playbook nav model + shared chrome (nav.ts, PlaybookNavLink, Rail2, ItRoomTopBar) (PLAYBOOK-02/03)
+- [ ] 33-07-PLAN.md — Dashboard live-signal core: digest.ts + StatusBanner + DigestPanel + ThresholdsPanel (PLAYBOOK-07/08/09)
+
+**Wave 2** *(assembled surfaces — blocked on Wave 1)*
+
+- [ ] 33-05-PLAN.md — Playbook route shell: Rail 1 entry + nested Rail 2 layout + index redirect (PLAYBOOK-02/03)
+- [ ] 33-06-PLAN.md — 4 IT doc pages rendered from `docs/observability/*.md`, per-page inline guard (PLAYBOOK-04/05/06)
+- [ ] 33-08-PLAN.md — Monitoring Dashboard page assembly + VendorsGrid + QuickLinks + uptime link-out (PLAYBOOK-04/07/08/09/10)
 
 ---
 
