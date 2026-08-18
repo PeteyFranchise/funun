@@ -7,6 +7,7 @@ import { ADMIN_THEME_COOKIE, readAdminTheme } from '@/lib/admin/theme'
 import { ADMIN_CONSOLE_CSS } from '@/components/admin/console-theme'
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { PlaybookNavLink } from '@/components/playbook/PlaybookNavLink'
 
 const NAV_LINK_CLASS =
   'rounded-lg px-3 py-2 text-[13px] text-[color:var(--ink-2)] transition hover:bg-[color:var(--border)] hover:text-[color:var(--ink)]'
@@ -42,6 +43,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[color:var(--ink-3)]">
             Admin
           </p>
+          {/* The Playbook (Phase 33, D-04/PLAYBOOK-02) — visible to every
+              staff role, so it stays OUTSIDE the isLeadership block below.
+              First nav item: this is the entry point into the nested Rail 2
+              double-sidebar surface at /admin/playbook. */}
+          <PlaybookNavLink />
           {isLeadership && (
             <>
               <Link href="/checklist" className={NAV_LINK_CLASS}>
