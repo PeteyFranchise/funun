@@ -13,8 +13,13 @@ const nextConfig = {
   // `experimental` in Next.js 15 — it lives at the TOP level of the
   // config object, keyed by route glob. Every server surface that can
   // render a PDF must be listed here.
+  // readObservabilityDoc() (lib/playbook/read-doc.ts) reads
+  // docs/observability/*.md via a runtime-computed process.cwd() path —
+  // the identical failure class as the fonts fix above (PLAYBOOK-06).
+  // Mirrors that fix exactly for the Playbook IT-room doc pages.
   outputFileTracingIncludes: {
     'app/api/**/*': ['./assets/fonts/**'],
+    'app/(admin)/playbook/**/*': ['./docs/observability/**'],
   },
   // R5 (32-06): inlines the DSN into the client bundle at build time
   // WITHOUT a NEXT_PUBLIC_ prefix on the variable name — the SPEC's
