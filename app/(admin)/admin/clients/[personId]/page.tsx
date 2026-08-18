@@ -47,7 +47,9 @@ export default async function ClientPersonWorkspacePage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const staffRole = getStaffRole(user)
-  if (!staffRole) redirect('/')
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach a client workspace — excluded alongside no-role.
+  if (!staffRole || staffRole === 'it') redirect('/')
 
   const service = createServiceClient()
   const { data: contactRow } = await service

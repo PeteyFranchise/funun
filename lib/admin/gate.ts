@@ -1,11 +1,11 @@
 import { createApiClient, createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getStaffRole, ALL_STAFF_ROLES, type StaffRole } from './staff-role'
+import { getStaffRole, OPERATIONAL_STAFF_ROLES, type StaffRole } from './staff-role'
 
 // getStaffRole + StaffRole moved to ./staff-role (client-safe, no server imports)
 // so client components can import them; re-exported here so every existing
 // importer of @/lib/admin/gate is unaffected (D-01, single authority).
-export { getStaffRole } from './staff-role'
+export { getStaffRole, OPERATIONAL_STAFF_ROLES } from './staff-role'
 export type { StaffRole } from './staff-role'
 
 // ─── Staff auth gate (Phase 25 — generalized from the binary admin gate) ──
@@ -32,7 +32,14 @@ type VerifyAdminResult =
   | { error: 'Forbidden'; status: 403 }
   | { user: ApiUser }
 
-export async function requireStaff(allowed: StaffRole[] = ALL_STAFF_ROLES): Promise<RequireStaffResult> {
+// CR-01 hardening: default is OPERATIONAL_STAFF_ROLES (every staff role
+// EXCEPT 'it'), not ALL_STAFF_ROLES — a bare requireStaff() call fails
+// closed against the read-only 'it' role. Callers that must admit 'it'
+// (only the Playbook IT room today) pass it explicitly, e.g.
+// requireStaff(['leadership','it']).
+export async function requireStaff(
+  allowed: StaffRole[] = OPERATIONAL_STAFF_ROLES
+): Promise<RequireStaffResult> {
   const supabase = await createApiClient()
   const {
     data: { user },
@@ -63,8 +70,12 @@ export async function verifyAdmin(): Promise<VerifyAdminResult> {
 // observability doc/health data (fail closed, ASVS V4, T-33-01).
 export type RequireStaffPageResult = { user: ApiUser; staffRole: StaffRole }
 
+// CR-01 hardening: same fail-closed default as requireStaff() above — a
+// bare requireStaffPage() call excludes 'it'. Every one of the 5 IT-room
+// pages passes requireStaffPage(['leadership','it']) explicitly, so this
+// default change only tightens callers that did NOT intend to admit 'it'.
 export async function requireStaffPage(
-  allowed: StaffRole[] = ALL_STAFF_ROLES
+  allowed: StaffRole[] = OPERATIONAL_STAFF_ROLES
 ): Promise<RequireStaffPageResult> {
   const supabase = await createServerClient()
   const {

@@ -21,7 +21,9 @@ export default async function AdminArtistInvitesPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (!role) redirect('/')
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach the artist-invites pipeline — excluded alongside the no-role case.
+  if (!role || role === 'it') redirect('/')
 
   const service = createServiceClient()
   const [{ data: waitlist }, { data: invites }] = await Promise.all([

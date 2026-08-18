@@ -32,7 +32,9 @@ export default async function AdminSelectsDetailPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (!role) redirect('/')
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach a Selects builder — excluded alongside no-role.
+  if (!role || role === 'it') redirect('/')
 
   const service = createServiceClient()
   const selects = await loadSelectsInScope(service, id, role, user.id)

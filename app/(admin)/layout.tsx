@@ -111,27 +111,37 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {/* Slice-1 rooms (31-08, R1/R5): nav order encodes the AE
               pipeline funnel — Crate Requests (demand inbox, absorbs the
               Lead Engine per 31-SPEC R10) precedes Selects (the
-              cross-client pipeline hub). Every staff role sees both. */}
-          <Link href="/admin/crate-requests" className={NAV_LINK_CLASS}>
-            Crate Requests
-          </Link>
-          <Link href="/admin/selects" className={NAV_LINK_CLASS}>
-            Selects
-          </Link>
-          <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
-            My Client Partners
-          </Link>
-          <Link href="/admin/directory" className={NAV_LINK_CLASS}>
-            Directory
-          </Link>
-          {/* Artist Invites (Phase 27, D-06/D-14) — waitlist + invite
-              management is open to any staff role; the page-level
-              "Reopen & broadcast" action is separately gated to Leadership
-              inside ArtistInvitesAdmin via the server-resolved isLeadership
-              prop, not by hiding this nav link. */}
-          <Link href="/admin/artist-invites" className={NAV_LINK_CLASS}>
-            Artist Invites
-          </Link>
+              cross-client pipeline hub). Every staff role sees both.
+              CR-01 hardening (Phase 33 code review): 'it' is read-only
+              Playbook-IT-room staff and must not discover the sales/ops
+              pipeline, so this whole block is excluded for it — matching
+              the page-level guards, which are the real security boundary
+              (this is defense-in-depth/UX only). */}
+          {role !== 'it' && (
+            <>
+              <Link href="/admin/crate-requests" className={NAV_LINK_CLASS}>
+                Crate Requests
+              </Link>
+              <Link href="/admin/selects" className={NAV_LINK_CLASS}>
+                Selects
+              </Link>
+              <Link href="/admin/my-client-partners" className={NAV_LINK_CLASS}>
+                My Client Partners
+              </Link>
+              <Link href="/admin/directory" className={NAV_LINK_CLASS}>
+                Directory
+              </Link>
+              {/* Artist Invites (Phase 27, D-06/D-14) — waitlist + invite
+                  management is open to any staff role except it; the
+                  page-level "Reopen & broadcast" action is separately gated
+                  to Leadership inside ArtistInvitesAdmin via the
+                  server-resolved isLeadership prop, not by hiding this nav
+                  link. */}
+              <Link href="/admin/artist-invites" className={NAV_LINK_CLASS}>
+                Artist Invites
+              </Link>
+            </>
+          )}
           <div className="mt-auto flex flex-col gap-1 border-t border-[color:var(--border)] pt-3">
             <AdminThemeToggle theme={theme} />
             <div className="px-3 py-2 [&>button]:text-[13px] [&>button]:text-[color:var(--ink-3)] [&>button:hover]:text-[color:var(--ink)]">

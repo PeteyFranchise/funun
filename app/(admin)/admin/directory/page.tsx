@@ -18,7 +18,10 @@ export default async function AdminDirectoryPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  if (getStaffRole(user) === null) redirect('/')
+  const role = getStaffRole(user)
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach the Team Directory — excluded alongside no-role.
+  if (!role || role === 'it') redirect('/')
 
   const service = createServiceClient()
   const { data: staff } = await service

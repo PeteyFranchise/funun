@@ -88,7 +88,9 @@ export default async function AdminMyClientPartnersPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (!role) redirect('/')
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach the client-partner sales pipeline — excluded alongside no-role.
+  if (!role || role === 'it') redirect('/')
 
   const service = createServiceClient()
   let orgQuery = service

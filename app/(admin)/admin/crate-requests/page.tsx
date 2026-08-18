@@ -22,7 +22,9 @@ export default async function CrateRequestsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
   const role = getStaffRole(user)
-  if (!role) redirect('/')
+  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
+  // reach the Crate Requests demand inbox — excluded alongside no-role.
+  if (!role || role === 'it') redirect('/')
 
   return (
     <div className="flex-1 px-9 py-[30px]">
