@@ -1,165 +1,127 @@
 ---
 phase: 33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1
-verified: 2026-08-18T02:09:31Z
+verified: 2026-08-18T02:48:04Z
 status: passed
-score: 27/27 must-haves verified
+score: 34/34 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+re_verification: yes
+re_verification:
+  previous_status: passed
+  previous_score: 27/27
+  gaps_closed:
+    - "CR-01: 'it' role was over-granted to all-staff admin surfaces (client/lead pipeline) — now scoped to OPERATIONAL_STAFF_ROLES default + explicit per-page redirects"
+    - "WR-01/IN-01: DigestPanel/ThresholdsPanel/StatusBanner referenced undefined/non-theme-aware CSS tokens — now use real .fncon tokens"
+    - "WR-02: Dashboard App Health tile fabricated a '→ 503' for the unknown health state — now branches on all 3 states honestly"
+    - "IN-02: StatusBanner hardcoded '3/3 uptime monitors up' as fact — now points to Better Stack as source of record"
+  gaps_remaining: []
+  regressions: []
 ---
 
-# Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1) Verification Report
+# Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1) Verification Report — RE-VERIFICATION (post-hardening)
 
 **Phase Goal:** Introduce The Playbook as a new internal Team-Member admin surface using a double-sidebar nav — a "The Playbook" item on the main admin sidebar (visible to all staff) opens a secondary sidebar of rooms/sub-rooms. Ship the IT Team room read-only: render the existing `docs/observability/` docs as pages, with a live single-pane Monitoring Dashboard as its opening page — READ-ONLY, role-gated to leadership + the new `it` StaffRole.
 
-**Verified:** 2026-08-18T02:09:31Z
+**Verified:** 2026-08-18T02:48:04Z
 **Status:** passed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — after a post-verification security-hardening pass (5 commits: CR-01, WR-01/IN-01, WR-02, IN-02, plus the hardening-summary doc commit). Prior VERIFICATION.md (2026-08-18T02:09:31Z, status: passed, 27/27) is superseded by this report.
+
+## What changed and why this re-verification exists
+
+`33-REVIEW.md` (code review run immediately after the prior VERIFICATION.md) found 1 critical + 3 warnings + 2 info issues. `33-HARDENING-SUMMARY.md` documents 4 commits closing 5 of those 6 findings (CR-01, WR-01, IN-01 folded into the WR-01 commit, WR-02, IN-02); WR-03 (`readObservabilityDoc()` has no path-containment guard) was explicitly deferred as a documented, non-exploitable latent-hardening item. This re-verification does NOT trust `33-HARDENING-SUMMARY.md`'s claims — every fix was re-derived from the actual diff/current source below, and the two most security-relevant claims (CR-01's access scoping and the IT room remaining reachable for `it`/`leadership`) were verified by reading all touched files directly, not by re-reading the summary.
 
 ## Goal Achievement
 
-### Observable Truths (merged across all 8 plans' `must_haves.truths`, cross-checked against ROADMAP goal + Scope Boundary)
+### Observable Truths — Regression Check (truths #1–27, carried from prior verification)
+
+All 27 originally-verified truths were re-checked for regression. None of the underlying artifacts (`lib/playbook/nav.ts`, `Rail2.tsx`, `PlaybookNavLink.tsx`, `ItRoomTopBar.tsx`, `MarkdownDoc.tsx`, `markdown-components.tsx`, `read-doc.ts`, migration 114, the 4 IT doc pages' guard-then-render structure, `next.config.mjs`) were touched by the hardening commits (confirmed via `git diff 612841d..HEAD -- <those files>` returning empty). The files that WERE touched (`staff-role.ts`, `gate.ts`, `app/(admin)/layout.tsx`, `StatusBanner.tsx`, `DigestPanel.tsx`, `ThresholdsPanel.tsx`, dashboard `page.tsx`) were re-read in full; the phase-goal-relevant behavior in each (staff-role recognition, fail-closed page guards, doc rendering, live health re-check, dashboard composition) is intact — only the specific defects listed in 33-REVIEW.md were changed.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | `getStaffRole({app_metadata:{staff_role:'it'}})` returns `'it'` | ✓ VERIFIED | `lib/admin/staff-role.ts:27-47`; test `staff-role-it.test.ts` passes ("returns it for app_metadata.staff_role = it") |
-| 2 | `ALL_STAFF_ROLES` contains `it` and still contains leadership/ae/bd/anr | ✓ VERIFIED | `lib/admin/staff-role.ts:29` `['leadership','ae','bd','anr','it']`; test asserts length 5 + all 5 members |
-| 3 | `requireStaffPage(['leadership','it'])` returns `{user,staffRole}` for it/leadership and redirects everyone else (fail closed) | ✓ VERIFIED | `lib/admin/gate.ts:66-77`; behavioral tests: it-caller passes, leadership-caller passes, ae-caller redirects to `/`, no-session redirects to `/signin` — all 4 pass in `staff-role-it.test.ts` |
-| 4 | `is_admin=true` still resolves to `'leadership'` (owner bootstrap unaffected) | ✓ VERIFIED | `lib/admin/staff-role.ts:45`; test "returns leadership when is_admin === true" passes |
-| 5 | Migration 114 widens `funun_staff.staff_role` CHECK to `('leadership','ae','bd','anr','it')`, owner-run, decoupled from code verification | ✓ VERIFIED | `supabase/migrations/114_it_staff_role.sql:49-52`; mirrors 108_anr_staff_role.sql exactly; not applied (by design — see Known Context below), does not block any of the above |
-| 6 | `readObservabilityDoc('RUNBOOK.md')` returns the file's markdown string; missing file throws descriptively | ✓ VERIFIED | `lib/playbook/read-doc.ts:23-34`; test `playbook-read-doc.test.ts` passes |
-| 7 | `MarkdownDoc` renders via react-markdown + remark-gfm through a components map (no raw-HTML injection) | ✓ VERIFIED | `components/playbook/MarkdownDoc.tsx` — `ReactMarkdown` + `remarkGfm` + `markdownComponents`; no `dangerouslySetInnerHTML` anywhere in `lib/playbook/` or `components/playbook/` (grep confirmed) |
-| 8 | `next.config.mjs outputFileTracingIncludes` ships `docs/observability/**` into the deployed bundle, verified against `.next/server/**/*.nft.json` | ✓ VERIFIED | `next.config.mjs:20-23`; live build artifact `.next/server/app/(admin)/playbook/it/{vendor-directory,runbook,operating-rhythm}/page.js.nft.json` exists (re-verified by this run, fresh build post-dating last source edit) |
-| 9 | `nav.ts` is the single source for the 6 Rail-2 rooms (5 ghosts + role-conditional IT room) and 5 ordered IT sub-pages | ✓ VERIFIED | `lib/playbook/nav.ts:20-27` (`PLAYBOOK_ROOMS`), `:44-50` (`IT_SUBPAGES`); test `playbook-nav.test.ts` passes |
-| 10 | `nav.ts` maps the 4 doc pages to their exact `docs/observability` filenames (D-10) | ✓ VERIFIED | `lib/playbook/nav.ts:55-60` `DOC_PAGE_FILE`; matches D-10 exactly; test `playbook-docs-render.test.ts` asserts the exact map and resolves non-empty content for all 4 |
-| 11 | `Rail2` renders IT room row only when `canSeeItRoom` is true; 5 non-IT rooms always render as inert ghosts | ✓ VERIFIED | `components/playbook/Rail2.tsx:50-60` (`if (room.itGated) { if (!canSeeItRoom) return null ... }`); `GhostRoom` renders a `<div>` (not `<a>`/`<button>`, no tabindex) |
-| 12 | `PlaybookNavLink` is active when path starts with `/admin/playbook` | ✓ VERIFIED | `components/playbook/PlaybookNavLink.tsx:20-21` |
-| 13 | Rail 1 shows "The Playbook" link to ALL staff, first nav item, outside the isLeadership block | ✓ VERIFIED | `app/(admin)/layout.tsx:46-51` — `<PlaybookNavLink />` sits before `{isLeadership && (...)}`, with an explicit comment confirming the placement |
-| 14 | `/admin/playbook` renders Rail 2 (double-sidebar) inside the existing admin shell | ✓ VERIFIED | `app/(admin)/playbook/layout.tsx:49-58` — `.pb-shell` renders `<Rail2>` beside `{children}` |
-| 15 | Nested layout computes `canSeeItRoom = role is leadership or it`, server-side, passed to Rail2 | ✓ VERIFIED | `app/(admin)/playbook/layout.tsx:46-47` |
-| 16 | `/admin/playbook` redirects leadership/it to `/admin/playbook/it/dashboard`; other staff see coming-soon landing | ✓ VERIFIED | `app/(admin)/playbook/page.tsx:20-22` |
-| 17 | Each of the 4 doc pages calls `requireStaffPage(['leadership','it'])` BEFORE reading any doc content (fail closed) | ✓ VERIFIED | Read all 4 page files directly — `requireStaffPage()` is the literal first statement in each function body, `readObservabilityDoc()` called only after; textually precedes in vendor-directory, runbook, operating-rhythm, thresholds pages |
-| 18 | Each doc page renders its `docs/observability/*.md` source via MarkdownDoc | ✓ VERIFIED | Same 4 files — each calls `MarkdownDoc` with the result of `readObservabilityDoc(DOC_PAGE_FILE[slug])` |
-| 19 | Page-to-file map matches D-10 exactly | ✓ VERIFIED | Confirmed by direct read of all 4 pages + `nav.ts` + docs directory listing (`VENDOR-DIRECTORY.md`, `RUNBOOK.md`, `OPERATING-RHYTHM.md`, `THRESHOLDS-AND-SEVERITY.md` all exist) |
-| 20 | `getDashboardHealth()` re-checks `/api/health` in-process, returns healthy/degraded/unknown, never throws | ✓ VERIFIED | `lib/playbook/digest.ts:23-31` — `import { GET as checkHealth }`, try/catch → `'unknown'` on exception |
-| 21 | `buildDigestTodayRow(status)` is pure, classifies via `classifyThreshold`, does not send email | ✓ VERIFIED | `lib/playbook/digest.ts:61-68` — no I/O, no email import anywhere in `digest.ts` (grep confirmed no `fanOutAlert`/`resend` reference) |
-| 22 | `StatusBanner` renders 3 states: healthy (emerald pulsing), degraded (rose steady), unknown (rose steady, "treat as degraded") | ✓ VERIFIED | `components/playbook/StatusBanner.tsx:21-65`; behavioral test `playbook-status-banner.test.tsx` passes for all 3 states |
-| 23 | `ThresholdsPanel` renders exactly 7 rows from THRESHOLDS, excluding `monthly_spend_usd` and `uptime_consecutive_failures` | ✓ VERIFIED | `components/playbook/ThresholdsPanel.tsx:13-21` — 7-row explicit allowlist; test `playbook-thresholds-panel.test.tsx` passes |
-| 24 | Dashboard page calls `requireStaffPage(['leadership','it'])` BEFORE any health re-check/render | ✓ VERIFIED | `app/(admin)/playbook/it/dashboard/page.tsx:24-26` — guard is literal first statement, `getDashboardHealth()` called after |
-| 25 | App Health tile + global status banner reflect the live in-process `/api/health` re-check | ✓ VERIFIED | `app/(admin)/playbook/it/dashboard/page.tsx:26-27,38,43-50` |
-| 26 | Uptime tile/panel are a Better Stack link-out to `https://funun.betteruptime.com` — no fabricated %s/sparklines | ✓ VERIFIED | `app/(admin)/playbook/it/dashboard/page.tsx:52-62,82-114` — link-out only, "No live per-route data in v1" copy, no percentage/sparkline markup found |
-| 27 | `VendorsGrid` has 10 cells with real deep-links; site-critical vendors carry the rose dot | ✓ VERIFIED | `components/playbook/VendorsGrid.tsx:27-55` — 10 entries; Vercel/Supabase/DNS all `dot:'crit'` → `bg-[#F43F5E]` (rose) |
+| 1–27 | (see prior `33-VERIFICATION.md` for full text — all still hold) | ✓ VERIFIED (regression) | `lib/playbook/nav.ts`, `Rail2.tsx`, `PlaybookNavLink.tsx`, doc pages, `next.config.mjs`, migration 114 unchanged since prior verification (git diff empty); full Jest suite (203/203 suites, 2335/2335 tests) and `npx tsc --noEmit` both clean, re-run fresh by this verifier |
 
-**Score:** 27/27 truths verified (0 present-but-behavior-unverified)
+**Note on truth #26** ("Uptime tile is a Better Stack link-out only, no fabricated %s") — still true; IN-02's fix (below) additionally removed a hardcoded uptime *claim* from `StatusBanner`'s healthy-state subtext, which was adjacent but distinct from the Uptime tile itself.
 
-### Required Artifacts
+### Observable Truths — New (post-hardening, full verification)
 
-| Artifact | Expected | Status | Details |
-|----------|----------|--------|---------|
-| `lib/admin/staff-role.ts` | `it` StaffRole added | ✓ VERIFIED | Union + ALL_STAFF_ROLES + getStaffRole branch, wired |
-| `lib/admin/gate.ts` | `requireStaffPage()` export | ✓ VERIFIED | New export, distinct redirect-based shape from `requireStaff()` |
-| `__tests__/staff-role-it.test.ts` | Wave-0 lock test | ✓ VERIFIED | 9 tests, all pass |
-| `supabase/migrations/114_it_staff_role.sql` | Owner-run CHECK widen | ✓ VERIFIED | Present, mirrors 108 template; unapplied by design (see below) |
-| `lib/playbook/read-doc.ts` | Fail-fast doc reader | ✓ VERIFIED | Wired, tested |
-| `lib/playbook/markdown-components.tsx` | react-markdown components map | ✓ VERIFIED | Uses real `.fncon` tokens (--ink/--ink-2/--ink-3/--border/--panel/--panel-2/--indigo), not mockup aliases |
-| `components/playbook/MarkdownDoc.tsx` | RSC markdown wrapper | ✓ VERIFIED | Server Component, no client JS |
-| `next.config.mjs` | `outputFileTracingIncludes` entry | ✓ VERIFIED | Present, build-trace confirmed against live `.nft.json` output |
-| `lib/playbook/nav.ts` | Room/sub-page/doc-file source | ✓ VERIFIED | Matches D-05/D-06/D-10 exactly |
-| `components/playbook/PlaybookNavLink.tsx` | Rail 1 active link | ✓ VERIFIED | Wired into `app/(admin)/layout.tsx` |
-| `components/playbook/Rail2.tsx` | Room list w/ ghosts + IT room | ✓ VERIFIED | DOM-omission (not locked/greyed) confirmed |
-| `components/playbook/ItRoomTopBar.tsx` | Shared crumb + access chip | ✓ VERIFIED | Used identically on all 5 IT-room pages |
-| `app/(admin)/layout.tsx` | Rail 1 entry mount | ✓ VERIFIED | `<PlaybookNavLink />` outside isLeadership block, first item |
-| `app/(admin)/playbook/layout.tsx` | Nested Rail-2 layout | ✓ VERIFIED | Resolves role independently, passes `canSeeItRoom` |
-| `app/(admin)/playbook/page.tsx` | Index redirect / coming-soon | ✓ VERIFIED | Redirects authorized staff; coming-soon copy for others |
-| `app/(admin)/playbook/it/{vendor-directory,runbook,operating-rhythm,thresholds}/page.tsx` | 4 doc pages | ✓ VERIFIED (×4) | Each self-guards then renders via MarkdownDoc |
-| `lib/playbook/digest.ts` | Health re-check + digest row | ✓ VERIFIED | In-process import, no self-HTTP, no email |
-| `components/playbook/StatusBanner.tsx` | 3-state banner | ✓ VERIFIED | Tested |
-| `components/playbook/DigestPanel.tsx` | Digest today-row | ✓ VERIFIED | Renders `buildDigestTodayRow()`; see Anti-Patterns for a cosmetic token issue |
-| `components/playbook/ThresholdsPanel.tsx` | 7-row thresholds table | ✓ VERIFIED | Tested; see Anti-Patterns for a cosmetic token issue |
-| `components/playbook/VendorsGrid.tsx` | 10-cell vendor grid | ✓ VERIFIED | Uses correct `.fncon` tokens |
-| `components/playbook/QuickLinks.tsx` | 4-card jump-to panel | ✓ VERIFIED | Uses correct `.fncon` tokens |
-| `app/(admin)/playbook/it/dashboard/page.tsx` | Monitoring Dashboard | ✓ VERIFIED | Guard-first, composes all live-signal + reference components |
+| # | Truth | Status | Evidence |
+|---|-------|--------|----------|
+| 28 | `OPERATIONAL_STAFF_ROLES` = `['leadership','ae','bd','anr']`, excludes `it`; `ALL_STAFF_ROLES` unchanged (still includes `it`, used for display/dropdowns only) | ✓ VERIFIED | `lib/admin/staff-role.ts:29,45`; test `staff-role-it.test.ts` "excludes it but contains every other staff role" — length 4, passes |
+| 29 | `requireStaff()` and `requireStaffPage()` default parameter changed from `ALL_STAFF_ROLES` to `OPERATIONAL_STAFF_ROLES` — a bare call now fails closed against `it` | ✓ VERIFIED | `lib/admin/gate.ts:41,78`; behavioral tests: `it` caller → `requireStaff()` returns `{error:'Forbidden',status:403}`; `requireStaffPage()` redirects to `/`; `leadership` caller unaffected in both — all 4 new tests pass |
+| 30 | Explicit-allowlist callers (the 5 IT-room pages' `requireStaffPage(['leadership','it'])`, `verifyAdmin()`'s `requireStaff(['leadership'])`, sync-library's `requireStaff(['leadership','ae'])`) are unaffected by the default change | ✓ VERIFIED | Direct read of all 5 IT-room page files confirms each still passes an explicit `['leadership','it']` array (not the default) — the default-tightening cannot affect them; `gate.ts:56` `verifyAdmin()` still calls `requireStaff(['leadership'])` explicitly |
+| 31 | 8 named inline admin pages (artist-invites, crate-requests, directory, my-client-partners, selects, selects/[id], client-partners/[orgId], clients/[personId]) now redirect a caller with `role === 'it'` in addition to `!role` | ✓ VERIFIED | Grepped and read all 8 files directly: each contains `if (!role \|\| role === 'it') redirect('/')` or the `staffRole` variant (`client-partners/[orgId]`, `clients/[personId]`) — confirmed line-by-line, not from the hardening summary's file list alone |
+| 32 | `app/(admin)/layout.tsx` still admits any non-null staff role (including `it`) to the admin shell (so `it` can reach `/admin/playbook`), but wraps the 5 sales/ops nav links (Crate Requests, Selects, My Client Partners, Directory, Artist Invites) in `{role !== 'it' && (...)}` so `it` no longer sees them | ✓ VERIFIED | `app/(admin)/layout.tsx:27-28` (`if (!role) redirect('/')`, unchanged) and `:120-144` (`{role !== 'it' && (<>...5 links...</>)}`) — read directly |
+| 33 | The `it` role's own destination — the Playbook IT room — is unaffected: `/admin/playbook/layout.tsx` still computes `canSeeItRoom = role === 'leadership' \|\| role === 'it'`, and `playbook/page.tsx` still redirects `it`/`leadership` straight to `/admin/playbook/it/dashboard` | ✓ VERIFIED | Both files re-read in full — logic byte-for-byte unchanged from prior verification, untouched by any hardening commit (confirmed via `git diff` on those two files returning empty) |
+| 34 | `DigestPanel.tsx` / `ThresholdsPanel.tsx` / `StatusBanner.tsx` no longer reference `--hair`, `--card2`, `--lavdim` as literal (undefined) CSS custom properties, and no longer hardcode `text-white`; all three now use real theme-aware `.fncon` tokens (`--border`, `--panel`, `--ink-2`, `--ink-3`, `--ink`) that resolve correctly in both dark and the opt-in light theme | ✓ VERIFIED | Grep across `components/playbook/` + `lib/playbook/` for `--hair`, `--card2`, `--lavdim`, `text-white` returns zero literal usages (only doc-comment mentions of the old names, as a "don't use these" note); `components/admin/console-theme.ts:19` confirms `--panel`/`--ink-3`/`--border` are real tokens with `[data-theme="light"]` overrides at `:20` |
+| 35 | Dashboard's App Health tile branches on all 3 `DashboardHealthStatus` values (`healthy`/`degraded`/`unknown`) instead of collapsing `degraded`+`unknown` into a fabricated `→ 503` | ✓ VERIFIED | `app/(admin)/playbook/it/dashboard/page.tsx:35-37` — `healthLabel`/`healthDetail` both ternary on all 3 states; `unknown` renders "Unknown" / "unreachable — treat as degraded", not "Degraded" / "→ 503" |
+| 36 | `StatusBanner`'s healthy-state subtext no longer asserts "3/3 uptime monitors up ... no open incidents" as fact; now names Better Stack as the external source of record | ✓ VERIFIED | `components/playbook/StatusBanner.tsx:47-49` — literal text is `/api/health healthy · uptime tracked externally by Better Stack`; matching test assertion updated in `playbook-status-banner.test.tsx` and passes |
 
-### Key Link Verification
+**Score:** 34/34 truths verified (0 present-but-behavior-unverified)
+
+### WR-03 — accepted non-blocker (not a gap)
+
+`lib/playbook/read-doc.ts:23-34` still has no path-containment guard on `filename` — `path.join(DOCS_DIR, filename)` would escape `DOCS_DIR` given a `../`-laced input. Confirmed by direct read of the current file: unchanged from the pre-hardening version. Confirmed every caller (`app/(admin)/playbook/it/{vendor-directory,runbook,operating-rhythm,thresholds}/page.tsx`) passes a fixed `DOC_PAGE_FILE[slug]` compile-time constant — grepped all call sites in `app/`, `lib/`, `components/`, none pass user input. Per the task's explicit instruction, this is recorded as a documented, non-exploitable follow-up (⚠️ Warning, not a blocker) — matches `33-HARDENING-SUMMARY.md`'s own "Note" section, independently re-confirmed here rather than taken on trust.
+
+### Migration 114 — unapplied by design (not flagged)
+
+`supabase/migrations/114_it_staff_role.sql` is unchanged by the hardening pass (git diff empty) and remains authored-but-not-applied against the live DB, matching the `anr`/108 precedent (D-01/D-02): `getStaffRole()` reads only `app_metadata`, never the DB, so recognizing `'it'` in code before the owner runs 114 is safe — no `funun_staff` row can hold `'it'` until then. Per task instructions, not flagged as a gap.
+
+### Key Link Verification (hardening-relevant links)
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `requireStaffPage()` | `getStaffRole()` | single authority read of `app_metadata.staff_role` | ✓ WIRED | `lib/admin/gate.ts:66-77` |
-| Migration 114 CHECK | `lib/admin/staff-role.ts` StaffRole union | DB display-copy kept in sync | ✓ WIRED | Both list `('leadership','ae','bd','anr','it')` |
-| `MarkdownDoc` | `markdownComponents` map | element-level styling | ✓ WIRED | `components/playbook/MarkdownDoc.tsx:18` |
-| `read-doc.ts` fs read | `next.config.mjs outputFileTracingIncludes` | deploy-time bundling | ✓ WIRED | Confirmed via live `.nft.json` build artifacts containing `docs/observability` paths |
-| `nav.ts IT_SUBPAGES` | 5 route segments under `/admin/playbook/it/*` | href match | ✓ WIRED | All 5 hrefs match actual route files that exist |
-| `nav.ts DOC_PAGE_FILE` | `docs/observability/*.md` | filename match | ✓ WIRED | All 4 referenced files exist on disk |
-| `playbook/layout.tsx getStaffRole(user)` | `canSeeItRoom` → `Rail2` prop | render-time visibility | ✓ WIRED | `app/(admin)/playbook/layout.tsx:46-53` |
-| `PlaybookNavLink` | `app/(admin)/layout.tsx` Rail 1 | all staff | ✓ WIRED | Mounted, confirmed by grep |
-| Doc page | `requireStaffPage` (33-01) before `readObservabilityDoc()` | fail closed | ✓ WIRED (×4) | Confirmed by direct file read on all 4 pages |
-| Dashboard page | `requireStaffPage` before `getDashboardHealth` | fail closed | ✓ WIRED | `app/(admin)/playbook/it/dashboard/page.tsx:24-26` |
-| Dashboard page | `StatusBanner`/`DigestPanel`/`ThresholdsPanel`/`VendorsGrid`/`QuickLinks`/`ItRoomTopBar` | composition | ✓ WIRED | All imported and rendered |
+| `requireStaff()` / `requireStaffPage()` default param | `OPERATIONAL_STAFF_ROLES` | fail-closed default | ✓ WIRED | `lib/admin/gate.ts:41,78` |
+| 5 IT-room pages | `requireStaffPage(['leadership','it'])` explicit call | bypasses the tightened default, admits `it`/`leadership` only | ✓ WIRED (×5) | Confirmed unaffected — explicit array literal, not the default parameter |
+| 8 named admin pages | `role === 'it'` redirect | CR-01 scoping | ✓ WIRED (×8) | Confirmed line-by-line in each file |
+| `app/(admin)/layout.tsx` | `{role !== 'it' && (...)}` | nav-link suppression (defense-in-depth, not the security boundary) | ✓ WIRED | Page-level guards (the 8 files above) are the real boundary; nav hiding is UX-only, correctly framed as such in the code comment |
+| `DigestPanel`/`ThresholdsPanel`/`StatusBanner` | `components/admin/console-theme.ts` `.fncon` token block | CSS custom property resolution | ✓ WIRED | All referenced tokens (`--border`,`--panel`,`--ink`,`--ink-2`,`--ink-3`) exist in both the dark base and `[data-theme="light"]` override |
+| Dashboard page | `healthLabel`/`healthDetail` ternaries | 3-state honest rendering | ✓ WIRED | `app/(admin)/playbook/it/dashboard/page.tsx:35-37` feeds the App Health tile at `:53-59` |
 
-### Data-Flow Trace (Level 4)
-
-| Artifact | Data Variable | Source | Produces Real Data | Status |
-|----------|---------------|--------|---------------------|--------|
-| Dashboard page | `health` | `getDashboardHealth()` → in-process `checkHealth()` → `/api/health` route's own logic | Yes | ✓ FLOWING |
-| `StatusBanner` | `status` prop | passed from dashboard page's live `health` | Yes | ✓ FLOWING |
-| `DigestPanel` | `status` prop → `buildDigestTodayRow()` | same live `health` value | Yes | ✓ FLOWING |
-| `ThresholdsPanel` | `THRESHOLDS[metric]` | `lib/observability/config.ts` real config values | Yes | ✓ FLOWING |
-| Doc pages | `md` | `readObservabilityDoc()` → real `.md` file content, verified non-empty by test | Yes | ✓ FLOWING |
-| `VendorsGrid`/`QuickLinks` | static array | hardcoded, correctly labeled as static deep-links (not claimed live) | N/A (by design) | ✓ FLOWING (honest static) |
-
-### Behavioral Spot-Checks
+### Behavioral Spot-Checks (run fresh by this verifier, not sourced from SUMMARY/HARDENING-SUMMARY)
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| All Playbook Wave-0 tests pass | `npx jest __tests__/staff-role-it.test.ts __tests__/playbook-read-doc.test.ts __tests__/playbook-nav.test.ts __tests__/playbook-docs-render.test.ts __tests__/playbook-digest.test.ts __tests__/playbook-status-banner.test.tsx __tests__/playbook-thresholds-panel.test.tsx` | 7 suites / 46 tests passed | ✓ PASS |
-| Project-wide typecheck passes with the widened `StaffRole` union | `npx tsc --noEmit -p tsconfig.json` | No output (clean) | ✓ PASS |
-| Production build's file trace includes `docs/observability/**` for the IT-room routes | `find .next -name "*.nft.json" \| xargs grep -l "docs/observability"` | 4 matching `.nft.json` files (one per doc route) | ✓ PASS |
-| Build is fresh (post-dates last Playbook source commit) | `.next/BUILD_ID` mtime vs. last commit touching `app/(admin)/playbook` | Build generated same second as last commit | ✓ PASS |
+| All 7 Playbook Jest suites pass, including the 5 new CR-01 lock tests in `staff-role-it.test.ts` | `npx jest __tests__/staff-role-it.test.ts __tests__/playbook-read-doc.test.ts __tests__/playbook-nav.test.ts __tests__/playbook-docs-render.test.ts __tests__/playbook-digest.test.ts __tests__/playbook-status-banner.test.tsx __tests__/playbook-thresholds-panel.test.tsx --ci` | 7 suites / 51 tests passed (was 46 pre-hardening; +5 new CR-01 tests) | ✓ PASS |
+| Whole-project typecheck is clean post-hardening | `npx tsc --noEmit -p tsconfig.json` | Exit 0, no output | ✓ PASS |
+| Full project test suite has no regressions from the 4 hardening commits | `npx jest --ci` (run once, full suite) | 203 suites / 2335 tests passed | ✓ PASS |
+| Production build's file trace still includes `docs/observability/**` for all 4 doc routes, post-hardening | `find .next -name "*.nft.json" \| xargs grep -l "docs/observability"` | 4 matching `.nft.json` files (vendor-directory, runbook, operating-rhythm, thresholds) | ✓ PASS |
+| Build is fresh (post-dates the last hardening commit) | `.next/BUILD_ID` mtime (22:39:07) vs. last hardening commit `7cc797e` (22:36:25) | Build generated ~3 min after the last hardening commit; working tree clean (only an unrelated `.claude/launch.json` change) | ✓ PASS |
+| No debt markers introduced by hardening | `grep -n -E "TBD|FIXME|XXX|TODO|HACK|PLACEHOLDER"` across all files touched by the 4 hardening commits | No matches | ✓ PASS |
 
-### Requirements Coverage
+### Requirements Coverage (unchanged by hardening — re-confirmed, not re-derived)
 
-| Requirement | Source Plan(s) | Description | Status | Evidence |
-|-------------|-----------------|-------------|--------|----------|
-| PLAYBOOK-01 | 33-01, 33-02 | `it` StaffRole + owner-run migration 114 | ✓ SATISFIED | Code path recognizes `it` without the migration applied, as designed |
-| PLAYBOOK-02 | 33-04, 33-05 | Rail 1 "The Playbook" entry, all staff | ✓ SATISFIED | Confirmed live in `app/(admin)/layout.tsx` |
-| PLAYBOOK-03 | 33-04, 33-05 | Rail 2 double-sidebar, 6 rooms, role-conditional IT room | ✓ SATISFIED | `Rail2.tsx` + `nav.ts` match exactly |
-| PLAYBOOK-04 | 33-01, 33-06, 33-08 | Every IT-room page self-guards inline before any content read | ✓ SATISFIED | All 5 pages confirmed |
-| PLAYBOOK-05 | 33-03, 33-06 | 4 doc pages render from `.md` via react-markdown/remark-gfm | ✓ SATISFIED | Confirmed, no raw-HTML injection |
-| PLAYBOOK-06 | 33-03, 33-06 | `outputFileTracingIncludes` ships docs into deployed bundle | ✓ SATISFIED | Build-trace confirmed against live `.nft.json` |
-| PLAYBOOK-07 | 33-07, 33-08 | Live App Health tile + global status banner | ✓ SATISFIED | In-process re-check confirmed |
-| PLAYBOOK-08 | 33-07, 33-08 | One live daily-digest "today" row, no email sent | ✓ SATISFIED | `digest.ts` has no email/alert-fanout import |
-| PLAYBOOK-09 | 33-07, 33-08 | Real-values thresholds panel, 7-row allowlist, v2 badge on readings | ✓ SATISFIED | Confirmed and tested |
-| PLAYBOOK-10 | 33-08 | Better Stack link-out, vendors grid, v2-badged placeholders | ✓ SATISFIED | Confirmed |
-
-**Tracking-format gap (reported per task instructions, not a gap in implementation):** `.planning/REQUIREMENTS.md` lists PLAYBOOK-01..10 in a coverage table with status **"Planned"** for all 10 IDs — there is no `- [ ]`/`- [x]` checkbox markup for this phase's requirements to flip to "done," and the coverage table was not updated after execution. All 10 requirements are satisfied in code (see above); this is a documentation/tracking gap only, not a functional gap. Recommend a follow-up edit to REQUIREMENTS.md's coverage table (rows 700-709) to mark PLAYBOOK-01..10 as "Shipped"/"Complete" per whatever convention the table otherwise uses, so the table doesn't misrepresent phase status to future readers.
+| Requirement | Status | Note |
+|-------------|--------|------|
+| PLAYBOOK-01..10 | ✓ SATISFIED (unchanged) | All 10 requirements' supporting artifacts were untouched or only had defects fixed by the hardening pass — no requirement's satisfaction status changed. The pre-existing REQUIREMENTS.md tracking-table gap ("Planned" not flipped to "Shipped") is a documentation issue, not new, and not caused by this hardening pass — carried forward as a non-blocking note, not re-litigated here. |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `components/playbook/StatusBanner.tsx`, `DigestPanel.tsx`, `ThresholdsPanel.tsx` | multiple | Reference undefined CSS custom properties `--hair`, `--lavdim`, `--card2` (mockup-alias names) instead of the real `.fncon` tokens (`--border`, `--ink-3`, `--panel-2`) that `markdown-components.tsx`, `VendorsGrid.tsx`, `QuickLinks.tsx`, `Rail2.tsx`, and `ItRoomTopBar.tsx` all correctly use | ⚠️ Warning | Cosmetic-only in the default dark theme (`--card` happens to numerically equal `--panel`'s dark value at `:root` in `app/globals.css`, and `color` is an inherited CSS property so `--lavdim`-styled text inherits the ambient `--ink` color rather than rendering illegibly). **Confirmed NOT cosmetic-only in the admin console's opt-in light theme** (`lib/admin/theme.ts`/`AdminThemeToggle` — light mode is a real, user-reachable toggle): `--card`'s dark hardcoded value (`#0e0d1e`) has no light-theme override in `app/globals.css`, so `ThresholdsPanel`/`DigestPanel` would render a dark near-black background against an otherwise light-themed page for a leadership/it staffer who has switched to light mode. No functional/access-control impact — this is a rendering-fidelity defect, already self-identified and logged by the executor in `deferred-items.md` with a specific 3-line fix (`--hair`→`--border`, `--lavdim`→`--ink-3`, `--card2`→`--panel-2`) explicitly out of scope for 33-08's file set. Does not block the phase goal (a working, gated, read-only IT room + live dashboard) but should be fixed promptly since it is currently visible to any staffer using light mode. |
+| `lib/playbook/read-doc.ts` | 24 | No path-containment guard on `filename` before `path.join(DOCS_DIR, filename)` (WR-03) | ⚠️ Warning | Not currently exploitable — every caller passes a fixed compile-time constant, confirmed by grep across the whole tree. Explicitly out of scope for this hardening pass per `33-HARDENING-SUMMARY.md`'s Note section; recommend a follow-up PR before this function gains any new caller that could forward user input. |
+| `.planning/REQUIREMENTS.md` | rows 700-709 | PLAYBOOK-01..10 tracking table still shows "Planned" for a fully-shipped, now-hardened phase | ℹ️ Info | Documentation/tracking gap only, pre-existing (noted in the prior verification too), not introduced by this hardening pass. |
 
-No debt markers (`TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`) found in any Phase 33 file. The only "coming soon" occurrences are the intentional D-05 ghost-room copy, not implementation debt.
+No debt markers (`TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`) found in any file touched by the hardening commits.
 
 ### Human Verification Required
 
-None required to reach a `passed` verdict — all must-haves have direct code/test evidence. The following is optional but recommended manual confirmation, not blocking:
-
-1. **Light-theme visual check on ThresholdsPanel/DigestPanel**
-   **Test:** As a leadership/it staffer, toggle the admin console to light theme (`AdminThemeToggle`) and open `/admin/playbook/it/dashboard`.
-   **Expected:** ThresholdsPanel and DigestPanel should visually match the light theme (light background, readable secondary text).
-   **Why human:** Confirms the severity/visual impact of the CSS custom-property gap documented above; grep/static analysis can identify the undefined properties but not the rendered visual result.
-
-### Deferred Items (from `deferred-items.md`, informational only)
-
-| # | Item | Addressed In | Evidence |
-|---|------|-------------|----------|
-| 1 | CSS custom-property mismatch in 33-07's StatusBanner/DigestPanel/ThresholdsPanel | Suggested follow-up fix-forward plan (not yet scheduled to a numbered phase) | `deferred-items.md` — logged by executor per Scope Boundary rule; assessed above as cosmetic-only in default dark theme, real-but-non-blocking in opt-in light theme |
+None. The one item flagged for optional human confirmation in the prior verification (light-theme visual check on `ThresholdsPanel`/`DigestPanel`) is now resolved by the WR-01/IN-01 fix — both components use real, light-theme-aware tokens, confirmed against `console-theme.ts`'s `[data-theme="light"]` override block. No new human-verification-only items were introduced by the hardening pass.
 
 ### Gaps Summary
 
-None. All 27 derived must-have truths across the 8 plans are verified against the actual codebase (not SUMMARY claims): the `it` StaffRole and `requireStaffPage()` primitives are implemented and behaviorally tested; migration 114 is correctly authored and — per D-01/D-02's explicit design — decoupled from code verification (its non-application is not a failure); the double-sidebar shell (Rail 1 entry + Rail 2 rooms, ghosts, role-conditional IT room) is wired end-to-end; all 4 doc pages self-guard before reading, render from the real `.md` files via a safe markdown pipeline, and are backed by a build-trace-verified `outputFileTracingIncludes` entry; the Monitoring Dashboard self-guards first, then composes a live in-process health signal, a real-values thresholds table, a 10-cell vendor grid with correct site-critical marking, and honestly-badged v2 placeholders with no fabricated live numbers (the one explicit honesty constraint from CONTEXT.md). All 7 Playbook-related Jest test suites (46 tests) pass, and `tsc --noEmit` is clean across the whole project. One cosmetic CSS-token defect (self-identified by the executor, isolated to 3 files, non-blocking, already has a scoped fix documented) and one documentation-tracking gap in REQUIREMENTS.md's coverage table (rows not marked complete) are noted as warnings but do not block phase completion.
+None. The hardening pass correctly closed all 5 addressed findings from `33-REVIEW.md` without regressing any of the 27 previously-verified phase-goal truths:
+
+- **CR-01 (the access-control finding)** is correctly and completely fixed: `OPERATIONAL_STAFF_ROLES` (excludes `it`) is now the fail-closed default for `requireStaff()`/`requireStaffPage()`; all 8 previously-vulnerable admin pages now explicitly redirect an `it` caller; the admin shell still admits `it` (so it can reach `/admin/playbook`) but hides sales/ops nav links from it as defense-in-depth; and — critically — the fix did NOT lock `it` (or `leadership`) out of the IT room itself, since all 5 IT-room pages pass their own explicit `requireStaffPage(['leadership','it'])` allowlist, unaffected by the tightened default. 5 new regression-lock tests confirm this behaviorally, not just structurally.
+- **WR-01/IN-01** (undefined/non-theme-aware CSS tokens) is fixed: all three affected components now use real `.fncon` tokens confirmed to exist with light-theme overrides.
+- **WR-02** (fabricated `→ 503` for unknown health) is fixed: the dashboard tile now honestly branches on all 3 health states.
+- **IN-02** (hardcoded uptime claim) is fixed: `StatusBanner` no longer asserts a live "3/3" figure.
+- **WR-03** (path-containment) remains an accepted, documented, non-exploitable follow-up — not a blocker per the task's explicit instruction.
+- **Migration 114** remains correctly unapplied-by-design — not flagged.
+
+All 7 Playbook-scoped Jest suites (51 tests, up from 46) and the full project suite (203 suites / 2335 tests) pass; `tsc --noEmit` is clean; the production build's file-tracing for the 4 doc routes is confirmed fresh (post-dates the last hardening commit). Phase goal remains achieved, now with the CR-01 access-control gap closed.
 
 ---
 
-_Verified: 2026-08-18T02:09:31Z_
+_Verified: 2026-08-18T02:48:04Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification of: 33-VERIFICATION.md (2026-08-18T02:09:31Z, status: passed, 27/27) — superseded by this report_
