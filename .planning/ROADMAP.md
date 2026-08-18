@@ -1228,7 +1228,7 @@ Plans:
 
 **Requirements**: PLAYBOOK-01..10 (registered in REQUIREMENTS.md; derived from 33-CONTEXT.md D-01..D-10)
 **Depends on:** Phase 32
-**Plans:** 5/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
@@ -1241,9 +1241,9 @@ Plans:
 
 **Wave 2** *(assembled surfaces — blocked on Wave 1)*
 
-- [ ] 33-05-PLAN.md — Playbook route shell: Rail 1 entry + nested Rail 2 layout + index redirect (PLAYBOOK-02/03)
-- [ ] 33-06-PLAN.md — 4 IT doc pages rendered from `docs/observability/*.md`, per-page inline guard (PLAYBOOK-04/05/06)
-- [ ] 33-08-PLAN.md — Monitoring Dashboard page assembly + VendorsGrid + QuickLinks + uptime link-out (PLAYBOOK-04/07/08/09/10)
+- [x] 33-05-PLAN.md — Playbook route shell: Rail 1 entry + nested Rail 2 layout + index redirect (PLAYBOOK-02/03)
+- [x] 33-06-PLAN.md — 4 IT doc pages rendered from `docs/observability/*.md`, per-page inline guard (PLAYBOOK-04/05/06)
+- [x] 33-08-PLAN.md — Monitoring Dashboard page assembly + VendorsGrid + QuickLinks + uptime link-out (PLAYBOOK-04/07/08/09/10)
 
 ---
 
