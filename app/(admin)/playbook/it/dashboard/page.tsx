@@ -25,6 +25,16 @@ export default async function MonitoringDashboardPage() {
 
   const health = await getDashboardHealth()
   const isHealthy = health === 'healthy'
+  // WR-02 hardening: branch on all 3 states instead of a healthy/not-healthy
+  // boolean. 'unknown' means the in-process health re-check threw or its
+  // body was unparseable (lib/playbook/digest.ts) — the endpoint was never
+  // actually reached, so it is NOT a confirmed 503 and must not be printed
+  // as one. Mirrors StatusBanner's own distinct unknown copy ("Health check
+  // unavailable — treat as degraded until confirmed") instead of fabricating
+  // a status code (D-07 honest-surfaces principle).
+  const healthLabel = health === 'healthy' ? 'Healthy' : health === 'degraded' ? 'Degraded' : 'Unknown'
+  const healthDetail =
+    health === 'healthy' ? '→ 200' : health === 'degraded' ? '→ 503' : 'unreachable — treat as degraded'
 
   return (
     <>
@@ -42,10 +52,10 @@ export default async function MonitoringDashboardPage() {
         <div className="mb-[26px] grid grid-cols-2 gap-[14px] lg:grid-cols-4">
           <Tile stripeColor={isHealthy ? '#34D399' : '#F43F5E'} label="App Health">
             <div className="mt-2 text-[26px] font-extrabold leading-none text-[color:var(--ink)]">
-              {isHealthy ? 'Healthy' : 'Degraded'}
+              {healthLabel}
             </div>
             <div className={`mt-[7px] text-[12px] ${isHealthy ? 'text-[#34D399]' : 'text-[#F43F5E]'}`}>
-              /api/health {isHealthy ? '→ 200' : '→ 503'}
+              /api/health {healthDetail}
             </div>
           </Tile>
 
