@@ -134,3 +134,7 @@ None - no external service configuration required. (Migration `114_it_staff_role
 ---
 *Phase: 33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1*
 *Completed: 2026-08-18*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk (`lib/admin/staff-role.ts`, `lib/admin/gate.ts`, `__tests__/staff-role-it.test.ts`, this SUMMARY.md); all 3 task/summary commit hashes (`0a91366`, `2c73917`, `4a2ec82`) verified present in `git log`.
