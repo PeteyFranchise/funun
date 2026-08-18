@@ -131,3 +131,11 @@ None.
 ---
 *Phase: 33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1*
 *Completed: 2026-08-18*
+
+## Self-Check: PASSED
+
+All 6 created files verified present on disk (4 IT-room page.tsx files,
+`__tests__/playbook-docs-render.test.ts`, this SUMMARY.md). All 3 task/doc
+commits verified present in `git log` (`d2a39ad`, `4ae49b4`, `30051c3`).
+`npx jest __tests__/playbook-docs-render.test.ts` and `npx tsc --noEmit`
+both pass clean.
