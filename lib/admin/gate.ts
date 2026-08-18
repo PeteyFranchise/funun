@@ -1,4 +1,5 @@
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServerClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { getStaffRole, ALL_STAFF_ROLES, type StaffRole } from './staff-role'
 
 // getStaffRole + StaffRole moved to ./staff-role (client-safe, no server imports)
@@ -48,6 +49,31 @@ export async function verifyAdmin(): Promise<VerifyAdminResult> {
   const result = await requireStaff(['leadership'])
   if ('error' in result) return result
   return { user: result.user }
+}
+
+// ─── Page-context staff guard (Phase 33 / D-02, D-04) ─────────────────────
+// requireStaff() above returns an API-route-shaped {error,status} object —
+// unusable from a Server Component page, which needs to redirect() instead
+// (RESEARCH Pitfall 2). requireStaffPage() mirrors app/(admin)/layout.tsx's
+// own createServerClient + getUser + redirect() idiom, NOT requireStaff()'s
+// shape. It never constructs or returns a JSON-response/{error,status}
+// object — redirect() throws internally and never returns, so a caller
+// that gets a return value back always has an authorized {user,staffRole}.
+// Every one of the 5 IT-room pages calls this inline before touching any
+// observability doc/health data (fail closed, ASVS V4, T-33-01).
+export type RequireStaffPageResult = { user: ApiUser; staffRole: StaffRole }
+
+export async function requireStaffPage(
+  allowed: StaffRole[] = ALL_STAFF_ROLES
+): Promise<RequireStaffPageResult> {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/signin')
+  const staffRole = getStaffRole(user)
+  if (!staffRole || !allowed.includes(staffRole)) redirect('/')
+  return { user, staffRole }
 }
 
 // ─── Shared constants ────────────────────────────────────────────────────
