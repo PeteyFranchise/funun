@@ -1228,16 +1228,16 @@ Plans:
 
 **Requirements**: PLAYBOOK-01..10 (registered in REQUIREMENTS.md; derived from 33-CONTEXT.md D-01..D-10)
 **Depends on:** Phase 32
-**Plans:** 8 plans
+**Plans:** 5/8 plans executed
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
 
-- [ ] 33-01-PLAN.md — `it` StaffRole union + `requireStaffPage()` page guard (PLAYBOOK-01/04)
-- [ ] 33-02-PLAN.md — Owner-run migration 114 (`it` staff_role CHECK widen) — author + apply checkpoint (PLAYBOOK-01)
-- [ ] 33-03-PLAN.md — Markdown renderer (react-markdown+remark-gfm) + Vercel file-tracing + build-trace verify (PLAYBOOK-05/06)
-- [ ] 33-04-PLAN.md — Playbook nav model + shared chrome (nav.ts, PlaybookNavLink, Rail2, ItRoomTopBar) (PLAYBOOK-02/03)
-- [ ] 33-07-PLAN.md — Dashboard live-signal core: digest.ts + StatusBanner + DigestPanel + ThresholdsPanel (PLAYBOOK-07/08/09)
+- [x] 33-01-PLAN.md — `it` StaffRole union + `requireStaffPage()` page guard (PLAYBOOK-01/04)
+- [x] 33-02-PLAN.md — Owner-run migration 114 (`it` staff_role CHECK widen) — author + apply checkpoint (PLAYBOOK-01)
+- [x] 33-03-PLAN.md — Markdown renderer (react-markdown+remark-gfm) + Vercel file-tracing + build-trace verify (PLAYBOOK-05/06)
+- [x] 33-04-PLAN.md — Playbook nav model + shared chrome (nav.ts, PlaybookNavLink, Rail2, ItRoomTopBar) (PLAYBOOK-02/03)
+- [x] 33-07-PLAN.md — Dashboard live-signal core: digest.ts + StatusBanner + DigestPanel + ThresholdsPanel (PLAYBOOK-07/08/09)
 
 **Wave 2** *(assembled surfaces — blocked on Wave 1)*
 
