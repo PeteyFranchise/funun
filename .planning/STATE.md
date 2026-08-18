@@ -4,15 +4,15 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 status: in_progress
-stopped_at: "v1.2 milestone close PAUSED — Phase 32: 32-06 Sentry CODE closed 2026-08-18 (live-verify deferred as owner UAT); 32-09 k6 + 32-10 runbook remain owner-gated drafts before archiving the milestone"
-last_updated: "2026-08-18T03:31:00.000Z"
+stopped_at: "v1.2 milestone close PAUSED — Phase 32 at 9/10: 32-10 runbook tabletop PASSED + 32-06 Sentry code closed (both 2026-08-18); only 32-09 (k6 load run) remains do-now, plus the deferred 32-06 live-verify — both owner-gated — before archiving the milestone"
+last_updated: "2026-08-18T03:45:00.000Z"
 last_activity: 2026-08-18
-last_activity_desc: "Phase 32-06 (Sentry) code closed + verified green (jest 4/4, tsc + build clean); Task 3 live-exception verify deferred as tracked owner UAT"
+last_activity_desc: "Phase 32-10 incident-runbook tabletop PASSED (owner-run, §3a forward-fix validated); docs stamped validated, daily digest retimed to Pacific morning (0 6→0 15 UTC). Phase 32 now 9/10 — only 32-09 k6 remains."
 progress:
   total_phases: 33
   completed_phases: 27
   total_plans: 213
-  completed_plans: 209
+  completed_plans: 210
   percent: 82
 current_phase_name: production-observability-capacity-incident-readiness
 ---
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 33 — COMPLETE 2026-08-18. The Playbook shell + IT Team monitoring dashboard (read-only v1): goal-verified 34/34 (2325→2335 tests green, tsc + next build clean). Code-review hardening pass closed CR-01 (the new read-only `it` StaffRole was over-granted to non-Playbook admin surfaces — fixed via a fail-closed OPERATIONAL_STAFF_ROLES default + page/sidebar exclusions) plus WR-01/02 + IN-01/02 cosmetics. Owner-run migration 114 (`it` staff_role CHECK widen) APPLIED 2026-08-18 via `supabase db push` (finished cleanly) — the `it` role is now assignable AND correctly confined. Phase 33 was the last roadmap phase → milestone v1.2 status: complete (see /gsd-complete-milestone). Non-blocking follow-ups: WR-03 path-containment hardening on readObservabilityDoc() (task chip filed; not exploitable — fixed allowlist); two buyer-facing cosmetic `it` staff-mode toggles (sync/catalog, selects/[token]).
-(Phase 32 — 8/10 closed, still partial:) 32-06 (Sentry) CODE closed 2026-08-18 via /gsd-execute-phase 32 (32-06-SUMMARY.md; jest 4/4, tsc + build clean) — Task 3 live-exception verify DEFERRED as tracked owner UAT (.planning/todos/pending/2026-08-18-sentry-live-exception-verify-post-deploy.md, coverage D3). Remaining owner-gated drafts: 32-09 (k6 harness — scripts drafted+committed; owner must install k6 + stand up staging Supabase/Vercel Preview + run the load test, then Claude writes CAPACITY-REPORT.md from measured data) and 32-10 (incident runbook — docs drafted+committed; owner tabletop pending). Both tracked as pending todos + 32-OWNER-SETUP.md. Earlier plans 32-01..05/07/08 complete (SUMMARYs). NOTE: verify 32-01 Task 3 migration-110-push (observability_recipients) — confirm owner `supabase db push` + `supabase migration list` parity for migration 110.
+(Phase 32 — 9/10 closed, still partial:) 32-10 runbook TABLETOP PASSED 2026-08-18 (32-10-SUMMARY.md; §3a forward-fix validated, docs stamped validated, daily digest retimed 0 6→0 15 UTC / Pacific morning) and 32-06 Sentry CODE closed (32-06-SUMMARY.md; jest 4/4, tsc + build clean; live-exception verify DEFERRED as tracked owner UAT — .planning/todos/pending/2026-08-18-sentry-live-exception-verify-post-deploy.md, coverage D3). ONLY REMAINING do-now: 32-09 (k6 harness — scripts drafted+committed; owner must install k6 + stand up staging Supabase/Vercel Preview + run the load test, then Claude writes CAPACITY-REPORT.md from measured data; tracked at .planning/todos/pending/2026-08-17-run-k6-capacity-load-test-pre-launch.md + 32-OWNER-SETUP.md §4). When 32-09 lands → phase verification closes Phase 32 → unblocks v1.2 milestone. Earlier plans 32-01..05/07/08 complete (SUMMARYs). NOTE: verify 32-01 Task 3 migration-110-push (observability_recipients) — confirm owner `supabase db push` + `supabase migration list` parity for migration 110.
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
 Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
 (Historical Phase 10-13 notes below retained; counters approximate pending /gsd-docs-update recompute.)

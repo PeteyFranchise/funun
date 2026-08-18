@@ -4,13 +4,13 @@
 
 This is the founder-scale process wrapper that keeps the monitoring system in routine use (R10) — "a system nobody uses is a failure condition." Four cadences: daily automated, weekly manual review, pre-launch checklist, and monthly capacity report.
 
-> **DRAFT STATUS:** This document is drafted ahead of the Task 3 tabletop checkpoint. The owner still needs to confirm the named cadence is workable in practice (see `32-10-DRAFT.md`).
+> **Tabletop-validated 2026-08-18** (32-10 Task 3). Cadence confirmed workable at founder scale by the owner; the daily digest was retimed to Pacific morning (§1) as part of that sign-off.
 
 ---
 
 ## 1. Daily (automated) — owner: Pete
 
-**What runs automatically:** `app/api/cron/daily-observability-check/route.ts`, scheduled via `vercel.json`'s `0 6 * * *` cron entry (Plan 05), fires every day at 06:00 UTC. It:
+**What runs automatically:** `app/api/cron/daily-observability-check/route.ts`, scheduled via `vercel.json`'s `0 15 * * *` cron entry (Plan 05), fires every day at **15:00 UTC — ≈ 8am PDT / 7am PST**, so the digest lands in the owner's Pacific morning (owner tabletop decision, 2026-08-18). Vercel cron is UTC-only, so the local time shifts by one hour across DST; both states stay in the morning. It:
 - Re-checks `/api/health` in-process and reports `healthy` / `degraded` / `unknown`.
 - Classifies every `THRESHOLDS` metric in `lib/observability/config.ts` via `classifyThreshold()` (currently `unknown` until a live telemetry feed is wired — a monitoring gap is reported as `unknown`, never silently `healthy`).
 - Renders a Hobby/Pro-branched spend line (no live Vercel spend API exists in this codebase; the line degrades to a manual-check note on Hobby tier).

@@ -3,7 +3,7 @@
 **Owner:** Pete (pete@funun.studio) — D-13, founder-led, no dedicated backup yet.
 **Scope:** How to triage a production incident, correlate a user report to its cause, roll back safely, communicate degraded service, and run a post-incident review. This doc contains **no destructive-recovery, DB-reset, or migration-repair instructions** — those live behind `docs/BREAK-GLASS.md` only, and this doc references (never duplicates) that procedure.
 
-> **DRAFT STATUS:** This runbook has not yet passed its required tabletop exercise (32-10 Task 3). Do not treat it as validated until that checkpoint is completed and signed off.
+> **Tabletop-validated 2026-08-18** (32-10 Task 3). Walked end-to-end against a simulated `/sync/catalog` 5xx after a deploy that also shipped a DB migration; the schema-ahead §3a caveat correctly steered the decision to a forward fix over a rollback. **Note:** the Sentry-based steps in §1/§2 become fully usable once 32-06's Sentry setup is live (deferred); until then, use the time-window/route fallback in §2.
 
 ---
 
@@ -110,4 +110,4 @@ Per the operating rhythm (`docs/observability/OPERATING-RHYTHM.md`), the review 
 
 *Phase: 32-production-observability-capacity-incident-readiness*
 *Plan: 32-10*
-*Status: DRAFTED — tabletop exercise (Task 3) pending owner sign-off*
+*Status: VALIDATED — tabletop exercise (Task 3) passed 2026-08-18*

@@ -1252,7 +1252,7 @@ Plans:
 **Goal:** Funūn moves from zero formal monitoring to a founder-maintainable observability system: owned, minute-latency alerts for outages / elevated error rates / slow routes / Vercel throttling / Supabase pressure / unexpected spend; a tested read-only `/api/health`; privacy-scrubbed Sentry server+browser monitoring; a minimal correlation-ID logging convention; a non-prod k6 harness that finds the real capacity ceiling; baseline-validated thresholds + a SEV-1..4 model; a tabletop-tested incident runbook; and a named-owner operating rhythm — all tunable from one owner-editable config layer (D-10).
 **Requirements**: R1–R10 (SPEC-locked; see 32-SPEC.md)
 **Depends on:** Phase 31
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -1272,4 +1272,4 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 32-10-PLAN.md — Incident runbook + operating rhythm (R9/R10)
+- [x] 32-10-PLAN.md — Incident runbook + operating rhythm (R9/R10)

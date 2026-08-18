@@ -4,8 +4,9 @@ import { fanOutAlert } from '@/lib/observability/alerts'
 import { THRESHOLDS, classifyThreshold, SPEND_HEADS_UP_USD, type ThresholdMetric } from '@/lib/observability/config'
 
 // ─── GET /api/cron/daily-observability-check (32-05 Task 2, R10) ───────
-// Invoked daily by Vercel Cron (vercel.json, "0 6 * * *" — within Hobby's
-// once-per-day-per-expression ceiling). Vercel attaches an
+// Invoked daily by Vercel Cron (vercel.json, "0 15 * * *" = 15:00 UTC ≈
+// 8am PDT / 7am PST, morning Pacific per owner tabletop 2026-08-18 — within
+// Hobby's once-per-day-per-expression ceiling). Vercel attaches an
 // `Authorization: Bearer $CRON_SECRET` header automatically — this route
 // rejects any request whose header doesn't match BEFORE any digest work
 // (mirrors app/api/cron/curator-reach/route.ts's fail-closed guard
