@@ -43,7 +43,7 @@ export function StatusBanner({ status }: { status: DashboardHealthStatus }) {
       </div>
       {status === 'healthy' && (
         <p className="mt-1.5 text-[12.5px] text-[color:var(--ink-2)]">
-          3/3 uptime monitors up · /api/health healthy · no open incidents
+          /api/health healthy · uptime tracked externally by Better Stack
         </p>
       )}
       {status === 'degraded' && (
