@@ -112,3 +112,10 @@ This is recorded as an **open owner checkpoint** — execution of Phase 33 conti
 ---
 *Phase: 33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1*
 *Completed: 2026-08-17*
+
+## Self-Check: PASSED
+
+- FOUND: `supabase/migrations/114_it_staff_role.sql`
+- FOUND: `.planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-02-SUMMARY.md`
+- FOUND commit: `6b8110d`
+- FOUND commit: `239652d`
