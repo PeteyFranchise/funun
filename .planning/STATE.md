@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 33
-status: Milestone complete
-stopped_at: Phase 33 UI-SPEC approved
-last_updated: "2026-08-18T02:50:00.528Z"
+current_phase: 32
+status: in_progress
+stopped_at: "v1.2 milestone close PAUSED — finishing Phase 32 (32-06 Sentry, 32-09 k6, 32-10 runbook) before archiving the milestone"
+last_updated: "2026-08-18T03:05:00.000Z"
 last_activity: 2026-08-18
-last_activity_desc: Phase 33 complete
+last_activity_desc: "Phase 33 complete + hardened + verified; v1.2 close paused to finish Phase 32 first (owner decision)"
 progress:
   total_phases: 33
   completed_phases: 27
   total_plans: 213
   completed_plans: 208
   percent: 82
-current_phase_name: the-playbook-shell-it-team-monitoring-dashboard-read-only-v1
+current_phase_name: production-observability-capacity-incident-readiness
 ---
 
 # Project State
