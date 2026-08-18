@@ -129,3 +129,11 @@ None - plan executed exactly as written.
 ---
 *Phase: 33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1*
 *Completed: 2026-08-18*
+
+## Self-Check: PASSED
+
+All 5 created files verified present on disk (`lib/playbook/nav.ts`,
+`components/playbook/PlaybookNavLink.tsx`, `components/playbook/Rail2.tsx`,
+`components/playbook/ItRoomTopBar.tsx`, `__tests__/playbook-nav.test.ts`).
+All 5 commits verified present in `git log` (`40dbb39`, `ac0f3b3`, `c9e4755`,
+`2ad6121`, and this SUMMARY's own commit).
