@@ -39,15 +39,15 @@ export function StatusBanner({ status }: { status: DashboardHealthStatus }) {
           className={`h-[11px] w-[11px] shrink-0 rounded-full ${isHealthy ? 'animate-pulse' : ''}`}
           style={{ backgroundColor: dotColor }}
         />
-        <p className="text-[15px] font-bold text-white">{title}</p>
+        <p className="text-[15px] font-bold text-[color:var(--ink)]">{title}</p>
       </div>
       {status === 'healthy' && (
-        <p className="mt-1.5 text-[12.5px] text-[color:var(--lav)]">
+        <p className="mt-1.5 text-[12.5px] text-[color:var(--ink-2)]">
           3/3 uptime monitors up · /api/health healthy · no open incidents
         </p>
       )}
       {status === 'degraded' && (
-        <p className="mt-1.5 text-[12.5px] text-[color:var(--lav)]">
+        <p className="mt-1.5 text-[12.5px] text-[color:var(--ink-2)]">
           /api/health → 503 · re-checked at page load · see the{' '}
           <a href={RUNBOOK_HREF} className="text-[color:var(--indigo)] hover:underline">
             Incident Runbook
@@ -56,7 +56,7 @@ export function StatusBanner({ status }: { status: DashboardHealthStatus }) {
         </p>
       )}
       {status === 'unknown' && (
-        <p className="mt-1.5 text-[12.5px] text-[color:var(--lav)]">
+        <p className="mt-1.5 text-[12.5px] text-[color:var(--ink-2)]">
           Health check unavailable — treat as degraded until confirmed
         </p>
       )}

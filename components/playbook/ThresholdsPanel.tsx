@@ -36,9 +36,9 @@ function bandLabel(metric: ThresholdMetric): string {
 
 export function ThresholdsPanel() {
   return (
-    <div className="rounded-2xl border border-[color:var(--hair)] bg-[color:var(--card)] p-4">
+    <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--panel)] p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-[13.5px] font-bold text-white">Thresholds &amp; severity</h2>
+        <h2 className="text-[13.5px] font-bold text-[color:var(--ink)]">Thresholds &amp; severity</h2>
         <span className="rounded-full border border-[rgba(217,70,239,.32)] bg-[rgba(217,70,239,.10)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[color:var(--fuchsia)]">
           Live values · v2
         </span>
@@ -48,11 +48,11 @@ export function ThresholdsPanel() {
           <div
             key={row.metric}
             data-testid={`threshold-row-${row.metric}`}
-            className="flex items-center justify-between border-t border-[color:var(--hair)] py-2.5 first:border-t-0"
+            className="flex items-center justify-between border-t border-[color:var(--border)] py-2.5 first:border-t-0"
           >
-            <span className="text-[13px] text-[color:var(--lav)]">{row.label}</span>
+            <span className="text-[13px] text-[color:var(--ink-2)]">{row.label}</span>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[12px] text-[color:var(--lav)]">{bandLabel(row.metric)}</span>
+              <span className="font-mono text-[12px] text-[color:var(--ink-2)]">{bandLabel(row.metric)}</span>
               <span className="rounded-full border border-[rgba(217,70,239,.32)] bg-[rgba(217,70,239,.10)] px-2 py-0.5 text-[9px] uppercase tracking-[.1em] text-[color:var(--fuchsia)]">
                 awaiting feed
               </span>
@@ -60,7 +60,7 @@ export function ThresholdsPanel() {
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center gap-4 border-t border-[color:var(--hair)] pt-3 text-[11px] text-[color:var(--lavdim)]">
+      <div className="mt-3 flex items-center gap-4 border-t border-[color:var(--border)] pt-3 text-[11px] text-[color:var(--ink-3)]">
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-[#F43F5E]" /> SEV-1/2 critical
         </span>
