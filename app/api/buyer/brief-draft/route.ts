@@ -1,15 +1,25 @@
 import { NextResponse } from 'next/server'
+import { createApiClient } from '@/lib/supabase/server'
 import { draftBriefFromProse, BRIEF_PROSE_MAX } from '@/lib/buyer/brief-ai'
 
 // POST /api/buyer/brief-draft — turn a buyer's free-text description into a
-// structured Brief (Brief Builder v1). Public, like /sync/brief itself: `api`
-// is excluded from the middleware matcher, so no session is required and a
-// logged-out visitor can draft. No persistence — the caller holds the brief.
+// structured Brief (Brief Builder v1). No persistence — the caller holds it.
 //
-// NOTE: unauthenticated AND it calls the model, so it is a cost surface. Add
-// rate-limiting / an abuse guard before this route is exposed on a live
-// domain. Input is length-capped here as a first line of defence.
+// AUTH REQUIRED (audit #2): this calls the paid model, so it is a cost surface.
+// `api` is outside the middleware matcher, so the gate is enforced in-handler —
+// only a signed-in user may draft. Owner decision 2026-08-20: gate to sign-in
+// for now; revisit public + Turnstile + spend-cap if traffic grows (see
+// .planning/todos/pending/2026-08-20-revisit-public-ai-drafting-access.md).
+// Input is also length-capped below as defence-in-depth.
 export async function POST(request: Request) {
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Sign in to use the AI Brief Builder.' }, { status: 401 })
+  }
+
   const body = (await request.json().catch(() => ({}))) as { prose?: unknown }
   const prose = typeof body.prose === 'string' ? body.prose : ''
 
