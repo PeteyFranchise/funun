@@ -165,3 +165,11 @@ This also closes plan 17-02's human checkpoint step 4, which had never been sati
 
 **Deferred, deliberately not fixed here:** `calculate_vault_readiness()` remains SECURITY INVOKER while reading `split_sheets`. Any future RLS added to a table it touches re-arms this same class of failure. Making it SECURITY DEFINER would close that permanently, but it is a security decision rather than a recursion fix and belongs in its own change.
 
+> **UPDATE 2026-08-18 (audit #15):** this deferral is CLOSED. Migration
+> `070_readiness_definer_privilege_sweep.sql` (later than this 064-era note)
+> converted `calculate_vault_readiness()` to `SECURITY DEFINER` +
+> `SET search_path = ''` + restricted EXECUTE — exactly the permanent fix
+> described above. The pending todo that re-raised this latent risk was stale
+> and has been removed. Confirm 070 is applied in production via
+> `supabase migration list` (070 ≪ the already-applied 114, so almost certainly live).
+
