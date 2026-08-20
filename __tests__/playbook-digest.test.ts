@@ -69,7 +69,6 @@ describe('buildDigestTodayRow', () => {
   })
 
   it('never sends email — the module never imports the alert fan-out', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const digestSource = require('fs').readFileSync(
       require('path').join(__dirname, '..', 'lib', 'playbook', 'digest.ts'),
       'utf-8'
