@@ -145,3 +145,35 @@ Each = its own atomic commit + tests + tsc/lint/build, per your rules.
 - **H. #1 authored** — migration + coordinated app changes + tests, tolerating the pre-push window (top critical; completes on your push)
 
 Decision-gated (after your input): #2, #7 core, #6 core, #5 worker, #10 worker, #11 read-model, #3, #4.
+
+---
+
+# Remediation Results — code-only batch (2026-08-18)
+
+Each fix = its own atomic commit + regression test + tsc/lint/build. All green.
+
+| # | Commit | Shipped | Tests |
+|---|--------|---------|-------|
+| 13 | `e95281f` | Drop obsolete no-var-requires disable → lint gate green | lint 0, digest 9/9 |
+| 9 | `6183d73` | Stripe webhook returns retryable 503 on failed persistence; legit 200 no-ops preserved | new suite 10/10 |
+| 12 | `365d54b` | grantCapability: profile badge first + error-checked, then grant insert (no half-apply / 23505 trap) | 12/12 |
+| 8 | `1d89a33` | DocuSeal: persist signers/sheet/fan-out (checked, 5xx) before the completion flip | 21/21 |
+| 14 | `2638a7e` | join page queries user_profiles by `id` (not nonexistent `user_id`) + explicit error handling | tsc + build |
+| 16 | `f8271c9` | `app/global-error.tsx` Sentry boundary for root render failures | 2/2 |
+| 15 | `5e05f3a` | Close stale SECURITY INVOKER todo (070 already fixed); annotate archived debug note | doc |
+| 11 | `e875079` | `attachUserEmails` — dedup + concurrency-cap + request-cache; kills sync-library N+1 | 4/4 |
+| 10 | `2c8f2c1` | Export size gate resolves REAL Storage bytes (not client-provided metadata) | 3/3 |
+
+Two full production builds passed (integrity cluster @ `1d89a33`, small+perf clusters). `.claude/launch.json` never touched.
+
+## #1 (split-sheet token disclosure) — SCOPED, not yet authored
+
+Investigation expanded the blast radius beyond the report's 3 routes. The column REVOKE breaks EVERY authenticated `split_sheet_parties(*)` read:
+
+- **Migration:** `REVOKE SELECT ON split_sheet_parties FROM authenticated, anon` + `GRANT SELECT (<19 safe columns>) TO authenticated` — all columns EXCEPT `approval_token` (base 018 + `first_viewed_at` from 062 + `legal_name/publishing_designee/administrator` from 063). Mirrors migration 040. anon gets nothing (/approve uses service role).
+- **App companion (must ship WITH the migration):**
+  - `share/route.ts:34`, `send-for-approval/route.ts:30`, `mint-envelope/route.ts:124` — these NEED the token → ownership-check via apiClient, then read the token via `createServiceClient()`.
+  - `lib/split-sheets/list.ts:83,102` — `split_sheet_parties(*)` ×2 (the dashboard/list read) → narrow to explicit safe columns (no token needed).
+  - `[id]/route.ts:122` already selects explicit safe columns → unaffected.
+- **Tests:** direct-PostgREST — initiator cannot select `approval_token` (42501/absent) post-migration; row visibility intact; app routes still function via service reads. Mirror `migration-064.test.ts`.
+- **Coupling:** migration + app changes must deploy ATOMICALLY (owner `supabase db push` + app deploy together) — either alone 42501s every split-sheet read in prod. Defense-in-depth (session-bind claimed parties, consume/rotate token) is additive follow-up.
