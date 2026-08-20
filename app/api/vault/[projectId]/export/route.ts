@@ -31,6 +31,7 @@ function archiver(opts: ConstructorParameters<typeof ZipArchive>[0]) {
 }
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { buildExportManifest } from '@/lib/vault/export-pack'
+import { resolveStorageBytes } from '@/lib/vault/export-size'
 import { renderCreditsSheet } from '@/lib/vault/pdf/credits-sheet'
 import { renderMetadataSheet } from '@/lib/vault/pdf/metadata-sheet'
 
@@ -119,9 +120,18 @@ export async function POST(
     )
   }
 
-  // Size gate — summed from upload metadata (share MP3 sizes are unknown → 0,
-  // acceptable slack: masters/stems dominate pack weight by orders of magnitude).
-  const totalBytes = manifest.files.reduce((sum, f) => sum + f.size, 0)
+  const service = createServiceClient()
+
+  // Size gate — resolve ACTUAL Storage object sizes rather than trusting the
+  // manifest's DB metadata. Stem/instrumental sizes in the manifest are
+  // CLIENT-PROVIDED and uncapped, so the metadata sum can badly undercount and
+  // wave an oversized pack past this gate, only to OOM/timeout mid-assembly
+  // inside the 10s budget (audit #10). Fall back to the metadata sum only when
+  // Storage sizes can't be read, so a transient stat hiccup never blocks a
+  // legitimate export. (Moving assembly to a background worker + a Pro-tier
+  // budget is the deferred owner-gated fix.)
+  const realBytes = await resolveStorageBytes(service, BUCKET, manifest.files.map(f => f.path))
+  const totalBytes = realBytes ?? manifest.files.reduce((sum, f) => sum + f.size, 0)
   if (totalBytes > MAX_PACK_BYTES) {
     return NextResponse.json(
       {
@@ -131,8 +141,6 @@ export async function POST(
       { status: 413 }
     )
   }
-
-  const service = createServiceClient()
 
   // ─── Assemble the ZIP ────────────────────────────────────────────────
   // zlib level 0 = "store" — already-compressed inputs (stems ZIP, MP3) benefit
