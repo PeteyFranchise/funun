@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { getStaffRole } from '@/lib/admin/gate'
+import { attachUserEmails } from '@/lib/admin/user-emails'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { SyncLibraryAdmin } from '@/components/admin/SyncLibraryAdmin'
 import type { ArtistPickOption, SyncLibraryQueueRow } from '@/components/admin/SyncLibraryAdmin'
@@ -157,17 +158,12 @@ export default async function AdminSyncLibraryPage() {
   // user_profiles has no email column (it lives on auth.users) — attach it
   // per-artist via the admin API, mirroring app/(admin)/admin/deals/page.tsx
   // and app/(admin)/admin/capability-requests/page.tsx's identical pattern.
+  // Attach emails via the Auth Admin API — deduplicated, concurrency-capped,
+  // and cached for reuse by the artist-pool lookup below, so an id that is
+  // both a listing artist and in the pool is fetched once and no section fans
+  // out an unbounded getUserById burst on every page load (audit #11).
   const artistEmailById = new Map<string, string>()
-  await Promise.all(
-    artistIds.map(async id => {
-      try {
-        const { data: authUser } = await service.auth.admin.getUserById(id)
-        artistEmailById.set(id, authUser?.user?.email ?? '')
-      } catch {
-        artistEmailById.set(id, '')
-      }
-    })
-  )
+  await attachUserEmails(service, artistIds, { cache: artistEmailById })
 
   const rows: SyncLibraryQueueRow[] = listings.map(l => ({
     listingId: l.id,
@@ -196,18 +192,15 @@ export default async function AdminSyncLibraryPage() {
     .limit(ARTIST_POOL_LIMIT)
 
   const artistPoolRows = (artistPoolRaw ?? []) as { id: string; artist_name: string | null }[]
-  const artistPool: ArtistPickOption[] = await Promise.all(
-    artistPoolRows.map(async row => {
-      let email = ''
-      try {
-        const { data: authUser } = await service.auth.admin.getUserById(row.id)
-        email = authUser?.user?.email ?? ''
-      } catch {
-        email = ''
-      }
-      return { profileId: row.id, artistName: row.artist_name, email }
-    })
-  )
+  // Reuses artistEmailById as the cache — pool artists already resolved above
+  // (listing artists) are not re-fetched, and the pool fans out at the capped
+  // concurrency rather than up to ARTIST_POOL_LIMIT at once (audit #11).
+  await attachUserEmails(service, artistPoolRows.map(row => row.id), { cache: artistEmailById })
+  const artistPool: ArtistPickOption[] = artistPoolRows.map(row => ({
+    profileId: row.id,
+    artistName: row.artist_name,
+    email: artistEmailById.get(row.id) ?? '',
+  }))
 
   return (
     <div className="flex-1 px-9 py-[30px]">
