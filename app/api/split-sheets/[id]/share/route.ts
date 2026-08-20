@@ -29,9 +29,12 @@ export async function POST(
   const { id } = await params
 
   // ── 2. Initiator-only authorization (T-18-03) ──────────────────────
+  // Ownership check on SAFE columns only — migration 115 removed the
+  // authenticated client's access to approval_token, so the token read moves
+  // to the service client below, gated behind this initiator check (audit #1).
   const { data: sheet, error: sheetError } = await apiClient
     .from('split_sheets')
-    .select('id, status, split_sheet_parties(id, name, approval_token, token_expires_at)')
+    .select('id, status')
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()
@@ -52,7 +55,21 @@ export async function POST(
     )
   }
 
-  const parties = (sheet.split_sheet_parties ?? []) as {
+  // ── 4. Read parties + their tokens via the SERVICE client — ownership is
+  // verified above, and approval_token is service-role-only after migration
+  // 115 (audit #1). ──
+  const service = createServiceClient()
+
+  const { data: partiesRaw, error: partiesError } = await service
+    .from('split_sheet_parties')
+    .select('id, name, approval_token, token_expires_at')
+    .eq('split_sheet_id', id)
+
+  if (partiesError) {
+    return NextResponse.json({ error: 'Could not load split sheet parties' }, { status: 500 })
+  }
+
+  const parties = (partiesRaw ?? []) as {
     id: string
     name: string
     approval_token: string | null
@@ -61,10 +78,6 @@ export async function POST(
   if (parties.length === 0) {
     return NextResponse.json({ error: 'Split sheet has no parties to share with' }, { status: 400 })
   }
-
-  // ── 4. Mint/refresh tokens — service client for the cross-user party
-  // rows, ownership already verified above (mirrors send-for-approval). ──
-  const service = createServiceClient()
   const nowMs = Date.now()
   const freshExpires = new Date()
   freshExpires.setDate(freshExpires.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)

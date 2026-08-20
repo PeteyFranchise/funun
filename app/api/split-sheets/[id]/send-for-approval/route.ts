@@ -25,9 +25,12 @@ export async function POST(
   const { id } = await params
 
   // ── 2. Verify ownership before any service-client write (T-01-12) ─
+  // Narrowed from split_sheet_parties(*) to the safe columns this route uses —
+  // migration 115 revoked the authenticated client's approval_token access, and
+  // this route GENERATES fresh tokens (below) rather than reading them (audit #1).
   const { data: sheet, error: sheetError } = await apiClient
     .from('split_sheets')
-    .select('*, split_sheet_parties(*)')
+    .select('*, split_sheet_parties(id, name, email, role, split_percentage)')
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()

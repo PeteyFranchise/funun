@@ -47,7 +47,6 @@ type PartyRow = {
   pro: string | null
   ipi: string | null
   split_percentage: number
-  approval_token: string | null
   legal_name: string | null
   publishing_designee: string | null
   administrator: string | null
@@ -119,9 +118,15 @@ export async function POST(
   const { id } = await params
 
   // ── 2. Ownership — only the initiator mints (session client) ───────
+  // Narrowed from split_sheet_parties(*) to the safe columns — migration 115
+  // revoked the authenticated client's approval_token access. Existing tokens
+  // (for reuse) are read via the service client just before the invite loop
+  // below, gated behind this initiator ownership check (audit #1).
   const { data: sheet, error: sheetError } = await apiClient
     .from('split_sheets')
-    .select('*, split_sheet_parties(*)')
+    .select(
+      '*, split_sheet_parties(id, name, email, role, pro, ipi, split_percentage, legal_name, publishing_designee, administrator)'
+    )
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()
@@ -408,10 +413,23 @@ export async function POST(
   const expiresAt = new Date(now)
   expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
 
+  // Existing tokens are read via the service client (service-role-only after
+  // migration 115) so re-minting reuses a live link rather than burning a new
+  // one — ownership was verified at step 2 (audit #1).
+  const existingTokenById = new Map<string, string | null>()
+  const { data: tokenRows } = await service
+    .from('split_sheet_parties')
+    .select('id, approval_token')
+    .eq('split_sheet_id', id)
+  for (const row of (tokenRows ?? []) as { id: string; approval_token: string | null }[]) {
+    existingTokenById.set(row.id, row.approval_token)
+  }
+
   const tokens: Record<string, string> = {}
   for (const party of signableParties) {
-    if (party.approval_token) {
-      tokens[party.id] = party.approval_token
+    const existing = existingTokenById.get(party.id)
+    if (existing) {
+      tokens[party.id] = existing
       continue
     }
     const token = generateApprovalToken()

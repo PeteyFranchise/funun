@@ -41,6 +41,16 @@ export type SplitSheetRow = {
   [key: string]: unknown
 }
 
+// Every split_sheet_parties column EXCEPT approval_token. Migration 115 revokes
+// the table-wide SELECT and re-grants only these columns to `authenticated`, so
+// an embedded `split_sheet_parties(*)` through the RLS-subject client would
+// 42501 on the token. The list/dashboard never needs the token (audit #1) —
+// keep this in sync with migration 115's GRANT.
+const PARTY_COLS =
+  'id, split_sheet_id, collaborator_id, user_id, name, email, pro, ipi, ' +
+  'split_percentage, role, approval_status, counter_proposal, token_expires_at, ' +
+  'approved_at, created_at, first_viewed_at, legal_name, publishing_designee, administrator'
+
 /**
  * Merges the initiator-owned query results with the party-of query
  * results, de-duplicating by sheet id (a sheet the caller both initiated
@@ -99,7 +109,7 @@ export async function fetchSplitSheetsForUser(
   if (partySheetIds.length > 0) {
     const { data: partyOfData } = await supabase
       .from('split_sheets')
-      .select('*, split_sheet_parties(*), split_sheet_attachments(vault_project_id, track_id)')
+      .select(`*, split_sheet_parties(${PARTY_COLS}), split_sheet_attachments(vault_project_id, track_id)`)
       .in('id', partySheetIds)
       .neq('status', 'draft')
     partyOf = (partyOfData ?? []) as SplitSheetRow[]
