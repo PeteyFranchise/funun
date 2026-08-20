@@ -148,6 +148,28 @@ Decision-gated (after your input): #2, #7 core, #6 core, #5 worker, #10 worker, 
 
 ---
 
+# Owner Decisions (2026-08-20)
+
+| # | Decision | Implication / next build |
+|---|----------|--------------------------|
+| **#2** public AI | **Require sign-in** on brief-draft/rerank (for now). | Code-only auth gate. Re-deliberate → public+Turnstile+cap if traffic grows (todo `2026-08-20-revisit-public-ai-drafting-access.md`). |
+| **#7/#6** limiter store | **Postgres/Supabase** — counter table + atomic SECURITY DEFINER RPC. | Migration + rewrite `lib/security/rate-limit.ts` (durable, bounded, trusted-IP). Then #6 rides it. No new vendor/cost. |
+| **#5/#10** heavy work | **Build the durable worker now.** | Background-job system (proposed: a `jobs` table + a Vercel Cron worker route, reusing existing infra — confirm mechanism at build). Wire watermark render (#5) + export assembly (#10) to it. Migrations. |
+| **#3** Next.js | **Bump to patched 15.5.x.** | Verify latest patched version, bump + lockfile, full checks; owner redeploys. Needs registry access. |
+| **#4** stale branches | **Archive dead + protect main.** | Claude pre-classifies the ~13 flagged branches; owner confirms kill-list; delete/rename dead ones + enable main branch protection. Owner runs deletions (or Claude against a confirmed list). |
+| **#1/#16** deploy verify | **Scripts + checklist.** | `verify-115` adversarial PostgREST script (mirrors verify-064) + post-deploy checklist for #16 / Sentry live-exception / Better Stack `/api/health`. |
+
+## Migrations this will produce (all owner-gated `supabase db push`)
+- `115` split_sheet_parties token privacy — **authored** (`e1545d1`), pending push (atomic with the #1 app deploy).
+- rate-limit counter table + RPC (#7).
+- Selects-reaction retention cap (#6).
+- background `jobs` + render-status tables (#5/#10).
+- (robust forms of #8/#12 atomic-claim RPCs — optional hardening, deferred.)
+
+Recommend batching these pushes into one coordinated deploy window.
+
+---
+
 # Remediation Results — code-only batch (2026-08-18)
 
 Each fix = its own atomic commit + regression test + tsc/lint/build. All green.
