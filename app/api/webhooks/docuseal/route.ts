@@ -505,52 +505,40 @@ export async function POST(request: Request) {
     certificatePath,
   })
 
-  // ── 8. Transition envelope, signers, and sheet ─────────────────────
-  const { error: envelopeUpdateError } = await service
-    .from('esign_envelopes')
-    .update({
-      status: 'completed',
-      completed_at: completedAt,
-      executed_file_path: executedPath,
-      audit_log_path: auditLogPath,
-      // DocuSeal bills per COMPLETED document (provider gate, 2026-07-20);
-      // this is the moment the $0.20 is actually incurred.
-      billed: true,
-    })
-    .eq('id', envelope.id)
-
-  if (envelopeUpdateError) {
-    return NextResponse.json(
-      { error: `Could not record the completion: ${envelopeUpdateError.message}` },
-      { status: 500 }
-    )
-  }
-
-  // Certificate pointer, written SEPARATELY and non-fatally.
-  //
-  // esign_envelopes.certificate_path arrives in migration 065, which is
-  // authored but not yet pushed (pushes are human-gated in this repo — see
-  // 062's header). Folding this key into the update above would make the
-  // whole completion fail on an unpushed database AFTER the $0.20 was
-  // already spent and the documents already stored. Isolated instead: on
-  // an unpushed database the pointer is skipped, every artifact is still
-  // filed, and the path is deterministic from (initiator, sheet, envelope)
-  // so it is recoverable. The response reports which happened.
-  const { error: certificatePointerError } = certificateStored
-    ? await service
-        .from('esign_envelopes')
-        .update({ certificate_path: certificatePath })
-        .eq('id', envelope.id)
-    : { error: null }
-
-  await service
+  // ── 8. Persist signers + the sheet BEFORE the completion commit ────
+  // The envelope flip (§9c) is the idempotency commit point (§5 guard), so
+  // every integrity write must succeed first — otherwise we 5xx with the
+  // envelope still non-completed and the provider retries into the guard,
+  // instead of acking a half-applied completion (audit #8). NOTE: this
+  // closes the partial-failure-AFTER-flip hole but is still non-atomic
+  // against CONCURRENT delivery — the atomic-claim RPC + a vault_documents
+  // partial unique index (ON CONFLICT DO NOTHING) land in the owner-gated
+  // migration batch.
+  const { error: signersError } = await service
     .from('esign_envelope_signers')
     .update({ status: 'completed', signed_at: completedAt })
     .eq('envelope_id', envelope.id)
 
+  if (signersError) {
+    return NextResponse.json(
+      { error: `Could not record signer completion: ${signersError.message}` },
+      { status: 500 }
+    )
+  }
+
   // Flips the sheet to executed. The 17-02 readiness trigger moves the
   // attached project to tier 15 once the fan-out rows land.
-  await service.from('split_sheets').update({ status: 'executed' }).eq('id', sheet.id)
+  const { error: sheetUpdateError } = await service
+    .from('split_sheets')
+    .update({ status: 'executed' })
+    .eq('id', sheet.id)
+
+  if (sheetUpdateError) {
+    return NextResponse.json(
+      { error: `Could not mark the split sheet executed: ${sheetUpdateError.message}` },
+      { status: 500 }
+    )
+  }
 
   // ── 9. Cross-account Contract Locker fan-out (P17-06, ESIGN-10) ────
   // One vault_documents row per ACCOUNT-HOLDER party — a collaborator
@@ -579,8 +567,53 @@ export async function POST(request: Request) {
   })
 
   if (fanoutRows.length > 0) {
-    await service.from('vault_documents').insert(fanoutRows)
+    const { error: fanoutError } = await service.from('vault_documents').insert(fanoutRows)
+    if (fanoutError) {
+      return NextResponse.json(
+        { error: `Could not file the executed contract: ${fanoutError.message}` },
+        { status: 500 }
+      )
+    }
   }
+
+  // ── 9c. Commit: flip the envelope to completed (the §5 idempotency
+  // guard). Last integrity write — once this lands, a redelivery
+  // short-circuits at the guard. DocuSeal bills per COMPLETED document
+  // (provider gate, 2026-07-20); this is the moment the $0.20 is incurred.
+  const { error: envelopeUpdateError } = await service
+    .from('esign_envelopes')
+    .update({
+      status: 'completed',
+      completed_at: completedAt,
+      executed_file_path: executedPath,
+      audit_log_path: auditLogPath,
+      billed: true,
+    })
+    .eq('id', envelope.id)
+
+  if (envelopeUpdateError) {
+    return NextResponse.json(
+      { error: `Could not record the completion: ${envelopeUpdateError.message}` },
+      { status: 500 }
+    )
+  }
+
+  // Certificate pointer, written SEPARATELY and non-fatally.
+  //
+  // esign_envelopes.certificate_path arrives in migration 065, which is
+  // authored but not yet pushed (pushes are human-gated in this repo — see
+  // 062's header). Folding this key into the flip above would make the whole
+  // completion fail on an unpushed database AFTER the $0.20 was already
+  // spent and the documents already stored. Isolated instead: on an unpushed
+  // database the pointer is skipped, every artifact is still filed, and the
+  // path is deterministic from (initiator, sheet, envelope) so it is
+  // recoverable. The response reports which happened.
+  const { error: certificatePointerError } = certificateStored
+    ? await service
+        .from('esign_envelopes')
+        .update({ certificate_path: certificatePath })
+        .eq('id', envelope.id)
+    : { error: null }
 
   // ── 10. Executed notification + the OFFERED write-back (P17-07) ─────
   // Nothing below writes composers[]. `reconcileOffered` is a prompt: the

@@ -59,13 +59,18 @@ type Recorded = {
   selectedTables: string[]
 }
 
-function makeService(envelopeRow: unknown) {
+function makeService(envelopeRow: unknown, opts?: { failWrite?: string }) {
   const recorded: Recorded = { updates: [], inserts: [], uploads: [], selectedTables: [] }
 
   const from = jest.fn((table: string) => {
     recorded.selectedTables.push(table)
     const q: Record<string, unknown> = {}
-    const resolved = () => Object.assign(Promise.resolve({ data: null, error: null }), q)
+    // opts.failWrite injects a write error for one table so a test can prove
+    // a failed integrity write aborts BEFORE the envelope-completed flip
+    // (audit #8). Only affects awaited write chains (update().eq() / insert());
+    // the envelope resolve reads via maybeSingle() below, which is unaffected.
+    const writeError = opts?.failWrite === table ? { message: `injected write failure: ${table}` } : null
+    const resolved = () => Object.assign(Promise.resolve({ data: null, error: writeError }), q)
 
     q.select = jest.fn(() => q)
     q.eq = jest.fn(() => resolved())
@@ -344,6 +349,50 @@ describe('POST /api/webhooks/docuseal — completion', () => {
 
     const sheetUpdate = recorded.updates.find(u => u.table === 'split_sheets')
     expect(sheetUpdate?.values).toMatchObject({ status: 'executed' })
+  })
+
+  // ── Partial-failure atomicity (audit #8) ────────────────────────────
+  // A failed integrity write must 5xx with the envelope still NON-completed,
+  // so the provider retries into the §5 idempotency guard instead of the
+  // handler acking a half-applied completion (missing locker rows / an
+  // un-executed sheet that no retry can repair).
+  it('5xx and does NOT flip the envelope when the signer update fails', async () => {
+    const { client, recorded } = makeService(pendingEnvelope(), { failWrite: 'esign_envelope_signers' })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBeGreaterThanOrEqual(500)
+    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    expect(flip).toBeUndefined()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+
+  it('5xx and does NOT flip the envelope when the sheet update fails', async () => {
+    const { client, recorded } = makeService(pendingEnvelope(), { failWrite: 'split_sheets' })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBeGreaterThanOrEqual(500)
+    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    expect(flip).toBeUndefined()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+
+  it('5xx and does NOT flip the envelope when the Contract Locker fan-out fails', async () => {
+    const { client, recorded } = makeService(pendingEnvelope(), { failWrite: 'vault_documents' })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBeGreaterThanOrEqual(500)
+    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    expect(flip).toBeUndefined()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
   })
 
   it('never writes composers[] — the write-back is offered, never silent', async () => {
