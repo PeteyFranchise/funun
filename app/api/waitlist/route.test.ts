@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyTurnstileToken } from '@/lib/security/turnstile'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/waitlist (27-07 Task 1; H2/L3 fix 27-CODEX-REVIEW.md) ──────
@@ -18,6 +19,14 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/security/turnstile', () => ({
   verifyTurnstileToken: jest.fn(),
+}))
+
+// The limiter is DB-backed now (audit #7) — mock it so these tests don't route
+// rate-limiting through the service client. Counting/atomicity is covered in
+// lib/security/rate-limit.test.ts + __tests__/migration-116.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
@@ -53,6 +62,7 @@ function mockService(
 beforeEach(() => {
   jest.clearAllMocks()
   ;(verifyTurnstileToken as jest.Mock).mockResolvedValue(true)
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
 })
 
 describe('POST /api/waitlist', () => {
@@ -120,37 +130,17 @@ describe('POST /api/waitlist', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
-  it('returns 429 after the ip rate-limit threshold is exceeded', async () => {
+  it('returns 429 (before any DB write) when the limiter reports the request is rate-limited', async () => {
     const service = mockService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
 
-    const ip = '20.0.1.1'
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest(validBody({ email: `ip-limit-${i}@example.test` }), { 'x-forwarded-for': ip })
-      )
-      lastStatus = res.status
-    }
+    const res = await POST(
+      jsonRequest(validBody({ email: 'limited@example.test' }), { 'x-forwarded-for': '20.0.1.1' })
+    )
 
-    expect(lastStatus).toBe(429)
-  })
-
-  it('returns 429 after the email rate-limit threshold is exceeded', async () => {
-    const service = mockService()
-    ;(createServiceClient as jest.Mock).mockReturnValue(service)
-
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest(validBody({ email: 'repeat-visitor@example.test' }), {
-          'x-forwarded-for': `20.0.2.${i}`,
-        })
-      )
-      lastStatus = res.status
-    }
-
-    expect(lastStatus).toBe(429)
+    expect(res.status).toBe(429)
+    expect(service.rpc).not.toHaveBeenCalledWith('upsert_artist_waitlist', expect.anything())
   })
 
   it('returns a neutral 500 (never {ok:true}) when the RPC returns an error (H2)', async () => {

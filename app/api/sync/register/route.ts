@@ -6,7 +6,7 @@ import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/cre
 import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { resolveLeadRecipient, buildLeadRoutedNotification } from '@/lib/staff/notifications'
 import { createNotification } from '@/lib/notifications'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── POST /api/sync/register — public, unauthenticated (23-04 Task 3) ─────
 // The FIRST genuinely public write path in the buyer domain (RESEARCH
@@ -30,9 +30,8 @@ const ORG_SELECT_COLUMNS = 'id, name, ae_user_id'
 // Shared sliding-window limiter, extracted to lib/security/rate-limit.ts
 // (27-02) so check-invite/waitlist/resubscribe reuse the exact same
 // behavior instead of copy-pasting a 4th/5th limiter (RESEARCH "Don't
-// Hand-Roll"). Constants/behavior are unchanged from the original in-route
-// implementation — this route's own instance keeps its own Map.
-const rateLimiter = createRateLimiter()
+// Hand-Roll"). Now backed by the shared durable limiter (audit #7) — the count
+// lives in Postgres, so it holds across serverless instances and cold starts.
 
 // ─── Best-effort lead routing (Phase 25 hook) ──────────────────────────────
 // Never throws — any failure here must never fail the signup it's attached
@@ -74,7 +73,7 @@ async function routeLead(
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (rateLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 
@@ -98,7 +97,7 @@ export async function POST(request: Request) {
 
   // Second rate-limit dimension — same visitor retrying with a different
   // IP (or behind a shared IP) is still capped per email.
-  if (rateLimiter.isRateLimited(`email:${payload.email}`)) {
+  if (await checkRateLimit(`email:${payload.email}`)) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
   }
 

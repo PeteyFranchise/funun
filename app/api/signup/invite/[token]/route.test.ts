@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { GET } from './route'
 
 // ─── GET /api/signup/invite/[token] (27-06 Task 2) ─────────────────────────
@@ -10,6 +11,13 @@ import { GET } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
+}))
+
+// Limiter is DB-backed (audit #7) — mock it; counting is covered in
+// lib/security/rate-limit.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 function jsonGet(token: string, headers: Record<string, string> = {}) {
@@ -70,6 +78,7 @@ function mockService(options: {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
 })
 
 describe('GET /api/signup/invite/[token]', () => {
@@ -173,17 +182,14 @@ describe('GET /api/signup/invite/[token]', () => {
     expect(service.userProfilesSpy).not.toHaveBeenCalled()
   })
 
-  it('returns 429 after the ip rate-limit threshold is exceeded', async () => {
+  it('returns 429 when the limiter reports the request is rate-limited', async () => {
     const service = mockService({ artistInvite: null, collaboratorInvite: null })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
 
-    const ip = '40.0.1.1'
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await jsonGet(`tok-limit-${i}`, { 'x-forwarded-for': ip })
-      lastStatus = res.status
-    }
+    const res = await jsonGet('tok', { 'x-forwarded-for': '40.0.1.1' })
 
-    expect(lastStatus).toBe(429)
+    expect(res.status).toBe(429)
+    expect(service.artistInvitesSpy).not.toHaveBeenCalled()
   })
 })

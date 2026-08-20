@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { isArtistEmailAllowed, emailHasExistingAccount } from '@/lib/invites/allowlist'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/signup/check-invite (27-06 Task 1) ──────────────────────────
@@ -19,6 +20,13 @@ jest.mock('@/lib/invites/allowlist', () => ({
   emailHasExistingAccount: jest.fn(),
 }))
 
+// Limiter is DB-backed (audit #7) — mock it; counting is covered in
+// lib/security/rate-limit.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
+}))
+
 function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://t.local/api/signup/check-invite', {
     method: 'POST',
@@ -30,6 +38,7 @@ function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
 beforeEach(() => {
   jest.clearAllMocks()
   ;(createServiceClient as jest.Mock).mockReturnValue({})
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
 })
 
 describe('POST /api/signup/check-invite', () => {
@@ -89,38 +98,15 @@ describe('POST /api/signup/check-invite', () => {
     expect(allowedRes.status).toBe(deniedRes.status)
   })
 
-  it('returns 429 after the ip rate-limit threshold is exceeded', async () => {
-    ;(isArtistEmailAllowed as jest.Mock).mockResolvedValue(false)
-    ;(emailHasExistingAccount as jest.Mock).mockResolvedValue(false)
+  it('returns 429 when the limiter reports the request is rate-limited', async () => {
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
 
-    const ip = '30.0.1.1'
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest({ email: `ip-limit-${i}@example.test` }, { 'x-forwarded-for': ip })
-      )
-      lastStatus = res.status
-    }
+    const res = await POST(
+      jsonRequest({ email: 'limited@example.test' }, { 'x-forwarded-for': '30.0.1.1' })
+    )
 
-    expect(lastStatus).toBe(429)
-  })
-
-  it('returns 429 after the email rate-limit threshold is exceeded', async () => {
-    ;(isArtistEmailAllowed as jest.Mock).mockResolvedValue(false)
-    ;(emailHasExistingAccount as jest.Mock).mockResolvedValue(false)
-
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest(
-          { email: 'repeat-visitor@example.test' },
-          { 'x-forwarded-for': `30.0.2.${i}` }
-        )
-      )
-      lastStatus = res.status
-    }
-
-    expect(lastStatus).toBe(429)
+    expect(res.status).toBe(429)
+    expect(isArtistEmailAllowed).not.toHaveBeenCalled()
   })
 
   it('returns allowed:false and never throws on a malformed body', async () => {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── POST /api/waitlist/resubscribe — public, unauthenticated (27-07 Task 2)
 // One of D-19's two re-opt-in paths (the other is auto-resubscribe on
@@ -12,11 +12,9 @@ import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
 // limited by ip via the shared limiter (27-02); mirrors
 // app/api/sync/register/route.ts's public-write shape.
 
-const rateLimiter = createRateLimiter()
-
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (rateLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 }

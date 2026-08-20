@@ -1,48 +1,63 @@
-// ─── Shared in-memory rate limiter (Phase 27, 27-02) ───────────────────────
-// Extracted verbatim from app/api/sync/register/route.ts's in-route,
-// sliding-window limiter (27-PATTERNS exact analog) so every later public
-// route (check-invite, waitlist, waitlist/resubscribe) shares identical
-// behavior instead of copy-pasting a 4th/5th limiter (RESEARCH "Don't
-// Hand-Roll"). Each createRateLimiter() call owns its own Map, so
-// independent routes get independent buckets — a caller can layer two
-// dimensions (e.g. ip + email) by instantiating two limiters, matching
-// sync/register's existing pattern.
+// ─── Durable, shared rate limiter (audit #7) ──────────────────────────────
+// Backed by a Postgres table + the atomic check_rate_limit RPC (migration 116),
+// so the count is shared across every serverless instance and survives cold
+// starts. The previous in-memory Map limiter was per-instance and trivially
+// bypassed by spreading requests across instances — it was removed.
 //
-// Acceptable for beta per sync/register's own directive: a warm serverless
-// instance shares this Map across requests it serves, degrading gracefully
-// (not failing open or closed) across cold starts/multiple instances.
+// checkRateLimit() creates its own service client (the RPC is service-role-only
+// EXECUTE), so call sites just `await checkRateLimit('ip:'+ip)` with no plumbing.
+// Namespacing dimensions is done by key prefix ('ip:' / 'email:').
+//
+// FAIL-OPEN: on any limiter-backend error (including the RPC not yet existing
+// before migration 116 is pushed) it returns false — a rare backend blip must
+// not lock legitimate users out of signup/waitlist. These surfaces are
+// abuse-annoyance, not catastrophic if briefly unlimited; failing closed would
+// break onboarding on a transient DB hiccup.
+
+import { createServiceClient } from '@/lib/supabase/server'
 
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 export const RATE_LIMIT_MAX_ATTEMPTS = 5
 
-export type RateLimiter = {
-  isRateLimited: (key: string) => boolean
-}
-
-export function createRateLimiter(
+export async function checkRateLimit(
+  key: string,
   options: { windowMs?: number; maxAttempts?: number } = {}
-): RateLimiter {
+): Promise<boolean> {
   const windowMs = options.windowMs ?? RATE_LIMIT_WINDOW_MS
   const maxAttempts = options.maxAttempts ?? RATE_LIMIT_MAX_ATTEMPTS
-  const store = new Map<string, number[]>()
 
-  return {
-    isRateLimited(key: string): boolean {
-      const now = Date.now()
-      const recent = (store.get(key) ?? []).filter(ts => now - ts < windowMs)
-      if (recent.length >= maxAttempts) {
-        store.set(key, recent)
-        return true
-      }
-      recent.push(now)
-      store.set(key, recent)
-      return false
-    },
+  try {
+    const service = createServiceClient()
+    const { data, error } = await service.rpc('check_rate_limit', {
+      p_key: key,
+      p_window_seconds: Math.ceil(windowMs / 1000),
+      p_max: maxAttempts,
+    })
+    if (error) return false // fail-open (see header)
+    return data === true
+  } catch {
+    return false // fail-open
   }
 }
 
+// Resolve the client IP for rate-limit keys. On Vercel, `x-real-ip` is set by
+// the platform to the true client IP and is NOT client-controllable at the app
+// layer — prefer it. Fall back to the LAST `x-forwarded-for` entry (the hop the
+// trusted proxy appended), never the leftmost value (which a client can spoof
+// to rotate keys and bypass the limit — the audit #7 finding). 'unknown' groups
+// header-less callers into a single bucket rather than letting them slip past.
 export function getClientIp(request: Request): string {
+  const real = request.headers.get('x-real-ip')?.trim()
+  if (real) return real
+
   const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0]?.trim() || 'unknown'
-  return request.headers.get('x-real-ip') ?? 'unknown'
+  if (forwarded) {
+    const parts = forwarded
+      .split(',')
+      .map(p => p.trim())
+      .filter(Boolean)
+    if (parts.length > 0) return parts[parts.length - 1]
+  }
+
+  return 'unknown'
 }

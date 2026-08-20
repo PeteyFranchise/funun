@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
 import { resolveLeadershipFallback } from '@/lib/staff/leadershipFallback'
 import { createNotification } from '@/lib/notifications'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/sync/register (23-04 Task 3) ────────────────────────────────
@@ -26,6 +27,13 @@ jest.mock('@/lib/staff/leadershipFallback', () => ({
 
 jest.mock('@/lib/notifications', () => ({
   createNotification: jest.fn(),
+}))
+
+// Limiter is DB-backed (audit #7) — mock it; counting is covered in
+// lib/security/rate-limit.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 const ORG_UUID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
@@ -74,6 +82,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   ;(resolveLeadershipFallback as jest.Mock).mockResolvedValue(LEADERSHIP_UUID)
   ;(createNotification as jest.Mock).mockResolvedValue({ ok: true })
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
 })
 
 describe('POST /api/sync/register', () => {
@@ -179,39 +188,18 @@ describe('POST /api/sync/register', () => {
     expect(service.insertSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('returns 429 after the rate-limit threshold is exceeded for the same IP', async () => {
+  it('returns 429 when the limiter reports the request is rate-limited', async () => {
     const service = mockService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: NEW_USER_UUID, emailSent: true })
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
 
-    const ip = '9.9.9.9'
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest(validBody({ email: `visitor${i}@acme.test` }), { 'x-forwarded-for': ip })
-      )
-      lastStatus = res.status
-    }
+    const res = await POST(
+      jsonRequest(validBody({ email: 'limited@acme.test' }), { 'x-forwarded-for': '9.9.9.9' })
+    )
 
-    expect(lastStatus).toBe(429)
-  })
-
-  it('returns 429 after the rate-limit threshold is exceeded for the same email', async () => {
-    const service = mockService()
-    ;(createServiceClient as jest.Mock).mockReturnValue(service)
-    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: NEW_USER_UUID, emailSent: true })
-
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(
-        jsonRequest(validBody({ email: 'repeat@acme.test' }), {
-          'x-forwarded-for': `10.0.0.${i}`,
-        })
-      )
-      lastStatus = res.status
-    }
-
-    expect(lastStatus).toBe(429)
+    expect(res.status).toBe(429)
+    expect(createBuyerAccount).not.toHaveBeenCalled()
   })
 
   it('returns 500 (not a leak) when the buyer_orgs insert itself fails', async () => {

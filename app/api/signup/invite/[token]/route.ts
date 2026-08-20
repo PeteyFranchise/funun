@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── GET /api/signup/invite/[token] — public deep-link resolver ──────────
 // (27-06 Task 2) Resolves D-09's tokened deep-link into pre-fill data for
@@ -21,8 +21,6 @@ import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
 // signup email-confirmation flow guarantees inbox control before the
 // account is usable (T-27-03). A light ip rate limit blunts token
 // brute-forcing (T-27-04).
-
-const ipLimiter = createRateLimiter()
 
 type InviteResolution = { email: string; inviterName: string | null; expired: boolean }
 
@@ -70,7 +68,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const ip = getClientIp(request)
-  if (ipLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return tooManyRequests()
   }
 

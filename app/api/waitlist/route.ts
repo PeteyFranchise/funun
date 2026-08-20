@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { verifyTurnstileToken } from '@/lib/security/turnstile'
 import { sanitizeWaitlistEntry } from '@/lib/invites/schema'
 
@@ -29,16 +29,13 @@ import { sanitizeWaitlistEntry } from '@/lib/invites/schema'
 // such conflict-target limitation — only the PostgREST client does), so
 // this route now has exactly ONE write to check the error/result of.
 
-const ipLimiter = createRateLimiter()
-const emailLimiter = createRateLimiter()
-
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
 }
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (ipLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 
@@ -50,7 +47,7 @@ export async function POST(request: Request) {
   }
   const entry = result.value
 
-  if (emailLimiter.isRateLimited(`email:${entry.email}`)) {
+  if (await checkRateLimit(`email:${entry.email}`)) {
     return errorResponse('Too many requests. Please try again later.', 429)
   }
 

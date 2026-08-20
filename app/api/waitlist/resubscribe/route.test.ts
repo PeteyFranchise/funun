@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 import { POST } from './route'
 
 // ─── POST /api/waitlist/resubscribe (27-07 Task 2) ─────────────────────────
@@ -9,6 +10,13 @@ import { POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
+}))
+
+// Limiter is DB-backed (audit #7) — mock it; counting is covered in
+// lib/security/rate-limit.test.ts.
+jest.mock('@/lib/security/rate-limit', () => ({
+  ...jest.requireActual('@/lib/security/rate-limit'),
+  checkRateLimit: jest.fn(),
 }))
 
 function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
@@ -40,6 +48,7 @@ function mockService(options: { row?: { id: string } | null } = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(checkRateLimit as jest.Mock).mockResolvedValue(false)
 })
 
 describe('POST /api/waitlist/resubscribe', () => {
@@ -98,17 +107,14 @@ describe('POST /api/waitlist/resubscribe', () => {
     expect(service.eqSpy).not.toHaveBeenCalledWith('email', expect.anything())
   })
 
-  it('returns 429 after the ip rate-limit threshold is exceeded', async () => {
+  it('returns 429 when the limiter reports the request is rate-limited', async () => {
     const service = mockService({ row: { id: 'row-uuid-3' } })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(checkRateLimit as jest.Mock).mockResolvedValue(true)
 
-    const ip = '30.0.1.1'
-    let lastStatus = 0
-    for (let i = 0; i < 6; i++) {
-      const res = await POST(jsonRequest({ token: `token-${i}` }, { 'x-forwarded-for': ip }))
-      lastStatus = res.status
-    }
+    const res = await POST(jsonRequest({ token: 'tok' }, { 'x-forwarded-for': '30.0.1.1' }))
 
-    expect(lastStatus).toBe(429)
+    expect(res.status).toBe(429)
+    expect(service.updateSpy).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { isArtistEmailAllowed, emailHasExistingAccount } from '@/lib/invites/allowlist'
 
 // ─── POST /api/signup/check-invite — public, unauthenticated (27-06 Task 1) ─
@@ -17,9 +17,6 @@ import { isArtistEmailAllowed, emailHasExistingAccount } from '@/lib/invites/all
 // unknown, or genuinely uninvited; only the boolean values differ, never the
 // shape or an error message that would reveal which case occurred.
 
-const ipLimiter = createRateLimiter()
-const emailLimiter = createRateLimiter()
-
 function tooManyRequests() {
   return NextResponse.json(
     { error: 'Too many requests. Please try again later.' },
@@ -29,14 +26,14 @@ function tooManyRequests() {
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (ipLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return tooManyRequests()
   }
 
   const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const email = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : ''
 
-  if (emailLimiter.isRateLimited(`email:${email}`)) {
+  if (await checkRateLimit(`email:${email}`)) {
     return tooManyRequests()
   }
 

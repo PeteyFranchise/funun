@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // ─── POST /api/waitlist/unsubscribe — public, unauthenticated ─────────────
 // Fix for Codex review Blocker B2 (27-CODEX-REVIEW.md): the unsubscribe
@@ -14,11 +14,9 @@ import { createRateLimiter, getClientIp } from '@/lib/security/rate-limit'
 // view, can never be used to toggle a stranger's subscription state).
 // Rate-limited by ip via the shared limiter (27-02).
 
-const rateLimiter = createRateLimiter()
-
 export async function POST(request: Request) {
   const ip = getClientIp(request)
-  if (rateLimiter.isRateLimited(`ip:${ip}`)) {
+  if (await checkRateLimit(`ip:${ip}`)) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 }
