@@ -163,10 +163,11 @@ Each fix = its own atomic commit + regression test + tsc/lint/build. All green.
 | 15 | `5e05f3a` | Close stale SECURITY INVOKER todo (070 already fixed); annotate archived debug note | doc |
 | 11 | `e875079` | `attachUserEmails` — dedup + concurrency-cap + request-cache; kills sync-library N+1 | 4/4 |
 | 10 | `2c8f2c1` | Export size gate resolves REAL Storage bytes (not client-provided metadata) | 3/3 |
+| **1** | `e1545d1` | **Migration 115 (column-privilege lockdown) + service-role token reads in 4 files** — approval_token no longer readable by the authenticated client | migration 5/5, 264 split-sheet tests, build |
 
 Two full production builds passed (integrity cluster @ `1d89a33`, small+perf clusters). `.claude/launch.json` never touched.
 
-## #1 (split-sheet token disclosure) — SCOPED, not yet authored
+## #1 (split-sheet token disclosure) — AUTHORED (`e1545d1`), pending atomic push+deploy
 
 Investigation expanded the blast radius beyond the report's 3 routes. The column REVOKE breaks EVERY authenticated `split_sheet_parties(*)` read:
 
