@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { resolveSelectsByToken, loadOwnSelectsTrack } from '@/lib/selects/public-resolve'
 import { SELECTS_REACTION_VALUES } from '@/lib/selects/types'
 
@@ -34,6 +35,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const selects = await resolveSelectsByToken(service, token)
   if (!selects) {
     return NextResponse.json({ error: "This link isn't live." }, { status: 404 })
+  }
+
+  // Rate-limit reactions per (token+ip) and per token so a leaked share link
+  // can't be flooded with rotating viewer keys (audit #6). Caps are generous —
+  // a legit viewer reacts across a curated Selects' handful of tracks; a DB-side
+  // per-track cap (migration 117) backstops distributed abuse.
+  const ip = getClientIp(request)
+  if (
+    (await checkRateLimit(`selects-react:${token}:${ip}`, { maxAttempts: 60 })) ||
+    (await checkRateLimit(`selects-react:${token}`, { maxAttempts: 300 }))
+  ) {
+    return NextResponse.json({ error: 'Too many reactions — please slow down.' }, { status: 429 })
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
