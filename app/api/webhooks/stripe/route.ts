@@ -53,16 +53,23 @@ export async function POST(request: Request) {
     const paymentIntentId =
       typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null)
 
-    const { data: deal } = await service
+    const { data: deal, error: dealError } = await service
       .from('license_requests')
       .select('id, payment_status')
       .eq('stripe_checkout_session_id', session.id)
       .maybeSingle()
 
+    // A transient DB read error must NOT be swallowed as "unknown session"
+    // — return a retryable 5xx so Stripe redelivers, rather than
+    // permanently leaving a paid deal marked unpaid (audit #9).
+    if (dealError) {
+      return NextResponse.json({ error: 'Persistence unavailable' }, { status: 503 })
+    }
+
     // Idempotent: no deal found (unknown session) or already paid ->
     // no-op, falls through to the 200 below either way (T-16-37).
     if (deal && deal.payment_status !== 'paid') {
-      await service
+      const { error: paidError } = await service
         .from('license_requests')
         .update({
           payment_status: 'paid',
@@ -70,13 +77,19 @@ export async function POST(request: Request) {
           paid_at: new Date().toISOString(),
         })
         .eq('id', deal.id)
+
+      // Persisting the paid state is the whole point of this event — if it
+      // fails, 5xx so Stripe retries instead of losing the payment record.
+      if (paidError) {
+        return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
+      }
     }
   }
 
   if (event.type === 'account.updated') {
     const account = event.data.object as Stripe.Account
 
-    await service
+    const { error: accountError } = await service
       .from('user_profiles')
       .update({
         stripe_connect_charges_enabled: !!account.charges_enabled,
@@ -84,6 +97,13 @@ export async function POST(request: Request) {
         stripe_connect_details_submitted: !!account.details_submitted,
       })
       .eq('stripe_connect_account_id', account.id)
+
+    // Don't ack a Connect state change we failed to persist — 5xx so Stripe
+    // redelivers rather than leaving payout capability permanently stale
+    // (audit #9).
+    if (accountError) {
+      return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
+    }
   }
 
   // Always 200 for a verified event, handled or not — Stripe retries on
