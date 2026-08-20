@@ -68,15 +68,23 @@ export default async function JoinPage({ params }: Props) {
   }
 
   // ── Look up inviting artist's name + email for mailto ────────────────
-  const { data: artistProfile } = await service
+  const { data: artistProfile, error: artistProfileError } = await service
     .from('user_profiles')
     .select('artist_name, display_name, contact_email')
-    .eq('user_id', invite.inviting_user_id)
+    .eq('id', invite.inviting_user_id)
     .maybeSingle()
 
+  // user_profiles is keyed by `id` (= auth.users.id); there is NO `user_id`
+  // column — the old `.eq('user_id', …)` silently errored, so the inviter's
+  // name/email never rendered and the mailto always fell back to generic
+  // (audit #14). Handle a lookup failure explicitly: treat it as "no profile"
+  // and degrade to the generic mailto rather than crashing this public,
+  // view-only page.
+  const inviterProfile = artistProfileError ? null : artistProfile
+
   const artistName =
-    (artistProfile?.artist_name || artistProfile?.display_name || 'The artist') as string
-  const artistEmail = (artistProfile?.contact_email ?? '') as string
+    (inviterProfile?.artist_name || inviterProfile?.display_name || 'The artist') as string
+  const artistEmail = (inviterProfile?.contact_email ?? '') as string
 
   // Flag a correction: mailto link
   const mailtoSubject = encodeURIComponent('Correction to my collaborator profile')
