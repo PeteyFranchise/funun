@@ -16,7 +16,7 @@ import {
 const mockSingle = jest.fn()
 const mockSelect = jest.fn(() => ({ single: mockSingle }))
 const mockInsert = jest.fn(() => ({ select: mockSelect }))
-const mockEq = jest.fn(() => Promise.resolve({ error: null }))
+const mockEq = jest.fn((): Promise<{ error: { message: string } | null }> => Promise.resolve({ error: null }))
 const mockUpdate = jest.fn(() => ({ eq: mockEq }))
 
 const mockFrom = jest.fn((table: string) => {
@@ -108,6 +108,77 @@ describe('grantCapability', () => {
         source: 'self_serve_instant',
       })
     ).rejects.toThrow(/Failed to grant capability/)
+  })
+})
+
+// ─── grantCapability — half-applied prevention (audit #12) ──────────────────
+// The badge (profile) write must happen BEFORE (and gate) the grant insert,
+// so a failed badge write leaves no 'approved' grant row — otherwise the
+// partial unique index turns every retry into a permanent 23505 dead-end.
+
+describe('grantCapability — half-applied prevention (audit #12)', () => {
+  it('aborts BEFORE inserting the grant when the profile badge write fails (no orphaned approved grant)', async () => {
+    mockEq.mockResolvedValueOnce({ error: { message: 'db unavailable' } })
+
+    await expect(
+      grantCapability({ profileId: 'p1', capability: 'artist', roleSlugs: [], source: 'self_serve_instant' })
+    ).rejects.toThrow(/profile badge/)
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
+    expect(mockInsert).not.toHaveBeenCalled()
+  })
+
+  it('applies the profile badge strictly before inserting the grant (ordering)', async () => {
+    mockSingle.mockResolvedValueOnce({ data: { id: 'g1' }, error: null })
+
+    await grantCapability({
+      profileId: 'p1',
+      capability: 'artist',
+      roleSlugs: ['recording_artist'],
+      source: 'self_serve_instant',
+    })
+
+    expect(mockUpdate.mock.invocationCallOrder[0]).toBeLessThan(mockInsert.mock.invocationCallOrder[0])
+  })
+
+  it('retries cleanly after a profile-badge failure (no 23505 trap)', async () => {
+    mockEq.mockResolvedValueOnce({ error: { message: 'db unavailable' } })
+    await expect(
+      grantCapability({ profileId: 'p1', capability: 'artist', roleSlugs: [], source: 'self_serve_instant' })
+    ).rejects.toThrow()
+    expect(mockInsert).not.toHaveBeenCalled()
+
+    mockSingle.mockResolvedValueOnce({ data: { id: 'g9' }, error: null })
+    const res = await grantCapability({
+      profileId: 'p1',
+      capability: 'artist',
+      roleSlugs: [],
+      source: 'self_serve_instant',
+    })
+    expect(res).toEqual({ grantId: 'g9' })
+    expect(mockInsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('an approved industry grant flips member_type to industry', async () => {
+    mockSingle.mockResolvedValueOnce({ data: { id: 'gi' }, error: null })
+    await grantCapability({
+      profileId: 'p1',
+      capability: 'industry',
+      roleSlugs: ['music_supervisor'],
+      source: 'admin_approved',
+    })
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ member_type: 'industry' }))
+  })
+
+  it('an artist grant leaves member_type untouched', async () => {
+    mockSingle.mockResolvedValueOnce({ data: { id: 'ga' }, error: null })
+    await grantCapability({
+      profileId: 'p2',
+      capability: 'artist',
+      roleSlugs: ['recording_artist'],
+      source: 'self_serve_instant',
+    })
+    expect(mockUpdate).toHaveBeenCalledWith(expect.not.objectContaining({ member_type: expect.anything() }))
   })
 })
 

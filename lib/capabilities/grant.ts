@@ -15,11 +15,12 @@ export class DuplicateCapabilityRequestError extends Error {}
 // Standalone, reusable service function — does NOT provision a brand-new
 // auth account (no admin user-creation call, no magic-link generation;
 // Pitfall 4). This grants a capability onto an EXISTING artist_profiles
-// row: it inserts an
-// 'approved' capability_grants row, then auto-attaches the matching role
-// badge via mapSlugsToProfileRoles() as a plain UPDATE onto the existing
-// row (mirrors createIndustryMember()'s pre-population of `roles`, but as
-// an UPDATE instead of user_metadata set at creation time).
+// row: it auto-attaches the matching role badge via mapSlugsToProfileRoles()
+// as a plain UPDATE onto the existing row (mirrors createIndustryMember()'s
+// pre-population of `roles`, but as an UPDATE instead of user_metadata set at
+// creation time), THEN inserts the 'approved' capability_grants row.
+// Badge-before-grant is deliberate (audit #12): a failed badge write aborts
+// before the grant row exists, keeping retries clean.
 export async function grantCapability(input: {
   profileId: string
   capability: Capability
@@ -28,6 +29,29 @@ export async function grantCapability(input: {
   decidedBy?: string
 }): Promise<{ grantId: string }> {
   const service = createServiceClient()
+
+  // Profile badge FIRST, error-checked — mirrors the industry approve route
+  // (app/api/capabilities/approve/[grantId]/route.ts), which updates the
+  // profile then flips the grant. If this write fails we abort BEFORE any
+  // grant row exists, so a retry is clean. The old order (grant insert
+  // first, profile update result ignored) could leave an 'approved' grant
+  // with a stale/absent badge, and the partial unique index then made every
+  // retry fail 23505 — a permanent half-applied state (audit #12).
+  // INDUSTRY-06: an approved industry grant also flips the account lane so
+  // the admin members list / Green Room discover / Antenna gate (all of
+  // which read member_type) never disagree about who is industry. Artist
+  // grants intentionally leave member_type untouched.
+  const { error: profileError } = await service
+    .from('user_profiles')
+    .update({
+      roles: mapSlugsToProfileRoles(input.roleSlugs),
+      ...(input.capability === 'industry' ? { member_type: 'industry' } : {}),
+    })
+    .eq('id', input.profileId)
+
+  if (profileError) {
+    throw new Error(`Failed to grant capability (profile badge): ${profileError.message}`)
+  }
 
   const { data, error } = await service
     .from('capability_grants')
@@ -51,19 +75,6 @@ export async function grantCapability(input: {
     }
     throw new Error(`Failed to grant capability: ${error.message}`)
   }
-
-  // INDUSTRY-06: an approved industry grant also flips the account lane so
-  // the admin members list / Green Room discover / Antenna gate (all of
-  // which read member_type in at least one place) never disagree about who
-  // is industry. Artist grants intentionally leave member_type untouched —
-  // only an approved industry grant may set/change the lane.
-  await service
-    .from('user_profiles')
-    .update({
-      roles: mapSlugsToProfileRoles(input.roleSlugs),
-      ...(input.capability === 'industry' ? { member_type: 'industry' } : {}),
-    })
-    .eq('id', input.profileId)
 
   return { grantId: data.id }
 }
