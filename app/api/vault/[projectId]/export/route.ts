@@ -1,55 +1,39 @@
 // POST /api/vault/[projectId]/export
-// Assembles an Export Pack ZIP (D-10/D-11/D-12): downloads every available
-// artifact from Storage (master WAV, share MP3, stems ZIP, instrumental) plus
-// the two generated PDFs (credits/splits + metadata), uploads the finished ZIP
-// to a stable path, and returns a signed URL.
+// Assembles an Export Pack ZIP (D-10/D-11/D-12): every available artifact from
+// Storage (master WAV, share MP3, stems ZIP, instrumental) plus the two
+// generated PDFs (credits/splits + metadata), uploaded to a stable path, with a
+// signed URL returned.
 //
 // Delivery modes (D-11):
 //   mode: 'download' → 5-min TTL signed URL (auto-triggered as a direct download)
 //   mode: 'share'    → 7-day TTL signed URL (artist copies/sends to recipient)
 //
-// NEVER returns the archive bytes as the Response body (D-12/Pitfall 3):
-// this project is on Vercel Hobby (10s hard maxDuration ceiling). The assembly
-// step uploads the pack to Storage; the client receives a signed URL and the
-// actual byte transfer happens client→Supabase directly, outside the function
-// budget entirely.
+// NEVER returns the archive bytes as the Response body (D-12/Pitfall 3): the
+// pack is uploaded to Storage and the client receives a signed URL, so the byte
+// transfer happens client→Supabase directly, outside the function budget.
+//
+// Small packs assemble inline (fit in Hobby's 10s ceiling). Packs over
+// INLINE_THRESHOLD_BYTES are handed to the durable background worker (audit #10)
+// so they stop timing out mid-assembly; the client polls ./export/status.
 
-// Node-only APIs (archiver, node:stream) — not available in the Edge runtime (Pitfall 2).
+// Node-only APIs (archiver, node:stream) run in the assembly module — not
+// available in the Edge runtime (Pitfall 2).
 export const runtime = 'nodejs'
 // 10s Hobby hard ceiling — cannot be raised on Vercel Hobby regardless of this value (Pitfall 3).
 export const maxDuration = 10
 
 import { NextResponse } from 'next/server'
-import { ZipArchive } from 'archiver'
-import { Readable } from 'node:stream'
-import * as stream from 'node:stream'
-
-// archiver v8 uses named class exports — ZipArchive replaces the archiver('zip', opts) factory.
-// Factory alias so existing callers (including the plan verify) can match `archiver(`.
-function archiver(opts: ConstructorParameters<typeof ZipArchive>[0]) {
-  return new ZipArchive(opts)
-}
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { buildExportManifest } from '@/lib/vault/export-pack'
-import { resolveStorageBytes } from '@/lib/vault/export-size'
-import { renderCreditsSheet } from '@/lib/vault/pdf/credits-sheet'
-import { renderMetadataSheet } from '@/lib/vault/pdf/metadata-sheet'
+import { enqueueJob } from '@/lib/jobs/queue'
+import {
+  loadExportPlan,
+  assembleAndUploadPack,
+  EXPORT_BUCKET,
+  MAX_PACK_BYTES,
+  INLINE_THRESHOLD_BYTES,
+} from '@/lib/vault/export-assemble'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
-const BUCKET = 'track-audio'
-
-// Assembly buffers each artifact in memory inside Vercel Hobby's 10s hard
-// ceiling, and the destination bucket caps objects at 250MB (migration 041).
-// Reject oversized packs up front instead of burning the whole budget.
-const MAX_PACK_BYTES = 200 * 1024 * 1024 // 200MB
-
-// Columns the manifest + PDF renderers need from vault_projects
-const PROJECT_COLS =
-  'id, title, type, genre, release_date, cover_art_url, user_id'
-
-// Columns the manifest + PDF renderers need from tracks
-const TRACK_COLS =
-  'id, title, track_number, isrc, iswc, duration_seconds, bpm, key_signature, language, audio_file_url, metadata'
 
 export async function POST(
   request: Request,
@@ -71,68 +55,32 @@ export async function POST(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Owner gate — fetch project scoped to the authenticated user (T-14-12)
-  const { data: project } = await supabase
-    .from('vault_projects')
-    .select(PROJECT_COLS)
-    .eq('id', projectId)
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-
-  // Fetch tracks owner-scoped (belt-and-suspenders; project ownership already confirms user_id)
-  const { data: tracksRaw } = await supabase
-    .from('tracks')
-    .select(TRACK_COLS)
-    .eq('project_id', projectId)
-    .eq('user_id', user.id)
-  const tracks = tracksRaw ?? []
-
-  // Fetch artist profile for PDF headers
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('artist_name')
-    .eq('id', user.id)
-    .maybeSingle()
-
   // Parse delivery mode from request body
   let mode: 'download' | 'share' = 'download'
   try {
-    const body = await request.json() as { mode?: string }
+    const body = (await request.json()) as { mode?: string }
     if (body.mode === 'share') mode = 'share'
   } catch {
     // malformed body — default to download
   }
 
-  // Build the manifest — pure transform, tells us which files exist and their paths.
-  // buildExportManifest declares the minimal fields it reads (ManifestProjectInput /
-  // ManifestTrackInput), so no unsafe casts are needed here.
-  const manifest = buildExportManifest(
-    { ...project, artist_name: profile?.artist_name ?? null },
-    tracks
-  )
+  const service = createServiceClient()
+
+  // Load the plan — scoped by user_id, so a missing/unowned project returns null
+  // (this IS the owner gate; T-14-12).
+  const plan = await loadExportPlan(service, { projectId, userId: user.id })
+  if (!plan) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
   // No-master gate — nothing meaningful to export without at least one master WAV
-  if (!manifest.hasMaster) {
+  if (!plan.manifest.hasMaster) {
     return NextResponse.json(
       { error: 'Upload a master WAV before generating an export pack.' },
       { status: 400 }
     )
   }
 
-  const service = createServiceClient()
-
-  // Size gate — resolve ACTUAL Storage object sizes rather than trusting the
-  // manifest's DB metadata. Stem/instrumental sizes in the manifest are
-  // CLIENT-PROVIDED and uncapped, so the metadata sum can badly undercount and
-  // wave an oversized pack past this gate, only to OOM/timeout mid-assembly
-  // inside the 10s budget (audit #10). Fall back to the metadata sum only when
-  // Storage sizes can't be read, so a transient stat hiccup never blocks a
-  // legitimate export. (Moving assembly to a background worker + a Pro-tier
-  // budget is the deferred owner-gated fix.)
-  const realBytes = await resolveStorageBytes(service, BUCKET, manifest.files.map(f => f.path))
-  const totalBytes = realBytes ?? manifest.files.reduce((sum, f) => sum + f.size, 0)
-  if (totalBytes > MAX_PACK_BYTES) {
+  // Size gate — reject packs too large to assemble even on the worker.
+  if (plan.totalBytes > MAX_PACK_BYTES) {
     return NextResponse.json(
       {
         error:
@@ -142,59 +90,27 @@ export async function POST(
     )
   }
 
-  // ─── Assemble the ZIP ────────────────────────────────────────────────
-  // zlib level 0 = "store" — already-compressed inputs (stems ZIP, MP3) benefit
-  // from no additional CPU-expensive compression within the Hobby 10s budget (Pitfall 3).
-  const archive = archiver({ zlib: { level: 0 } })
-  const passthrough = new stream.PassThrough()
-  // Propagate mid-stream archiver failures into the upload stream. Without this,
-  // an unhandled 'error' event on the EventEmitter crashes the process, and the
-  // never-ending passthrough hangs the upload await until Vercel's 10s kill with
-  // no JSON error ever returned to the panel.
-  archive.on('error', err => {
-    passthrough.destroy(err instanceof Error ? err : new Error(String(err)))
-  })
-  archive.pipe(passthrough)
+  const packPath = `${user.id}/${projectId}/export-pack.zip`
 
-  // Append each existing audio/stems file from Storage
-  for (const file of manifest.files) {
-    const { data: blob, error: dlError } = await service.storage
-      .from(BUCKET)
-      .download(file.path)
-    if (dlError || !blob) {
-      return NextResponse.json(
-        { error: `Could not read file: ${file.filename}` },
-        { status: 502 }
-      )
+  // ─── Large pack → durable worker (audit #10) ─────────────────────────────
+  // Over the inline threshold, assembly won't finish inside 10s — enqueue it and
+  // let the client poll ./export/status. Dedup per (user, project, mode) so a
+  // double-click collapses to one active job.
+  if (plan.totalBytes > INLINE_THRESHOLD_BYTES) {
+    const job = await enqueueJob({
+      type: 'vault_export',
+      dedupKey: `vault_export:${user.id}:${projectId}:${mode}`,
+      payload: { projectId, userId: user.id, mode },
+    })
+    if (!job) {
+      return NextResponse.json({ error: 'Could not queue the export pack.' }, { status: 500 })
     }
-    archive.append(Readable.fromWeb(blob.stream() as import('node:stream/web').ReadableStream), { name: file.filename })
+    return NextResponse.json({ data: { queued: true, jobId: job.id, mode } })
   }
 
-  // Append credits/splits PDF
-  const creditsBuf = await renderCreditsSheet(manifest)
-  archive.append(creditsBuf, { name: 'credits-and-splits.pdf' })
-
-  // Append metadata PDF
-  const metaBuf = await renderMetadataSheet(manifest)
-  archive.append(metaBuf, { name: 'metadata.pdf' })
-
-  // ─── Upload to a STABLE path (never stream as Response body — Hobby ceiling) ─
-  // Upsert so repeated calls overwrite the previous pack; recipient always gets
-  // a fresh signed URL pointing to the current state of the release.
-  //
-  // finalize() races the upload: archiver drains its lazily-read sources only
-  // while the passthrough is being consumed, so both must be awaited together —
-  // a fire-and-forget finalize() leaves stream errors unobserved.
-  const packPath = `${user.id}/${projectId}/export-pack.zip`
-  let upError: { message: string } | null = null
+  // ─── Small pack → inline assembly ────────────────────────────────────────
   try {
-    const [, upResult] = await Promise.all([
-      archive.finalize(),
-      service.storage
-        .from(BUCKET)
-        .upload(packPath, passthrough, { contentType: 'application/zip', upsert: true }),
-    ])
-    upError = upResult.error
+    await assembleAndUploadPack(service, { manifest: plan.manifest, packPath })
   } catch (err) {
     return NextResponse.json(
       {
@@ -203,21 +119,11 @@ export async function POST(
       { status: 502 }
     )
   }
-  if (upError) {
-    return NextResponse.json(
-      { error: `Could not save the export pack: ${upError.message}` },
-      { status: 502 }
-    )
-  }
 
-  // ─── Mint signed URL (D-12) ──────────────────────────────────────────
-  // TTL is in SECONDS — unit mismatch would silently mis-expire the link.
-  // download: 5 min (short-lived, just enough for the browser to start the fetch)
-  // share:    7 days (60*60*24*7) — the shareable link D-12 specifies
+  // ─── Mint signed URL (D-12) ──────────────────────────────────────────────
+  // TTL is in SECONDS. download: 5 min; share: 7 days (60*60*24*7).
   const ttl = mode === 'download' ? 60 * 5 : 60 * 60 * 24 * 7
-  const { data: signed } = await service.storage
-    .from(BUCKET)
-    .createSignedUrl(packPath, ttl)
+  const { data: signed } = await service.storage.from(EXPORT_BUCKET).createSignedUrl(packPath, ttl)
 
   return NextResponse.json({
     data: {

@@ -36,6 +36,9 @@ export function ExportPackPanel({
   const [panelState, setPanelState] = useState<PanelState>('idle')
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // Large packs assemble on the background worker (audit #10) — flips the
+  // "generating" copy to a longer-wait message while we poll.
+  const [queuedNote, setQueuedNote] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   if (!open) return null
@@ -46,11 +49,44 @@ export function ExportPackPanel({
     setPanelState('idle')
     setSignedUrl(null)
     setCopied(false)
+    setQueuedNote(false)
+  }
+
+  function finishWithUrl(url: string, mode: 'download' | 'share') {
+    setSignedUrl(url)
+    if (mode === 'download') {
+      // Auto-navigate — triggers the browser's native download from Supabase Storage
+      window.location.href = url
+      setPanelState('download-result')
+    } else {
+      setPanelState('link-result')
+    }
+  }
+
+  // Poll the status endpoint for a queued (large) pack until it's ready, failed,
+  // or we hit the deadline. Returns the signed URL, or null on failure/timeout.
+  async function pollExportStatus(jobId: string): Promise<string | null> {
+    const deadline = Date.now() + 3 * 60 * 1000 // 3 min
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 2500))
+      try {
+        const res = await fetch(`/api/vault/${projectId}/export/status?jobId=${encodeURIComponent(jobId)}`)
+        const json = (await res.json()) as { status?: string; url?: string | null }
+        if (!res.ok) return null
+        if (json.status === 'ready' && json.url) return json.url
+        if (json.status === 'failed') return null
+        // 'processing' → keep polling
+      } catch {
+        // transient network blip — keep polling until the deadline
+      }
+    }
+    return null
   }
 
   async function requestPack(mode: 'download' | 'share') {
     setPanelState('generating')
     setSignedUrl(null)
+    setQueuedNote(false)
 
     try {
       const res = await fetch(`/api/vault/${projectId}/export`, {
@@ -58,20 +94,33 @@ export function ExportPackPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       })
-      const json = await res.json() as { data?: { url?: string | null }; error?: string }
-      if (!res.ok || !json.data?.url) {
+      const json = (await res.json()) as {
+        data?: { url?: string | null; queued?: boolean; jobId?: string }
+        error?: string
+      }
+      if (!res.ok) {
         setPanelState('error')
         return
       }
 
-      setSignedUrl(json.data.url)
-      if (mode === 'download') {
-        // Auto-navigate — triggers the browser's native download from Supabase Storage
-        window.location.href = json.data.url
-        setPanelState('download-result')
-      } else {
-        setPanelState('link-result')
+      // Large pack → queued on the worker: poll until the pack is assembled.
+      if (json.data?.queued && json.data.jobId) {
+        setQueuedNote(true)
+        const url = await pollExportStatus(json.data.jobId)
+        if (!url) {
+          setPanelState('error')
+          return
+        }
+        finishWithUrl(url, mode)
+        return
       }
+
+      // Small pack → inline URL.
+      if (!json.data?.url) {
+        setPanelState('error')
+        return
+      }
+      finishWithUrl(json.data.url, mode)
     } catch {
       setPanelState('error')
     }
@@ -161,7 +210,7 @@ export function ExportPackPanel({
                 <svg viewBox="0 0 24 24" className="h-5 w-5 animate-spin text-lav" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
                 </svg>
-                Preparing your pack…
+                {queuedNote ? 'Assembling a large pack in the background — this can take a minute…' : 'Preparing your pack…'}
               </div>
               <button
                 disabled
