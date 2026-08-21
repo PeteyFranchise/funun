@@ -5,7 +5,7 @@ import { getStaffRoles, OPERATIONAL_STAFF_ROLES, type StaffRole } from './staff-
 // getStaffRole(s) + StaffRole moved to ./staff-role (client-safe, no server
 // imports) so client components can import them; re-exported here so every
 // existing importer of @/lib/admin/gate is unaffected (D-01, single authority).
-export { getStaffRole, getStaffRoles, OPERATIONAL_STAFF_ROLES } from './staff-role'
+export { getStaffRole, getStaffRoles, primaryStaffRole, OPERATIONAL_STAFF_ROLES } from './staff-role'
 export type { StaffRole } from './staff-role'
 
 // ─── Staff auth gate (Phase 25 — generalized from the binary admin gate) ──

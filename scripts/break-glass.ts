@@ -305,7 +305,7 @@ export async function runCreateStaff(service: SupabaseClient, email: string, rol
     const { userId, emailSent } = await createStaffAccount({
       email,
       displayName: email,
-      staffRole: role,
+      staffRoles: [role],
     })
 
     console.log(`OK — created ungated Team Member account: ${email} (user_id ${userId}, staff_role=${role}).`)

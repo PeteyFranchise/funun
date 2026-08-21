@@ -30,7 +30,7 @@ function buildService(overrides: {
 
   const deleteEq = jest.fn(async () => ({ error: null }))
   const deleteUser = jest.fn(async () => ({ error: null }))
-  // HIGH-3: compensation clears staff_role before delete; default = success.
+  // HIGH-3: compensation clears staff_role(s) before delete; default = success.
   const updateUserById = jest.fn(async () => ({ error: null }))
   const fununStaffInsert = jest.fn(async () => overrides.fununStaffInsertResult ?? { error: null })
   // account_provision_intents (migration 104): written before createUser() and
@@ -68,23 +68,56 @@ beforeEach(() => {
 })
 
 describe('createStaffAccount', () => {
-  it('sets app_metadata.staff_role atomically inside createUser (never a post-insert update)', async () => {
+  it('sets app_metadata.staff_roles (+ primary staff_role) atomically inside createUser', async () => {
     const service = buildService({})
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await createStaffAccount({
       email: 'ae@funun.studio',
       displayName: 'AE Person',
-      staffRole: 'ae',
+      staffRoles: ['ae'],
       invitedBy: ADMIN_ID,
     })
 
     expect(service.createUser).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'ae@funun.studio',
-        app_metadata: { staff_role: 'ae' },
+        app_metadata: { staff_roles: ['ae'], staff_role: 'ae' },
       })
     )
+  })
+
+  it('writes the primary as staff_role AND the full set as staff_roles (multi-role)', async () => {
+    const service = buildService({})
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    // stored order [tms, leadership]; leadership is the higher-priority primary
+    await createStaffAccount({
+      email: 'multi@funun.studio',
+      displayName: 'Multi Hat',
+      staffRoles: ['tms', 'leadership'],
+    })
+
+    expect(service.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app_metadata: { staff_roles: ['tms', 'leadership'], staff_role: 'leadership' },
+      })
+    )
+    expect(service.fununStaffInsert).toHaveBeenCalledWith({
+      user_id: USER_ID,
+      staff_role: 'leadership',
+      staff_roles: ['tms', 'leadership'],
+      display_name: 'Multi Hat',
+    })
+  })
+
+  it('rejects an empty role set', async () => {
+    const service = buildService({})
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    await expect(
+      createStaffAccount({ email: 'x@funun.studio', displayName: 'X', staffRoles: [] })
+    ).rejects.toThrow(/at least one valid staff role/)
+    expect(service.createUser).not.toHaveBeenCalled()
   })
 
   it('inserts a funun_staff row and sends the invite email on success', async () => {
@@ -94,13 +127,14 @@ describe('createStaffAccount', () => {
     const result = await createStaffAccount({
       email: 'bd@funun.studio',
       displayName: 'BD Person',
-      staffRole: 'bd',
+      staffRoles: ['bd'],
       invitedBy: ADMIN_ID,
     })
 
     expect(service.fununStaffInsert).toHaveBeenCalledWith({
       user_id: USER_ID,
       staff_role: 'bd',
+      staff_roles: ['bd'],
       display_name: 'BD Person',
     })
     // migration 104: a single-use intent row (client-generated id + lower-cased
@@ -123,7 +157,7 @@ describe('createStaffAccount', () => {
     const result = await createStaffAccount({
       email: 'leader@funun.studio',
       displayName: 'Leader',
-      staffRole: 'leadership',
+      staffRoles: ['leadership'],
     })
 
     expect(result.emailSent).toBe(false)
@@ -136,7 +170,7 @@ describe('createStaffAccount', () => {
     await createStaffAccount({
       email: 'ae2@funun.studio',
       displayName: 'AE Two',
-      staffRole: 'ae',
+      staffRoles: ['ae'],
     })
 
     expect(service.from).toHaveBeenCalledWith('subscriptions')
@@ -150,7 +184,7 @@ describe('createStaffAccount', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'dupe@funun.studio', displayName: 'Dupe', staffRole: 'ae' })
+      createStaffAccount({ email: 'dupe@funun.studio', displayName: 'Dupe', staffRoles: ['ae'] })
     ).rejects.toBeInstanceOf(DuplicateStaffAccountError)
   })
 
@@ -161,7 +195,7 @@ describe('createStaffAccount', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'dupe2@funun.studio', displayName: 'Dupe2', staffRole: 'bd' })
+      createStaffAccount({ email: 'dupe2@funun.studio', displayName: 'Dupe2', staffRoles: ['bd'] })
     ).rejects.toBeInstanceOf(DuplicateStaffAccountError)
   })
 
@@ -172,10 +206,10 @@ describe('createStaffAccount', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'outage@funun.studio', displayName: 'Outage', staffRole: 'ae' })
+      createStaffAccount({ email: 'outage@funun.studio', displayName: 'Outage', staffRoles: ['ae'] })
     ).rejects.toThrow('Failed to create staff account')
     await expect(
-      createStaffAccount({ email: 'outage@funun.studio', displayName: 'Outage', staffRole: 'ae' })
+      createStaffAccount({ email: 'outage@funun.studio', displayName: 'Outage', staffRoles: ['ae'] })
     ).rejects.not.toBeInstanceOf(DuplicateStaffAccountError)
   })
 
@@ -184,20 +218,20 @@ describe('createStaffAccount', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'fail@funun.studio', displayName: 'Fail', staffRole: 'ae' })
+      createStaffAccount({ email: 'fail@funun.studio', displayName: 'Fail', staffRoles: ['ae'] })
     ).rejects.toThrow(/Failed to create staff account.*insert failed/)
   })
 
-  it('compensates by deleting the auth user when a post-create step fails — no ghost staff_role account (review finding #3)', async () => {
+  it('compensates by deleting the auth user when a post-create step fails — no ghost staff account (review finding #3)', async () => {
     const service = buildService({ fununStaffInsertResult: { error: { message: 'insert failed' } } })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'ghost@funun.studio', displayName: 'Ghost', staffRole: 'leadership' })
+      createStaffAccount({ email: 'ghost@funun.studio', displayName: 'Ghost', staffRoles: ['leadership'] })
     ).rejects.toThrow(/Failed to create staff account/)
 
     // the just-created auth user must be rolled back so no principal carrying
-    // app_metadata.staff_role survives without a directory row
+    // app_metadata.staff_roles survives without a directory row
     expect(service.deleteUser).toHaveBeenCalledWith(USER_ID)
   })
 
@@ -208,7 +242,7 @@ describe('createStaffAccount', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     await expect(
-      createStaffAccount({ email: 'linkfail@funun.studio', displayName: 'LinkFail', staffRole: 'ae' })
+      createStaffAccount({ email: 'linkfail@funun.studio', displayName: 'LinkFail', staffRoles: ['ae'] })
     ).rejects.toThrow('Failed to create staff account')
   })
 })

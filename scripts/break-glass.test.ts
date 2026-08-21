@@ -244,7 +244,7 @@ describe('runCreateStaff', () => {
 
     await runCreateStaff(service, EMAIL, 'ae')
 
-    expect(createStaffAccount).toHaveBeenCalledWith({ email: EMAIL, displayName: EMAIL, staffRole: 'ae' })
+    expect(createStaffAccount).toHaveBeenCalledWith({ email: EMAIL, displayName: EMAIL, staffRoles: ['ae'] })
     expect(generateLink).toHaveBeenCalledWith({ type: 'magiclink', email: EMAIL })
   })
 

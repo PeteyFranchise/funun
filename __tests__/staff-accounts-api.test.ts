@@ -125,7 +125,7 @@ describe('POST /api/admin/staff', () => {
     expect(createStaffAccount).toHaveBeenCalledWith({
       email: 'ae@funun.studio',
       displayName: 'AE Person',
-      staffRole: 'ae',
+      staffRoles: ['ae'],
       invitedBy: LEADER_ID,
     })
     expect(logStaffAction).toHaveBeenCalledTimes(1)

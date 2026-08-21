@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { createUserWithProvisionIntent } from '@/lib/accounts/provisionIntent'
 import { sendEmail } from '@/lib/email'
 import { staffInviteEmail } from '@/lib/email/staffInvite'
-import type { StaffRole } from '@/lib/admin/gate'
+import { primaryStaffRole, type StaffRole } from '@/lib/admin/gate'
 
 /** Thrown when the invite email already belongs to an existing auth.users row (mirrors createBuyerAccount's WR-03 discipline). */
 export class DuplicateStaffAccountError extends Error {}
@@ -26,10 +26,14 @@ export class DuplicateStaffAccountError extends Error {}
 export async function createStaffAccount(input: {
   email: string
   displayName: string
-  staffRole: StaffRole
+  staffRoles: StaffRole[]
   invitedBy?: string
 }): Promise<{ userId: string; emailSent: boolean }> {
-  const { email, displayName, staffRole, invitedBy } = input
+  const { email, displayName, staffRoles, invitedBy } = input
+  // staff_role is the PRIMARY (highest-priority) display copy that must
+  // accompany the authoritative staff_roles set (migration 119 / 089 rule).
+  const primary = primaryStaffRole(staffRoles)
+  if (!primary) throw new Error('createStaffAccount: at least one valid staff role is required')
   const service = createServiceClient()
 
   // createUserWithProvisionIntent registers a service-role-only
@@ -42,7 +46,7 @@ export async function createStaffAccount(input: {
   const { data: created, error: createError } = await createUserWithProvisionIntent(service, {
     email,
     email_confirm: true,
-    app_metadata: { staff_role: staffRole },
+    app_metadata: { staff_roles: staffRoles, staff_role: primary },
     user_metadata: {
       display_name: displayName,
       invited_by: invitedBy ?? null,
@@ -91,7 +95,8 @@ export async function createStaffAccount(input: {
     // write goes through the service role. funun_staff has no invited_by column.
     const { error: staffError } = await service.from('funun_staff').insert({
       user_id: userId,
-      staff_role: staffRole,
+      staff_role: primary,
+      staff_roles: staffRoles,
       display_name: displayName,
     })
     if (staffError) throw new Error(`funun_staff insert failed: ${staffError.message}`)
@@ -119,7 +124,7 @@ export async function createStaffAccount(input: {
     let cleanupFailed = false
     try {
       const { error: roleErr } = await service.auth.admin.updateUserById(userId, {
-        app_metadata: { staff_role: null },
+        app_metadata: { staff_role: null, staff_roles: null },
       })
       if (roleErr) cleanupFailed = true
     } catch {

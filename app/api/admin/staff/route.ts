@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const { userId, emailSent } = await createStaffAccount({
       email,
       displayName,
-      staffRole: staffRole as StaffRole,
+      staffRoles: [staffRole as StaffRole],
       invitedBy: auth.user.id,
     })
 

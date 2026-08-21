@@ -75,3 +75,13 @@ export function getStaffRoles(user: { app_metadata?: unknown }): StaffRole[] {
 export function getStaffRole(user: { app_metadata?: unknown }): StaffRole | null {
   return getStaffRoles(user)[0] ?? null
 }
+
+// The PRIMARY (highest-priority) role of an explicit role SET — used by the
+// write path (createStaffAccount + the edit endpoint) to derive the staff_role
+// display copy that must accompany staff_roles. Returns null for an empty/
+// all-invalid set. Priority-sorted with the same ROLE_PRIORITY as getStaffRoles.
+export function primaryStaffRole(roles: readonly StaffRole[]): StaffRole | null {
+  const valid = roles.filter(isStaffRole)
+  if (valid.length === 0) return null
+  return [...valid].sort((a, b) => ROLE_PRIORITY.indexOf(a) - ROLE_PRIORITY.indexOf(b))[0]
+}
