@@ -61,5 +61,35 @@ Once `/api/health` is live on production:
 
 ---
 
+## 5. Durable job worker (#5/#10 / migration 118) — deploy-gated on Vercel Pro
+
+The queue ships **deploy-safe** — nothing breaks before Pro: Selects previews
+still render via Next's `after()`, and small export packs still assemble inline.
+Only the WORKER that drains **large** exports (and backstops preview renders)
+needs Vercel Pro's frequent cron.
+
+Owner, in order:
+1. `supabase db push` (migration 118 — `jobs` table + `claim_next_job`). Safe to
+   push anytime; jobs simply queue until the worker runs.
+2. Upgrade the project to **Vercel Pro**.
+3. Add the worker cron to `vercel.json` (a sub-daily schedule is **rejected on
+   Hobby**, so only add this AFTER the Pro upgrade):
+   ```json
+   { "path": "/api/cron/process-jobs", "schedule": "* * * * *" }
+   ```
+   `CRON_SECRET` is already set for the existing crons — the worker reuses it
+   (Vercel sends `Authorization: Bearer $CRON_SECRET`).
+4. Deploy; force a **large** export (>80MB of audio): the panel shows
+   "Assembling a large pack…" then resolves to a working download/link. In the
+   `jobs` table the row goes `pending → processing → completed`.
+5. Open a Selects link for a freshly-added track → its preview renders (a
+   `watermark_preview` job completes).
+
+**Until Pro + the cron entry are live:** large exports queue but don't complete
+(the panel spins, then errors after ~3 min); small exports + previews are
+unaffected. Don't add the sub-daily cron to `vercel.json` before upgrading.
+
+---
+
 *Owner: Pete. Items 3–4 were already tracked from Phase 32; listed here so the whole
 deploy-time verification set lives in one place.*

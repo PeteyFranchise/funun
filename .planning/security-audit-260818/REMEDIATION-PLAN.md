@@ -200,3 +200,35 @@ Investigation expanded the blast radius beyond the report's 3 routes. The column
   - `[id]/route.ts:122` already selects explicit safe columns → unaffected.
 - **Tests:** direct-PostgREST — initiator cannot select `approval_token` (42501/absent) post-migration; row visibility intact; app routes still function via service reads. Mirror `migration-064.test.ts`.
 - **Coupling:** migration + app changes must deploy ATOMICALLY (owner `supabase db push` + app deploy together) — either alone 42501s every split-sheet read in prod. Defense-in-depth (session-bind claimed parties, consume/rotate token) is additive follow-up.
+
+---
+
+# Remediation Results — Phase 5+ (post-batch, 2026-08-20)
+
+The decision-gated findings, built after the 6 owner decisions. Each = its own atomic commit + regression tests + tsc/lint; production build green at each cluster. `.claude/launch.json` never touched.
+
+| # | Commit(s) | Shipped | Migration | Tests |
+|---|-----------|---------|-----------|-------|
+| 2 | `3edb491` | Public AI brief-draft/brief-rerank now require sign-in (closes unbounded Anthropic-cost abuse) | — | auth suite |
+| 3 | `308166a` | Next.js `^15.5.23` (patched 15.5 line; 15.5.23 in lockfile) | — | build |
+| 4 | `e3a2360` | Stale branches pre-classified (KEEP/DELETE/CONFIRM) in `BRANCH-CLEANUP.md` | — | doc — **awaits owner confirm before deletion** |
+| 7 | `27e1316` | Durable Postgres rate limiter (`check_rate_limit` RPC, advisory-locked) replaces per-instance in-memory Map; `getClientIp` hardened against XFF spoofing | **116** | limiter + 6 route suites |
+| 6 | `3699544` | Selects reactions rate-limited (per token+ip / per token) + DB per-track cap (trigger) — leaked-link flood bounded | **117** | react-ratelimit + migration 117 |
+| 1 | `dec6dc1` | Adversarial verify-115 PostgREST script + `POST-DEPLOY-CHECKLIST.md` | (115) | script |
+| **5 / 10** | `e11f786`, `70c77c1`, `55d7a48` | **Durable background-job worker** (see below) | **118** | queue/handlers/run/worker + export route/status + preview-queue |
+
+## #5 / #10 — Durable job worker — BUILT (`e11f786` → `55d7a48`), worker deploy-gated on Vercel Pro
+
+Owner chose **graceful fallback** (features keep working pre-Pro; decouples the #1 deploy from the Pro upgrade) + **Vercel Pro** as the worker mechanism.
+
+- **Foundation (`e11f786`):** migration 118 — `jobs` table + `claim_next_job()` RPC (`FOR UPDATE SKIP LOCKED` so overlapping workers never double-claim; partial unique index on `dedup_key` for idempotent enqueue; service-role only, RLS on + REVOKE ALL). `lib/jobs/queue.ts` (enqueue/claim/complete/fail/getJob), `lib/jobs/handlers.ts` (type→handler registry, dynamic-import deps), `lib/jobs/run.ts` (shared claim→dispatch loop), `app/api/cron/process-jobs` (CRON_SECRET-guarded worker). Ships deploy-safe — nothing enqueues until #5/#10 wire.
+- **#5 (`70c77c1`):** watermark preview render moved off the fire-and-forget `void renderPreviewIfAbsent`. `queuePreviewRender` enqueues ONE idempotent per-track job (dedup index = the atomic per-track claim) AND drains it inline via Next `after()` for pre-Pro reliability; the worker is the durable backstop. `after()` + worker share `claim_next_job`'s SKIP LOCKED → renders exactly once.
+- **#10 (`55d7a48`):** export assembly extracted to `lib/vault/export-assemble.ts` (`loadExportPlan` + `assembleAndUploadPack`). Route branches: ≤80MB inline (unchanged UX), >80MB enqueues a `vault_export` job + returns `{queued,jobId}`; the client polls the ownership-checked `./export/status`, which mints a FRESH signed URL from the pack path. Handlers dynamic-import archiver/PDF deps so the registry stays light on the hot watermark path.
+- **Deploy gate:** migration 118 pushes safely anytime (jobs just queue). The worker needs Vercel Pro + a sub-daily `vercel.json` cron for `/api/cron/process-jobs` (rejected on Hobby) — see `POST-DEPLOY-CHECKLIST.md` item 5. Pre-Pro: previews render (via `after()`), small exports inline; large exports queue but complete only once Pro is live (no regression — they hard-timed-out before).
+
+## Remaining owner actions (not code)
+
+- **#1 + migrations:** atomic `supabase db push` of **115/116/117/118** + deploy this branch together (115's app companion 42501s split-sheet reads if the migration lags). Then run the checklist.
+- **Vercel Pro:** upgrade + add the process-jobs cron (checklist item 5) to activate the #5/#10 worker.
+- **#4:** confirm the branch kill-list in `BRANCH-CLEANUP.md` before any deletion.
+- **npm audit:** 8 vulns (7 high, 1 critical) surfaced during #3 — decide upgrade/accept out of band.
