@@ -29,6 +29,12 @@ describe('migration 119 — multi-role staff', () => {
     expect(sql).toMatch(/staff_roles <@ ARRAY\['leadership', 'ae', 'bd', 'anr', 'it', 'legal', 'tms'\]::text\[\]/)
   })
 
+  it('backfills staff_roles from staff_role on INSERT (deploy-window safety trigger)', () => {
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.funun_staff_default_roles()')
+    expect(sql).toMatch(/NEW\.staff_roles := ARRAY\[NEW\.staff_role\]/)
+    expect(sql).toMatch(/CREATE TRIGGER funun_staff_default_roles_trg\s+BEFORE INSERT ON public\.funun_staff/)
+  })
+
   it('reloads the PostgREST schema cache', () => {
     expect(sql).toContain("NOTIFY pgrst, 'reload schema'")
   })

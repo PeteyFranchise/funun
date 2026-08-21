@@ -37,6 +37,28 @@ ALTER TABLE public.funun_staff ADD CONSTRAINT funun_staff_staff_roles_valid
     AND staff_roles <@ ARRAY['leadership', 'ae', 'bd', 'anr', 'it', 'legal', 'tms']::text[]
   );
 
+-- Deploy-safety: keep the pre-redesign code (which writes only staff_role, not
+-- staff_roles) able to INSERT during the window between this push and the new
+-- code going live — backfill staff_roles from the single staff_role on any
+-- INSERT that omits it. A no-op for the new write path (which always sets
+-- staff_roles), so it never masks a genuinely missing role.
+CREATE OR REPLACE FUNCTION public.funun_staff_default_roles()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.staff_roles IS NULL AND NEW.staff_role IS NOT NULL THEN
+    NEW.staff_roles := ARRAY[NEW.staff_role];
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS funun_staff_default_roles_trg ON public.funun_staff;
+CREATE TRIGGER funun_staff_default_roles_trg
+  BEFORE INSERT ON public.funun_staff
+  FOR EACH ROW EXECUTE FUNCTION public.funun_staff_default_roles();
+
 COMMENT ON COLUMN public.funun_staff.staff_roles IS
   'Authoritative multi-role SET for a Team Member (Team Members redesign, migration 119). staff_role remains the PRIMARY (highest-priority) display copy; both these columns AND app_metadata.staff_roles must be written together in the same handler (createStaffAccount + the edit endpoint). The gate (lib/admin/staff-role.ts) reads app_metadata only — this table stays a service-role-only display copy (089).';
 
