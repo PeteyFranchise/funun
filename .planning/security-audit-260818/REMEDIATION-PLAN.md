@@ -230,5 +230,5 @@ Owner chose **graceful fallback** (features keep working pre-Pro; decouples the 
 
 - **#1 + migrations:** atomic `supabase db push` of **115/116/117/118** + deploy this branch together (115's app companion 42501s split-sheet reads if the migration lags). Then run the checklist.
 - **Vercel Pro:** upgrade + add the process-jobs cron (checklist item 5) to activate the #5/#10 worker.
-- **#4:** confirm the branch kill-list in `BRANCH-CLEANUP.md` before any deletion.
+- **#4:** ✅ branches cleaned up 2026-08-20 (25 remote + 40 local deleted; domain runbook salvaged; 5 KEEP retained — see `BRANCH-CLEANUP.md`). Remaining: enable `main` branch protection in GitHub Settings (CLI can't).
 - **npm audit:** 8 vulns (7 high, 1 critical) surfaced during #3 — decide upgrade/accept out of band.

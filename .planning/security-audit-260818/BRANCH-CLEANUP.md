@@ -61,3 +61,30 @@ PR + passing checks before merge, so a stale branch can never fast-path to prod.
 
 Recommendation: delete everything above except the two KEEP branches; double-check
 only `connect-funun-studio-domain` first.
+
+---
+
+## EXECUTED — 2026-08-20
+
+Re-verified live before deleting (counts = commits not in `origin/main`); owner
+confirmed each tier.
+
+- **Deleted 25 remote** branches (all of `origin/*` except `main` +
+  `feat/lane1-catalogue-menu-help`) — Tier 1 (7 fully-merged) + Tier 2
+  (~16 squash-merged/superseded) + the flagged `codex/phase-10-connections-notifications` [42].
+- **Deleted 40 local** branches (all local except the 5 KEEP below).
+- **Salvaged** `connect-funun-studio-domain`'s only unique content —
+  `docs/DOMAIN-SETUP.md` — via cherry-pick onto `feat/lane1-catalogue-menu-help`
+  (`e7470d8`, pushed) before deleting the branch.
+- **KEPT (owner choice):** `main`, `feat/lane1-catalogue-menu-help`, and three
+  local-only branches held for later review — `backup/local-main-pre-reset-20260713-0739`
+  [44], `codex/harden-document-token-workflows` [4], `gsd-reviewfix/10-80913` [48]
+  (uncertain merge status around the 2026-07-13 main reset).
+
+Deleted branch SHAs are in the deletion output (git reflog / GitHub) — recoverable
+short-term if any is ever needed.
+
+### Still owner-pending
+- **Enable `main` branch protection** (GitHub → Settings → Branches): require a PR
+  + passing checks before merge, so a stale branch can never fast-path to prod.
+  This is the remaining half of audit #4 and can't be done from the CLI here.
