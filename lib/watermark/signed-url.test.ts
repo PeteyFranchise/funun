@@ -1,6 +1,7 @@
 import { getPreviewSignedUrl } from '@/lib/watermark/signed-url'
 import { createServiceClient } from '@/lib/supabase/server'
 import * as streamPreview from '@/lib/watermark/stream-preview'
+import * as previewQueue from '@/lib/watermark/preview-queue'
 
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
@@ -9,7 +10,10 @@ jest.mock('@/lib/supabase/server', () => ({
 jest.mock('@/lib/watermark/stream-preview', () => ({
   PREVIEWS_BUCKET: 'selects-stream-previews',
   findExistingPreview: jest.fn(),
-  renderPreviewIfAbsent: jest.fn(),
+}))
+
+jest.mock('@/lib/watermark/preview-queue', () => ({
+  queuePreviewRender: jest.fn(),
 }))
 
 // The master bucket name this accessor must NEVER resolve or sign against
@@ -70,29 +74,21 @@ describe('getPreviewSignedUrl — never-master guarantee (T-31-27)', () => {
 
   it('a missing preview yields "processing", never a master-bucket fallback, and does not block on the render', async () => {
     ;(streamPreview.findExistingPreview as jest.Mock).mockResolvedValue(null)
-    let resolveRender: (() => void) | undefined
-    ;(streamPreview.renderPreviewIfAbsent as jest.Mock).mockReturnValue(
-      new Promise<void>(resolve => {
-        resolveRender = resolve
-      })
-    )
     const { client, bucketCalls } = buildStorageClient(null)
     ;(createServiceClient as jest.Mock).mockReturnValue(client)
 
     const result = await getPreviewSignedUrl('track-2')
 
     expect(result).toEqual({ status: 'processing' })
-    expect(streamPreview.renderPreviewIfAbsent).toHaveBeenCalledWith('track-2')
-    // getPreviewSignedUrl already returned above even though the render
-    // promise is still pending — no signed-URL call was ever made, and no
-    // bucket (master or otherwise) was touched while resolving 'processing'.
+    // the render is queued (idempotent per track), never awaited here
+    expect(previewQueue.queuePreviewRender).toHaveBeenCalledWith('track-2')
+    // no signed-URL call was ever made, and no bucket (master or otherwise)
+    // was touched while resolving 'processing'.
     expect(bucketCalls).toHaveLength(0)
-    resolveRender?.()
   })
 
   it('accepts a trackId, not a storage path — no caller can inject a master path through this accessor', async () => {
     ;(streamPreview.findExistingPreview as jest.Mock).mockResolvedValue(null)
-    ;(streamPreview.renderPreviewIfAbsent as jest.Mock).mockResolvedValue(undefined)
     const { client } = buildStorageClient(null)
     ;(createServiceClient as jest.Mock).mockReturnValue(client)
 

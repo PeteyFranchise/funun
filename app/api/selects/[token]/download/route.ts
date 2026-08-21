@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveSelectsByToken, loadOwnSelectsTrack } from '@/lib/selects/public-resolve'
-import { PREVIEWS_BUCKET, findExistingPreview, renderPreviewIfAbsent, renderForensicDownload } from '@/lib/watermark/stream-preview'
+import { PREVIEWS_BUCKET, findExistingPreview, renderForensicDownload } from '@/lib/watermark/stream-preview'
+import { queuePreviewRender } from '@/lib/watermark/preview-queue'
 
 // ─── GET/POST /api/selects/[token]/download — account-gated, watermarked- ──
 // ONLY, D-02-configurable (R12/D-01/D-02/D-03). NEVER resolves or reads a
 // master-bucket path — this route imports ONLY the watermark-pipeline's
 // PUBLIC output accessors (PREVIEWS_BUCKET, findExistingPreview,
-// renderPreviewIfAbsent, renderForensicDownload), never
-// lib/metadata/schema.ts's readMasterAudio or the `track-audio` bucket
+// renderForensicDownload) plus the queued-render helper (queuePreviewRender),
+// never lib/metadata/schema.ts's readMasterAudio or the `track-audio` bucket
 // name, so there is structurally no code path here that could sign a
 // clean master (mirrors lib/watermark/signed-url.ts's own T-31-27 posture,
 // which this route deliberately follows rather than re-deriving).
@@ -125,11 +126,11 @@ async function handleDownload(token: string, rawTrackId: string | null): Promise
     if (!error && signed?.signedUrl) return { status: 'ok', url: signed.signedUrl }
   }
 
-  // Not rendered yet — kick off the background render (never awaited here,
-  // mirrors lib/watermark/signed-url.ts's getPreviewSignedUrl) and report
-  // 'processing' rather than blocking this request past the serverless
-  // time budget.
-  void renderPreviewIfAbsent(selectsTrack.track_id).catch(() => {})
+  // Not rendered yet — queue the render (idempotent per track; worker backstop
+  // + inline after() drain, mirrors lib/watermark/signed-url.ts's
+  // getPreviewSignedUrl) and report 'processing' rather than blocking this
+  // request past the serverless time budget.
+  await queuePreviewRender(selectsTrack.track_id)
   return { status: 'processing' }
 }
 
