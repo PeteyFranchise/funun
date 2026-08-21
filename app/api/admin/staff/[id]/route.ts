@@ -1,138 +1,168 @@
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireStaff, type StaffRole } from '@/lib/admin/gate'
+import { requireStaff, primaryStaffRole, ALL_STAFF_ROLES, type StaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 
-const STAFF_ROLE_VALUES: StaffRole[] = ['leadership', 'ae', 'bd']
+// Team management is leadership + TMS (people ops) — Team Members redesign.
+const MANAGE_ROLES: StaffRole[] = ['leadership', 'tms']
 
-const STAFF_COLUMNS = 'id, user_id, staff_role, display_name, title, phone, avatar_url, created_at'
+const STAFF_COLUMNS =
+  'id, user_id, staff_role, staff_roles, display_name, title, phone, avatar_url, created_at'
 
-type StaffPatch = { staff_role?: StaffRole; active?: boolean }
-
-type SanitizeResult = { update: StaffPatch } | { error: string; status: number }
-
-// Only accepts staff_role (validated against the closed StaffRole enum) and
-// an optional active flag (deactivate signal) — reject an invalid role
-// string, never coerce. Mirrors app/api/profile/route.ts's sanitize()
-// discriminated-union shape.
-function sanitizeStaffPatch(body: Record<string, unknown>): SanitizeResult {
-  const update: StaffPatch = {}
-
-  if ('staff_role' in body) {
-    const value = body.staff_role
-    if (typeof value !== 'string' || !STAFF_ROLE_VALUES.includes(value as StaffRole)) {
-      return { error: 'Select a valid staff role.', status: 400 }
-    }
-    update.staff_role = value as StaffRole
-  }
-
-  if ('active' in body) {
-    if (typeof body.active !== 'boolean') {
-      return { error: '`active` must be a boolean.', status: 400 }
-    }
-    update.active = body.active
-  }
-
-  if (Object.keys(update).length === 0) {
-    return { error: 'No valid fields to update.', status: 400 }
-  }
-
-  return { update }
+// Last-leadership guard: would removing/demoting this member leave the console
+// with ZERO leadership? Passing nextRoles=null models a full removal (DELETE).
+// Blocks demoting or removing the only leadership principal (permanent lockout).
+async function wouldOrphanLeadership(
+  service: SupabaseClient,
+  targetUserId: string,
+  nextRoles: StaffRole[] | null
+): Promise<boolean> {
+  const { data } = await service
+    .from('funun_staff')
+    .select('user_id')
+    .contains('staff_roles', ['leadership'])
+  const leaders = (data ?? []).map(r => (r as { user_id: string }).user_id)
+  const isTargetLeader = leaders.includes(targetUserId)
+  if (!isTargetLeader) return false
+  const targetStaysLeader = nextRoles ? nextRoles.includes('leadership') : false
+  if (targetStaysLeader) return false
+  return leaders.length <= 1
 }
 
-// ─── PATCH /api/admin/staff/[id] ────────────────────────────────────────────
-// Leadership-only role change / deactivate. Dual-writes app_metadata (the
-// AUTHORITATIVE gate value) AND funun_staff.staff_role (the DISPLAY copy) in
-// the same handler — never split across two endpoints (25-RESEARCH.md
-// Pitfall 1). Deactivation semantics: since funun_staff (migration 089) has
-// no `active`/`deactivated_at` column and this plan cannot alter that
-// unpushed migration, `active:false` clears app_metadata.staff_role to null
-// via the same admin.updateUserById() write already used for role change —
-// this immediately and really revokes gate access (getStaffRole() returns
-// null for a missing staff_role, so requireStaff() 403s the account on its
-// next request) without requiring a schema change. funun_staff.staff_role
-// keeps its last-known value as a historical display record; recorded in
-// this plan's SUMMARY.md as the deactivation semantics chosen.
+function readRoles(body: Record<string, unknown>): StaffRole[] | null | 'invalid' {
+  if (!('staff_roles' in body)) return null
+  const raw = body.staff_roles
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    !raw.every(r => (ALL_STAFF_ROLES as string[]).includes(r as string))
+  ) {
+    return 'invalid'
+  }
+  return Array.from(new Set(raw as StaffRole[]))
+}
+
+// ─── PATCH /api/admin/staff/[id] — edit roles and/or contact phone ──────────
+// Leadership + TMS. Dual-writes app_metadata (the AUTHORITATIVE gate value) AND
+// funun_staff (the DISPLAY copy) in the same handler (25-RESEARCH Pitfall 1):
+// staff_roles = the full set, staff_role = its primary. Guarded by the
+// last-leadership check so the console can never be orphaned of leadership.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireStaff(['leadership'])
-  if ('error' in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = await requireStaff(MANAGE_ROLES)
+  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+
+  const roles = readRoles(body)
+  if (roles === 'invalid') {
+    return NextResponse.json({ error: 'Select at least one valid role.' }, { status: 400 })
   }
 
-  // Self-lockout guard (review #7): a leadership admin cannot deactivate or
-  // re-role their OWN account here. The caller is always leadership and can
-  // never target themselves, so at least one active leadership principal always
-  // remains — the "last leadership" can never be removed/downgraded via this route.
-  if (id === auth.user.id) {
+  let nextPhone: string | null | undefined
+  if ('phone' in body) {
+    if (body.phone !== null && typeof body.phone !== 'string') {
+      return NextResponse.json({ error: 'Phone must be text.' }, { status: 400 })
+    }
+    nextPhone = body.phone === null ? null : String(body.phone).trim()
+  }
+
+  if (roles === null && nextPhone === undefined) {
+    return NextResponse.json({ error: 'No valid fields to update.' }, { status: 400 })
+  }
+
+  const service = createServiceClient()
+
+  if (roles && (await wouldOrphanLeadership(service, id, roles))) {
     return NextResponse.json(
-      { error: 'You can’t change your own staff role or active status here.' },
+      { error: 'You can’t remove Leadership from the last leadership member.' },
       { status: 400 }
     )
   }
 
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-  const result = sanitizeStaffPatch(body)
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
-  }
-  const update = result.update
-
-  const service = createServiceClient()
-  const deactivating = update.active === false
-
-  // ── app_metadata write (AUTHORITATIVE for the gate) ──────────────────────
-  const nextAppMetadataRole: StaffRole | null | undefined = deactivating
-    ? null
-    : update.staff_role
-
-  if (nextAppMetadataRole !== undefined) {
+  // ── app_metadata write (AUTHORITATIVE for the gate) — only on a role change ─
+  if (roles) {
+    const primary = primaryStaffRole(roles)
     const { error: authError } = await service.auth.admin.updateUserById(id, {
-      // staff_role is the authoritative gate value. Also clear the legacy
-      // app_metadata.is_admin fallback (review #7): otherwise is_admin=true would
-      // override this deactivation/downgrade, since getStaffRole() treats
-      // is_admin===true as leadership regardless of staff_role.
-      app_metadata: { staff_role: nextAppMetadataRole, is_admin: false },
+      // Clear the legacy is_admin fallback too, so a demotion can't be
+      // overridden by is_admin===true (getStaffRoles treats it as leadership).
+      app_metadata: { staff_roles: roles, staff_role: primary, is_admin: false },
     })
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: 500 })
-    }
+    if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
   }
 
-  // ── funun_staff write (DISPLAY COPY) ──────────────────────────────────────
-  // Deactivation has no persisted column to write (see comment above) — the
-  // table write only applies to an actual role value, never on deactivate.
-  // Wrapped so a table-write failure is surfaced but never leaves
-  // app_metadata (already written above) out of sync in the enforced sense —
-  // app_metadata stays authoritative regardless of this write's outcome.
+  // ── funun_staff write (DISPLAY COPY) ────────────────────────────────────────
+  const tableUpdate: Record<string, unknown> = {}
+  if (roles) {
+    tableUpdate.staff_roles = roles
+    tableUpdate.staff_role = primaryStaffRole(roles)
+  }
+  if (nextPhone !== undefined) tableUpdate.phone = nextPhone
+
   let tableWriteError: string | null = null
-  if (update.staff_role && !deactivating) {
-    const { error } = await service
-      .from('funun_staff')
-      .update({ staff_role: update.staff_role })
-      .eq('user_id', id)
-    if (error) tableWriteError = error.message
-  }
+  const { error: upErr } = await service.from('funun_staff').update(tableUpdate).eq('user_id', id)
+  if (upErr) tableWriteError = upErr.message
 
-  // D-04: unconditional, exactly once per request, regardless of the
-  // table-write outcome above.
+  // D-04: unconditional, exactly once per request.
   await logStaffAction(service, {
     actorId: auth.user.id,
-    action: deactivating ? 'deactivate_staff' : 'update_staff',
+    action: 'update_staff',
     targetType: 'funun_staff',
     targetId: id,
-    changes: update as Record<string, unknown>,
+    changes: {
+      ...(roles ? { staff_roles: roles } : {}),
+      ...(nextPhone !== undefined ? { phone: nextPhone } : {}),
+    },
   })
 
-  const { data: row } = await (service as SupabaseClient)
+  const { data: row } = await service
     .from('funun_staff')
     .select(STAFF_COLUMNS)
     .eq('user_id', id)
     .maybeSingle()
 
   return NextResponse.json({
-    data: row ?? { user_id: id, ...update },
+    data: row ?? { user_id: id },
     ...(tableWriteError ? { warning: `Display record update failed: ${tableWriteError}` } : {}),
   })
+}
+
+// ─── DELETE /api/admin/staff/[id] — remove a member from the team ────────────
+// Leadership + TMS. Deletes the auth user; funun_staff cascades (089 FK
+// ON DELETE CASCADE). Guards: can't remove yourself, can't remove the last
+// leadership.
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const auth = await requireStaff(MANAGE_ROLES)
+  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  if (id === auth.user.id) {
+    return NextResponse.json(
+      { error: 'You can’t remove yourself from the team.' },
+      { status: 400 }
+    )
+  }
+
+  const service = createServiceClient()
+
+  if (await wouldOrphanLeadership(service, id, null)) {
+    return NextResponse.json(
+      { error: 'You can’t remove the last Leadership member.' },
+      { status: 400 }
+    )
+  }
+
+  const { error } = await service.auth.admin.deleteUser(id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await logStaffAction(service, {
+    actorId: auth.user.id,
+    action: 'remove_staff',
+    targetType: 'funun_staff',
+    targetId: id,
+    changes: {},
+  })
+
+  return NextResponse.json({ data: { removed: true } })
 }

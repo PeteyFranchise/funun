@@ -108,6 +108,7 @@ describe('createStaffAccount', () => {
       staff_role: 'leadership',
       staff_roles: ['tms', 'leadership'],
       display_name: 'Multi Hat',
+      phone: null,
     })
   })
 
@@ -118,6 +119,20 @@ describe('createStaffAccount', () => {
       createStaffAccount({ email: 'x@funun.studio', displayName: 'X', staffRoles: [] })
     ).rejects.toThrow(/at least one valid staff role/)
     expect(service.createUser).not.toHaveBeenCalled()
+  })
+
+  it('writes the phone number onto the funun_staff row when provided', async () => {
+    const service = buildService({})
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    await createStaffAccount({
+      email: 'phone@funun.studio',
+      displayName: 'Phoney',
+      staffRoles: ['ae'],
+      phone: '(313) 555-0000',
+    })
+    expect(service.fununStaffInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: '(313) 555-0000' })
+    )
   })
 
   it('inserts a funun_staff row and sends the invite email on success', async () => {
@@ -136,6 +151,7 @@ describe('createStaffAccount', () => {
       staff_role: 'bd',
       staff_roles: ['bd'],
       display_name: 'BD Person',
+      phone: null,
     })
     // migration 104: a single-use intent row (client-generated id + lower-cased
     // email) admits this staff signup past the artist gate.

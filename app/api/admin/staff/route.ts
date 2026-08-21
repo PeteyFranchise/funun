@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireStaff, type StaffRole } from '@/lib/admin/gate'
+import { requireStaff, primaryStaffRole, ALL_STAFF_ROLES, type StaffRole } from '@/lib/admin/gate'
 import { createStaffAccount, DuplicateStaffAccountError } from '@/lib/staff/createStaffAccount'
 import { logStaffAction } from '@/lib/staff/audit'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const STAFF_ROLE_VALUES: StaffRole[] = ['leadership', 'ae', 'bd']
+// Team management is leadership + TMS (people ops) — Team Members redesign.
+const MANAGE_ROLES: StaffRole[] = ['leadership', 'tms']
 
-const STAFF_COLUMNS = 'id, user_id, staff_role, display_name, title, phone, avatar_url, created_at'
+const STAFF_COLUMNS =
+  'id, user_id, staff_role, staff_roles, display_name, title, phone, avatar_url, created_at'
 
 // ─── GET /api/admin/staff ───────────────────────────────────────────────────
-// Leadership-only (D-02, no self-serve — AE/BD do not create/list staff).
-// Column-explicit select (never select star), per-row email attached via
-// admin.getUserById (mirrors app/api/admin/members/route.ts).
+// Leadership + TMS. Column-explicit select (never select star), per-row email
+// attached via admin.getUserById (mirrors app/api/admin/members/route.ts).
 export async function GET() {
-  const auth = await requireStaff(['leadership'])
+  const auth = await requireStaff(MANAGE_ROLES)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -39,12 +40,12 @@ export async function GET() {
 }
 
 // ─── POST /api/admin/staff ──────────────────────────────────────────────────
-// Leadership-only. Validates strictly against an explicit allowlist (email,
-// display_name, staff_role against the closed StaffRole enum), delegates
-// account creation to createStaffAccount() (never calls admin.createUser()
-// inline here), then logs the action unconditionally (D-04).
+// Leadership + TMS. Validates strictly against an explicit allowlist (email,
+// display_name, a non-empty staff_roles array against the closed StaffRole enum,
+// optional phone), delegates account creation to createStaffAccount() (never
+// admin.createUser() inline), then logs the action unconditionally (D-04).
 export async function POST(request: Request) {
-  const auth = await requireStaff(['leadership'])
+  const auth = await requireStaff(MANAGE_ROLES)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -61,16 +62,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Display name is required.' }, { status: 400 })
   }
 
-  const staffRole = body.staff_role
-  if (typeof staffRole !== 'string' || !STAFF_ROLE_VALUES.includes(staffRole as StaffRole)) {
-    return NextResponse.json({ error: 'Select a valid staff role.' }, { status: 400 })
+  const rawRoles = body.staff_roles
+  if (
+    !Array.isArray(rawRoles) ||
+    rawRoles.length === 0 ||
+    !rawRoles.every(r => (ALL_STAFF_ROLES as string[]).includes(r as string))
+  ) {
+    return NextResponse.json({ error: 'Select at least one valid role.' }, { status: 400 })
   }
+  const staffRoles = Array.from(new Set(rawRoles as StaffRole[]))
+
+  const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
 
   try {
     const { userId, emailSent } = await createStaffAccount({
       email,
       displayName,
-      staffRoles: [staffRole as StaffRole],
+      staffRoles,
+      phone: phone || undefined,
       invitedBy: auth.user.id,
     })
 
@@ -83,7 +92,7 @@ export async function POST(request: Request) {
       action: 'create_staff',
       targetType: 'funun_staff',
       targetId: userId,
-      changes: { email, display_name: displayName, staff_role: staffRole },
+      changes: { email, display_name: displayName, staff_roles: staffRoles },
     })
 
     return NextResponse.json(
@@ -91,8 +100,10 @@ export async function POST(request: Request) {
         data: {
           id: userId,
           user_id: userId,
-          staff_role: staffRole,
+          staff_role: primaryStaffRole(staffRoles),
+          staff_roles: staffRoles,
           display_name: displayName,
+          phone: phone || null,
           email,
         },
         emailSent,

@@ -27,9 +27,10 @@ export async function createStaffAccount(input: {
   email: string
   displayName: string
   staffRoles: StaffRole[]
+  phone?: string
   invitedBy?: string
 }): Promise<{ userId: string; emailSent: boolean }> {
-  const { email, displayName, staffRoles, invitedBy } = input
+  const { email, displayName, staffRoles, phone, invitedBy } = input
   // staff_role is the PRIMARY (highest-priority) display copy that must
   // accompany the authoritative staff_roles set (migration 119 / 089 rule).
   const primary = primaryStaffRole(staffRoles)
@@ -98,6 +99,7 @@ export async function createStaffAccount(input: {
       staff_role: primary,
       staff_roles: staffRoles,
       display_name: displayName,
+      phone: phone ?? null,
     })
     if (staffError) throw new Error(`funun_staff insert failed: ${staffError.message}`)
 
