@@ -39,13 +39,16 @@ describe('staff-role.ts getStaffRole — it role (Phase 33)', () => {
     expect(getStaffRole({ app_metadata: { staff_role: 'it' } })).toBe('it')
   })
 
-  it('ALL_STAFF_ROLES contains it and still contains leadership/ae/bd/anr', () => {
+  it('ALL_STAFF_ROLES contains it and still contains leadership/ae/bd/anr (+ legal/tms)', () => {
     expect(ALL_STAFF_ROLES).toContain('it')
     expect(ALL_STAFF_ROLES).toContain('leadership')
     expect(ALL_STAFF_ROLES).toContain('ae')
     expect(ALL_STAFF_ROLES).toContain('bd')
     expect(ALL_STAFF_ROLES).toContain('anr')
-    expect(ALL_STAFF_ROLES).toHaveLength(5)
+    // Team Members redesign added the multi-role staff roles:
+    expect(ALL_STAFF_ROLES).toContain('legal')
+    expect(ALL_STAFF_ROLES).toContain('tms')
+    expect(ALL_STAFF_ROLES).toHaveLength(7)
   })
 
   it('getStaffRole for leadership/ae/bd/anr is unchanged', () => {
@@ -124,13 +127,16 @@ describe('gate.ts requireStaffPage', () => {
 // 'it']) above, which the Playbook IT room's pages use).
 
 describe('OPERATIONAL_STAFF_ROLES (CR-01 hardening)', () => {
-  it('excludes it but contains every other staff role', () => {
+  it('excludes it but contains every other staff role (incl. legal/tms)', () => {
     expect(OPERATIONAL_STAFF_ROLES).not.toContain('it')
     expect(OPERATIONAL_STAFF_ROLES).toContain('leadership')
     expect(OPERATIONAL_STAFF_ROLES).toContain('ae')
     expect(OPERATIONAL_STAFF_ROLES).toContain('bd')
     expect(OPERATIONAL_STAFF_ROLES).toContain('anr')
-    expect(OPERATIONAL_STAFF_ROLES).toHaveLength(4)
+    // legal + tms are operational staff (they work inside the console):
+    expect(OPERATIONAL_STAFF_ROLES).toContain('legal')
+    expect(OPERATIONAL_STAFF_ROLES).toContain('tms')
+    expect(OPERATIONAL_STAFF_ROLES).toHaveLength(6)
   })
 })
 

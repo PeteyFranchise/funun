@@ -1,4 +1,4 @@
-import { getStaffRole, requireStaff, verifyAdmin } from '@/lib/admin/gate'
+import { getStaffRole, getStaffRoles, requireStaff, verifyAdmin } from '@/lib/admin/gate'
 import { createApiClient } from '@/lib/supabase/server'
 
 jest.mock('@/lib/supabase/server', () => ({
@@ -99,5 +99,64 @@ describe('lib/admin/gate verifyAdmin (preserved leadership alias)', () => {
     mockSession(null)
     const result = await verifyAdmin()
     expect(result).toEqual({ error: 'Unauthorized', status: 401 })
+  })
+})
+
+// ─── Multi-role (Team Members redesign) ────────────────────────────────────
+describe('lib/admin/gate getStaffRoles (multi-role)', () => {
+  it('reads the full set from app_metadata.staff_roles, priority-sorted', () => {
+    // stored order is [tms, leadership]; leadership outranks tms
+    expect(getStaffRoles({ app_metadata: { staff_roles: ['tms', 'leadership'] } })).toEqual([
+      'leadership',
+      'tms',
+    ])
+  })
+
+  it('recognizes the new legal + tms roles', () => {
+    expect(getStaffRoles({ app_metadata: { staff_roles: ['legal', 'tms'] } })).toEqual([
+      'legal',
+      'tms',
+    ])
+  })
+
+  it('filters out unrecognized entries and dedupes', () => {
+    expect(getStaffRoles({ app_metadata: { staff_roles: ['ae', 'bogus', 'ae', 'legal'] } })).toEqual([
+      'ae',
+      'legal',
+    ])
+  })
+
+  it('falls back to the legacy single staff_role when the array is absent/empty', () => {
+    expect(getStaffRoles({ app_metadata: { staff_role: 'bd' } })).toEqual(['bd'])
+    expect(getStaffRoles({ app_metadata: { staff_roles: [], staff_role: 'ae' } })).toEqual(['ae'])
+  })
+
+  it('falls back to leadership for the is_admin bootstrap, and [] for non-staff', () => {
+    expect(getStaffRoles({ app_metadata: { is_admin: true } })).toEqual(['leadership'])
+    expect(getStaffRoles({})).toEqual([])
+    expect(getStaffRoles({ app_metadata: { staff_roles: ['nope'] } })).toEqual([])
+  })
+
+  it('getStaffRole returns the PRIMARY (highest-priority) role of the set', () => {
+    expect(getStaffRole({ app_metadata: { staff_roles: ['tms', 'leadership'] } })).toBe('leadership')
+    expect(getStaffRole({ app_metadata: { staff_roles: ['tms', 'ae'] } })).toBe('ae')
+  })
+})
+
+describe('lib/admin/gate requireStaff (multi-role)', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('passes when ANY of the member’s roles is allowed (ae+tms person via a leadership+tms gate)', async () => {
+    const user = { id: 'u1', app_metadata: { staff_roles: ['ae', 'tms'] } }
+    mockSession(user)
+    const result = await requireStaff(['leadership', 'tms'])
+    // matches via tms; returns the primary role (ae outranks tms)
+    expect(result).toEqual({ user, staffRole: 'ae' })
+  })
+
+  it('still 403s a multi-role member when none of their roles is allowed', async () => {
+    mockSession({ id: 'u1', app_metadata: { staff_roles: ['ae', 'bd'] } })
+    const result = await requireStaff(['leadership'])
+    expect(result).toEqual({ error: 'Forbidden', status: 403 })
   })
 })

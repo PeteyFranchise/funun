@@ -34,6 +34,8 @@ const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   bd: 'BD',
   anr: 'A&R',
   it: 'IT',
+  legal: 'Legal',
+  tms: 'TMS',
 }
 
 // 'anr' (A&R, Phase 30) and 'it' (IT, Phase 33) are deliberately excluded

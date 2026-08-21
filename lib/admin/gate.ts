@@ -1,11 +1,11 @@
 import { createApiClient, createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getStaffRole, OPERATIONAL_STAFF_ROLES, type StaffRole } from './staff-role'
+import { getStaffRoles, OPERATIONAL_STAFF_ROLES, type StaffRole } from './staff-role'
 
-// getStaffRole + StaffRole moved to ./staff-role (client-safe, no server imports)
-// so client components can import them; re-exported here so every existing
-// importer of @/lib/admin/gate is unaffected (D-01, single authority).
-export { getStaffRole, OPERATIONAL_STAFF_ROLES } from './staff-role'
+// getStaffRole(s) + StaffRole moved to ./staff-role (client-safe, no server
+// imports) so client components can import them; re-exported here so every
+// existing importer of @/lib/admin/gate is unaffected (D-01, single authority).
+export { getStaffRole, getStaffRoles, OPERATIONAL_STAFF_ROLES } from './staff-role'
 export type { StaffRole } from './staff-role'
 
 // ─── Staff auth gate (Phase 25 — generalized from the binary admin gate) ──
@@ -45,9 +45,13 @@ export async function requireStaff(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized', status: 401 }
-  const staffRole = getStaffRole(user)
-  if (!staffRole || !allowed.includes(staffRole)) return { error: 'Forbidden', status: 403 }
-  return { user, staffRole }
+  // Multi-role: pass if ANY of the member's roles is allowed; return the
+  // primary (highest-priority) role, so the ~51 existing callers are unchanged.
+  const roles = getStaffRoles(user)
+  if (roles.length === 0 || !roles.some(r => allowed.includes(r))) {
+    return { error: 'Forbidden', status: 403 }
+  }
+  return { user, staffRole: roles[0] }
 }
 
 // Preserved leadership alias — zero changes required to ~15 existing
@@ -82,9 +86,9 @@ export async function requireStaffPage(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/signin')
-  const staffRole = getStaffRole(user)
-  if (!staffRole || !allowed.includes(staffRole)) redirect('/')
-  return { user, staffRole }
+  const roles = getStaffRoles(user)
+  if (roles.length === 0 || !roles.some(r => allowed.includes(r))) redirect('/')
+  return { user, staffRole: roles[0] }
 }
 
 // ─── Shared constants ────────────────────────────────────────────────────
