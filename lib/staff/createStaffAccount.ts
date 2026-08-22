@@ -26,11 +26,13 @@ export class DuplicateStaffAccountError extends Error {}
 export async function createStaffAccount(input: {
   email: string
   displayName: string
+  firstName?: string
+  lastName?: string
   staffRoles: StaffRole[]
   phone?: string
   invitedBy?: string
 }): Promise<{ userId: string; emailSent: boolean }> {
-  const { email, displayName, staffRoles, phone, invitedBy } = input
+  const { email, displayName, firstName, lastName, staffRoles, phone, invitedBy } = input
   // staff_role is the PRIMARY (highest-priority) display copy that must
   // accompany the authoritative staff_roles set (migration 119 / 089 rule).
   const primary = primaryStaffRole(staffRoles)
@@ -99,6 +101,8 @@ export async function createStaffAccount(input: {
       staff_role: primary,
       staff_roles: staffRoles,
       display_name: displayName,
+      first_name: firstName ?? null,
+      last_name: lastName ?? null,
       phone: phone ?? null,
     })
     if (staffError) throw new Error(`funun_staff insert failed: ${staffError.message}`)

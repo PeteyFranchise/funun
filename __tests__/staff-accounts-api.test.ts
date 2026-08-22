@@ -120,10 +120,34 @@ describe('POST /api/admin/staff', () => {
     asManager()
     for (const roles of [undefined, [], ['root'], 'ae']) {
       const res = await staffPOST(
-        jsonRequest('http://t.local/api/admin/staff', { email: 'x@funun.studio', display_name: 'X', staff_roles: roles })
+        jsonRequest('http://t.local/api/admin/staff', { email: 'x@funun.studio', first_name: 'X', last_name: 'Y', staff_roles: roles })
       )
       expect(res.status).toBe(400)
     }
+    expect(createStaffAccount).not.toHaveBeenCalled()
+  })
+
+  it('400s when first or last name is missing', async () => {
+    asManager()
+    const res = await staffPOST(
+      jsonRequest('http://t.local/api/admin/staff', { email: 'n@funun.studio', first_name: 'Only', staff_roles: ['ae'] })
+    )
+    expect(res.status).toBe(400)
+    expect(createStaffAccount).not.toHaveBeenCalled()
+  })
+
+  it('400s a partial (non-10-digit) phone', async () => {
+    asManager()
+    const res = await staffPOST(
+      jsonRequest('http://t.local/api/admin/staff', {
+        email: 'p@funun.studio',
+        first_name: 'P',
+        last_name: 'Q',
+        staff_roles: ['ae'],
+        phone: '313555',
+      })
+    )
+    expect(res.status).toBe(400)
     expect(createStaffAccount).not.toHaveBeenCalled()
   })
 
@@ -135,9 +159,10 @@ describe('POST /api/admin/staff', () => {
     const res = await staffPOST(
       jsonRequest('http://t.local/api/admin/staff', {
         email: 'multi@funun.studio',
-        display_name: 'Multi',
+        first_name: 'Multi',
+        last_name: 'Hat',
         staff_roles: ['tms', 'leadership'],
-        phone: '(313) 555-0142',
+        phone: '3135550142', // raw digits — server normalizes
       })
     )
 
@@ -145,10 +170,14 @@ describe('POST /api/admin/staff', () => {
     const body = await res.json()
     expect(body.data.staff_roles).toEqual(['tms', 'leadership'])
     expect(body.data.staff_role).toBe('leadership') // primary
-    expect(body.data.phone).toBe('(313) 555-0142')
+    expect(body.data.first_name).toBe('Multi')
+    expect(body.data.last_name).toBe('Hat')
+    expect(body.data.phone).toBe('(313) 555-0142') // normalized
     expect(createStaffAccount).toHaveBeenCalledWith({
       email: 'multi@funun.studio',
-      displayName: 'Multi',
+      firstName: 'Multi',
+      lastName: 'Hat',
+      displayName: 'Multi Hat', // composed from first + last (no display sent)
       staffRoles: ['tms', 'leadership'],
       phone: '(313) 555-0142',
       invitedBy: LEADER_ID,
@@ -165,7 +194,7 @@ describe('POST /api/admin/staff', () => {
     ;(createStaffAccount as jest.Mock).mockResolvedValue({ userId: NEW_USER_ID, emailSent: true })
     ;(createServiceClient as jest.Mock).mockReturnValue({})
     const res = await staffPOST(
-      jsonRequest('http://t.local/api/admin/staff', { email: 'l@funun.studio', display_name: 'L', staff_roles: ['legal', 'tms'] })
+      jsonRequest('http://t.local/api/admin/staff', { email: 'l@funun.studio', first_name: 'L', last_name: 'Egal', staff_roles: ['legal', 'tms'] })
     )
     expect(res.status).toBe(201)
   })
@@ -175,7 +204,7 @@ describe('POST /api/admin/staff', () => {
     ;(createStaffAccount as jest.Mock).mockRejectedValue(new DuplicateStaffAccountError('exists'))
     ;(createServiceClient as jest.Mock).mockReturnValue({})
     const res = await staffPOST(
-      jsonRequest('http://t.local/api/admin/staff', { email: 'd@funun.studio', display_name: 'D', staff_roles: ['bd'] })
+      jsonRequest('http://t.local/api/admin/staff', { email: 'd@funun.studio', first_name: 'D', last_name: 'Up', staff_roles: ['bd'] })
     )
     expect(res.status).toBe(409)
     expect(logStaffAction).not.toHaveBeenCalled()

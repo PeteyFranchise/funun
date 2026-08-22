@@ -108,6 +108,8 @@ describe('createStaffAccount', () => {
       staff_role: 'leadership',
       staff_roles: ['tms', 'leadership'],
       display_name: 'Multi Hat',
+      first_name: null,
+      last_name: null,
       phone: null,
     })
   })
@@ -151,6 +153,8 @@ describe('createStaffAccount', () => {
       staff_role: 'bd',
       staff_roles: ['bd'],
       display_name: 'BD Person',
+      first_name: null,
+      last_name: null,
       phone: null,
     })
     // migration 104: a single-use intent row (client-generated id + lower-cased

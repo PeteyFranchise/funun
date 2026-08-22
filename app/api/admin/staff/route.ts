@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff, primaryStaffRole, ALL_STAFF_ROLES, type StaffRole } from '@/lib/admin/gate'
 import { createStaffAccount, DuplicateStaffAccountError } from '@/lib/staff/createStaffAccount'
 import { logStaffAction } from '@/lib/staff/audit'
+import { formatPhone, isValidPhone } from '@/lib/staff/phone'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -10,7 +11,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MANAGE_ROLES: StaffRole[] = ['leadership', 'tms']
 
 const STAFF_COLUMNS =
-  'id, user_id, staff_role, staff_roles, display_name, title, phone, avatar_url, created_at'
+  'id, user_id, staff_role, staff_roles, display_name, first_name, last_name, title, phone, avatar_url, created_at'
 
 // ─── GET /api/admin/staff ───────────────────────────────────────────────────
 // Leadership + TMS. Column-explicit select (never select star), per-row email
@@ -57,10 +58,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 })
   }
 
-  const displayName = typeof body.display_name === 'string' ? body.display_name.trim() : ''
-  if (!displayName) {
-    return NextResponse.json({ error: 'Display name is required.' }, { status: 400 })
+  const firstName = typeof body.first_name === 'string' ? body.first_name.trim() : ''
+  const lastName = typeof body.last_name === 'string' ? body.last_name.trim() : ''
+  if (!firstName || !lastName) {
+    return NextResponse.json({ error: 'First and last name are required.' }, { status: 400 })
   }
+  // Display name is optional — defaults to "First Last" (a nickname/alias otherwise).
+  const displayNameInput = typeof body.display_name === 'string' ? body.display_name.trim() : ''
+  const displayName = displayNameInput || `${firstName} ${lastName}`
 
   const rawRoles = body.staff_roles
   if (
@@ -72,12 +77,19 @@ export async function POST(request: Request) {
   }
   const staffRoles = Array.from(new Set(rawRoles as StaffRole[]))
 
-  const phone = typeof body.phone === 'string' ? body.phone.trim() : ''
+  // Phone is optional, but a provided value must be a full 10-digit number.
+  const phoneRaw = typeof body.phone === 'string' ? body.phone.trim() : ''
+  if (phoneRaw && !isValidPhone(phoneRaw)) {
+    return NextResponse.json({ error: 'Enter a 10-digit phone number.' }, { status: 400 })
+  }
+  const phone = phoneRaw ? formatPhone(phoneRaw) : ''
 
   try {
     const { userId, emailSent } = await createStaffAccount({
       email,
       displayName,
+      firstName,
+      lastName,
       staffRoles,
       phone: phone || undefined,
       invitedBy: auth.user.id,
@@ -103,6 +115,8 @@ export async function POST(request: Request) {
           staff_role: primaryStaffRole(staffRoles),
           staff_roles: staffRoles,
           display_name: displayName,
+          first_name: firstName,
+          last_name: lastName,
           phone: phone || null,
           email,
         },

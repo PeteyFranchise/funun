@@ -12,6 +12,8 @@ function row(over: Partial<StaffRow>): StaffRow {
     staff_role: 'ae',
     staff_roles: ['ae'],
     display_name: 'Jordan Ellis',
+    first_name: 'Jordan',
+    last_name: 'Ellis',
     title: null,
     phone: null,
     avatar_url: null,
@@ -45,7 +47,7 @@ describe('StaffAdmin', () => {
     expect(markup).toContain('Alex Chen')
     // Multi-role labels render (from role pills and/or filter chips).
     expect(markup).toContain('Account Executive')
-    expect(markup).toContain('BD')
+    expect(markup).toContain('BDT')
     expect(markup).toContain('Legal')
     expect(markup).toContain('TMS')
     // The clickable contact affordances are present.

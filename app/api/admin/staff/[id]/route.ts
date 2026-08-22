@@ -3,12 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff, primaryStaffRole, ALL_STAFF_ROLES, type StaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { formatPhone, isValidPhone } from '@/lib/staff/phone'
 
 // Team management is leadership + TMS (people ops) — Team Members redesign.
 const MANAGE_ROLES: StaffRole[] = ['leadership', 'tms']
 
 const STAFF_COLUMNS =
-  'id, user_id, staff_role, staff_roles, display_name, title, phone, avatar_url, created_at'
+  'id, user_id, staff_role, staff_roles, display_name, first_name, last_name, title, phone, avatar_url, created_at'
 
 // Last-leadership guard: would removing/demoting this member leave the console
 // with ZERO leadership? Passing nextRoles=null models a full removal (DELETE).
@@ -60,15 +61,43 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Select at least one valid role.' }, { status: 400 })
   }
 
+  let nextFirst: string | undefined
+  if ('first_name' in body) {
+    nextFirst = typeof body.first_name === 'string' ? body.first_name.trim() : ''
+    if (!nextFirst) return NextResponse.json({ error: "First name can't be empty." }, { status: 400 })
+  }
+  let nextLast: string | undefined
+  if ('last_name' in body) {
+    nextLast = typeof body.last_name === 'string' ? body.last_name.trim() : ''
+    if (!nextLast) return NextResponse.json({ error: "Last name can't be empty." }, { status: 400 })
+  }
+  // Display name optional — a blank value falls back to "First Last" when both
+  // are in the same request, otherwise the display update is simply skipped.
+  let nextDisplay: string | undefined
+  if ('display_name' in body) {
+    const d = typeof body.display_name === 'string' ? body.display_name.trim() : ''
+    nextDisplay = d || (nextFirst && nextLast ? `${nextFirst} ${nextLast}` : undefined)
+  }
+
   let nextPhone: string | null | undefined
   if ('phone' in body) {
     if (body.phone !== null && typeof body.phone !== 'string') {
       return NextResponse.json({ error: 'Phone must be text.' }, { status: 400 })
     }
-    nextPhone = body.phone === null ? null : String(body.phone).trim()
+    const raw = body.phone === null ? '' : String(body.phone).trim()
+    if (raw && !isValidPhone(raw)) {
+      return NextResponse.json({ error: 'Enter a 10-digit phone number.' }, { status: 400 })
+    }
+    nextPhone = raw ? formatPhone(raw) : null
   }
 
-  if (roles === null && nextPhone === undefined) {
+  if (
+    roles === null &&
+    nextPhone === undefined &&
+    nextFirst === undefined &&
+    nextLast === undefined &&
+    nextDisplay === undefined
+  ) {
     return NextResponse.json({ error: 'No valid fields to update.' }, { status: 400 })
   }
 
@@ -99,6 +128,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     tableUpdate.staff_role = primaryStaffRole(roles)
   }
   if (nextPhone !== undefined) tableUpdate.phone = nextPhone
+  if (nextFirst !== undefined) tableUpdate.first_name = nextFirst
+  if (nextLast !== undefined) tableUpdate.last_name = nextLast
+  if (nextDisplay !== undefined) tableUpdate.display_name = nextDisplay
 
   let tableWriteError: string | null = null
   const { error: upErr } = await service.from('funun_staff').update(tableUpdate).eq('user_id', id)
@@ -113,6 +145,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     changes: {
       ...(roles ? { staff_roles: roles } : {}),
       ...(nextPhone !== undefined ? { phone: nextPhone } : {}),
+      ...(nextFirst !== undefined ? { first_name: nextFirst } : {}),
+      ...(nextLast !== undefined ? { last_name: nextLast } : {}),
+      ...(nextDisplay !== undefined ? { display_name: nextDisplay } : {}),
     },
   })
 

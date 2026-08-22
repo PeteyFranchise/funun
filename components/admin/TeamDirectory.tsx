@@ -26,7 +26,7 @@ const VIEW_STORAGE_KEY = 'funun-team-directory-view'
 const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   leadership: 'Leadership',
   ae: 'Account Executive',
-  bd: 'BD',
+  bd: 'BDT',
   anr: 'A&R',
   it: 'IT',
   legal: 'Legal',

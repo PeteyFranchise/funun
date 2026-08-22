@@ -6,7 +6,7 @@ import { StaffAdmin } from '@/components/admin/StaffAdmin'
 import type { StaffRow } from '@/components/admin/StaffAdmin'
 
 const STAFF_COLUMNS =
-  'id, user_id, staff_role, staff_roles, display_name, title, phone, avatar_url, created_at'
+  'id, user_id, staff_role, staff_roles, display_name, first_name, last_name, title, phone, avatar_url, created_at'
 
 export default async function AdminTeamMembersPage() {
   // Team Members management is leadership + TMS (people ops) — the redesign's

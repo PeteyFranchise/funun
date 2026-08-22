@@ -15,6 +15,7 @@ import type { StaffRole } from '@/lib/admin/gate'
 // pulled into a 'use client' bundle. staff-role.ts is the module gate.ts itself
 // re-exports these from, extracted precisely so client components can use them.
 import { ALL_STAFF_ROLES, primaryStaffRole } from '@/lib/admin/staff-role'
+import { formatPhone, isValidPhone } from '@/lib/staff/phone'
 
 // ─── StaffAdmin ─────────────────────────────────────────────────────────────
 // Team Members management surface (leadership + TMS). A pixel port of the
@@ -39,6 +40,8 @@ export type StaffRow = {
   staff_role: StaffRole
   staff_roles: StaffRole[]
   display_name: string
+  first_name: string | null
+  last_name: string | null
   title: string | null
   phone: string | null
   avatar_url: string | null
@@ -60,7 +63,7 @@ const ROLE_ORDER: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'legal', 'it',
 const ROLE_META: Record<StaffRole, { cssVar: string; label: string; desc: string }> = {
   leadership: { cssVar: '--r-lead', label: 'Leadership', desc: 'Full access — manages the team, clients, and deals.' },
   ae: { cssVar: '--r-ae', label: 'Account Executive', desc: 'Owns client relationships and the sales pipeline.' },
-  bd: { cssVar: '--r-bd', label: 'BD', desc: 'Sources new leads and business development.' },
+  bd: { cssVar: '--r-bd', label: 'BDT', desc: 'Business Development Team — sources new leads and new business.' },
   anr: { cssVar: '--r-anr', label: 'A&R', desc: 'Scouts and develops artist talent.' },
   legal: { cssVar: '--r-legal', label: 'Legal', desc: 'Contracts, rights, and compliance.' },
   it: { cssVar: '--r-it', label: 'IT', desc: 'Systems, security, and the tech stack.' },
@@ -307,7 +310,9 @@ export function StaffAdmin({
   // Add flow
   const [showAdd, setShowAdd] = useState(false)
   const [addEmail, setAddEmail] = useState('')
-  const [addName, setAddName] = useState('')
+  const [addFirst, setAddFirst] = useState('')
+  const [addLast, setAddLast] = useState('')
+  const [addName, setAddName] = useState('') // display name — optional, defaults to "First Last"
   const [addPhone, setAddPhone] = useState('')
   // No role is pre-selected (see report): the mockup pre-checks Leadership, but
   // starting empty avoids silently granting the highest-authority role, and the
@@ -324,6 +329,9 @@ export function StaffAdmin({
   // Edit-roles drawer (phase drives the enter/exit slide)
   const [drawer, setDrawer] = useState<{ userId: string; phase: 'in' | 'out' } | null>(null)
   const [drawerRoles, setDrawerRoles] = useState<StaffRole[]>([])
+  const [drawerFirst, setDrawerFirst] = useState('')
+  const [drawerLast, setDrawerLast] = useState('')
+  const [drawerDisplay, setDrawerDisplay] = useState('')
   const [drawerPhone, setDrawerPhone] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
@@ -471,7 +479,10 @@ export function StaffAdmin({
       const m = staff.find(x => x.user_id === userId)
       if (!m) return
       setDrawerRoles(memberRoles(m))
-      setDrawerPhone(m.phone ?? '')
+      setDrawerFirst(m.first_name ?? '')
+      setDrawerLast(m.last_name ?? '')
+      setDrawerDisplay(m.display_name ?? '')
+      setDrawerPhone(formatPhone(m.phone ?? ''))
       setEditError(null)
       if (drawerTimer.current) clearTimeout(drawerTimer.current)
       setDrawer({ userId, phase: 'out' })
@@ -524,14 +535,21 @@ export function StaffAdmin({
   // ── Server actions ──
   const handleCreate = async () => {
     const email = addEmail.trim()
-    const name = addName.trim()
+    const first = addFirst.trim()
+    const last = addLast.trim()
+    // Display name is optional — defaults to "First Last".
+    const display = addName.trim() || `${first} ${last}`.trim()
     const phone = addPhone.trim()
-    if (!email || !name) {
-      setAddError('Add an email and a display name.')
+    if (!email || !first || !last) {
+      setAddError('Add an email, first name, and last name.')
       return
     }
     if (addRoles.length === 0) {
       setAddError('Pick at least one role.')
+      return
+    }
+    if (phone && !isValidPhone(phone)) {
+      setAddError('Enter a 10-digit phone number.')
       return
     }
     setCreating(true)
@@ -540,7 +558,14 @@ export function StaffAdmin({
       const res = await fetch('/api/admin/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, display_name: name, staff_roles: addRoles, ...(phone ? { phone } : {}) }),
+        body: JSON.stringify({
+          email,
+          first_name: first,
+          last_name: last,
+          display_name: display,
+          staff_roles: addRoles,
+          ...(phone ? { phone } : {}),
+        }),
       })
       const json = (await res.json().catch(() => ({}))) as {
         data?: Partial<StaffRow>
@@ -555,7 +580,9 @@ export function StaffAdmin({
           user_id: d.user_id ?? d.id ?? '',
           staff_role: (d.staff_role as StaffRole) ?? primaryStaffRole(addRoles) ?? addRoles[0],
           staff_roles: (d.staff_roles as StaffRole[] | undefined) ?? addRoles,
-          display_name: d.display_name ?? name,
+          display_name: d.display_name ?? display,
+          first_name: (d.first_name as string | undefined) ?? first,
+          last_name: (d.last_name as string | undefined) ?? last,
           title: d.title ?? null,
           phone: d.phone ?? (phone || null),
           avatar_url: d.avatar_url ?? null,
@@ -566,6 +593,8 @@ export function StaffAdmin({
         setStaff(prev => [created, ...prev])
       }
       setAddEmail('')
+      setAddFirst('')
+      setAddLast('')
       setAddName('')
       setAddPhone('')
       setAddRoles([])
@@ -586,9 +615,20 @@ export function StaffAdmin({
     if (!drawer) return
     const userId = drawer.userId
     const roles = drawerRoles
+    const first = drawerFirst.trim()
+    const last = drawerLast.trim()
+    const display = drawerDisplay.trim() || `${first} ${last}`.trim()
     const phone = drawerPhone.trim()
     if (roles.length === 0) {
       setEditError('Keep at least one role.')
+      return
+    }
+    if (!first || !last) {
+      setEditError('First and last name are required.')
+      return
+    }
+    if (phone && !isValidPhone(phone)) {
+      setEditError('Enter a 10-digit phone number.')
       return
     }
     setSavingEdit(true)
@@ -597,19 +637,34 @@ export function StaffAdmin({
       const res = await fetch(`/api/admin/staff/${encodeURIComponent(userId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_roles: roles, phone }),
+        body: JSON.stringify({
+          staff_roles: roles,
+          first_name: first,
+          last_name: last,
+          display_name: display,
+          phone,
+        }),
       })
       const json = (await res.json().catch(() => ({}))) as { data?: Partial<StaffRow>; error?: string }
       if (!res.ok) throw new Error(json.error ?? 'Could not save changes.')
       const primary = primaryStaffRole(roles) ?? roles[0]
-      const name = staff.find(m => m.user_id === userId)?.display_name ?? 'Member'
       setStaff(prev =>
         prev.map(m =>
-          m.user_id === userId ? { ...m, staff_roles: roles, staff_role: primary, phone: phone || null } : m
+          m.user_id === userId
+            ? {
+                ...m,
+                staff_roles: roles,
+                staff_role: primary,
+                first_name: first,
+                last_name: last,
+                display_name: display,
+                phone: phone || null,
+              }
+            : m
         )
       )
       closeDrawer()
-      showToast(`${name} updated.`, 'ok')
+      showToast(`${display} updated.`, 'ok')
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Could not save changes.')
     } finally {
@@ -754,6 +809,28 @@ export function StaffAdmin({
             </p>
             {addError && <p className="mb-3 text-[13px] font-semibold text-[color:var(--rose-fg)]">{addError}</p>}
             <div className="grid gap-3.5 sm:grid-cols-2">
+              <Field label="First name" htmlFor="staff-first" required>
+                <input
+                  id="staff-first"
+                  type="text"
+                  autoComplete="off"
+                  value={addFirst}
+                  onChange={e => setAddFirst(e.target.value)}
+                  placeholder="e.g. Jordan"
+                  className={INPUT_CLASS}
+                />
+              </Field>
+              <Field label="Last name" htmlFor="staff-last" required>
+                <input
+                  id="staff-last"
+                  type="text"
+                  autoComplete="off"
+                  value={addLast}
+                  onChange={e => setAddLast(e.target.value)}
+                  placeholder="e.g. Ellis"
+                  className={INPUT_CLASS}
+                />
+              </Field>
               <Field label="Email" htmlFor="staff-email" required>
                 <input
                   id="staff-email"
@@ -765,14 +842,14 @@ export function StaffAdmin({
                   className={INPUT_CLASS}
                 />
               </Field>
-              <Field label="Display name" htmlFor="staff-name" required>
+              <Field label="Display name" htmlFor="staff-name" hint="optional — defaults to First Last">
                 <input
                   id="staff-name"
                   type="text"
                   autoComplete="off"
                   value={addName}
                   onChange={e => setAddName(e.target.value)}
-                  placeholder="e.g. Jordan Ellis"
+                  placeholder="e.g. a nickname"
                   className={INPUT_CLASS}
                 />
               </Field>
@@ -780,9 +857,10 @@ export function StaffAdmin({
                 <input
                   id="staff-phone"
                   type="tel"
+                  inputMode="tel"
                   autoComplete="off"
                   value={addPhone}
-                  onChange={e => setAddPhone(e.target.value)}
+                  onChange={e => setAddPhone(formatPhone(e.target.value))}
                   placeholder="(313) 555-0142"
                   className={INPUT_CLASS}
                 />
@@ -1127,6 +1205,23 @@ export function StaffAdmin({
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-[18px]">
+              <p className="mb-1 text-[11.5px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-2)]">Name</p>
+              <p className="mb-3 text-[12px] text-[color:var(--ink-3)]">Display name is optional — defaults to First Last.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="dw-first" className="mb-1.5 block text-[11.5px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-2)]">First name</label>
+                  <input id="dw-first" type="text" value={drawerFirst} onChange={e => setDrawerFirst(e.target.value)} placeholder="e.g. Jordan" className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label htmlFor="dw-last" className="mb-1.5 block text-[11.5px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-2)]">Last name</label>
+                  <input id="dw-last" type="text" value={drawerLast} onChange={e => setDrawerLast(e.target.value)} placeholder="e.g. Ellis" className={INPUT_CLASS} />
+                </div>
+              </div>
+              <div className="mb-5 mt-3">
+                <label htmlFor="dw-display" className="mb-1.5 block text-[11.5px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-2)]">Display name</label>
+                <input id="dw-display" type="text" value={drawerDisplay} onChange={e => setDrawerDisplay(e.target.value)} placeholder="e.g. a nickname" className={INPUT_CLASS} />
+              </div>
+
               <p className="mb-1 text-[11.5px] font-bold uppercase tracking-[0.05em] text-[color:var(--ink-2)]">Roles</p>
               <p className="mb-3 text-[12px] text-[color:var(--ink-3)]">
                 Toggle the hats this person wears. At least one is required.
@@ -1157,8 +1252,9 @@ export function StaffAdmin({
                   <input
                     id="dw-phone"
                     type="tel"
+                    inputMode="tel"
                     value={drawerPhone}
-                    onChange={e => setDrawerPhone(e.target.value)}
+                    onChange={e => setDrawerPhone(formatPhone(e.target.value))}
                     placeholder="(313) 555-0142"
                     className={INPUT_CLASS}
                   />
