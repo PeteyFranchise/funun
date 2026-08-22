@@ -68,6 +68,8 @@ const ROLE_META: Record<StaffRole, { cssVar: string; label: string; desc: string
   legal: { cssVar: '--r-legal', label: 'Legal', desc: 'Contracts, rights, and compliance.' },
   it: { cssVar: '--r-it', label: 'IT', desc: 'Systems, security, and the tech stack.' },
   tms: { cssVar: '--r-tms', label: 'TMS', desc: 'Team Member Services — people ops and onboarding.' },
+  accounting: { cssVar: '--r-accounting', label: 'Accounting', desc: 'Finances, invoicing, and payouts.' },
+  marketing: { cssVar: '--r-marketing', label: 'Marketing', desc: 'Brand, campaigns, and growth.' },
 }
 
 const roleHue = (role: StaffRole): string => `var(${ROLE_META[role].cssVar})`

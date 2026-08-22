@@ -21,9 +21,28 @@
 //                         the many call sites that branch on a single role, and
 //                         the {staffRole} requireStaff returns, are unchanged.
 
-export type StaffRole = 'leadership' | 'ae' | 'bd' | 'anr' | 'it' | 'legal' | 'tms'
+export type StaffRole =
+  | 'leadership'
+  | 'ae'
+  | 'bd'
+  | 'anr'
+  | 'it'
+  | 'legal'
+  | 'tms'
+  | 'accounting'
+  | 'marketing'
 
-export const ALL_STAFF_ROLES: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'it', 'legal', 'tms']
+export const ALL_STAFF_ROLES: StaffRole[] = [
+  'leadership',
+  'ae',
+  'bd',
+  'anr',
+  'it',
+  'legal',
+  'tms',
+  'accounting',
+  'marketing',
+]
 
 // CR-01 hardening (Phase 33): the fail-closed default for every GENERAL staff
 // surface — every StaffRole EXCEPT the read-only 'it' role. requireStaff() /
@@ -32,13 +51,32 @@ export const ALL_STAFF_ROLES: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'i
 // requireStaffPage(['leadership','it']) calls). 'legal' and 'tms' are
 // operational staff (they work inside the console), so they join this set;
 // ALL_STAFF_ROLES stays the full enumeration for dropdowns/display.
-export const OPERATIONAL_STAFF_ROLES: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'legal', 'tms']
+export const OPERATIONAL_STAFF_ROLES: StaffRole[] = [
+  'leadership',
+  'ae',
+  'bd',
+  'anr',
+  'legal',
+  'tms',
+  'accounting',
+  'marketing',
+]
 
 // Primary-role precedence, highest authority first. getStaffRole() and the
 // {staffRole} requireStaff returns pick the highest-priority role a member
 // holds, so a leadership+X person still reads as 'leadership' for the call
 // sites that branch on a single role.
-const ROLE_PRIORITY: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'legal', 'tms', 'it']
+const ROLE_PRIORITY: StaffRole[] = [
+  'leadership',
+  'ae',
+  'bd',
+  'anr',
+  'legal',
+  'tms',
+  'accounting',
+  'marketing',
+  'it',
+]
 
 export function isStaffRole(value: unknown): value is StaffRole {
   return typeof value === 'string' && (ALL_STAFF_ROLES as string[]).includes(value)

@@ -48,7 +48,10 @@ describe('staff-role.ts getStaffRole — it role (Phase 33)', () => {
     // Team Members redesign added the multi-role staff roles:
     expect(ALL_STAFF_ROLES).toContain('legal')
     expect(ALL_STAFF_ROLES).toContain('tms')
-    expect(ALL_STAFF_ROLES).toHaveLength(7)
+    // Later additions (owner request):
+    expect(ALL_STAFF_ROLES).toContain('accounting')
+    expect(ALL_STAFF_ROLES).toContain('marketing')
+    expect(ALL_STAFF_ROLES).toHaveLength(9)
   })
 
   it('getStaffRole for leadership/ae/bd/anr is unchanged', () => {
@@ -136,7 +139,10 @@ describe('OPERATIONAL_STAFF_ROLES (CR-01 hardening)', () => {
     // legal + tms are operational staff (they work inside the console):
     expect(OPERATIONAL_STAFF_ROLES).toContain('legal')
     expect(OPERATIONAL_STAFF_ROLES).toContain('tms')
-    expect(OPERATIONAL_STAFF_ROLES).toHaveLength(6)
+    // accounting + marketing are operational too (owner request):
+    expect(OPERATIONAL_STAFF_ROLES).toContain('accounting')
+    expect(OPERATIONAL_STAFF_ROLES).toContain('marketing')
+    expect(OPERATIONAL_STAFF_ROLES).toHaveLength(8)
   })
 })
 

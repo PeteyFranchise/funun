@@ -31,6 +31,8 @@ const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   it: 'IT',
   legal: 'Legal',
   tms: 'TMS',
+  accounting: 'Accounting',
+  marketing: 'Marketing',
 }
 
 // Mirrors components/messages/Composer.tsx's initials() so avatar
