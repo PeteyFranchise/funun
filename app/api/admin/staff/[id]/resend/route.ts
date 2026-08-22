@@ -43,8 +43,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     )
   }
 
-  const { subject, html } = staffInviteEmail({ displayName, actionLink: link.properties.action_link })
-  const { ok: emailSent } = await sendEmail({ to: email, subject, html })
+  const { subject, html, text } = staffInviteEmail({ displayName, actionLink: link.properties.action_link })
+  const { ok: emailSent } = await sendEmail({ to: email, subject, html, text })
 
   await logStaffAction(service, {
     actorId: auth.user.id,
@@ -54,5 +54,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     changes: {},
   })
 
-  return NextResponse.json({ data: { emailSent } })
+  // Return the fresh sign-in link so leadership/TMS can copy + hand it to the
+  // member directly when email delivery is down (resilience). This endpoint is
+  // already gated to MANAGE_ROLES, so only authorized managers receive it.
+  return NextResponse.json({ data: { emailSent, inviteLink: link.properties.action_link } })
 }

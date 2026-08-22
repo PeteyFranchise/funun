@@ -714,10 +714,33 @@ export function StaffAdmin({
     }
   }
 
-  const onMenuAction = (act: 'edit' | 'resend' | 'remove', userId: string) => {
+  // Resilience: generate a fresh sign-in link and copy it to the clipboard so
+  // a manager can hand it to a pending member directly (Slack/text) when email
+  // delivery is down. Reuses the resend endpoint, which now returns inviteLink.
+  const handleCopyLink = async (userId: string) => {
+    const member = staff.find(m => m.user_id === userId)
+    const who = member?.display_name || member?.email || 'this member'
+    try {
+      const res = await fetch(`/api/admin/staff/${encodeURIComponent(userId)}/resend`, { method: 'POST' })
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: { inviteLink?: string }
+        error?: string
+      }
+      if (!res.ok || !json.data?.inviteLink) {
+        throw new Error(json.error ?? 'Could not generate an invite link.')
+      }
+      await navigator.clipboard.writeText(json.data.inviteLink)
+      showToast(`Invite link for ${who} copied — send it to them directly.`, 'ok')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not copy the invite link.', 'bad')
+    }
+  }
+
+  const onMenuAction = (act: 'edit' | 'resend' | 'copylink' | 'remove', userId: string) => {
     setMenu(null)
     if (act === 'edit') openDrawer(userId)
     else if (act === 'resend') handleResend(userId)
+    else if (act === 'copylink') handleCopyLink(userId)
     else openDialog(userId)
   }
 
@@ -1146,6 +1169,14 @@ export function StaffAdmin({
                 <path d="M4 4l16 8-16 8 4-8z" />
               </Icon>
               Resend invite
+            </button>
+          )}
+          {menuMember.status === 'pending' && (
+            <button type="button" role="menuitem" onClick={() => onMenuAction('copylink', menuMember.user_id)} className={MENU_ITEM}>
+              <Icon>
+                <path d="M9.5 14.5l5-5M11 6.5l1-1a3.5 3.5 0 1 1 5 5l-1 1M13 17.5l-1 1a3.5 3.5 0 1 1-5-5l1-1" />
+              </Icon>
+              Copy invite link
             </button>
           )}
           <div className="mx-1.5 my-1 h-px bg-[color:var(--border)]" />

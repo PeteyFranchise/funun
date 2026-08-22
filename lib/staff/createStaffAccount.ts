@@ -162,8 +162,8 @@ export async function createStaffAccount(input: {
   // Past this point the account is complete + valid — email delivery is best-effort
   // (sendEmail() no-ops with { ok: false } when Resend isn't configured) and never
   // rolls back the account. WR-04: surface delivery failure to the caller.
-  const { subject, html } = staffInviteEmail({ displayName, actionLink })
-  const { ok: emailSent } = await sendEmail({ to: email, subject, html })
+  const { subject, html, text } = staffInviteEmail({ displayName, actionLink })
+  const { ok: emailSent } = await sendEmail({ to: email, subject, html, text })
 
   return { userId, emailSent }
 }
