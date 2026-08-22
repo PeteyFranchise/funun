@@ -12,7 +12,7 @@ import { ADMIN_THEME_COOKIE } from '@/lib/admin/theme'
 //     member's choice on the NEXT request (readAdminTheme, no flash), and
 //  2. the `data-theme` attribute on the closest `.fncon` wrapper -- so the
 //     switch is instant on the CURRENT page without a reload.
-export function AdminThemeToggle({ theme }: { theme: 'light' | 'dark' }) {
+export function AdminThemeToggle({ theme, collapsed = false }: { theme: 'light' | 'dark'; collapsed?: boolean }) {
   const [current, setCurrent] = useState<'light' | 'dark'>(theme)
 
   function toggle() {
@@ -28,7 +28,11 @@ export function AdminThemeToggle({ theme }: { theme: 'light' | 'dark' }) {
       type="button"
       onClick={toggle}
       aria-label={current === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[color:var(--ink-2)] transition hover:bg-[color:var(--border)] hover:text-[color:var(--ink)]"
+      title={collapsed ? (current === 'dark' ? 'Light mode' : 'Dark mode') : undefined}
+      className={[
+        'flex items-center rounded-lg py-2 text-[13px] text-[color:var(--ink-2)] transition hover:bg-[color:var(--border)] hover:text-[color:var(--ink)]',
+        collapsed ? 'w-full justify-center px-2' : 'w-full gap-2 px-3',
+      ].join(' ')}
     >
       {current === 'dark' ? (
         <svg className="icn h-4 w-4" viewBox="0 0 24 24">
@@ -40,7 +44,7 @@ export function AdminThemeToggle({ theme }: { theme: 'light' | 'dark' }) {
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
         </svg>
       )}
-      <span>{current === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+      {!collapsed && <span>{current === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
     </button>
   )
 }

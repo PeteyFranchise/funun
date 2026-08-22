@@ -6,7 +6,10 @@ const pitchplugPage = readFileSync(
   'utf8'
 )
 
-const adminLayout = readFileSync(path.join(process.cwd(), 'app/(admin)/layout.tsx'), 'utf8')
+// The admin sidebar nav moved out of app/(admin)/layout.tsx into the
+// AdminNav client component (icon + collapse redesign) — the curators nav
+// entry now lives there.
+const adminNav = readFileSync(path.join(process.cwd(), 'components/nav/AdminNav.tsx'), 'utf8')
 
 describe('curator directory relocation — PitchPlug placement (INDUSTRY-05)', () => {
   it('adds a discoverable /curators link from the PitchPlug page', () => {
@@ -20,13 +23,13 @@ describe('curator directory relocation — PitchPlug placement (INDUSTRY-05)', (
   })
 
   it('labels the admin /admin/curators nav entry as PitchPlug-associated', () => {
-    const linkStart = adminLayout.indexOf('href="/admin/curators"')
+    const linkStart = adminNav.indexOf('/admin/curators')
     expect(linkStart).toBeGreaterThan(-1)
-    const nearby = adminLayout.slice(Math.max(0, linkStart - 200), linkStart + 300)
+    const nearby = adminNav.slice(Math.max(0, linkStart - 200), linkStart + 300)
     expect(nearby).toContain('PitchPlug')
   })
 
   it('keeps the /admin/curators route unchanged', () => {
-    expect(adminLayout).toContain('href="/admin/curators"')
+    expect(adminNav).toContain('/admin/curators')
   })
 })
