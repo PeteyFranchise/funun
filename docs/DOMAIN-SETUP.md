@@ -53,10 +53,20 @@ runbook, not a diff.
 - Test one of the email flows above (e.g. a collaborator invite) and confirm
   the link in the email points at `https://funun.studio/...`
 
-## Note — worth a decision, not assumed here
+## 6. Transactional email sender (Resend) — REQUIRED for invites to deliver
 
-`RESEND_FROM_EMAIL` is currently `pete@artistos.co` — a different domain
-than `funun.studio`. Leaving it as-is is fine (it's just the "from" address
-for transactional email and doesn't need to match the app's domain), but
-flagging it in case the intent is to send from a `@funun.studio` address
-once that domain is live.
+Invite/notification email is sent via Resend (`lib/email` `sendEmail`), gated on
+`RESEND_API_KEY` + `RESEND_FROM_EMAIL`. The from-address **must be a
+`@funun.studio` address on a domain verified in Resend.** Resend refuses to send
+from an unverified domain, and `sendEmail` then silently no-ops — the
+account/invite is still created, so the member is left stranded with no email.
+
+- **Resend dashboard → Domains → add `funun.studio`**, add the DNS records it
+  provides (SPF/DKIM + verification `TXT`) at the registrar, and wait for the
+  **Verified** state.
+- **Vercel → Settings → Environment Variables → Production**: set
+  `RESEND_FROM_EMAIL=team@funun.studio` (any `@funun.studio` sender), then
+  redeploy. Keep local `.env.local` in sync.
+- Verify: invite a test Team Member and confirm the email arrives **from
+  `@funun.studio`**. If email is ever down, Team Members → a pending member's
+  ⋯ menu → **Copy invite link** hands them their sign-in link directly.

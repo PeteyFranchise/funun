@@ -53,7 +53,7 @@ The **Funūn redesign** (PR #1) and **Breakthrough Benchmarking** — its own ro
 — are both **merged into `main`** (PR #2, merge commit `2c8fe34`). The benchmarking
 **data source is deferred** (manual entry today; wire a
 real source next). DDEX **ERN 3.5.1 + RDR-N (MLC 1.31) now XSD-validate**. All Supabase
-Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully done**.
+Management tokens are **deleted**.
 
 ---
 
@@ -159,8 +159,6 @@ Management tokens are **deleted**. The ArtistOS → Funūn rename is **fully don
   XSD-validates**; **RDR-N (MLC 1.31) export now XSD-validates** (`?format=ddex` /
   `?format=rdr`); DSR ingest + persisted aggregates.
 - **Songtrust outreach email — drafted** (task #8); it's yours to send.
-- **ArtistOS → Funūn rename — complete**: GitHub repo (`PeteyFranchise/funun`), all
-  in-code references (~41), and the local folder (now `~/Desktop/funun`).
 - **Supabase Management tokens — all deleted** by you (housekeeping done).
 - Migrations **010–017** applied to live DB (project ref `wgfjakfiyeewzfuxkgyo`). 016–017
   are Wave 1's distributor gate (column + readiness-scoring trigger); the Benchmarking
