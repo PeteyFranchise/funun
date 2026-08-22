@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | **Vercel** | Hosting, serverless functions, edge, CDN | **Yes — every request** | vercel-status.com | peter.zora@gmail.com *(personal, for now)* |
 | **Supabase** | Postgres DB, Auth, Storage, Realtime, API | **Yes — every dynamic request** | status.supabase.com | Supabase account email |
-| **DNS / registrar** | `funun.studio` name resolution | **Yes — resolution** | (registrar + Vercel) | — |
+| **DNS / registrar — Squarespace** | `funun.studio` name resolution | **Yes — resolution** | status.squarespace.com | Squarespace account email |
 | **Sentry** | Error monitoring | No — degrades gracefully (env-gated) | status.sentry.io | Sentry (funun org) |
 | **Better Stack** | External uptime monitoring + public status page | No — external observer | status.betterstack.com | it@funun.studio |
 | **Stripe** | Payments / subscriptions | Only on checkout/billing flows | status.stripe.com | Stripe account email |
@@ -55,9 +55,9 @@
 - **Config:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only).
 - **Deep dive:** `docs/observability/SUPABASE-HEALTH-REVIEW.md`.
 
-### 3. DNS / registrar — funun.studio
-- **Function:** resolves `funun.studio` + `www` to Vercel. If resolution breaks, the site is unreachable even with Vercel + Supabase healthy.
-- **Where to look:** `dig funun.studio` / `dig www.funun.studio`; the **registrar's DNS panel** and **Vercel → Domains**.
+### 3. DNS / registrar — funun.studio (Squarespace)
+- **Function:** resolves `funun.studio` + `www` to Vercel. If resolution breaks, the site is unreachable even with Vercel + Supabase healthy. Squarespace is also where Resend's domain-verification DNS records (SPF/DKIM) go so invite email can send from `@funun.studio`.
+- **Where to look:** `dig funun.studio` / `dig www.funun.studio`; the **Squarespace DNS panel** (`account.squarespace.com/domains`) and **Vercel → Domains**.
 - **On failure:** confirm the apex + `www` A/CNAME records and the apex→www redirect; check for an expired domain or a changed record.
 - **Config / [confirm]:** **registrar = [confirm where funun.studio is registered]**; DNS records managed via Vercel domain config.
 

@@ -15,9 +15,10 @@ runbook, not a diff.
   to `76.76.21.21` for the apex domain, or a `CNAME` to `cname.vercel-dns.com`
   for `www`) — copy these for step 2
 
-## 2. Add DNS records at the registrar
+## 2. Add DNS records at the registrar (Squarespace)
 
-- Add the record(s) from step 1 in your registrar's DNS management panel
+- The DNS/registrar for `funun.studio` is **Squarespace** (`account.squarespace.com/domains`)
+- Add the record(s) from step 1 in Squarespace's DNS management panel
 - Propagation is usually fast but can take up to ~48h
 - Vercel's Domains page shows a live "Valid Configuration" check once DNS
   resolves correctly — wait for that green check before moving on
@@ -62,7 +63,7 @@ from an unverified domain, and `sendEmail` then silently no-ops — the
 account/invite is still created, so the member is left stranded with no email.
 
 - **Resend dashboard → Domains → add `funun.studio`**, add the DNS records it
-  provides (SPF/DKIM + verification `TXT`) at the registrar, and wait for the
+  provides (SPF/DKIM + verification `TXT`) in Squarespace, and wait for the
   **Verified** state.
 - **Vercel → Settings → Environment Variables → Production**: set
   `RESEND_FROM_EMAIL=team@funun.studio` (any `@funun.studio` sender), then
