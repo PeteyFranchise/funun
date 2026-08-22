@@ -25,6 +25,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SELP_CSS } from './theme'
 import { SELECTS_VIEWER_COOKIE } from '@/lib/selects/viewer-cookie'
+import { escapeHtml } from '@/lib/security/escape-html'
 
 export type PlayerReaction = 'love' | 'pass' | 'more_like_this' | null
 export type PlayerAttribution = { name: string; kind: 'ae' | 'client' } | null
@@ -273,6 +274,11 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // `msg` is rendered as HTML (see the toast <span dangerouslySetInnerHTML
+  // below) so callers may include trusted static markup like <b>. ANY
+  // user/artist-controlled value interpolated in (track titles, labels, names)
+  // MUST be wrapped in escapeHtml() first — otherwise it is a stored-XSS sink
+  // on this public/token surface (2026-08-22 audit finding #1).
   function showToast(msg: string) {
     setToast(msg)
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -318,7 +324,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
   function playSuggested(index: number) {
     setCurrent({ kind: 'suggested', index })
     setPlaying(true)
-    showToast(`Previewing — <b>${suggested[index]?.title}</b>`)
+    showToast(`Previewing — <b>${escapeHtml(suggested[index]?.title)}</b>`)
   }
 
   function togglePlay() {
@@ -340,7 +346,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     const idx = Math.floor(Math.random() * tracks.length)
     setCurrent({ kind: 'curated', index: idx })
     setPlaying(true)
-    showToast(`Shuffling — <b>${tracks[idx].title}</b>`)
+    showToast(`Shuffling — <b>${escapeHtml(tracks[idx].title)}</b>`)
   }
 
   // ─── reactions ───────────────────────────────────────────────────────
@@ -353,8 +359,8 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
         body: JSON.stringify({ selectsTrackId: rowId, reaction, viewerKey: viewerKeyRef.current }),
       })
       if (!res.ok) throw new Error('failed')
-      if (reaction === 'love') showToast(`Kept — <b>${tracks.find(t => t.rowId === rowId)?.title ?? ''}</b>`)
-      else if (reaction === 'pass') showToast(`Passed — <b>${tracks.find(t => t.rowId === rowId)?.title ?? ''}</b>`)
+      if (reaction === 'love') showToast(`Kept — <b>${escapeHtml(tracks.find(t => t.rowId === rowId)?.title)}</b>`)
+      else if (reaction === 'pass') showToast(`Passed — <b>${escapeHtml(tracks.find(t => t.rowId === rowId)?.title)}</b>`)
     } catch {
       showToast("Couldn't save that — try again")
     }
@@ -404,7 +410,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
       }
       if (result.status === 'ok' && result.url) {
         window.location.href = result.url
-        showToast(`Downloading watermarked preview — <b>${label}</b>`)
+        showToast(`Downloading watermarked preview — <b>${escapeHtml(label)}</b>`)
       } else if (result.status === 'gate') {
         setGateOpen(true)
       } else if (result.status === 'disabled') {
@@ -455,7 +461,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
         preview: { status: 'processing' },
       },
     ])
-    showToast(`Added — <b>${s.title}</b>`)
+    showToast(`Added — <b>${escapeHtml(s.title)}</b>`)
   }
 
   function refreshSuggested() {
@@ -483,7 +489,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
 
   function licenseTrack(trackId: string, title: string) {
     setCart(c => new Set(c).add(trackId))
-    showToast(`Added to licensing cart — <b>${title}</b>`)
+    showToast(`Added to licensing cart — <b>${escapeHtml(title)}</b>`)
     setSheetIndex(null)
   }
 
@@ -796,7 +802,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
                   <div className="sub">Adds to your cart · opens the Deals room</div>
                 </div>
               </button>
-              <button className="srow" onClick={() => showToast(`Finding more like <b>${sheetTrack.title}</b>`)}>
+              <button className="srow" onClick={() => showToast(`Finding more like <b>${escapeHtml(sheetTrack.title)}</b>`)}>
                 <MoreLikeIcon />
                 <div>More like this</div>
               </button>
