@@ -75,4 +75,28 @@ describe('StaffAdmin', () => {
     const markup = renderToStaticMarkup(<StaffAdmin initialStaff={[]} currentUserId="me" />)
     expect(markup).toContain('No team members yet')
   })
+
+  it('shows management controls when canManage (default)', () => {
+    const markup = renderToStaticMarkup(
+      <StaffAdmin initialStaff={[row({ display_name: 'Jordan Ellis' })]} currentUserId="nobody" />
+    )
+    expect(markup).toContain('Add team member')
+    expect(markup).toContain('aria-label="Manage')
+  })
+
+  it('is a read-only directory when canManage is false (Directory merge)', () => {
+    const markup = renderToStaticMarkup(
+      <StaffAdmin
+        initialStaff={[row({ display_name: 'Jordan Ellis' })]}
+        currentUserId="nobody"
+        canManage={false}
+      />
+    )
+    // The roster + contact info still render — it is the directory for everyone.
+    expect(markup).toContain('Jordan Ellis')
+    expect(markup).toContain('mailto:jordan@funun.studio')
+    // But every management affordance is gone.
+    expect(markup).not.toContain('Add team member')
+    expect(markup).not.toContain('aria-label="Manage')
+  })
 })

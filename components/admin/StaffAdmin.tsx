@@ -300,9 +300,15 @@ function Field({
 export function StaffAdmin({
   initialStaff,
   currentUserId,
+  canManage = true,
 }: {
   initialStaff: StaffRow[]
   currentUserId: string
+  // When false, the surface is a read-only directory: the roster + contact
+  // info render for everyone, but the Add button, the per-member ⋯ menu, and
+  // the edit drawer are hidden. Management stays gated at the API layer too
+  // (this is UX/defense-in-depth, not the authority) — see /api/admin/staff.
+  canManage?: boolean
 }) {
   const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [view, setView] = useState<ViewMode>('list')
@@ -717,6 +723,7 @@ export function StaffAdmin({
 
   // ── Render helpers that close over state ──
   const renderKebab = (m: StaffRow) => {
+    if (!canManage) return null
     const open = menu?.userId === m.user_id
     return (
       <button
@@ -779,28 +786,31 @@ export function StaffAdmin({
           <div>
             <h1 className="text-[27px] font-extrabold tracking-[-0.02em] text-[color:var(--ink)]">Team Members</h1>
             <p className="mt-1.5 max-w-[48ch] text-[13.5px] leading-relaxed text-[color:var(--ink-2)]">
-              The people who run Funūn. Add a teammate, give them one or more roles, and they’re invited by email to
-              join.
+              {canManage
+                ? 'The people who run Funūn. Add a teammate, give them one or more roles, and they’re invited by email to join.'
+                : 'The people who run Funūn — who does what, and how to reach them.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowAdd(true)
-              setAddError(null)
-            }}
-            className={`inline-flex flex-none items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-bold text-white transition hover:opacity-90 motion-reduce:transition-none ${FOCUS_RING}`}
-            style={{ background: 'var(--grad)' }}
-          >
-            <Icon>
-              <path d="M12 5v14M5 12h14" />
-            </Icon>
-            Add team member
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAdd(true)
+                setAddError(null)
+              }}
+              className={`inline-flex flex-none items-center gap-2 rounded-[11px] px-4 py-2.5 text-[13.5px] font-bold text-white transition hover:opacity-90 motion-reduce:transition-none ${FOCUS_RING}`}
+              style={{ background: 'var(--grad)' }}
+            >
+              <Icon>
+                <path d="M12 5v14M5 12h14" />
+              </Icon>
+              Add team member
+            </button>
+          )}
         </div>
 
         {/* Add panel */}
-        {showAdd && (
+        {canManage && showAdd && (
           <section
             aria-label="Add a team member"
             className="mt-6 rounded-[18px] border border-[color:var(--border-2)] bg-[color:var(--panel)] p-[22px]"

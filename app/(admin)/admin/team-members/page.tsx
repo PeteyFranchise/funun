@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireStaffPage } from '@/lib/admin/gate'
+import { requireStaffPage, getStaffRoles } from '@/lib/admin/gate'
 import { StaffAdmin } from '@/components/admin/StaffAdmin'
 import type { StaffRow } from '@/components/admin/StaffAdmin'
 
@@ -9,12 +9,15 @@ const STAFF_COLUMNS =
   'id, user_id, staff_role, staff_roles, display_name, first_name, last_name, title, phone, avatar_url, created_at'
 
 export default async function AdminTeamMembersPage() {
-  // Team Members management is leadership + TMS (people ops) — the redesign's
-  // MANAGE_ROLES, matching the backing /api/admin/staff routes exactly.
-  // requireStaffPage redirects a signed-out visitor to /signin and any other
-  // staff role to / (Pitfall 2/3): the page is a self-guard, never the sole
-  // authority — every /api/admin/staff handler re-checks requireStaff.
-  const { user } = await requireStaffPage(['leadership', 'tms'])
+  // Team Members is the single team surface (the read-only Directory folded in):
+  // every staff role EXCEPT 'it' sees the roster as a directory —
+  // requireStaffPage()'s fail-closed default is OPERATIONAL_STAFF_ROLES, the
+  // same audience the old /admin/directory admitted. Management (Add / edit /
+  // remove) is gated to Leadership + TMS via canManage below AND re-checked on
+  // every /api/admin/staff handler (requireStaff(['leadership','tms'])) — that
+  // API gate stays the real authority; canManage is UX/defense-in-depth only.
+  const { user } = await requireStaffPage()
+  const canManage = getStaffRoles(user).some(r => r === 'leadership' || r === 'tms')
 
   const service = createServiceClient()
   const { data: staff } = await service
@@ -38,7 +41,7 @@ export default async function AdminTeamMembersPage() {
 
   return (
     <div className="flex-1 px-9 py-[30px]">
-      <StaffAdmin initialStaff={staffRows} currentUserId={user.id} />
+      <StaffAdmin initialStaff={staffRows} currentUserId={user.id} canManage={canManage} />
     </div>
   )
 }

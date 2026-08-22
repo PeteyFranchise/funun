@@ -24,7 +24,6 @@ import {
   CrateIcon,
   SelectsIcon,
   MyClientsIcon,
-  DirectoryIcon,
   InvitesIcon,
 } from './admin-icons'
 
@@ -50,7 +49,10 @@ const ITEMS: Item[] = [
   { href: '/tips', label: 'Tips', match: '/tips', Icon: TipsIcon, show: isLead },
   { href: '/admin/curators', label: 'PitchPlug · Curators', match: '/admin/curators', Icon: CuratorsIcon, show: isLead },
   { href: '/admin/members', label: 'Industry Members', match: '/admin/members', Icon: IndustryIcon, show: isLead },
-  { href: '/admin/team-members', label: 'Team Members', match: '/admin/team-members', Icon: TeamIcon, show: isLead },
+  // Team Members folds in the old read-only Directory — visible to every staff
+  // role except 'it'; the Add/manage controls inside are gated to Leadership +
+  // TMS (StaffAdmin's canManage), so this is safe as an all-staff directory.
+  { href: '/admin/team-members', label: 'Team Members', match: '/admin/team-members', Icon: TeamIcon, show: notIt },
   { href: '/admin/buyer-orgs', label: 'Client Partners', match: '/admin/buyer-orgs', Icon: ClientPartnersIcon, show: isLead },
   { href: '/admin/deals', label: 'Deals', match: '/admin/deals', Icon: DealsIcon, show: isLead },
   { href: '/admin/deals/metrics', label: 'GTM Metrics', match: '/admin/deals/metrics', Icon: MetricsIcon, show: isLead },
@@ -62,7 +64,6 @@ const ITEMS: Item[] = [
   { href: '/admin/crate-requests', label: 'Crate Requests', match: '/admin/crate-requests', Icon: CrateIcon, show: notIt },
   { href: '/admin/selects', label: 'Selects', match: '/admin/selects', Icon: SelectsIcon, show: notIt },
   { href: '/admin/my-client-partners', label: 'My Client Partners', match: '/admin/my-client-partners', Icon: MyClientsIcon, show: notIt },
-  { href: '/admin/directory', label: 'Directory', match: '/admin/directory', Icon: DirectoryIcon, show: notIt },
   { href: '/admin/artist-invites', label: 'Artist Invites', match: '/admin/artist-invites', Icon: InvitesIcon, show: notIt },
 ]
 
