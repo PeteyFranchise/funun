@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { PLAYBOOK_ROOMS, IT_SUBPAGES, type PlaybookRoom } from '@/lib/playbook/nav'
 
 // Rail 2 — the Playbook's secondary sidebar of rooms/sub-rooms. Built to
@@ -14,33 +15,97 @@ import { PLAYBOOK_ROOMS, IT_SUBPAGES, type PlaybookRoom } from '@/lib/playbook/n
 // layout, from getStaffRole) and passed down. When false, the IT Team room
 // is omitted from the DOM entirely — not rendered locked or greyed (D-06,
 // T-33-04 mitigation).
+//
+// Collapse (2026-08): a chevron in the header collapses the rail to a slim
+// strip so the content column gets full width; state persists per-member via
+// localStorage, mirroring AdminNav's collapse. The far-left AdminNav and this
+// rail collapse independently.
 const ROOM_BASE_CLASS =
   'flex items-center gap-[9px] rounded-[9px] px-[10px] py-[8px] text-[13.5px] font-medium text-[color:var(--ink-2)]'
 
 const ROOM_DOT_CLASS = 'h-[6px] w-[6px] flex-none rounded-full bg-[color:var(--ink-3)]'
 
+const STORAGE_KEY_COLLAPSED = 'funun-playbook-rail2-collapsed'
+
+function PlaybookMark() {
+  return (
+    <svg
+      className="h-[18px] w-[18px] flex-none text-[color:var(--fuchsia)]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 5a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z" />
+      <path d="M5 19a2 2 0 0 1 2-2h11" />
+    </svg>
+  )
+}
+
+function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={collapsed ? 'Expand Playbook menu' : 'Collapse Playbook menu'}
+      aria-label={collapsed ? 'Expand Playbook menu' : 'Collapse Playbook menu'}
+      className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-[color:var(--ink-3)] transition hover:bg-[color:var(--border)] hover:text-[color:var(--ink)]"
+    >
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={['transition-transform duration-200', collapsed ? 'rotate-180' : ''].join(' ')}
+      >
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+  )
+}
+
 export function Rail2({ canSeeItRoom }: { canSeeItRoom: boolean }) {
   const pathname = usePathname() ?? ''
   const itRoomActive = pathname.startsWith('/admin/playbook/it')
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    if (localStorage.getItem(STORAGE_KEY_COLLAPSED) === 'true') setCollapsed(true)
+  }, [])
+
+  function toggle() {
+    setCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEY_COLLAPSED, String(next))
+      return next
+    })
+  }
+
+  if (collapsed) {
+    return (
+      <aside className="sticky top-0 flex h-screen w-[52px] flex-none flex-col items-center gap-3 border-r border-[color:var(--border)] bg-[color:var(--panel)] py-[20px]">
+        <PlaybookMark />
+        <CollapseButton collapsed onClick={toggle} />
+      </aside>
+    )
+  }
 
   return (
     <aside className="sticky top-0 flex h-screen w-[238px] flex-none flex-col gap-[2px] overflow-y-auto border-r border-[color:var(--border)] bg-[color:var(--panel)] px-[14px] py-[20px]">
       <div className="flex items-center gap-[9px] px-2 pb-1">
-        <svg
-          className="h-[18px] w-[18px] flex-none text-[color:var(--fuchsia)]"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M5 5a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z" />
-          <path d="M5 19a2 2 0 0 1 2-2h11" />
-        </svg>
+        <PlaybookMark />
         <span className="text-[15px] font-extrabold tracking-[-.01em] text-[color:var(--ink)]">
           The Playbook
+        </span>
+        <span className="ml-auto flex-none">
+          <CollapseButton collapsed={false} onClick={toggle} />
         </span>
       </div>
       <div className="mb-2 border-b border-[color:var(--border)] px-2 pb-3 text-[11px] text-[color:var(--ink-3)]">
