@@ -106,7 +106,7 @@ describe('applyContentAction', () => {
   it('archives a placement on remove', async () => {
     const chain = updateEq()
     const service = { from: jest.fn(() => chain) } as unknown as import('@supabase/supabase-js').SupabaseClient
-    const result = await applyContentAction(service, 'green_room_placement', UUID_A, 'remove')
+    await applyContentAction(service, 'green_room_placement', UUID_A, 'remove')
     expect(chain.update).toHaveBeenCalledWith({ status: 'archived' })
   })
 

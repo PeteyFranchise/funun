@@ -3,10 +3,6 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/admin/gate'
 import { mapSlugsToProfileRoles } from '@/lib/industry/roleMapping'
 
-// Valid decision values (T-15-08 input validation).
-const VALID_DECISIONS = ['approve', 'deny'] as const
-type Decision = (typeof VALID_DECISIONS)[number]
-
 // ─── POST /api/capabilities/approve/[grantId] ────────────────────────────
 // Admin-only route (T-05-02 doctrine — verifyAdmin() is the first statement).
 // Flips a pending capability_grants row to approved or denied.

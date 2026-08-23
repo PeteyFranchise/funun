@@ -167,7 +167,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 // Leadership + TMS. Deletes the auth user; funun_staff cascades (089 FK
 // ON DELETE CASCADE). Guards: can't remove yourself, can't remove the last
 // leadership.
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await requireStaff(MANAGE_ROLES)
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })

@@ -16,7 +16,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from '@react-pdf/renderer'
-import { readComposers, COMPOSER_ROLE_LABELS, PRO_LABELS } from '@/lib/metadata/schema'
+import { COMPOSER_ROLE_LABELS, PRO_LABELS } from '@/lib/metadata/schema'
 import type { ExportManifest, ExportTrack } from '@/lib/vault/export-pack'
 import { registerFunuunPdfFonts, PDF_FONT_FAMILY } from './fonts'
 

@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   verifyAdmin,
-  EDITABLE_FIELDS,
   SECTION_VALUES,
   ACTION_TYPE_VALUES,
   KEY_REGEX,

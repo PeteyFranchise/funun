@@ -82,7 +82,7 @@ describe('loadMembersForVerification', () => {
 })
 
 describe('grantOrRevokeVerification', () => {
-  function serviceWithExisting(existing: unknown, updated: unknown) {
+  function serviceWithExisting(existing: unknown, _updated: unknown) {
     const auditInsert = jest.fn(async () => ({ error: null }))
     return {
       from: jest.fn((table: string) => {

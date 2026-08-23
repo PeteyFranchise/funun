@@ -71,7 +71,7 @@ type CandidateProjectRow = {
   }[]
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })

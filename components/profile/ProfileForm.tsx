@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { UserProfile, OpenTo, ProfileRole, ProfileRoleSlug } from '@/types'
 import { PROFILE_ROLES, PROFILE_ROLE_LABELS } from '@/types'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
-import { INDUSTRY_ROLE_GROUPS, ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
+import { INDUSTRY_ROLE_GROUPS } from '@/lib/industry-roles'
 import { GENRES } from '@/lib/genres'
 import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
 import {

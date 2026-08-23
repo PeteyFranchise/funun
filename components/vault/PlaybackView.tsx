@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { readinessLabel } from '@/lib/vault/readiness'
 import { StemsUpload } from '@/components/vault/StemsUpload'
-import { ExportPackPanel } from '@/components/vault/ExportPackPanel'
 
 export type TrackView = {
   id: string

@@ -5,7 +5,7 @@ import { PlatformSelector } from './PlatformSelector'
 import { CampaignSlot } from './CampaignSlot'
 import { SlotGeneratePanel } from './SlotGeneratePanel'
 import type { SocialCampaign, SocialPost, Platform } from '@/lib/launchpad/campaigns'
-import { PLATFORM_VALUES, PLATFORM_LABELS } from '@/lib/launchpad/campaigns'
+import { PLATFORM_LABELS } from '@/lib/launchpad/campaigns'
 
 // ─── CampaignCalendar ─────────────────────────────────────────────────────────
 // Week-grouped social campaign calendar. Modeled on LaunchpadRoom.tsx for the

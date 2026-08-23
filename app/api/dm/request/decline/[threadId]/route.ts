@@ -32,8 +32,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!updated) return NextResponse.json({ error: 'Request not found or not permitted' }, { status: 404 })
 
-  const updatedRow = updated as { id: string; requester_id: string | null }
-
   // Recipient-only guard is enforced atomically above via requester_id != user.id.
 
   // No notification fired — decline is silent (D-11): the sender is never

@@ -150,7 +150,7 @@ function makeFakeClientForCountWithSpy(count: number, spy: { table: string }) {
 function makeFakeClientForCountTrackingFilters(count: number, spy: { filters: string[] }) {
   const chain: Record<string, unknown> = {}
   chain.select = () => chain
-  chain.eq = (col: string, val: unknown) => {
+  chain.eq = (_col: string, val: unknown) => {
     spy.filters.push(String(val))
     return chain
   }

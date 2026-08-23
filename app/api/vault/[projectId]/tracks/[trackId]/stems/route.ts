@@ -81,7 +81,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
 }
 
 // DELETE — remove the stems ZIP from Storage and clear the metadata reference.
-export async function DELETE(request: Request, { params }: RouteCtx) {
+export async function DELETE(_request: Request, { params }: RouteCtx) {
   const { projectId, trackId } = await params
 
   if (DEMO) {

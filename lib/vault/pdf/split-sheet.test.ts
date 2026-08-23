@@ -260,7 +260,7 @@ describe('SplitSheetDocument', () => {
     expect(text).toContain('(1) Maya Elise Carter (p/k/a Maya Carter)')
     expect(text).toContain('(2) Marco Belan')
 
-    fullParties.forEach((party, i) => {
+    fullParties.forEach((_party, i) => {
       const tag = partyRoleTag(i)
       expect(text).toContain(`{{Signature;role=${tag};type=signature}}`)
       expect(text).toContain(`{{Date;role=${tag};type=date}}`)
