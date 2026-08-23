@@ -66,7 +66,7 @@ account/invite is still created, so the member is left stranded with no email.
   provides (SPF/DKIM + verification `TXT`) in Squarespace, and wait for the
   **Verified** state.
 - **Vercel → Settings → Environment Variables → Production**: set
-  `RESEND_FROM_EMAIL=team@funun.studio` (any `@funun.studio` sender), then
+  `RESEND_FROM_EMAIL=noreply@funun.studio` (any `@funun.studio` sender), then
   redeploy. Keep local `.env.local` in sync.
 - Verify: invite a test Team Member and confirm the email arrives **from
   `@funun.studio`**. If email is ever down, Team Members → a pending member's
