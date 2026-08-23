@@ -10,14 +10,19 @@ files:
   - lib/storage
 ---
 
-## Status (updated 2026-08-23)
+## Status — COMPLETE 2026-08-23
 - **Slice 1 SHIPPED (`ea5d89b`):** managers (Leadership/TMS) set a photo in the
-  Add form + change it via the ⋯ edit drawer. `POST /api/admin/staff/[id]/avatar`
-  (requireStaff leadership+tms, service-role upload to vault-assets `staff/{id}/…`,
-  writes `funun_staff.avatar_url`, audit-logged). Reuses the artist limits
-  (10MB, JPG/PNG/WebP).
-- **Slice 2 REMAINING:** AE self-edit — a "My Profile" settings page AND own-row
-  editing in Team Members — plus the managers-only config flag (revert if abused).
+  Add form + change it via the ⋯ edit drawer.
+- **Slice 2 SHIPPED (`352f264`):** self-edit — the endpoint allows manager-OR-self,
+  gated by `STAFF_AVATAR_SELF_EDIT` (default ON, env-revertible to managers-only);
+  new `/admin/profile` (My Profile) page + admin-nav item; a camera control on a
+  non-manager's OWN row in Team Members (`selfAvatarEdit` prop). Endpoint:
+  `POST /api/admin/staff/[id]/avatar` (service-role → vault-assets `staff/{id}/…`
+  → `funun_staff.avatar_url`, audit-logged; 10MB JPG/PNG/WebP). Config helper:
+  `lib/staff/avatarSelfEdit.ts`.
+
+**FEATURE COMPLETE.** To lock self-service down later: set `STAFF_AVATAR_SELF_EDIT=off`
+in Vercel Production (no code change).
 
 ## Why
 Staff can't set a profile picture today. `funun_staff.avatar_url` exists and the
