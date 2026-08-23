@@ -57,10 +57,20 @@ type Recorded = {
   inserts: { table: string; rows: unknown }[]
   uploads: { bucket: string; path: string; contentType?: string }[]
   selectedTables: string[]
+  rpcs: { name: string; args: Record<string, unknown> }[]
 }
 
-function makeService(envelopeRow: unknown, opts?: { failWrite?: string }) {
-  const recorded: Recorded = { updates: [], inserts: [], uploads: [], selectedTables: [] }
+function makeService(
+  envelopeRow: unknown,
+  opts?: { failWrite?: string; claimResults?: boolean[] }
+) {
+  const recorded: Recorded = {
+    updates: [],
+    inserts: [],
+    uploads: [],
+    selectedTables: [],
+    rpcs: [],
+  }
 
   const from = jest.fn((table: string) => {
     recorded.selectedTables.push(table)
@@ -101,7 +111,16 @@ function makeService(envelopeRow: unknown, opts?: { failWrite?: string }) {
     })),
   }
 
-  return { client: { from, storage }, recorded }
+  const claimResults = [...(opts?.claimResults ?? [true])]
+  const rpc = jest.fn((name: string, args: Record<string, unknown>) => {
+    recorded.rpcs.push({ name, args })
+    if (name === 'claim_docuseal_completion') {
+      return Promise.resolve({ data: claimResults.shift() ?? false, error: null })
+    }
+    return Promise.resolve({ data: true, error: null })
+  })
+
+  return { client: { from, storage, rpc }, recorded }
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────
@@ -337,11 +356,10 @@ describe('POST /api/webhooks/docuseal — completion', () => {
     expect(recorded.uploads.some(u => u.path.includes('executed'))).toBe(true)
     expect(recorded.uploads.some(u => u.path.includes('audit-log'))).toBe(true)
 
-    const envelopeUpdate = recorded.updates.find(u => u.table === 'esign_envelopes')
-    expect(envelopeUpdate?.values).toMatchObject({ status: 'completed' })
-    expect(envelopeUpdate?.values.completed_at).toEqual(expect.any(String))
-    expect(envelopeUpdate?.values.executed_file_path).toEqual(expect.any(String))
-    expect(envelopeUpdate?.values.audit_log_path).toEqual(expect.any(String))
+    const completion = recorded.rpcs.find(r => r.name === 'complete_docuseal_completion_claim')
+    expect(completion?.args.p_completed_at).toEqual(expect.any(String))
+    expect(completion?.args.p_executed_file_path).toEqual(expect.any(String))
+    expect(completion?.args.p_audit_log_path).toEqual(expect.any(String))
 
     const signerUpdate = recorded.updates.find(u => u.table === 'esign_envelope_signers')
     expect(signerUpdate?.values).toMatchObject({ status: 'completed' })
@@ -364,7 +382,7 @@ describe('POST /api/webhooks/docuseal — completion', () => {
     const res = await POST(request(body, sign(body)))
 
     expect(res.status).toBeGreaterThanOrEqual(500)
-    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    const flip = recorded.rpcs.find(r => r.name === 'complete_docuseal_completion_claim')
     expect(flip).toBeUndefined()
     expect(mockCreateNotification).not.toHaveBeenCalled()
   })
@@ -377,7 +395,7 @@ describe('POST /api/webhooks/docuseal — completion', () => {
     const res = await POST(request(body, sign(body)))
 
     expect(res.status).toBeGreaterThanOrEqual(500)
-    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    const flip = recorded.rpcs.find(r => r.name === 'complete_docuseal_completion_claim')
     expect(flip).toBeUndefined()
     expect(mockCreateNotification).not.toHaveBeenCalled()
   })
@@ -390,7 +408,7 @@ describe('POST /api/webhooks/docuseal — completion', () => {
     const res = await POST(request(body, sign(body)))
 
     expect(res.status).toBeGreaterThanOrEqual(500)
-    const flip = recorded.updates.find(u => u.table === 'esign_envelopes' && u.values.status === 'completed')
+    const flip = recorded.rpcs.find(r => r.name === 'complete_docuseal_completion_claim')
     expect(flip).toBeUndefined()
     expect(mockCreateNotification).not.toHaveBeenCalled()
   })
@@ -572,6 +590,25 @@ describe('POST /api/webhooks/docuseal — notification + offered write-back', ()
 // ─── Idempotency (T-17-21) ────────────────────────────────────────────
 
 describe('POST /api/webhooks/docuseal — idempotency', () => {
+  it('allows only one concurrent delivery to perform completion work', async () => {
+    const { client, recorded } = makeService(pendingEnvelope(), { claimResults: [true, false] })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const responses = await Promise.all([
+      POST(request(body, sign(body))),
+      POST(request(body, sign(body))),
+    ])
+
+    expect(responses.map(res => res.status)).toEqual([200, 200])
+    expect(recorded.rpcs.filter(r => r.name === 'claim_docuseal_completion')).toHaveLength(2)
+    expect(recorded.rpcs.filter(r => r.name === 'complete_docuseal_completion_claim')).toHaveLength(1)
+    expect(mockFetchCompletionArtifacts).toHaveBeenCalledTimes(1)
+    expect(mockRenderCompletionCertificate).toHaveBeenCalledTimes(1)
+    expect(mockCreateNotification).toHaveBeenCalledTimes(1)
+    expect(recorded.inserts.filter(i => i.table === 'vault_documents')).toHaveLength(1)
+  })
+
   it('short-circuits a redelivered completion with 200 and repeats nothing', async () => {
     const already = { ...pendingEnvelope(), status: 'completed' }
     const { client, recorded } = makeService(already)
@@ -588,5 +625,6 @@ describe('POST /api/webhooks/docuseal — idempotency', () => {
     expect(recorded.uploads).toHaveLength(0)
     expect(recorded.updates).toHaveLength(0)
     expect(recorded.inserts).toHaveLength(0)
+    expect(recorded.rpcs).toHaveLength(0)
   })
 })

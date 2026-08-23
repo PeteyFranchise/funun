@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyDocusealSignature, parseDocusealEvent } from '@/lib/esign/webhook'
 import { docusealProvider } from '@/lib/esign/docuseal'
@@ -84,6 +85,17 @@ type EnvelopeRow = {
     docuseal_submitter_id: string | null
   }[]
   split_sheets: SheetRow | null
+}
+
+async function releaseCompletionClaim(
+  service: ReturnType<typeof createServiceClient>,
+  envelopeId: string,
+  claimToken: string
+) {
+  await service.rpc('release_docuseal_completion_claim', {
+    p_envelope_id: envelopeId,
+    p_claim_token: claimToken,
+  })
 }
 
 // ─── Phase 26 dispatch extension (SYNCLIB-07) ──────────────────────────
@@ -421,11 +433,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ignored: 'orphaned_envelope' })
   }
 
+  const claimToken = randomUUID()
+  const { data: claimed, error: claimError } = await service.rpc(
+    'claim_docuseal_completion',
+    {
+      p_envelope_id: envelope.id,
+      p_submission_id: event.requestId,
+      p_claim_token: claimToken,
+      p_lease_seconds: 900,
+    }
+  )
+
+  if (claimError) {
+    return NextResponse.json({ error: 'Could not claim the completion' }, { status: 500 })
+  }
+
+  if (claimed !== true) {
+    return NextResponse.json({ ok: true, idempotent: true })
+  }
+
   // ── 6. Re-host both provider artifacts, promptly (T-17-22) ─────────
   let artifacts
   try {
     artifacts = await docusealProvider.fetchCompletionArtifacts(event.requestId)
   } catch (e) {
+    await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       {
         error: `Could not fetch the executed documents: ${e instanceof Error ? e.message : 'unknown error'}`,
@@ -449,6 +481,7 @@ export async function POST(request: Request) {
     })
 
   if (executedUploadError) {
+    await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       { error: `Could not store the executed document: ${executedUploadError.message}` },
       { status: 500 }
@@ -507,19 +540,16 @@ export async function POST(request: Request) {
 
   // ── 8. Persist signers + the sheet BEFORE the completion commit ────
   // The envelope flip (§9c) is the idempotency commit point (§5 guard), so
-  // every integrity write must succeed first — otherwise we 5xx with the
-  // envelope still non-completed and the provider retries into the guard,
-  // instead of acking a half-applied completion (audit #8). NOTE: this
-  // closes the partial-failure-AFTER-flip hole but is still non-atomic
-  // against CONCURRENT delivery — the atomic-claim RPC + a vault_documents
-  // partial unique index (ON CONFLICT DO NOTHING) land in the owner-gated
-  // migration batch.
+  // every integrity write must succeed first. The claim above serializes
+  // concurrent deliveries; failures release it so a provider retry can
+  // safely resume, while the token fences a stale worker after lease expiry.
   const { error: signersError } = await service
     .from('esign_envelope_signers')
     .update({ status: 'completed', signed_at: completedAt })
     .eq('envelope_id', envelope.id)
 
   if (signersError) {
+    await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       { error: `Could not record signer completion: ${signersError.message}` },
       { status: 500 }
@@ -534,6 +564,7 @@ export async function POST(request: Request) {
     .eq('id', sheet.id)
 
   if (sheetUpdateError) {
+    await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       { error: `Could not mark the split sheet executed: ${sheetUpdateError.message}` },
       { status: 500 }
@@ -568,7 +599,8 @@ export async function POST(request: Request) {
 
   if (fanoutRows.length > 0) {
     const { error: fanoutError } = await service.from('vault_documents').insert(fanoutRows)
-    if (fanoutError) {
+    if (fanoutError && fanoutError.code !== '23505') {
+      await releaseCompletionClaim(service, envelope.id, claimToken)
       return NextResponse.json(
         { error: `Could not file the executed contract: ${fanoutError.message}` },
         { status: 500 }
@@ -580,22 +612,27 @@ export async function POST(request: Request) {
   // guard). Last integrity write — once this lands, a redelivery
   // short-circuits at the guard. DocuSeal bills per COMPLETED document
   // (provider gate, 2026-07-20); this is the moment the $0.20 is incurred.
-  const { error: envelopeUpdateError } = await service
-    .from('esign_envelopes')
-    .update({
-      status: 'completed',
-      completed_at: completedAt,
-      executed_file_path: executedPath,
-      audit_log_path: auditLogPath,
-      billed: true,
-    })
-    .eq('id', envelope.id)
+  const { data: completed, error: envelopeUpdateError } = await service.rpc(
+    'complete_docuseal_completion_claim',
+    {
+      p_envelope_id: envelope.id,
+      p_claim_token: claimToken,
+      p_completed_at: completedAt,
+      p_executed_file_path: executedPath,
+      p_audit_log_path: auditLogPath,
+    }
+  )
 
   if (envelopeUpdateError) {
+    await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       { error: `Could not record the completion: ${envelopeUpdateError.message}` },
       { status: 500 }
     )
+  }
+
+  if (completed !== true) {
+    return NextResponse.json({ ok: true, idempotent: true, lostClaim: true })
   }
 
   // Certificate pointer, written SEPARATELY and non-fatally.
