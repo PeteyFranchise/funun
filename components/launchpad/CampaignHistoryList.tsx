@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { SocialCampaign } from '@/lib/launchpad/campaigns'
 
 // ─── CampaignHistoryList ──────────────────────────────────────────────────────
@@ -15,14 +16,16 @@ import type { SocialCampaign } from '@/lib/launchpad/campaigns'
 export function CampaignHistoryList({
   projectId,
   campaigns,
-  onActiveChanged,
-  onDeleted,
 }: {
   projectId: string
   campaigns: SocialCampaign[]
-  onActiveChanged: (campaignId: string) => void
-  onDeleted: (campaignId: string) => void
 }) {
+  // A Server Component parent can't pass callback props across the RSC
+  // boundary (it throws "Functions cannot be passed directly to Client
+  // Components" in production). This is a client component, so after a
+  // set-active/delete mutation it refreshes the route itself — router.refresh()
+  // re-runs the server page and re-renders the updated campaign list.
+  const router = useRouter()
   // Per-row state: which row is in confirm-pending and which is saving
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -41,7 +44,7 @@ export function CampaignHistoryList({
         setError("Couldn't update the active campaign — please try again.")
         return
       }
-      onActiveChanged(campaignId)
+      router.refresh()
     } catch {
       setError("Couldn't update the active campaign — please try again.")
     } finally {
@@ -63,7 +66,7 @@ export function CampaignHistoryList({
         return
       }
       setConfirmingId(null)
-      onDeleted(campaignId)
+      router.refresh()
     } catch {
       setError("Couldn't delete the campaign — please try again.")
     } finally {

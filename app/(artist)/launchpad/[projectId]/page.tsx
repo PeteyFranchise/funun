@@ -247,8 +247,6 @@ export default async function LaunchpadProjectPage({
               <CampaignHistoryList
                 projectId={projectId}
                 campaigns={allCampaigns}
-                onActiveChanged={() => {}}
-                onDeleted={() => {}}
               />
             </div>
           )}
