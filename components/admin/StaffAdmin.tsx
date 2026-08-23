@@ -58,7 +58,7 @@ const VIEW_STORAGE_KEY = 'funun-team-members-view'
 // Display order everywhere (add form, filter chips, role cards): legal before
 // it. This is a reordering of ALL_STAFF_ROLES (which lists it before legal) for
 // presentation only; ALL_STAFF_ROLES stays the validation authority.
-const ROLE_ORDER: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'legal', 'it', 'tms']
+const ROLE_ORDER: StaffRole[] = ['leadership', 'ae', 'bd', 'anr', 'legal', 'it', 'tms', 'accounting', 'marketing']
 
 const ROLE_META: Record<StaffRole, { cssVar: string; label: string; desc: string }> = {
   leadership: { cssVar: '--r-lead', label: 'Leadership', desc: 'Full access — manages the team, clients, and deals.' },
@@ -80,7 +80,14 @@ const FOCUS_RING =
 const INPUT_CLASS =
   'w-full rounded-[11px] border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2.5 text-[14px] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] transition focus:border-[color:var(--indigo)] focus:outline-none motion-reduce:transition-none'
 
-const CONTACT_BTN = `inline-flex items-center gap-1.5 rounded-[9px] border border-[color:var(--border)] px-3 py-1.5 text-[12px] font-bold text-[color:var(--ink-2)] transition hover:border-[color:var(--border-2)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`
+// Square icon-only contact/action button (email, call) used in both the List
+// actions column and the Cards footer, matching the ⋯ kebab's footprint.
+const ICON_BTN = `flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] border border-[color:var(--border)] bg-[color:var(--panel-2)] text-[color:var(--ink-2)] transition hover:border-[color:var(--border-2)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`
+
+// Shared grid template for the List view — the column-header row and every
+// member row-card use it so the columns line up: Team Member | Role | Phone |
+// Status | actions.
+const LIST_COLS = 'minmax(200px,1.6fr) minmax(170px,1.4fr) 128px 150px 120px'
 
 const MENU_ITEM = `flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[13px] font-semibold text-[color:var(--ink-2)] transition hover:bg-[color:var(--panel-2)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`
 
@@ -107,6 +114,14 @@ function formatDate(dateString: string): string {
 
 function telHref(phone: string): string {
   return 'tel:' + phone.replace(/[^\d+]/g, '')
+}
+
+// Status column data: a colored dot + a two-line "Joined / date" or
+// "Invited / date · awaiting".
+function statusInfo(m: StaffRow): { dot: string; main: string; sub: string } {
+  return m.status === 'pending'
+    ? { dot: 'var(--amber-fg)', main: 'Invited', sub: `${formatDate(m.created_at)} · awaiting` }
+    : { dot: 'var(--green-fg)', main: 'Joined', sub: formatDate(m.created_at) }
 }
 
 // A member's effective, de-duped, display-ordered roles. Falls back to the
@@ -186,7 +201,7 @@ function PendingTag() {
 }
 
 function Avatar({ member, size }: { member: StaffRow; size: 'sm' | 'lg' }) {
-  const dims = size === 'lg' ? 'h-[52px] w-[52px] text-[17px]' : 'h-11 w-11 text-[15px]'
+  const dims = size === 'lg' ? 'h-[54px] w-[54px] text-[17px]' : 'h-11 w-11 text-[15px]'
   if (member.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -771,32 +786,6 @@ export function StaffAdmin({
     )
   }
 
-  const renderContactMeta = (m: StaffRow) => (
-    <>
-      <a
-        href={`mailto:${m.email}`}
-        onClick={e => e.stopPropagation()}
-        className="font-semibold text-[color:var(--ink-2)] hover:text-[color:var(--ink)] hover:underline"
-      >
-        {m.email}
-      </a>
-      {m.phone && (
-        <>
-          {' · '}
-          <a
-            href={telHref(m.phone)}
-            onClick={e => e.stopPropagation()}
-            className="font-semibold text-[color:var(--ink-2)] hover:text-[color:var(--ink)] hover:underline"
-          >
-            {m.phone}
-          </a>
-        </>
-      )}
-      {' · '}
-      {m.status === 'pending' ? `Invited ${formatDate(m.created_at)} · awaiting` : `Joined ${formatDate(m.created_at)}`}
-    </>
-  )
-
   const drawerMember = drawer ? staff.find(m => m.user_id === drawer.userId) : undefined
   const dialogMember = dialog ? staff.find(m => m.user_id === dialog.userId) : undefined
   const menuMember = menu ? staff.find(m => m.user_id === menu.userId) : undefined
@@ -811,7 +800,7 @@ export function StaffAdmin({
             <p className="mt-1.5 max-w-[48ch] text-[13.5px] leading-relaxed text-[color:var(--ink-2)]">
               {canManage
                 ? 'The people who run Funūn. Add a teammate, give them one or more roles, and they’re invited by email to join.'
-                : 'The people who run Funūn — who does what, and how to reach them.'}
+                : 'The people who run Funūn. See who’s on your team and how to reach them.'}
             </p>
           </div>
           {canManage && (
@@ -1075,69 +1064,170 @@ export function StaffAdmin({
             </button>
           </div>
         ) : view === 'list' ? (
-          <div className="flex flex-col gap-2.5">
-            {filtered.map(m => (
+          <div className="overflow-x-auto">
+            <div className="min-w-[880px]">
+              {/* Column headers (align to each row-card's grid) */}
               <div
-                key={m.user_id}
-                className="group flex items-center gap-4 rounded-[15px] border border-[color:var(--border)] bg-[color:var(--panel)] px-4 py-4 transition hover:border-[color:var(--border-2)] motion-reduce:transition-none"
+                className="grid items-center gap-4 px-5 pb-2 text-[10.5px] font-bold uppercase tracking-[0.07em] text-[color:var(--ink-3)]"
+                style={{ gridTemplateColumns: LIST_COLS }}
               >
-                <Avatar member={m} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-[15px] font-bold text-[color:var(--ink)]">
-                    <span className="truncate">{m.display_name || m.email}</span>
-                    {m.user_id === currentUserId && <YouTag />}
-                    {m.status === 'pending' && <PendingTag />}
-                  </div>
-                  <div className="mt-0.5 truncate text-[12.5px] text-[color:var(--ink-3)]">{renderContactMeta(m)}</div>
-                </div>
-                <RolePills roles={memberRoles(m)} className="max-w-[50%] justify-end" />
-                {renderKebab(m)}
+                <div>Team Member</div>
+                <div>Role</div>
+                <div>Phone</div>
+                <div>Status</div>
+                <div />
               </div>
-            ))}
+              <div className="flex flex-col gap-2.5">
+                {filtered.map(m => {
+                  const st = statusInfo(m)
+                  return (
+                    <div
+                      key={m.user_id}
+                      className="group grid items-center gap-4 rounded-[15px] border border-[color:var(--border)] bg-[color:var(--panel)] px-5 py-4 transition hover:border-[color:var(--border-2)] motion-reduce:transition-none"
+                      style={{ gridTemplateColumns: LIST_COLS }}
+                    >
+                      {/* Team Member */}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar member={m} size="sm" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 text-[14.5px] font-bold text-[color:var(--ink)]">
+                            <span className="truncate">{m.display_name || m.email}</span>
+                            {m.user_id === currentUserId && <YouTag />}
+                            {m.status === 'pending' && <PendingTag />}
+                          </div>
+                          <a
+                            href={`mailto:${m.email}`}
+                            onClick={e => e.stopPropagation()}
+                            className="mt-0.5 block truncate text-[12px] text-[color:var(--ink-3)] transition hover:text-[color:var(--ink-2)] hover:underline motion-reduce:transition-none"
+                          >
+                            {m.email}
+                          </a>
+                        </div>
+                      </div>
+                      {/* Role */}
+                      <RolePills roles={memberRoles(m)} />
+                      {/* Phone */}
+                      <div
+                        className="truncate text-[13px] text-[color:var(--ink-2)]"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {m.phone ? (
+                          <a
+                            href={telHref(m.phone)}
+                            onClick={e => e.stopPropagation()}
+                            className="transition hover:text-[color:var(--ink)] hover:underline motion-reduce:transition-none"
+                          >
+                            {m.phone}
+                          </a>
+                        ) : (
+                          <span className="text-[color:var(--ink-3)]">—</span>
+                        )}
+                      </div>
+                      {/* Status */}
+                      <div className="flex items-center gap-2">
+                        <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ backgroundColor: st.dot }} />
+                        <span className="min-w-0">
+                          <span className="block text-[13px] text-[color:var(--ink-2)]">{st.main}</span>
+                          <span className="block truncate text-[11px] text-[color:var(--ink-3)]">{st.sub}</span>
+                        </span>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <a
+                          href={`mailto:${m.email}`}
+                          onClick={e => e.stopPropagation()}
+                          aria-label={`Email ${m.display_name || m.email}`}
+                          className={ICON_BTN}
+                        >
+                          <Icon size={15}>
+                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                            <path d="M4 7l8 6 8-6" />
+                          </Icon>
+                        </a>
+                        {m.phone && (
+                          <a
+                            href={telHref(m.phone)}
+                            onClick={e => e.stopPropagation()}
+                            aria-label={`Call ${m.display_name || m.email}`}
+                            className={ICON_BTN}
+                          >
+                            <Icon size={15}>
+                              <path d="M4 4h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z" />
+                            </Icon>
+                          </a>
+                        )}
+                        {renderKebab(m)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-            {filtered.map(m => (
-              <div
-                key={m.user_id}
-                className="group flex flex-col gap-3 rounded-[16px] border border-[color:var(--border)] bg-[color:var(--panel)] p-4 transition hover:border-[color:var(--border-2)] motion-reduce:transition-none"
-              >
-                <div className="flex items-start justify-between gap-2.5">
-                  <Avatar member={m} size="lg" />
-                  {renderKebab(m)}
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-[color:var(--ink)]">
-                    <span>{m.display_name || m.email}</span>
-                    {m.user_id === currentUserId && <YouTag />}
-                    {m.status === 'pending' && <PendingTag />}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(258px,1fr))] gap-3">
+            {filtered.map(m => {
+              const st = statusInfo(m)
+              return (
+                <div
+                  key={m.user_id}
+                  className="group flex flex-col rounded-[16px] border border-[color:var(--border)] bg-[color:var(--panel)] p-4 transition hover:border-[color:var(--border-2)] motion-reduce:transition-none"
+                >
+                  {/* Avatar + name + ⋯ */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <Avatar member={m} size="lg" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-[color:var(--ink)]">
+                          <span className="truncate">{m.display_name || m.email}</span>
+                          {m.user_id === currentUserId && <YouTag />}
+                          {m.status === 'pending' && <PendingTag />}
+                        </div>
+                        <div className="mt-0.5 truncate text-[12px] text-[color:var(--ink-3)]">{m.email}</div>
+                      </div>
+                    </div>
+                    {renderKebab(m)}
                   </div>
-                  <div className="mt-0.5 text-[12px] text-[color:var(--ink-3)]">
-                    {m.status === 'pending'
-                      ? `Invited ${formatDate(m.created_at)} · awaiting`
-                      : `Joined ${formatDate(m.created_at)}`}
-                  </div>
-                </div>
-                <RolePills roles={memberRoles(m)} />
-                <div className="flex flex-wrap gap-2">
-                  <a href={`mailto:${m.email}`} className={CONTACT_BTN}>
-                    <Icon size={14}>
-                      <rect x="3" y="5" width="18" height="14" rx="2" />
-                      <path d="M4 7l8 6 8-6" />
-                    </Icon>
-                    Email
-                  </a>
-                  {m.phone && (
-                    <a href={telHref(m.phone)} className={CONTACT_BTN}>
+                  {/* Roles */}
+                  <RolePills roles={memberRoles(m)} className="mt-3.5" />
+                  {/* Phone + status */}
+                  <div className="mt-3.5 flex flex-col gap-1.5 text-[12.5px]">
+                    <div className="flex items-center gap-2 text-[color:var(--ink-2)]">
                       <Icon size={14}>
                         <path d="M4 4h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z" />
                       </Icon>
-                      Call
+                      {m.phone ? (
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{m.phone}</span>
+                      ) : (
+                        <span className="text-[color:var(--ink-3)]">No phone</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ backgroundColor: st.dot }} />
+                      <span className="text-[color:var(--ink-2)]">
+                        {st.main} · {st.sub}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Contact buttons */}
+                  <div className="mt-3.5 flex gap-1.5 border-t border-[color:var(--border)] pt-3.5">
+                    <a href={`mailto:${m.email}`} aria-label={`Email ${m.display_name || m.email}`} className={ICON_BTN}>
+                      <Icon size={15}>
+                        <rect x="3" y="5" width="18" height="14" rx="2" />
+                        <path d="M4 7l8 6 8-6" />
+                      </Icon>
                     </a>
-                  )}
+                    {m.phone && (
+                      <a href={telHref(m.phone)} aria-label={`Call ${m.display_name || m.email}`} className={ICON_BTN}>
+                        <Icon size={15}>
+                          <path d="M4 4h4l2 5-3 2a12 12 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z" />
+                        </Icon>
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
