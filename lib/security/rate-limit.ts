@@ -18,6 +18,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
 export const RATE_LIMIT_MAX_ATTEMPTS = 5
+export const RATE_LIMIT_MAX_KEY_LENGTH = 256
+const RATE_LIMIT_MAX_WINDOW_MS = 24 * 60 * 60 * 1000
+const RATE_LIMIT_MAX_ATTEMPTS_LIMIT = 10_000
 
 export async function checkRateLimit(
   key: string,
@@ -26,10 +29,20 @@ export async function checkRateLimit(
   const windowMs = options.windowMs ?? RATE_LIMIT_WINDOW_MS
   const maxAttempts = options.maxAttempts ?? RATE_LIMIT_MAX_ATTEMPTS
 
+  if (!key.trim() || key.trim().length > RATE_LIMIT_MAX_KEY_LENGTH) {
+    throw new RangeError(`Rate-limit key must contain 1 to ${RATE_LIMIT_MAX_KEY_LENGTH} characters`)
+  }
+  if (!Number.isFinite(windowMs) || windowMs < 1 || windowMs > RATE_LIMIT_MAX_WINDOW_MS) {
+    throw new RangeError('Rate-limit window must be between 1ms and 24 hours')
+  }
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > RATE_LIMIT_MAX_ATTEMPTS_LIMIT) {
+    throw new RangeError('Rate-limit maximum must be an integer between 1 and 10000')
+  }
+
   try {
     const service = createServiceClient()
     const { data, error } = await service.rpc('check_rate_limit', {
-      p_key: key,
+      p_key: key.trim(),
       p_window_seconds: Math.ceil(windowMs / 1000),
       p_max: maxAttempts,
     })

@@ -13,6 +13,7 @@ import {
   getClientIp,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_ATTEMPTS,
+  RATE_LIMIT_MAX_KEY_LENGTH,
 } from './rate-limit'
 
 beforeEach(() => jest.clearAllMocks())
@@ -57,6 +58,15 @@ describe('checkRateLimit', () => {
   it('fails OPEN (false) when the client throws', async () => {
     mockRpc.mockRejectedValue(new Error('network'))
     expect(await checkRateLimit('ip:1.2.3.4')).toBe(false)
+  })
+
+  it('rejects invalid inputs before calling the database', async () => {
+    await expect(checkRateLimit('x'.repeat(RATE_LIMIT_MAX_KEY_LENGTH + 1))).rejects.toThrow(
+      RangeError
+    )
+    await expect(checkRateLimit('ip:test', { windowMs: 0 })).rejects.toThrow(RangeError)
+    await expect(checkRateLimit('ip:test', { maxAttempts: 1.5 })).rejects.toThrow(RangeError)
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 })
 
