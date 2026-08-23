@@ -10,6 +10,15 @@ files:
   - lib/storage
 ---
 
+## Status (updated 2026-08-23)
+- **Slice 1 SHIPPED (`ea5d89b`):** managers (Leadership/TMS) set a photo in the
+  Add form + change it via the ⋯ edit drawer. `POST /api/admin/staff/[id]/avatar`
+  (requireStaff leadership+tms, service-role upload to vault-assets `staff/{id}/…`,
+  writes `funun_staff.avatar_url`, audit-logged). Reuses the artist limits
+  (10MB, JPG/PNG/WebP).
+- **Slice 2 REMAINING:** AE self-edit — a "My Profile" settings page AND own-row
+  editing in Team Members — plus the managers-only config flag (revert if abused).
+
 ## Why
 Staff can't set a profile picture today. `funun_staff.avatar_url` exists and the
 `Avatar` component renders it when set, but there is **no upload flow for staff
