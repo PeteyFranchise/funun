@@ -138,8 +138,8 @@ export default async function AdminMyClientPartnersPage() {
       <ClientPartnersList
         companyRows={companyRows}
         clientRows={clientRows}
-        buildCompanyHref={id => `/admin/client-partners/${id}`}
-        buildClientHref={id => `/admin/clients/${id}`}
+        companyHrefBase="/admin/client-partners"
+        clientHrefBase="/admin/clients"
       />
     </div>
   )

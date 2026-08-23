@@ -46,8 +46,12 @@ export type ClientPartnersListMode = 'clients' | 'companies'
 export type ClientPartnersListProps = {
   companyRows: ClientPartnerRow[]
   clientRows: ClientPartnerRow[]
-  buildCompanyHref: (id: string) => string
-  buildClientHref: (id: string) => string
+  // Base paths (NOT function builders): a Server Component parent cannot pass a
+  // function across the RSC boundary to this Client Component — in production it
+  // throws "Functions cannot be passed directly to Client Components" at render
+  // time (dev tolerates it). The row href is built here as `${base}/${id}`.
+  companyHrefBase: string
+  clientHrefBase: string
   /** Which pill tab is selected on first render. Defaults to 'clients'. */
   initialTab?: ClientPartnersListMode
 }
@@ -337,8 +341,8 @@ function EmptyState({ mode }: { mode: ClientPartnersListMode }) {
 export function ClientPartnersList({
   companyRows,
   clientRows,
-  buildCompanyHref,
-  buildClientHref,
+  companyHrefBase,
+  clientHrefBase,
   initialTab = 'clients',
 }: ClientPartnersListProps) {
   const router = useRouter()
@@ -445,7 +449,7 @@ export function ClientPartnersList({
   }
 
   function handleRowClick(row: ClientPartnerRow) {
-    router.push(tab === 'clients' ? buildClientHref(row.id) : buildCompanyHref(row.id))
+    router.push(`${tab === 'clients' ? clientHrefBase : companyHrefBase}/${row.id}`)
   }
 
   return (
