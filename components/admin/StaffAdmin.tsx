@@ -124,6 +124,40 @@ function statusInfo(m: StaffRow): { dot: string; main: string; sub: string } {
     : { dot: 'var(--green-fg)', main: 'Joined', sub: formatDate(m.created_at) }
 }
 
+// ─── Avatar upload (Slice 1: Leadership/TMS set any member's photo) ──────────
+// Mirrors the artist avatar limits (app/api/profile/avatar). Client-side check
+// is UX only — the endpoint re-validates type + size.
+const AVATAR_MAX_BYTES = 10 * 1024 * 1024
+const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+
+function validateAvatarFile(file: File): string | null {
+  if (!AVATAR_TYPES.includes(file.type)) return 'Photo must be JPG, PNG, or WebP.'
+  if (file.size > AVATAR_MAX_BYTES) return 'Photo must be under 10MB.'
+  return null
+}
+
+async function uploadStaffAvatar(userId: string, file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(`/api/admin/staff/${encodeURIComponent(userId)}/avatar`, {
+    method: 'POST',
+    body: fd,
+  })
+  const json = (await res.json().catch(() => ({}))) as { data?: { avatar_url?: string }; error?: string }
+  if (!res.ok || !json.data?.avatar_url) throw new Error(json.error ?? 'Could not upload the photo.')
+  return json.data.avatar_url
+}
+
+// Camera glyph reused by the add-form + drawer photo controls.
+function CameraGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <Icon size={size}>
+      <path d="M4 7h3l2-2h6l2 2h3v12H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </Icon>
+  )
+}
+
 // A member's effective, de-duped, display-ordered roles. Falls back to the
 // single staff_role for legacy rows whose staff_roles column is empty, and
 // filters against ALL_STAFF_ROLES so unknown values never render a bare pill.
@@ -343,6 +377,13 @@ export function StaffAdmin({
   const [addRoles, setAddRoles] = useState<StaffRole[]>([])
   const [creating, setCreating] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  // Optional avatar staged during add — uploaded after the account exists (we
+  // need its user_id to key the storage path). Drawer upload is immediate.
+  const [addAvatarFile, setAddAvatarFile] = useState<File | null>(null)
+  const [addAvatarPreview, setAddAvatarPreview] = useState<string | null>(null)
+  const addAvatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const drawerAvatarInputRef = useRef<HTMLInputElement | null>(null)
 
   // ⋯ menu (fixed, anchored to the kebab)
   const [menu, setMenu] = useState<{ userId: string; top: number; left: number; anchorTop: number } | null>(null)
@@ -395,6 +436,13 @@ export function StaffAdmin({
     },
     []
   )
+
+  // Free the staged avatar preview's object URL when it changes or unmounts.
+  useEffect(() => {
+    return () => {
+      if (addAvatarPreview) URL.revokeObjectURL(addAvatarPreview)
+    }
+  }, [addAvatarPreview])
 
   const changeView = (next: ViewMode) => {
     setView(next)
@@ -555,6 +603,47 @@ export function StaffAdmin({
     return () => document.removeEventListener('keydown', onKey)
   }, [menu, dialog, drawer, closeDialog, closeDrawer])
 
+  // ── Avatar handlers ──
+  const onAddAvatarPick = (file: File | null) => {
+    if (!file) return
+    const err = validateAvatarFile(file)
+    if (err) {
+      setAddError(err)
+      return
+    }
+    setAddError(null)
+    setAddAvatarFile(file)
+    setAddAvatarPreview(URL.createObjectURL(file))
+  }
+  const clearAddAvatar = () => {
+    setAddAvatarFile(null)
+    setAddAvatarPreview(null)
+  }
+
+  // Change a member's photo from the edit drawer — uploads immediately (the
+  // account already exists) and folds the URL into the roster state so the
+  // drawer + list re-render with the new picture.
+  const onDrawerAvatarPick = async (file: File | null) => {
+    if (!file || !drawer) return
+    const err = validateAvatarFile(file)
+    if (err) {
+      setEditError(err)
+      return
+    }
+    setEditError(null)
+    const userId = drawer.userId
+    setUploadingAvatar(true)
+    try {
+      const url = await uploadStaffAvatar(userId, file)
+      setStaff(prev => prev.map(m => (m.user_id === userId ? { ...m, avatar_url: url } : m)))
+      showToast('Photo updated.', 'ok')
+    } catch (uploadErr) {
+      setEditError(uploadErr instanceof Error ? uploadErr.message : 'Could not upload the photo.')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   // ── Server actions ──
   const handleCreate = async () => {
     const email = addEmail.trim()
@@ -597,6 +686,7 @@ export function StaffAdmin({
       }
       if (!res.ok) throw new Error(json.error ?? 'Something went wrong — please try again.')
       const d = json.data
+      let avatarWarn = false
       if (d) {
         const created: StaffRow = {
           id: d.id ?? d.user_id ?? email,
@@ -613,6 +703,14 @@ export function StaffAdmin({
           email: d.email ?? email,
           status: 'pending',
         }
+        // Upload the staged photo now that the account (and its user_id) exists.
+        if (addAvatarFile && created.user_id) {
+          try {
+            created.avatar_url = await uploadStaffAvatar(created.user_id, addAvatarFile)
+          } catch {
+            avatarWarn = true // non-fatal — the member exists; set it from ⋯ → edit
+          }
+        }
         setStaff(prev => [created, ...prev])
       }
       setAddEmail('')
@@ -621,9 +719,12 @@ export function StaffAdmin({
       setAddName('')
       setAddPhone('')
       setAddRoles([])
+      clearAddAvatar()
       setShowAdd(false)
       if (json.emailSent === false) {
         showToast(`Added, but the invite email to ${email} could not be delivered.`, 'warn')
+      } else if (avatarWarn) {
+        showToast(`Invite sent to ${email}, but the photo didn’t upload — set it from the ⋯ menu.`, 'warn')
       } else {
         showToast(`Invite sent to ${email}.`, 'ok')
       }
@@ -831,6 +932,55 @@ export function StaffAdmin({
             <p className="mb-4 mt-1.5 max-w-[46ch] text-[12.5px] leading-relaxed text-[color:var(--ink-3)]">
               They’ll get an email invite to set a password and join the team.
             </p>
+            {/* Optional profile photo — staged here, uploaded after the account is created */}
+            <div className="mb-4 flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => addAvatarInputRef.current?.click()}
+                aria-label="Add a profile photo"
+                className={`relative h-16 w-16 flex-none overflow-hidden rounded-full border border-[color:var(--border-2)] bg-[color:var(--panel-2)] text-[color:var(--ink-3)] transition hover:border-[color:var(--ink-3)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`}
+              >
+                {addAvatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={addAvatarPreview} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center">
+                    <CameraGlyph size={22} />
+                  </span>
+                )}
+              </button>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => addAvatarInputRef.current?.click()}
+                    className={`rounded-[9px] border border-[color:var(--border)] px-3 py-1.5 text-[12px] font-bold text-[color:var(--ink-2)] transition hover:border-[color:var(--border-2)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`}
+                  >
+                    {addAvatarPreview ? 'Change photo' : 'Add photo'}
+                  </button>
+                  {addAvatarPreview && (
+                    <button
+                      type="button"
+                      onClick={clearAddAvatar}
+                      className={`rounded-[9px] px-2 py-1.5 text-[12px] font-bold text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11.5px] text-[color:var(--ink-3)]">Optional — JPG, PNG, or WebP, up to 10MB.</p>
+              </div>
+              <input
+                ref={addAvatarInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={e => {
+                  onAddAvatarPick(e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+            </div>
             {addError && <p className="mb-3 text-[13px] font-semibold text-[color:var(--rose-fg)]">{addError}</p>}
             <div className="grid gap-3.5 sm:grid-cols-2">
               <Field label="First name" htmlFor="staff-first" required>
@@ -914,6 +1064,7 @@ export function StaffAdmin({
                 onClick={() => {
                   setShowAdd(false)
                   setAddError(null)
+                  clearAddAvatar()
                 }}
                 className={`rounded-[11px] border border-[color:var(--border-2)] px-4 py-2.5 text-[13.5px] font-bold text-[color:var(--ink-2)] transition hover:border-[color:var(--ink-3)] hover:text-[color:var(--ink)] motion-reduce:transition-none ${FOCUS_RING}`}
               >
@@ -1314,7 +1465,33 @@ export function StaffAdmin({
                   Manage member
                 </div>
                 <div className="flex items-center gap-3">
-                  <Avatar member={drawerMember} size="lg" />
+                  <div className="relative flex-none">
+                    <Avatar member={drawerMember} size="lg" />
+                    <button
+                      type="button"
+                      onClick={() => drawerAvatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      aria-label="Change photo"
+                      className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--border-2)] bg-[color:var(--panel)] text-[color:var(--ink-2)] transition hover:text-[color:var(--ink)] disabled:opacity-60 motion-reduce:transition-none ${FOCUS_RING}`}
+                      style={{ boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}
+                    >
+                      {uploadingAvatar ? (
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <CameraGlyph size={12} />
+                      )}
+                    </button>
+                    <input
+                      ref={drawerAvatarInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={e => {
+                        onDrawerAvatarPick(e.target.files?.[0] ?? null)
+                        e.target.value = ''
+                      }}
+                    />
+                  </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-[16px] font-extrabold text-[color:var(--ink)]">
                       <span className="truncate">{drawerMember.display_name || drawerMember.email}</span>
