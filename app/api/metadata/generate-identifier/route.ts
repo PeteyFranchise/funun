@@ -136,10 +136,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.reason }, { status: 400 })
   }
 
-  // ── Persist: the counter increment and the value write both happen
-  // within this one request/response cycle — no client-visible
-  // "reserved but unwritten" intermediate state a retry could exploit
-  // (double-click guard).
+  // ── Persist. The counter increment and the value write are SEPARATE,
+  // non-transactional operations, so a concurrent mint for the same artist can
+  // read the same counter and compute the same value. The partial unique
+  // indexes (migration 122) are the backstop: the second value-write fails with
+  // 23505 and we return a retryable 409 below; the counter is already advanced,
+  // so the retry mints a fresh value (no duplicate, no gap). The platform GRid
+  // path additionally uses the optimistic CAS above.
   if (result.source === 'platform') {
     // Atomic, optimistically-locked increment on the SHARED global
     // counter (T-16-11-9): the WHERE clause matches the counter value we
@@ -193,6 +196,15 @@ export async function POST(request: Request) {
       .eq('id', trackId as string)
       .eq('user_id', user.id)
     if (trackErr) {
+      // 23505 = the partial unique index on tracks.isrc (migration 122) rejected
+      // a duplicate — a concurrent mint took this value first. The counter is
+      // already advanced, so a retry mints a fresh ISRC. Surface as retryable.
+      if (trackErr.code === '23505') {
+        return NextResponse.json(
+          { error: 'That identifier was just taken — please try again.' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json({ error: 'Could not save the identifier to the track.' }, { status: 500 })
     }
   } else {
@@ -204,6 +216,15 @@ export async function POST(request: Request) {
       .eq('id', projectId)
       .eq('user_id', user.id)
     if (projectErr) {
+      // 23505 = a partial unique index (migration 122) rejected a duplicate
+      // upc/grid, or a per-artist duplicate catalog_number — a concurrent mint
+      // won. The counter is already advanced, so a retry mints a fresh value.
+      if (projectErr.code === '23505') {
+        return NextResponse.json(
+          { error: 'That identifier was just taken — please try again.' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json({ error: 'Could not save the identifier to the project.' }, { status: 500 })
     }
   }
