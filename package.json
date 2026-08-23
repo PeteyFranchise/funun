@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
     "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
     "db:push": "supabase db push",
     "break-glass": "tsx scripts/break-glass.ts"
