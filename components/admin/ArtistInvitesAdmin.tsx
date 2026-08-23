@@ -24,19 +24,8 @@ export type WaitlistRow = {
   created_at: string
 }
 
-export type InviteRow = {
-  id: string
-  email: string
-  status: string
-  source: string
-  invited_by_user_id: string | null
-  accepted_at: string | null
-  created_at: string
-}
-
 type Props = {
   initialWaitlist: WaitlistRow[]
-  initialInvites: InviteRow[]
   isLeadership: boolean
 }
 
@@ -60,7 +49,7 @@ function timeAgo(iso: string): string {
 const inputClass =
   'w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] py-2 pl-9 pr-3 text-[14px] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] focus:border-[color:var(--indigo)] focus:outline-none'
 
-export function ArtistInvitesAdmin({ initialWaitlist, initialInvites, isLeadership }: Props) {
+export function ArtistInvitesAdmin({ initialWaitlist, isLeadership }: Props) {
   const [waitlist, setWaitlist] = useState<WaitlistRow[]>(initialWaitlist)
   const [search, setSearch] = useState('')
   const [convertingId, setConvertingId] = useState<string | null>(null)
