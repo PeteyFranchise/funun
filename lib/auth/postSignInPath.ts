@@ -13,11 +13,7 @@ import { getStaffRole } from '@/lib/admin/staff-role'
 // There is no /admin index route (it 404s), so staff are sent to a real page.
 
 export const BUYER_HOME = '/sync/catalog'
-// TEMPORARY (2026-08-23): repointed from '/admin/my-client-partners', which
-// throws on prod (see memory project_my_client_partners_crash) — staff sign-in
-// was landing straight on the crash. '/admin/team-members' is a known-good
-// all-staff page. Repoint back to my-client-partners once the crash is fixed.
-export const STAFF_HOME = '/admin/team-members'
+export const STAFF_HOME = '/admin/my-client-partners'
 export const DEFAULT_HOME = '/vault'
 
 const APP_ORIGIN = 'https://funun.studio'
