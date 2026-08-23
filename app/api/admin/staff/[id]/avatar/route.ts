@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { requireStaff, type StaffRole } from '@/lib/admin/gate'
+import { requireStaff, getStaffRoles, type StaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { isAvatarSelfEditEnabled } from '@/lib/staff/avatarSelfEdit'
 
 // Team management is leadership + TMS (people ops) — same gate as the other
 // /api/admin/staff mutations.
@@ -20,14 +21,22 @@ const EXT_BY_MIME: Record<string, string> = {
 }
 
 // ─── POST /api/admin/staff/[id]/avatar — set a member's profile picture ──────
-// Leadership + TMS. Uploads the image and writes funun_staff.avatar_url (the
-// display copy the roster + Avatar component read). avatar_url is presentation
-// only — NOT part of the app_metadata auth gate — so, unlike role changes,
-// there is no dual-write to app_metadata here. multipart/form-data, field `file`.
+// Leadership/TMS may set ANY member's photo; other staff may set only their own,
+// and only while STAFF_AVATAR_SELF_EDIT is enabled (avatarSelfEdit). Uploads the
+// image and writes funun_staff.avatar_url (the display copy the roster + Avatar
+// component read). avatar_url is presentation only — NOT part of the app_metadata
+// auth gate — so, unlike role changes, there is no dual-write here.
+// multipart/form-data, field `file`.
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireStaff(MANAGE_ROLES)
+  // Any operational staff may reach this route; authorization is manager-OR-self.
+  const auth = await requireStaff()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const isManager = getStaffRoles(auth.user).some(r => MANAGE_ROLES.includes(r))
+  const isSelf = id === auth.user.id
+  if (!isManager && !(isSelf && isAvatarSelfEditEnabled())) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const form = await request.formData()
   const file = form.get('file')

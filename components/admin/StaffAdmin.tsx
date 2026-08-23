@@ -130,13 +130,13 @@ function statusInfo(m: StaffRow): { dot: string; main: string; sub: string } {
 const AVATAR_MAX_BYTES = 10 * 1024 * 1024
 const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
-function validateAvatarFile(file: File): string | null {
+export function validateAvatarFile(file: File): string | null {
   if (!AVATAR_TYPES.includes(file.type)) return 'Photo must be JPG, PNG, or WebP.'
   if (file.size > AVATAR_MAX_BYTES) return 'Photo must be under 10MB.'
   return null
 }
 
-async function uploadStaffAvatar(userId: string, file: File): Promise<string> {
+export async function uploadStaffAvatar(userId: string, file: File): Promise<string> {
   const fd = new FormData()
   fd.append('file', file)
   const res = await fetch(`/api/admin/staff/${encodeURIComponent(userId)}/avatar`, {
@@ -149,7 +149,7 @@ async function uploadStaffAvatar(userId: string, file: File): Promise<string> {
 }
 
 // Camera glyph reused by the add-form + drawer photo controls.
-function CameraGlyph({ size = 16 }: { size?: number }) {
+export function CameraGlyph({ size = 16 }: { size?: number }) {
   return (
     <Icon size={size}>
       <path d="M4 7h3l2-2h6l2 2h3v12H4z" />
@@ -161,7 +161,7 @@ function CameraGlyph({ size = 16 }: { size?: number }) {
 // A member's effective, de-duped, display-ordered roles. Falls back to the
 // single staff_role for legacy rows whose staff_roles column is empty, and
 // filters against ALL_STAFF_ROLES so unknown values never render a bare pill.
-function memberRoles(m: StaffRow): StaffRole[] {
+export function memberRoles(m: StaffRow): StaffRole[] {
   const raw = m.staff_roles && m.staff_roles.length > 0 ? m.staff_roles : m.staff_role ? [m.staff_role] : []
   const set = new Set(raw.filter((r): r is StaffRole => (ALL_STAFF_ROLES as string[]).includes(r as string)))
   return ROLE_ORDER.filter(r => set.has(r))
@@ -201,7 +201,7 @@ function RolePill({ role }: { role: StaffRole }) {
   )
 }
 
-function RolePills({ roles, className }: { roles: StaffRole[]; className?: string }) {
+export function RolePills({ roles, className }: { roles: StaffRole[]; className?: string }) {
   return (
     <div className={`flex flex-wrap gap-1.5 ${className ?? ''}`}>
       {roles.map(r => (
@@ -234,7 +234,7 @@ function PendingTag() {
   )
 }
 
-function Avatar({ member, size }: { member: StaffRow; size: 'sm' | 'lg' }) {
+export function Avatar({ member, size }: { member: StaffRow; size: 'sm' | 'lg' }) {
   const dims = size === 'lg' ? 'h-[54px] w-[54px] text-[17px]' : 'h-11 w-11 text-[15px]'
   if (member.avatar_url) {
     return (
@@ -350,6 +350,7 @@ export function StaffAdmin({
   initialStaff,
   currentUserId,
   canManage = true,
+  selfAvatarEdit = false,
 }: {
   initialStaff: StaffRow[]
   currentUserId: string
@@ -358,6 +359,10 @@ export function StaffAdmin({
   // the edit drawer are hidden. Management stays gated at the API layer too
   // (this is UX/defense-in-depth, not the authority) — see /api/admin/staff.
   canManage?: boolean
+  // When true, a NON-manager may change their OWN photo from their own row
+  // (managers change photos via ⋯ → Edit). Reflects STAFF_AVATAR_SELF_EDIT;
+  // the endpoint enforces the same manager-or-self rule.
+  selfAvatarEdit?: boolean
 }) {
   const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [view, setView] = useState<ViewMode>('list')
@@ -384,6 +389,8 @@ export function StaffAdmin({
   const addAvatarInputRef = useRef<HTMLInputElement | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const drawerAvatarInputRef = useRef<HTMLInputElement | null>(null)
+  const [uploadingSelfAvatar, setUploadingSelfAvatar] = useState(false)
+  const selfAvatarInputRef = useRef<HTMLInputElement | null>(null)
 
   // ⋯ menu (fixed, anchored to the kebab)
   const [menu, setMenu] = useState<{ userId: string; top: number; left: number; anchorTop: number } | null>(null)
@@ -644,6 +651,26 @@ export function StaffAdmin({
     }
   }
 
+  // Non-manager changing their OWN photo from their row (selfAvatarEdit).
+  const onSelfAvatarPick = async (file: File | null) => {
+    if (!file) return
+    const err = validateAvatarFile(file)
+    if (err) {
+      showToast(err, 'bad')
+      return
+    }
+    setUploadingSelfAvatar(true)
+    try {
+      const url = await uploadStaffAvatar(currentUserId, file)
+      setStaff(prev => prev.map(m => (m.user_id === currentUserId ? { ...m, avatar_url: url } : m)))
+      showToast('Your photo was updated.', 'ok')
+    } catch (uploadErr) {
+      showToast(uploadErr instanceof Error ? uploadErr.message : 'Could not upload the photo.', 'bad')
+    } finally {
+      setUploadingSelfAvatar(false)
+    }
+  }
+
   // ── Server actions ──
   const handleCreate = async () => {
     const email = addEmail.trim()
@@ -861,6 +888,31 @@ export function StaffAdmin({
   }
 
   // ── Render helpers that close over state ──
+  // Own-row photo control for non-managers (managers change photos via ⋯ → Edit).
+  const renderRowAvatar = (m: StaffRow, size: 'sm' | 'lg') => {
+    const selfEditable = selfAvatarEdit && !canManage && m.user_id === currentUserId
+    if (!selfEditable) return <Avatar member={m} size={size} />
+    return (
+      <div className="relative flex-none">
+        <Avatar member={m} size={size} />
+        <button
+          type="button"
+          onClick={() => selfAvatarInputRef.current?.click()}
+          disabled={uploadingSelfAvatar}
+          aria-label="Change your photo"
+          className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-[color:var(--border-2)] bg-[color:var(--panel)] text-[color:var(--ink-2)] transition hover:text-[color:var(--ink)] disabled:opacity-60 motion-reduce:transition-none ${FOCUS_RING}`}
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}
+        >
+          {uploadingSelfAvatar ? (
+            <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <CameraGlyph size={10} />
+          )}
+        </button>
+      </div>
+    )
+  }
+
   const renderKebab = (m: StaffRow) => {
     if (!canManage) return null
     const open = menu?.userId === m.user_id
@@ -1239,7 +1291,7 @@ export function StaffAdmin({
                     >
                       {/* Team Member */}
                       <div className="flex min-w-0 items-center gap-3">
-                        <Avatar member={m} size="sm" />
+                        {renderRowAvatar(m, 'sm')}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-[14.5px] font-bold text-[color:var(--ink)]">
                             <span className="truncate">{m.display_name || m.email}</span>
@@ -1327,7 +1379,7 @@ export function StaffAdmin({
                   {/* Avatar + name + ⋯ */}
                   <div className="flex items-start gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <Avatar member={m} size="lg" />
+                      {renderRowAvatar(m, 'lg')}
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5 text-[15px] font-bold text-[color:var(--ink)]">
                           <span className="truncate">{m.display_name || m.email}</span>
@@ -1694,6 +1746,18 @@ export function StaffAdmin({
           {toast.msg}
         </div>
       )}
+
+      {/* Shared hidden input for the own-row self-photo control (non-managers) */}
+      <input
+        ref={selfAvatarInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={e => {
+          onSelfAvatarPick(e.target.files?.[0] ?? null)
+          e.target.value = ''
+        }}
+      />
     </>
   )
 }

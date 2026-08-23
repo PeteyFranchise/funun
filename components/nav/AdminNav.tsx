@@ -25,6 +25,7 @@ import {
   SelectsIcon,
   MyClientsIcon,
   InvitesIcon,
+  ProfileIcon,
 } from './admin-icons'
 
 type IconCmp = (p: { gradient?: boolean; className?: string }) => React.ReactNode
@@ -65,6 +66,7 @@ const ITEMS: Item[] = [
   { href: '/admin/selects', label: 'Selects', match: '/admin/selects', Icon: SelectsIcon, show: notIt },
   { href: '/admin/my-client-partners', label: 'My Client Partners', match: '/admin/my-client-partners', Icon: MyClientsIcon, show: notIt },
   { href: '/admin/artist-invites', label: 'Artist Invites', match: '/admin/artist-invites', Icon: InvitesIcon, show: notIt },
+  { href: '/admin/profile', label: 'My Profile', match: '/admin/profile', Icon: ProfileIcon, show: notIt },
 ]
 
 const STORAGE_KEY_COLLAPSED = 'funun-admin-nav-collapsed'

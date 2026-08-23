@@ -194,3 +194,12 @@ export const InvitesIcon = (p: IconProps) => (
     <path d="M18 8v6M15 11h6" />
   </Svg>
 )
+
+// My Profile — user in a circle
+export const ProfileIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="10" r="3" />
+    <path d="M6.6 18.5a6 6 0 0 1 10.8 0" />
+  </Svg>
+)

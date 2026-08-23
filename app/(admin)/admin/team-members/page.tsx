@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaffPage, getStaffRoles } from '@/lib/admin/gate'
+import { isAvatarSelfEditEnabled } from '@/lib/staff/avatarSelfEdit'
 import { StaffAdmin } from '@/components/admin/StaffAdmin'
 import type { StaffRow } from '@/components/admin/StaffAdmin'
 
@@ -41,7 +42,12 @@ export default async function AdminTeamMembersPage() {
 
   return (
     <div className="flex-1 px-9 py-[30px]">
-      <StaffAdmin initialStaff={staffRows} currentUserId={user.id} canManage={canManage} />
+      <StaffAdmin
+        initialStaff={staffRows}
+        currentUserId={user.id}
+        canManage={canManage}
+        selfAvatarEdit={isAvatarSelfEditEnabled()}
+      />
     </div>
   )
 }
