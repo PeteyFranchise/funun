@@ -57,40 +57,40 @@ describe('GET /api/cron/process-jobs — dispatch', () => {
     const handler = jest.fn().mockResolvedValue({ url: 'https://x' })
     JOB_HANDLERS['vault_export'] = handler
     mockClaim
-      .mockResolvedValueOnce({ id: 'j1', type: 'vault_export', payload: { a: 1 } })
+      .mockResolvedValueOnce({ id: 'j1', type: 'vault_export', payload: { a: 1 }, claim_token: 'c1' })
       .mockResolvedValue(null)
 
     const res = await GET(req(auth))
     expect(res.status).toBe(200)
     expect(handler).toHaveBeenCalledWith({ a: 1 })
-    expect(mockComplete).toHaveBeenCalledWith('j1', { url: 'https://x' })
+    expect(mockComplete).toHaveBeenCalledWith('j1', 'c1', { url: 'https://x' })
     expect(mockFail).not.toHaveBeenCalled()
   })
 
   it('fails a job whose type has no registered handler', async () => {
     mockClaim
-      .mockResolvedValueOnce({ id: 'j2', type: 'mystery', payload: {} })
+      .mockResolvedValueOnce({ id: 'j2', type: 'mystery', payload: {}, claim_token: 'c2' })
       .mockResolvedValue(null)
 
     await GET(req(auth))
-    expect(mockFail).toHaveBeenCalledWith('j2', expect.stringContaining('No handler'))
+    expect(mockFail).toHaveBeenCalledWith('j2', 'c2', expect.stringContaining('No handler'))
     expect(mockComplete).not.toHaveBeenCalled()
   })
 
   it('fails (for retry) a job whose handler throws', async () => {
     JOB_HANDLERS['vault_export'] = jest.fn().mockRejectedValue(new Error('render blew up'))
     mockClaim
-      .mockResolvedValueOnce({ id: 'j3', type: 'vault_export', payload: {} })
+      .mockResolvedValueOnce({ id: 'j3', type: 'vault_export', payload: {}, claim_token: 'c3' })
       .mockResolvedValue(null)
 
     await GET(req(auth))
-    expect(mockFail).toHaveBeenCalledWith('j3', 'render blew up')
+    expect(mockFail).toHaveBeenCalledWith('j3', 'c3', 'render blew up')
     expect(mockComplete).not.toHaveBeenCalled()
   })
 
   it('stops at MAX_PER_RUN even if the queue stays full', async () => {
     JOB_HANDLERS['vault_export'] = jest.fn().mockResolvedValue({})
-    mockClaim.mockResolvedValue({ id: 'jN', type: 'vault_export', payload: {} })
+    mockClaim.mockResolvedValue({ id: 'jN', type: 'vault_export', payload: {}, claim_token: 'cN' })
 
     const res = await GET(req(auth))
     const body = await res.json()

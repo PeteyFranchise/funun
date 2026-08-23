@@ -76,16 +76,25 @@ describe('enqueueJob', () => {
 // ─── claimNextJob ─────────────────────────────────────────────────────────
 describe('claimNextJob', () => {
   it('unwraps the first row of the RPC set', async () => {
-    mockRpc.mockResolvedValue({ data: [{ id: 'j1', type: 'vault_export' }], error: null })
+    mockRpc.mockResolvedValue({
+      data: [{ id: 'j1', type: 'vault_export', claim_token: 'claim-1' }],
+      error: null,
+    })
     const job = await claimNextJob()
-    expect(job).toEqual({ id: 'j1', type: 'vault_export' })
-    expect(mockRpc).toHaveBeenCalledWith('claim_next_job', { p_type: null })
+    expect(job).toEqual({ id: 'j1', type: 'vault_export', claim_token: 'claim-1' })
+    expect(mockRpc).toHaveBeenCalledWith('claim_next_job', {
+      p_type: null,
+      p_lease_seconds: 120,
+    })
   })
 
   it('passes p_type through when given', async () => {
     mockRpc.mockResolvedValue({ data: [], error: null })
     await claimNextJob('watermark_preview')
-    expect(mockRpc).toHaveBeenCalledWith('claim_next_job', { p_type: 'watermark_preview' })
+    expect(mockRpc).toHaveBeenCalledWith('claim_next_job', {
+      p_type: 'watermark_preview',
+      p_lease_seconds: 120,
+    })
   })
 
   it('returns null when the queue is empty', async () => {
@@ -93,39 +102,68 @@ describe('claimNextJob', () => {
     expect(await claimNextJob()).toBeNull()
   })
 
-  it('returns null on RPC error', async () => {
+  it('surfaces an RPC error', async () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } })
-    expect(await claimNextJob()).toBeNull()
+    await expect(claimNextJob()).rejects.toThrow('Could not claim background job: boom')
   })
 })
 
 // ─── completeJob ──────────────────────────────────────────────────────────
 describe('completeJob', () => {
   it('marks completed with the result and stamps finished_at', async () => {
-    await completeJob('j1', { url: 'https://x' })
+    mockMaybeSingle.mockResolvedValue({ data: { id: 'j1' }, error: null })
+    await completeJob('j1', 'claim-1', { url: 'https://x' })
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'completed', result: { url: 'https://x' } })
+      expect.objectContaining({
+        status: 'completed',
+        result: { url: 'https://x' },
+        claim_token: null,
+        lease_expires_at: null,
+      })
     )
     expect(mockUpdate.mock.calls[0][0]).toHaveProperty('finished_at')
     expect(mockEq).toHaveBeenCalledWith('id', 'j1')
+    expect(mockEq).toHaveBeenCalledWith('claim_token', 'claim-1')
+  })
+
+  it('rejects completion after another worker has reclaimed the lease', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null })
+    await expect(completeJob('j1', 'stale-claim', {})).rejects.toThrow('claim lease was lost')
   })
 })
 
 // ─── failJob ──────────────────────────────────────────────────────────────
 describe('failJob', () => {
   it('re-queues (pending) while under max_attempts', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: { attempts: 1, max_attempts: 3 } })
-    await failJob('j1', 'transient')
+    mockMaybeSingle
+      .mockResolvedValueOnce({ data: { attempts: 1, max_attempts: 3 }, error: null })
+      .mockResolvedValueOnce({ data: { id: 'j1' }, error: null })
+    await failJob('j1', 'claim-1', 'transient')
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'pending', started_at: null, result: { error: 'transient' } })
+      expect.objectContaining({
+        status: 'pending',
+        started_at: null,
+        result: { error: 'transient' },
+        claim_token: null,
+        lease_expires_at: null,
+      })
     )
   })
 
   it('marks failed once attempts reach max_attempts', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: { attempts: 3, max_attempts: 3 } })
-    await failJob('j1', 'permanent')
+    mockMaybeSingle
+      .mockResolvedValueOnce({ data: { attempts: 3, max_attempts: 3 }, error: null })
+      .mockResolvedValueOnce({ data: { id: 'j1' }, error: null })
+    await failJob('j1', 'claim-1', 'permanent')
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed', result: { error: 'permanent' } })
+    )
+  })
+
+  it('rejects failure handling after a crash lease was reclaimed', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null })
+    await expect(failJob('j1', 'stale-claim', 'late failure')).rejects.toThrow(
+      'claim lease was lost'
     )
   })
 })
@@ -133,12 +171,17 @@ describe('failJob', () => {
 // ─── getJob ───────────────────────────────────────────────────────────────
 describe('getJob', () => {
   it('returns the row', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: { id: 'j1', status: 'completed' } })
+    mockMaybeSingle.mockResolvedValue({ data: { id: 'j1', status: 'completed' }, error: null })
     expect(await getJob('j1')).toEqual({ id: 'j1', status: 'completed' })
   })
 
   it('returns null when absent', async () => {
-    mockMaybeSingle.mockResolvedValue({ data: null })
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null })
     expect(await getJob('nope')).toBeNull()
+  })
+
+  it('surfaces persistence errors', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: { message: 'read failed' } })
+    await expect(getJob('j1')).rejects.toThrow('Could not read background job: read failed')
   })
 })
