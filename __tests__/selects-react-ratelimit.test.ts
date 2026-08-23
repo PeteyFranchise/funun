@@ -21,7 +21,7 @@ jest.mock('@/lib/supabase/server', () => ({
   createApiClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
 }))
 
-import { POST } from '@/app/api/selects/[token]/react/route'
+import { POST, isSelectsReactionCapError } from '@/app/api/selects/[token]/react/route'
 
 const UUID = '00000000-0000-0000-0000-000000000001'
 function req(body: unknown) {
@@ -63,5 +63,18 @@ describe('POST /api/selects/[token]/react — rate limit (audit #6)', () => {
     const res = await POST(req({ selectsTrackId: UUID, reaction: 'love', viewerKey: 'abcdefgh' }), ctx('bad'))
     expect(res.status).toBe(404)
     expect(mockCheckRateLimit).not.toHaveBeenCalled()
+  })
+})
+
+describe('Selects reaction cap errors', () => {
+  it('recognizes only the database cap check violation', () => {
+    expect(
+      isSelectsReactionCapError({
+        code: '23514',
+        message: 'selects reaction cap reached for track track-1',
+      })
+    ).toBe(true)
+    expect(isSelectsReactionCapError({ code: '23505', message: 'duplicate key' })).toBe(false)
+    expect(isSelectsReactionCapError(null)).toBe(false)
   })
 })

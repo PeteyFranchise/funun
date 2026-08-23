@@ -28,6 +28,10 @@ const ReactBodySchema = z
   })
   .strict()
 
+export function isSelectsReactionCapError(error: { code?: string; message?: string } | null) {
+  return error?.code === '23514' && error.message?.includes('selects reaction cap') === true
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const service = createServiceClient()
@@ -116,6 +120,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       reaction: parsed.data.reaction,
       ...matchColumn,
     })
+    if (isSelectsReactionCapError(error)) {
+      return NextResponse.json(
+        { error: 'This track has reached its reaction limit.' },
+        { status: 409 }
+      )
+    }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
