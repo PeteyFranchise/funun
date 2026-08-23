@@ -4,6 +4,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { resolveSelectsByToken, loadOwnSelectsTrack } from '@/lib/selects/public-resolve'
 import { SELECTS_REACTION_VALUES } from '@/lib/selects/types'
+import { isSelectsReactionCapError } from '@/lib/selects/reaction-cap'
 
 // ─── POST /api/selects/[token]/react — per-track reaction, no login (R12) ──
 // Public, token-gated, no requireStaff/buyer-auth REQUIRED — play/keep/pass
@@ -27,10 +28,6 @@ const ReactBodySchema = z
     viewerKey: z.string().trim().min(8).max(200).optional(),
   })
   .strict()
-
-export function isSelectsReactionCapError(error: { code?: string; message?: string } | null) {
-  return error?.code === '23514' && error.message?.includes('selects reaction cap') === true
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params

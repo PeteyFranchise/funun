@@ -21,7 +21,8 @@ jest.mock('@/lib/supabase/server', () => ({
   createApiClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) } }),
 }))
 
-import { POST, isSelectsReactionCapError } from '@/app/api/selects/[token]/react/route'
+import { POST } from '@/app/api/selects/[token]/react/route'
+import { isSelectsReactionCapError } from '@/lib/selects/reaction-cap'
 
 const UUID = '00000000-0000-0000-0000-000000000001'
 function req(body: unknown) {
