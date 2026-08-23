@@ -46,14 +46,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'This Selects can’t take that action right now.' }, { status: 400 })
   }
 
+  // Compare-and-swap: only move if the row is STILL the status we validated the
+  // transition against. Without the status guard, two concurrent responses (an
+  // approve and a request-changes) both pass isLegalSelectsTransition from the
+  // same read 'sent' and last-write-wins nondeterministically (audit #10).
   const { data, error } = await service
     .from('selects')
     .update({ status: target })
     .eq('id', selects.id)
+    .eq('status', selects.status)
     .select('id, status')
     .maybeSingle()
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? 'Could not update this Selects.' }, { status: 500 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  if (!data) {
+    // 0 rows updated = the status changed under us (a concurrent response, or the
+    // AE moved it). Fail closed with a retryable conflict instead of clobbering.
+    return NextResponse.json(
+      { error: 'This Selects was just updated — refresh and try again.' },
+      { status: 409 }
+    )
   }
 
   // Best-effort, isolated from the primary status write above (migration
