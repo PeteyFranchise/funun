@@ -111,7 +111,8 @@ export async function POST(request: Request) {
 // ─── PATCH /api/admin/checklist — atomic reorder ────────────────────────
 // Accepts { order: Array<{ key: string; sort_order: number }> }.
 // The client sends the FULL reordered list with new 0-based positions after
-// every drag-drop. All affected rows are updated in one request.
+// every drag-drop. The database RPC validates the full current key set and
+// applies the set-based update in one transaction.
 // Risk 6 / Pitfall 4: all items must be updated atomically.
 export async function PATCH(request: Request) {
   const auth = await verifyAdmin()
@@ -119,13 +120,19 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
-  const body = (await request.json()) as Record<string, unknown>
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
 
-  if (!Array.isArray(body.order)) {
+  if (!body || !Array.isArray(body.order)) {
     return NextResponse.json({ error: 'order must be an array' }, { status: 400 })
   }
 
+  if (body.order.length > 200) {
+    return NextResponse.json({ error: 'order may contain at most 200 items' }, { status: 400 })
+  }
+
   // Validate each entry before touching the DB
+  const keys = new Set<string>()
+  const positions = new Set<number>()
   for (const entry of body.order) {
     if (
       typeof entry !== 'object' ||
@@ -140,22 +147,47 @@ export async function PATCH(request: Request) {
     }
     // T-05-08: validate each key in the reorder array, consistent with single-item
     // PATCH/DELETE handlers that validate itemKey before using it in a WHERE clause.
-    if (!KEY_REGEX.test((entry as { key: string }).key)) {
+    if (
+      (entry as { key: string }).key.length > 100 ||
+      !KEY_REGEX.test((entry as { key: string }).key)
+    ) {
       return NextResponse.json({ error: 'Invalid item key in order array' }, { status: 400 })
     }
+
+    const { key, sort_order } = entry as { key: string; sort_order: number }
+    if (!Number.isInteger(sort_order) || sort_order < 0 || sort_order >= body.order.length) {
+      return NextResponse.json(
+        { error: 'sort_order must be an integer contiguous from zero' },
+        { status: 400 }
+      )
+    }
+    if (keys.has(key)) {
+      return NextResponse.json({ error: 'order contains a duplicate key' }, { status: 400 })
+    }
+    if (positions.has(sort_order)) {
+      return NextResponse.json(
+        { error: 'sort_order positions must be unique and contiguous from zero' },
+        { status: 400 }
+      )
+    }
+    keys.add(key)
+    positions.add(sort_order)
   }
 
   const orderEntries = body.order as Array<{ key: string; sort_order: number }>
   const service = createServiceClient()
 
-  // Sequential updates within this request — all items get a fresh sort_order
-  for (const entry of orderEntries) {
-    const { error } = await service
-      .from('launchpad_checklist_items')
-      .update({ sort_order: entry.sort_order })
-      .eq('key', entry.key)
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { error } = await service.rpc('reorder_launchpad_checklist', {
+    p_order: orderEntries,
+  })
+  if (error) {
+    if (error.code === '22023' || error.code === '40001') {
+      return NextResponse.json(
+        { error: 'The checklist changed. Refresh and try the reorder again.' },
+        { status: 409 }
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
