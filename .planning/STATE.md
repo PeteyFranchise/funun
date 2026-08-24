@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.1
 current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
 status: in_progress
-stopped_at: 31.1-05 executed (Health Rules settings surface — config/pipeline-stages/prospect-image routes + settings screen); resume orchestrator
-last_updated: "2026-08-24T05:17:19.943Z"
+stopped_at: 31.1-06 executed (D-07 AE assignment handoff — required note, self-assign, onboarding task, assign panel); resume orchestrator
+last_updated: "2026-08-24T05:33:57.260Z"
 last_activity: 2026-08-24
-last_activity_desc: 31.1-05 complete — Health Rules settings surface (thresholds, keeps-warm, live preview, prospect image, pipeline stages)
+last_activity_desc: Phase 31.1 execution started
 progress:
   total_phases: 34
   completed_phases: 27
   total_plans: 220
-  completed_plans: 215
+  completed_plans: 216
   percent: 79
 ---
 
@@ -29,6 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 31.1 (ae-console-health-leadership-tower-telemetry-team-rbac) — EXECUTING
+31.1-06 (D-07 AE assignment handoff — route + onboarding helpers + assign/onboarding panels, wave 3) COMPLETE 2026-08-24 — 31.1-06-SUMMARY.md; PATCH /api/admin/buyer-orgs/[id]/ae extended into the full D-07 structural handoff (required trimmed handoff note when assigning — 400 + no write if missing; target-role check widened to admit leadership self-assign alongside ae/bd; after the ae_user_id write commits, three independently .catch()-wrapped best-effort side effects: a kind:'assignment' relationship-log entry, an auto-created onboarding_tasks row — seeded checklist + note — in the AE's queue, and a notification with a Resend intro-email copy) + lib/client-partners/onboarding.ts (SEEDED_ONBOARDING_CHECKLIST, insertOnboardingTask, listOpenOnboardingTasks) + appendRelationshipLog widened to kind:'assignment'/meta; components/admin/AssignAePanel.tsx (AE search + load + health-mix chips + required-note textarea, disabled until filled) + OnboardingTasksPanel.tsx (read-only My-tab render of open handoff tasks), both mounted in ClientPartnersRoom.tsx (assign panel opens from the Needs-an-AE queue + book row action via a new client-to-client onRowAction on ClientPartnersList). Necessary plumbing beyond files_modified (Rule 2): app/(admin)/admin/client-partners/page.tsx now also loads the full assignable AE roster (funun_staff merged with groupByAe) + the caller's own open onboarding tasks. Auto-fixed (Rule 1) pre-existing test breakage the note requirement caused: __tests__/staff-buyer-orgs-api.test.ts's ae-route coverage + lib/admin/gate.test.ts's loadClientPartnersRoomData fixture. Full repo suite 246 suites/2633 tests green, tsc clean. R6/R7/R8 impl complete (owner UAT pending — Resend prod sender unverified, delivery failure is by-design non-blocking). Unblocks plan 07.
 31.1-05 (Health Rules settings surface, wave 2) COMPLETE 2026-08-24 — 31.1-05-SUMMARY.md; GET/PATCH /api/admin/health-rules (leadership-only singleton read/write, pick-then-zod-validate allowlist, strict threshold-ordering merged against the current row) + GET/POST/PATCH/DELETE /api/admin/pipeline-stages (D-10 stage CRUD, KEY_REGEX-constrained keys, field allowlist) + POST /api/admin/health-rules/prospect-image (mirrors the staff-avatar route shape, writes health_rules_config.prospect_image_url, D-31.1-08); app/(admin)/admin/health-rules/page.tsx (leadership-gated RSC page, page-local batched loadSampleSignals() — up to 30 orgs' raw HealthSignals, deliberately NOT signals.ts's loadWholeBookWithCoverage which bakes health against the saved config) + components/admin/HealthRulesForm.tsx ('use client', live state-split preview recomputed via computeHealth() with zero server round-trips per D-06, neutral 🦁 placeholder ships when prospect_image_url is null). Full repo suite 244 suites/2619 tests green, tsc clean. No deviations. Unblocks plan 06 (assign panel) needing nothing further from this plan; pipeline-stages CRUD route has no UI yet (out of this plan's scope).
 31.1-04 (Consolidated Client Partners room — My/All, real health render, executed-license stamping, nav collapse, wave 2) COMPLETE 2026-08-24 — 31.1-04-SUMMARY.md; lib/client-partners/signals.ts (loadBook/loadWholeBookWithCoverage, batched no-N+1 health/stage/deal/contact/relationship-log signal loaders) + lib/deals/executed.ts (stampLicenseExecuted, idempotent D-31.1-09 stamp) + POST /api/admin/deals/[id]/executed + buyer-orgs PATCH pipeline_stage_id support; app/(admin)/admin/client-partners/page.tsx (RSC, exports loadClientPartnersRoomData — the D-31.1-01 hide-not-filter decision point) + components/admin/ClientPartnersRoom.tsx (My/All tab toggle, coverage strip, Needs-an-AE queue, By-AE grouping, create-org panel) + ClientPartnersList real health-color render (replaces plan 02's placeholder stub) + Assigned-AE column + rowActionLabel slot for plan 06; AdminNav collapsed to one Client Partners item + leadership-only Health Rules entry; lib/admin/gate.test.ts machine-verifies loadWholeBookWithCoverage is never called for ae/bd. Full repo suite 241 suites/2598 tests green, tsc clean. Auto-fixed a Task 1 regression (buyer-orgs PATCH's unconditional org-row read) caught by the full-suite run. Unblocks plans 05 (Health Rules screen)/06 (assign panel).
 31.1-01 (Migration 128 — executed-license timestamp, health_rules_config, pipeline_stages, game_plans, onboarding_tasks) COMPLETE 2026-08-24 — 31.1-01-SUMMARY.md; supabase/migrations/128_ae_console_health.sql authored (commit 1a08678) + __tests__/migration-128.test.ts text-lock (15 jest tests, commit 36c28dd); Task 3 blocking checkpoint cleared — owner ran `supabase db push` against prod (project wgfjakfiyeewzfuxkgyo) and confirmed `supabase migration list` LOCAL=REMOTE through 128 with no errors. Every new table is zero-policy RLS + REVOKE from authenticated/anon; license_requests.executed_at/pipeline_stage_id/stage_entered_at stay private by default. Unblocks the DB-dependent surfaces in plans 04/05/06/07.
@@ -211,6 +212,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.1 P01 | 25min | 3 tasks | 2 files |
 | Phase 31.1 P04 | 45min | 3 tasks | 18 files |
 | Phase 31.1 P05 | 35min | 3 tasks | 8 files |
+| Phase 31.1 P06 | 45min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -462,6 +464,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: 31.1-05: threshold-ordering PATCH validates the incoming partial patch merged with the CURRENT row (good_within < warning_after < at_risk_after < cold_after) so a single-field PATCH can't desync the ladder
 - [Phase ?]: 31.1-05: mass-assignment guard on health-rules/pipeline-stages PATCH picks allowlisted fields BEFORE zod .strict() validates them — an unlisted key is silently dropped, never a 400 (matches contacts.ts's pickContactFields precedent)
 - [Phase ?]: 31.1-05: Health Rules live-preview sample is a page-local batched loadSampleSignals() (up to 30 orgs) returning raw HealthSignals — not signals.ts's loadWholeBookWithCoverage, which bakes health against the currently-SAVED config rather than a leader's in-progress draft
+- [Phase ?]: 31.1-06: a handoff note is required only when assigning (ae_user_id non-null), not when unassigning
+- [Phase ?]: 31.1-06: assignable AE roster built from funun_staff (ae/bd/leadership) merged with groupByAe, not groupByAe alone, so zero-load AEs still appear
 
 ### Pending Todos
 
@@ -549,7 +553,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-24T05:17:02.620Z
+Last session: 2026-08-24T05:33:30.121Z
 Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
 Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
