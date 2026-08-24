@@ -154,10 +154,17 @@ function formatRelative(iso: string | null | undefined): string | null {
   return `${Math.floor(days / 7)}w ago`
 }
 
-const HEALTH_TONE: Record<'good' | 'warning' | 'at_risk', { fg: string; bg: string; line: string; label: string }> = {
+// 31.1 (Rule 3 blocking-fix, scoped to keep tsc green after columns.ts's
+// HealthValue widened to 6 states): 'cold' and 'prospect' placeholder tones
+// added so this switch stays exhaustive. The FULL cold/prospect render
+// (prospect's configurable image marker, D-31.1-08) is 31.1 plan 04's job —
+// these are neutral placeholders only, not the final visual design.
+const HEALTH_TONE: Record<'good' | 'warning' | 'at_risk' | 'cold' | 'prospect', { fg: string; bg: string; line: string; label: string }> = {
   good: { fg: 'var(--green-fg)', bg: 'var(--green-bg)', line: 'var(--green-line)', label: 'Good' },
   warning: { fg: 'var(--amber-fg)', bg: 'var(--amber-bg)', line: 'var(--amber-line)', label: 'Warning' },
   at_risk: { fg: 'var(--rose-fg)', bg: 'var(--rose-bg)', line: 'var(--rose-line)', label: 'At risk' },
+  cold: { fg: 'var(--r-it)', bg: 'var(--panel-2)', line: 'var(--border-2)', label: 'Cold' },
+  prospect: { fg: 'var(--ink-3)', bg: 'var(--panel-2)', line: 'var(--border-2)', label: 'Prospect' },
 }
 
 // R3 Color contract: 'unknown' is a dashed, muted chip with a dash glyph —

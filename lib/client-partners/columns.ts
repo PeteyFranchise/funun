@@ -30,10 +30,27 @@ export type SortState = {
 
 // A relationship-health value. 'unknown' is the R3 no-data guardrail — a
 // signal with no computed value must never render as (or sort like) green.
-// Full health computation is R3, deferred to Phase 31.1; this column is a
-// placeholder render slot in Slice 1 (see COMPANIES_COLUMNS' 'health' entry
-// below and ClientPartnersList's HealthChip).
-export type HealthValue = 'good' | 'warning' | 'at_risk' | 'unknown'
+// 'cold' and 'prospect' are the two 31.1 additions to the 5-state health
+// vocabulary computed by lib/client-partners/health.ts's computeHealth()
+// (D-06/D-31.1-02): 'prospect' is a client with no executed license at all
+// — off the recency axis, rendered as the configurable image marker, never
+// a color (D-31.1-08) — and 'cold' is licensed once but long gone quiet
+// (distinct from 'at_risk'). 'unknown' stays the dashed no-data slot for a
+// row where health hasn't been computed yet.
+export type HealthValue = 'good' | 'warning' | 'at_risk' | 'cold' | 'prospect' | 'unknown'
+
+// Render-tone hint per health value — 'prospect' documents that its slot
+// renders the leadership-configurable image marker (D-31.1-08), not a CSS
+// color/tone, and 'unknown' documents the dashed no-data slot. Consumed by
+// ClientPartnersList's HealthChip (plan 04), not used for sorting.
+export const HEALTH_TONE: Record<HealthValue, 'color' | 'image' | 'dashed'> = {
+  good: 'color',
+  warning: 'color',
+  at_risk: 'color',
+  cold: 'color',
+  prospect: 'image',
+  unknown: 'dashed',
+}
 
 // List-source-agnostic row shape. Both the Companies and Clients tabs (and
 // the 31.1 leadership tower, unfiltered) feed rows through this same type —
@@ -71,18 +88,25 @@ export type ClientPartnerRow = {
   selectsSeenCount?: number | null
   dealsCount?: number | null
 
+  // 31.1 leadership tower — the All tab's Assigned-AE column.
+  assignedAeName?: string | null
+
   // Next action (R1 default sort key)
   nextAction?: string | null
   nextActionState?: 'overdue' | 'today' | 'soon' | null
 }
 
 // ─── Column defs ────────────────────────────────────────────────────────
-// Companies (12): Company · Next action · Status · Health · Days in stage ·
-// Open briefs · Active Selects · Open deal · Lifetime value · Last brief ·
-// Last touch · Contacts.
+// Companies (13): Company · Next action · Assigned AE · Status · Health ·
+// Days in stage · Open briefs · Active Selects · Open deal · Lifetime value
+// · Last brief · Last touch · Contacts.
 export const COMPANIES_COLUMNS: ColumnDef[] = [
   { key: 'name', label: 'Company', sortable: true, isIdentity: true },
   { key: 'nextAction', label: 'Next action', sortable: true, isIdentity: false },
+  // 31.1 leadership tower (D-31.1-04) — the All tab's flat book table shows
+  // who owns each account. Populated on All-tab rows only; My-tab rows
+  // (a single AE's own book) can leave this unset.
+  { key: 'assignedAe', label: 'Assigned AE', sortable: true, isIdentity: false },
   { key: 'status', label: 'Status', sortable: true, isIdentity: false },
   // R3 placeholder render slot in Slice 1 — computed health is 31.1. Never
   // renders 'good'/green with no signal; see HealthValue + HealthChip.
@@ -121,7 +145,19 @@ export const CLIENTS_COLUMNS: ColumnDef[] = [
 export const DEFAULT_SORT: SortState = { key: 'nextAction', dir: 'asc' }
 
 const NEXT_ACTION_RANK: Record<string, number> = { overdue: 0, today: 1, soon: 2 }
-const HEALTH_RANK: Record<HealthValue, number> = { at_risk: 0, warning: 1, unknown: 2, good: 3 }
+// Deterministic sort order across all 6 health values (RESEARCH §
+// "Health Compute-on-Read Approach"): at_risk < cold < warning < prospect <
+// unknown < good. 'prospect' sorts between the actionable states and the
+// no-data slot — a never-licensed lead isn't as urgent as a
+// slipping/at-risk existing client, but isn't "no data" either.
+export const HEALTH_RANK: Record<HealthValue, number> = {
+  at_risk: 0,
+  cold: 1,
+  warning: 2,
+  prospect: 3,
+  unknown: 4,
+  good: 5,
+}
 
 /** Resolves a row's health, defaulting to 'unknown' — never inferred as 'good'. */
 export function resolveHealth(row: Pick<ClientPartnerRow, 'health'>): HealthValue {
@@ -146,6 +182,8 @@ function sortValueFor(row: ClientPartnerRow, key: string): number | string {
       return (row.status ?? '').toLowerCase()
     case 'health':
       return HEALTH_RANK[resolveHealth(row)]
+    case 'assignedAe':
+      return (row.assignedAeName ?? '').toLowerCase()
     case 'nextAction':
       return row.nextActionState ? (NEXT_ACTION_RANK[row.nextActionState] ?? 9) : 9
     case 'daysInStage':
