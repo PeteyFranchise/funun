@@ -22,16 +22,19 @@ import type { ClientPartnerRow } from './columns'
 const BRIEF_TERMINAL_STATUSES = new Set(['licensed', 'closed'])
 const TERMINAL_DEAL_STAGES = new Set(['closed_won', 'closed_lost'])
 
-// Mirrors migration 128's health_rules_config seeded defaults — used only
+// Mirrors migration 129's owner-decided health_rules_config defaults
+// (2026-08-24: good=30, warning=60, at_risk=180; cold_after_days is
+// DEPRECATED/unused by the 3-threshold color model — kept equal to
+// at_risk_after_days for backward compat with the DB column) — used only
 // as a defensive fallback if the singleton row is somehow missing (it is
 // seeded by the migration itself; this never fires in a correctly-migrated
 // database, but a missing-row read must never throw or silently treat
 // every client as 'good').
 const DEFAULT_HEALTH_RULES: HealthRulesConfig = {
-  good_within_days: 90,
-  warning_after_days: 120,
+  good_within_days: 30,
+  warning_after_days: 60,
   at_risk_after_days: 180,
-  cold_after_days: 365,
+  cold_after_days: 180,
   keep_warm_open_brief: true,
   keep_warm_open_deal: true,
   keep_warm_recent_selects: true,

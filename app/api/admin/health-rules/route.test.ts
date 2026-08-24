@@ -145,7 +145,6 @@ describe('PATCH /api/admin/health-rules', () => {
         good_within_days: 90,
         warning_after_days: 120,
         at_risk_after_days: 180,
-        cold_after_days: 365,
       })
     )
 
@@ -156,7 +155,7 @@ describe('PATCH /api/admin/health-rules', () => {
       good_within_days: 90,
       warning_after_days: 120,
       at_risk_after_days: 180,
-      cold_after_days: 365,
+      cold_after_days: 180,
       updated_by: LEADERSHIP_UUID,
     })
     expect(logStaffAction).toHaveBeenCalledTimes(1)
@@ -174,6 +173,26 @@ describe('PATCH /api/admin/health-rules', () => {
       jsonRequest('http://t.local/api/admin/health-rules', {
         good_within_days: 120,
         warning_after_days: 90,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  it('rejects a misordered threshold (at_risk <= warning) with 400 and never writes (3-threshold model)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest('http://t.local/api/admin/health-rules', {
+        warning_after_days: 120,
+        at_risk_after_days: 100,
       })
     )
 
@@ -200,8 +219,28 @@ describe('PATCH /api/admin/health-rules', () => {
 
     expect(res.status).toBe(200)
     const patch = service.updateSpy.mock.calls[0][0]
-    expect(patch).toEqual({ good_within_days: 100, updated_by: LEADERSHIP_UUID })
+    expect(patch).toEqual({ good_within_days: 100, cold_after_days: 180, updated_by: LEADERSHIP_UUID })
     expect(patch).not.toHaveProperty('prospect_image_url')
     expect(patch).not.toHaveProperty('evil_field')
+  })
+
+  it('cold_after_days is no longer client-editable — a PATCH attempting to set it is silently dropped and the column is force-set to at_risk_after_days instead (3-threshold model, owner decision)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest('http://t.local/api/admin/health-rules', {
+        at_risk_after_days: 200,
+        cold_after_days: 999,
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const patch = service.updateSpy.mock.calls[0][0]
+    expect(patch).toEqual({ at_risk_after_days: 200, cold_after_days: 200, updated_by: LEADERSHIP_UUID })
   })
 })

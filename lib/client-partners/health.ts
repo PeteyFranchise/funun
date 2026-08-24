@@ -66,17 +66,22 @@ export function within(iso: string | null | undefined, days: number, nowMs: numb
  * (D-31.1-02) — last-contact never sets the color except through the
  * explicit keep_warm_recent_contact hold when its toggle is on.
  *
- * Band ladder (inclusive good_within upper bound, each *_after is the
+ * Band ladder — a 3-THRESHOLD model (owner decision, 2026-08-24): there are
+ * only three real color boundaries (Good→Warning→At-risk→Cold). Cold is
+ * OPEN-ENDED — "everything past At-risk" — not a fourth independently
+ * tunable cutoff (inclusive good_within upper bound, each *_after is the
  * exclusive lower bound of the next band — RESEARCH Open Q3):
  *   days <= good_within_days    -> good
  *   days <= warning_after_days  -> warning
  *   days <= at_risk_after_days  -> at_risk   (covers warning_after_days..at_risk_after_days)
- *   days >  at_risk_after_days  -> cold
+ *   days >  at_risk_after_days  -> cold       (open-ended — at_risk_after_days IS the boundary)
  *
- * `cold_after_days` is a separate leadership-tunable config value (still
- * validated for ordering and shown on the Health Rules screen) representing
- * the nominal "very cold / ~365d+" marker referenced in copy — it is NOT
- * the at_risk→cold boundary; that boundary is at_risk_after_days.
+ * `cold_after_days` is DEPRECATED as a color-model input — it is NOT read
+ * anywhere in this function and is NOT a separately-tunable boundary. It is
+ * retained on HealthRulesConfig only for backward compat with the DB column
+ * (app/api/admin/health-rules/route.ts forces it to always equal
+ * at_risk_after_days on every write, so the column stays honest even though
+ * this function never consults it).
  *
  * Keeps-warm holds (D-31.1-03): an active-work signal, when its toggle is
  * on, lifts an at_risk/cold client up to warning — never higher, and never

@@ -1,12 +1,15 @@
 import { computeHealth, daysBetween, within, type HealthRulesConfig, type HealthSignals } from './health'
 
-// Default rules mirror migration 128's health_rules_config defaults
-// (RESEARCH § Migration 128 proposed table shapes).
+// Default rules mirror migration 129's owner-decided health_rules_config
+// defaults (2026-08-24): a 3-threshold model — Good/Warning/At-risk are
+// leadership-tunable, Cold is open-ended past at_risk_after_days.
+// cold_after_days is DEPRECATED/unused by computeHealth (kept equal to
+// at_risk_after_days for backward compat with the DB column only).
 const DEFAULT_RULES: HealthRulesConfig = {
-  good_within_days: 90,
-  warning_after_days: 120,
+  good_within_days: 30,
+  warning_after_days: 60,
   at_risk_after_days: 180,
-  cold_after_days: 365,
+  cold_after_days: 180,
   keep_warm_open_brief: true,
   keep_warm_open_deal: true,
   keep_warm_recent_selects: true,
@@ -65,38 +68,44 @@ describe('computeHealth — prospect (D-31.1-02/09)', () => {
   })
 })
 
-describe('computeHealth — band boundaries (RESEARCH Open Q3: good inclusive, *_after exclusive lower bound of next band)', () => {
-  it('executed 30 days ago, default thresholds → good', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(30) }), DEFAULT_RULES)).toBe('good')
+describe('computeHealth — band boundaries (3-threshold model, owner decision 2026-08-24; RESEARCH Open Q3: good inclusive, *_after exclusive lower bound of next band)', () => {
+  it('executed 15 days ago, default thresholds → good', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(15) }), DEFAULT_RULES)).toBe('good')
   })
 
   it('executed exactly good_within_days ago → good (inclusive upper bound)', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(90) }), DEFAULT_RULES)).toBe('good')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(30) }), DEFAULT_RULES)).toBe('good')
   })
 
   it('executed good_within_days+1 ago → warning', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(91) }), DEFAULT_RULES)).toBe('warning')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(31) }), DEFAULT_RULES)).toBe('warning')
   })
 
   it('executed exactly warning_after_days ago → warning', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(120) }), DEFAULT_RULES)).toBe('warning')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(60) }), DEFAULT_RULES)).toBe('warning')
   })
 
   it('executed warning_after_days+1 ago → at_risk', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(121) }), DEFAULT_RULES)).toBe('at_risk')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(61) }), DEFAULT_RULES)).toBe('at_risk')
   })
 
   it('executed exactly at_risk_after_days ago → at_risk', () => {
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(180) }), DEFAULT_RULES)).toBe('at_risk')
   })
 
-  it('executed at_risk_after_days+1 ago → cold (at_risk_after_days is the at_risk→cold boundary)', () => {
+  it('executed at_risk_after_days+1 ago → cold (at_risk_after_days is the open-ended at_risk→cold boundary — there is no fourth cutoff)', () => {
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), DEFAULT_RULES)).toBe('cold')
   })
 
-  it('executed past cold_after_days → cold (cold_after_days is not itself a boundary — days beyond it are already cold)', () => {
+  it('executed well past at_risk_after_days → cold (Cold is open-ended, not bounded by a separate cold_after_days cutoff)', () => {
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(366) }), DEFAULT_RULES)).toBe('cold')
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(500) }), DEFAULT_RULES)).toBe('cold')
+  })
+
+  it('cold_after_days is never read by computeHealth — a wildly different value changes nothing', () => {
+    const rules: HealthRulesConfig = { ...DEFAULT_RULES, cold_after_days: 1 }
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(45) }), rules)).toBe('warning')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), rules)).toBe('cold')
   })
 })
 
@@ -184,7 +193,7 @@ describe('computeHealth — keeps-warm holds (D-31.1-03)', () => {
 
   it('keeps-warm never lifts a warning client above warning', () => {
     const out = computeHealth(
-      signals({ lastExecutedLicenseAt: daysAgoIso(100), hasOpenBrief: true, hasOpenDeal: true }),
+      signals({ lastExecutedLicenseAt: daysAgoIso(45), hasOpenBrief: true, hasOpenDeal: true }),
       DEFAULT_RULES
     )
     expect(out).toBe('warning')

@@ -163,10 +163,11 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
 
   const preview = useMemo(() => countByState(sampleSignals, draft), [sampleSignals, draft])
 
+  // 3-way check (owner decision, 2026-08-24): Cold is open-ended past
+  // at_risk_after_days, not a fourth independently-tunable threshold.
   const orderingOk =
     draft.good_within_days < draft.warning_after_days &&
-    draft.warning_after_days < draft.at_risk_after_days &&
-    draft.at_risk_after_days < draft.cold_after_days
+    draft.warning_after_days < draft.at_risk_after_days
 
   function patchDraft(next: Partial<DraftRules>) {
     setDraft(prev => ({ ...prev, ...next }))
@@ -175,16 +176,20 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
 
   async function handleSave() {
     if (!orderingOk) {
-      setError('Thresholds must be strictly increasing: good < warning < at-risk < cold.')
+      setError('Thresholds must be strictly increasing: Good < Warning < At-risk.')
       return
     }
     setSaving(true)
     setError(null)
     try {
+      // cold_after_days is no longer client-editable (3-threshold model) —
+      // the API force-sets it to at_risk_after_days on every write, so it
+      // is deliberately omitted from the PATCH body.
+      const { cold_after_days: _coldAfterDays, ...editableDraft } = draft
       const res = await fetch(configActionPath, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(editableDraft),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -247,37 +252,46 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
 
         <div className="mt-4 flex flex-wrap gap-2.5">
           <NumberField
-            label="Good"
+            label="Good — within N days"
             dotColor="var(--green-fg, #34D399)"
             prefix="within"
             value={draft.good_within_days}
             onChange={v => patchDraft({ good_within_days: v })}
           />
           <NumberField
-            label="Warning"
+            label="Warning — up to N days"
             dotColor="var(--amber-fg, #F4C77B)"
             prefix="after"
             value={draft.warning_after_days}
             onChange={v => patchDraft({ warning_after_days: v })}
           />
           <NumberField
-            label="At risk"
+            label="At-risk — up to N days"
             dotColor="var(--rose-fg, #F9A8C0)"
             prefix="after"
             value={draft.at_risk_after_days}
             onChange={v => patchDraft({ at_risk_after_days: v })}
           />
-          <NumberField
-            label="Cold"
-            dotColor="var(--cold-fg, #60A5FA)"
-            prefix="after"
-            value={draft.cold_after_days}
-            onChange={v => patchDraft({ cold_after_days: v })}
-          />
+          {/* Cold is derived/read-only — open-ended past At-risk, not a
+              fourth independently-tunable threshold (owner decision,
+              2026-08-24, CR-01 + verification Gap 1). */}
+          <div
+            className="min-w-[150px] flex-1 rounded-xl border p-[11px_13px]"
+            style={{ borderColor: 'var(--border)', background: 'var(--panel-2)' }}
+          >
+            <div
+              className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide"
+              style={{ color: 'var(--cold-fg, #60A5FA)' }}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: 'var(--cold-fg, #60A5FA)' }} />
+              Cold — over {draft.at_risk_after_days} days
+            </div>
+            <div className="mt-1.5 text-[12px] text-[color:var(--ink-3)]">Derived from At-risk — not separately tunable.</div>
+          </div>
         </div>
         {!orderingOk && (
           <p className="mt-2 text-[12px] font-semibold text-[color:var(--rose-fg,#F9A8C0)]">
-            Thresholds must be strictly increasing: good &lt; warning &lt; at-risk &lt; cold.
+            Thresholds must be strictly increasing: Good &lt; Warning &lt; At-risk.
           </p>
         )}
 

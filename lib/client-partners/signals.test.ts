@@ -131,7 +131,7 @@ describe('fetchHealthRulesConfig', () => {
   it('returns the seeded defaults when the singleton row is missing (no error, null data)', async () => {
     const service = mockService({ health_rules_config: [] })
     const rules = await fetchHealthRulesConfig(service as never)
-    expect(rules.good_within_days).toBe(90)
+    expect(rules.good_within_days).toBe(30)
   })
 
   it('throws rather than silently falling back to defaults when the query errors', async () => {

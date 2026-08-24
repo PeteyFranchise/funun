@@ -15,10 +15,18 @@ import { logStaffAction } from '@/lib/staff/audit'
 // discipline (T-31.1-mass-assign): unknown fields are silently dropped by
 // the allowlist BEFORE the zod .strict() schema ever sees them, so an
 // unlisted key never even trips a 400 — it is simply never written.
-// Threshold ordering (good_within < warning_after < at_risk_after <
-// cold_after, D-31.1-03) is validated against the CURRENT row merged with
-// the incoming partial patch, so a single-field PATCH cannot slip a
-// misordered value past a value it isn't itself changing.
+//
+// 3-THRESHOLD MODEL (owner decision, 2026-08-24 — CR-01 + verification
+// Gap 1): there are only three real color boundaries (Good→Warning→
+// At-risk→Cold — Cold is open-ended, "everything past At-risk"). Threshold
+// ordering (good_within < warning_after < at_risk_after, D-31.1-03) is
+// validated against the CURRENT row merged with the incoming partial
+// patch, so a single-field PATCH cannot slip a misordered value past a
+// value it isn't itself changing. `cold_after_days` is no longer
+// client-editable — it is force-set to equal the candidate
+// at_risk_after_days on every successful write (see PATCH below), so the
+// DB column stays honest and any NOT NULL constraint is satisfied, without
+// exposing a fourth surplus/misleading tunable to leadership.
 
 export const CONFIG_ROW_ID = 1
 
@@ -26,7 +34,6 @@ export const HEALTH_RULES_EDITABLE_FIELDS = [
   'good_within_days',
   'warning_after_days',
   'at_risk_after_days',
-  'cold_after_days',
   'keep_warm_open_brief',
   'keep_warm_open_deal',
   'keep_warm_recent_selects',
@@ -42,7 +49,6 @@ const HealthRulesPatchSchema = z
     good_within_days: z.number().int().positive(),
     warning_after_days: z.number().int().positive(),
     at_risk_after_days: z.number().int().positive(),
-    cold_after_days: z.number().int().positive(),
     keep_warm_open_brief: z.boolean(),
     keep_warm_open_deal: z.boolean(),
     keep_warm_recent_selects: z.boolean(),
@@ -72,16 +78,16 @@ type ThresholdCandidate = {
   good_within_days: number
   warning_after_days: number
   at_risk_after_days: number
-  cold_after_days: number
 }
 
 // Strict ordering per D-31.1-03's must_haves truth — overlapping/misordered
-// thresholds are rejected (400), never silently coerced.
+// thresholds are rejected (400), never silently coerced. 3-way check
+// (owner decision, 2026-08-24): Cold is open-ended past at_risk_after_days,
+// not a fourth independently-ordered threshold.
 function thresholdsAreOrdered(candidate: ThresholdCandidate): boolean {
   return (
     candidate.good_within_days < candidate.warning_after_days &&
-    candidate.warning_after_days < candidate.at_risk_after_days &&
-    candidate.at_risk_after_days < candidate.cold_after_days
+    candidate.warning_after_days < candidate.at_risk_after_days
   )
 }
 
@@ -121,7 +127,7 @@ export async function PATCH(request: Request) {
 
   const { data: current, error: readError } = await service
     .from('health_rules_config')
-    .select('good_within_days, warning_after_days, at_risk_after_days, cold_after_days')
+    .select('good_within_days, warning_after_days, at_risk_after_days')
     .eq('id', CONFIG_ROW_ID)
     .maybeSingle()
 
@@ -132,19 +138,23 @@ export async function PATCH(request: Request) {
     good_within_days: fields.good_within_days ?? current.good_within_days,
     warning_after_days: fields.warning_after_days ?? current.warning_after_days,
     at_risk_after_days: fields.at_risk_after_days ?? current.at_risk_after_days,
-    cold_after_days: fields.cold_after_days ?? current.cold_after_days,
   }
 
   if (!thresholdsAreOrdered(candidate)) {
     return NextResponse.json(
-      { error: 'Thresholds must be strictly increasing: good < warning < at-risk < cold.' },
+      { error: 'Thresholds must be strictly increasing: good < warning < at-risk.' },
       { status: 400 }
     )
   }
 
+  // cold_after_days is no longer client-editable (3-threshold model,
+  // owner decision 2026-08-24) — force it to always equal the candidate
+  // at_risk_after_days on every write, so the DB column stays honest
+  // (Cold begins exactly where At-risk ends) and its NOT NULL constraint
+  // is satisfied without exposing a fourth surplus tunable.
   const { data, error } = await service
     .from('health_rules_config')
-    .update({ ...fields, updated_by: auth.user.id })
+    .update({ ...fields, cold_after_days: candidate.at_risk_after_days, updated_by: auth.user.id })
     .eq('id', CONFIG_ROW_ID)
     .select(CONFIG_COLUMNS)
     .maybeSingle()
