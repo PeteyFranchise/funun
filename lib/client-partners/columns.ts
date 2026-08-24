@@ -88,7 +88,10 @@ export type ClientPartnerRow = {
   selectsSeenCount?: number | null
   dealsCount?: number | null
 
-  // 31.1 leadership tower — the All tab's Assigned-AE column.
+  // 31.1 leadership tower — the All tab's Assigned-AE column. assignedAeId
+  // is the coverage-aggregation key (lib/client-partners/coverage.ts); a
+  // row with no assignedAeId is unassigned regardless of assignedAeName.
+  assignedAeId?: string | null
   assignedAeName?: string | null
 
   // Next action (R1 default sort key)
