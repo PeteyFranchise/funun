@@ -1219,11 +1219,19 @@ Plans:
 **Plans:** 7 plans (planned 2026-08-23). Waves: W1 = 01/02/03 (migration + pure engines), W2 = 04/05 (room + Health Rules), W3 = 06/07 (assign handoff + Game Plan). Migration 128 push is a [BLOCKING] human checkpoint at the end of plan 01.
 
 Plans:
+**Wave 1**
+
 - [ ] 31.1-01-PLAN.md — Migration 128 (executed-license timestamp, health_rules_config, pipeline_stages, game_plans, onboarding_tasks) + text-lock test + [BLOCKING] owner push (R3/R4/R6/R7/R8/R14; D-06/07/09)
 - [ ] 31.1-02-PLAN.md — Pure 5-state health engine (compute-on-read) + columns.ts HealthValue extension (R3; D-06/D-31.1-02/09)
 - [ ] 31.1-03-PLAN.md — Pure days-in-stage + coverage/By-AE aggregation helpers (R6; D-10/D-31.1-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 31.1-04-PLAN.md — Consolidated Client Partners room (My/All, leadership hide-not-filter) + executed-license stamping seam + nav consolidation + access test (R3/R6; D-31.1-01/02/04/07/09)
 - [ ] 31.1-05-PLAN.md — Health Rules settings (thresholds + keeps-warm + live preview) + config/stage routes + swappable prospect image (R4; D-31.1-03/08, D-10)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 31.1-06-PLAN.md — Assign panel + D-07 structural handoff (required note, self-assign, onboarding task, best-effort email) + onboarding surface (R6/R7/R8; D-07/D-31.1-05)
 - [ ] 31.1-07-PLAN.md — Call Game Plan (saved per-account topics + "X of N covered" log) (R14; D-31.1-06)
 

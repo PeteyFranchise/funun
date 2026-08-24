@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 32
+current_phase: 33
+current_phase_name: read-only v1
 status: in_progress
 stopped_at: "v1.2 milestone close PAUSED — Phase 32 at 9/10: 32-10 runbook tabletop PASSED + 32-06 Sentry code closed (both 2026-08-18); only 32-09 (k6 load run) remains do-now, plus the deferred 32-06 live-verify — both owner-gated — before archiving the milestone"
-last_updated: "2026-08-18T03:45:00.000Z"
+last_updated: "2026-08-24T04:03:54.161Z"
 last_activity: 2026-08-18
-last_activity_desc: "Phase 32-10 incident-runbook tabletop PASSED (owner-run, §3a forward-fix validated); docs stamped validated, daily digest retimed to Pacific morning (0 6→0 15 UTC). Phase 32 now 9/10 — only 32-09 k6 remains."
+last_activity_desc: Phase 33 complete
 progress:
   total_phases: 33
   completed_phases: 27
   total_plans: 213
   completed_plans: 210
   percent: 82
-current_phase_name: production-observability-capacity-incident-readiness
 ---
 
 # Project State
