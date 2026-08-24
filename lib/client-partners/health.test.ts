@@ -90,17 +90,28 @@ describe('computeHealth — band boundaries (RESEARCH Open Q3: good inclusive, *
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(180) }), DEFAULT_RULES)).toBe('at_risk')
   })
 
-  it('executed at_risk_after_days+1 ago → still at_risk (until cold_after_days)', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), DEFAULT_RULES)).toBe('at_risk')
+  it('executed at_risk_after_days+1 ago → cold (at_risk_after_days is the at_risk→cold boundary)', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), DEFAULT_RULES)).toBe('cold')
   })
 
-  it('executed exactly cold_after_days ago → still at_risk (inclusive)', () => {
-    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(365) }), DEFAULT_RULES)).toBe('at_risk')
-  })
-
-  it('executed past cold_after_days → cold', () => {
+  it('executed past cold_after_days → cold (cold_after_days is not itself a boundary — days beyond it are already cold)', () => {
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(366) }), DEFAULT_RULES)).toBe('cold')
     expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(500) }), DEFAULT_RULES)).toBe('cold')
+  })
+})
+
+describe('computeHealth — at_risk_after_days is load-bearing (CR-01 regression)', () => {
+  it('with default thresholds, exactly at_risk_after_days ago is at_risk and one day past is cold', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(180) }), DEFAULT_RULES)).toBe('at_risk')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), DEFAULT_RULES)).toBe('cold')
+  })
+
+  it('changing at_risk_after_days moves the at_risk→cold boundary', () => {
+    const rules: HealthRulesConfig = { ...DEFAULT_RULES, at_risk_after_days: 200 }
+    // 190 days would be cold under the default (180) threshold, but is
+    // still at_risk once at_risk_after_days is raised to 200.
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(190) }), rules)).toBe('at_risk')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(201) }), rules)).toBe('cold')
   })
 })
 

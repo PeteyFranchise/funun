@@ -68,10 +68,15 @@ export function within(iso: string | null | undefined, days: number, nowMs: numb
  *
  * Band ladder (inclusive good_within upper bound, each *_after is the
  * exclusive lower bound of the next band — RESEARCH Open Q3):
- *   days <= good_within_days   -> good
- *   days <= warning_after_days -> warning
- *   days <= cold_after_days    -> at_risk   (covers at_risk_after_days..cold_after_days)
- *   days >  cold_after_days    -> cold
+ *   days <= good_within_days    -> good
+ *   days <= warning_after_days  -> warning
+ *   days <= at_risk_after_days  -> at_risk   (covers warning_after_days..at_risk_after_days)
+ *   days >  at_risk_after_days  -> cold
+ *
+ * `cold_after_days` is a separate leadership-tunable config value (still
+ * validated for ordering and shown on the Health Rules screen) representing
+ * the nominal "very cold / ~365d+" marker referenced in copy — it is NOT
+ * the at_risk→cold boundary; that boundary is at_risk_after_days.
  *
  * Keeps-warm holds (D-31.1-03): an active-work signal, when its toggle is
  * on, lifts an at_risk/cold client up to warning — never higher, and never
@@ -88,7 +93,7 @@ export function computeHealth(signals: HealthSignals, rules: HealthRulesConfig):
     base = 'good'
   } else if (days <= rules.warning_after_days) {
     base = 'warning'
-  } else if (days <= rules.cold_after_days) {
+  } else if (days <= rules.at_risk_after_days) {
     base = 'at_risk'
   } else {
     base = 'cold'
