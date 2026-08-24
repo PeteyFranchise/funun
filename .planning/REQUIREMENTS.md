@@ -664,6 +664,7 @@ Backed by migrations **111** (`selects` / `selects_tracks`→`tracks.id` / `sele
 | R11 | Phase 31 | 31-02, 31-03, 31-04, 31-05, 31-10 | Impl complete; goal-verified; UAT pending (31-UAT.md #3) |
 | R12 | Phase 31 | 31-01, 31-02, 31-12, 31-13 | Impl complete; goal-verified; UAT pending (31-UAT.md #1, #4); WAV-only audible tag partial (G1) |
 | R3 | Phase 31.1 | 31.1-02 (engine done); 31.1-04, 31.1-05 pending | In progress — `lib/client-partners/health.ts` computeHealth() + extended `columns.ts` (31.1-02-SUMMARY.md) landed; leadership-tower render + Health Rules config screen not yet built |
+| R6 | Phase 31.1 | 31.1-03 (aggregation done); 31.1-01, 31.1-04, 31.1-06 pending | In progress — `lib/client-partners/stages.ts` daysInStage()/resolveStage() + `coverage.ts` buildCoverageSummary()/groupByAe() (31.1-03-SUMMARY.md) landed; migration 128 (pipeline_stages), the tower's RSC render, and the assign panel/route not yet built |
 
 **Coverage (Phase 31 — Slice 1):**
 

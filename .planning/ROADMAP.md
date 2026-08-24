@@ -1216,14 +1216,14 @@ Plans:
 
 **Design:** `31.1-CONTEXT.md` + `.planning/design/phase-31.1-leadership-tower-mockup.html`, `phase-31.1-health-rules-mockup.html`, `phase-31-my-client-partners-mockup.html` (owner-loved), `phase-31-game-plan.html`; locked `31-UI-SPEC.md`.
 
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 Plans:
 **Wave 1**
 
 - [ ] 31.1-01-PLAN.md — Migration 128 (executed-license timestamp, health_rules_config, pipeline_stages, game_plans, onboarding_tasks) + text-lock test + [BLOCKING] owner push (R3/R4/R6/R7/R8/R14; D-06/07/09)
 - [x] 31.1-02-PLAN.md — Pure 5-state health engine (compute-on-read) + columns.ts HealthValue extension (R3; D-06/D-31.1-02/09)
-- [ ] 31.1-03-PLAN.md — Pure days-in-stage + coverage/By-AE aggregation helpers (R6; D-10/D-31.1-04)
+- [x] 31.1-03-PLAN.md — Pure days-in-stage + coverage/By-AE aggregation helpers (R6; D-10/D-31.1-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

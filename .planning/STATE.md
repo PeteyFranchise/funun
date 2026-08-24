@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.1
 current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
 status: in_progress
-stopped_at: 31.1-02 executed (health engine + columns extension); resume orchestrator
-last_updated: "2026-08-24T04:21:50.035Z"
+stopped_at: 31.1-03 executed (days-in-stage + coverage/By-AE aggregation); resume orchestrator
+last_updated: "2026-08-24T04:29:14.540Z"
 last_activity: 2026-08-24
 last_activity_desc: Phase 31.1 execution started
 progress:
   total_phases: 34
   completed_phases: 27
   total_plans: 220
-  completed_plans: 211
+  completed_plans: 212
   percent: 79
 ---
 
@@ -29,6 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 31.1 (ae-console-health-leadership-tower-telemetry-team-rbac) — EXECUTING
+31.1-03 (Days-in-stage + coverage/By-AE aggregation, wave 1) COMPLETE 2026-08-24 — 31.1-03-SUMMARY.md; lib/client-partners/stages.ts daysInStage()/resolveStage() (D-10, 8 jest tests) + coverage.ts buildCoverageSummary()/groupByAe() (D-31.1-04, 9 jest tests); ClientPartnerRow gained assignedAeId (columns.ts) as the aggregation key. Pure, no I/O — does not require migration 128 applied. Full repo suite 239 suites/2580 tests green, tsc clean.
 31.1-02 (Pure health engine + column model extension, wave 1) COMPLETE 2026-08-24 — 31.1-02-SUMMARY.md; lib/client-partners/health.ts computeHealth() (24 jest tests) + columns.ts HealthValue/HEALTH_RANK/HEALTH_TONE/Assigned-AE extension (16 jest tests); full repo suite 237 suites/2564 tests green, tsc clean. Plan 01 (migration 128 draft) is `autonomous: false` (human-gated db push) and not yet executed by this run — independent of 02 (depends_on: []).
 (Phase 32 — 9/10 closed, still partial:) 32-10 runbook TABLETOP PASSED 2026-08-18 (32-10-SUMMARY.md; §3a forward-fix validated, docs stamped validated, daily digest retimed 0 6→0 15 UTC / Pacific morning) and 32-06 Sentry CODE closed (32-06-SUMMARY.md; jest 4/4, tsc + build clean; live-exception verify DEFERRED as tracked owner UAT — .planning/todos/pending/2026-08-18-sentry-live-exception-verify-post-deploy.md, coverage D3). ONLY REMAINING do-now: 32-09 (k6 harness — scripts drafted+committed; owner must install k6 + stand up staging Supabase/Vercel Preview + run the load test, then Claude writes CAPACITY-REPORT.md from measured data; tracked at .planning/todos/pending/2026-08-17-run-k6-capacity-load-test-pre-launch.md + 32-OWNER-SETUP.md §4). When 32-09 lands → phase verification closes Phase 32 → unblocks v1.2 milestone. Earlier plans 32-01..05/07/08 complete (SUMMARYs). NOTE: verify 32-01 Task 3 migration-110-push (observability_recipients) — confirm owner `supabase db push` + `supabase migration list` parity for migration 110.
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
@@ -203,6 +204,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 32 P08 | 8min | 1 tasks | 1 files |
 | Phase 31 P03 | 8min | 2 tasks | 3 files |
 | Phase 31.1 P02 | 5min | 2 tasks | 5 files |
+| Phase 31.1 P03 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -445,6 +447,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 32]: 32-08: THRESHOLDS-AND-SEVERITY.md states no numeric value is authoritative on its own -- always defers to lib/observability/config.ts (update config.ts first, doc second, same change)
 - [Phase 31]: 31-03: isLegalSelectsTransition implemented as a Record<SelectsStatus, Set<SelectsStatus>> edge table (not an ordered forward-pipeline array like lib/deals/) since the Selects graph branches (sent -> two legal targets) and loops (changes_requested -> sent)
 - [Phase ?]: 31.1-02: computeHealth() bands treat at_risk_after_days..cold_after_days inclusive as at_risk; cold fires only strictly past cold_after_days
+- [Phase 31.1]: atRiskCount counts only 'at_risk', not 'cold' — mockup's coverage strip shows a single At-risk stat
+- [Phase 31.1]: CoverageSummary.openPipelineValue matches openDealValue's existing raw-dollar unit (not cents)
+- [Phase 31.1]: Added ClientPartnerRow.assignedAeId as the coverage-aggregation key alongside plan 02's display-only assignedAeName
 
 ### Pending Todos
 
@@ -532,7 +537,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-24T04:21:50.010Z
+Last session: 2026-08-24T04:28:11.064Z
 Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
 Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
