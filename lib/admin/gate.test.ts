@@ -160,3 +160,67 @@ describe('lib/admin/gate requireStaff (multi-role)', () => {
     expect(result).toEqual({ error: 'Forbidden', status: 403 })
   })
 })
+
+// ─── D-31.1-01 hide-not-filter contract (31.1 plan 04, Task 3) ────────────
+// Proves the Client Partners room's server-side leadership gate: a
+// non-leadership caller (ae/bd) never triggers
+// lib/client-partners/signals.ts's loadWholeBookWithCoverage — the
+// whole-book/coverage/By-AE data is never fetched for them at all, not
+// merely filtered out client-side (T-31.1-info-disclosure). The decision
+// point is app/(admin)/admin/client-partners/page.tsx's exported
+// loadClientPartnersRoomData(), factored out of the page component so it's
+// testable here without rendering or mocking next/navigation.
+// requireStaffPage() itself (the auth call BEFORE this function is ever
+// reached — 'it'/no-role/unauthenticated redirect before any load) is
+// already exhaustively covered by __tests__/staff-role-it.test.ts; this
+// suite covers only the leadership/non-leadership data-branch it gates.
+describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartnersRoomData)', () => {
+  beforeEach(() => {
+    jest.resetModules()
+    jest.clearAllMocks()
+  })
+
+  function mockRoomSignals() {
+    jest.doMock('@/lib/client-partners/signals', () => ({
+      loadBook: jest.fn(async () => []),
+      loadWholeBookWithCoverage: jest.fn(async () => []),
+    }))
+  }
+
+  it('never calls loadWholeBookWithCoverage and returns allData=null for an ae caller', async () => {
+    mockRoomSignals()
+    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadWholeBookWithCoverage, loadBook } = await import('@/lib/client-partners/signals')
+
+    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-ae', staffRole: 'ae' })
+
+    expect(loadBook).toHaveBeenCalledTimes(1)
+    expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
+    expect(result.allData).toBeNull()
+    expect(result.isLeadership).toBe(false)
+  })
+
+  it('never calls loadWholeBookWithCoverage and returns allData=null for a bd caller', async () => {
+    mockRoomSignals()
+    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
+
+    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-bd', staffRole: 'bd' })
+
+    expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
+    expect(result.allData).toBeNull()
+  })
+
+  it('calls loadWholeBookWithCoverage and returns a populated allData ONLY for leadership', async () => {
+    mockRoomSignals()
+    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
+
+    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-lead', staffRole: 'leadership' })
+
+    expect(loadWholeBookWithCoverage).toHaveBeenCalledTimes(1)
+    expect(result.allData).not.toBeNull()
+    expect(result.isLeadership).toBe(true)
+    expect(result.allData?.coverage.totalClients).toBe(0)
+  })
+})
