@@ -41,6 +41,10 @@ function buildFakeOnboardingService(initialRows: FakeRow[] = []) {
         const filtered = rows.filter(r => filters.every(f => r[f.col] === f.val))
         return Promise.resolve({ data: filtered, error: null })
       },
+      async maybeSingle() {
+        const filtered = rows.filter(r => filters.every(f => r[f.col] === f.val))
+        return { data: filtered[0] ?? null, error: null }
+      },
     }
     return builder
   }
@@ -85,6 +89,14 @@ describe('insertOnboardingTask', () => {
   it('propagates a DB error as a descriptive thrown Error', async () => {
     const service = {
       from: () => ({
+        // No existing open task — the pre-insert lookup finds nothing.
+        select: () => {
+          const builder = {
+            eq: () => builder,
+            maybeSingle: async () => ({ data: null, error: null }),
+          }
+          return builder
+        },
         insert: () => ({
           select: () => ({
             single: async () => ({ data: null, error: { message: 'insert failed' } }),
@@ -102,6 +114,63 @@ describe('insertOnboardingTask', () => {
         handoffNote: 'Note.',
       })
     ).rejects.toThrow('Failed to create onboarding task: insert failed')
+  })
+
+  it('propagates a lookup DB error as a descriptive thrown Error, without attempting an insert', async () => {
+    const insertSpy = jest.fn()
+    const service = {
+      from: () => ({
+        select: () => {
+          const builder = {
+            eq: () => builder,
+            maybeSingle: async () => ({ data: null, error: { message: 'lookup failed' } }),
+          }
+          return builder
+        },
+        insert: insertSpy,
+      }),
+    } as unknown as SupabaseClient
+
+    await expect(
+      insertOnboardingTask(service, {
+        orgId: ORG_ID,
+        assigneeId: ASSIGNEE_ID,
+        createdBy: CREATOR_ID,
+        title: 'Welcome',
+        handoffNote: 'Note.',
+      })
+    ).rejects.toThrow('Failed to look up existing onboarding task: lookup failed')
+    expect(insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('returns the existing open task instead of inserting a duplicate when one already exists for the same org+assignee (WR-02)', async () => {
+    const service = buildFakeOnboardingService([
+      {
+        id: 'task-existing',
+        buyer_org_id: ORG_ID,
+        assignee_id: ASSIGNEE_ID,
+        created_by: CREATOR_ID,
+        title: 'Welcome Acme Co to your book',
+        checklist: SEEDED_ONBOARDING_CHECKLIST.map(item => ({ ...item, done: false })),
+        status: 'open',
+        handoff_note: 'Original note.',
+        created_at: new Date().toISOString(),
+        completed_at: null,
+      },
+    ])
+
+    const task = await insertOnboardingTask(service, {
+      orgId: ORG_ID,
+      assigneeId: ASSIGNEE_ID,
+      createdBy: CREATOR_ID,
+      title: 'Welcome Acme Co to your book',
+      handoffNote: 'A different re-submitted note.',
+    })
+
+    expect(task.id).toBe('task-existing')
+    expect(task.handoff_note).toBe('Original note.')
+    // Only the pre-existing row — no duplicate was inserted.
+    expect(service.rows).toHaveLength(1)
   })
 })
 

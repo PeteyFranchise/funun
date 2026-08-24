@@ -51,6 +51,12 @@ export const ONBOARDING_TASK_COLUMNS =
  * caller (the ae route) wraps this in .catch() — a failure here is a
  * best-effort side effect and must never roll back or fail the assignment
  * response.
+ *
+ * Idempotent (WR-02): the route already guards against re-firing this on a
+ * same-AE re-submit, but that check can't see a concurrent double-submit
+ * racing the same handoff. Before inserting, look for an existing OPEN task
+ * for the same (org, assignee) and return it instead of creating a
+ * duplicate.
  */
 export async function insertOnboardingTask(
   service: SupabaseClient,
@@ -62,6 +68,17 @@ export async function insertOnboardingTask(
     handoffNote: string
   }
 ): Promise<OnboardingTask> {
+  const { data: existing, error: lookupError } = await service
+    .from('onboarding_tasks')
+    .select(ONBOARDING_TASK_COLUMNS)
+    .eq('buyer_org_id', args.orgId)
+    .eq('assignee_id', args.assigneeId)
+    .eq('status', 'open')
+    .maybeSingle()
+
+  if (lookupError) throw new Error(`Failed to look up existing onboarding task: ${lookupError.message}`)
+  if (existing) return existing as OnboardingTask
+
   const { data, error } = await service
     .from('onboarding_tasks')
     .insert({

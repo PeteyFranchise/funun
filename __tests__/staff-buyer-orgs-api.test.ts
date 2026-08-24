@@ -116,7 +116,15 @@ function mockAssignService(
   }))
   const auditInsert = jest.fn(async () => ({ error: null }))
   // 31.1 plan 06 (D-07): best-effort side-effect tables the route now
-  // writes to AFTER the ae_user_id authority write commits.
+  // writes to AFTER the ae_user_id authority write commits. insertOnboardingTask
+  // (WR-02) does a pre-insert lookup select before inserting — the lookup
+  // always resolves "no existing open task" here so the insert path below
+  // still runs for these fresh/reassign scenarios.
+  const onboardingSelectBuilder: { eq: jest.Mock; maybeSingle: jest.Mock } = {
+    eq: jest.fn(() => onboardingSelectBuilder),
+    maybeSingle: jest.fn(async () => ({ data: null, error: null })),
+  }
+  const onboardingSelect = jest.fn(() => onboardingSelectBuilder)
   const onboardingInsert = jest.fn(() => ({
     select: jest.fn(() => ({
       single: jest.fn(async () => ({ data: { id: 'task-1' }, error: null })),
@@ -140,7 +148,7 @@ function mockAssignService(
   )
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
-    if (table === 'onboarding_tasks') return { insert: onboardingInsert }
+    if (table === 'onboarding_tasks') return { select: onboardingSelect, insert: onboardingInsert }
     if (table === 'client_relationship_log') return { insert: relationshipLogInsert }
     return { select: selectSpy, update: updateSpy }
   })
@@ -436,7 +444,7 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     expect(payload.type).toBe('ae_unassigned')
   })
 
-  it('reassigning an org to the SAME AE it already has notifies the AE again but not as unassigned', async () => {
+  it('reassigning an org to the SAME AE it already has (a same-AE re-submit) does NOT re-fire the D-07 handoff — no duplicate notification (WR-02)', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({
       user: { id: LEADERSHIP_UUID },
       staffRole: 'leadership',
@@ -453,10 +461,12 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     )
 
     expect(res.status).toBe(200)
-    expect(createNotification).toHaveBeenCalledTimes(1)
-    const [, payload] = (createNotification as jest.Mock).mock.calls[0]
-    expect(payload.userId).toBe(AE_UUID)
-    expect(payload.type).toBe('ae_assigned')
+    expect(service.updateSpy).toHaveBeenCalledWith({ ae_user_id: AE_UUID })
+    // The write and its audit log entry still happen — only the D-07
+    // handoff side effects (log entry, onboarding task, notification/email)
+    // are gated on the assignment actually changing hands.
+    expect(logStaffAction).toHaveBeenCalledTimes(1)
+    expect(createNotification).not.toHaveBeenCalled()
   })
 
   it('returns 401 when there is no session', async () => {

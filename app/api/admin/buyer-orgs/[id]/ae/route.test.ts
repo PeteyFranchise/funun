@@ -184,6 +184,28 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — D-07 structural handoff', () =
     expect(payload.email).toBe('ae@funun.studio')
   })
 
+  it('a same-AE re-submit (prev === new) does not re-fire the D-07 handoff — no duplicate onboarding task or notification (WR-02)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService({ priorAeUserId: AE_UUID })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'Re-submitting the same assignment.',
+      }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateSpy).toHaveBeenCalledWith({ ae_user_id: AE_UUID })
+    expect(appendRelationshipLog).not.toHaveBeenCalled()
+    expect(insertOnboardingTask).not.toHaveBeenCalled()
+    expect(createNotification).not.toHaveBeenCalled()
+    // The authority write and its audit log entry still happen.
+    expect(logStaffAction).toHaveBeenCalledTimes(1)
+  })
+
   it('leadership can self-assign — target-role check accepts leadership', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
     const service = mockService({ targetUser: { app_metadata: { staff_role: 'leadership' }, email: 'lead@funun.studio' } })

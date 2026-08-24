@@ -114,11 +114,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const orgName = (data as { name?: string } | null)?.name ?? 'this Client Partner'
 
-  if (aeUserId) {
-    // D-07 structural handoff: the audit-trail log entry, an onboarding
-    // task landing directly in the AE's queue, and the notification (+
-    // best-effort intro email). Each side effect is wrapped independently
-    // so a failure in one never blocks another or the response.
+  if (aeUserId && aeUserId !== prevAeUserId) {
+    // D-07 structural handoff — fires only when the client actually
+    // changes hands to this AE (a fresh assignment or a genuine
+    // reassignment away from a different AE). A same-AE re-submit
+    // (aeUserId === prevAeUserId) must not re-create the onboarding task
+    // or re-send the intro email/notification (WR-02). The audit-trail
+    // log entry, an onboarding task landing directly in the AE's queue,
+    // and the notification (+ best-effort intro email) are each wrapped
+    // independently so a failure in one never blocks another or the
+    // response.
     await appendRelationshipLog(service, {
       orgId: id,
       kind: 'assignment',
