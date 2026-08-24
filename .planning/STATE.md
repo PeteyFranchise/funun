@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.1
 current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
 status: in_progress
-stopped_at: 31.1-01 executed (migration 128 authored + applied to prod at owner checkpoint); resume orchestrator
-last_updated: "2026-08-24T04:35:16.092Z"
+stopped_at: 31.1-04 executed (consolidated Client Partners room, health render, executed-license stamping, nav collapse); resume orchestrator
+last_updated: "2026-08-24T04:59:49.510Z"
 last_activity: 2026-08-24
-last_activity_desc: Phase 31.1 execution started
+last_activity_desc: 31.1-04 complete — consolidated Client Partners room (My/All)
 progress:
   total_phases: 34
   completed_phases: 27
   total_plans: 220
-  completed_plans: 213
+  completed_plans: 214
   percent: 79
 ---
 
@@ -29,6 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 31.1 (ae-console-health-leadership-tower-telemetry-team-rbac) — EXECUTING
+31.1-04 (Consolidated Client Partners room — My/All, real health render, executed-license stamping, nav collapse, wave 2) COMPLETE 2026-08-24 — 31.1-04-SUMMARY.md; lib/client-partners/signals.ts (loadBook/loadWholeBookWithCoverage, batched no-N+1 health/stage/deal/contact/relationship-log signal loaders) + lib/deals/executed.ts (stampLicenseExecuted, idempotent D-31.1-09 stamp) + POST /api/admin/deals/[id]/executed + buyer-orgs PATCH pipeline_stage_id support; app/(admin)/admin/client-partners/page.tsx (RSC, exports loadClientPartnersRoomData — the D-31.1-01 hide-not-filter decision point) + components/admin/ClientPartnersRoom.tsx (My/All tab toggle, coverage strip, Needs-an-AE queue, By-AE grouping, create-org panel) + ClientPartnersList real health-color render (replaces plan 02's placeholder stub) + Assigned-AE column + rowActionLabel slot for plan 06; AdminNav collapsed to one Client Partners item + leadership-only Health Rules entry; lib/admin/gate.test.ts machine-verifies loadWholeBookWithCoverage is never called for ae/bd. Full repo suite 241 suites/2598 tests green, tsc clean. Auto-fixed a Task 1 regression (buyer-orgs PATCH's unconditional org-row read) caught by the full-suite run. Unblocks plans 05 (Health Rules screen)/06 (assign panel).
 31.1-01 (Migration 128 — executed-license timestamp, health_rules_config, pipeline_stages, game_plans, onboarding_tasks) COMPLETE 2026-08-24 — 31.1-01-SUMMARY.md; supabase/migrations/128_ae_console_health.sql authored (commit 1a08678) + __tests__/migration-128.test.ts text-lock (15 jest tests, commit 36c28dd); Task 3 blocking checkpoint cleared — owner ran `supabase db push` against prod (project wgfjakfiyeewzfuxkgyo) and confirmed `supabase migration list` LOCAL=REMOTE through 128 with no errors. Every new table is zero-policy RLS + REVOKE from authenticated/anon; license_requests.executed_at/pipeline_stage_id/stage_entered_at stay private by default. Unblocks the DB-dependent surfaces in plans 04/05/06/07.
 31.1-03 (Days-in-stage + coverage/By-AE aggregation, wave 1) COMPLETE 2026-08-24 — 31.1-03-SUMMARY.md; lib/client-partners/stages.ts daysInStage()/resolveStage() (D-10, 8 jest tests) + coverage.ts buildCoverageSummary()/groupByAe() (D-31.1-04, 9 jest tests); ClientPartnerRow gained assignedAeId (columns.ts) as the aggregation key. Pure, no I/O — does not require migration 128 applied. Full repo suite 239 suites/2580 tests green, tsc clean.
 31.1-02 (Pure health engine + column model extension, wave 1) COMPLETE 2026-08-24 — 31.1-02-SUMMARY.md; lib/client-partners/health.ts computeHealth() (24 jest tests) + columns.ts HealthValue/HEALTH_RANK/HEALTH_TONE/Assigned-AE extension (16 jest tests); full repo suite 237 suites/2564 tests green, tsc clean. Plan 01 (migration 128 draft) is `autonomous: false` (human-gated db push) — now complete, see above.
@@ -207,6 +208,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.1 P02 | 5min | 2 tasks | 5 files |
 | Phase 31.1 P03 | 2min | 2 tasks | 5 files |
 | Phase 31.1 P01 | 25min | 3 tasks | 2 files |
+| Phase 31.1 P04 | 45min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -454,6 +456,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 31.1]: Added ClientPartnerRow.assignedAeId as the coverage-aggregation key alongside plan 02's display-only assignedAeName
 - [Phase 31.1-01]: D-31.1-09 supersedes RESEARCH.md's closed_won_at proposal — health-color clock reads license_requests.executed_at (executed/signed license moment), not closed_won stage or payment; executed_at added as a bare column only, stamping logic deferred to a later plan
 - [Phase 31.1-01]: Migration 128 applied to prod (wgfjakfiyeewzfuxkgyo) via owner-run supabase db push at the Task 3 blocking checkpoint; supabase migration list confirmed LOCAL=REMOTE through 128
+- [Phase 31.1]: 31.1-04: consolidated Client Partners room (My/All), real executed-license health render, D-31.1-01 hide-not-filter machine-verified
 
 ### Pending Todos
 
@@ -541,7 +544,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-24T04:34:35.678Z
+Last session: 2026-08-24T04:59:24.445Z
 Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
 Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
