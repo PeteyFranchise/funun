@@ -253,14 +253,19 @@ export async function listRelationshipLog(
 // export from this module, and the route file mirrors that by exposing no
 // PATCH/DELETE handler (T-31-14). author_user_id is always the authenticated
 // caller, never client-suppliable.
+// 31.1 plan 06 (D-07): widened to also accept kind 'assignment' — the ae
+// assign route's audit-trail entry for every (re)assignment handoff — plus
+// an optional `meta` object (e.g. { ae_user_id, prior_ae_user_id }) written
+// only when supplied, so the note/conversation callers above are unaffected.
 export async function appendRelationshipLog(
   service: SupabaseClient,
   args: {
     orgId: string
-    kind: 'note' | 'conversation'
+    kind: 'note' | 'conversation' | 'assignment'
     body: string
     authorUserId: string
     contactId?: string | null
+    meta?: Record<string, unknown>
   }
 ): Promise<ClientRelationshipLogEntry> {
   const { data, error } = await service
@@ -271,6 +276,7 @@ export async function appendRelationshipLog(
       author_user_id: args.authorUserId,
       kind: args.kind,
       body: args.body,
+      ...(args.meta !== undefined ? { meta: args.meta } : {}),
     })
     .select(RELATIONSHIP_LOG_COLUMNS)
     .single()

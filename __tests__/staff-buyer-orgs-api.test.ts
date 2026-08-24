@@ -115,19 +115,33 @@ function mockAssignService(
     })),
   }))
   const auditInsert = jest.fn(async () => ({ error: null }))
+  // 31.1 plan 06 (D-07): best-effort side-effect tables the route now
+  // writes to AFTER the ae_user_id authority write commits.
+  const onboardingInsert = jest.fn(() => ({
+    select: jest.fn(() => ({
+      single: jest.fn(async () => ({ data: { id: 'task-1' }, error: null })),
+    })),
+  }))
+  const relationshipLogInsert = jest.fn(() => ({
+    select: jest.fn(() => ({
+      single: jest.fn(async () => ({ data: { id: 'log-1' }, error: null })),
+    })),
+  }))
   // review #8: the /ae route now validates the target is an active AE/BD via
   // getUserById → getStaffRole; return an 'ae' user so a valid assignment passes.
   const getUserById = jest.fn(
     async (): Promise<{
-      data: { user: { app_metadata: Record<string, unknown> } }
+      data: { user: { app_metadata: Record<string, unknown>; email?: string } }
       error: null
     }> => ({
-      data: { user: { app_metadata: { staff_role: 'ae' } } },
+      data: { user: { app_metadata: { staff_role: 'ae' }, email: 'ae@funun.studio' } },
       error: null,
     })
   )
   const from = jest.fn((table: string) => {
     if (table === 'staff_audit_log') return { insert: auditInsert }
+    if (table === 'onboarding_tasks') return { insert: onboardingInsert }
+    if (table === 'client_relationship_log') return { insert: relationshipLogInsert }
     return { select: selectSpy, update: updateSpy }
   })
   return { from, selectSpy, updateSpy, auditInsert, auth: { admin: { getUserById } }, getUserById }
@@ -306,7 +320,10 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await aePATCH(
-      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'Handoff note for the AE.',
+      }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
@@ -379,7 +396,10 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await aePATCH(
-      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: OTHER_AE_UUID }),
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: OTHER_AE_UUID,
+        note: 'Reassignment note.',
+      }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
@@ -425,7 +445,10 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await aePATCH(
-      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'Same-AE reassign note.',
+      }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
@@ -440,7 +463,7 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Unauthorized', status: 401 })
 
     const res = await aePATCH(
-      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID, note: 'Note.' }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
@@ -461,7 +484,7 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — leadership-only AE assignment 
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await aePATCH(
-      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID }),
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, { ae_user_id: AE_UUID, note: 'Note.' }),
       { params: Promise.resolve({ id: ORG_UUID }) }
     )
 
