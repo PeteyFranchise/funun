@@ -23,9 +23,9 @@ import {
   SyncIcon,
   CrateIcon,
   SelectsIcon,
-  MyClientsIcon,
   InvitesIcon,
   ProfileIcon,
+  HealthPulseIcon,
 } from './admin-icons'
 
 type IconCmp = (p: { gradient?: boolean; className?: string }) => React.ReactNode
@@ -54,7 +54,13 @@ const ITEMS: Item[] = [
   // role except 'it'; the Add/manage controls inside are gated to Leadership +
   // TMS (StaffAdmin's canManage), so this is safe as an all-staff directory.
   { href: '/admin/team-members', label: 'Team Members', match: '/admin/team-members', Icon: TeamIcon, show: notIt },
-  { href: '/admin/buyer-orgs', label: 'Client Partners', match: '/admin/buyer-orgs', Icon: ClientPartnersIcon, show: isLead },
+  // Consolidated Client Partners room (D-31.1-01) — replaces the former
+  // separate 'Client Partners' (/admin/buyer-orgs, leadership-only) and 'My
+  // Client Partners' (/admin/my-client-partners, all staff) entries. Every
+  // operational staff role sees this ONE item; the leadership-only All tab
+  // + tower render INSIDE the room itself (server-gated, never a second nav
+  // entry) — an AE never sees the All tab or the tower via any nav path.
+  { href: '/admin/client-partners', label: 'Client Partners', match: '/admin/client-partners', Icon: ClientPartnersIcon, show: notIt },
   { href: '/admin/deals', label: 'Deals', match: '/admin/deals', Icon: DealsIcon, show: isLead },
   { href: '/admin/deals/metrics', label: 'GTM Metrics', match: '/admin/deals/metrics', Icon: MetricsIcon, show: isLead },
   { href: '/admin/green-room-placements', label: 'Green Room Placements', match: '/admin/green-room-placements', Icon: PlacementsIcon, show: isLead },
@@ -64,7 +70,11 @@ const ITEMS: Item[] = [
   { href: '/admin/sync-library', label: 'Sync Library', match: '/admin/sync-library', Icon: SyncIcon, show: r => r === 'leadership' || r === 'ae' },
   { href: '/admin/crate-requests', label: 'Crate Requests', match: '/admin/crate-requests', Icon: CrateIcon, show: notIt },
   { href: '/admin/selects', label: 'Selects', match: '/admin/selects', Icon: SelectsIcon, show: notIt },
-  { href: '/admin/my-client-partners', label: 'My Client Partners', match: '/admin/my-client-partners', Icon: MyClientsIcon, show: notIt },
+  // D-31.1-07 — Health Rules is the leadership-only relationship-health
+  // config surface (thresholds + keeps-warm toggles + the D-31.1-08
+  // prospect image). Nav entry lands with this plan; the page itself ships
+  // in plan 05.
+  { href: '/admin/health-rules', label: 'Health Rules', match: '/admin/health-rules', Icon: HealthPulseIcon, show: isLead },
   { href: '/admin/artist-invites', label: 'Artist Invites', match: '/admin/artist-invites', Icon: InvitesIcon, show: notIt },
   { href: '/admin/profile', label: 'My Profile', match: '/admin/profile', Icon: ProfileIcon, show: notIt },
 ]

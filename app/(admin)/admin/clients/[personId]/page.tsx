@@ -112,8 +112,11 @@ export default async function ClientPersonWorkspacePage({
 
   return (
     <div className="flex-1 px-9 py-[30px]">
+      {/* 31.1 D-31.1-01: both former destinations (leadership's /admin/buyer-orgs,
+          everyone else's /admin/my-client-partners) consolidated into the
+          one Client Partners room. */}
       <Link
-        href={staffRole === 'leadership' ? '/admin/buyer-orgs' : '/admin/my-client-partners'}
+        href="/admin/client-partners"
         className="text-xs font-semibold text-[color:var(--ink-3)] hover:text-[color:var(--ink)]"
       >
         ← Back to Client Partners

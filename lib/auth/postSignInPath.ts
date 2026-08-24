@@ -13,7 +13,10 @@ import { getStaffRole } from '@/lib/admin/staff-role'
 // There is no /admin index route (it 404s), so staff are sent to a real page.
 
 export const BUYER_HOME = '/sync/catalog'
-export const STAFF_HOME = '/admin/my-client-partners'
+// 31.1 (D-31.1-01): the former /admin/my-client-partners page is retired
+// (redirects to the consolidated Client Partners room) — point staff
+// straight at the room to avoid a redundant redirect on every sign-in.
+export const STAFF_HOME = '/admin/client-partners'
 export const DEFAULT_HOME = '/vault'
 
 const APP_ORIGIN = 'https://funun.studio'

@@ -203,3 +203,10 @@ export const ProfileIcon = (p: IconProps) => (
     <path d="M6.6 18.5a6 6 0 0 1 10.8 0" />
   </Svg>
 )
+
+// Health Rules (31.1) — heartbeat pulse, the relationship-health config surface
+export const HealthPulseIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 12h4l2-7 4 14 2-7h6" />
+  </Svg>
+)

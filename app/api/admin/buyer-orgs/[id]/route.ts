@@ -44,21 +44,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   const service = createServiceClient()
 
-  // Always load the current row now (D-10): a pipeline_stage_id change
-  // needs the CURRENT stage to decide whether to stamp stage_entered_at
-  // (below), and non-leadership callers need the same row for the scope
-  // check — one fetch serves both, regardless of role.
-  const { data: orgRow } = await service
-    .from('buyer_orgs')
-    .select('id, ae_user_id, pipeline_stage_id')
-    .eq('id', id)
-    .maybeSingle()
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+
+  // Load the current row only when it's actually needed: every
+  // non-leadership caller needs it for the assignment-scope check
+  // (unchanged from before this plan), and ANY caller touching
+  // pipeline_stage_id needs the CURRENT stage to decide whether to stamp
+  // stage_entered_at (below) — D-10. Leadership editing name/status/use_case
+  // alone still makes zero extra reads, preserving the prior behavior.
+  type OrgReadRow = { id: string; ae_user_id: string | null; pipeline_stage_id: string | null }
+  const needsOrgRead = auth.staffRole !== 'leadership' || 'pipeline_stage_id' in body
+  let orgRow: OrgReadRow | null = null
+  if (needsOrgRead) {
+    const { data } = await service
+      .from('buyer_orgs')
+      .select('id, ae_user_id, pipeline_stage_id')
+      .eq('id', id)
+      .maybeSingle()
+    orgRow = (data ?? null) as OrgReadRow | null
+  }
 
   if (auth.staffRole !== 'leadership' && !isAssignedToOrg(orgRow, auth.user.id)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const update: Record<string, unknown> = {}
   for (const key of STAFF_EDITABLE_BUYER_ORG_FIELDS) {
     if (!(key in body)) continue
@@ -88,7 +97,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // changes — never on a same-value PATCH (a no-op resubmit must not reset
   // the "days in stage" clock).
   if (typeof update.pipeline_stage_id === 'string') {
-    const currentStageId = (orgRow as { pipeline_stage_id?: string | null } | null)?.pipeline_stage_id ?? null
+    const currentStageId = orgRow?.pipeline_stage_id ?? null
     if (update.pipeline_stage_id !== currentStageId) {
       update.stage_entered_at = new Date().toISOString()
     }
