@@ -21,6 +21,12 @@ import type { ActivityBriefItem, ActivityLicenseRequestItem } from '@/components
 // record (adjacency edge, R1): there is no separate "person" table, this
 // page is just ClientWorkspace mode="person" scoped to one
 // buyer_org_contacts row.
+//
+// D-31.1-02 verification Gap 2: last-contact is required on this drill-in
+// card, not just the room-table column. relationshipLog is already
+// fetched scoped to this contactId and ordered by created_at desc
+// (listRelationshipLog), so its first entry IS this person's most-recent
+// contact — reused as-is rather than a second query.
 
 const ORG_COLUMNS = 'id, name, status, ae_user_id, website'
 
@@ -137,6 +143,7 @@ export default async function ClientPersonWorkspacePage({
           briefs={briefs}
           licenseRequests={licenseRequests}
           initialGamePlanTopics={gamePlan.topics}
+          lastContactedAt={relationshipLog[0]?.created_at ?? null}
         />
       </div>
     </div>

@@ -16,6 +16,12 @@ import { GamePlanPanel } from './GamePlanPanel'
 // person workspace mounts mode="person" — the same shell scoped to one
 // contact via PersonContactPanel. A clearly-marked slot is left for 31.1's
 // Game Plan panel (person view only, R14) — not built here.
+//
+// D-31.1-02 verification Gap 2: last-contact must render BOTH as a
+// room-table column (ClientPartnersList.tsx, already built) AND on this
+// drill-in card. lastContactedAt below is tracked/display only — it never
+// feeds computeHealth() (lib/client-partners/health.ts owns the color
+// clock exclusively via the executed-license signal, D-31.1-09).
 
 export type ActivityBriefItem = {
   id: string
@@ -45,6 +51,8 @@ export type ClientWorkspaceProps = {
   licenseRequests: ActivityLicenseRequestItem[]
   /** Person view only (R14/D-31.1-06) — omitted/empty for mode="company". */
   initialGamePlanTopics?: GamePlanTopic[]
+  /** ISO timestamp of the most recent relationship-log contact (company: any contact; person: scoped to this contact), or null if none logged yet. Display only — never a health-color input (D-31.1-02/09). */
+  lastContactedAt?: string | null
 }
 
 type JobKey = 'contacts' | 'activity' | 'curation' | 'notes'
@@ -119,6 +127,20 @@ function formatDate(dateString: string): string {
   } catch {
     return dateString
   }
+}
+
+// D-31.1-02 verification Gap 2 — verbose relative-time copy for the card
+// header ("Last contacted 12 days ago"), distinct from
+// ClientPartnersList.tsx's abbreviated room-table formatRelative ("12d
+// ago"). Display only; never feeds computeHealth (D-31.1-09).
+function formatLastContacted(iso: string | null | undefined): string {
+  if (!iso) return 'No contact logged yet'
+  const then = new Date(iso).getTime()
+  if (!Number.isFinite(then)) return 'No contact logged yet'
+  const days = Math.floor((Date.now() - then) / 86400000)
+  if (days <= 0) return 'Last contacted today'
+  if (days === 1) return 'Last contacted 1 day ago'
+  return `Last contacted ${days} days ago`
 }
 
 // ─── Curation / Selects job ─────────────────────────────────────────────
@@ -386,6 +408,7 @@ export function ClientWorkspace({
   briefs,
   licenseRequests,
   initialGamePlanTopics,
+  lastContactedAt,
 }: ClientWorkspaceProps) {
   const [activeJob, setActiveJob] = useState<JobKey>('contacts')
   const headerTitle = mode === 'company' ? companyName : (personName ?? contacts[0]?.name ?? 'Contact')
@@ -411,6 +434,7 @@ export function ClientWorkspace({
         {mode === 'person' && (
           <p className="mt-1 text-[13px] text-[color:var(--ink-3)]">at {companyName}</p>
         )}
+        <p className="mt-1 text-[13px] text-[color:var(--ink-3)]">{formatLastContacted(lastContactedAt)}</p>
       </div>
 
       {/* Secondary underline-tab row (UI-SPEC: text tabs, --indigo underline indicator) */}

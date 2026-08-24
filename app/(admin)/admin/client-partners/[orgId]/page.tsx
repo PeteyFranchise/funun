@@ -19,6 +19,11 @@ import type { ActivityBriefItem, ActivityLicenseRequestItem } from '@/components
 // AE/BD/ANR only an org assigned to them (isAssignedToOrg) — scope denial
 // resolves to notFound(), never a role-specific redirect, so org existence
 // is never leaked (T-31-21).
+//
+// D-31.1-02 verification Gap 2: last-contact is required on this drill-in
+// card, not just the room-table column. relationshipLog is already fetched
+// ordered by created_at desc (listRelationshipLog), so its first entry IS
+// the org's most-recent contact — reused as-is rather than a second query.
 
 const ORG_COLUMNS =
   'id, name, is_personal, verified, created_at, status, use_case, contact_name, contact_email, contact_phone, contact_role, source, ae_user_id, website'
@@ -116,6 +121,7 @@ export default async function ClientPartnerWorkspacePage({
           initialRelationshipLog={relationshipLog}
           briefs={briefs}
           licenseRequests={licenseRequests}
+          lastContactedAt={relationshipLog[0]?.created_at ?? null}
         />
       </div>
     </div>
