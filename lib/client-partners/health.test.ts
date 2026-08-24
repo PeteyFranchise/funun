@@ -1,0 +1,219 @@
+import { computeHealth, daysBetween, within, type HealthRulesConfig, type HealthSignals } from './health'
+
+// Default rules mirror migration 128's health_rules_config defaults
+// (RESEARCH § Migration 128 proposed table shapes).
+const DEFAULT_RULES: HealthRulesConfig = {
+  good_within_days: 90,
+  warning_after_days: 120,
+  at_risk_after_days: 180,
+  cold_after_days: 365,
+  keep_warm_open_brief: true,
+  keep_warm_open_deal: true,
+  keep_warm_recent_selects: true,
+  recent_selects_days: 21,
+  keep_warm_recent_contact: false,
+  recent_contact_days: 30,
+}
+
+const NOW = new Date('2026-08-24T00:00:00.000Z').getTime()
+
+function daysAgoIso(days: number): string {
+  return new Date(NOW - days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+function signals(overrides: Partial<HealthSignals> = {}): HealthSignals {
+  return {
+    lastExecutedLicenseAt: daysAgoIso(30),
+    hasOpenBrief: false,
+    hasOpenDeal: false,
+    lastSelectsSentAt: null,
+    lastContactAt: null,
+    now: NOW,
+    ...overrides,
+  }
+}
+
+describe('computeHealth — prospect (D-31.1-02/09)', () => {
+  it('null lastExecutedLicenseAt resolves to prospect regardless of any other signal', () => {
+    expect(
+      computeHealth(
+        signals({
+          lastExecutedLicenseAt: null,
+          hasOpenBrief: true,
+          hasOpenDeal: true,
+          lastSelectsSentAt: daysAgoIso(1),
+          lastContactAt: daysAgoIso(1),
+        }),
+        DEFAULT_RULES
+      )
+    ).toBe('prospect')
+  })
+
+  it('never resolves to good or warning with no executed license, even with every keeps-warm toggle on', () => {
+    const rules: HealthRulesConfig = { ...DEFAULT_RULES, keep_warm_recent_contact: true }
+    const out = computeHealth(
+      signals({
+        lastExecutedLicenseAt: null,
+        hasOpenBrief: true,
+        hasOpenDeal: true,
+        lastSelectsSentAt: daysAgoIso(1),
+        lastContactAt: daysAgoIso(1),
+      }),
+      rules
+    )
+    expect(out).toBe('prospect')
+  })
+})
+
+describe('computeHealth — band boundaries (RESEARCH Open Q3: good inclusive, *_after exclusive lower bound of next band)', () => {
+  it('executed 30 days ago, default thresholds → good', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(30) }), DEFAULT_RULES)).toBe('good')
+  })
+
+  it('executed exactly good_within_days ago → good (inclusive upper bound)', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(90) }), DEFAULT_RULES)).toBe('good')
+  })
+
+  it('executed good_within_days+1 ago → warning', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(91) }), DEFAULT_RULES)).toBe('warning')
+  })
+
+  it('executed exactly warning_after_days ago → warning', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(120) }), DEFAULT_RULES)).toBe('warning')
+  })
+
+  it('executed warning_after_days+1 ago → at_risk', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(121) }), DEFAULT_RULES)).toBe('at_risk')
+  })
+
+  it('executed exactly at_risk_after_days ago → at_risk', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(180) }), DEFAULT_RULES)).toBe('at_risk')
+  })
+
+  it('executed at_risk_after_days+1 ago → still at_risk (until cold_after_days)', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(181) }), DEFAULT_RULES)).toBe('at_risk')
+  })
+
+  it('executed exactly cold_after_days ago → still at_risk (inclusive)', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(365) }), DEFAULT_RULES)).toBe('at_risk')
+  })
+
+  it('executed past cold_after_days → cold', () => {
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(366) }), DEFAULT_RULES)).toBe('cold')
+    expect(computeHealth(signals({ lastExecutedLicenseAt: daysAgoIso(500) }), DEFAULT_RULES)).toBe('cold')
+  })
+})
+
+describe('computeHealth — keeps-warm holds (D-31.1-03)', () => {
+  it('an at_risk client with an open brief AND keep_warm_open_brief on is held at warning', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), hasOpenBrief: true }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('warning')
+  })
+
+  it('an at_risk client with an open deal AND keep_warm_open_deal on is held at warning', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), hasOpenDeal: true }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('warning')
+  })
+
+  it('a cold client with a recent Selects within recent_selects_days AND keep_warm_recent_selects on is held at warning', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(400), lastSelectsSentAt: daysAgoIso(5) }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('warning')
+  })
+
+  it('a cold client with an old Selects (outside recent_selects_days) is NOT held — stays cold', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(400), lastSelectsSentAt: daysAgoIso(45) }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('cold')
+  })
+
+  it('a hold signal whose toggle is OFF does not lift the band', () => {
+    const rules: HealthRulesConfig = { ...DEFAULT_RULES, keep_warm_open_brief: false }
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), hasOpenBrief: true }),
+      rules
+    )
+    expect(out).toBe('at_risk')
+  })
+
+  it('keep_warm_recent_contact off by default does not lift the band even with a very recent contact', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), lastContactAt: daysAgoIso(1) }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('at_risk')
+  })
+
+  it('keep_warm_recent_contact on lifts an at_risk client with a recent contact to warning', () => {
+    const rules: HealthRulesConfig = { ...DEFAULT_RULES, keep_warm_recent_contact: true }
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), lastContactAt: daysAgoIso(1) }),
+      rules
+    )
+    expect(out).toBe('warning')
+  })
+
+  it('keeps-warm never lifts a good client (stays good, does not need lifting)', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(30), hasOpenBrief: true }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('good')
+  })
+
+  it('keeps-warm never lifts a warning client above warning', () => {
+    const out = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(100), hasOpenBrief: true, hasOpenDeal: true }),
+      DEFAULT_RULES
+    )
+    expect(out).toBe('warning')
+  })
+
+  it('last-contact recency alone (no toggle) never changes the resolved color band', () => {
+    const withRecentContact = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), lastContactAt: daysAgoIso(1) }),
+      DEFAULT_RULES
+    )
+    const withoutContact = computeHealth(
+      signals({ lastExecutedLicenseAt: daysAgoIso(150), lastContactAt: null }),
+      DEFAULT_RULES
+    )
+    expect(withRecentContact).toBe(withoutContact)
+  })
+})
+
+describe('computeHealth — no I/O (pure function)', () => {
+  it('module source has no Supabase/fetch import', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs')
+    const path = require('path')
+    const src = fs.readFileSync(path.join(__dirname, 'health.ts'), 'utf8')
+    expect(src).not.toMatch(/from ['"]@supabase/)
+    expect(src).not.toMatch(/createClient/)
+    expect(src).not.toMatch(/\bfetch\(/)
+  })
+})
+
+describe('daysBetween / within helpers', () => {
+  it('daysBetween computes whole days elapsed since an ISO timestamp', () => {
+    expect(daysBetween(daysAgoIso(30), NOW)).toBe(30)
+    expect(daysBetween(daysAgoIso(0), NOW)).toBe(0)
+  })
+
+  it('within is true when the ISO timestamp is within N days of now, false otherwise', () => {
+    expect(within(daysAgoIso(5), 21, NOW)).toBe(true)
+    expect(within(daysAgoIso(21), 21, NOW)).toBe(true)
+    expect(within(daysAgoIso(22), 21, NOW)).toBe(false)
+    expect(within(null, 21, NOW)).toBe(false)
+  })
+})
