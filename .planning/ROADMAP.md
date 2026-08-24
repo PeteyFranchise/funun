@@ -1206,7 +1206,7 @@ Plans:
 
 **Goal (Slice 2a of Phase 31):** consolidate Client Partners into ONE room with tabbed **My** (own book — all staff, incl. leadership) / **All** (leadership-only tower) views; leadership routes the book (assign/reassign AEs via the **D-07** structural handoff, required handoff note); **relationship health** goes live — **last-license-driven color**, 5 states (Good / Warning / At-risk / **Cold** / 🦁 **Prospect**, the prospect mark a leadership-configurable image set inside Health Rules); and the AE gets the saved-per-account call **Game Plan** (seeded topic suggestions). Last-contact tracked + shown (column, relationship log, client card) but never sets the color.
 
-**Requirements:** R3, R4, R6, R7, R8, R14. **Decisions:** D-06, D-07, D-10 (carried) + D-31.1-01..08 — see `31.1-CONTEXT.md`.
+**Requirements:** R3, R4, R6, R7, R8, R14. **Decisions:** D-06, D-07, D-10 (carried) + D-31.1-01..09 — see `31.1-CONTEXT.md`.
 
 **Re-cut 2026-08-23 (discuss-phase):** roles-as-a-set (mig 119 + the Team Members redesign) and the Playbook shell (Phase 33) already shipped, and migs 113/114 are taken — so Playbook authoring/RBAC (R9), Selects telemetry (R13), and Plays/"today's play" moved to **Phase 31.2**.
 
@@ -1216,7 +1216,18 @@ Plans:
 
 **Design:** `31.1-CONTEXT.md` + `.planning/design/phase-31.1-leadership-tower-mockup.html`, `phase-31.1-health-rules-mockup.html`, `phase-31-my-client-partners-mockup.html` (owner-loved), `phase-31-game-plan.html`; locked `31-UI-SPEC.md`.
 
-**Status:** Discussed + context captured 2026-08-23 — ready to plan.
+**Plans:** 7 plans (planned 2026-08-23). Waves: W1 = 01/02/03 (migration + pure engines), W2 = 04/05 (room + Health Rules), W3 = 06/07 (assign handoff + Game Plan). Migration 128 push is a [BLOCKING] human checkpoint at the end of plan 01.
+
+Plans:
+- [ ] 31.1-01-PLAN.md — Migration 128 (executed-license timestamp, health_rules_config, pipeline_stages, game_plans, onboarding_tasks) + text-lock test + [BLOCKING] owner push (R3/R4/R6/R7/R8/R14; D-06/07/09)
+- [ ] 31.1-02-PLAN.md — Pure 5-state health engine (compute-on-read) + columns.ts HealthValue extension (R3; D-06/D-31.1-02/09)
+- [ ] 31.1-03-PLAN.md — Pure days-in-stage + coverage/By-AE aggregation helpers (R6; D-10/D-31.1-04)
+- [ ] 31.1-04-PLAN.md — Consolidated Client Partners room (My/All, leadership hide-not-filter) + executed-license stamping seam + nav consolidation + access test (R3/R6; D-31.1-01/02/04/07/09)
+- [ ] 31.1-05-PLAN.md — Health Rules settings (thresholds + keeps-warm + live preview) + config/stage routes + swappable prospect image (R4; D-31.1-03/08, D-10)
+- [ ] 31.1-06-PLAN.md — Assign panel + D-07 structural handoff (required note, self-assign, onboarding task, best-effort email) + onboarding surface (R6/R7/R8; D-07/D-31.1-05)
+- [ ] 31.1-07-PLAN.md — Call Game Plan (saved per-account topics + "X of N covered" log) (R14; D-31.1-06)
+
+**Status:** Planned 2026-08-23 — 7 plans ready to execute (`/gsd-execute-phase 31.1`).
 
 ### Phase 31.2: AE Console — Playbook Authoring/RBAC, Plays & Selects Telemetry
 
