@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 31.1
-current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
-status: in_progress
-stopped_at: 31.1-07 executed (Call Game Plan route + GamePlanPanel) — Phase 31.1 7/7 plans complete; owner UAT + phase verification pending
-last_updated: "2026-08-24T05:44:10.170Z"
+current_phase: 32
+current_phase_name: Production Observability, Capacity & Incident Readiness
+status: Ready to plan
+stopped_at: 31.1-02 executed (health engine + columns extension); resume orchestrator
+last_updated: "2026-08-24T23:22:58.227Z"
 last_activity: 2026-08-24
-last_activity_desc: Phase 31.1 execution complete (7/7 plans) — 31.1-07 Call Game Plan shipped
+last_activity_desc: Phase 31.1 complete, transitioned to Phase 32
 progress:
   total_phases: 34
   completed_phases: 28
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 31.1 (ae-console-health-leadership-tower-telemetry-team-rbac) — 7/7 plans EXECUTED, owner UAT + phase verification pending
+Phase: 32 — Production Observability, Capacity & Incident Readiness
 31.1-07 (Call Game Plan — route + seeded topics + coveredSummary + GamePlanPanel, wave 3, LAST plan in phase) COMPLETE 2026-08-24 — 31.1-07-SUMMARY.md; GET/PUT/POST /api/admin/client-partners/[orgId]/game-plan (load-or-seed, upsert save, log-conversation) own-book scoped via canAccessOrgContacts (404 not 403) + lib/client-partners/game-plan.ts (GamePlanTopic type, SEEDED_GAME_PLAN_TOPICS, buildDefaultGamePlanTopics, coveredSummary "X of N covered" incl. 0-of-N edge, buildGamePlanLogBody, normalizeGamePlanTopics, loadGamePlan shared DB-read) + components/admin/GamePlanPanel.tsx ('use client', data + string action paths only — no function props, checks off topics/add custom/pull seeded+Selects-context suggestions/notes/Save+Log conversation, router.refresh()) mounted in ClientWorkspace.tsx mode='person' (D-31.1-06), fed via app/(admin)/admin/clients/[personId]/page.tsx's new loadGamePlan() call. POST log-conversation retires the plan row after logging so the next visit reseeds from defaults. Necessary plumbing beyond files_modified (Rule 2): loadGamePlan() extracted as the one shared DB read for both the route's GET and the RSC page's initial-props load. Full repo suite 248 suites/2655 tests green, tsc clean. R14 impl complete (owner UAT pending). Phase 31.1 is now 7/7 plans executed — remaining work is owner manual UAT + phase verification, no more plans to execute.
 31.1-06 (D-07 AE assignment handoff — route + onboarding helpers + assign/onboarding panels, wave 3) COMPLETE 2026-08-24 — 31.1-06-SUMMARY.md; PATCH /api/admin/buyer-orgs/[id]/ae extended into the full D-07 structural handoff (required trimmed handoff note when assigning — 400 + no write if missing; target-role check widened to admit leadership self-assign alongside ae/bd; after the ae_user_id write commits, three independently .catch()-wrapped best-effort side effects: a kind:'assignment' relationship-log entry, an auto-created onboarding_tasks row — seeded checklist + note — in the AE's queue, and a notification with a Resend intro-email copy) + lib/client-partners/onboarding.ts (SEEDED_ONBOARDING_CHECKLIST, insertOnboardingTask, listOpenOnboardingTasks) + appendRelationshipLog widened to kind:'assignment'/meta; components/admin/AssignAePanel.tsx (AE search + load + health-mix chips + required-note textarea, disabled until filled) + OnboardingTasksPanel.tsx (read-only My-tab render of open handoff tasks), both mounted in ClientPartnersRoom.tsx (assign panel opens from the Needs-an-AE queue + book row action via a new client-to-client onRowAction on ClientPartnersList). Necessary plumbing beyond files_modified (Rule 2): app/(admin)/admin/client-partners/page.tsx now also loads the full assignable AE roster (funun_staff merged with groupByAe) + the caller's own open onboarding tasks. Auto-fixed (Rule 1) pre-existing test breakage the note requirement caused: __tests__/staff-buyer-orgs-api.test.ts's ae-route coverage + lib/admin/gate.test.ts's loadClientPartnersRoomData fixture. Full repo suite 246 suites/2633 tests green, tsc clean. R6/R7/R8 impl complete (owner UAT pending — Resend prod sender unverified, delivery failure is by-design non-blocking). Unblocks plan 07.
 31.1-05 (Health Rules settings surface, wave 2) COMPLETE 2026-08-24 — 31.1-05-SUMMARY.md; GET/PATCH /api/admin/health-rules (leadership-only singleton read/write, pick-then-zod-validate allowlist, strict threshold-ordering merged against the current row) + GET/POST/PATCH/DELETE /api/admin/pipeline-stages (D-10 stage CRUD, KEY_REGEX-constrained keys, field allowlist) + POST /api/admin/health-rules/prospect-image (mirrors the staff-avatar route shape, writes health_rules_config.prospect_image_url, D-31.1-08); app/(admin)/admin/health-rules/page.tsx (leadership-gated RSC page, page-local batched loadSampleSignals() — up to 30 orgs' raw HealthSignals, deliberately NOT signals.ts's loadWholeBookWithCoverage which bakes health against the saved config) + components/admin/HealthRulesForm.tsx ('use client', live state-split preview recomputed via computeHealth() with zero server round-trips per D-06, neutral 🦁 placeholder ships when prospect_image_url is null). Full repo suite 244 suites/2619 tests green, tsc clean. No deviations. Unblocks plan 06 (assign panel) needing nothing further from this plan; pipeline-stages CRUD route has no UI yet (out of this plan's scope).
@@ -55,7 +55,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-24 — Phase 31.1 execution started
+Last activity: 2026-08-24 — Phase 31.1 complete, transitioned to Phase 32
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -78,7 +78,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 
 **Velocity:**
 
-- Total plans completed: 21 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
+- Total plans completed: 28 (Wave 3) + 14 (Wave 2) = cumulative across shipped milestones
 - Average duration: -
 - Total execution time: 0 hours (v1.2 not started)
 
@@ -93,6 +93,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | 12 | TBD | - | - |
 | 13 | TBD | - | - |
 | 33 | 9 | - | - |
+| 31.1 | 7 | - | - |
 
 **Recent Trend:**
 
