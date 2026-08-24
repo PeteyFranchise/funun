@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 
 // ─── Game Plan — per-account call prep doc (R14/D-31.1-06, migration 128) ──
@@ -86,6 +87,27 @@ export function buildGamePlanLogBody(topics: GamePlanTopic[]): string {
     .filter(t => t.note.trim().length > 0)
     .map(t => `${t.title} — ${t.note.trim()}`)
   return notedLines.length > 0 ? `${text}\n${notedLines.join('\n')}` : text
+}
+
+// ─── loadGamePlan — the shared GET read (route + RSC page) ─────────────────
+// Both the game-plan route's GET handler and the person-workspace RSC page
+// (which needs the initial topics prop, data + string action paths only —
+// Pitfall 1) read via this ONE function, so the "seed when no row exists"
+// rule lives in exactly one place. Service-role only — game_plans is
+// zero-RLS-policy + REVOKE'd from authenticated/anon (migration 128).
+export async function loadGamePlan(
+  service: SupabaseClient,
+  orgId: string
+): Promise<{ topics: GamePlanTopic[]; seeded: boolean }> {
+  const { data, error } = await service
+    .from('game_plans')
+    .select('topics')
+    .eq('buyer_org_id', orgId)
+    .maybeSingle()
+
+  if (error) throw new Error(`Failed to load game plan: ${error.message}`)
+  const row = data as { topics: GamePlanTopic[] } | null
+  return { topics: row?.topics ?? buildDefaultGamePlanTopics(), seeded: !row }
 }
 
 // ─── zod validation (PUT/POST body) ────────────────────────────────────────

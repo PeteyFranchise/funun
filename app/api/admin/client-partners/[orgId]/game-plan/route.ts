@@ -7,8 +7,8 @@ import {
   GamePlanTopicsSchema,
   buildDefaultGamePlanTopics,
   buildGamePlanLogBody,
+  loadGamePlan,
   normalizeGamePlanTopics,
-  type GamePlanTopic,
 } from '@/lib/client-partners/game-plan'
 
 // ─── /api/admin/client-partners/[orgId]/game-plan (R14/D-31.1-06) ─────────
@@ -22,15 +22,6 @@ import {
 // 403, on every handler.
 
 const GAME_PLAN_COLUMNS = 'id, buyer_org_id, topics, updated_by, created_at, updated_at'
-
-type GamePlanRow = {
-  id: string
-  buyer_org_id: string
-  topics: GamePlanTopic[]
-  updated_by: string | null
-  created_at: string
-  updated_at: string
-}
 
 async function resolveScopedOrg(service: ReturnType<typeof createServiceClient>, orgId: string) {
   const { data: orgRow } = await service
@@ -55,15 +46,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { data: row } = await service
-    .from('game_plans')
-    .select(GAME_PLAN_COLUMNS)
-    .eq('buyer_org_id', orgId)
-    .maybeSingle()
-
-  const existing = row as GamePlanRow | null
-  const topics = existing?.topics ?? buildDefaultGamePlanTopics()
-  return NextResponse.json({ data: { topics, seeded: !existing } })
+  const { topics, seeded } = await loadGamePlan(service, orgId)
+  return NextResponse.json({ data: { topics, seeded } })
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ orgId: string }> }) {

@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BuyerOrgContact, ClientRelationshipLogEntry } from '@/lib/client-partners/contacts'
+import type { GamePlanTopic } from '@/lib/client-partners/game-plan'
 import type { Selects, SelectsStatus } from '@/lib/selects/types'
 import type { BuyerOrgStatus } from '@/lib/buyers/schema'
 import { ContactsPanel, PersonContactPanel } from './ContactsPanel'
+import { GamePlanPanel } from './GamePlanPanel'
 
 // ─── ClientWorkspace (31-09, R1) ────────────────────────────────────────────
 // The four-job company/person workspace: Contacts · Activity · Curation
@@ -41,6 +43,8 @@ export type ClientWorkspaceProps = {
   initialRelationshipLog: ClientRelationshipLogEntry[]
   briefs: ActivityBriefItem[]
   licenseRequests: ActivityLicenseRequestItem[]
+  /** Person view only (R14/D-31.1-06) — omitted/empty for mode="company". */
+  initialGamePlanTopics?: GamePlanTopic[]
 }
 
 type JobKey = 'contacts' | 'activity' | 'curation' | 'notes'
@@ -381,6 +385,7 @@ export function ClientWorkspace({
   initialRelationshipLog,
   briefs,
   licenseRequests,
+  initialGamePlanTopics,
 }: ClientWorkspaceProps) {
   const [activeJob, setActiveJob] = useState<JobKey>('contacts')
   const headerTitle = mode === 'company' ? companyName : (personName ?? contacts[0]?.name ?? 'Contact')
@@ -456,9 +461,13 @@ export function ClientWorkspace({
         )}
       </div>
 
-      {/* 31.1 marker: Game Plan panel mounts here, person view only (R14). Not built in this slice. */}
+      {/* Game Plan panel, person view only (R14/D-31.1-06). */}
       {mode === 'person' && (
-        <div data-slot="game-plan-31-1" className="hidden" aria-hidden="true" />
+        <GamePlanPanel
+          orgId={orgId}
+          initialTopics={initialGamePlanTopics ?? []}
+          selectsNames={initialSelects.map(s => s.name)}
+        />
       )}
     </div>
   )
