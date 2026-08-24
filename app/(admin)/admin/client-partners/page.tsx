@@ -4,7 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaffPage, type StaffRole } from '@/lib/admin/gate'
 import { loadBook, loadWholeBookWithCoverage } from '@/lib/client-partners/signals'
-import { buildCoverageSummary, groupByAe } from '@/lib/client-partners/coverage'
+import { buildCoverageSummary, groupByAe, type AeCoverage } from '@/lib/client-partners/coverage'
+import { listOpenOnboardingTasks, type OnboardingTask } from '@/lib/client-partners/onboarding'
 import { ClientPartnersRoom, type ClientPartnersAllData } from '@/components/admin/ClientPartnersRoom'
 import type { ClientPartnerRow } from '@/lib/client-partners/columns'
 
@@ -43,13 +44,46 @@ async function contactRowsForOrgs(
   return (data ?? []) as ContactRow[]
 }
 
+type StaffRosterRow = { user_id: string; display_name: string; staff_roles: string[] | null }
+
+// D-31.1-05: the assign panel's "Choose an AE" roster needs every ACTIVE
+// AE/BD/leadership staff member — including a zero-load AE groupByAe's
+// grouping would silently drop (it only buckets rows that already have an
+// assignedAeId). Merges the full funun_staff roster with byAe's computed
+// load/healthMix, defaulting an unmatched staff member to an empty mix.
+async function loadAssignableAeList(
+  service: ReturnType<typeof createServiceClient>,
+  byAe: AeCoverage[]
+): Promise<AeCoverage[]> {
+  const { data } = await service
+    .from('funun_staff')
+    .select('user_id, display_name, staff_roles')
+    .overlaps('staff_roles', ['ae', 'bd', 'leadership'])
+    .order('display_name', { ascending: true })
+
+  const byAeId = new Map(byAe.map(ae => [ae.aeId, ae]))
+  return ((data ?? []) as StaffRosterRow[]).map(row => {
+    const existing = byAeId.get(row.user_id)
+    return (
+      existing ?? {
+        aeId: row.user_id,
+        aeName: row.display_name,
+        load: 0,
+        healthMix: { good: 0, warning: 0, at_risk: 0, cold: 0, prospect: 0 },
+      }
+    )
+  })
+}
+
 async function buildAllTabData(service: ReturnType<typeof createServiceClient>): Promise<ClientPartnersAllData> {
   const rows = await loadWholeBookWithCoverage(service)
+  const byAe = groupByAe(rows)
   return {
     rows,
     coverage: buildCoverageSummary(rows),
-    byAe: groupByAe(rows),
+    byAe,
     unassigned: rows.filter(row => !row.assignedAeId),
+    aeList: await loadAssignableAeList(service, byAe),
   }
 }
 
@@ -58,6 +92,7 @@ export type ClientPartnersRoomData = {
   myClientRows: ClientPartnerRow[]
   isLeadership: boolean
   allData: ClientPartnersAllData | null
+  openOnboardingTasks: OnboardingTask[]
 }
 
 /**
@@ -94,7 +129,11 @@ export async function loadClientPartnersRoomData(
   // invoked for them.
   const allData: ClientPartnersAllData | null = isLeadership ? await buildAllTabData(service) : null
 
-  return { myCompanyRows, myClientRows, isLeadership, allData }
+  // Every staff member — not leadership-only — may have open D-07 handoff
+  // tasks in their own queue (they're the one who WAS assigned a client).
+  const openOnboardingTasks = await listOpenOnboardingTasks(service, args.userId)
+
+  return { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks }
 }
 
 export default async function AdminClientPartnersPage() {
@@ -109,10 +148,11 @@ export default async function AdminClientPartnersPage() {
   const { user, staffRole } = await requireStaffPage()
 
   const service = createServiceClient()
-  const { myCompanyRows, myClientRows, isLeadership, allData } = await loadClientPartnersRoomData(service, {
-    userId: user.id,
-    staffRole,
-  })
+  const { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks } =
+    await loadClientPartnersRoomData(service, {
+      userId: user.id,
+      staffRole,
+    })
 
   return (
     <div className="flex-1 px-9 py-[30px]">
@@ -124,6 +164,7 @@ export default async function AdminClientPartnersPage() {
         allData={allData}
         companyHrefBase="/admin/client-partners"
         clientHrefBase="/admin/clients"
+        openOnboardingTasks={openOnboardingTasks}
       />
     </div>
   )

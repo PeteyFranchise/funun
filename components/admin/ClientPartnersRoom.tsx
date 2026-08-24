@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClientPartnersList } from './ClientPartnersList'
+import { AssignAePanel } from './AssignAePanel'
+import { OnboardingTasksPanel } from './OnboardingTasksPanel'
 import type { ClientPartnerRow } from '@/lib/client-partners/columns'
 import type { AeCoverage, CoverageSummary } from '@/lib/client-partners/coverage'
+import type { OnboardingTask } from '@/lib/client-partners/onboarding'
 
 // ─── ClientPartnersRoom (D-31.1-01/04) ──────────────────────────────────────
 // The consolidated Client Partners room's client wrapper. Renders the My tab
@@ -21,6 +24,12 @@ export type ClientPartnersAllData = {
   byAe: AeCoverage[]
   /** Rows with no assignedAeId — the pinned "Needs an AE" queue. */
   unassigned: ClientPartnerRow[]
+  /**
+   * D-31.1-05: the full assignable roster (every active AE/BD/leadership
+   * staff member, including zero-load ones byAe's grouping would drop) —
+   * what AssignAePanel's "Choose an AE" list renders.
+   */
+  aeList: AeCoverage[]
 }
 
 export type ClientPartnersRoomProps = {
@@ -32,6 +41,8 @@ export type ClientPartnersRoomProps = {
   allData: ClientPartnersAllData | null
   companyHrefBase: string
   clientHrefBase: string
+  /** The signed-in staff member's own open D-07 handoff tasks — every role, not leadership-only. */
+  openOnboardingTasks: OnboardingTask[]
 }
 
 type RoomTab = 'my' | 'all'
@@ -58,9 +69,15 @@ export function ClientPartnersRoom({
   allData,
   companyHrefBase,
   clientHrefBase,
+  openOnboardingTasks,
 }: ClientPartnersRoomProps) {
   const [tab, setTab] = useState<RoomTab>('my')
   const showAll = isLeadership && allData !== null && tab === 'all'
+  // D-31.1-05: the row/queue-card that triggered "+ Assign AE" — opens
+  // AssignAePanel for that org. Set from AllTabView's onRowAction callback
+  // (a client-to-client function, never crossing the RSC boundary — see
+  // ClientPartnersList.tsx's onRowAction contract note).
+  const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null)
 
   return (
     <div className="mt-2">
@@ -105,16 +122,33 @@ export function ClientPartnersRoom({
       )}
 
       {!showAll && (
-        <ClientPartnersList
-          companyRows={myCompanyRows}
-          clientRows={myClientRows}
-          companyHrefBase={companyHrefBase}
-          clientHrefBase={clientHrefBase}
-        />
+        <>
+          <OnboardingTasksPanel tasks={openOnboardingTasks} />
+          <ClientPartnersList
+            companyRows={myCompanyRows}
+            clientRows={myClientRows}
+            companyHrefBase={companyHrefBase}
+            clientHrefBase={clientHrefBase}
+          />
+        </>
       )}
 
       {showAll && allData && (
-        <AllTabView data={allData} companyHrefBase={companyHrefBase} clientHrefBase={clientHrefBase} />
+        <AllTabView
+          data={allData}
+          companyHrefBase={companyHrefBase}
+          clientHrefBase={clientHrefBase}
+          onAssign={row => setAssignTarget({ id: row.id, name: row.name })}
+        />
+      )}
+
+      {assignTarget && allData && (
+        <AssignAePanel
+          orgId={assignTarget.id}
+          orgName={assignTarget.name}
+          aeList={allData.aeList}
+          onClose={() => setAssignTarget(null)}
+        />
       )}
     </div>
   )
@@ -124,10 +158,12 @@ function AllTabView({
   data,
   companyHrefBase,
   clientHrefBase,
+  onAssign,
 }: {
   data: ClientPartnersAllData
   companyHrefBase: string
   clientHrefBase: string
+  onAssign: (row: ClientPartnerRow) => void
 }) {
   const { coverage, byAe, unassigned, rows } = data
 
@@ -179,6 +215,14 @@ function AllTabView({
                   <div className="truncate text-[13.5px] font-semibold text-[color:var(--ink)]">{row.name}</div>
                   <div className="text-[11px] text-[color:var(--ink-3)]">{row.status ?? 'New lead'}</div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => onAssign(row)}
+                  className="ml-auto whitespace-nowrap rounded-lg border border-dashed px-2.5 py-1.5 text-[11.5px] font-bold"
+                  style={{ borderColor: 'var(--amber-line)', color: 'var(--amber-fg)' }}
+                >
+                  Assign AE
+                </button>
               </div>
             ))}
           </div>
@@ -201,6 +245,7 @@ function AllTabView({
         clientHrefBase={clientHrefBase}
         initialTab="companies"
         rowActionLabel="+ Assign AE"
+        onRowAction={onAssign}
       />
 
       {/* By-AE coverage */}

@@ -58,10 +58,15 @@ export type ClientPartnersListProps = {
   // 31.1 leadership tower (D-31.1-05) — a data/string-only row-action slot
   // for the Assigned-AE column: when set, a row with no assignedAeId
   // renders a "+ Assign AE"-style button with this label instead of the
-  // usual dash. Deliberately NOT a function prop (Pitfall 1 — this
-  // component may be handed props assembled from an RSC page); the button
-  // is inert until plan 06 wires its click behavior directly here.
+  // usual dash. `rowActionLabel` itself stays a string (Pitfall 1 — an RSC
+  // page can never hand this component a function prop). `onRowAction`
+  // below is different: ClientPartnersList's ONLY caller is
+  // ClientPartnersRoom, itself a 'use client' component, so a function
+  // crossing THAT boundary is a client-to-client callback, not an RSC→
+  // client one — safe (plan 06 wires the click behavior here, as this
+  // comment previously flagged).
   rowActionLabel?: string
+  onRowAction?: (row: ClientPartnerRow) => void
 }
 
 const CP_COLUMNS_COOKIE = 'fnadmin_cp_columns'
@@ -249,7 +254,15 @@ function NextActionCell({ row }: { row: ClientPartnerRow }) {
 // rowActionLabel is supplied, renders an inert "+ Assign AE" affordance
 // (plan 06 wires the click) — never a function prop, per the component's
 // documented RSC-boundary contract.
-function AssignedAeCell({ row, rowActionLabel }: { row: ClientPartnerRow; rowActionLabel?: string }) {
+function AssignedAeCell({
+  row,
+  rowActionLabel,
+  onRowAction,
+}: {
+  row: ClientPartnerRow
+  rowActionLabel?: string
+  onRowAction?: (row: ClientPartnerRow) => void
+}) {
   if (row.assignedAeId && row.assignedAeName) {
     return (
       <span className="inline-flex items-center gap-2 text-[12.5px] text-[color:var(--ink-2)]">
@@ -267,7 +280,10 @@ function AssignedAeCell({ row, rowActionLabel }: { row: ClientPartnerRow; rowAct
     return (
       <button
         type="button"
-        onClick={e => e.stopPropagation()}
+        onClick={e => {
+          e.stopPropagation()
+          onRowAction?.(row)
+        }}
         className="whitespace-nowrap rounded-lg border border-dashed px-2.5 py-1 text-[11.5px] font-semibold"
         style={{ borderColor: 'var(--amber-line)', color: 'var(--amber-fg)' }}
       >
@@ -303,7 +319,13 @@ function IdentityCell({ row, mode }: { row: ClientPartnerRow; mode: ClientPartne
   )
 }
 
-function renderCell(row: ClientPartnerRow, col: ColumnDef, mode: ClientPartnersListMode, rowActionLabel?: string) {
+function renderCell(
+  row: ClientPartnerRow,
+  col: ColumnDef,
+  mode: ClientPartnersListMode,
+  rowActionLabel?: string,
+  onRowAction?: (row: ClientPartnerRow) => void
+) {
   switch (col.key) {
     case 'name':
       return <IdentityCell row={row} mode={mode} />
@@ -314,7 +336,7 @@ function renderCell(row: ClientPartnerRow, col: ColumnDef, mode: ClientPartnersL
     case 'health':
       return <HealthChip health={row.health} />
     case 'assignedAe':
-      return <AssignedAeCell row={row} rowActionLabel={rowActionLabel} />
+      return <AssignedAeCell row={row} rowActionLabel={rowActionLabel} onRowAction={onRowAction} />
     case 'daysInStage':
       return row.stageDays != null ? <span>{row.stageDays}d</span> : <ZeroDash />
     case 'openBriefs':
@@ -425,6 +447,7 @@ export function ClientPartnersList({
   clientHrefBase,
   initialTab = 'clients',
   rowActionLabel,
+  onRowAction,
 }: ClientPartnersListProps) {
   const router = useRouter()
   const [tab, setTab] = useState<ClientPartnersListMode>(initialTab)
@@ -657,7 +680,7 @@ export function ClientPartnersList({
                         col.align === 'num' ? 'text-right tabular-nums' : ''
                       }`}
                     >
-                      {renderCell(row, col, tab, rowActionLabel)}
+                      {renderCell(row, col, tab, rowActionLabel, onRowAction)}
                     </td>
                   ))}
                 </tr>

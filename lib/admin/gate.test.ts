@@ -187,17 +187,36 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
     }))
   }
 
+  // 31.1 plan 06: loadClientPartnersRoomData now ALSO queries
+  // onboarding_tasks (every caller, via listOpenOnboardingTasks) and, for
+  // leadership, funun_staff (via loadAssignableAeList's aeList roster) —
+  // both real SupabaseClient chains this suite's real (non-mocked)
+  // lib/client-partners/onboarding + lib/client-partners/coverage helpers
+  // issue against `service`. A minimal chainable fake stands in for both.
+  function mockService() {
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      overlaps: () => builder,
+      order: () => Promise.resolve({ data: [], error: null }),
+    }
+    return { from: () => builder } as unknown as Parameters<
+      typeof import('@/app/(admin)/admin/client-partners/page').loadClientPartnersRoomData
+    >[0]
+  }
+
   it('never calls loadWholeBookWithCoverage and returns allData=null for an ae caller', async () => {
     mockRoomSignals()
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage, loadBook } = await import('@/lib/client-partners/signals')
 
-    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-ae', staffRole: 'ae' })
+    const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-ae', staffRole: 'ae' })
 
     expect(loadBook).toHaveBeenCalledTimes(1)
     expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
     expect(result.allData).toBeNull()
     expect(result.isLeadership).toBe(false)
+    expect(result.openOnboardingTasks).toEqual([])
   })
 
   it('never calls loadWholeBookWithCoverage and returns allData=null for a bd caller', async () => {
@@ -205,7 +224,7 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
 
-    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-bd', staffRole: 'bd' })
+    const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-bd', staffRole: 'bd' })
 
     expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
     expect(result.allData).toBeNull()
@@ -216,11 +235,12 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
 
-    const result = await loadClientPartnersRoomData({} as never, { userId: 'u-lead', staffRole: 'leadership' })
+    const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-lead', staffRole: 'leadership' })
 
     expect(loadWholeBookWithCoverage).toHaveBeenCalledTimes(1)
     expect(result.allData).not.toBeNull()
     expect(result.isLeadership).toBe(true)
     expect(result.allData?.coverage.totalClients).toBe(0)
+    expect(result.allData?.aeList).toEqual([])
   })
 })
