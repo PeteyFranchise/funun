@@ -1216,7 +1216,7 @@ Plans:
 
 **Design:** `31.1-CONTEXT.md` + `.planning/design/phase-31.1-leadership-tower-mockup.html`, `phase-31.1-health-rules-mockup.html`, `phase-31-my-client-partners-mockup.html` (owner-loved), `phase-31-game-plan.html`; locked `31-UI-SPEC.md`.
 
-**Plans:** 4/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -1228,7 +1228,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 31.1-04-PLAN.md — Consolidated Client Partners room (My/All, leadership hide-not-filter) + executed-license stamping seam + nav consolidation + access test (R3/R6; D-31.1-01/02/04/07/09)
-- [ ] 31.1-05-PLAN.md — Health Rules settings (thresholds + keeps-warm + live preview) + config/stage routes + swappable prospect image (R4; D-31.1-03/08, D-10)
+- [x] 31.1-05-PLAN.md — Health Rules settings (thresholds + keeps-warm + live preview) + config/stage routes + swappable prospect image (R4; D-31.1-03/08, D-10)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
