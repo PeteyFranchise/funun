@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Leadership Tower — Client Partners (mockup)</title>
+<style>
+  :root{
+    --ground:#0a0a0f;--panel:#0E0D1E;--panel-2:#1A1838;--ink:#fff;--ink-2:#C7CBF7;--ink-3:#7c80b4;
+    --border:rgba(199,203,247,.12);--border-2:rgba(199,203,247,.22);--indigo:#818CF8;--fuchsia:#D946EF;
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);--money:#6EE7B7;
+    --green-fg:#34D399;--green-bg:rgba(52,211,153,.12);--green-line:rgba(52,211,153,.32);
+    --amber-fg:#F4C77B;--amber-bg:rgba(245,158,11,.12);--amber-line:rgba(245,158,11,.32);
+    --rose-fg:#F9A8C0;--rose-bg:rgba(244,63,94,.12);--rose-line:rgba(244,63,94,.32);
+    --r-ae:#34D399;
+    --cols: minmax(178px,1.4fr) minmax(136px,1fr) 104px 126px 58px 58px 92px 96px 92px 32px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ground);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:26px;line-height:1.45}
+  .wrap{max-width:1240px;margin:0 auto}
+  .head h1{font-size:26px;font-weight:800}
+  .head p{font-size:13.5px;color:var(--ink-3);margin-top:6px;max-width:640px}
+  .tabs{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:4px;margin:16px 0 2px}
+  .tab{padding:8px 16px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .tab.on{background:var(--panel-2);color:var(--ink)}
+  .tab .lead{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--indigo);background:color-mix(in srgb,var(--indigo) 16%,transparent);border-radius:999px;padding:1px 7px;font-weight:700}
+
+  .cov{display:flex;gap:10px;margin:18px 0 18px;flex-wrap:wrap}
+  .stat{flex:1;min-width:128px;border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:13px 15px}
+  .stat .n{font-size:22px;font-weight:800}
+  .stat .l{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);margin-top:2px;font-weight:700}
+  .stat.warn{border-color:var(--amber-line);background:var(--amber-bg)} .stat.warn .n{color:var(--amber-fg)}
+
+  .sectlabel{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:6px 2px 9px;display:flex;align-items:center;gap:8px}
+  .sectlabel .pill{background:var(--amber-bg);color:var(--amber-fg);border:1px solid var(--amber-line);border-radius:999px;padding:1px 8px;font-size:10px}
+
+  /* pinned unassigned queue */
+  .queue{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+  .qcard{flex:1;min-width:240px;border:1px solid var(--amber-line);background:color-mix(in srgb,var(--amber-fg) 6%,var(--panel));border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:11px}
+  .qcard .logo{width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+  .qcard .nm{font-weight:700;font-size:14px}
+  .qcard .sub{font-size:11.5px;color:var(--ink-3)}
+  .qcard .assignbtn{margin-left:auto}
+  .assignbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--amber-line);color:#111;background:var(--amber-fg);border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+  .assignbtn.ghost{background:transparent;color:var(--amber-fg)}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:6px 13px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+  .chip.on{background:color-mix(in srgb,var(--indigo) 18%,transparent);border-color:color-mix(in srgb,var(--indigo) 45%,transparent);color:#fff}
+  .chip .n{font-size:11px;color:var(--ink-3)}
+  .search{flex:1;min-width:180px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:9px 13px;color:var(--ink-3);font-size:13px}
+
+  .listwrap{overflow-x:auto}
+  .list{min-width:1140px}
+  .lhead{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;padding:2px 16px 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+  .lhead .r,.row .r{text-align:right}
+  .row{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:9px}
+  .row:hover{border-color:var(--border-2)}
+  .row.unassigned{border-color:var(--amber-line);background:color-mix(in srgb,var(--amber-fg) 5%,var(--panel))}
+
+  .co{display:flex;align-items:center;gap:10px;min-width:0}
+  .logo{width:32px;height:32px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+  .co .nm{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .co .sub{font-size:11px;color:var(--ink-3)}
+  .ae{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);min-width:0}
+  .ae .av{width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+  .ae .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .miniassign{border:1px dashed var(--amber-line);color:var(--amber-fg);background:transparent;border-radius:8px;padding:5px 9px;font-size:11.5px;font-weight:700;cursor:pointer}
+
+  .health{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid;padding:3px 9px;font-size:11px;font-weight:600}
+  .health .d{width:6px;height:6px;border-radius:50%}
+  .health.good{color:var(--green-fg);background:var(--green-bg);border-color:var(--green-line)}
+  .health.warn{color:var(--amber-fg);background:var(--amber-bg);border-color:var(--amber-line)}
+  .health.risk{color:var(--rose-fg);background:var(--rose-bg);border-color:var(--rose-line)}
+  .health.unknown{color:var(--ink-3);background:var(--panel-2);border:1px dashed var(--border-2)}
+
+  .stage{font-size:12px;color:var(--ink-2)} .stage .days{display:block;font-size:10.5px;color:var(--ink-3);margin-top:1px}
+  .num{font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;text-align:right}
+  .num.zero{color:var(--ink-3)}
+  .money{font-size:12.5px;color:var(--money);font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+  .money.zero{color:var(--ink-3);font-weight:400}
+  .touch{font-size:12px;color:var(--ink-2);white-space:nowrap;text-align:right} .touch.stale{color:var(--rose-fg)}
+  .kebab{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--ink-3);display:flex;align-items:center;justify-content:center;cursor:pointer;justify-self:end}
+
+  /* richer assign panel (modal, shown open) */
+  .panel{width:min(460px,100%);background:var(--panel);border:1px solid var(--border-2);border-radius:18px;padding:20px;box-shadow:0 30px 70px -34px rgba(0,0,0,.7)}
+  .panel h3{font-size:16px;font-weight:800}
+  .panel .psub{font-size:12px;color:var(--ink-3);margin-top:3px;margin-bottom:14px}
+  .aesearch{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--ink-3);font-size:12.5px;margin-bottom:9px}
+  .aeopt{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+  .aeopt.sel{border-color:var(--indigo);background:color-mix(in srgb,var(--indigo) 10%,var(--panel-2))}
+  .aeopt .av{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+  .aeopt .nm{font-weight:700;font-size:13.5px}
+  .aeopt .meta{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+  .bookhealth{display:inline-flex;align-items:center;gap:4px}
+  .bookhealth b{font-weight:700}
+  .radio{margin-left:auto;width:18px;height:18px;border-radius:50%;border:2px solid var(--border-2);flex:none}
+  .aeopt.sel .radio{border-color:var(--indigo);background:radial-gradient(circle,var(--indigo) 0 5px,transparent 6px)}
+  .note{width:100%;margin-top:6px;background:var(--panel-2);border:1px solid var(--border);border-radius:11px;padding:10px 12px;color:var(--ink);font-size:13px;min-height:64px;resize:vertical}
+  .note::placeholder{color:var(--ink-3)}
+  .plabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin:12px 0 6px}
+  .pfoot{display:flex;gap:10px;margin-top:16px}
+  .btn{border:0;border-radius:11px;padding:11px 16px;font-size:13.5px;font-weight:800;cursor:pointer}
+  .btn.primary{background:var(--grad);color:#fff;flex:1}
+  .btn.ghost{background:transparent;border:1px solid var(--border-2);color:var(--ink-2)}
+  /* By-AE coverage groups */
+  .aegroups{display:flex;flex-direction:column;gap:12px}
+  .aegroup{border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
+  .aegroup.unassigned{border-color:var(--amber-line)}
+  .aghead{display:flex;align-items:center;gap:11px;padding:12px 16px;background:var(--panel-2)}
+  .aghead .av{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+  .agname{font-weight:700;font-size:14px}
+  .agmeta{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+  .aghealth{margin-left:auto;display:flex;gap:6px}
+  .hd{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;border-radius:7px;font-size:11.5px;font-weight:700;padding:0 6px}
+  .hd.good{color:var(--green-fg);background:var(--green-bg)}
+  .hd.warn{color:var(--amber-fg);background:var(--amber-bg)}
+  .hd.risk{color:var(--rose-fg);background:var(--rose-bg)}
+  .agclients{padding:6px 8px}
+  .agclient{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:13px}
+  .agclient:hover{background:var(--panel-2)}
+  .agclient .cd{width:7px;height:7px;border-radius:50%;flex:none}
+  .agclient .cd.good{background:var(--green-fg)} .agclient .cd.warn{background:var(--amber-fg)} .agclient .cd.risk{background:var(--rose-fg)} .agclient .cd.unknown{background:var(--ink-3)}
+  .agclient .cn{font-weight:600;color:var(--ink)}
+  .agclient .cstage{color:var(--ink-3);font-size:11.5px;margin-left:6px}
+  .agclient .ct{margin-left:auto;font-size:12px;color:var(--ink-3)} .agclient .ct.stale{color:var(--rose-fg)}
+  .agclient .miniassign{margin-left:auto}
+  .caption{font-size:12px;color:var(--ink-3);margin-top:16px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Client Partners</h1>
+    <p>One room. <b>AEs see only My Client Partners</b> (their own book — no "All" tab at all). <b>Leadership</b> also gets the <b>All Client Partners</b> tab — the whole book + coverage + assign, shown here. Assigning an AE fires the structured handoff — locked intro email + an onboarding task in their queue.</p>
+  </div>
+  <div class="tabs">
+    <span class="tab" id="tab-my" onclick="showTab('my')">My Client Partners</span>
+    <span class="tab on" id="tab-all" onclick="showTab('all')">All Client Partners <span class="lead">leadership only</span></span>
+  </div>
+
+  <div id="all-view">
+  <div class="cov">
+    <div class="stat"><div class="n">14</div><div class="l">Client partners</div></div>
+    <div class="stat warn"><div class="n">3</div><div class="l">Unassigned</div></div>
+    <div class="stat"><div class="n">4</div><div class="l">Active AEs</div></div>
+    <div class="stat"><div class="n" style="color:var(--money)">$128k</div><div class="l">Open pipeline</div></div>
+    <div class="stat"><div class="n" style="color:var(--rose-fg)">2</div><div class="l">At risk</div></div>
+  </div>
+
+  <!-- Pinned "Needs an AE" queue -->
+  <div class="sectlabel">Needs an AE <span class="pill">3</span></div>
+  <div class="queue">
+    <div class="qcard"><div class="logo" style="background:linear-gradient(135deg,#F59E0B,#FB7185)">LF</div><div><div class="nm">Lumen Films</div><div class="sub">New lead · 2d</div></div><button class="assignbtn">Assign AE</button></div>
+    <div class="qcard"><div class="logo" style="background:linear-gradient(135deg,#38BDF8,#818CF8)">CG</div><div><div class="nm">Coda Games</div><div class="sub">New lead · 5d</div></div><button class="assignbtn">Assign AE</button></div>
+    <div class="qcard"><div class="logo" style="background:linear-gradient(135deg,#D946EF,#818CF8)">RW</div><div><div class="nm">Riverwild Co.</div><div class="sub">Contacted · 3d</div></div><button class="assignbtn">Assign AE</button></div>
+  </div>
+
+  <div class="sectlabel">The book</div>
+  <div class="toolbar">
+    <span class="chip on">All <span class="n">14</span></span>
+    <span class="chip">Unassigned <span class="n">3</span></span>
+    <span class="chip">At risk <span class="n">2</span></span>
+    <span class="chip">By AE ▾</span>
+    <span class="search">🔍 Search client partners…</span>
+  </div>
+
+  <div class="listwrap">
+    <div class="list">
+      <div class="lhead">
+        <div>Company</div><div>Assigned AE</div><div>Health</div><div>Stage</div><div class="r">Briefs</div><div class="r">Selects</div><div class="r">Open deal</div><div class="r">Lifetime</div><div class="r">Last touch</div><div></div>
+      </div>
+
+      <div class="row">
+        <div class="co"><div class="logo" style="background:linear-gradient(135deg,#818CF8,#D946EF)">NS</div><div><div class="nm">Neon Sky Records</div><div class="sub">neonsky.co</div></div></div>
+        <div class="ae"><span class="av" style="background:linear-gradient(135deg,#34D399,#38BDF8)">MC</span><span class="nm">Maya Chen</span></div>
+        <div><span class="health good"><span class="d" style="background:var(--green-fg)"></span>Good</span></div>
+        <div class="stage">Active<span class="days">12d in stage</span></div>
+        <div class="num r">2</div><div class="num r">3</div>
+        <div class="money r">$42k</div><div class="money r">$180k</div>
+        <div class="touch r">3d ago</div><div class="kebab">⋯</div>
+      </div>
+
+      <div class="row unassigned">
+        <div class="co"><div class="logo" style="background:linear-gradient(135deg,#F59E0B,#FB7185)">LF</div><div><div class="nm">Lumen Films</div><div class="sub">lumenfilms.com</div></div></div>
+        <div><button class="miniassign">+ Assign AE</button></div>
+        <div><span class="health unknown"><span class="d" style="background:var(--ink-3)"></span>Unknown</span></div>
+        <div class="stage">New lead<span class="days">2d in stage</span></div>
+        <div class="num r zero">0</div><div class="num r zero">0</div>
+        <div class="money r zero">—</div><div class="money r zero">—</div>
+        <div class="touch r">1d ago</div><div class="kebab">⋯</div>
+      </div>
+
+      <div class="row">
+        <div class="co"><div class="logo" style="background:linear-gradient(135deg,#38BDF8,#818CF8)">VS</div><div><div class="nm">Vertigo Sync</div><div class="sub">vertigosync.tv</div></div></div>
+        <div class="ae"><span class="av" style="background:linear-gradient(135deg,#F59E0B,#FB7185)">JE</span><span class="nm">Jordan Ellis</span></div>
+        <div><span class="health warn"><span class="d" style="background:var(--amber-fg)"></span>Warning</span></div>
+        <div class="stage">Negotiating<span class="days">21d in stage</span></div>
+        <div class="num r">1</div><div class="num r">5</div>
+        <div class="money r">$64k</div><div class="money r">$96k</div>
+        <div class="touch r">9d ago</div><div class="kebab">⋯</div>
+      </div>
+
+      <div class="row">
+        <div class="co"><div class="logo" style="background:linear-gradient(135deg,#D946EF,#818CF8)">AM</div><div><div class="nm">Atlas Media</div><div class="sub">atlasmedia.io</div></div></div>
+        <div class="ae"><span class="av" style="background:linear-gradient(135deg,#34D399,#38BDF8)">MC</span><span class="nm">Maya Chen</span></div>
+        <div><span class="health risk"><span class="d" style="background:var(--rose-fg)"></span>At risk</span></div>
+        <div class="stage">Active<span class="days">34d in stage</span></div>
+        <div class="num r zero">0</div><div class="num r">1</div>
+        <div class="money r zero">—</div><div class="money r">$220k</div>
+        <div class="touch r stale">27d ago</div><div class="kebab">⋯</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sectlabel" style="margin-top:26px">By AE — coverage <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">· the book grouped by owner (toggle from "By AE" above)</span></div>
+  <div class="aegroups">
+    <div class="aegroup unassigned">
+      <div class="aghead"><span class="av" style="background:var(--panel-2);color:var(--amber-fg);border:1px dashed var(--amber-line)">?</span><div><div class="agname">Unassigned</div><div class="agmeta">3 clients need an owner</div></div></div>
+      <div class="agclients">
+        <div class="agclient"><span class="cd unknown"></span><span class="cn">Lumen Films</span><span class="cstage">New lead · 2d</span><button class="miniassign">Assign</button></div>
+        <div class="agclient"><span class="cd unknown"></span><span class="cn">Coda Games</span><span class="cstage">New lead · 5d</span><button class="miniassign">Assign</button></div>
+        <div class="agclient"><span class="cd unknown"></span><span class="cn">Riverwild Co.</span><span class="cstage">Contacted · 3d</span><button class="miniassign">Assign</button></div>
+      </div>
+    </div>
+    <div class="aegroup">
+      <div class="aghead"><span class="av" style="background:linear-gradient(135deg,#34D399,#38BDF8)">MC</span><div><div class="agname">Maya Chen</div><div class="agmeta">4 clients · $262k lifetime</div></div><div class="aghealth"><span class="hd good">2</span><span class="hd warn">1</span><span class="hd risk">1</span></div></div>
+      <div class="agclients">
+        <div class="agclient"><span class="cd good"></span><span class="cn">Neon Sky Records</span><span class="cstage">Active · 12d</span><span class="ct">3d</span></div>
+        <div class="agclient"><span class="cd risk"></span><span class="cn">Atlas Media</span><span class="cstage">Active · 34d</span><span class="ct stale">27d</span></div>
+        <div class="agclient"><span class="cd good"></span><span class="cn">Halcyon Audio</span><span class="cstage">Active · 8d</span><span class="ct">2d</span></div>
+        <div class="agclient"><span class="cd warn"></span><span class="cn">Pale Blue Media</span><span class="cstage">Negotiating · 16d</span><span class="ct">6d</span></div>
+      </div>
+    </div>
+    <div class="aegroup">
+      <div class="aghead"><span class="av" style="background:linear-gradient(135deg,#F59E0B,#FB7185)">JE</span><div><div class="agname">Jordan Ellis</div><div class="agmeta">3 clients · $141k lifetime</div></div><div class="aghealth"><span class="hd good">1</span><span class="hd warn">2</span><span class="hd risk">0</span></div></div>
+      <div class="agclients">
+        <div class="agclient"><span class="cd warn"></span><span class="cn">Vertigo Sync</span><span class="cstage">Negotiating · 21d</span><span class="ct">9d</span></div>
+        <div class="agclient"><span class="cd good"></span><span class="cn">Fathom Records</span><span class="cstage">Active · 5d</span><span class="ct">1d</span></div>
+        <div class="agclient"><span class="cd warn"></span><span class="cn">Zephyr Sync</span><span class="cstage">Contacted · 11d</span><span class="ct">7d</span></div>
+      </div>
+    </div>
+    <div class="aegroup">
+      <div class="aghead"><span class="av" style="background:linear-gradient(135deg,#818CF8,#D946EF)">SR</span><div><div class="agname">Sam Rivera</div><div class="agmeta">2 clients · $58k lifetime</div></div><div class="aghealth"><span class="hd good">2</span><span class="hd warn">0</span><span class="hd risk">0</span></div></div>
+      <div class="agclients">
+        <div class="agclient"><span class="cd good"></span><span class="cn">Bright Antler</span><span class="cstage">Active · 4d</span><span class="ct">1d</span></div>
+        <div class="agclient"><span class="cd good"></span><span class="cn">Slow Motion Co.</span><span class="cstage">Contacted · 2d</span><span class="ct">today</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sectlabel" style="margin-top:26px">Assign panel <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">· opens from any "Assign AE" button (shown inline here so the whole design is visible)</span></div>
+  <div class="panel">
+  <h3>Assign an AE — Lumen Films</h3>
+  <p class="psub">They'll get the locked intro email + an onboarding task in their queue. This can be reassigned later.</p>
+
+  <div class="plabel">Choose an AE</div>
+  <div class="aesearch">🔍 Search AEs by name…</div>
+  <div class="aeopt sel">
+    <span class="av" style="background:linear-gradient(135deg,#818CF8,#D946EF)">SR</span>
+    <div><div class="nm">Sam Rivera</div><div class="meta"><span>2 clients</span><span class="bookhealth"><b style="color:var(--green-fg)">2</b> good · <b style="color:var(--amber-fg)">0</b> warn · <b style="color:var(--rose-fg)">0</b> risk</span></div></div>
+    <span class="radio"></span>
+  </div>
+  <div class="aeopt">
+    <span class="av" style="background:linear-gradient(135deg,#34D399,#38BDF8)">MC</span>
+    <div><div class="nm">Maya Chen</div><div class="meta"><span>4 clients</span><span class="bookhealth"><b style="color:var(--green-fg)">2</b> good · <b style="color:var(--amber-fg)">1</b> warn · <b style="color:var(--rose-fg)">1</b> risk</span></div></div>
+    <span class="radio"></span>
+  </div>
+  <div class="aeopt">
+    <span class="av" style="background:linear-gradient(135deg,#F59E0B,#FB7185)">JE</span>
+    <div><div class="nm">Jordan Ellis</div><div class="meta"><span>3 clients</span><span class="bookhealth"><b style="color:var(--green-fg)">1</b> good · <b style="color:var(--amber-fg)">2</b> warn · <b style="color:var(--rose-fg)">0</b> risk</span></div></div>
+    <span class="radio"></span>
+  </div>
+
+  <div class="plabel">Handoff note <span style="color:var(--fuchsia)">*</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)"> · required — goes to the AE</span></div>
+  <textarea class="note" placeholder="Context for the AE — who they are, why now, anything you promised… (required)"></textarea>
+  <p style="font-size:11.5px;color:var(--ink-3);margin-top:6px">Every handoff needs a note so the AE starts with context — Assign stays disabled until it's filled in.</p>
+
+  <div class="pfoot">
+    <button class="btn primary">Assign + notify Sam</button>
+    <button class="btn ghost">Cancel</button>
+  </div>
+  </div>
+
+  </div><!-- /all-view -->
+
+  <div id="my-view" hidden>
+    <div style="border:1px solid var(--border);border-radius:16px;background:var(--panel);padding:28px;text-align:center;color:var(--ink-3);font-size:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:6px">My Client Partners — your own book</div>
+      Same room, your assigned clients only — no coverage strip, no assign, no "All" tab.<br>Full design lives in the <b style="color:var(--ink-2)">My Client Partners</b> mockup (Clients / Companies tabs + insight columns + Today's play).
+    </div>
+  </div>
+
+  <p class="caption">Mockup v4 · tabbed "Client Partners" room — toggle My / All above. (My = your book; full My design is the My Client Partners mockup.)</p>
+</div>
+<script>
+  function showTab(t){
+    document.getElementById('all-view').hidden = (t!=='all');
+    document.getElementById('my-view').hidden = (t!=='my');
+    document.getElementById('tab-all').classList.toggle('on', t==='all');
+    document.getElementById('tab-my').classList.toggle('on', t==='my');
+  }
+</script>
+</body>
+</html>

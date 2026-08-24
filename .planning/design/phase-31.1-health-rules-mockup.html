@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Health rules — settings (mockup)</title>
+<style>
+  :root{
+    --ground:#0a0a0f;--panel:#0E0D1E;--panel-2:#1A1838;--ink:#fff;--ink-2:#C7CBF7;--ink-3:#7c80b4;
+    --border:rgba(199,203,247,.12);--border-2:rgba(199,203,247,.22);--indigo:#818CF8;--fuchsia:#D946EF;
+    --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);--money:#6EE7B7;
+    --green-fg:#34D399;--green-bg:rgba(52,211,153,.14);
+    --amber-fg:#F4C77B;--amber-bg:rgba(245,158,11,.14);
+    --rose-fg:#F9A8C0;--rose-bg:rgba(244,63,94,.14);
+    --cold-fg:#60A5FA;--cold-bg:rgba(96,165,250,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ground);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:26px;line-height:1.5}
+  .wrap{max-width:680px;margin:0 auto}
+  .head h1{font-size:24px;font-weight:800;display:flex;align-items:center;gap:10px}
+  .lead{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--indigo);background:color-mix(in srgb,var(--indigo) 16%,transparent);border-radius:999px;padding:2px 9px;font-weight:700}
+  .head p{font-size:13.5px;color:var(--ink-3);margin-top:8px}
+  .head p b{color:var(--ink-2)}
+
+  .card{border:1px solid var(--border);border-radius:16px;background:var(--panel);padding:18px 20px;margin-top:16px}
+  .card.primary{border-color:color-mix(in srgb,var(--money) 32%,transparent)}
+  .ctitle{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .badge{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:2px 8px}
+  .badge.color{color:var(--money);background:color-mix(in srgb,var(--money) 15%,transparent)}
+  .cnote{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+  .bar{display:flex;height:12px;border-radius:999px;overflow:hidden;margin:16px 0 12px}
+  .bar .seg{height:100%}
+  .bar .g{background:var(--green-fg)} .bar .w{background:var(--amber-fg)} .bar .r{background:var(--rose-fg)}
+  .thr{display:flex;gap:10px;flex-wrap:wrap}
+  .thrbox{flex:1;min-width:150px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2);padding:11px 13px}
+  .thrbox .l{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+  .thrbox .l .d{width:8px;height:8px;border-radius:50%}
+  .thrbox.g .l{color:var(--green-fg)} .thrbox.w .l{color:var(--amber-fg)} .thrbox.r .l{color:var(--rose-fg)} .thrbox.cold .l{color:var(--cold-fg)}
+  .bar .cold{background:var(--cold-fg)}
+  .prospect{display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;border:1px dashed var(--border-2);border-radius:12px;background:var(--panel-2);font-size:12.5px;color:var(--ink-3)}
+  .prospect b{color:var(--ink-2)}
+  .prospect .psym{width:30px;height:30px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--indigo);background:color-mix(in srgb,var(--indigo) 12%,transparent);border:1px solid var(--border-2)}
+  .pc.cold{color:var(--cold-fg)}
+  .promarker{display:flex;align-items:center;gap:14px;margin-top:12px}
+  .promkimg{width:52px;height:52px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;font-size:26px;background:var(--panel-2);border:1px solid var(--border-2)}
+  .upbtn{border:1px solid var(--border-2);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px;cursor:pointer}
+  .upbtn:hover{background:var(--panel-2)}
+  .promkhint{font-size:11.5px;color:var(--ink-3);margin-top:6px}
+  .thrbox .inrow{display:flex;align-items:baseline;gap:6px;margin-top:7px}
+  .thrbox input{width:56px;background:var(--ground);border:1px solid var(--border);border-radius:8px;color:var(--ink);font:inherit;font-size:16px;font-weight:700;padding:5px 8px;text-align:center}
+  .thrbox .u{font-size:12px;color:var(--ink-3)}
+
+  .tog{display:flex;align-items:flex-start;gap:11px;padding:11px 2px;border-top:1px solid var(--border)}
+  .tog:first-of-type{border-top:0}
+  .sw{width:38px;height:22px;border-radius:999px;flex:none;background:var(--panel-2);border:1px solid var(--border-2);position:relative;cursor:pointer;margin-top:1px}
+  .sw.on{background:var(--indigo);border-color:transparent}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+  .sw.on::after{left:18px}
+  .tog .tt{font-size:13.5px;font-weight:600}
+  .tog .ts{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .tog .inlinen{display:inline-flex;align-items:baseline;gap:5px}
+  .tog .inlinen input{width:44px;background:var(--ground);border:1px solid var(--border);border-radius:7px;color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:2px 6px;text-align:center}
+
+  .tracked{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+  .tritem{flex:1;min-width:170px;background:var(--panel-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+  .tritem .tn{font-size:13px;font-weight:600}
+  .tritem .td{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+
+  .preview{display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:14px 18px;margin-top:16px;flex-wrap:wrap}
+  .preview .pl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3)}
+  .pc{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:700}
+  .pc .d{width:9px;height:9px;border-radius:50%}
+  .pc.g{color:var(--green-fg)} .pc.w{color:var(--amber-fg)} .pc.r{color:var(--rose-fg)}
+  .preview .live{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+
+  .foot{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+  .save{border:0;border-radius:11px;background:var(--grad);color:#fff;font:inherit;font-size:14px;font-weight:800;padding:11px 20px;cursor:pointer}
+  .foot .fh{font-size:12px;color:var(--ink-3)}
+  .caption{font-size:12px;color:var(--ink-3);margin-top:16px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Health rules <span class="lead">leadership only</span></h1>
+    <p>Health color reflects the client's <b>last actual license</b> — are they still buying? The scale runs Good → Warning → At-risk → <b>Cold</b> (licensed before but gone quiet far longer than at-risk — a client who may have drifted or had a bad experience). Brand-new <b>prospects</b> (no license yet) get a symbol, not a color. <b>Last contact</b> and <b>time in stage</b> are tracked separately (shown as columns + in the log) but don't set the color. Computed live.</p>
+  </div>
+
+  <div class="card primary">
+    <div class="ctitle">Last license <span class="badge color">sets the color</span></div>
+    <div class="cnote">Days since the client's most recent licensed / paid placement.</div>
+    <div class="bar"><div class="seg g" style="width:26%"></div><div class="seg w" style="width:14%"></div><div class="seg r" style="width:24%"></div><div class="seg cold" style="width:36%"></div></div>
+    <div class="thr">
+      <div class="thrbox g"><div class="l"><span class="d" style="background:var(--green-fg)"></span>Good</div><div class="inrow"><span class="u">within</span><input value="90"><span class="u">days</span></div></div>
+      <div class="thrbox w"><div class="l"><span class="d" style="background:var(--amber-fg)"></span>Warning</div><div class="inrow"><span class="u">after</span><input value="120"><span class="u">days</span></div></div>
+      <div class="thrbox r"><div class="l"><span class="d" style="background:var(--rose-fg)"></span>At risk</div><div class="inrow"><span class="u">after</span><input value="180"><span class="u">days</span></div></div>
+      <div class="thrbox cold"><div class="l"><span class="d" style="background:var(--cold-fg)"></span>Cold</div><div class="inrow"><span class="u">after</span><input value="365"><span class="u">days</span></div></div>
+    </div>
+    <div class="prospect"><span class="psym">🦁</span><div><b>New / Prospect</b> — signed up / entered but no deal yet. Marked with a <b>lion</b> (not a color) — a prospect we're out to turn into a winner. Not scored on buying-recency until their first license. <span style="color:var(--ink-3)">(Set the image below — configurable.)</span></div></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Prospect marker <span class="lead">configurable</span></div>
+    <div class="cnote">The image shown for New / Prospect clients (no license yet). Set it right here in Health rules — applies instantly across the console, no deploy.</div>
+    <div class="promarker">
+      <div class="promkimg">🦁</div>
+      <div>
+        <button class="upbtn">Upload / replace image</button>
+        <p class="promkhint">PNG, JPG, or SVG · a small square mark works best. Current: placeholder lion.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Keeps a client warm</div>
+    <div class="cnote">Active engagement holds health up even without a recent license — so a new lead you're working, or a live deal, never reads "at risk".</div>
+    <div style="margin-top:10px">
+      <div class="tog"><div class="sw on"></div><div><div class="tt">Open brief / Crate request in flight</div><div class="ts">Live demand won't let health drop below Warning.</div></div></div>
+      <div class="tog"><div class="sw on"></div><div><div class="tt">Open deal in flight</div><div class="ts">A deal in negotiation won't let health drop below Warning.</div></div></div>
+      <div class="tog"><div class="sw on"></div><div><div class="tt">Recent Selects sent</div><div class="ts inlinen">Selects sent within <input value="21"> days holds health up.</div></div></div>
+      <div class="tog"><div class="sw"></div><div><div class="tt">Recent contact</div><div class="ts inlinen">A logged touch within <input value="30"> days holds health up. (Off by default — contact ≠ a sale.)</div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Also tracked <span style="font-weight:400;color:var(--ink-3);font-size:12px">— shown, but never sets the color</span></div>
+    <div class="tracked">
+      <div class="tritem"><div class="tn">Last contact</div><div class="td">Powers the relationship log + the "recent contact" keep-warm signal above. Shown as its own column.</div></div>
+      <div class="tritem"><div class="tn">Time in stage</div><div class="td">Days a client has sat in the current pipeline stage. Shown as a column; flags stalls without changing the color.</div></div>
+    </div>
+  </div>
+
+  <div class="preview">
+    <span class="pl">Right now</span>
+    <span class="pc g"><span class="d" style="background:var(--green-fg)"></span>9 good</span>
+    <span class="pc w"><span class="d" style="background:var(--amber-fg)"></span>3 warning</span>
+    <span class="pc r"><span class="d" style="background:var(--rose-fg)"></span>2 at risk</span>
+    <span class="pc cold"><span class="d" style="background:var(--cold-fg)"></span>1 cold</span>
+    <span class="pc" style="color:var(--ink-2)">🦁 2 prospects</span>
+    <span class="live">updates live as you adjust</span>
+  </div>
+
+  <div class="foot">
+    <button class="save">Save rules</button>
+    <span class="fh">Applies immediately across My &amp; All Client Partners — health recomputes on next view.</span>
+  </div>
+
+  <p class="caption">Mockup v3 · 4-color scale by last license (Good → Warning → At-risk → Cold) + a symbol for new prospects; contact + time-in-stage tracked separately; engagement keeps a client warm.</p>
+</div>
+</body>
+</html>

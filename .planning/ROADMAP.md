@@ -1202,19 +1202,33 @@ Plans:
 
 ---
 
-### Phase 31.1: AE Console — Health, Leadership Tower, Telemetry & Team RBAC
+### Phase 31.1: AE Console — Client Partners room (My/All), Relationship Health & AE Assignment
 
-**Goal (Slice 2 of Phase 31, per D-04):** leadership routes the book and the coaching loop closes. The **Client Partners leadership tower** (same workspace on ANY client + assign/route AEs), **relationship health** computed live + leadership-only rules config, **The Playbook** (SOPs + Topics + Plays, incl. leadership's "today's play" → AE banner), the call **Game Plan**, **Selects engagement telemetry**, and the **Team roles-as-a-set** model (one account = stable company email; roles are a togglable set; admin-tier manages).
+**Goal (Slice 2a of Phase 31):** consolidate Client Partners into ONE room with tabbed **My** (own book — all staff, incl. leadership) / **All** (leadership-only tower) views; leadership routes the book (assign/reassign AEs via the **D-07** structural handoff, required handoff note); **relationship health** goes live — **last-license-driven color**, 5 states (Good / Warning / At-risk / **Cold** / 🦁 **Prospect**, the prospect mark a leadership-configurable image set inside Health Rules); and the AE gets the saved-per-account call **Game Plan** (seeded topic suggestions). Last-contact tracked + shown (column, relationship log, client card) but never sets the color.
 
-**Requirements:** R3, R4, R6, R7, R8, R9, R13, R14. **Decisions:** D-06, D-07, D-10 + roles-as-a-set (from the locked `phase-31-team.html` mockup).
+**Requirements:** R3, R4, R6, R7, R8, R14. **Decisions:** D-06, D-07, D-10 (carried) + D-31.1-01..08 — see `31.1-CONTEXT.md`.
 
-**Schema:** `113_staff_roles_set.sql` (roles-as-a-set + `lib/admin/staff-role` refactor across ≥5 call sites; `bd`/`ops` reconcile), `114_console_config_playbook.sql` (`health_rules_config`, `pipeline_stages`, `playbook_sops`/topics/plays, `game_plans`, `staff_tasks` queue).
+**Re-cut 2026-08-23 (discuss-phase):** roles-as-a-set (mig 119 + the Team Members redesign) and the Playbook shell (Phase 33) already shipped, and migs 113/114 are taken — so Playbook authoring/RBAC (R9), Selects telemetry (R13), and Plays/"today's play" moved to **Phase 31.2**.
 
-**Depends on:** **Phase 31** (reuses its list component, relationship log, and the Selects/player schema). Within 31.1, the roles-as-a-set refactor (mig 113) must land before the R6–R9 leadership/ops gating.
+**Schema:** new migrations at **128+** (`health_rules_config` incl. the prospect-marker image + keeps-warm toggles, `pipeline_stages` if not already present, `game_plans`, the D-07 onboarding task-queue). **Data dependency:** a per-client last-license/paid-placement date (confirm source in planning — closed deal / executed license / Sync Library).
 
-**Design:** same locked `31-UI-SPEC.md` (Family A rooms) + `phase-31-*.html` mockups. **Watch-out (research):** R13 needs a genuine audible-time accumulator (not a naive timer); coordinate migration numbering with Phase 32.
+**Depends on:** **Phase 31** (reuses `ClientPartnersList`, the relationship log, `buyer_orgs`/CRM, the Selects schema, and the just-shipped staff avatar-upload + config patterns).
 
-**Status:** Split out of Phase 31 on 2026-08-15; plans after Phase 31 (Slice 1) ships.
+**Design:** `31.1-CONTEXT.md` + `.planning/design/phase-31.1-leadership-tower-mockup.html`, `phase-31.1-health-rules-mockup.html`, `phase-31-my-client-partners-mockup.html` (owner-loved), `phase-31-game-plan.html`; locked `31-UI-SPEC.md`.
+
+**Status:** Discussed + context captured 2026-08-23 — ready to plan.
+
+### Phase 31.2: AE Console — Playbook Authoring/RBAC, Plays & Selects Telemetry
+
+**Goal (Slice 2b of Phase 31):** close the coaching loop + add measurement. **Playbook authoring** (SOPs/Topics/Plays on the Phase-33 shell) + the **role×room RBAC** permission model; **Plays** incl. leadership's **"today's play" → AE banner**; **Selects engagement telemetry** (incl. the audible-time accumulator); and **dynamic Game-Plan topic sourcing** from the authored Playbook/Plays (31.1 ships seeded defaults).
+
+**Requirements:** R9, R13. **Decisions:** see `.planning/deliberations/team-member-rbac-access-model.md` + the playbook-plays / permissions-model memories.
+
+**Watch-out (research):** R13 needs a genuine audible-time accumulator (not a naive timer). RBAC builds on the shipped roles-as-a-set (mig 119) + the Playbook shell (Phase 33, which deferred authoring + RBAC).
+
+**Depends on:** **Phase 31.1** + Phase 33 (Playbook shell).
+
+**Status:** Split from 31.1 on 2026-08-23; plan after 31.1.
 
 ### Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1)
 
