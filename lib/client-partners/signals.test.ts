@@ -1,4 +1,4 @@
-import { loadBook, loadWholeBookWithCoverage, lastExecutedLicenseAt, maxTimestamp } from './signals'
+import { loadBook, loadWholeBookWithCoverage, fetchHealthRulesConfig, lastExecutedLicenseAt, maxTimestamp } from './signals'
 
 // ─── Mock service — a minimal chainable + thenable Supabase query builder ──
 // Each `.from(table)` call returns a fresh builder over that table's fixture
@@ -33,6 +33,37 @@ function makeBuilder(rows: unknown[]) {
 function mockService(fixtures: Fixtures) {
   return {
     from: jest.fn((table: string) => makeBuilder(fixtures[table] ?? [])),
+  }
+}
+
+// Builder that always resolves with a Supabase-shaped error — used to prove
+// WR-01: every fetch helper must throw rather than silently degrade to
+// empty data when the underlying query errors.
+function makeErrorBuilder(message: string) {
+  const error = { message }
+  const builder: {
+    select: () => typeof builder
+    eq: () => typeof builder
+    in: () => typeof builder
+    not: () => typeof builder
+    order: () => typeof builder
+    maybeSingle: () => Promise<{ data: null; error: typeof error }>
+    then: (resolve: (v: { data: null; error: typeof error }) => void) => void
+  } = {
+    select: () => builder,
+    eq: () => builder,
+    in: () => builder,
+    not: () => builder,
+    order: () => builder,
+    maybeSingle: async () => ({ data: null, error }),
+    then: resolve => resolve({ data: null, error }),
+  }
+  return builder
+}
+
+function mockServiceWithErrorOn(table: string, message: string, fixtures: Fixtures = {}) {
+  return {
+    from: jest.fn((t: string) => (t === table ? makeErrorBuilder(message) : makeBuilder(fixtures[t] ?? []))),
   }
 }
 
@@ -86,6 +117,26 @@ describe('lastExecutedLicenseAt', () => {
   it('returns null when the org has no executed license_requests at all (never-licensed / prospect path)', async () => {
     const service = mockService({ license_requests: [] })
     await expect(lastExecutedLicenseAt(service as never, 'org-1')).resolves.toBeNull()
+  })
+
+  it('throws rather than silently returning null when the query errors (WR-01)', async () => {
+    const service = mockServiceWithErrorOn('license_requests', 'connection reset')
+    await expect(lastExecutedLicenseAt(service as never, 'org-1')).rejects.toThrow(/connection reset/)
+  })
+})
+
+// ─── fetchHealthRulesConfig (WR-01 error handling) ───────────────────────
+
+describe('fetchHealthRulesConfig', () => {
+  it('returns the seeded defaults when the singleton row is missing (no error, null data)', async () => {
+    const service = mockService({ health_rules_config: [] })
+    const rules = await fetchHealthRulesConfig(service as never)
+    expect(rules.good_within_days).toBe(90)
+  })
+
+  it('throws rather than silently falling back to defaults when the query errors', async () => {
+    const service = mockServiceWithErrorOn('health_rules_config', 'permission denied')
+    await expect(fetchHealthRulesConfig(service as never)).rejects.toThrow(/permission denied/)
   })
 })
 
@@ -143,6 +194,29 @@ describe('loadBook', () => {
     const org2 = rows.find(r => r.id === 'org-2')!
     expect(org2.health).toBe('prospect')
     expect(org2.lastTouchAt).toBeNull()
+  })
+
+  it('propagates a license_requests query error instead of silently resolving every client to prospect (WR-01)', async () => {
+    const service = mockServiceWithErrorOn('license_requests', 'deals query failed', {
+      buyer_orgs: [
+        {
+          id: 'org-1',
+          name: 'Neon Sky Records',
+          website: 'neonsky.co',
+          ae_user_id: 'ae-1',
+          pipeline_stage_id: null,
+          stage_entered_at: null,
+        },
+      ],
+      buyer_briefs: [],
+      selects: [],
+      buyer_org_contacts: [],
+      client_relationship_log: [],
+      health_rules_config: [DEFAULT_RULES_ROW],
+      pipeline_stages: [],
+    })
+
+    await expect(loadBook(service as never, { aeUserId: 'ae-1' })).rejects.toThrow(/deals query failed/)
   })
 
   it('falls back to the seeded default health rules if health_rules_config has no row', async () => {

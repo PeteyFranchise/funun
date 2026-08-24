@@ -43,7 +43,7 @@ const DEFAULT_HEALTH_RULES: HealthRulesConfig = {
 // ─── Config + stage lookups ─────────────────────────────────────────────
 
 export async function fetchHealthRulesConfig(service: SupabaseClient): Promise<HealthRulesConfig> {
-  const { data } = await service
+  const { data, error } = await service
     .from('health_rules_config')
     .select(
       'good_within_days, warning_after_days, at_risk_after_days, cold_after_days, keep_warm_open_brief, keep_warm_open_deal, keep_warm_recent_selects, recent_selects_days, keep_warm_recent_contact, recent_contact_days'
@@ -51,6 +51,10 @@ export async function fetchHealthRulesConfig(service: SupabaseClient): Promise<H
     .eq('id', 1)
     .maybeSingle()
 
+  if (error) throw new Error(`Failed to fetch health rules config: ${error.message}`)
+  // A genuine query error is handled above; a NULL row with no error means
+  // the singleton is simply missing (never happens post-migration, but must
+  // not throw) — fall back to the seeded defaults.
   if (!data) return DEFAULT_HEALTH_RULES
   return data as HealthRulesConfig
 }
@@ -64,11 +68,12 @@ type PipelineStageRow = {
 }
 
 export async function fetchPipelineStages(service: SupabaseClient): Promise<PipelineStage[]> {
-  const { data } = await service
+  const { data, error } = await service
     .from('pipeline_stages')
     .select('id, key, label, sort_order, is_terminal')
     .order('sort_order', { ascending: true })
 
+  if (error) throw new Error(`Failed to fetch pipeline stages: ${error.message}`)
   return ((data ?? []) as PipelineStageRow[]).map(row => ({
     id: row.id,
     key: row.key,
@@ -134,10 +139,11 @@ function aggregateDealsByOrg(deals: DealSignalRow[]): Map<string, DealAgg> {
 
 async function fetchDealsForOrgs(service: SupabaseClient, orgIds: string[]): Promise<DealSignalRow[]> {
   if (orgIds.length === 0) return []
-  const { data } = await service
+  const { data, error } = await service
     .from('license_requests')
     .select('buyer_org_id, stage, gross_fee_cents, budget_cents, executed_at')
     .in('buyer_org_id', orgIds)
+  if (error) throw new Error(`Failed to fetch deals for orgs: ${error.message}`)
   return (data ?? []) as DealSignalRow[]
 }
 
@@ -161,11 +167,12 @@ export function maxTimestamp(values: (string | null | undefined)[]): string | nu
  * this one signal in isolation.
  */
 export async function lastExecutedLicenseAt(service: SupabaseClient, orgId: string): Promise<string | null> {
-  const { data } = await service
+  const { data, error } = await service
     .from('license_requests')
     .select('executed_at')
     .eq('buyer_org_id', orgId)
     .not('executed_at', 'is', null)
+  if (error) throw new Error(`Failed to fetch last executed license: ${error.message}`)
   return maxTimestamp(((data ?? []) as { executed_at: string | null }[]).map(row => row.executed_at))
 }
 
@@ -178,7 +185,8 @@ async function fetchCountByOrg(
 ): Promise<Map<string, number>> {
   const counts = new Map<string, number>()
   if (orgIds.length === 0) return counts
-  const { data } = await service.from(table).select('buyer_org_id').in('buyer_org_id', orgIds)
+  const { data, error } = await service.from(table).select('buyer_org_id').in('buyer_org_id', orgIds)
+  if (error) throw new Error(`Failed to fetch ${table} counts: ${error.message}`)
   for (const row of (data ?? []) as { buyer_org_id: string }[]) {
     counts.set(row.buyer_org_id, (counts.get(row.buyer_org_id) ?? 0) + 1)
   }
@@ -188,7 +196,8 @@ async function fetchCountByOrg(
 async function fetchOpenBriefsByOrg(service: SupabaseClient, orgIds: string[]): Promise<Map<string, number>> {
   const counts = new Map<string, number>()
   if (orgIds.length === 0) return counts
-  const { data } = await service.from('buyer_briefs').select('buyer_org_id, status').in('buyer_org_id', orgIds)
+  const { data, error } = await service.from('buyer_briefs').select('buyer_org_id, status').in('buyer_org_id', orgIds)
+  if (error) throw new Error(`Failed to fetch open briefs by org: ${error.message}`)
   for (const row of (data ?? []) as { buyer_org_id: string; status: string }[]) {
     if (BRIEF_TERMINAL_STATUSES.has(row.status)) continue
     counts.set(row.buyer_org_id, (counts.get(row.buyer_org_id) ?? 0) + 1)
@@ -202,7 +211,8 @@ async function fetchLastSelectsSentByOrg(
 ): Promise<Map<string, string | null>> {
   const map = new Map<string, string | null>()
   if (orgIds.length === 0) return map
-  const { data } = await service.from('selects').select('buyer_org_id, sent_at').in('buyer_org_id', orgIds)
+  const { data, error } = await service.from('selects').select('buyer_org_id, sent_at').in('buyer_org_id', orgIds)
+  if (error) throw new Error(`Failed to fetch last Selects sent by org: ${error.message}`)
   for (const row of (data ?? []) as { buyer_org_id: string; sent_at: string | null }[]) {
     if (!row.sent_at) continue
     const current = map.get(row.buyer_org_id)
@@ -217,10 +227,11 @@ async function fetchLastContactByOrg(
 ): Promise<Map<string, string | null>> {
   const map = new Map<string, string | null>()
   if (orgIds.length === 0) return map
-  const { data } = await service
+  const { data, error } = await service
     .from('client_relationship_log')
     .select('buyer_org_id, created_at')
     .in('buyer_org_id', orgIds)
+  if (error) throw new Error(`Failed to fetch last contact by org: ${error.message}`)
   for (const row of (data ?? []) as { buyer_org_id: string; created_at: string }[]) {
     const current = map.get(row.buyer_org_id)
     if (!current || new Date(row.created_at) > new Date(current)) map.set(row.buyer_org_id, row.created_at)
@@ -231,7 +242,8 @@ async function fetchLastContactByOrg(
 async function fetchStaffNames(service: SupabaseClient, userIds: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>()
   if (userIds.length === 0) return map
-  const { data } = await service.from('funun_staff').select('user_id, display_name').in('user_id', userIds)
+  const { data, error } = await service.from('funun_staff').select('user_id, display_name').in('user_id', userIds)
+  if (error) throw new Error(`Failed to fetch staff names: ${error.message}`)
   for (const row of (data ?? []) as { user_id: string; display_name: string }[]) {
     map.set(row.user_id, row.display_name)
   }
@@ -314,11 +326,12 @@ async function assembleRows(
  * rows instead of the Slice-1 partial columns.
  */
 export async function loadBook(service: SupabaseClient, opts: { aeUserId: string }): Promise<ClientPartnerRow[]> {
-  const { data } = await service
+  const { data, error } = await service
     .from('buyer_orgs')
     .select(ORG_SIGNAL_COLUMNS)
     .eq('ae_user_id', opts.aeUserId)
     .order('created_at', { ascending: false })
+  if (error) throw new Error(`Failed to load book: ${error.message}`)
   const orgs = (data ?? []) as OrgSignalRow[]
   return assembleRows(service, orgs, new Map())
 }
@@ -332,7 +345,11 @@ export async function loadBook(service: SupabaseClient, opts: { aeUserId: string
  * test.
  */
 export async function loadWholeBookWithCoverage(service: SupabaseClient): Promise<ClientPartnerRow[]> {
-  const { data } = await service.from('buyer_orgs').select(ORG_SIGNAL_COLUMNS).order('created_at', { ascending: false })
+  const { data, error } = await service
+    .from('buyer_orgs')
+    .select(ORG_SIGNAL_COLUMNS)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`Failed to load whole book: ${error.message}`)
   const orgs = (data ?? []) as OrgSignalRow[]
 
   const aeIds = Array.from(new Set(orgs.map(o => o.ae_user_id).filter((v): v is string => !!v)))
