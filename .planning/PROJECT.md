@@ -167,6 +167,8 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage + Re
 
 ## Current State
 
+**Phase 31.1 complete (2026-08-24):** AE Console — one consolidated Client Partners room (tabbed My / leadership-only All, hide-not-filter), live relationship health (last-executed-license color; leadership-tunable Good ≤30 / Warning 31–60 / At-risk 61–180 / Cold >180, three strictly-increasing cutoffs), the D-07 structural AE handoff (required note, self-assign, auto onboarding task, best-effort intro email), and the per-account call Game Plan. Migration 128 live in prod; migration 129 (owner-set default thresholds) authored, owner push pending. 7/7 plans, goal-verified 10/10.
+
 **In progress:** v1.2 The Green Room (started 2026-07-03). Phase 33 — The Playbook shell + IT Team monitoring dashboard (read-only v1) — completed 2026-08-18 (the milestone's last roadmap phase): a double-sidebar internal Team-Member admin "Playbook" surface with a role-gated IT room that renders the `docs/observability/` docs as pages plus a live single-pane Monitoring Dashboard. Introduced the read-only `it` StaffRole (owner-run migration 114 authored, apply pending). PLAYBOOK-01..10 satisfied in code; goal-verified 34/34 after a code-review hardening pass that closed an `it`-role over-grant.
 
 **Shipped:** v1.1 Launchpad — Phases 5–7, 18 plans, 19/19 Wave 3 requirements validated. Artists have a structured post-release room: a week-sequenced Launchpad checklist with admin-approved tips, playlist curator pitching (directory, AI-drafted emails, claim flow, bounce/drift handling), and an AI-generated 4–6 week social campaign planner with Buffer CSV export.
