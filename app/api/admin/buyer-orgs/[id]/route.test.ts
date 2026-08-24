@@ -36,7 +36,7 @@ function jsonRequest(url: string, body: unknown) {
 
 function mockService(
   options: {
-    orgRow?: { id: string; ae_user_id: string | null } | null
+    orgRow?: { id: string; ae_user_id: string | null; pipeline_stage_id?: string | null } | null
     updateError?: { message: string } | null
   } = {}
 ) {
@@ -155,5 +155,68 @@ describe('PATCH /api/admin/buyer-orgs/[id] — status transition', () => {
     expect(body.data.name).toBe('Renamed Co')
     expect(service.updateSpy).toHaveBeenCalledWith({ name: 'Renamed Co' })
     expect(logStaffAction).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─── PATCH /api/admin/buyer-orgs/[id] — pipeline_stage_id (31.1 plan 04, D-10) ──
+const STAGE_A_UUID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+const STAGE_B_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+
+describe('PATCH /api/admin/buyer-orgs/[id] — pipeline_stage_id', () => {
+  it('rejects a non-UUID pipeline_stage_id with 400 and never writes to the DB', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService({ orgRow: { id: ORG_UUID, ae_user_id: null, pipeline_stage_id: STAGE_A_UUID } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}`, { pipeline_stage_id: 'not-a-uuid' }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+    expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  it('stamps stage_entered_at when pipeline_stage_id actually changes', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService({ orgRow: { id: ORG_UUID, ae_user_id: null, pipeline_stage_id: STAGE_A_UUID } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}`, { pipeline_stage_id: STAGE_B_UUID }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateSpy).toHaveBeenCalledTimes(1)
+    const patch = service.updateSpy.mock.calls[0][0]
+    expect(patch.pipeline_stage_id).toBe(STAGE_B_UUID)
+    expect(typeof patch.stage_entered_at).toBe('string')
+  })
+
+  it('does NOT stamp stage_entered_at when pipeline_stage_id is unchanged (no-op resubmit)', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService({ orgRow: { id: ORG_UUID, ae_user_id: null, pipeline_stage_id: STAGE_A_UUID } })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}`, { pipeline_stage_id: STAGE_A_UUID }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    const patch = service.updateSpy.mock.calls[0][0]
+    expect(patch.pipeline_stage_id).toBe(STAGE_A_UUID)
+    expect(patch.stage_entered_at).toBeUndefined()
   })
 })

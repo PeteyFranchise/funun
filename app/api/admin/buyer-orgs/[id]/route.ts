@@ -16,8 +16,17 @@ import { BUYER_ORG_STATUS_VALUES } from '@/lib/buyers/schema'
 // correction of the qualifying answer captured at register). The other
 // migration-095 lead/CRM fields (contact_name/contact_email/contact_phone/
 // contact_role/source) stay out of this allowlist for v1 — no edit surface
-// for them yet.
-const STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name', 'status', 'use_case'] as const
+// for them yet. 31.1 plan 04 adds `pipeline_stage_id` (D-10) — the org's
+// current stage in the leadership-configurable pipeline model (migration
+// 128); moving it also stamps `stage_entered_at` (below), never mass-
+// assignable directly.
+const STAFF_EDITABLE_BUYER_ORG_FIELDS = ['name', 'status', 'use_case', 'pipeline_stage_id'] as const
+
+// Canonical RFC-4122 UUID shape, mirrors the AE-assignment route's UUID_RE
+// (app/api/admin/buyer-orgs/[id]/ae/route.ts) — pipeline_stage_id is a
+// service-role FK reference, so any non-UUID value must be rejected before
+// it reaches the write.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // ─── PATCH /api/admin/buyer-orgs/[id] ──────────────────────────────────────
 // Assignment-scoped, field-allowlisted, audited buyer-org edit (D-03/D-04).
@@ -35,15 +44,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   const service = createServiceClient()
 
-  if (auth.staffRole !== 'leadership') {
-    const { data: orgRow } = await service
-      .from('buyer_orgs')
-      .select('id, ae_user_id')
-      .eq('id', id)
-      .maybeSingle()
-    if (!isAssignedToOrg(orgRow, auth.user.id)) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
+  // Always load the current row now (D-10): a pipeline_stage_id change
+  // needs the CURRENT stage to decide whether to stamp stage_entered_at
+  // (below), and non-leadership callers need the same row for the scope
+  // check — one fetch serves both, regardless of role.
+  const { data: orgRow } = await service
+    .from('buyer_orgs')
+    .select('id, ae_user_id, pipeline_stage_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (auth.staffRole !== 'leadership' && !isAssignedToOrg(orgRow, auth.user.id)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -66,7 +78,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         { status: 400 }
       )
     }
+    if (key === 'pipeline_stage_id' && !UUID_RE.test(trimmed)) {
+      return NextResponse.json({ error: 'pipeline_stage_id must be a UUID' }, { status: 400 })
+    }
     update[key] = trimmed
+  }
+
+  // D-10: stamp stage_entered_at = now() only when the stage actually
+  // changes — never on a same-value PATCH (a no-op resubmit must not reset
+  // the "days in stage" clock).
+  if (typeof update.pipeline_stage_id === 'string') {
+    const currentStageId = (orgRow as { pipeline_stage_id?: string | null } | null)?.pipeline_stage_id ?? null
+    if (update.pipeline_stage_id !== currentStageId) {
+      update.stage_entered_at = new Date().toISOString()
+    }
   }
 
   if (Object.keys(update).length === 0) {
