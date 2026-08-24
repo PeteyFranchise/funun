@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 33
-current_phase_name: read-only v1
+current_phase: 31.1
+current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
 status: in_progress
-stopped_at: "v1.2 milestone close PAUSED — Phase 32 at 9/10: 32-10 runbook tabletop PASSED + 32-06 Sentry code closed (both 2026-08-18); only 32-09 (k6 load run) remains do-now, plus the deferred 32-06 live-verify — both owner-gated — before archiving the milestone"
-last_updated: "2026-08-24T04:03:54.161Z"
-last_activity: 2026-08-18
-last_activity_desc: Phase 33 complete
+stopped_at: 31.1-02 executed (health engine + columns extension); resume orchestrator
+last_updated: "2026-08-24T04:21:50.035Z"
+last_activity: 2026-08-24
+last_activity_desc: Phase 31.1 execution started
 progress:
-  total_phases: 33
+  total_phases: 34
   completed_phases: 27
-  total_plans: 213
-  completed_plans: 210
-  percent: 82
+  total_plans: 220
+  completed_plans: 211
+  percent: 79
 ---
 
 # Project State
@@ -24,11 +24,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 33 — the-playbook-shell-it-team-monitoring-dashboard-read-only-v1
+**Current focus:** Phase 31.1 — ae-console-health-leadership-tower-telemetry-team-rbac
 
 ## Current Position
 
-Phase: 33 — COMPLETE 2026-08-18. The Playbook shell + IT Team monitoring dashboard (read-only v1): goal-verified 34/34 (2325→2335 tests green, tsc + next build clean). Code-review hardening pass closed CR-01 (the new read-only `it` StaffRole was over-granted to non-Playbook admin surfaces — fixed via a fail-closed OPERATIONAL_STAFF_ROLES default + page/sidebar exclusions) plus WR-01/02 + IN-01/02 cosmetics. Owner-run migration 114 (`it` staff_role CHECK widen) APPLIED 2026-08-18 via `supabase db push` (finished cleanly) — the `it` role is now assignable AND correctly confined. Phase 33 was the last roadmap phase → milestone v1.2 status: complete (see /gsd-complete-milestone). Non-blocking follow-ups: WR-03 path-containment hardening on readObservabilityDoc() (task chip filed; not exploitable — fixed allowlist); two buyer-facing cosmetic `it` staff-mode toggles (sync/catalog, selects/[token]).
+Phase: 31.1 (ae-console-health-leadership-tower-telemetry-team-rbac) — EXECUTING
+31.1-02 (Pure health engine + column model extension, wave 1) COMPLETE 2026-08-24 — 31.1-02-SUMMARY.md; lib/client-partners/health.ts computeHealth() (24 jest tests) + columns.ts HealthValue/HEALTH_RANK/HEALTH_TONE/Assigned-AE extension (16 jest tests); full repo suite 237 suites/2564 tests green, tsc clean. Plan 01 (migration 128 draft) is `autonomous: false` (human-gated db push) and not yet executed by this run — independent of 02 (depends_on: []).
 (Phase 32 — 9/10 closed, still partial:) 32-10 runbook TABLETOP PASSED 2026-08-18 (32-10-SUMMARY.md; §3a forward-fix validated, docs stamped validated, daily digest retimed 0 6→0 15 UTC / Pacific morning) and 32-06 Sentry CODE closed (32-06-SUMMARY.md; jest 4/4, tsc + build clean; live-exception verify DEFERRED as tracked owner UAT — .planning/todos/pending/2026-08-18-sentry-live-exception-verify-post-deploy.md, coverage D3). ONLY REMAINING do-now: 32-09 (k6 harness — scripts drafted+committed; owner must install k6 + stand up staging Supabase/Vercel Preview + run the load test, then Claude writes CAPACITY-REPORT.md from measured data; tracked at .planning/todos/pending/2026-08-17-run-k6-capacity-load-test-pre-launch.md + 32-OWNER-SETUP.md §4). When 32-09 lands → phase verification closes Phase 32 → unblocks v1.2 milestone. Earlier plans 32-01..05/07/08 complete (SUMMARYs). NOTE: verify 32-01 Task 3 migration-110-push (observability_recipients) — confirm owner `supabase db push` + `supabase migration list` parity for migration 110.
 Also in flight: Phase 30 (The Crate) EXECUTED + DEPLOYED to funun.studio — human staff-session UAT DEFERRED (30-UAT.md, resume via /gsd-verify-work 30); Phase 31 (AE Client Workspace + Selects) scoped, not yet planned.
 Deferred fast-follow: Observability Admin Dashboard — create via /gsd-phase after Phase 32.
@@ -48,7 +49,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-18 — Phase 33 complete
+Last activity: 2026-08-24 — Phase 31.1 execution started
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
@@ -201,6 +202,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 32 P05 | 20min | 2 tasks | 5 files |
 | Phase 32 P08 | 8min | 1 tasks | 1 files |
 | Phase 31 P03 | 8min | 2 tasks | 3 files |
+| Phase 31.1 P02 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -442,6 +444,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: Phase 32 Plan 05: fanOutAlert always sends via config's growable recipient list, never a literal address (D-08); daily digest fans out unconditionally on an authorized run; spend line is tier-branched by a self-declared VERCEL_PLAN_TIER env var since no live Vercel spend API integration exists in this codebase.
 - [Phase 32]: 32-08: THRESHOLDS-AND-SEVERITY.md states no numeric value is authoritative on its own -- always defers to lib/observability/config.ts (update config.ts first, doc second, same change)
 - [Phase 31]: 31-03: isLegalSelectsTransition implemented as a Record<SelectsStatus, Set<SelectsStatus>> edge table (not an ordered forward-pipeline array like lib/deals/) since the Selects graph branches (sent -> two legal targets) and loops (changes_requested -> sent)
+- [Phase ?]: 31.1-02: computeHealth() bands treat at_risk_after_days..cold_after_days inclusive as at_risk; cold fires only strictly past cold_after_days
 
 ### Pending Todos
 
@@ -529,8 +532,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-18T00:17:19.724Z
-Stopped at: Phase 33 UI-SPEC approved
+Last session: 2026-08-24T04:21:50.010Z
+Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
 Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

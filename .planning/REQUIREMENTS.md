@@ -663,10 +663,11 @@ Backed by migrations **111** (`selects` / `selects_tracks`→`tracks.id` / `sele
 | R10 | Phase 31 | 31-07, 31-11 | Impl complete; goal-verified; UAT pending (31-UAT.md #2) |
 | R11 | Phase 31 | 31-02, 31-03, 31-04, 31-05, 31-10 | Impl complete; goal-verified; UAT pending (31-UAT.md #3) |
 | R12 | Phase 31 | 31-01, 31-02, 31-12, 31-13 | Impl complete; goal-verified; UAT pending (31-UAT.md #1, #4); WAV-only audible tag partial (G1) |
+| R3 | Phase 31.1 | 31.1-02 (engine done); 31.1-04, 31.1-05 pending | In progress — `lib/client-partners/health.ts` computeHealth() + extended `columns.ts` (31.1-02-SUMMARY.md) landed; leadership-tower render + Health Rules config screen not yet built |
 
 **Coverage (Phase 31 — Slice 1):**
 
-- Phase 31 Slice-1 requirement IDs: **6** (R1, R2, R5, R10, R11, R12). Slice-2 IDs (R3, R4, R6–R9, R13, R14) → Phase 31.1, not built.
+- Phase 31 Slice-1 requirement IDs: **6** (R1, R2, R5, R10, R11, R12). Slice-2 IDs (R3, R4, R6–R9, R13, R14) → Phase 31.1, in progress (R3 partial per row above; R4/R6–R9/R13/R14 not yet built).
 - Complete (code + automated): **6** — all goal-verified (10/10 must-haves, `31-VERIFICATION.md`); `tsc` clean; full suite 2280/2280 green; committed on `feat/lane1-catalogue-menu-help`. Migrations 111/112/113 live. One partial (R12 audible tag WAV-only, G1 — non-blocking; the never-master guarantee holds for every format). Live-app UAT (4 items in `31-UAT.md`) DEFERRED — resumable via `/gsd-verify-work 31`.
 
 ## v1.2 — Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1) Requirements
