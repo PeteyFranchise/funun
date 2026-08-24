@@ -6,14 +6,14 @@ current_phase: 31.1
 current_phase_name: ae-console-health-leadership-tower-telemetry-team-rbac
 status: in_progress
 stopped_at: 31.1-03 executed (days-in-stage + coverage/By-AE aggregation); resume orchestrator
-last_updated: "2026-08-24T04:29:14.540Z"
+last_updated: "2026-08-24T04:35:16.092Z"
 last_activity: 2026-08-24
 last_activity_desc: Phase 31.1 execution started
 progress:
   total_phases: 34
   completed_phases: 27
   total_plans: 220
-  completed_plans: 212
+  completed_plans: 213
   percent: 79
 ---
 
@@ -205,6 +205,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31 P03 | 8min | 2 tasks | 3 files |
 | Phase 31.1 P02 | 5min | 2 tasks | 5 files |
 | Phase 31.1 P03 | 2min | 2 tasks | 5 files |
+| Phase 31.1 P01 | 25min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -450,6 +451,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 31.1]: atRiskCount counts only 'at_risk', not 'cold' — mockup's coverage strip shows a single At-risk stat
 - [Phase 31.1]: CoverageSummary.openPipelineValue matches openDealValue's existing raw-dollar unit (not cents)
 - [Phase 31.1]: Added ClientPartnerRow.assignedAeId as the coverage-aggregation key alongside plan 02's display-only assignedAeName
+- [Phase 31.1-01]: D-31.1-09 supersedes RESEARCH.md's closed_won_at proposal — health-color clock reads license_requests.executed_at (executed/signed license moment), not closed_won stage or payment; executed_at added as a bare column only, stamping logic deferred to a later plan
+- [Phase 31.1-01]: Migration 128 applied to prod (wgfjakfiyeewzfuxkgyo) via owner-run supabase db push at the Task 3 blocking checkpoint; supabase migration list confirmed LOCAL=REMOTE through 128
 
 ### Pending Todos
 
@@ -537,7 +540,7 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-24T04:28:11.064Z
+Last session: 2026-08-24T04:34:35.678Z
 Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
 Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
 Last session: 2026-08-06T01:06:36.617Z
