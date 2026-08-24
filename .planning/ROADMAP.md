@@ -1216,7 +1216,7 @@ Plans:
 
 **Design:** `31.1-CONTEXT.md` + `.planning/design/phase-31.1-leadership-tower-mockup.html`, `phase-31.1-health-rules-mockup.html`, `phase-31-my-client-partners-mockup.html` (owner-loved), `phase-31-game-plan.html`; locked `31-UI-SPEC.md`.
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -1233,9 +1233,9 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 31.1-06-PLAN.md — Assign panel + D-07 structural handoff (required note, self-assign, onboarding task, best-effort email) + onboarding surface (R6/R7/R8; D-07/D-31.1-05)
-- [ ] 31.1-07-PLAN.md — Call Game Plan (saved per-account topics + "X of N covered" log) (R14; D-31.1-06)
+- [x] 31.1-07-PLAN.md — Call Game Plan (saved per-account topics + "X of N covered" log) (R14; D-31.1-06)
 
-**Status:** Planned 2026-08-23 — 7 plans ready to execute (`/gsd-execute-phase 31.1`).
+**Status:** Executed 2026-08-24 — 7/7 plans complete (31.1-01..07-SUMMARY.md). Owner UAT + phase verification pending (Resend prod sender unverified for the D-07 intro email; no other known blockers).
 
 ### Phase 31.2: AE Console — Playbook Authoring/RBAC, Plays & Selects Telemetry
 
