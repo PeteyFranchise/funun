@@ -263,23 +263,23 @@ export function CollaboratorRoster({
             </svg>
             <p className="text-[15px] font-semibold text-white/60">No collaborators yet</p>
             <p className="max-w-xs text-[13px] text-lavdim">
-              Add the people you work with once — their rights data auto-fills into split sheets and
-              contracts.
+              Invite the people you work with and they&apos;ll fill in their own rights details —
+              or add someone manually if you already have their info.
             </p>
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setCreating(true)}
+                onClick={() => setQuickInviteOpen(true)}
                 className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
               >
-                Add your first collaborator
+                Invite a collaborator
               </button>
               <button
                 type="button"
-                onClick={() => setQuickInviteOpen(true)}
+                onClick={() => setCreating(true)}
                 className="rounded-lg border border-hairstrong px-4 py-2 text-sm font-semibold text-lav hover:text-white"
               >
-                Invite collaborator
+                Add your first collaborator
               </button>
             </div>
           </div>
