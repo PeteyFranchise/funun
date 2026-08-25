@@ -1,5 +1,7 @@
-import { createServerClient } from '@/lib/supabase/server'
-import { getStaffRole } from '@/lib/admin/gate'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { getStaffRoles, type StaffRole } from '@/lib/admin/gate'
+import { canAccessRoom, loadRooms } from '@/lib/playbook/rooms'
+import { readRoomGrants } from '@/lib/playbook/access-grants'
 import { Rail2 } from '@/components/playbook/Rail2'
 
 // Pure-CSS container reflow (Phase 33, 33-05, UI-SPEC "Responsive collapse")
@@ -28,12 +30,19 @@ const PLAYBOOK_SHELL_CSS = `
 // app/(admin)/layout.tsx's own createServerClient + getUser idiom exactly
 // (the parent layout comment notes this same pattern).
 //
-// `canSeeItRoom` is RENDER-TIME VISIBILITY ONLY (D-06) — it decides whether
-// Rail 2 shows the IT Team room at all for this request. It is NOT the
-// access authority: each of the 5 IT-room pages carries its own inline
-// requireStaff(['leadership','it']) self-guard (D-02, RequireStaffPageResult
-// in lib/admin/gate.ts) before touching any observability doc/health data.
-// A mis-scoped or bypassed Rail 2 render can never grant access on its own.
+// DB-driven (31.2-07 Task 2, D-31.2-01/03): rooms + per-room visibility are
+// computed here from loadRooms() + the DB grant set (replacing the
+// hardcoded canSeeItRoom boolean) — D-31.2-03's "mixed reading" rule:
+// leadership sees every room; every other role sees a room if it is
+// NOT sensitive (transparency-by-default across teams) OR the caller holds
+// a role the room is explicitly granted to (canAccessRoom, same predicate
+// requireRoomAccess/requireRoomAccessPage use). This is RENDER-TIME
+// VISIBILITY ONLY — it decides which rooms Rail 2 shows for this request.
+// It is NOT the access authority: each of the 5 IT-room pages carries its
+// own inline requireRoomAccessPage('it-team') self-guard (D-02) before
+// touching any observability doc/health data, and the access editor page
+// carries its own requireStaffPage(['leadership']) guard. A mis-scoped or
+// bypassed Rail 2 render can never grant access on its own.
 export default async function PlaybookLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
   const {
@@ -42,15 +51,28 @@ export default async function PlaybookLayout({ children }: { children: React.Rea
   // The parent admin layout already redirects unauthenticated/non-staff
   // users before this layout ever renders (app/(admin)/layout.tsx's own
   // gate) — no redirect needed here, only the render-time role read for
-  // Rail 2's IT-room visibility decision.
-  const role = user ? getStaffRole(user) : null
-  const canSeeItRoom = role === 'leadership' || role === 'it'
+  // Rail 2's per-room visibility decision.
+  const roles = user ? getStaffRoles(user) : []
+
+  const service = createServiceClient()
+  const rooms = await loadRooms(service)
+  const grantRows = await readRoomGrants(service)
+  const grantedRolesByRoom = new Map<string, StaffRole[]>()
+  for (const row of grantRows) {
+    const list = grantedRolesByRoom.get(row.room_id) ?? []
+    list.push(row.role as StaffRole)
+    grantedRolesByRoom.set(row.room_id, list)
+  }
+
+  const visibleRooms = rooms.filter(
+    room => !room.sensitive || canAccessRoom(roles, grantedRolesByRoom.get(room.id) ?? [])
+  )
 
   return (
     <>
       <style>{PLAYBOOK_SHELL_CSS}</style>
       <div className="pb-shell">
-        <Rail2 canSeeItRoom={canSeeItRoom} />
+        <Rail2 rooms={visibleRooms} isLeadership={roles.includes('leadership')} />
         <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </>
