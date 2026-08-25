@@ -24,7 +24,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // possibility of the input being interpreted as a pattern. Single shared
 // predicate used by BOTH lookups below so they can never diverge from each
 // other, let alone from the SQL twin.
-function exactCaseInsensitiveEmailPattern(email: string): string {
+//
+// Exported (260825-m2k) so lib/collaborators/link-claim.ts's scoped
+// claimed_by UPDATE can reuse this exact escaping instead of a second,
+// possibly-drifting copy of it — same rationale that keeps the two lookups
+// below sharing this predicate.
+export function exactCaseInsensitiveEmailPattern(email: string): string {
   return email.replace(/[\\%_]/g, (char) => `\\${char}`)
 }
 
@@ -72,4 +77,39 @@ export async function emailHasExistingAccount(service: SupabaseClient, email: st
   const { data, error } = await service.rpc('email_has_account', { p_email: trimmed })
   if (error) return false
   return data === true
+}
+
+export type ResolveAccountIdResult =
+  | { ok: true; userId: string | null }
+  | { ok: false; error: string }
+
+/**
+ * The authenticated-only superset of emailHasExistingAccount (260825-m2k):
+ * resolves `email` to its auth.users.id via the service-role-only
+ * user_id_for_email RPC (migration 133), rather than just a boolean.
+ *
+ * emailHasExistingAccount stays exactly as it is — do not refactor it, do
+ * not change its signature. It serves the PUBLIC, unauthenticated
+ * check-invite route and must keep returning a bare boolean there; handing
+ * an unauthenticated caller a raw user id would be a strictly larger
+ * disclosure than that route needs.
+ *
+ * The NOT-ok variant is the whole point of this return shape: a caller
+ * must be able to tell "no account" from "could not check". Collapsing
+ * those two (the way emailHasExistingAccount's fail-closed `false` does,
+ * appropriately, for its own use case) would let a transient RPC error
+ * here silently fall through to the signup-invite path and re-send a
+ * "join Funūn" email to someone who already has an account — exactly the
+ * bug this quick task exists to fix.
+ */
+export async function resolveAccountIdByEmail(
+  service: SupabaseClient,
+  email: string
+): Promise<ResolveAccountIdResult> {
+  const trimmed = (email ?? '').trim()
+  if (!trimmed) return { ok: true, userId: null }
+
+  const { data, error } = await service.rpc('user_id_for_email', { p_email: trimmed })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, userId: (data as string | null) ?? null }
 }
