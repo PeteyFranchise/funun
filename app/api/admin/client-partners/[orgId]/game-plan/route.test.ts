@@ -83,6 +83,21 @@ function mockService(options: { gamePlanRow?: FakeRow | null; orgRow?: FakeRow |
         delete: () => ({ eq: deleteEqSpy }),
       }
     }
+    if (table === 'playbook_entries') {
+      // 31.2-08: GET also loads published authored Topics for pickerTopics
+      // (loadAuthoredGamePlanTopics — select → eq → eq → order). Empty by
+      // default: these tests assert the 31.1 game-plan behavior, and the
+      // seeded/authored merge itself is covered in game-plan.test.ts.
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              order: async () => ({ data: [], error: null }),
+            }),
+          }),
+        }),
+      }
+    }
     throw new Error(`Unexpected table: ${table}`)
   })
 

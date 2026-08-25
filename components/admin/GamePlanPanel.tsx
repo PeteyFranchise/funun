@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SEEDED_GAME_PLAN_TOPICS, coveredSummary, type GamePlanTopic } from '@/lib/client-partners/game-plan'
+import { SEEDED_GAME_PLAN_TOPICS, coveredSummary, type GamePlanTopic, type PickerTopic } from '@/lib/client-partners/game-plan'
 
 // ─── GamePlanPanel (31.1 plan 07, R14/D-31.1-06) ───────────────────────────
 // Mounted in ClientWorkspace mode="person" — the AE's per-account call-prep
@@ -38,16 +38,32 @@ function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-function buildSuggestedTopics(existing: GamePlanTopic[], selectsNames: string[]): SuggestedTopic[] {
+function buildSuggestedTopics(
+  existing: GamePlanTopic[],
+  selectsNames: string[],
+  pickerTopics?: PickerTopic[]
+): SuggestedTopic[] {
   const existingIds = new Set(existing.map(t => t.id))
   const existingTitles = new Set(existing.map(t => t.title))
 
-  const seeded: SuggestedTopic[] = SEEDED_GAME_PLAN_TOPICS.filter(t => !existingIds.has(t.id)).map(t => ({
+  // 31.2-08 (D-31.2-07): when the RSC supplies the read-time seeded+authored
+  // merge (buildPickerTopics), it is the suggestion base; the local seeded
+  // constant remains the fallback so pre-31.2 mounts keep working unchanged.
+  const base = pickerTopics ?? SEEDED_GAME_PLAN_TOPICS.map(t => ({
     id: t.id,
     title: t.title,
     source: 'seeded',
     questions: [...t.questions],
   }))
+
+  const seeded: SuggestedTopic[] = base
+    .filter(t => !existingIds.has(t.id) && !existingTitles.has(t.title))
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      source: t.source,
+      questions: [...t.questions],
+    }))
 
   const selects: SuggestedTopic[] = selectsNames
     .map(name => ({
@@ -68,10 +84,13 @@ export function GamePlanPanel({
   orgId,
   initialTopics,
   selectsNames,
+  pickerTopics,
 }: {
   orgId: string
   initialTopics: GamePlanTopic[]
   selectsNames: string[]
+  /** Read-time seeded+authored merge from buildPickerTopics (31.2-08); omitted = seeded-only fallback. */
+  pickerTopics?: PickerTopic[]
 }) {
   const router = useRouter()
   const [topics, setTopics] = useState<GamePlanTopic[]>(initialTopics)
@@ -82,7 +101,7 @@ export function GamePlanPanel({
 
   const gamePlanPath = `/api/admin/client-partners/${orgId}/game-plan`
   const summary = useMemo(() => coveredSummary(topics), [topics])
-  const suggested = useMemo(() => buildSuggestedTopics(topics, selectsNames), [topics, selectsNames])
+  const suggested = useMemo(() => buildSuggestedTopics(topics, selectsNames, pickerTopics), [topics, selectsNames, pickerTopics])
 
   const toggleDone = (id: string) => {
     setTopics(prev => prev.map(t => (t.id === id ? { ...t, done: !t.done } : t)))

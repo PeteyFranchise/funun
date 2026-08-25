@@ -92,6 +92,7 @@ export function Rail2({
   const pathname = usePathname() ?? ''
   const itRoomActive = pathname.startsWith('/admin/playbook/it')
   const accessActive = pathname === '/admin/playbook/access'
+  const playsActive = pathname === '/admin/playbook/plays'
   const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
@@ -145,6 +146,25 @@ export function Rail2({
       {isLeadership && (
         <>
           <div className="my-2 border-t border-[color:var(--border)]" />
+          {/* Leadership-only chrome — UX visibility only; each page carries its
+              own server guard (access → requireStaffPage(['leadership']) on the
+              access page; plays → same guard on /admin/playbook/plays, 31.2-09). */}
+          <Link
+            href="/admin/playbook/plays"
+            className={[
+              ROOM_BASE_CLASS,
+              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              playsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                ROOM_DOT_CLASS,
+                playsActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : '',
+              ].join(' ')}
+            />
+            Plays
+          </Link>
           <Link
             href="/admin/playbook/access"
             className={[

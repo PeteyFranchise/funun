@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BuyerOrgContact, ClientRelationshipLogEntry } from '@/lib/client-partners/contacts'
-import type { GamePlanTopic } from '@/lib/client-partners/game-plan'
+import type { GamePlanTopic, PickerTopic } from '@/lib/client-partners/game-plan'
 import type { Selects, SelectsStatus } from '@/lib/selects/types'
 import type { BuyerOrgStatus } from '@/lib/buyers/schema'
 import { ContactsPanel, PersonContactPanel } from './ContactsPanel'
@@ -51,6 +51,8 @@ export type ClientWorkspaceProps = {
   licenseRequests: ActivityLicenseRequestItem[]
   /** Person view only (R14/D-31.1-06) — omitted/empty for mode="company". */
   initialGamePlanTopics?: GamePlanTopic[]
+  /** Person view only — read-time seeded+authored Game-Plan suggestion base (31.2-08/D-31.2-07). */
+  gamePlanPickerTopics?: PickerTopic[]
   /** ISO timestamp of the most recent relationship-log contact (company: any contact; person: scoped to this contact), or null if none logged yet. Display only — never a health-color input (D-31.1-02/09). */
   lastContactedAt?: string | null
 }
@@ -408,6 +410,7 @@ export function ClientWorkspace({
   briefs,
   licenseRequests,
   initialGamePlanTopics,
+  gamePlanPickerTopics,
   lastContactedAt,
 }: ClientWorkspaceProps) {
   const [activeJob, setActiveJob] = useState<JobKey>('contacts')
@@ -491,6 +494,7 @@ export function ClientWorkspace({
           orgId={orgId}
           initialTopics={initialGamePlanTopics ?? []}
           selectsNames={initialSelects.map(s => s.name)}
+          pickerTopics={gamePlanPickerTopics}
         />
       )}
     </div>

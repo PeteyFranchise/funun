@@ -7,7 +7,7 @@ import { getStaffRole } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import { CONTACT_COLUMNS, listRelationshipLog } from '@/lib/client-partners/contacts'
 import type { BuyerOrgContact } from '@/lib/client-partners/contacts'
-import { loadGamePlan } from '@/lib/client-partners/game-plan'
+import { loadGamePlan, loadAuthoredGamePlanTopics, buildPickerTopics, SEEDED_GAME_PLAN_TOPICS } from '@/lib/client-partners/game-plan'
 import type { BuyerOrgStatus } from '@/lib/buyers/schema'
 import type { Selects } from '@/lib/selects/types'
 import { ClientWorkspace } from '@/components/admin/ClientWorkspace'
@@ -81,9 +81,10 @@ export default async function ClientPersonWorkspacePage({
   // never a role-specific redirect.
   if (staffRole !== 'leadership' && !isAssignedToOrg(org, user.id)) notFound()
 
-  const [relationshipLog, gamePlan, selectsResult, briefsResult, licenseRequestsResult] = await Promise.all([
+  const [relationshipLog, gamePlan, authoredTopics, selectsResult, briefsResult, licenseRequestsResult] = await Promise.all([
     listRelationshipLog(service, org.id, { contactId: contact.id }),
     loadGamePlan(service, org.id),
+    loadAuthoredGamePlanTopics(service),
     service
       .from('selects')
       .select(SELECTS_COLUMNS)
@@ -143,6 +144,7 @@ export default async function ClientPersonWorkspacePage({
           briefs={briefs}
           licenseRequests={licenseRequests}
           initialGamePlanTopics={gamePlan.topics}
+          gamePlanPickerTopics={buildPickerTopics(SEEDED_GAME_PLAN_TOPICS, authoredTopics)}
           lastContactedAt={relationshipLog[0]?.created_at ?? null}
         />
       </div>
