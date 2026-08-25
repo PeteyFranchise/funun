@@ -68,6 +68,64 @@ export function buildDefaultGamePlanTopics(): GamePlanTopic[] {
   }))
 }
 
+// ─── buildPickerTopics — 31.2-08 read-time merge (D-31.2-07, Pitfall 4) ────
+// Authored Playbook Topics AUGMENT the seeded starters in the Game-Plan
+// picker's option menu — neither list replaces the other. This is a pure
+// concatenation helper; it does NOT touch SEEDED_GAME_PLAN_TOPICS or
+// buildDefaultGamePlanTopics(), and it is called only by the caller that
+// builds the picker's option set (the game-plan GET route), never by the
+// "no game_plans row exists yet" seeding path above.
+export type PickerTopic = {
+  id: string
+  title: string
+  source: string
+  questions: string[]
+}
+
+export type AuthoredPickerTopic = { id: string; title: string; questions: string[] }
+
+export function buildPickerTopics(
+  seededTopics: ReadonlyArray<Pick<GamePlanTopic, 'id' | 'title' | 'questions'>>,
+  authoredTopics: ReadonlyArray<AuthoredPickerTopic>
+): PickerTopic[] {
+  const seeded: PickerTopic[] = seededTopics.map(t => ({
+    id: t.id,
+    title: t.title,
+    source: 'seeded',
+    questions: [...t.questions],
+  }))
+  const authored: PickerTopic[] = authoredTopics.map(t => ({
+    id: t.id,
+    title: t.title,
+    source: `playbook:${t.id}`,
+    questions: [...t.questions],
+  }))
+  return [...seeded, ...authored]
+}
+
+// ─── loadAuthoredGamePlanTopics — published playbook_entries(topic) ────────
+// A thin loader for the authored side of the buildPickerTopics merge above.
+// Service-role only, mirrors loadGamePlan's access pattern. A Topic entry's
+// content shape is `{ questions: string[] }` (D-31.2-05: "Topics — coaching
+// bundles: heading + open-ended questions"); malformed/missing questions
+// degrade to an empty array rather than throwing.
+export async function loadAuthoredGamePlanTopics(service: SupabaseClient): Promise<AuthoredPickerTopic[]> {
+  const { data, error } = await service
+    .from('playbook_entries')
+    .select('id, title, content')
+    .eq('entry_type', 'topic')
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(`Failed to load authored game plan topics: ${error.message}`)
+
+  return ((data ?? []) as { id: string; title: string; content: Record<string, unknown> }[]).map(row => {
+    const rawQuestions = row.content?.questions
+    const questions = Array.isArray(rawQuestions) ? rawQuestions.filter((q): q is string => typeof q === 'string') : []
+    return { id: row.id, title: row.title, questions }
+  })
+}
+
 // ─── coveredSummary — the shared "X of N covered" text ─────────────────────
 // 0 covered is a valid, non-blank summary ("0 of N covered") — SPEC R14
 // boundary edge. An empty topic list reads "0 of 0 covered" rather than
