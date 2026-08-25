@@ -8,6 +8,7 @@ import { buildCoverageSummary, groupByAe, type AeCoverage } from '@/lib/client-p
 import { listOpenOnboardingTasks, type OnboardingTask } from '@/lib/client-partners/onboarding'
 import { loadActivePlay, loadCompletions } from '@/lib/playbook/plays'
 import { matchingClientCount, buildAssignmentDeepLink, type PlaysEligibilityRow } from '@/lib/client-partners/plays-eligibility'
+import { buildEngagementRollup, type EngagementRollupData } from '@/lib/selects/engagement-rollup'
 import { ClientPartnersRoom, type ClientPartnersAllData } from '@/components/admin/ClientPartnersRoom'
 import type { TodaysPlayBannerData } from '@/components/admin/TodaysPlayBanner'
 import type { ClientPartnerRow, HealthValue } from '@/lib/client-partners/columns'
@@ -141,6 +142,8 @@ export type ClientPartnersRoomData = {
   allData: ClientPartnersAllData | null
   openOnboardingTasks: OnboardingTask[]
   todaysPlay: TodaysPlayBannerData
+  /** R13/D-31.2-13: leadership-only engagement rollup — null for every non-leadership caller (hide-not-filter, same discipline as allData). */
+  engagementRollup: EngagementRollupData | null
 }
 
 /**
@@ -177,6 +180,13 @@ export async function loadClientPartnersRoomData(
   // invoked for them.
   const allData: ClientPartnersAllData | null = isLeadership ? await buildAllTabData(service) : null
 
+  // R13/D-31.2-13: the engagement rollup extends the SAME leadership-only
+  // gate as allData above — computed ONLY for leadership, so
+  // buildEngagementRollup (and therefore the whole-book engagement read) is
+  // never invoked for a non-leadership caller (T-31.2-27, hide-not-filter,
+  // mirrors D-31.1-01's discipline exactly).
+  const engagementRollup: EngagementRollupData | null = isLeadership ? await buildEngagementRollup(service) : null
+
   // Every staff member — not leadership-only — may have open D-07 handoff
   // tasks in their own queue (they're the one who WAS assigned a client).
   const openOnboardingTasks = await listOpenOnboardingTasks(service, args.userId)
@@ -186,7 +196,7 @@ export async function loadClientPartnersRoomData(
   // above), so buildTodaysPlayData never sees a global list.
   const todaysPlay = await buildTodaysPlayData(service, { userId: args.userId, myBook: myCompanyRows })
 
-  return { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay }
+  return { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay, engagementRollup }
 }
 
 export default async function AdminClientPartnersPage() {
@@ -201,7 +211,7 @@ export default async function AdminClientPartnersPage() {
   const { user, staffRole } = await requireStaffPage()
 
   const service = createServiceClient()
-  const { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay } =
+  const { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay, engagementRollup } =
     await loadClientPartnersRoomData(service, {
       userId: user.id,
       staffRole,
@@ -219,6 +229,7 @@ export default async function AdminClientPartnersPage() {
         clientHrefBase="/admin/clients"
         openOnboardingTasks={openOnboardingTasks}
         todaysPlay={todaysPlay}
+        engagementRollup={engagementRollup}
       />
     </div>
   )

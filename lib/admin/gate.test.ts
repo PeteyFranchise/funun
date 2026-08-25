@@ -187,6 +187,17 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
     }))
   }
 
+  // 31.2 plan 10: loadClientPartnersRoomData ALSO computes the leadership-
+  // only engagement rollup (R13/D-31.2-13/T-31.2-27) via the SAME
+  // isLeadership branch as allData above — mocked separately so these tests
+  // can assert buildEngagementRollup is never invoked for a non-leadership
+  // caller (hide-not-filter, identical discipline to loadWholeBookWithCoverage).
+  function mockEngagementRollup() {
+    jest.doMock('@/lib/selects/engagement-rollup', () => ({
+      buildEngagementRollup: jest.fn(async () => ({ byAe: [] })),
+    }))
+  }
+
   // 31.1 plan 06: loadClientPartnersRoomData now ALSO queries
   // onboarding_tasks (every caller, via listOpenOnboardingTasks) and, for
   // leadership, funun_staff (via loadAssignableAeList's aeList roster) —
@@ -212,40 +223,52 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
     >[0]
   }
 
-  it('never calls loadWholeBookWithCoverage and returns allData=null for an ae caller', async () => {
+  it('never calls loadWholeBookWithCoverage/buildEngagementRollup and returns allData=null/engagementRollup=null for an ae caller', async () => {
     mockRoomSignals()
+    mockEngagementRollup()
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage, loadBook } = await import('@/lib/client-partners/signals')
+    const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 
     const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-ae', staffRole: 'ae' })
 
     expect(loadBook).toHaveBeenCalledTimes(1)
     expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
+    expect(buildEngagementRollup).not.toHaveBeenCalled()
     expect(result.allData).toBeNull()
+    expect(result.engagementRollup).toBeNull()
     expect(result.isLeadership).toBe(false)
     expect(result.openOnboardingTasks).toEqual([])
   })
 
-  it('never calls loadWholeBookWithCoverage and returns allData=null for a bd caller', async () => {
+  it('never calls loadWholeBookWithCoverage/buildEngagementRollup and returns allData=null/engagementRollup=null for a bd caller', async () => {
     mockRoomSignals()
+    mockEngagementRollup()
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
+    const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 
     const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-bd', staffRole: 'bd' })
 
     expect(loadWholeBookWithCoverage).not.toHaveBeenCalled()
+    expect(buildEngagementRollup).not.toHaveBeenCalled()
     expect(result.allData).toBeNull()
+    expect(result.engagementRollup).toBeNull()
   })
 
-  it('calls loadWholeBookWithCoverage and returns a populated allData ONLY for leadership', async () => {
+  it('calls loadWholeBookWithCoverage/buildEngagementRollup and returns populated allData/engagementRollup ONLY for leadership', async () => {
     mockRoomSignals()
+    mockEngagementRollup()
     const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
+    const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 
     const result = await loadClientPartnersRoomData(mockService(), { userId: 'u-lead', staffRole: 'leadership' })
 
     expect(loadWholeBookWithCoverage).toHaveBeenCalledTimes(1)
+    expect(buildEngagementRollup).toHaveBeenCalledTimes(1)
     expect(result.allData).not.toBeNull()
+    expect(result.engagementRollup).toEqual({ byAe: [] })
     expect(result.isLeadership).toBe(true)
     expect(result.allData?.coverage.totalClients).toBe(0)
     expect(result.allData?.aeList).toEqual([])

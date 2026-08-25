@@ -9,6 +9,7 @@ import { TodaysPlayBanner, type TodaysPlayBannerData } from './TodaysPlayBanner'
 import type { ClientPartnerRow } from '@/lib/client-partners/columns'
 import type { AeCoverage, CoverageSummary } from '@/lib/client-partners/coverage'
 import type { OnboardingTask } from '@/lib/client-partners/onboarding'
+import type { EngagementRollupData } from '@/lib/selects/engagement-rollup'
 
 // ─── ClientPartnersRoom (D-31.1-01/04) ──────────────────────────────────────
 // The consolidated Client Partners room's client wrapper. Renders the My tab
@@ -46,6 +47,8 @@ export type ClientPartnersRoomProps = {
   openOnboardingTasks: OnboardingTask[]
   /** D-31.2-11: the active team Play, own-book-scoped for the calling AE — null when no play is active. */
   todaysPlay: TodaysPlayBannerData
+  /** R13/D-31.2-13: leadership-only engagement rollup — null for every non-leadership caller (the RSC page never computes it for them, T-31.2-27). */
+  engagementRollup: EngagementRollupData | null
 }
 
 type RoomTab = 'my' | 'all'
@@ -74,6 +77,7 @@ export function ClientPartnersRoom({
   clientHrefBase,
   openOnboardingTasks,
   todaysPlay,
+  engagementRollup,
 }: ClientPartnersRoomProps) {
   const [tab, setTab] = useState<RoomTab>('my')
   const showAll = isLeadership && allData !== null && tab === 'all'
@@ -144,6 +148,7 @@ export function ClientPartnersRoom({
           companyHrefBase={companyHrefBase}
           clientHrefBase={clientHrefBase}
           onAssign={row => setAssignTarget({ id: row.id, name: row.name })}
+          engagementRollup={engagementRollup}
         />
       )}
 
@@ -164,11 +169,13 @@ function AllTabView({
   companyHrefBase,
   clientHrefBase,
   onAssign,
+  engagementRollup,
 }: {
   data: ClientPartnersAllData
   companyHrefBase: string
   clientHrefBase: string
   onAssign: (row: ClientPartnerRow) => void
+  engagementRollup: EngagementRollupData | null
 }) {
   const { coverage, byAe, unassigned, rows } = data
 
@@ -296,7 +303,85 @@ function AllTabView({
           </div>
         </>
       )}
+
+      <EngagementRollupSection rollup={engagementRollup} />
     </div>
+  )
+}
+
+// ─── Engagement rollup (R13, D-31.2-13/14) ─────────────────────────────────
+// Leadership-only: extends this tower rather than a new page (research
+// open-Q3 default). engagementRollup is null only in the impossible case
+// this section is somehow reached by a non-leadership caller (it never is —
+// AllTabView only renders inside showAll, which requires isLeadership) or
+// while the team's book has no Selects engagement yet; either way this
+// renders nothing, never a misleading empty-state card.
+function formatEngagementSeconds(total: number): string {
+  const rounded = Math.round(total)
+  const minutes = Math.floor(rounded / 60)
+  const seconds = rounded % 60
+  if (minutes === 0) return `${seconds}s`
+  return `${minutes}m ${seconds}s`
+}
+
+function EngagementRollupSection({ rollup }: { rollup: EngagementRollupData | null }) {
+  if (!rollup || rollup.byAe.length === 0) return null
+
+  return (
+    <>
+      <div className="mb-2.5 mt-7 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.1em] text-[color:var(--ink-3)]">
+        Engagement — who&apos;s getting listens
+        <span
+          className="rounded-full px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[.05em]"
+          style={{ color: 'var(--indigo)', background: 'color-mix(in srgb, var(--indigo) 16%, transparent)' }}
+        >
+          Staff only
+        </span>
+      </div>
+      <div className="flex flex-col gap-3">
+        {rollup.byAe.map(ae => (
+          <div
+            key={ae.aeId}
+            className="overflow-hidden rounded-2xl border"
+            style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
+          >
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3" style={{ background: 'var(--panel-2)' }}>
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                style={{ background: 'var(--indigo)' }}
+              >
+                {initialsFor(ae.aeName || '—')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold text-[color:var(--ink)]">{ae.aeName || 'Unnamed'}</div>
+                <div className="text-[11.5px] text-[color:var(--ink-3)]">
+                  {ae.opens} open{ae.opens === 1 ? '' : 's'} · {ae.qualifiedListens} qualified listen
+                  {ae.qualifiedListens === 1 ? '' : 's'} · {formatEngagementSeconds(ae.audibleSeconds)} audible ·{' '}
+                  {ae.replayCount} replay{ae.replayCount === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
+            {ae.selects.length > 0 && (
+              <div className="flex flex-col gap-1.5 px-4 py-3">
+                {ae.selects
+                  .filter(s => s.opens > 0 || s.audibleSeconds > 0)
+                  .map(s => (
+                    <div key={s.selectsId} className="flex flex-wrap items-center gap-2 text-[12px]">
+                      <span className="min-w-0 flex-1 truncate font-medium text-[color:var(--ink-2)]">
+                        {s.selectsName}
+                      </span>
+                      <span className="text-[11px] text-[color:var(--ink-3)]">{s.orgName}</span>
+                      <span className="text-[11px] text-[color:var(--ink-3)]">
+                        {s.qualifiedListens} qualified · {formatEngagementSeconds(s.audibleSeconds)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
