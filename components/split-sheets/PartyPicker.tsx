@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { CollaboratorProfile } from '@/lib/collaborators'
 import { assembleDisplayName } from '@/lib/collaborators'
 import { PRO_LABELS, PRO_VALUES } from '@/lib/metadata/schema'
+import {
+  isAutoInviteEligible,
+  extractAutoInviteLink,
+  type AutoInviteResponseBody,
+} from '@/lib/collaborators/auto-invite'
 
 // ─── PartyPicker ──────────────────────────────────────────────────────
 // A NEW, standalone component for the split-sheet fast-add flow
@@ -204,6 +209,18 @@ function PartyPickerItem({
 // itself is required by POST /api/collaborators; see comment below).
 // "Advanced information" (legal name, PRO, IPI, publishing designee,
 // administrator) is collapsed by default (§4).
+//
+// 260825-i4i follow-up: a successful fast-add now automatically fires the
+// existing POST /api/collaborators/[id]/invite (no checkbox — owner's
+// explicit choice), reusing the shipped cooldown/token/best-effort-send
+// helper rather than duplicating it. The party-add itself is the authority
+// action and is NEVER gated on the invite: a phone-only party (no email)
+// skips the invite call entirely and finalizes immediately; a failed,
+// cooldown-reused, or thrown invite also finalizes immediately with no
+// error surfaced. Only a genuinely successful invite link pauses on a
+// small "result" step so the artist can copy it before the picker closes.
+type FastAddStep = 'form' | 'submitting' | 'result'
+
 function FastAddForm({
   onSaved,
   onCancel,
@@ -219,8 +236,28 @@ function FastAddForm({
   const [ipi, setIpi] = useState('')
   const [publisher, setPublisher] = useState('')
   const [administrator, setAdministrator] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [step, setStep] = useState<FastAddStep>('form')
   const [error, setError] = useState<string | null>(null)
+  const [addedCollaborator, setAddedCollaborator] = useState<CollaboratorProfile | null>(null)
+  const [inviteLink, setInviteLink] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState<string | null>(null)
+
+  // Best-effort auto-invite — wrapped so nothing it does can ever throw
+  // out to the caller or block finalization. Returns the link to surface,
+  // or null when there's nothing to show (no email, cooldown-free skip
+  // isn't possible here since cooldown still returns a link, failure, or
+  // a network error).
+  async function attemptAutoInvite(collab: CollaboratorProfile): Promise<string | null> {
+    if (!isAutoInviteEligible(collab)) return null
+    try {
+      const res = await fetch(`/api/collaborators/${collab.id}/invite`, { method: 'POST' })
+      const body = (await res.json().catch(() => null)) as AutoInviteResponseBody | null
+      return extractAutoInviteLink(res, body)
+    } catch {
+      return null
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -232,7 +269,7 @@ function FastAddForm({
       return
     }
 
-    setSubmitting(true)
+    setStep('submitting')
     setError(null)
 
     // The placeholder `name` (DB NOT NULL) is the email, or phone when
@@ -260,20 +297,85 @@ function FastAddForm({
       const json = await res.json()
       if (!res.ok) {
         setError(json.error ?? 'Could not add collaborator')
-        setSubmitting(false)
+        setStep('form')
         return
       }
-      onSaved(json.data as CollaboratorProfile)
+      const collab = json.data as CollaboratorProfile
+
+      const link = await attemptAutoInvite(collab)
+      if (link) {
+        setAddedCollaborator(collab)
+        setInviteLink(link)
+        setStep('result')
+      } else {
+        onSaved(collab)
+      }
     } catch {
       setError('An unexpected error occurred. Please try again.')
-      setSubmitting(false)
+      setStep('form')
     }
+  }
+
+  async function handleCopyLink() {
+    if (!navigator.clipboard) {
+      setCopyError('Clipboard unavailable — select the link above and copy it manually')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      setCopied(true)
+      setCopyError(null)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopyError('Could not copy — select the link above and copy it manually')
+    }
+  }
+
+  // Result step — a real invite link is available. Continuing finalizes
+  // the add (onSaved) exactly as the no-invite path already does.
+  if (step === 'result' && addedCollaborator) {
+    return (
+      <div className="space-y-3 p-4">
+        <p className="text-xs text-white/40">
+          {addedCollaborator.name} was added — and invited to fill in their own details.
+        </p>
+        <div>
+          <label className={labelClass}>Invite link</label>
+          <input
+            type="text"
+            readOnly
+            value={inviteLink}
+            onFocus={e => e.currentTarget.select()}
+            onClick={e => e.currentTarget.select()}
+            className={`mt-1 ${inputClass}`}
+          />
+        </div>
+        {copyError && <p className="text-xs text-rose-300">{copyError}</p>}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90"
+          >
+            {copied ? 'Copied ✓' : 'Copy invite link'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSaved(addedCollaborator)}
+            className="text-sm text-white/50 hover:text-white"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4">
       <p className="text-xs text-white/40">
-        Just their email or phone — they&rsquo;ll fill in the rest, or you can add it now.
+        Just their email or phone — we&rsquo;ll invite them to fill in the rest, or you can add it
+        now.
       </p>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -370,10 +472,10 @@ function FastAddForm({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={step === 'submitting'}
           className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-40"
         >
-          {submitting ? 'Adding…' : 'Add party'}
+          {step === 'submitting' ? 'Adding…' : 'Add party'}
         </button>
         <button type="button" onClick={onCancel} className="text-sm text-white/50 hover:text-white">
           Cancel
