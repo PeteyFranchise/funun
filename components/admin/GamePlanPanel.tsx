@@ -38,6 +38,27 @@ function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+// ─── sourceLabel (WR-01) ────────────────────────────────────────────────
+// Centralized topic-source → display-label mapping, shared by the
+// suggestion pills and the persisted-topic badge below. Previously the
+// pills labeled ANY non-seeded source "From Selects" — wrong for
+// Playbook-authored topics (source `playbook:<uuid>`, from 31.2-08's
+// buildPickerTopics merge) — and the persisted badge fell through to
+// printing the raw `playbook:<uuid>` string in AE-facing UI. A custom
+// (AE-typed) topic's source is null; any other unrecognized value is
+// treated the same as "no label" rather than rendered raw. Exported (rather
+// than component-private) so it's unit-testable without rendering — this
+// codebase has no jsdom/@testing-library/react, so pure-function extraction
+// is how component logic gets automated coverage (see the StatusBanner
+// precedent's renderToStaticMarkup note for the rendering alternative).
+export function sourceLabel(source: string | null): string | null {
+  if (!source) return null
+  if (source === 'seeded') return 'Seeded default'
+  if (source.startsWith('selects:')) return 'From Selects'
+  if (source.startsWith('playbook:')) return 'From Playbook'
+  return null
+}
+
 function buildSuggestedTopics(
   existing: GamePlanTopic[],
   selectsNames: string[],
@@ -229,13 +250,9 @@ export function GamePlanPanel({
                   <span className="text-[13px] font-medium" style={{ color: t.done ? 'var(--ink-3)' : 'var(--ink)' }}>
                     {t.title}
                   </span>
-                  {t.source && (
+                  {sourceLabel(t.source) && (
                     <span className="rounded-full bg-[color:var(--panel)] px-2 py-0.5 text-[10px] text-[color:var(--indigo)]">
-                      {t.source === 'seeded'
-                        ? 'Suggested'
-                        : t.source.startsWith('selects:')
-                          ? `Selects · ${t.source.slice(8)}`
-                          : t.source}
+                      {sourceLabel(t.source)}
                     </span>
                   )}
                 </div>
@@ -301,8 +318,12 @@ export function GamePlanPanel({
               >
                 <span className="block font-medium text-[color:var(--ink)]">+ {s.title}</span>
                 <span className="mt-0.5 block text-[10.5px] text-[color:var(--ink-3)]">
-                  {s.source === 'seeded' ? 'Seeded default' : 'From Selects'} · {s.questions.length} question
-                  {s.questions.length !== 1 ? 's' : ''}
+                  {[
+                    sourceLabel(s.source),
+                    `${s.questions.length} question${s.questions.length !== 1 ? 's' : ''}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </button>
             ))}
