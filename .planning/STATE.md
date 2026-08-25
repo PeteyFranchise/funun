@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 32
 current_phase_name: Production Observability, Capacity & Incident Readiness
 status: Ready to plan
-stopped_at: 31.1-02 executed (health engine + columns extension); resume orchestrator
-last_updated: "2026-08-24T23:22:58.227Z"
+stopped_at: Phase 31.2 context gathered
+last_updated: "2026-08-25T00:48:07.788Z"
 last_activity: 2026-08-24
 last_activity_desc: Phase 31.1 complete, transitioned to Phase 32
 progress:
-  total_phases: 34
+  total_phases: 35
   completed_phases: 28
   total_plans: 220
   completed_plans: 217
-  percent: 82
+  percent: 80
 ---
 
 # Project State
@@ -558,9 +558,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-24T05:43:54.970Z
-Stopped at: 31.1-02 executed (health engine + columns extension); resume orchestrator
-Resume file: .planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/33-UI-SPEC.md
+Last session: 2026-08-25T00:48:07.762Z
+Stopped at: Phase 31.2 context gathered
+Resume file: .planning/phases/31.2-ae-console-playbook-authoring-rbac-plays-selects-telemetry/31.2-CONTEXT.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
