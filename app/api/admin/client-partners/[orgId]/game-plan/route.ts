@@ -4,9 +4,12 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { appendRelationshipLog, canAccessOrgContacts } from '@/lib/client-partners/contacts'
 import {
+  SEEDED_GAME_PLAN_TOPICS,
   GamePlanTopicsSchema,
   buildDefaultGamePlanTopics,
   buildGamePlanLogBody,
+  buildPickerTopics,
+  loadAuthoredGamePlanTopics,
   loadGamePlan,
   normalizeGamePlanTopics,
 } from '@/lib/client-partners/game-plan'
@@ -20,6 +23,14 @@ import {
 // Own-book-scoped (R5) via the SAME canAccessOrgContacts predicate the
 // contacts/relationship-log routes use — an out-of-book AE gets 404, never
 // 403, on every handler.
+//
+// pickerTopics (31.2-08, D-31.2-07/Pitfall 4): GET additionally returns the
+// picker's option menu — the 31.1 seeded starters concatenated with
+// published playbook_entries(entry_type='topic'), via buildPickerTopics.
+// This is a SEPARATE field from `topics` (the saved/seeded plan itself);
+// the merge happens HERE, at the point the picker's option set is built —
+// never inside buildDefaultGamePlanTopics(), which stays the "no saved row
+// yet" seeding path untouched.
 
 const GAME_PLAN_COLUMNS = 'id, buyer_org_id, topics, updated_by, created_at, updated_at'
 
@@ -47,7 +58,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
   }
 
   const { topics, seeded } = await loadGamePlan(service, orgId)
-  return NextResponse.json({ data: { topics, seeded } })
+  const authoredTopics = await loadAuthoredGamePlanTopics(service)
+  const pickerTopics = buildPickerTopics(SEEDED_GAME_PLAN_TOPICS, authoredTopics)
+  return NextResponse.json({ data: { topics, seeded, pickerTopics } })
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
