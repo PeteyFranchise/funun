@@ -193,12 +193,19 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
   // both real SupabaseClient chains this suite's real (non-mocked)
   // lib/client-partners/onboarding + lib/client-partners/coverage helpers
   // issue against `service`. A minimal chainable fake stands in for both.
+  //
+  // 31.2 plan 09: loadClientPartnersRoomData ALSO calls buildTodaysPlayData,
+  // which queries `plays` via lib/playbook/plays.ts's loadActivePlay
+  // (.select().eq().maybeSingle()) — maybeSingle() resolving to { data: null }
+  // means "no active play," so buildTodaysPlayData short-circuits before
+  // ever reaching play_assignments/play_assignment_completions.
   function mockService() {
     const builder = {
       select: () => builder,
       eq: () => builder,
       overlaps: () => builder,
       order: () => Promise.resolve({ data: [], error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
     }
     return { from: () => builder } as unknown as Parameters<
       typeof import('@/app/(admin)/admin/client-partners/page').loadClientPartnersRoomData
