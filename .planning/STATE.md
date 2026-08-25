@@ -5,8 +5,8 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 31.2-10-PLAN.md (phase 31.2 all 10/10 plans executed)
-last_updated: "2026-08-25T03:17:17.023Z"
+stopped_at: "31.1+31.2 shipped to main (e58fc5b, prod deploying); next: owner runs Resend fix (new API key -> Vercel+.env.local, verify funun.studio DNS in Squarespace, RESEND_FROM_EMAIL=noreply@funun.studio, redeploy), then say 'resend configured' for the diagnostic send"
+last_updated: "2026-08-25T05:06:42.627Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
@@ -571,9 +571,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-25T03:17:16.996Z
-Stopped at: Completed 31.2-10-PLAN.md (phase 31.2 all 10/10 plans executed)
-Resume file: None
+Last session: 2026-08-25T05:06:42.465Z
+Stopped at: 31.1+31.2 shipped to main (e58fc5b, prod deploying); next: owner runs Resend fix (new API key -> Vercel+.env.local, verify funun.studio DNS in Squarespace, RESEND_FROM_EMAIL=noreply@funun.studio, redeploy), then say 'resend configured' for the diagnostic send
+Resume file: .planning/todos/pending/2026-08-23-invite-email-resend-config.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
