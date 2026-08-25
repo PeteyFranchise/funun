@@ -306,6 +306,11 @@ async function assembleRows(
       name: org.name,
       website: org.website,
       status: stage?.label ?? null,
+      // 31.2 plan 09: the resolved stage KEY (not the label) — closes plan
+      // 06's deferred wiring item so matchingClientCount (plays-eligibility.ts)
+      // can match a Play assignment's pipelineStageKey targeting against the
+      // AE's own book, exactly as it already does for healthBand.
+      pipelineStageKey: stage?.key ?? null,
       health: computeHealth(signals, rules),
       stageDays: daysInStage(org.stage_entered_at, now),
       openBriefs: openBriefsByOrg.get(org.id) ?? 0,

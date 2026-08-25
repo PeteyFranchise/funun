@@ -6,8 +6,11 @@ import { requireStaffPage, type StaffRole } from '@/lib/admin/gate'
 import { loadBook, loadWholeBookWithCoverage } from '@/lib/client-partners/signals'
 import { buildCoverageSummary, groupByAe, type AeCoverage } from '@/lib/client-partners/coverage'
 import { listOpenOnboardingTasks, type OnboardingTask } from '@/lib/client-partners/onboarding'
+import { loadActivePlay, loadCompletions } from '@/lib/playbook/plays'
+import { matchingClientCount, buildAssignmentDeepLink, type PlaysEligibilityRow } from '@/lib/client-partners/plays-eligibility'
 import { ClientPartnersRoom, type ClientPartnersAllData } from '@/components/admin/ClientPartnersRoom'
-import type { ClientPartnerRow } from '@/lib/client-partners/columns'
+import type { TodaysPlayBannerData } from '@/components/admin/TodaysPlayBanner'
+import type { ClientPartnerRow, HealthValue } from '@/lib/client-partners/columns'
 
 // ─── /admin/client-partners — the consolidated Client Partners room ───────
 // (D-31.1-01) Replaces the two former pages (my-client-partners, buyer-orgs)
@@ -75,6 +78,50 @@ async function loadAssignableAeList(
   })
 }
 
+// ─── Today's Play (D-31.2-11, plan 09) ─────────────────────────────────────
+// Builds the AE-facing banner data: the active team play, each
+// client_targeted assignment's own-book matching count + deep-link
+// (matchingClientCount/buildAssignmentDeepLink, plan 06), and the CALLING
+// AE's own completion state per assignment — every count/link computed
+// server-side against the caller's OWN book (myCompanyRows, already scoped
+// by loadBook({ aeUserId })), never a global list (T-31.2-25).
+async function buildTodaysPlayData(
+  service: ReturnType<typeof createServiceClient>,
+  args: { userId: string; myBook: ClientPartnerRow[] }
+): Promise<TodaysPlayBannerData> {
+  const active = await loadActivePlay(service)
+  if (!active) return null
+
+  const assignmentIds = active.assignments.map(a => a.id)
+  const completions = await loadCompletions(service, assignmentIds)
+  const myCompletedIds = new Set(completions.filter(c => c.aeUserId === args.userId).map(c => c.assignmentId))
+
+  const book = args.myBook as PlaysEligibilityRow[]
+
+  return {
+    playId: active.play.id,
+    title: active.play.title,
+    note: active.play.note,
+    assignments: active.assignments.map(a => {
+      const targeting = { healthBand: a.healthBand as HealthValue | null, pipelineStageKey: a.pipelineStageKey }
+      return {
+        id: a.id,
+        kind: a.kind,
+        title: a.title,
+        note: a.note,
+        healthBand: a.healthBand,
+        pipelineStageKey: a.pipelineStageKey,
+        linkUrl: a.linkUrl,
+        attachmentUrl: a.attachmentUrl,
+        content: a.content,
+        matchingCount: a.kind === 'client_targeted' ? matchingClientCount(book, targeting) : null,
+        deepLink: a.kind === 'client_targeted' ? buildAssignmentDeepLink(targeting) : null,
+        done: myCompletedIds.has(a.id),
+      }
+    }),
+  }
+}
+
 async function buildAllTabData(service: ReturnType<typeof createServiceClient>): Promise<ClientPartnersAllData> {
   const rows = await loadWholeBookWithCoverage(service)
   const byAe = groupByAe(rows)
@@ -93,6 +140,7 @@ export type ClientPartnersRoomData = {
   isLeadership: boolean
   allData: ClientPartnersAllData | null
   openOnboardingTasks: OnboardingTask[]
+  todaysPlay: TodaysPlayBannerData
 }
 
 /**
@@ -133,7 +181,12 @@ export async function loadClientPartnersRoomData(
   // tasks in their own queue (they're the one who WAS assigned a client).
   const openOnboardingTasks = await listOpenOnboardingTasks(service, args.userId)
 
-  return { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks }
+  // Every staff member sees the Today's Play banner (D-31.2-11) — own-book
+  // scoped, not leadership-only. myCompanyRows is already own-book (loadBook
+  // above), so buildTodaysPlayData never sees a global list.
+  const todaysPlay = await buildTodaysPlayData(service, { userId: args.userId, myBook: myCompanyRows })
+
+  return { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay }
 }
 
 export default async function AdminClientPartnersPage() {
@@ -148,7 +201,7 @@ export default async function AdminClientPartnersPage() {
   const { user, staffRole } = await requireStaffPage()
 
   const service = createServiceClient()
-  const { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks } =
+  const { myCompanyRows, myClientRows, isLeadership, allData, openOnboardingTasks, todaysPlay } =
     await loadClientPartnersRoomData(service, {
       userId: user.id,
       staffRole,
@@ -165,6 +218,7 @@ export default async function AdminClientPartnersPage() {
         companyHrefBase="/admin/client-partners"
         clientHrefBase="/admin/clients"
         openOnboardingTasks={openOnboardingTasks}
+        todaysPlay={todaysPlay}
       />
     </div>
   )

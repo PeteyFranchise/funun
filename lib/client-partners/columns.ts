@@ -94,6 +94,15 @@ export type ClientPartnerRow = {
   assignedAeId?: string | null
   assignedAeName?: string | null
 
+  // 31.2 Plays own-book eligibility (D-31.2-09, plan 06's deferred wiring
+  // item, closed by plan 09) — the resolved pipeline stage KEY (not the
+  // display label `status`), populated by signals.ts's assembleRows() so
+  // lib/client-partners/plays-eligibility.ts's matchingClientCount can match
+  // a client_targeted Play assignment against a stage key, not just a health
+  // band. Optional/nullable — a row with no resolved stage leaves this unset,
+  // never fabricated.
+  pipelineStageKey?: string | null
+
   // Next action (R1 default sort key)
   nextAction?: string | null
   nextActionState?: 'overdue' | 'today' | 'soon' | null
