@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 31.2-01-PLAN.md
-last_updated: "2026-08-25T02:07:13.756Z"
+stopped_at: Completed 31.2-10-PLAN.md (phase 31.2 all 10/10 plans executed)
+last_updated: "2026-08-25T03:17:17.023Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 35
-  completed_phases: 28
+  completed_phases: 29
   total_plans: 230
-  completed_plans: 219
-  percent: 80
+  completed_plans: 227
+  percent: 83
 ---
 
 # Project State
@@ -28,7 +28,8 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 31.2 (ae-console-playbook-authoring-rbac-plays-selects-telemetry) — EXECUTING
+Phase: 31.2 (ae-console-playbook-authoring-rbac-plays-selects-telemetry) — 10/10 PLANS EXECUTED (phase verification + owner UAT pending)
+31.2-10 (Selects engagement telemetry — AE per-Selects readout + leadership rollup, wave 4, LAST plan in phase) COMPLETE 2026-08-24 — 31.2-10-SUMMARY.md; GET /api/admin/client-partners/selects/[id]/engagement (staff GET, own-Selects-scoped via loadSelectsInScope, 404 not 403) + EngagementPanel ('use client', self-fetches the route, mounted on the AE's Selects detail view) — per-track plays/audible-seconds/qualified-listens(≥30s)/replays + a Selects summary, computed on read via plan-02's aggregateTrack/aggregateSelectsRollup. lib/selects/engagement-rollup.ts's buildEngagementRollup (batched, no-N+1, mirrors loadWholeBookWithCoverage's shape) + GET /api/admin/client-partners/engagement-rollup (leadership-only, verifyAdmin) + ClientPartnersRoom.tsx's new "Engagement — who's getting listens" section (per-AE totals + per-Selects breakdown), fed server-side only inside loadClientPartnersRoomData's isLeadership branch (hide-not-filter, T-31.2-27) — plan 09's Today's Play banner + My/All tabs preserved untouched. Necessary plumbing beyond files_modified (Rule 2): extracted lib/selects/engagement-rollup.ts (a Next.js route module may only export HTTP handlers, so the RSC leadership tower needs a shared lib function) + a route.test.ts for the new leadership route + extended lib/admin/gate.test.ts's existing D-31.1-01 hide-not-filter suite to also assert buildEngagementRollup is never called for ae/bd. Full repo suite 266 suites/2843 tests green, tsc clean; `npm run build`'s webpack compile succeeds but its separate ESLint pass fails on a pre-existing unrelated file (lib/client-partners/health.test.ts, `@typescript-eslint/no-var-requires` rule not found) — logged to deferred-items.md, out of scope. R13 impl complete — registered in REQUIREMENTS.md's Phase 31 Slice-1 traceability table (owner UAT pending: play a Selects preview with pause/seek, confirm audible seconds + leadership rollup). Phase 31.2 is now 10/10 plans executed — remaining work is owner UAT + phase verification, no more plans to execute.
 31.2-01 (Migrations 130/131/132 — Playbook RBAC + authoring model, Plays, Selects engagement telemetry, wave 1) COMPLETE 2026-08-25 — 31.2-01-SUMMARY.md; supabase/migrations/130_playbook_rbac.sql (playbook_rooms 6-room seed in nav.ts order + playbook_room_role_grants role<>'leadership' structural CHECK + playbook_room_leads + playbook_sub_groups + playbook_entries SOP/Topic draft->publish, commit fcec1cd) + 131_plays.sql (plays one-active partial-unique index + play_assignments client_targeted|general_task + play_assignment_completions idempotent per-AE key, commit 2b95ea1) + 132_selects_engagement.sql (selects_track_engagement 0<delta<=15 CHECK + selects_opens + SECURITY DEFINER abuse-cap trigger shipped inline, commit 2b95ea1) + __tests__/migration-130/131/132.test.ts (42 jest tests, commit b4bc0ae). Task 4 blocking checkpoint cleared — owner ran `supabase db push` against prod (project wgfjakfiyeewzfuxkgyo) and confirmed `supabase migration list` LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger. Every new table (all 10) is zero-policy RLS + REVOKE from authenticated/anon, mirrors migration 128/129 doctrine. Seed reproduces Phase 33's exact it-team access behavior (leadership+it, Pitfall 6 backward-compat). Unblocks the DB-dependent surfaces in plans 03/06/07 (requireRoomAccess, plays.ts, access editor); plan 02's engagement.ts (already implemented) can now read/write these tables live.
 31.2-02 (Selects engagement — pure audible-time accumulator + server contract, wave 1) COMPLETE 2026-08-24 — 31.2-02-SUMMARY.md; components/selects-player/audible-accumulator.ts (accountForTick/foldAudibleSeconds pure genuine-accumulator delta math, 11 jest tests — small forward contiguous delta only, seek/scrub/rewind/seeking-flag all yield 0) + components/selects-player/useAudibleTimeAccumulator.ts (React hook wrapping the pure math against a real `<audio>` element, 10s heartbeat + pause/ended/beforeunload flush, no unit test by design per RESEARCH's manual-only row — jsdom cannot drive real audio timing, verified via tsc --noEmit) + lib/selects/engagement.ts (clampDelta per-heartbeat ceiling, QUALIFIED_LISTEN_SECONDS=30, aggregatePerTrack/aggregateTrack/aggregateSelectsRollup pure compute-on-read aggregation, 14 jest tests — qualified-listen is a boolean per track+viewer never multiplied by replays, replay counted distinctly). Pure-logic plan — no DB/UI coupling, migrations 130-132 (plan 01) still human-gated for prod push. Full repo suite 255 suites/2745 tests green, tsc clean. R13 partial (pure core only; plan 05 wires the write route + player, plan 10 does the read rollups/UI panel — R13 not yet markable complete in REQUIREMENTS.md's traceability table, no row exists for it yet, correctly deferred to phase-execution close per that doc's own convention).
 31.1-07 (Call Game Plan — route + seeded topics + coveredSummary + GamePlanPanel, wave 3, LAST plan in phase) COMPLETE 2026-08-24 — 31.1-07-SUMMARY.md; GET/PUT/POST /api/admin/client-partners/[orgId]/game-plan (load-or-seed, upsert save, log-conversation) own-book scoped via canAccessOrgContacts (404 not 403) + lib/client-partners/game-plan.ts (GamePlanTopic type, SEEDED_GAME_PLAN_TOPICS, buildDefaultGamePlanTopics, coveredSummary "X of N covered" incl. 0-of-N edge, buildGamePlanLogBody, normalizeGamePlanTopics, loadGamePlan shared DB-read) + components/admin/GamePlanPanel.tsx ('use client', data + string action paths only — no function props, checks off topics/add custom/pull seeded+Selects-context suggestions/notes/Save+Log conversation, router.refresh()) mounted in ClientWorkspace.tsx mode='person' (D-31.1-06), fed via app/(admin)/admin/clients/[personId]/page.tsx's new loadGamePlan() call. POST log-conversation retires the plan row after logging so the next visit reseeds from defaults. Necessary plumbing beyond files_modified (Rule 2): loadGamePlan() extracted as the one shared DB read for both the route's GET and the RSC page's initial-props load. Full repo suite 248 suites/2655 tests green, tsc clean. R14 impl complete (owner UAT pending). Phase 31.1 is now 7/7 plans executed — remaining work is owner manual UAT + phase verification, no more plans to execute.
@@ -220,6 +221,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.1 P07 | 35min | 2 tasks | 7 files |
 | Phase 31.2 P02 | 5min | 3 tasks | 5 files |
 | Phase 31.2 P01 | 8min | 3 tasks | 6 files |
+| Phase 31.2 P10 | 15min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -480,6 +482,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 31.2]: 31.2-02: useAudibleTimeAccumulator.ts ships with no unit test by design (jsdom cannot drive real audio timing) -- correctness rests on audible-accumulator.test.ts's pure-math coverage; verified via tsc --noEmit only per plan
 - [Phase 31.2]: 31.2-01: seeded playbook_room_role_grants to reproduce Phase 33's exact it-team behavior (grant role 'it' only; leadership passes structurally, never row-data) so day-one access is unchanged (Pitfall 6 backward-compat)
 - [Phase 31.2]: 31.2-01: owner ran supabase db push against prod (project wgfjakfiyeewzfuxkgyo) and confirmed supabase migration list LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger — Task 4 blocking checkpoint cleared
+- [Phase ?]: [Phase 31.2-10]: Extracted lib/selects/engagement-rollup.ts's buildEngagementRollup so the leadership-only HTTP route and the RSC leadership-tower page compute the SAME aggregate via one function -- a Next.js route module may only export HTTP handlers
+- [Phase ?]: [Phase 31.2-10]: EngagementPanel (AE readout) self-fetches its route client-side, while the leadership rollup is computed server-side inside the RSC page's isLeadership branch -- keeps the hide-not-filter guarantee machine-testable the same way allData's is
 
 ### Pending Todos
 
@@ -567,8 +571,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-25T02:07:13.732Z
-Stopped at: Completed 31.2-01-PLAN.md
+Last session: 2026-08-25T03:17:16.996Z
+Stopped at: Completed 31.2-10-PLAN.md (phase 31.2 all 10/10 plans executed)
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

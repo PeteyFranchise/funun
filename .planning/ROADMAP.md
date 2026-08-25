@@ -1249,7 +1249,7 @@ Plans:
 
 **Status:** Split from 31.1 on 2026-08-23; planned 2026-08-24 (10 plans, 4 waves).
 
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
@@ -1272,7 +1272,7 @@ Plans:
 
 **Wave 4** *(telemetry read surfaces — serialized after the tower touch)*
 
-- [ ] 31.2-10-PLAN.md — Telemetry read surfaces: AE per-Selects readout + leadership rollup (R13)
+- [x] 31.2-10-PLAN.md — Telemetry read surfaces: AE per-Selects readout + leadership rollup (R13)
 
 ### Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1)
 
