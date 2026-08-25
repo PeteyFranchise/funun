@@ -64,6 +64,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   ;(sendCollaboratorInvite as jest.Mock).mockResolvedValue({
     ok: true,
+    outcome: 'invited',
     skipped: false,
     emailSent: true,
     inviteLink: 'https://funun.studio/signup?invite=tok123',
@@ -217,6 +218,7 @@ describe('POST /api/collaborators/quick-invite', () => {
     })
     ;(sendCollaboratorInvite as jest.Mock).mockResolvedValue({
       ok: true,
+      outcome: 'invited',
       skipped: false,
       emailSent: false,
       inviteLink: 'https://funun.studio/signup?invite=tok456',
@@ -255,5 +257,86 @@ describe('POST /api/collaborators/quick-invite', () => {
     const body = await res.json()
     expect(body.error).toBe('insert boom')
     expect(body.data.collaborator).toEqual(insertedRow)
+  })
+
+  // 260825-m2k — outcome-aware envelope: inviteLink/skipped only for
+  // invited; emailSent for both invited and connect-requested; the
+  // collaborator row and reused flag stay on every branch so the roster
+  // still folds the row in.
+  it('returns outcome:invited with inviteLink for a signup-token send', async () => {
+    const insertedRow = {
+      id: NEW_ROW_ID,
+      user_id: USER_ID,
+      name: 'Jamie',
+      first_name: 'Jamie',
+      email: 'jamie@example.com',
+    }
+    const supabase = mockSupabase({ existing: null, insertResult: { data: insertedRow, error: null } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.outcome).toBe('invited')
+    expect(body.data.inviteLink).toContain('/signup?invite=')
+    expect(body.data.emailSent).toBe(true)
+  })
+
+  it('returns outcome:connect-requested with emailSent but no inviteLink when the email already has an account', async () => {
+    const insertedRow = {
+      id: NEW_ROW_ID,
+      user_id: USER_ID,
+      name: 'Jamie',
+      first_name: 'Jamie',
+      email: 'jamie@example.com',
+    }
+    const supabase = mockSupabase({ existing: null, insertResult: { data: insertedRow, error: null } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+    ;(sendCollaboratorInvite as jest.Mock).mockResolvedValue({
+      ok: true,
+      outcome: 'connect-requested',
+      emailSent: true,
+    })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.outcome).toBe('connect-requested')
+    expect(body.data.emailSent).toBe(true)
+    expect('inviteLink' in body.data).toBe(false)
+    expect(body.data.collaborator).toEqual(insertedRow)
+    expect(body.data.reused).toBe(false)
+  })
+
+  it('returns outcome:already-linked with no inviteLink and no emailSent for an already-claimed row', async () => {
+    const insertedRow = {
+      id: NEW_ROW_ID,
+      user_id: USER_ID,
+      name: 'Jamie',
+      first_name: 'Jamie',
+      email: 'jamie@example.com',
+    }
+    const supabase = mockSupabase({ existing: null, insertResult: { data: insertedRow, error: null } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+    ;(sendCollaboratorInvite as jest.Mock).mockResolvedValue({ ok: true, outcome: 'already-linked' })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.outcome).toBe('already-linked')
+    expect('inviteLink' in body.data).toBe(false)
+    expect('emailSent' in body.data).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import { buildRespondTransition } from '@/lib/social/connections'
 import { buildConnectionAcceptedNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
 import { createConnectionRequest, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/social/connect-request'
+import { linkClaimedCollaborators } from '@/lib/collaborators/link-claim'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -174,6 +175,26 @@ export async function PATCH(request: Request) {
       await createNotification(service, notif)
     } catch {
       // Non-fatal — the accept itself was persisted (and the trigger seeded follows).
+    }
+
+    // 260825-m2k: accept is the right hook to link the requester's
+    // collaborator roster row to this member's account — it reproduces the
+    // exact end state of the signup-time claim (claim_collaborators,
+    // migration 051), but gated on the member's explicit consent (they just
+    // accepted the request) rather than on email possession alone. No schema
+    // column correlates this connection back to a specific collaborator row
+    // — owner id + email already identify it, the same identity rule
+    // claim_collaborators uses. Same non-fatal try/catch posture as the
+    // notification above: a failed link must never roll back the accept.
+    try {
+      const service = createServiceClient()
+      await linkClaimedCollaborators(service, {
+        ownerUserId: updated.requester_id,
+        memberUserId: user.id,
+        memberEmail: user.email ?? '',
+      })
+    } catch {
+      // Non-fatal — the accept itself was persisted.
     }
   }
 
