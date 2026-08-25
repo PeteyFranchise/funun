@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import { getStaffRole } from '@/lib/admin/gate'
+import { notFound } from 'next/navigation'
+import { createServiceClient } from '@/lib/supabase/server'
+import { requireStaffPage } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import { listContacts, listRelationshipLog } from '@/lib/client-partners/contacts'
 import type { BuyerOrgStatus } from '@/lib/buyers/schema'
@@ -46,17 +46,11 @@ export default async function ClientPartnerWorkspacePage({
 }) {
   const { orgId } = await params
 
-  // Explicit per-page staff check — layout redirect alone is not relied
-  // upon as the authority decision (project convention; see lib/admin/gate.ts).
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/signin')
-  const staffRole = getStaffRole(user)
-  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
-  // reach a client-partner workspace — excluded alongside no-role.
-  if (!staffRole || staffRole === 'it') redirect('/')
+  // IN-02: shared per-page staff gate (was duplicated inline) — fail-closed
+  // default excludes 'it' (the read-only Playbook-IT-room role). Still the
+  // per-page authority check; the layout redirect alone is not relied upon
+  // (project convention; see lib/admin/gate.ts).
+  const { user, staffRole } = await requireStaffPage()
 
   const service = createServiceClient()
   const { data: orgRow } = await service.from('buyer_orgs').select(ORG_COLUMNS).eq('id', orgId).maybeSingle()

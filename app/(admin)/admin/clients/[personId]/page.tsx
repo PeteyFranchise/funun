@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import { getStaffRole } from '@/lib/admin/gate'
+import { notFound } from 'next/navigation'
+import { createServiceClient } from '@/lib/supabase/server'
+import { requireStaffPage } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import { CONTACT_COLUMNS, listRelationshipLog } from '@/lib/client-partners/contacts'
 import type { BuyerOrgContact } from '@/lib/client-partners/contacts'
@@ -48,15 +48,10 @@ export default async function ClientPersonWorkspacePage({
 }) {
   const { personId } = await params
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/signin')
-  const staffRole = getStaffRole(user)
-  // CR-01 hardening: 'it' is read-only Playbook-IT-room staff and must not
-  // reach a client workspace — excluded alongside no-role.
-  if (!staffRole || staffRole === 'it') redirect('/')
+  // IN-02: shared per-page staff gate (was duplicated inline) — fail-closed
+  // default excludes 'it' (the read-only Playbook-IT-room role), same as
+  // the company workspace page and every other admin room page.
+  const { user, staffRole } = await requireStaffPage()
 
   const service = createServiceClient()
   const { data: contactRow } = await service
