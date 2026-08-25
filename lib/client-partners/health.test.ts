@@ -214,7 +214,6 @@ describe('computeHealth — keeps-warm holds (D-31.1-03)', () => {
 
 describe('computeHealth — no I/O (pure function)', () => {
   it('module source has no Supabase/fetch import', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = require('fs')
     const path = require('path')
     const src = fs.readFileSync(path.join(__dirname, 'health.ts'), 'utf8')

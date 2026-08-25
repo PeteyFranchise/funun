@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaffPage } from '@/lib/admin/gate'
-import { CONFIG_ROW_ID } from '@/app/api/admin/health-rules/route'
+import { CONFIG_ROW_ID } from '@/lib/client-partners/health-rules-config'
 import { HealthRulesForm, type HealthRulesConfigRow } from '@/components/admin/HealthRulesForm'
 import type { HealthSignals } from '@/lib/client-partners/health'
 

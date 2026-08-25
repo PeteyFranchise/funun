@@ -167,7 +167,7 @@ describe('lib/admin/gate requireStaff (multi-role)', () => {
 // lib/client-partners/signals.ts's loadWholeBookWithCoverage — the
 // whole-book/coverage/By-AE data is never fetched for them at all, not
 // merely filtered out client-side (T-31.1-info-disclosure). The decision
-// point is app/(admin)/admin/client-partners/page.tsx's exported
+// point is lib/client-partners/room-data.ts's exported
 // loadClientPartnersRoomData(), factored out of the page component so it's
 // testable here without rendering or mocking next/navigation.
 // requireStaffPage() itself (the auth call BEFORE this function is ever
@@ -219,14 +219,14 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
       maybeSingle: () => Promise.resolve({ data: null, error: null }),
     }
     return { from: () => builder } as unknown as Parameters<
-      typeof import('@/app/(admin)/admin/client-partners/page').loadClientPartnersRoomData
+      typeof import('@/lib/client-partners/room-data').loadClientPartnersRoomData
     >[0]
   }
 
   it('never calls loadWholeBookWithCoverage/buildEngagementRollup and returns allData=null/engagementRollup=null for an ae caller', async () => {
     mockRoomSignals()
     mockEngagementRollup()
-    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadClientPartnersRoomData } = await import('@/lib/client-partners/room-data')
     const { loadWholeBookWithCoverage, loadBook } = await import('@/lib/client-partners/signals')
     const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 
@@ -244,7 +244,7 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
   it('never calls loadWholeBookWithCoverage/buildEngagementRollup and returns allData=null/engagementRollup=null for a bd caller', async () => {
     mockRoomSignals()
     mockEngagementRollup()
-    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadClientPartnersRoomData } = await import('@/lib/client-partners/room-data')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
     const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 
@@ -259,7 +259,7 @@ describe('client-partners room — D-31.1-01 hide-not-filter (loadClientPartners
   it('calls loadWholeBookWithCoverage/buildEngagementRollup and returns populated allData/engagementRollup ONLY for leadership', async () => {
     mockRoomSignals()
     mockEngagementRollup()
-    const { loadClientPartnersRoomData } = await import('@/app/(admin)/admin/client-partners/page')
+    const { loadClientPartnersRoomData } = await import('@/lib/client-partners/room-data')
     const { loadWholeBookWithCoverage } = await import('@/lib/client-partners/signals')
     const { buildEngagementRollup } = await import('@/lib/selects/engagement-rollup')
 

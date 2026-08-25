@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
+import { CONFIG_ROW_ID } from '@/lib/client-partners/health-rules-config'
 
 // ─── GET/PATCH /api/admin/health-rules — the D-31.1-03 settings singleton ──
 // Leadership-only read/write of health_rules_config (id=1, migration 128),
@@ -28,9 +29,10 @@ import { logStaffAction } from '@/lib/staff/audit'
 // DB column stays honest and any NOT NULL constraint is satisfied, without
 // exposing a fourth surplus/misleading tunable to leadership.
 
-export const CONFIG_ROW_ID = 1
-
-export const HEALTH_RULES_EDITABLE_FIELDS = [
+// Not exported: a route module may only export HTTP handlers + route config
+// (next build page-type validation); CONFIG_ROW_ID lives in
+// lib/client-partners/health-rules-config.ts for the other consumers.
+const HEALTH_RULES_EDITABLE_FIELDS = [
   'good_within_days',
   'warning_after_days',
   'at_risk_after_days',

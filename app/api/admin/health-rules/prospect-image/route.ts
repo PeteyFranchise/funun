@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
-import { CONFIG_ROW_ID } from '@/app/api/admin/health-rules/route'
+import { CONFIG_ROW_ID } from '@/lib/client-partners/health-rules-config'
 
 // ─── POST /api/admin/health-rules/prospect-image — swap the D-31.1-08 mark ─
 // Mirrors app/api/admin/staff/[id]/avatar/route.ts's shape exactly (vault-
