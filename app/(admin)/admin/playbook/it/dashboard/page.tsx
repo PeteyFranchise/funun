@@ -1,4 +1,4 @@
-import { requireStaffPage } from '@/lib/admin/gate'
+import { requireRoomAccessPage } from '@/lib/playbook/rooms'
 import { getDashboardHealth } from '@/lib/playbook/digest'
 import { ItRoomTopBar } from '@/components/playbook/ItRoomTopBar'
 import { StatusBanner } from '@/components/playbook/StatusBanner'
@@ -12,16 +12,20 @@ import { QuickLinks } from '@/components/playbook/QuickLinks'
 // (StatusBanner/DigestPanel/getDashboardHealth) with this plan's reference
 // panels (Uptime link-out, ThresholdsPanel, VendorsGrid, QuickLinks) under
 // its own D-02 inline guard, which runs FIRST — before getDashboardHealth()
-// re-checks /api/health in-process (never a self-HTTP call — T-33-07). The
-// guard never widens to ALL_STAFF_ROLES (D-02): only leadership + it reach
-// this page; every other staff role is redirect()'d inside
-// requireStaffPage() itself and never sees any of this render.
+// re-checks /api/health in-process (never a self-HTTP call — T-33-07).
+// Re-pointed from the Phase 33 hardcoded requireStaffPage(['leadership',
+// 'it']) literal to requireRoomAccessPage('it-team') (31.2-07 Task 3,
+// Pitfall 6) — migration 130 seeds it-team grantable to 'it' (leadership
+// passes structurally), so day-one behavior is unchanged, but the access
+// matrix now controls this gate for real. The guard never widens scope
+// (D-02): every non-authorized staff member is redirect()'d inside
+// requireRoomAccessPage() itself and never sees any of this render.
 
 const BETTER_STACK_STATUS_URL = 'https://funun.betteruptime.com'
 
 export default async function MonitoringDashboardPage() {
   // Fail-closed self-guard — must run before any health check/render (D-02).
-  await requireStaffPage(['leadership', 'it'])
+  await requireRoomAccessPage('it-team')
 
   const health = await getDashboardHealth()
   const isHealthy = health === 'healthy'
