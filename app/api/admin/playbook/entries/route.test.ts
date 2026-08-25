@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
-import { requireRoomAccess, isRoomLead, createEntry, listEntries } from '@/lib/playbook/entries'
+import { requireRoomAccess } from '@/lib/playbook/rooms'
+import { isRoomLead, createEntry, listEntries } from '@/lib/playbook/entries'
 import { POST, GET } from './route'
 
 // ─── /api/admin/playbook/entries (31.2-04 Task 2) ──────────────────────────
@@ -10,8 +11,11 @@ import { POST, GET } from './route'
 // (zod .strict() also rejects an unlisted status/approver key outright);
 // leadership/room-lead lands published; every create audits.
 
-jest.mock('@/lib/playbook/entries', () => ({
+jest.mock('@/lib/playbook/rooms', () => ({
   requireRoomAccess: jest.fn(),
+}))
+
+jest.mock('@/lib/playbook/entries', () => ({
   isRoomLead: jest.fn(),
   createEntry: jest.fn(),
   listEntries: jest.fn(),

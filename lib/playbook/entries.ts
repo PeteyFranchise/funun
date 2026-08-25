@@ -1,6 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { requireStaff, getStaffRoles, type StaffRole } from '@/lib/admin/gate'
-import { createServiceClient } from '@/lib/supabase/server'
 
 // ─── playbook_entries — SOP/Topic draft→publish store (31.2-04 Task 1) ────
 // Generalizes the live Tips tip_draft→tip_approved flow
@@ -81,46 +79,6 @@ export async function isRoomLead(
     .eq('user_id', userId)
     .maybeSingle()
   return !!data
-}
-
-// ─── requireRoomAccess — room-scoped staff gate ────────────────────────────
-// NOTE (31.2-04 deviation): 31.2-03 (a parallel wave-2 plan) is the intended
-// canonical owner of lib/playbook/rooms.ts's requireRoomAccess/
-// requireRoomAccessPage. Both plans execute in isolated worktrees within the
-// same wave, so 31.2-03's file did not exist in this worktree when this plan
-// ran. This is a minimal, spec-faithful local equivalent (composes
-// requireStaff, leadership short-circuits with no extra DB read per
-// Pitfall 5, otherwise checks playbook_room_role_grants for ANY of the
-// caller's held roles) that unblocks this plan's routes now. It should be
-// deleted and replaced with an import from '@/lib/playbook/rooms' once
-// 31.2-03 merges — see 31.2-04-SUMMARY.md Deviations.
-type StaffAuthResult = Awaited<ReturnType<typeof requireStaff>>
-type StaffAuthFailure = Extract<StaffAuthResult, { error: string }>
-type StaffAuthSuccess = Extract<StaffAuthResult, { staffRole: StaffRole }>
-
-export async function requireRoomAccess(roomKey: string): Promise<StaffAuthFailure | StaffAuthSuccess> {
-  const auth = await requireStaff()
-  if ('error' in auth) return auth
-  if (auth.staffRole === 'leadership') return auth // structural, never row-data (Pitfall 5)
-
-  const service = createServiceClient()
-  const { data: room } = await service
-    .from('playbook_rooms')
-    .select('id')
-    .eq('key', roomKey)
-    .maybeSingle()
-  if (!room) return { error: 'Forbidden', status: 403 }
-
-  const roles = getStaffRoles(auth.user)
-  const { data: grants } = await service
-    .from('playbook_room_role_grants')
-    .select('role')
-    .eq('room_id', (room as { id: string }).id)
-    .in('role', roles)
-
-  if (!grants || grants.length === 0) return { error: 'Forbidden', status: 403 }
-
-  return auth
 }
 
 // ─── Thin service-client CRUD ──────────────────────────────────────────────

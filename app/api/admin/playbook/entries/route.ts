@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
-import { requireRoomAccess, isRoomLead, createEntry, listEntries } from '@/lib/playbook/entries'
+import { requireRoomAccess } from '@/lib/playbook/rooms'
+import { isRoomLead, createEntry, listEntries } from '@/lib/playbook/entries'
 
 // ─── /api/admin/playbook/entries — SOP/Topic authoring (31.2-04 Task 2) ────
 // POST: room-scoped, role-tiered create. isApprover is derived SERVER-side

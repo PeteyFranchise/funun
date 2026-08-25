@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
-import { requireRoomAccess, isRoomLead, approveEntry, rejectEntry, editEntry } from '@/lib/playbook/entries'
+import { requireRoomAccess } from '@/lib/playbook/rooms'
+import { isRoomLead, approveEntry, rejectEntry, editEntry } from '@/lib/playbook/entries'
 
 // ─── /api/admin/playbook/entries/[id] — approve/reject/edit (31.2-04 Task 3) ─
 // Mirrors the Tips approve/reject PATCH shape (app/api/admin/tips/[itemKey]/
