@@ -155,6 +155,9 @@ export function CollaboratorRoster({
           <p className="mt-1 text-[14px] text-lavdim">
             Your roster — add once, auto-fill everywhere.
           </p>
+          <p className="mt-1 text-[13px] text-lavdim">
+            Skip the hassle — invite them to Funūn and let them do the typing.
+          </p>
         </div>
         {activeTab === 'roster' && !creating && (
           <div className="flex items-center gap-2">
