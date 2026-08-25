@@ -2,6 +2,7 @@ import {
   SEEDED_GAME_PLAN_TOPICS,
   buildDefaultGamePlanTopics,
   buildGamePlanLogBody,
+  buildPickerTopics,
   coveredSummary,
   normalizeGamePlanTopics,
   type GamePlanTopic,
@@ -96,6 +97,42 @@ describe('buildGamePlanLogBody', () => {
 
   it('handles a fully empty topic list', () => {
     expect(buildGamePlanLogBody([])).toBe('0 of 0 covered')
+  })
+})
+
+describe('buildPickerTopics', () => {
+  // ─── 31.2-08 Task 2 (D-31.2-07, Pitfall 4) ────────────────────────────
+  // Authored Playbook Topics AUGMENT the seeded starters at read time —
+  // neither list replaces the other. An empty authored list must reproduce
+  // 31.1's exact seeded-only behavior (RED-first: this must pass before
+  // any implementation exists to prove the empty-authored case is truly a
+  // no-op relative to the untouched SEEDED_GAME_PLAN_TOPICS constant).
+
+  it('returns seeded-only topics when authored is empty (31.1 behavior preserved)', () => {
+    const picker = buildPickerTopics(SEEDED_GAME_PLAN_TOPICS, [])
+    expect(picker).toHaveLength(SEEDED_GAME_PLAN_TOPICS.length)
+    expect(picker.every(t => t.source === 'seeded')).toBe(true)
+    expect(picker.map(t => t.id)).toEqual(SEEDED_GAME_PLAN_TOPICS.map(t => t.id))
+  })
+
+  it('concatenates authored topics after the seeded starters — seeded never dropped', () => {
+    const authored = [
+      { id: 'entry-1', title: 'Renewal cadence', questions: ['How often do they re-up?'] },
+      { id: 'entry-2', title: 'Escalation path', questions: [] },
+    ]
+    const picker = buildPickerTopics(SEEDED_GAME_PLAN_TOPICS, authored)
+    expect(picker).toHaveLength(SEEDED_GAME_PLAN_TOPICS.length + authored.length)
+    expect(picker.slice(0, SEEDED_GAME_PLAN_TOPICS.length).every(t => t.source === 'seeded')).toBe(true)
+    const authoredEntries = picker.slice(SEEDED_GAME_PLAN_TOPICS.length)
+    expect(authoredEntries.map(t => t.source)).toEqual(['playbook:entry-1', 'playbook:entry-2'])
+    expect(authoredEntries.map(t => t.title)).toEqual(['Renewal cadence', 'Escalation path'])
+    expect(authoredEntries[0].questions).toEqual(['How often do they re-up?'])
+  })
+
+  it('never mutates the SEEDED_GAME_PLAN_TOPICS constant it reads from', () => {
+    const before = JSON.parse(JSON.stringify(SEEDED_GAME_PLAN_TOPICS))
+    buildPickerTopics(SEEDED_GAME_PLAN_TOPICS, [{ id: 'x', title: 'X', questions: ['q'] }])
+    expect(SEEDED_GAME_PLAN_TOPICS).toEqual(before)
   })
 })
 
