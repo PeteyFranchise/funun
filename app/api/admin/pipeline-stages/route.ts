@@ -77,9 +77,28 @@ export async function POST(request: Request) {
   }
 
   const service = createServiceClient()
+
+  const fields = pickStageFields(parsed.data)
+  // IN-01: default sort_order to (current max + 1) when the caller doesn't
+  // supply one, instead of leaving every new stage at the column default of
+  // 0 — which made GET's ORDER BY sort_order fall back to unspecified
+  // insertion-order tie-breaking whenever multiple stages were created
+  // without an explicit order. An explicit sort_order is still honored as-is.
+  if (fields.sort_order === undefined) {
+    const { data: maxRow, error: maxError } = await service
+      .from('pipeline_stages')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (maxError) return NextResponse.json({ error: maxError.message }, { status: 500 })
+    const currentMax = (maxRow as { sort_order: number } | null)?.sort_order ?? -1
+    fields.sort_order = currentMax + 1
+  }
+
   const { data, error } = await service
     .from('pipeline_stages')
-    .insert(pickStageFields(parsed.data))
+    .insert(fields)
     .select(STAGE_COLUMNS)
     .single()
 
@@ -90,7 +109,7 @@ export async function POST(request: Request) {
     action: 'create_pipeline_stage',
     targetType: 'pipeline_stage',
     targetId: (data as { id: string })?.id ?? null,
-    changes: pickStageFields(parsed.data),
+    changes: fields,
   })
 
   return NextResponse.json({ data })
@@ -153,8 +172,31 @@ export async function DELETE(request: Request) {
   }
 
   const service = createServiceClient()
+
+  // WR-04: buyer_orgs.pipeline_stage_id is ON DELETE SET NULL, so deleting a
+  // referenced stage nulls that FK automatically but leaves stage_entered_at
+  // stale — the UI would then show a days-in-stage number next to a blank
+  // stage label. Capture the affected org ids BEFORE the delete so the
+  // null-out below is scoped precisely to rows that actually referenced
+  // this stage (never a broad/unscoped update).
+  const { data: affectedRows, error: affectedError } = await service
+    .from('buyer_orgs')
+    .select('id')
+    .eq('pipeline_stage_id', parsed.data.id)
+  if (affectedError) return NextResponse.json({ error: affectedError.message }, { status: 500 })
+  const affectedOrgIds = ((affectedRows ?? []) as { id: string }[]).map(row => row.id)
+
   const { error } = await service.from('pipeline_stages').delete().eq('id', parsed.data.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (affectedOrgIds.length > 0) {
+    const { error: clearError } = await service
+      .from('buyer_orgs')
+      .update({ stage_entered_at: null })
+      .in('id', affectedOrgIds)
+      .not('stage_entered_at', 'is', null)
+    if (clearError) return NextResponse.json({ error: clearError.message }, { status: 500 })
+  }
 
   await logStaffAction(service, {
     actorId: auth.user.id,
