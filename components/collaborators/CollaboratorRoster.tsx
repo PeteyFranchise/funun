@@ -226,6 +226,10 @@ export function CollaboratorRoster({
           <CollaboratorForm
             onSaved={handleSaved}
             onCancel={() => setCreating(false)}
+            onSwitchToInvite={() => {
+              setCreating(false)
+              setQuickInviteOpen(true)
+            }}
           />
         )}
 

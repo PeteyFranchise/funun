@@ -22,9 +22,16 @@ type Props = {
   initial?: Partial<CollaboratorProfile>
   onSaved: (collaborator: CollaboratorProfile) => void
   onCancel: () => void
+  // Optional — only CollaboratorRoster's "creating" instance passes this
+  // (260825-i4i follow-up). When present, a small "Invite instead" control
+  // renders alongside the invite-first nudge at the top of the form. When
+  // absent (e.g. CollaboratorPicker's inline add-new, or the edit-mode
+  // instance), the nudge copy still renders but with no dead control —
+  // both other callers keep working untouched.
+  onSwitchToInvite?: () => void
 }
 
-export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
+export function CollaboratorForm({ initial, onSaved, onCancel, onSwitchToInvite }: Props) {
   const router = useRouter()
   const isEditing = Boolean(initial?.id)
 
@@ -121,6 +128,28 @@ export function CollaboratorForm({ initial, onSaved, onCancel }: Props) {
       onSubmit={handleSubmit}
       className="w-full space-y-4 rounded-xl border border-white/10 bg-white/[0.03] p-4"
     >
+      {/* ── Invite-first nudge (260825-i4i follow-up) — create mode only.
+             Copy-only when onSwitchToInvite is not supplied (no dead
+             control); CollaboratorRoster's "creating" instance is the only
+             caller that currently passes it. ─────────────────────────── */}
+      {!isEditing && (
+        <div className="rounded-lg border border-brandindigo/20 bg-brandindigo/5 px-4 py-3 text-sm text-white/70 space-y-1">
+          <p className="font-semibold text-white/90">
+            Skip the hassle — invite them to Funūn and let them do the typing.
+          </p>
+          <p>They&apos;ll fill in their own name, IPI, PRO, and address when they join.</p>
+          {onSwitchToInvite && (
+            <button
+              type="button"
+              onClick={onSwitchToInvite}
+              className="text-xs font-semibold text-brandindigo hover:text-white"
+            >
+              Invite instead
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Legal name guidance callout ─────────────────────────── */}
       <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-sm text-white/70 space-y-1">
         <p className="font-semibold text-white/90">Use the exact legal name</p>
