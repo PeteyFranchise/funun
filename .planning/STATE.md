@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 31.2-02-PLAN.md
-last_updated: "2026-08-25T01:58:20.698Z"
+stopped_at: Completed 31.2-01-PLAN.md
+last_updated: "2026-08-25T02:07:13.756Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 35
   completed_phases: 28
   total_plans: 230
-  completed_plans: 218
+  completed_plans: 219
   percent: 80
 ---
 
@@ -29,6 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 31.2 (ae-console-playbook-authoring-rbac-plays-selects-telemetry) — EXECUTING
+31.2-01 (Migrations 130/131/132 — Playbook RBAC + authoring model, Plays, Selects engagement telemetry, wave 1) COMPLETE 2026-08-25 — 31.2-01-SUMMARY.md; supabase/migrations/130_playbook_rbac.sql (playbook_rooms 6-room seed in nav.ts order + playbook_room_role_grants role<>'leadership' structural CHECK + playbook_room_leads + playbook_sub_groups + playbook_entries SOP/Topic draft->publish, commit fcec1cd) + 131_plays.sql (plays one-active partial-unique index + play_assignments client_targeted|general_task + play_assignment_completions idempotent per-AE key, commit 2b95ea1) + 132_selects_engagement.sql (selects_track_engagement 0<delta<=15 CHECK + selects_opens + SECURITY DEFINER abuse-cap trigger shipped inline, commit 2b95ea1) + __tests__/migration-130/131/132.test.ts (42 jest tests, commit b4bc0ae). Task 4 blocking checkpoint cleared — owner ran `supabase db push` against prod (project wgfjakfiyeewzfuxkgyo) and confirmed `supabase migration list` LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger. Every new table (all 10) is zero-policy RLS + REVOKE from authenticated/anon, mirrors migration 128/129 doctrine. Seed reproduces Phase 33's exact it-team access behavior (leadership+it, Pitfall 6 backward-compat). Unblocks the DB-dependent surfaces in plans 03/06/07 (requireRoomAccess, plays.ts, access editor); plan 02's engagement.ts (already implemented) can now read/write these tables live.
 31.2-02 (Selects engagement — pure audible-time accumulator + server contract, wave 1) COMPLETE 2026-08-24 — 31.2-02-SUMMARY.md; components/selects-player/audible-accumulator.ts (accountForTick/foldAudibleSeconds pure genuine-accumulator delta math, 11 jest tests — small forward contiguous delta only, seek/scrub/rewind/seeking-flag all yield 0) + components/selects-player/useAudibleTimeAccumulator.ts (React hook wrapping the pure math against a real `<audio>` element, 10s heartbeat + pause/ended/beforeunload flush, no unit test by design per RESEARCH's manual-only row — jsdom cannot drive real audio timing, verified via tsc --noEmit) + lib/selects/engagement.ts (clampDelta per-heartbeat ceiling, QUALIFIED_LISTEN_SECONDS=30, aggregatePerTrack/aggregateTrack/aggregateSelectsRollup pure compute-on-read aggregation, 14 jest tests — qualified-listen is a boolean per track+viewer never multiplied by replays, replay counted distinctly). Pure-logic plan — no DB/UI coupling, migrations 130-132 (plan 01) still human-gated for prod push. Full repo suite 255 suites/2745 tests green, tsc clean. R13 partial (pure core only; plan 05 wires the write route + player, plan 10 does the read rollups/UI panel — R13 not yet markable complete in REQUIREMENTS.md's traceability table, no row exists for it yet, correctly deferred to phase-execution close per that doc's own convention).
 31.1-07 (Call Game Plan — route + seeded topics + coveredSummary + GamePlanPanel, wave 3, LAST plan in phase) COMPLETE 2026-08-24 — 31.1-07-SUMMARY.md; GET/PUT/POST /api/admin/client-partners/[orgId]/game-plan (load-or-seed, upsert save, log-conversation) own-book scoped via canAccessOrgContacts (404 not 403) + lib/client-partners/game-plan.ts (GamePlanTopic type, SEEDED_GAME_PLAN_TOPICS, buildDefaultGamePlanTopics, coveredSummary "X of N covered" incl. 0-of-N edge, buildGamePlanLogBody, normalizeGamePlanTopics, loadGamePlan shared DB-read) + components/admin/GamePlanPanel.tsx ('use client', data + string action paths only — no function props, checks off topics/add custom/pull seeded+Selects-context suggestions/notes/Save+Log conversation, router.refresh()) mounted in ClientWorkspace.tsx mode='person' (D-31.1-06), fed via app/(admin)/admin/clients/[personId]/page.tsx's new loadGamePlan() call. POST log-conversation retires the plan row after logging so the next visit reseeds from defaults. Necessary plumbing beyond files_modified (Rule 2): loadGamePlan() extracted as the one shared DB read for both the route's GET and the RSC page's initial-props load. Full repo suite 248 suites/2655 tests green, tsc clean. R14 impl complete (owner UAT pending). Phase 31.1 is now 7/7 plans executed — remaining work is owner manual UAT + phase verification, no more plans to execute.
 31.1-06 (D-07 AE assignment handoff — route + onboarding helpers + assign/onboarding panels, wave 3) COMPLETE 2026-08-24 — 31.1-06-SUMMARY.md; PATCH /api/admin/buyer-orgs/[id]/ae extended into the full D-07 structural handoff (required trimmed handoff note when assigning — 400 + no write if missing; target-role check widened to admit leadership self-assign alongside ae/bd; after the ae_user_id write commits, three independently .catch()-wrapped best-effort side effects: a kind:'assignment' relationship-log entry, an auto-created onboarding_tasks row — seeded checklist + note — in the AE's queue, and a notification with a Resend intro-email copy) + lib/client-partners/onboarding.ts (SEEDED_ONBOARDING_CHECKLIST, insertOnboardingTask, listOpenOnboardingTasks) + appendRelationshipLog widened to kind:'assignment'/meta; components/admin/AssignAePanel.tsx (AE search + load + health-mix chips + required-note textarea, disabled until filled) + OnboardingTasksPanel.tsx (read-only My-tab render of open handoff tasks), both mounted in ClientPartnersRoom.tsx (assign panel opens from the Needs-an-AE queue + book row action via a new client-to-client onRowAction on ClientPartnersList). Necessary plumbing beyond files_modified (Rule 2): app/(admin)/admin/client-partners/page.tsx now also loads the full assignable AE roster (funun_staff merged with groupByAe) + the caller's own open onboarding tasks. Auto-fixed (Rule 1) pre-existing test breakage the note requirement caused: __tests__/staff-buyer-orgs-api.test.ts's ae-route coverage + lib/admin/gate.test.ts's loadClientPartnersRoomData fixture. Full repo suite 246 suites/2633 tests green, tsc clean. R6/R7/R8 impl complete (owner UAT pending — Resend prod sender unverified, delivery failure is by-design non-blocking). Unblocks plan 07.
@@ -218,6 +219,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.1 P06 | 45min | 2 tasks | 12 files |
 | Phase 31.1 P07 | 35min | 2 tasks | 7 files |
 | Phase 31.2 P02 | 5min | 3 tasks | 5 files |
+| Phase 31.2 P01 | 8min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -476,6 +478,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 31.2]: 31.2-02: clampDelta rejects <=0/non-finite deltas by returning 0 (not throwing) so batch aggregation survives one malformed row; DB CHECK (migration 132) is the defense-in-depth backstop
 - [Phase 31.2]: 31.2-02: aggregatePerTrack's qualified field is a single boolean never multiplied by replayCount -- a viewer who replays a qualifying track N times still contributes exactly one qualified listen (R13 exact acceptance wording)
 - [Phase 31.2]: 31.2-02: useAudibleTimeAccumulator.ts ships with no unit test by design (jsdom cannot drive real audio timing) -- correctness rests on audible-accumulator.test.ts's pure-math coverage; verified via tsc --noEmit only per plan
+- [Phase 31.2]: 31.2-01: seeded playbook_room_role_grants to reproduce Phase 33's exact it-team behavior (grant role 'it' only; leadership passes structurally, never row-data) so day-one access is unchanged (Pitfall 6 backward-compat)
+- [Phase 31.2]: 31.2-01: owner ran supabase db push against prod (project wgfjakfiyeewzfuxkgyo) and confirmed supabase migration list LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger — Task 4 blocking checkpoint cleared
 
 ### Pending Todos
 
@@ -563,8 +567,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-25T01:58:20.670Z
-Stopped at: Completed 31.2-02-PLAN.md
+Last session: 2026-08-25T02:07:13.732Z
+Stopped at: Completed 31.2-01-PLAN.md
 Resume file: None
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md

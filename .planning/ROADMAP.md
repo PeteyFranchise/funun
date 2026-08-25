@@ -1249,12 +1249,12 @@ Plans:
 
 **Status:** Split from 31.1 on 2026-08-23; planned 2026-08-24 (10 plans, 4 waves).
 
-**Plans:** 1/10 plans executed
+**Plans:** 2/10 plans executed
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
 
-- [ ] 31.2-01-PLAN.md — Migrations 130/131/132 (RBAC+authoring, plays, engagement+cap) + text-locks + owner push [BLOCKING] (R9/R13)
+- [x] 31.2-01-PLAN.md — Migrations 130/131/132 (RBAC+authoring, plays, engagement+cap) + text-locks + owner push [BLOCKING] (R9/R13)
 - [x] 31.2-02-PLAN.md — Telemetry pure core: audible-time accumulator + engagement contract + hook (R13)
 
 **Wave 2** *(service + route layers — blocked on migrations)*
