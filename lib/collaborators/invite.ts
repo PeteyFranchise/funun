@@ -1,6 +1,10 @@
 import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
 import { sendEmail } from '@/lib/email'
 import { esc } from '@/lib/email/esc'
+import { resolveAccountIdByEmail } from '@/lib/invites/allowlist'
+import { createConnectionRequest, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/social/connect-request'
+import { linkClaimedCollaborators } from '@/lib/collaborators/link-claim'
+import { createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Shared collaborator-invite mechanics ────────────────────────────────
@@ -19,6 +23,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // artistReopened templates use). That escaping rationale moves here with
 // the email builder — it now lives at the point where the values are
 // actually interpolated.
+//
+// 260825-m2k: sendCollaboratorInvite now decides, BEFORE any signup token
+// is minted, whether the collaborator's email already belongs to a Funūn
+// account. If it does, this sends a collaborator connection request
+// through the shared lib/social/connect-request.ts machinery instead of a
+// "join Funūn" signup invite — see the outcome branch below.
 
 // ─── URL builders ─────────────────────────────────────────────────────────
 
@@ -114,11 +124,61 @@ export function buildCollaboratorInviteEmail(input: {
   }
 }
 
+// ─── Connect-request email builder ─────────────────────────────────────────
+
+/**
+ * A collaborator connection request, NOT an onboarding invite: the
+ * recipient already has a Funūn account, so this email points them at the
+ * request waiting in their notifications rather than at a signup link.
+ * Contains no signup link, no token, and none of the IPI onboarding
+ * material — that content is for people who do not have an account yet.
+ * Every interpolated value is escaped via esc() for the same reason
+ * buildCollaboratorInviteEmail escapes its inputs: inviterName comes from
+ * user_profiles.artist_name and collaboratorName is artist-entered free
+ * text.
+ */
+export function buildCollaboratorConnectEmail(input: {
+  inviterName: string
+  collaboratorName: string
+}): CollaboratorInviteEmail {
+  const safeInviterName = esc(input.inviterName)
+  const safeCollaboratorName = esc(input.collaboratorName)
+  const networkUrl = esc(`${appBase()}/network`)
+
+  return {
+    subject: `${input.inviterName} wants to add you as a collaborator on Funūn`,
+    html: `
+      <h2>Hi ${safeCollaboratorName},</h2>
+      <p><strong>${safeInviterName}</strong> wants to add you as a collaborator on <strong>Funūn</strong>.</p>
+      <p>The request is waiting in your Funūn notifications, where you can accept or decline it.</p>
+      <p><a href="${networkUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">View the request</a></p>
+    `,
+    text: [
+      `Hi ${input.collaboratorName},`,
+      '',
+      `${input.inviterName} wants to add you as a collaborator on Funūn.`,
+      '',
+      'The request is waiting in your Funūn notifications, where you can accept or decline it.',
+      '',
+      `View it: ${appBase()}/network`,
+    ].join('\n'),
+  }
+}
+
+// The note attached to a collaborator connection request is server-owned —
+// never taken from the request body, since it becomes the notification's
+// body text and must not be artist-authored (T-m2k-05).
+export const COLLABORATOR_CONNECT_NOTE = 'Would like to add you as a collaborator on Funūn.'
+
 // ─── Send helper ─────────────────────────────────────────────────────────
 
 export type CollaboratorInviteResult =
   | { ok: false; status: number; error: string }
-  | { ok: true; inviteLink: string; emailSent: boolean; skipped: boolean }
+  | { ok: true; outcome: 'invited'; inviteLink: string; emailSent: boolean; skipped: boolean }
+  | { ok: true; outcome: 'connect-requested'; emailSent: boolean }
+  | { ok: true; outcome: 'connect-pending' }
+  | { ok: true; outcome: 'already-connected' }
+  | { ok: true; outcome: 'already-linked' }
 
 /**
  * Sends (or best-effort re-sends) an educational IPI-invite email for a
@@ -132,11 +192,16 @@ export type CollaboratorInviteResult =
  * (the item route filters `.eq('user_id', user.id)`; the quick-invite
  * route creates/reuses a row it already scoped to `user.id`). This
  * function does not re-check ownership; it trusts the caller's query.
+ *
+ * 260825-m2k: before any of the above runs, this now decides whether the
+ * collaborator's email already belongs to a Funūn account. Nothing about
+ * tokens may run until membership is known — this branch sits immediately
+ * after the email guard and BEFORE the 60s cooldown lookup.
  */
 export async function sendCollaboratorInvite(
   supabase: SupabaseClient,
   input: {
-    collaborator: { id: string; name: string; email: string | null }
+    collaborator: { id: string; name: string; email: string | null; claimed_by?: string | null }
     invitingUserId: string
   }
 ): Promise<CollaboratorInviteResult> {
@@ -150,6 +215,77 @@ export async function sendCollaboratorInvite(
       error: 'A collaborator email address is required to send an invite',
     }
   }
+
+  // ── 1b. Membership branch (260825-m2k) — decided before any token work. ──
+
+  // a. Already claimed — nothing to send, nothing to look up.
+  if (collaborator.claimed_by) {
+    return { ok: true, outcome: 'already-linked' }
+  }
+
+  // b. Resolve the email to an account id. A lookup FAILURE is a hard stop —
+  //    it must never fall through to the signup path, because that would
+  //    silently resend a "join Funūn" email to someone who already has an
+  //    account (the exact bug this branch exists to fix).
+  const service = createServiceClient()
+  const resolved = await resolveAccountIdByEmail(service, collaborator.email)
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      status: 503,
+      error: 'Funūn could not check that email address right now — try again in a moment.',
+    }
+  }
+
+  if (resolved.userId) {
+    // d. The email is the inviter's own account.
+    if (resolved.userId === invitingUserId) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'That email address belongs to your own account.',
+      }
+    }
+
+    // e. An existing Funūn member — send a connection request instead of a
+    //    signup invite.
+    const connectResult = await createConnectionRequest(supabase, service, {
+      requesterId: invitingUserId,
+      addresseeId: resolved.userId,
+      note: COLLABORATOR_CONNECT_NOTE,
+    })
+
+    switch (connectResult.kind) {
+      case 'created': {
+        const email = buildCollaboratorConnectEmail({
+          inviterName: connectResult.actorName,
+          collaboratorName: collaborator.name,
+        })
+        const sendResult = await sendEmail({ to: collaborator.email, ...email })
+        return { ok: true, outcome: 'connect-requested', emailSent: sendResult.ok }
+      }
+      case 'pending':
+        return { ok: true, outcome: 'connect-pending' }
+      case 'connected':
+      case 'connected-conflict': {
+        const linked = await linkClaimedCollaborators(service, {
+          ownerUserId: invitingUserId,
+          memberUserId: resolved.userId,
+          memberEmail: collaborator.email,
+        })
+        return { ok: true, outcome: linked > 0 ? 'already-linked' : 'already-connected' }
+      }
+      case 'blocked':
+        return { ok: false, status: BLOCKED_ACTION_STATUS, error: BLOCKED_ACTION_ERROR }
+      case 'self':
+        return { ok: false, status: 400, error: 'That email address belongs to your own account.' }
+      case 'error':
+        return { ok: false, status: 500, error: connectResult.message }
+    }
+  }
+
+  // c. No account on this email — fall through to the existing signup-invite
+  //    path, untouched below.
 
   // ── 2. Short cooldown — a light guard against accidental double-sends only.
   //      A deliberate "Resend invite" (>60s later) DOES re-send: artists
@@ -167,6 +303,7 @@ export async function sendCollaboratorInvite(
   if (recentInvite) {
     return {
       ok: true,
+      outcome: 'invited',
       skipped: true,
       emailSent: false,
       inviteLink: buildCollaboratorInviteUrl(
@@ -202,5 +339,5 @@ export async function sendCollaboratorInvite(
   // A sendEmail failure lowers emailSent and nothing else — it is never
   // promoted to an error status, because a link the artist can
   // hand-deliver is still a working invite.
-  return { ok: true, skipped: false, emailSent: result.ok, inviteLink }
+  return { ok: true, outcome: 'invited', skipped: false, emailSent: result.ok, inviteLink }
 }
