@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff, getStaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
@@ -7,10 +8,16 @@ import { buildAeAssignedNotification, buildAeUnassignedNotification } from '@/li
 import { appendRelationshipLog } from '@/lib/client-partners/contacts'
 import { insertOnboardingTask } from '@/lib/client-partners/onboarding'
 
-// Canonical RFC-4122 UUID shape, mirrors lib/social/dm.ts's isUuid — the
-// body value is interpolated into a service-role update, so any non-UUID
-// value must be rejected before it reaches the write.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// WR-05: zod `.strict()` body schema, matching every other write route in
+// this phase (health-rules, pipeline-stages, game-plan) instead of hand-
+// rolled UUID-regex + manual type checks. note is bounded (2000 chars,
+// mirroring GamePlanTopicSchema's note cap) — previously unbounded.
+const AeAssignBodySchema = z
+  .object({
+    ae_user_id: z.string().uuid().nullable(),
+    note: z.string().trim().max(2000).optional(),
+  })
+  .strict()
 
 // ─── PATCH /api/admin/buyer-orgs/[id]/ae ───────────────────────────────────
 // Leadership-only AE (re)assignment — now the FULL D-07 structural handoff
@@ -40,20 +47,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
 
-  if (!('ae_user_id' in body)) {
-    return NextResponse.json({ error: 'ae_user_id is required' }, { status: 400 })
+  const parsed = AeAssignBodySchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid AE assignment payload' }, { status: 400 })
   }
-  const rawAeUserId = body.ae_user_id
-  const aeUserId: string | null =
-    rawAeUserId === null ? null : typeof rawAeUserId === 'string' ? rawAeUserId : ''
-  if (aeUserId !== null && !UUID_RE.test(aeUserId)) {
-    return NextResponse.json({ error: 'ae_user_id must be a UUID or null' }, { status: 400 })
-  }
+  const aeUserId = parsed.data.ae_user_id
+  // note is already trimmed by the schema's .trim() transform.
+  const note = parsed.data.note ?? ''
 
   // D-31.1-05: every handoff carries context — required only when actually
-  // assigning (not on unassign), trimmed, non-empty.
-  const rawNote = body.note
-  const note = typeof rawNote === 'string' ? rawNote.trim() : ''
+  // assigning (not on unassign).
   if (aeUserId !== null && !note) {
     return NextResponse.json(
       { error: 'A handoff note is required to assign an AE.' },

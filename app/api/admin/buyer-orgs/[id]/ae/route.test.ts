@@ -149,6 +149,60 @@ describe('PATCH /api/admin/buyer-orgs/[id]/ae — required handoff note', () => 
   })
 })
 
+describe('PATCH /api/admin/buyer-orgs/[id]/ae — WR-05 zod .strict() body schema', () => {
+  it('rejects a note over the 2000-char cap with 400 and never writes', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'x'.repeat(2001),
+      }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+  })
+
+  it('accepts a note at exactly the 2000-char cap', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'x'.repeat(2000),
+      }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(service.updateSpy).toHaveBeenCalledWith({ ae_user_id: AE_UUID })
+  })
+
+  it('rejects an unknown extra field (strict) with 400 and never writes', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await PATCH(
+      jsonRequest(`http://t.local/api/admin/buyer-orgs/${ORG_UUID}/ae`, {
+        ae_user_id: AE_UUID,
+        note: 'Fine.',
+        evil_field: 'nope',
+      }),
+      { params: Promise.resolve({ id: ORG_UUID }) }
+    )
+
+    expect(res.status).toBe(400)
+    expect(service.updateSpy).not.toHaveBeenCalled()
+  })
+})
+
 describe('PATCH /api/admin/buyer-orgs/[id]/ae — D-07 structural handoff', () => {
   it('assigns, writes the relationship log + onboarding task, and notifies with an intro email', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
