@@ -99,8 +99,9 @@ function NumberField({
         <input
           type="number"
           min={1}
+          step={1}
           value={value}
-          onChange={e => onChange(Math.max(1, Number(e.target.value) || 1))}
+          onChange={e => onChange(Math.max(1, Math.round(Number(e.target.value) || 1)))}
           className="w-14 rounded-lg border bg-[color:var(--ground)] px-2 py-1 text-center text-[16px] font-bold text-[color:var(--ink)]"
           style={{ borderColor: 'var(--border)' }}
         />
@@ -389,8 +390,9 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
                 <input
                   type="number"
                   min={1}
+                  step={1}
                   value={draft.recent_selects_days}
-                  onChange={e => patchDraft({ recent_selects_days: Math.max(1, Number(e.target.value) || 1) })}
+                  onChange={e => patchDraft({ recent_selects_days: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
                   className="w-11 rounded-md border bg-[color:var(--ground)] px-1.5 py-0.5 text-center text-[13px] font-bold text-[color:var(--ink)]"
                   style={{ borderColor: 'var(--border)' }}
                 />{' '}
@@ -409,8 +411,9 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
                 <input
                   type="number"
                   min={1}
+                  step={1}
                   value={draft.recent_contact_days}
-                  onChange={e => patchDraft({ recent_contact_days: Math.max(1, Number(e.target.value) || 1) })}
+                  onChange={e => patchDraft({ recent_contact_days: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
                   className="w-11 rounded-md border bg-[color:var(--ground)] px-1.5 py-0.5 text-center text-[13px] font-bold text-[color:var(--ink)]"
                   style={{ borderColor: 'var(--border)' }}
                 />{' '}
