@@ -29,6 +29,17 @@ function makeFile(name: string, type: string, size: number): File {
   return new File([bytes], name, { type })
 }
 
+// A genuine minimal PNG (8-byte signature + a tiny IHDR/IEND-less tail) —
+// only the leading magic bytes matter for sniffImageType, so the tail is
+// padding to reach the requested size.
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+function makeRealPngFile(name: string, size: number): File {
+  const bytes = new Uint8Array(size)
+  bytes.set(PNG_MAGIC, 0)
+  return new File([bytes], name, { type: 'image/png' })
+}
+
 function multipartRequest(file: File | null) {
   const form = new FormData()
   if (file) form.set('file', file)
@@ -85,7 +96,7 @@ describe('POST /api/admin/health-rules/prospect-image', () => {
     const service = mockService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await POST(multipartRequest(makeFile('lion.png', 'image/png', 1000)))
+    const res = await POST(multipartRequest(makeRealPngFile('lion.png', 1000)))
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -93,6 +104,22 @@ describe('POST /api/admin/health-rules/prospect-image', () => {
     expect(service.uploadSpy).toHaveBeenCalledTimes(1)
     expect(service.updateSpy).toHaveBeenCalledWith({ prospect_image_url: PUBLIC_URL })
     expect(logStaffAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a spoofed "image/png" whose bytes are not actually PNG (WR-03) and never uploads', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({
+      user: { id: LEADERSHIP_UUID },
+      staffRole: 'leadership',
+    })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    // Content-Type claims image/png but the bytes are all zeros — not a
+    // real PNG signature.
+    const res = await POST(multipartRequest(makeFile('lion.png', 'image/png', 1000)))
+
+    expect(res.status).toBe(400)
+    expect(service.uploadSpy).not.toHaveBeenCalled()
   })
 
   it('rejects a non-image mime with 400 and never uploads', async () => {
