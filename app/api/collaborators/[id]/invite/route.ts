@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { generateApprovalToken, APPROVAL_TOKEN_EXPIRY_DAYS } from '@/lib/split-sheets/approval'
-import { sendEmail } from '@/lib/email'
-import { esc } from '@/lib/email/esc'
+import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
 
 // ─── POST /api/collaborators/[id]/invite ─────────────────────────────────
 // Sends an educational IPI-invite email to the collaborator with a tokenized
-// link to /signup?invite=[token]. Enforces a 24h cooldown per collaborator+
+// link to /signup?invite=[token]. Enforces a 60s cooldown per collaborator+
 // inviting user pair to prevent duplicate emails (T-01-15, Pitfall 4).
 //
-// M6 (27-CODEX-REVIEW.md): collaborator.name is artist-entered, user-
-// controlled free text (lib/metadata's Composer/collaborator forms have no
-// HTML-safety constraint on it) and was previously interpolated into this
-// email's HTML body unescaped — an artist could plant markup/script in a
-// collaborator's name field that would render in the recipient's mail
-// client. Every interpolated value below is escaped via lib/email/esc.ts
-// (the same helper the branded artistInvite/artistSpotOpened/
-// artistReopened templates use).
+// This route is a thin wrapper: it owns auth + ownership, then delegates the
+// send mechanics (cooldown, token insert, email build/send) to the shared
+// lib/collaborators/invite.ts helper (260825-i4i Task 1) — the same helper
+// the quick-invite route uses, so there is exactly one invite implementation.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -31,6 +25,9 @@ export async function POST(
   const { id } = await params
 
   // ── 2. Load collaborator — must be owned by the requesting user ──────
+  // This ownership filter is what authorizes the token disclosure below:
+  // the invite token is a signup capability, and it is only ever handed
+  // back to the user who just proved they own this row.
   const { data: collaborator, error: collabError } = await supabase
     .from('collaborators')
     .select('id, user_id, name, email')
@@ -42,112 +39,23 @@ export async function POST(
     return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
   }
 
-  // ── 3. Require email — cannot invite without an address ──────────────
-  if (!collaborator.email) {
-    return NextResponse.json(
-      { error: 'A collaborator email address is required to send an invite' },
-      { status: 400 }
-    )
-  }
-
-  // ── 4. Short cooldown — a light guard against accidental double-sends only.
-  //      A deliberate "Resend invite" (>60s later) DOES re-send: artists
-  //      legitimately need to nudge a collaborator who missed the first email
-  //      (was a 24h silent block — T-01-15/Pitfall 4 — relaxed for resend UX).
-  const since = new Date(Date.now() - 60 * 1000).toISOString()
-  const { data: recentInvite } = await supabase
-    .from('collaborator_invites')
-    .select('id')
-    .eq('collaborator_id', id)
-    .eq('inviting_user_id', user.id)
-    .gte('sent_at', since)
-    .maybeSingle()
-
-  if (recentInvite) {
-    return NextResponse.json({ ok: true, skipped: true })
-  }
-
-  // ── 5. Generate invite token and insert invite record ─────────────────
-  const inviteToken = generateApprovalToken()
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + APPROVAL_TOKEN_EXPIRY_DAYS)
-
-  const { error: insertError } = await supabase.from('collaborator_invites').insert({
-    collaborator_id: id,
-    inviting_user_id: user.id,
-    invited_email: collaborator.email,
-    invite_token: inviteToken,
-    status: 'pending',
-    token_expires_at: expiresAt.toISOString(),
-  })
-
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
-  }
-
-  // ── 6. Send educational IPI invite email (D-04, D-08) ────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const inviteUrl = `${appUrl}/signup?invite=${inviteToken}`
-  const joinUrl = `${appUrl}/join/${inviteToken}`
-
-  // M6: escape every interpolated value before it lands in the HTML body —
-  // collaborator.name is artist-entered free text; joinUrl/inviteUrl embed
-  // a generated token but are escaped defensively too (esc() is a no-op on
-  // already-safe input).
-  const safeName = esc(collaborator.name)
-  const safeJoinUrl = esc(joinUrl)
-  const safeInviteUrl = esc(inviteUrl)
-
-  const result = await sendEmail({
-    to: collaborator.email,
-    subject: `You've been added as a collaborator on Funūn — claim your profile`,
-    html: `
-      <h2>Hi ${safeName},</h2>
-      <p>An artist has added you as a collaborator on <strong>Funūn</strong>. You can view your collaborator profile and make sure everything is accurate.</p>
-
-      <h3>What is an IPI/CAE number?</h3>
-      <p>An <strong>IPI (Interested Party Information)</strong> number is a unique identifier assigned to songwriters and publishers by Performing Rights Organizations (PROs). It's essential for tracking royalty payments across borders.</p>
-
-      <p><strong>Why it matters for you:</strong> Without an IPI number, royalties generated by your compositions may not be correctly attributed or paid to you — especially for international streams and performances.</p>
-
-      <h3>How to get your IPI number</h3>
-      <ul>
-        <li><strong>ASCAP (US):</strong> Register at <a href="https://www.ascap.com/membership">ascap.com/membership</a></li>
-        <li><strong>BMI (US):</strong> Register at <a href="https://www.bmi.com/creators">bmi.com/creators</a></li>
-        <li><strong>SESAC (US):</strong> Apply at <a href="https://www.sesac.com/affiliates">sesac.com/affiliates</a></li>
-        <li><strong>SOCAN (Canada):</strong> Register at <a href="https://www.socan.com/join">socan.com/join</a></li>
-      </ul>
-      <p>Once you're registered with a PRO, they will assign you an IPI number that you can add to your Funūn profile.</p>
-
-      <h3>View your collaborator profile</h3>
-      <p>The artist has recorded your information. You can view it and flag any corrections here:</p>
-      <p><a href="${safeJoinUrl}" style="display:inline-block;padding:10px 20px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">View my collaborator profile</a></p>
-
-      <h3>Create your Funūn account</h3>
-      <p>Join Funūn to manage your rights, track your registrations, and keep your collaborator data up to date:</p>
-      <p><a href="${safeInviteUrl}">Create your Funūn account →</a></p>
-
-      <p style="color:#888;font-size:12px">This link expires in ${APPROVAL_TOKEN_EXPIRY_DAYS} days.</p>
-    `,
-    text: [
-      `Hi ${collaborator.name},`,
-      '',
-      'An artist has added you as a collaborator on Funūn.',
-      '',
-      'ABOUT YOUR IPI/CAE NUMBER',
-      'An IPI number is assigned by your Performing Rights Organization (PRO). Without one, royalties from your compositions may not reach you.',
-      '',
-      'Register with: ASCAP (ascap.com/membership), BMI (bmi.com/creators), SESAC (sesac.com/affiliates), or SOCAN (socan.com/join)',
-      '',
-      `View your collaborator profile: ${joinUrl}`,
-      `Create your Funūn account: ${inviteUrl}`,
-    ].join('\n'),
+  // ── 3. Delegate to the shared invite mechanics ────────────────────────
+  const result = await sendCollaboratorInvite(supabase, {
+    collaborator: { id: collaborator.id, name: collaborator.name, email: collaborator.email },
+    invitingUserId: user.id,
   })
 
   if (!result.ok) {
-    // Email not configured or failed — still return ok (best-effort)
-    return NextResponse.json({ ok: true, emailSent: false })
+    return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  return NextResponse.json({ ok: true, emailSent: true })
+  // Token disclosed only to the owning user — the query above already
+  // proved ownership before this response is built (same posture as
+  // app/api/admin/staff/[id]/resend/route.ts's inviteLink return).
+  return NextResponse.json({
+    ok: true,
+    emailSent: result.emailSent,
+    ...(result.skipped ? { skipped: true } : {}),
+    inviteLink: result.inviteLink,
+  })
 }

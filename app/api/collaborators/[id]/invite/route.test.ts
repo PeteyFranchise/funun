@@ -29,7 +29,7 @@ function mockSupabase(
   options: {
     collaborator?: { id: string; user_id: string; name: string; email: string | null } | null
     collabError?: { message: string } | null
-    recentInvite?: { id: string } | null
+    recentInvite?: { id: string; invite_token?: string } | null
     insertError?: { message: string } | null
   } = {}
 ) {
@@ -80,6 +80,7 @@ function mockSupabase(
 
 beforeEach(() => {
   jest.clearAllMocks()
+  process.env.NEXT_PUBLIC_APP_URL = 'https://funun.studio'
   ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
 })
 
@@ -126,7 +127,8 @@ describe('POST /api/collaborators/[id]/invite', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ ok: true, emailSent: true })
+    expect(body).toEqual(expect.objectContaining({ ok: true, emailSent: true }))
+    expect(body.inviteLink).toContain('/signup?invite=')
     expect(supabase.insertSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         collaborator_id: COLLAB_ID,
@@ -146,7 +148,8 @@ describe('POST /api/collaborators/[id]/invite', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ ok: true, emailSent: false })
+    expect(body).toEqual(expect.objectContaining({ ok: true, emailSent: false }))
+    expect(body.inviteLink).toContain('/signup?invite=')
   })
 
   it('returns 404 when the collaborator is not found or not owned by the caller', async () => {
@@ -171,15 +174,18 @@ describe('POST /api/collaborators/[id]/invite', () => {
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
-  it('skips sending within the 60s cooldown and never inserts a second row', async () => {
-    const supabase = mockSupabase({ recentInvite: { id: 'recent-1' } })
+  it('skips sending within the 60s cooldown and never inserts a second row, returning the EXISTING token', async () => {
+    const supabase = mockSupabase({ recentInvite: { id: 'recent-1', invite_token: 'existing-token-xyz' } })
     ;(createApiClient as jest.Mock).mockResolvedValue(supabase)
 
     const res = await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ ok: true, skipped: true })
+    expect(body).toEqual(
+      expect.objectContaining({ ok: true, skipped: true, emailSent: false })
+    )
+    expect(body.inviteLink).toBe('https://funun.studio/signup?invite=existing-token-xyz')
     expect(supabase.insertSpy).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
   })
