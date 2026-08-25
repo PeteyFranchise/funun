@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ClientPartnersList } from './ClientPartnersList'
 import { AssignAePanel } from './AssignAePanel'
 import { OnboardingTasksPanel } from './OnboardingTasksPanel'
+import { TodaysPlayBanner, type TodaysPlayBannerData } from './TodaysPlayBanner'
 import type { ClientPartnerRow } from '@/lib/client-partners/columns'
 import type { AeCoverage, CoverageSummary } from '@/lib/client-partners/coverage'
 import type { OnboardingTask } from '@/lib/client-partners/onboarding'
@@ -43,6 +44,8 @@ export type ClientPartnersRoomProps = {
   clientHrefBase: string
   /** The signed-in staff member's own open D-07 handoff tasks — every role, not leadership-only. */
   openOnboardingTasks: OnboardingTask[]
+  /** D-31.2-11: the active team Play, own-book-scoped for the calling AE — null when no play is active. */
+  todaysPlay: TodaysPlayBannerData
 }
 
 type RoomTab = 'my' | 'all'
@@ -70,6 +73,7 @@ export function ClientPartnersRoom({
   companyHrefBase,
   clientHrefBase,
   openOnboardingTasks,
+  todaysPlay,
 }: ClientPartnersRoomProps) {
   const [tab, setTab] = useState<RoomTab>('my')
   const showAll = isLeadership && allData !== null && tab === 'all'
@@ -123,6 +127,7 @@ export function ClientPartnersRoom({
 
       {!showAll && (
         <>
+          <TodaysPlayBanner data={todaysPlay} />
           <OnboardingTasksPanel tasks={openOnboardingTasks} />
           <ClientPartnersList
             companyRows={myCompanyRows}
