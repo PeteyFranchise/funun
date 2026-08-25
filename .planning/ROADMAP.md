@@ -1247,7 +1247,32 @@ Plans:
 
 **Depends on:** **Phase 31.1** + Phase 33 (Playbook shell).
 
-**Status:** Split from 31.1 on 2026-08-23; plan after 31.1.
+**Status:** Split from 31.1 on 2026-08-23; planned 2026-08-24 (10 plans, 4 waves).
+
+**Plans:** 10 plans, 4 waves. **R9** (Playbook authoring/SOPs + RBAC + Plays) → plans 01, 03, 04, 06, 07, 08, 09. **R13** (Selects telemetry) → plans 01, 02, 05, 10. Blocking-human checkpoint: plan 01 (owner `supabase db push` of migrations 130/131/132).
+
+Plans:
+**Wave 1** *(foundation — parallel, disjoint files)*
+
+- [ ] 31.2-01-PLAN.md — Migrations 130/131/132 (RBAC+authoring, plays, engagement+cap) + text-locks + owner push [BLOCKING] (R9/R13)
+- [ ] 31.2-02-PLAN.md — Telemetry pure core: audible-time accumulator + engagement contract + hook (R13)
+
+**Wave 2** *(service + route layers — blocked on migrations)*
+
+- [ ] 31.2-03-PLAN.md — RBAC data layer: requireRoomAccess + access-grants + room×role matrix route (R9)
+- [ ] 31.2-04-PLAN.md — Playbook authoring API: SOP/Topic draft→publish gate (R9)
+- [ ] 31.2-05-PLAN.md — Telemetry write path: engagement POST route + SelectsPlayer wiring (R13)
+- [ ] 31.2-06-PLAN.md — Plays domain + API: one-active invariant, two assignment kinds, own-book eligibility (R9)
+
+**Wave 3** *(surfaces — blocked on Wave 2)*
+
+- [ ] 31.2-07-PLAN.md — RBAC UI + enforcement re-point: access-editor matrix, DB-driven Rail2, 5 IT guards (R9)
+- [ ] 31.2-08-PLAN.md — Authoring UI + dynamic Game-Plan topic sourcing (augment seeded) (R9)
+- [ ] 31.2-09-PLAN.md — Plays surfaces: PlayComposer, Today's Play banner, completion rollup (R9)
+
+**Wave 4** *(telemetry read surfaces — serialized after the tower touch)*
+
+- [ ] 31.2-10-PLAN.md — Telemetry read surfaces: AE per-Selects readout + leadership rollup (R13)
 
 ### Phase 33: The Playbook shell + IT Team monitoring dashboard (read-only v1)
 
