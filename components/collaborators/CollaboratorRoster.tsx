@@ -158,10 +158,13 @@ export function CollaboratorRoster({
         </div>
         {activeTab === 'roster' && !creating && (
           <div className="flex items-center gap-2">
+            {/* Invite is now the primary path (owner steer, 260825-i4i
+                follow-up) — skips the artist re-typing a collaborator's
+                own rights details. */}
             <button
               type="button"
               onClick={() => setQuickInviteOpen(true)}
-              className="rounded-lg border border-hairstrong px-4 py-2 text-sm font-semibold text-lav hover:text-white"
+              className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
             >
               Invite collaborator
             </button>
@@ -171,7 +174,7 @@ export function CollaboratorRoster({
                 setCreating(true)
                 setEditingId(null)
               }}
-              className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
+              className="rounded-lg border border-hairstrong px-4 py-2 text-sm font-semibold text-lav hover:text-white"
             >
               Add collaborator
             </button>
