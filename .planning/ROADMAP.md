@@ -1249,7 +1249,7 @@ Plans:
 
 **Status:** Split from 31.1 on 2026-08-23; planned 2026-08-24 (10 plans, 4 waves).
 
-**Plans:** 2/10 plans executed
+**Plans:** 6/10 plans executed
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
@@ -1259,10 +1259,10 @@ Plans:
 
 **Wave 2** *(service + route layers — blocked on migrations)*
 
-- [ ] 31.2-03-PLAN.md — RBAC data layer: requireRoomAccess + access-grants + room×role matrix route (R9)
-- [ ] 31.2-04-PLAN.md — Playbook authoring API: SOP/Topic draft→publish gate (R9)
-- [ ] 31.2-05-PLAN.md — Telemetry write path: engagement POST route + SelectsPlayer wiring (R13)
-- [ ] 31.2-06-PLAN.md — Plays domain + API: one-active invariant, two assignment kinds, own-book eligibility (R9)
+- [x] 31.2-03-PLAN.md — RBAC data layer: requireRoomAccess + access-grants + room×role matrix route (R9)
+- [x] 31.2-04-PLAN.md — Playbook authoring API: SOP/Topic draft→publish gate (R9)
+- [x] 31.2-05-PLAN.md — Telemetry write path: engagement POST route + SelectsPlayer wiring (R13)
+- [x] 31.2-06-PLAN.md — Plays domain + API: one-active invariant, two assignment kinds, own-book eligibility (R9)
 
 **Wave 3** *(surfaces — blocked on Wave 2)*
 
