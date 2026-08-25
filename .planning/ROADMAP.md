@@ -1249,7 +1249,7 @@ Plans:
 
 **Status:** Split from 31.1 on 2026-08-23; planned 2026-08-24 (10 plans, 4 waves).
 
-**Plans:** 6/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1** *(foundation — parallel, disjoint files)*
@@ -1266,9 +1266,9 @@ Plans:
 
 **Wave 3** *(surfaces — blocked on Wave 2)*
 
-- [ ] 31.2-07-PLAN.md — RBAC UI + enforcement re-point: access-editor matrix, DB-driven Rail2, 5 IT guards (R9)
-- [ ] 31.2-08-PLAN.md — Authoring UI + dynamic Game-Plan topic sourcing (augment seeded) (R9)
-- [ ] 31.2-09-PLAN.md — Plays surfaces: PlayComposer, Today's Play banner, completion rollup (R9)
+- [x] 31.2-07-PLAN.md — RBAC UI + enforcement re-point: access-editor matrix, DB-driven Rail2, 5 IT guards (R9)
+- [x] 31.2-08-PLAN.md — Authoring UI + dynamic Game-Plan topic sourcing (augment seeded) (R9)
+- [x] 31.2-09-PLAN.md — Plays surfaces: PlayComposer, Today's Play banner, completion rollup (R9)
 
 **Wave 4** *(telemetry read surfaces — serialized after the tower touch)*
 
