@@ -7,6 +7,7 @@ import { getStaffRole } from '@/lib/admin/gate'
 import { loadSelectsInScope } from '@/lib/selects/persistence'
 import { resolveTracksWithRightsReady } from '@/lib/selects/tracks-query'
 import { SelectsBuilder, type SelectsBuilderTrackRow } from '@/components/admin/SelectsBuilder'
+import { EngagementPanel } from '@/components/admin/EngagementPanel'
 
 // ─── Selects builder detail page (31-10, Task 2) ──────────────────────────
 // Staff-gated + own-book (loadSelectsInScope — the SAME scope authority
@@ -87,6 +88,9 @@ export default async function AdminSelectsDetailPage({
         initialTracks={initialTracks}
         initialRemoved={initialRemoved}
       />
+      {/* R13/D-31.2-13: staff-only, own-Selects-scoped telemetry readout —
+          self-fetches its own route (see EngagementPanel's doc comment). */}
+      <EngagementPanel selectsId={selects.id} />
     </div>
   )
 }
