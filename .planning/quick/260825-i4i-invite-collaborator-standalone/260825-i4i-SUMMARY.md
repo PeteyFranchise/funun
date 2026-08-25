@@ -125,3 +125,36 @@ actually deliver invites; that is the intended, tested behavior of this change.
 ## Self-Check: PASSED
 All 8 files listed under "Files created/modified" exist on disk. All 3 task commit hashes
 (`0dae4b6`, `275a6de`, `9a118b3`) are present in `git log --oneline`.
+
+## Follow-up (2026-08-25) — invite-first steer + fast-add auto-invite
+
+Owner-decided "invite-first" copy/UX steer applied on top of the shipped Task 1-3 work,
+plus one behavioral fix in an adjacent flow that had never actually invited anyone:
+
+- `CollaboratorRoster.tsx` — swapped button hierarchy so "Invite collaborator" is now
+  primary (`bg-grad`) and "Add collaborator" secondary, in both the header and the empty
+  state; added the verbatim steer line ("Skip the hassle — invite them to Funūn and let
+  them do the typing.") under the roster subtitle; empty-state body copy now leads with
+  invite.
+- `CollaboratorForm.tsx` — added a create-mode-only invite-first nudge at the top of the
+  heavy form, with an optional `onSwitchToInvite` prop (only `CollaboratorRoster`'s create
+  instance supplies it; `CollaboratorPicker`'s two other call sites are untouched and keep
+  working via the prop's optionality). Field/`required` count unchanged (still 9).
+- `components/split-sheets/PartyPicker.tsx` fast-add — previously POSTed
+  `/api/collaborators` and stopped, so its own "they'll fill in the rest" copy was never
+  true. It now automatically fires the shipped `POST /api/collaborators/[id]/invite`
+  after a successful fast-add (no checkbox), reusing `sendCollaboratorInvite()`. Phone-only
+  parties skip the invite call and finalize immediately with no error; a cooldown-reused or
+  email-send-failed invite still surfaces its link; any invite failure/throw finalizes the
+  add immediately with nothing shown — the party add itself is never blocked. A successful
+  invite pauses on a small result step with a "Copy invite link" control mirroring
+  `QuickInviteModal`'s clipboard handling.
+- New `lib/collaborators/auto-invite.ts` (two pure decisions: `isAutoInviteEligible`,
+  `extractAutoInviteLink`) plus `__tests__/party-picker-auto-invite.test.ts` (10 tests) —
+  `PartyPicker` has no jsdom test environment, so its wiring is covered by tsc/lint/build.
+
+Gates: `npx tsc --noEmit` clean, `npm run lint -- --max-warnings=0` clean, `npx jest` —
+2894/2894 passed (baseline 2884 + 10 new), `npm run build` clean,
+`grep -c 'required' components/collaborators/CollaboratorForm.tsx` → 9. No deviations.
+
+Commits: `a6c09ad`, `25bf00a`, `5d59f6a`, `6533c96`, `b7bc5a3`.
