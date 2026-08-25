@@ -6,6 +6,7 @@ import type { CollaboratorProfile } from '@/lib/collaborators'
 import { CollaboratorCard } from '@/components/collaborators/CollaboratorCard'
 import { CollaboratorForm } from '@/components/collaborators/CollaboratorForm'
 import { CollaboratorInvitePrompt } from '@/components/collaborators/CollaboratorInvitePrompt'
+import { QuickInviteModal } from '@/components/collaborators/QuickInviteModal'
 
 // ─── CollaboratorRoster ───────────────────────────────────────
 // Two-tab page-level client component:
@@ -46,6 +47,7 @@ export function CollaboratorRoster({
   const [activeTab, setActiveTab] = useState<'roster' | 'credits'>(initialTab)
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [quickInviteOpen, setQuickInviteOpen] = useState(false)
   const [list, setList] = useState<CollaboratorProfile[]>(collaborators)
   // Post-save invite nudge (D-08a) — set only when the just-saved row is a
   // NEW collaborator with a non-empty email; never gates the save itself.
@@ -113,6 +115,23 @@ export function CollaboratorRoster({
     }
   }
 
+  // QuickInviteModal already sent its own invite (via /api/collaborators/
+  // quick-invite) before calling this — fold the returned row into `list`
+  // by id (replace on the reuse path, append otherwise), re-sorted the same
+  // way handleSaved does. Never opens CollaboratorInvitePrompt: that nudge
+  // belongs to the full-form save path, and the quick path already sent.
+  function handleQuickInvited(collab: CollaboratorProfile) {
+    setList(prev => {
+      const idx = prev.findIndex(c => c.id === collab.id)
+      if (idx !== -1) {
+        const next = [...prev]
+        next[idx] = collab
+        return next.sort((a, b) => a.name.localeCompare(b.name))
+      }
+      return [...prev, collab].sort((a, b) => a.name.localeCompare(b.name))
+    })
+  }
+
   // Send an educational invite email to a non-member collaborator via the
   // existing 24h-cooldown endpoint. res.ok covers success, cooldown, and the
   // best-effort email path; the card owns the sending/sent/error UI.
@@ -138,16 +157,25 @@ export function CollaboratorRoster({
           </p>
         </div>
         {activeTab === 'roster' && !creating && (
-          <button
-            type="button"
-            onClick={() => {
-              setCreating(true)
-              setEditingId(null)
-            }}
-            className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
-          >
-            Add collaborator
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setQuickInviteOpen(true)}
+              className="rounded-lg border border-hairstrong px-4 py-2 text-sm font-semibold text-lav hover:text-white"
+            >
+              Invite collaborator
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreating(true)
+                setEditingId(null)
+              }}
+              className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
+            >
+              Add collaborator
+            </button>
+          </div>
         )}
       </div>
 
@@ -232,13 +260,22 @@ export function CollaboratorRoster({
               Add the people you work with once — their rights data auto-fills into split sheets and
               contracts.
             </p>
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="mt-2 rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
-            >
-              Add your first collaborator
-            </button>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
+              >
+                Add your first collaborator
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickInviteOpen(true)}
+                className="rounded-lg border border-hairstrong px-4 py-2 text-sm font-semibold text-lav hover:text-white"
+              >
+                Invite collaborator
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
@@ -360,6 +397,13 @@ export function CollaboratorRoster({
           </ul>
         )}
       </div>
+
+      {quickInviteOpen && (
+        <QuickInviteModal
+          onClose={() => setQuickInviteOpen(false)}
+          onInvited={handleQuickInvited}
+        />
+      )}
     </div>
   )
 }
