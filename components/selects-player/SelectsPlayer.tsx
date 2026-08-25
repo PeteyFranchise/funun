@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { SELP_CSS } from './theme'
 import { SELECTS_VIEWER_COOKIE } from '@/lib/selects/viewer-cookie'
 import { escapeHtml } from '@/lib/security/escape-html'
+import { useAudibleTimeAccumulator, type AudibleFlushEvent } from './useAudibleTimeAccumulator'
 
 export type PlayerReaction = 'love' | 'pass' | 'more_like_this' | null
 export type PlayerAttribution = { name: string; kind: 'ae' | 'client' } | null
@@ -101,6 +102,28 @@ function ensureViewerKey(): string {
       : `svk_${Date.now()}_${Math.random().toString(36).slice(2)}`
   document.cookie = `${SELECTS_VIEWER_COOKIE}=${encodeURIComponent(key)};path=/;max-age=31536000;samesite=lax`
   return key
+}
+
+// ─── engagement telemetry POST (R13, D-31.2-12/14) ─────────────────────────
+// navigator.sendBeacon for 'unload' so the last audible seconds survive page
+// teardown (a fetch() started during beforeunload/pagehide is not guaranteed
+// to complete — sendBeacon is the browser-reliable primitive for this exact
+// case). Every other event uses fetch with keepalive so the request can
+// outlive a same-tick navigation. Best-effort — a dropped telemetry POST
+// never surfaces an error to the viewer; this is a background signal, not a
+// user-facing action.
+function postEngagement(token: string, payload: Record<string, unknown>, event: AudibleFlushEvent | 'open') {
+  const body = JSON.stringify(payload)
+  if (event === 'unload' && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+    navigator.sendBeacon(`/api/selects/${token}/engagement`, new Blob([body], { type: 'application/json' }))
+    return
+  }
+  fetch(`/api/selects/${token}/engagement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    keepalive: true,
+  }).catch(() => {})
 }
 
 // ─── icons (inline, matches the locked reference's stroke set) ───────────
@@ -268,6 +291,14 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     viewerKeyRef.current = ensureViewerKey()
   }, [])
 
+  // Fire a single open event on mount (D-31.2-12) — runs after the effect
+  // above so viewerKeyRef.current is already populated (same-commit effects
+  // fire in declaration order on mount).
+  useEffect(() => {
+    postEngagement(data.token, { event: 'open', viewerKey: viewerKeyRef.current ?? undefined }, 'open')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.token])
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 300)
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -292,6 +323,24 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
 
   const currentPreview: PlayerPreview | null =
     current?.kind === 'curated' ? (tracks[current.index]?.preview ?? null) : null
+
+  // ─── engagement telemetry (R13) ────────────────────────────────────────
+  // Genuine audible-time deltas from the plan-02 accumulator, attached to
+  // the existing <audio> element below. Only curated tracks with a ready
+  // preview are attributed — a suggested-track preview or a still-processing
+  // curated preview never accumulates/POSTs, mirroring the guard the
+  // playback effect below already applies before setting el.src.
+  function handleAudibleFlush(deltaSeconds: number, event: AudibleFlushEvent) {
+    if (current?.kind !== 'curated') return
+    const track = tracks[current.index]
+    if (!track || track.preview.status !== 'ready') return
+    postEngagement(
+      data.token,
+      { selectsTrackId: track.rowId, deltaSeconds, event, viewerKey: viewerKeyRef.current ?? undefined },
+      event
+    )
+  }
+  useAudibleTimeAccumulator(audioRef, handleAudibleFlush)
 
   // ─── playback ────────────────────────────────────────────────────────
   useEffect(() => {
