@@ -1,4 +1,4 @@
-import { matchingClientCount, buildAssignmentDeepLink, type PlaysEligibilityRow } from './plays-eligibility'
+import { matchingClientCount, buildAssignmentDeepLink, applyPlayFilter, type PlaysEligibilityRow } from './plays-eligibility'
 
 // ─── plays-eligibility.ts — own-book client-targeted matching (D-31.2-09, T-31.2-17) ──
 // Proves matchingClientCount is a pure health/stage filter over whatever
@@ -90,5 +90,47 @@ describe('buildAssignmentDeepLink', () => {
 
   it('emits the bare route with no query string when neither filter is set — never a new route', () => {
     expect(buildAssignmentDeepLink({})).toBe('/admin/client-partners')
+  })
+})
+
+// ─── applyPlayFilter — CR-01: the deep-link's row-level filter ────────────
+// Proves the My tab's row filter shares matchingClientCount's exact
+// semantics, so the banner's "N in your book" count and the filtered list's
+// row count can never drift apart (D-31.2-09a).
+describe('applyPlayFilter', () => {
+  const book: PlaysEligibilityRow[] = [
+    row({ id: '1', health: 'at_risk', pipelineStageKey: 'negotiating' }),
+    row({ id: '2', health: 'good', pipelineStageKey: 'negotiating' }),
+    row({ id: '3', health: 'at_risk', pipelineStageKey: 'contacted' }),
+  ]
+
+  it('keeps only rows matching the health filter when only health is set', () => {
+    const result = applyPlayFilter(book, { health: 'at_risk', stage: null })
+    expect(result.map(r => r.id)).toEqual(['1', '3'])
+    expect(result).toHaveLength(matchingClientCount(book, { healthBand: 'at_risk' }))
+  })
+
+  it('keeps only rows matching the stage filter when only stage is set', () => {
+    const result = applyPlayFilter(book, { health: null, stage: 'negotiating' })
+    expect(result.map(r => r.id)).toEqual(['1', '2'])
+    expect(result).toHaveLength(matchingClientCount(book, { pipelineStageKey: 'negotiating' }))
+  })
+
+  it('requires BOTH health and stage to match when both are set — same count as matchingClientCount', () => {
+    const result = applyPlayFilter(book, { health: 'at_risk', stage: 'negotiating' })
+    expect(result.map(r => r.id)).toEqual(['1'])
+    expect(result).toHaveLength(
+      matchingClientCount(book, { healthBand: 'at_risk', pipelineStageKey: 'negotiating' })
+    )
+  })
+
+  it('is the identity transform for a null filter', () => {
+    expect(applyPlayFilter(book, null)).toBe(book)
+  })
+
+  it('is the identity transform for an all-null filter (no health, no stage)', () => {
+    const result = applyPlayFilter(book, { health: null, stage: null })
+    expect(result).toEqual(book)
+    expect(result).toHaveLength(matchingClientCount(book, {}))
   })
 })

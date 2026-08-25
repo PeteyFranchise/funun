@@ -10,6 +10,7 @@ import type { ClientPartnerRow } from '@/lib/client-partners/columns'
 import type { AeCoverage, CoverageSummary } from '@/lib/client-partners/coverage'
 import type { OnboardingTask } from '@/lib/client-partners/onboarding'
 import type { EngagementRollupData } from '@/lib/selects/engagement-rollup'
+import { applyPlayFilter, type PlayFilter } from '@/lib/client-partners/plays-eligibility'
 
 // ─── ClientPartnersRoom (D-31.1-01/04) ──────────────────────────────────────
 // The consolidated Client Partners room's client wrapper. Renders the My tab
@@ -49,9 +50,26 @@ export type ClientPartnersRoomProps = {
   todaysPlay: TodaysPlayBannerData
   /** R13/D-31.2-13: leadership-only engagement rollup — null for every non-leadership caller (the RSC page never computes it for them, T-31.2-27). */
   engagementRollup: EngagementRollupData | null
+  /**
+   * CR-01 (D-31.2-09a): a client-targeted Play assignment's deep-link
+   * query params, read + validated by the RSC page. Data-only (Pitfall 1) —
+   * an all-null object (or undefined) means no filter is active.
+   */
+  initialFilter?: PlayFilter | null
 }
 
 type RoomTab = 'my' | 'all'
+
+/** Treats an all-null/absent filter as no filter — the deep-link's "neither param set" case. */
+function normalizePlayFilter(filter: PlayFilter | null | undefined): PlayFilter | null {
+  if (!filter) return null
+  if (!filter.health && !filter.stage) return null
+  return filter
+}
+
+function playFilterLabel(filter: PlayFilter): string {
+  return [filter.health, filter.stage].filter(Boolean).join(' · ')
+}
 
 function initialsFor(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean).slice(0, 2)
@@ -78,6 +96,7 @@ export function ClientPartnersRoom({
   openOnboardingTasks,
   todaysPlay,
   engagementRollup,
+  initialFilter,
 }: ClientPartnersRoomProps) {
   const [tab, setTab] = useState<RoomTab>('my')
   const showAll = isLeadership && allData !== null && tab === 'all'
@@ -86,6 +105,12 @@ export function ClientPartnersRoom({
   // (a client-to-client function, never crossing the RSC boundary — see
   // ClientPartnersList.tsx's onRowAction contract note).
   const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null)
+  // CR-01 (D-31.2-09a): the My tab's active Plays deep-link filter, seeded
+  // from the RSC page's validated query params, dismissible via the chip's
+  // ✕. Applies to the My tab's COMPANY rows only — the All tab, banner,
+  // onboarding panel, and Client rows are untouched.
+  const [playFilter, setPlayFilter] = useState<PlayFilter | null>(() => normalizePlayFilter(initialFilter))
+  const filteredMyCompanyRows = applyPlayFilter(myCompanyRows, playFilter)
 
   return (
     <div className="mt-2">
@@ -133,8 +158,24 @@ export function ClientPartnersRoom({
         <>
           <TodaysPlayBanner data={todaysPlay} />
           <OnboardingTasksPanel tasks={openOnboardingTasks} />
+          {playFilter && (
+            <div
+              className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium text-[color:var(--ink-2)]"
+              style={{ borderColor: 'var(--indigo)', background: 'color-mix(in srgb, var(--indigo) 6%, var(--panel))' }}
+            >
+              Filtered by today&apos;s play: {playFilterLabel(playFilter)}
+              <button
+                type="button"
+                onClick={() => setPlayFilter(null)}
+                aria-label="Clear play filter"
+                className="text-[color:var(--ink-3)] transition hover:text-[color:var(--ink)]"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <ClientPartnersList
-            companyRows={myCompanyRows}
+            companyRows={filteredMyCompanyRows}
             clientRows={myClientRows}
             companyHrefBase={companyHrefBase}
             clientHrefBase={clientHrefBase}

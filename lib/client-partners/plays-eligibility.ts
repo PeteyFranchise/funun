@@ -26,6 +26,14 @@ export type AssignmentTargeting = {
   pipelineStageKey?: string | null
 }
 
+/** Shared AND-match predicate — a row matches when it satisfies EVERY filter that is set; no filter set at all matches. */
+function rowMatchesAssignment(row: PlaysEligibilityRow, assignment: AssignmentTargeting): boolean {
+  return (
+    (!assignment.healthBand || row.health === assignment.healthBand) &&
+    (!assignment.pipelineStageKey || row.pipelineStageKey === assignment.pipelineStageKey)
+  )
+}
+
 /**
  * Counts how many rows in the evaluating AE's OWN book match a
  * client-targeted assignment's healthBand and/or pipelineStageKey filters —
@@ -34,11 +42,35 @@ export type AssignmentTargeting = {
  * over an already own-book-scoped array — never a whole-org/global list.
  */
 export function matchingClientCount(book: PlaysEligibilityRow[], assignment: AssignmentTargeting): number {
-  return book.filter(
-    row =>
-      (!assignment.healthBand || row.health === assignment.healthBand) &&
-      (!assignment.pipelineStageKey || row.pipelineStageKey === assignment.pipelineStageKey)
-  ).length
+  return book.filter(row => rowMatchesAssignment(row, assignment)).length
+}
+
+// ─── applyPlayFilter — the My Client Partners deep-link row filter (CR-01) ──
+// The row-level counterpart to matchingClientCount, consumed by
+// ClientPartnersRoom.tsx when a Plays deep-link (buildAssignmentDeepLink's
+// ?health=&stage= query string) lands on /admin/client-partners. Shares the
+// EXACT SAME rowMatchesAssignment predicate as matchingClientCount so the
+// banner's "N in your book" count and the filtered list's row count can
+// never drift apart (D-31.2-09a).
+export type PlayFilter = { health: string | null; stage: string | null }
+
+/**
+ * Filters rows to only those matching an active Plays deep-link filter — a
+ * null filter, or a filter with neither health nor stage set, is the
+ * identity transform (matches matchingClientCount's "no filter matches the
+ * whole book" contract).
+ */
+export function applyPlayFilter<T extends PlaysEligibilityRow>(
+  rows: T[],
+  filter: PlayFilter | null | undefined
+): T[] {
+  if (!filter) return rows
+  const assignment: AssignmentTargeting = {
+    healthBand: (filter.health ?? null) as AssignmentTargeting['healthBand'],
+    pipelineStageKey: filter.stage ?? null,
+  }
+  if (!assignment.healthBand && !assignment.pipelineStageKey) return rows
+  return rows.filter(row => rowMatchesAssignment(row, assignment))
 }
 
 // The existing My Client Partners route (app/(admin)/admin/client-partners) —
