@@ -1343,6 +1343,21 @@ Plans:
 
 **The adoption model.** A file-authored doc (`docs/<area>/*.md`) is **imported once** into `playbook_entries`. From that point the team edits it in-app through the existing editor and approval flow; **the DB row is the source of truth and the file is its origin, not its permanent home.** This deliberately avoids two-way sync, where a doc edited in git and in-app diverges with no principled winner.
 
+**CENTRAL DECISION — how expressive is a Playbook page? (owner-flagged 2026-08-26)**
+
+Everything else in this phase follows from this. **Today an entry is a title plus a flat list of lines** — `sop` = `{ items: string[] }`, `topic` = `{ questions: string[] }` (see `components/playbook/EntryEditor.tsx`). There are **no paragraphs, headings, callouts, tables, or diagrams**. The sales SOP written 2026-08-26 (stages, numbered steps, colored callouts, a roles matrix) **cannot be expressed in the current editor** — it would flatten to a checklist.
+
+Vocabulary agreed with the owner: the coloured boxes are **callouts** (a.k.a. admonitions / alerts / panels), typed by intent — note (blue) · tip (green) · caution (amber) · warning (red). The step-by-step spine is a **process flow / vertical timeline (stepper)**, distinct from a true **flowchart** (boxes, arrows, decision diamonds).
+
+Three candidate authoring models:
+- **(1) Markdown + syntax** — author types markdown; callouts via a GitHub-style `> [!WARNING]` convention. Cheapest; gets headings/tables/lists free; requires learning a little syntax.
+- **(2) Block editor (Notion-style)** — click **+** → insert a Callout block, pick its type. Best authoring UX by far; much the largest build.
+- **(3) Diagrams-as-text** — flowcharts described in a few lines of text and rendered (already how the repo SOP's flowchart works).
+
+**Orchestrator's recommendation: (1) + (3)** — markdown covers headings/tables/callouts almost free, text-described diagrams cover flowcharts without building a drawing tool, and a block editor can be layered on later without changing the stored content. **Not yet decided — resolve in discuss-phase.**
+
+Whatever is chosen sets the stored content shape, so it must be settled **before** the adopt-a-doc importer is designed: an imported markdown doc has to land in whatever format the editor natively edits, or adopted pages become second-class and un-editable — which would defeat the owner's "both editable from inside The Playbook" requirement.
+
 **In scope:**
 1. **Adopt-a-doc**: import a `docs/<area>/*.md` file into a room as a `playbook_entries` row (title, content, room, provenance = source path + adopted-at). Idempotent; never silently re-imports over in-app edits.
 2. **Unified rendering**: file-origin and natively-authored entries must render through the **same room components** — an adopted doc must be visually indistinguishable from one written in the editor. Today the IT room renders markdown via `lib/playbook/read-doc.ts` while 31.2 entries render through the entry surfaces; these must converge.
