@@ -516,6 +516,18 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     <div className="space-y-12">
       <form onSubmit={handleSubmit} className="space-y-8">
 
+        {/* ── Group divider ───────────────────────────────── */}
+        <div className="border-b border-white/10 pb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-lav">
+            Contracts &amp; rights
+          </p>
+          <p className="mt-1.5 text-xs text-white/40">
+            Private — only you and the documents you generate see this. Fill it in once
+            and your name, contact, and rights details flow into every split sheet,
+            contract, and registration automatically, with no retyping.
+          </p>
+        </div>
+
         {/* ── Legal Identity ──────────────────────────────────────── */}
         <section className="space-y-4">
           <div>
@@ -643,6 +655,324 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </div>
           )}
         </section>
+
+        {/* ── Contact ────────────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Contact</h2>
+            {/* "Used on contracts and split sheets" was dropped — the group
+                divider above now says exactly that for the whole group, and
+                repeating it here is the wordiness beta users flagged. What
+                survives is the part the divider does NOT cover. */}
+            <p className="mt-1 text-xs text-white/40">
+              Your login email is managed through your account settings.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input
+                type="tel"
+                value={form.contact_phone}
+                onChange={e => set('contact_phone', e.target.value)}
+                placeholder="+1 555 000 0000"
+                className={`mt-1 ${inputClass}`}
+              />
+              {profile.claim_prefill?.contact_phone && !profile.claim_prefill.contact_phone.confirmed && (
+                <ClaimPrefillNotice
+                  field="contact_phone"
+                  entry={profile.claim_prefill.contact_phone}
+                  submitting={confirmingField === 'contact_phone'}
+                  error={confirmingField === 'contact_phone' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Mailing address</label>
+              <AddressAutocomplete
+                value={form.mailing_address}
+                onChange={handleAddressChange}
+                inputClass={`mt-1 ${inputClass}`}
+              />
+              {form.mailing_address_structured && (
+                <p className="mt-1 text-xs text-white/30">
+                  Address verified via Google
+                </p>
+              )}
+              {profile.claim_prefill?.mailing_address && !profile.claim_prefill.mailing_address.confirmed && (
+                <ClaimPrefillNotice
+                  field="mailing_address"
+                  entry={profile.claim_prefill.mailing_address}
+                  submitting={confirmingField === 'mailing_address'}
+                  error={confirmingField === 'mailing_address' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Rights & Royalties ─────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Rights &amp; Royalties</h2>
+            <p className="mt-1 text-xs text-white/40">
+              Your rights registry information. Flows automatically into split sheets,
+              metadata, and registration checklists.
+            </p>
+            {/* D-12 (19-CONTEXT.md) — verbatim help line, single canonical
+                rights input now that the duplicate "Rights Identity"
+                section and its API route are removed (R1). */}
+            <p className="mt-1 text-xs text-white/40">
+              Used on your split sheets, metadata, and registrations.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>PRO affiliation</label>
+              <select
+                value={form.pro}
+                onChange={e => set('pro', e.target.value)}
+                className={`mt-1 ${inputClass}`}
+              >
+                <option value="" className="bg-neutral-900">Select PRO (optional)</option>
+                {PRO_VALUES.map(v => (
+                  <option key={v} value={v} className="bg-neutral-900">
+                    {PRO_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+              {profile.claim_prefill?.pro && !profile.claim_prefill.pro.confirmed && (
+                <ClaimPrefillNotice
+                  field="pro"
+                  entry={profile.claim_prefill.pro}
+                  submitting={confirmingField === 'pro'}
+                  error={confirmingField === 'pro' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>IPI / CAE number</label>
+              <input
+                value={form.ipi}
+                onChange={e => set('ipi', e.target.value)}
+                placeholder="00000000000"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
+              {profile.claim_prefill?.ipi && !profile.claim_prefill.ipi.confirmed && (
+                <ClaimPrefillNotice
+                  field="ipi"
+                  entry={profile.claim_prefill.ipi}
+                  submitting={confirmingField === 'ipi'}
+                  error={confirmingField === 'ipi' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>Publisher</label>
+              <input
+                value={form.publisher}
+                onChange={e => set('publisher', e.target.value)}
+                placeholder="Publisher name"
+                className={`mt-1 ${inputClass}`}
+              />
+              {profile.claim_prefill?.publisher && !profile.claim_prefill.publisher.confirmed && (
+                <ClaimPrefillNotice
+                  field="publisher"
+                  entry={profile.claim_prefill.publisher}
+                  submitting={confirmingField === 'publisher'}
+                  error={confirmingField === 'publisher' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>Administrator</label>
+              <input
+                value={form.administrator}
+                onChange={e => set('administrator', e.target.value)}
+                placeholder="Publishing administrator"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">
+                Enter your publishing administrator if you have one. If you do not have one yet, enter &quot;None&quot;.
+              </p>
+              {profile.claim_prefill?.administrator && !profile.claim_prefill.administrator.confirmed && (
+                <ClaimPrefillNotice
+                  field="administrator"
+                  entry={profile.claim_prefill.administrator}
+                  submitting={confirmingField === 'administrator'}
+                  error={confirmingField === 'administrator' ? confirmFieldError : null}
+                  onConfirm={handleConfirmPrefillField}
+                />
+              )}
+            </div>
+            <div>
+              <label className={labelClass}>MLC member ID</label>
+              <input
+                value={form.mlc_id}
+                onChange={e => set('mlc_id', e.target.value)}
+                placeholder="MLC-XXXXXXXX"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>SoundExchange ID</label>
+              <input
+                value={form.soundexchange_id}
+                onChange={e => set('soundexchange_id', e.target.value)}
+                placeholder="SE-XXXXXXXX"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>ISNI</label>
+              <input
+                value={form.isni}
+                onChange={e => set('isni', e.target.value)}
+                placeholder="0000 0001 2103 2683"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">
+                Your own International Standard Name Identifier, if you have one. Funūn never
+                generates an ISNI — it's allocated by the ISNI International Agency.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ISRC registrant ────────────────────────────────────── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
+            <p className="mt-1 text-xs text-white/40">
+              If you hold your own ISRC registrant code, add it here and Funūn can mint
+              compliant ISRCs for your tracks automatically. Don't have one? Your distributor
+              assigns ISRCs for free — leave this blank.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Country code</label>
+              <input
+                value={form.isrc_country_code}
+                onChange={e => set('isrc_country_code', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
+                placeholder="US"
+                maxLength={2}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">2 letters — country of the registrant.</p>
+            </div>
+            <div>
+              <label className={labelClass}>Registrant code</label>
+              <input
+                value={form.isrc_registrant_code}
+                onChange={e => set('isrc_registrant_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))}
+                placeholder="S1Z"
+                maxLength={3}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
+            </div>
+          </div>
+
+          {/* ── ISRC learn more ─────────────────────────────────────── */}
+          <IsrcLearnMore />
+        </section>
+
+        {/* ── Release-identifier prefixes (migration 082, 16-11) ───── */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Release identifier prefixes</h2>
+            {/* The RULE stays visible; the WHY collapses (see components/ui/
+                LearnWhy.tsx). "Most artists hold none, and nothing here is
+                required" is the one line an artist must not miss — this whole
+                section is defensive, existing mainly to stop people entering
+                junk into fields they have no business filling. */}
+            <p className="mt-1 text-xs text-white/40">
+              Only fill these in if you hold your own prefix — most artists hold none, and
+              nothing here is required.
+            </p>
+            {/* Do NOT reintroduce "Funūn mints GRids by default under its own
+                platform issuer code" here. platform_identifier_config
+                .grid_issuer_code is NULL on purpose — Funūn is not registered
+                with IFPI, and migration 082 forbids seeding a placeholder
+                because a fabricated issuer code would stamp invalid GRids
+                under a non-existent authority. canGenerate() refuses the
+                scheme accordingly (lib/metadata/generate.ts), so promising it
+                here would advertise a capability the system deliberately
+                declines to have. Revisit only once registration actually
+                happens — a real deal, DDEX delivery, or distributor
+                conversation is the trigger named in 082. */}
+            <div className="mt-1.5">
+              <LearnWhy>
+                <p className="text-xs text-white/40">
+                  Funūn issues no identifiers under its own name: a GS1 prefix is the only
+                  way to generate a UPC, and most artists get one free from their
+                  distributor instead. GRid generation stays unavailable until you add your
+                  own issuer code, or Funūn registers as an issuer.
+                </p>
+              </LearnWhy>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>GS1 company prefix</label>
+              <input
+                value={form.gs1_company_prefix}
+                onChange={e => set('gs1_company_prefix', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                placeholder="060123"
+                className={`mt-1 ${inputClass}`}
+              />
+              <p className="mt-1 text-xs text-white/30">Only if you hold your own GS1 prefix — required to generate a UPC.</p>
+            </div>
+            <div>
+              <label className={labelClass}>GRid issuer code (optional override)</label>
+              <input
+                value={form.grid_issuer_code}
+                onChange={e => set('grid_issuer_code', e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5))}
+                placeholder="A12B3"
+                maxLength={5}
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              {/* The "leave blank" instruction lives here, NOT in the
+                  placeholder: a GRid issuer code is 5 characters, so the input
+                  is sized for 5 characters and any sentence-length placeholder
+                  is guaranteed to truncate mid-word. Placeholder shows the
+                  SHAPE of a valid value; the helper carries the direction. */}
+              <p className="mt-1 text-xs text-white/30">
+                Only if your label already holds its own GRid issuer code — without one,
+                GRid generation is unavailable.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass}>Catalog number prefix</label>
+              <input
+                value={form.catalog_number_prefix}
+                onChange={e => set('catalog_number_prefix', e.target.value.toUpperCase().slice(0, 12))}
+                placeholder="FUN"
+                className={`mt-1 ${inputClass} uppercase`}
+              />
+              <p className="mt-1 text-xs text-white/30">Your own internal label prefix — no issuing body involved.</p>
+            </div>
+          </div>
+        </section>
+
+
+        {/* ── Group divider ───────────────────────────────── */}
+        <div className="border-t border-white/10 pt-8 pb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-lav">
+            Your public profile
+          </p>
+          <p className="mt-1.5 text-xs text-white/40">
+            What everyone else sees. Fill it in to show up in search, on your profile
+            page, and in front of industry pros browsing for people to work with.
+          </p>
+        </div>
 
         {/* ── Public Profile ─────────────────────────────────────── */}
         <section className="space-y-4">
@@ -952,60 +1282,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           )}
         </section>
 
-        {/* ── Contact ────────────────────────────────────────────── */}
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Contact</h2>
-            <p className="mt-1 text-xs text-white/40">
-              Used on contracts and split sheets. Your login email is managed through
-              your account settings.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Phone</label>
-              <input
-                type="tel"
-                value={form.contact_phone}
-                onChange={e => set('contact_phone', e.target.value)}
-                placeholder="+1 555 000 0000"
-                className={`mt-1 ${inputClass}`}
-              />
-              {profile.claim_prefill?.contact_phone && !profile.claim_prefill.contact_phone.confirmed && (
-                <ClaimPrefillNotice
-                  field="contact_phone"
-                  entry={profile.claim_prefill.contact_phone}
-                  submitting={confirmingField === 'contact_phone'}
-                  error={confirmingField === 'contact_phone' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelClass}>Mailing address</label>
-              <AddressAutocomplete
-                value={form.mailing_address}
-                onChange={handleAddressChange}
-                inputClass={`mt-1 ${inputClass}`}
-              />
-              {form.mailing_address_structured && (
-                <p className="mt-1 text-xs text-white/30">
-                  Address verified via Google
-                </p>
-              )}
-              {profile.claim_prefill?.mailing_address && !profile.claim_prefill.mailing_address.confirmed && (
-                <ClaimPrefillNotice
-                  field="mailing_address"
-                  entry={profile.claim_prefill.mailing_address}
-                  submitting={confirmingField === 'mailing_address'}
-                  error={confirmingField === 'mailing_address' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-          </div>
-        </section>
-
         {/* ── Links ──────────────────────────────────────────────── */}
         <section className="space-y-4">
           <h2 className="text-sm font-semibold text-white">Links</h2>
@@ -1045,255 +1321,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 placeholder="https://open.spotify.com/artist/…"
                 className={`mt-1 ${inputClass}`}
               />
-            </div>
-          </div>
-        </section>
-
-        {/* ── Rights & Royalties ─────────────────────────────────── */}
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Rights &amp; Royalties</h2>
-            <p className="mt-1 text-xs text-white/40">
-              Your rights registry information. Flows automatically into split sheets,
-              metadata, and registration checklists.
-            </p>
-            {/* D-12 (19-CONTEXT.md) — verbatim help line, single canonical
-                rights input now that the duplicate "Rights Identity"
-                section and its API route are removed (R1). */}
-            <p className="mt-1 text-xs text-white/40">
-              Used on your split sheets, metadata, and registrations.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>PRO affiliation</label>
-              <select
-                value={form.pro}
-                onChange={e => set('pro', e.target.value)}
-                className={`mt-1 ${inputClass}`}
-              >
-                <option value="" className="bg-neutral-900">Select PRO (optional)</option>
-                {PRO_VALUES.map(v => (
-                  <option key={v} value={v} className="bg-neutral-900">
-                    {PRO_LABELS[v]}
-                  </option>
-                ))}
-              </select>
-              {profile.claim_prefill?.pro && !profile.claim_prefill.pro.confirmed && (
-                <ClaimPrefillNotice
-                  field="pro"
-                  entry={profile.claim_prefill.pro}
-                  submitting={confirmingField === 'pro'}
-                  error={confirmingField === 'pro' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-            <div>
-              <label className={labelClass}>IPI / CAE number</label>
-              <input
-                value={form.ipi}
-                onChange={e => set('ipi', e.target.value)}
-                placeholder="00000000000"
-                className={`mt-1 ${inputClass}`}
-              />
-              <p className="mt-1 text-xs text-white/30">Assigned by your PRO when you register.</p>
-              {profile.claim_prefill?.ipi && !profile.claim_prefill.ipi.confirmed && (
-                <ClaimPrefillNotice
-                  field="ipi"
-                  entry={profile.claim_prefill.ipi}
-                  submitting={confirmingField === 'ipi'}
-                  error={confirmingField === 'ipi' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-            <div>
-              <label className={labelClass}>Publisher</label>
-              <input
-                value={form.publisher}
-                onChange={e => set('publisher', e.target.value)}
-                placeholder="Publisher name"
-                className={`mt-1 ${inputClass}`}
-              />
-              {profile.claim_prefill?.publisher && !profile.claim_prefill.publisher.confirmed && (
-                <ClaimPrefillNotice
-                  field="publisher"
-                  entry={profile.claim_prefill.publisher}
-                  submitting={confirmingField === 'publisher'}
-                  error={confirmingField === 'publisher' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-            <div>
-              <label className={labelClass}>Administrator</label>
-              <input
-                value={form.administrator}
-                onChange={e => set('administrator', e.target.value)}
-                placeholder="Publishing administrator"
-                className={`mt-1 ${inputClass}`}
-              />
-              <p className="mt-1 text-xs text-white/30">
-                Enter your publishing administrator if you have one. If you do not have one yet, enter &quot;None&quot;.
-              </p>
-              {profile.claim_prefill?.administrator && !profile.claim_prefill.administrator.confirmed && (
-                <ClaimPrefillNotice
-                  field="administrator"
-                  entry={profile.claim_prefill.administrator}
-                  submitting={confirmingField === 'administrator'}
-                  error={confirmingField === 'administrator' ? confirmFieldError : null}
-                  onConfirm={handleConfirmPrefillField}
-                />
-              )}
-            </div>
-            <div>
-              <label className={labelClass}>MLC member ID</label>
-              <input
-                value={form.mlc_id}
-                onChange={e => set('mlc_id', e.target.value)}
-                placeholder="MLC-XXXXXXXX"
-                className={`mt-1 ${inputClass}`}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>SoundExchange ID</label>
-              <input
-                value={form.soundexchange_id}
-                onChange={e => set('soundexchange_id', e.target.value)}
-                placeholder="SE-XXXXXXXX"
-                className={`mt-1 ${inputClass}`}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>ISNI</label>
-              <input
-                value={form.isni}
-                onChange={e => set('isni', e.target.value)}
-                placeholder="0000 0001 2103 2683"
-                className={`mt-1 ${inputClass}`}
-              />
-              <p className="mt-1 text-xs text-white/30">
-                Your own International Standard Name Identifier, if you have one. Funūn never
-                generates an ISNI — it's allocated by the ISNI International Agency.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── ISRC registrant ────────────────────────────────────── */}
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-white">ISRC registrant</h2>
-            <p className="mt-1 text-xs text-white/40">
-              If you hold your own ISRC registrant code, add it here and Funūn can mint
-              compliant ISRCs for your tracks automatically. Don't have one? Your distributor
-              assigns ISRCs for free — leave this blank.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Country code</label>
-              <input
-                value={form.isrc_country_code}
-                onChange={e => set('isrc_country_code', e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))}
-                placeholder="US"
-                maxLength={2}
-                className={`mt-1 ${inputClass} uppercase`}
-              />
-              <p className="mt-1 text-xs text-white/30">2 letters — country of the registrant.</p>
-            </div>
-            <div>
-              <label className={labelClass}>Registrant code</label>
-              <input
-                value={form.isrc_registrant_code}
-                onChange={e => set('isrc_registrant_code', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))}
-                placeholder="S1Z"
-                maxLength={3}
-                className={`mt-1 ${inputClass} uppercase`}
-              />
-              <p className="mt-1 text-xs text-white/30">3 characters — issued to you by the agency.</p>
-            </div>
-          </div>
-
-          {/* ── ISRC learn more ─────────────────────────────────────── */}
-          <IsrcLearnMore />
-        </section>
-
-        {/* ── Release-identifier prefixes (migration 082, 16-11) ───── */}
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Release identifier prefixes</h2>
-            {/* The RULE stays visible; the WHY collapses (see components/ui/
-                LearnWhy.tsx). "Most artists hold none, and nothing here is
-                required" is the one line an artist must not miss — this whole
-                section is defensive, existing mainly to stop people entering
-                junk into fields they have no business filling. */}
-            <p className="mt-1 text-xs text-white/40">
-              Only fill these in if you hold your own prefix — most artists hold none, and
-              nothing here is required.
-            </p>
-            {/* Do NOT reintroduce "Funūn mints GRids by default under its own
-                platform issuer code" here. platform_identifier_config
-                .grid_issuer_code is NULL on purpose — Funūn is not registered
-                with IFPI, and migration 082 forbids seeding a placeholder
-                because a fabricated issuer code would stamp invalid GRids
-                under a non-existent authority. canGenerate() refuses the
-                scheme accordingly (lib/metadata/generate.ts), so promising it
-                here would advertise a capability the system deliberately
-                declines to have. Revisit only once registration actually
-                happens — a real deal, DDEX delivery, or distributor
-                conversation is the trigger named in 082. */}
-            <div className="mt-1.5">
-              <LearnWhy>
-                <p className="text-xs text-white/40">
-                  Funūn issues no identifiers under its own name: a GS1 prefix is the only
-                  way to generate a UPC, and most artists get one free from their
-                  distributor instead. GRid generation stays unavailable until you add your
-                  own issuer code, or Funūn registers as an issuer.
-                </p>
-              </LearnWhy>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>GS1 company prefix</label>
-              <input
-                value={form.gs1_company_prefix}
-                onChange={e => set('gs1_company_prefix', e.target.value.replace(/\D/g, '').slice(0, 11))}
-                placeholder="060123"
-                className={`mt-1 ${inputClass}`}
-              />
-              <p className="mt-1 text-xs text-white/30">Only if you hold your own GS1 prefix — required to generate a UPC.</p>
-            </div>
-            <div>
-              <label className={labelClass}>GRid issuer code (optional override)</label>
-              <input
-                value={form.grid_issuer_code}
-                onChange={e => set('grid_issuer_code', e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5))}
-                placeholder="A12B3"
-                maxLength={5}
-                className={`mt-1 ${inputClass} uppercase`}
-              />
-              {/* The "leave blank" instruction lives here, NOT in the
-                  placeholder: a GRid issuer code is 5 characters, so the input
-                  is sized for 5 characters and any sentence-length placeholder
-                  is guaranteed to truncate mid-word. Placeholder shows the
-                  SHAPE of a valid value; the helper carries the direction. */}
-              <p className="mt-1 text-xs text-white/30">
-                Only if your label already holds its own GRid issuer code — without one,
-                GRid generation is unavailable.
-              </p>
-            </div>
-            <div>
-              <label className={labelClass}>Catalog number prefix</label>
-              <input
-                value={form.catalog_number_prefix}
-                onChange={e => set('catalog_number_prefix', e.target.value.toUpperCase().slice(0, 12))}
-                placeholder="FUN"
-                className={`mt-1 ${inputClass} uppercase`}
-              />
-              <p className="mt-1 text-xs text-white/30">Your own internal label prefix — no issuing body involved.</p>
             </div>
           </div>
         </section>
