@@ -1,4 +1,4 @@
-# SOP — New Lead to Permanent AE
+# SOP — New Lead to Assigned AE
 
 **Owner:** Leadership · **Applies to:** BDT (Business Development Team) + Leadership
 **Status:** DRAFT — agreed flow, not yet built in the product
@@ -8,17 +8,18 @@
 
 ## Why this exists
 
-A new buyer company that signs up on Funūn is **not** immediately handed to a
-permanent Account Executive. It first passes through a **first-contact stage**
+A new buyer company that signs up on Funūn is **not** immediately handed to an
+Account Executive. It first passes through a **first-contact stage**
 run by BDT, whose job is to make sure the lead is genuinely onboarded and stays
-engaged while Leadership decides which AE will own the long-term relationship.
+engaged while Leadership decides which AE will own the ongoing relationship.
 
 Two stages. Two different owners. Two different SOPs.
 
 - **Stage 1 — First contact.** A BDT (or Leadership) member acts as a
   **temporary liaison**.
-- **Stage 2 — Permanent AE.** Leadership assigns the AE who will build the
-  ongoing relationship.
+- **Stage 2 — AE assignment.** Leadership assigns the AE who will build the
+  ongoing relationship. That assignment is not fixed — Leadership can
+  reassign an account to a different AE at any time.
 
 The liaison is a relay runner, not the destination.
 
@@ -45,7 +46,7 @@ flowchart TD
 
     G --> H["NEEDS AE QUEUE<br/>Leadership only<br/>liaison still owns until AE takes over"]
 
-    H --> I["LEADERSHIP ONLY<br/>assigns the permanent AE"]
+    H --> I["LEADERSHIP ONLY<br/>assigns the AE"]
 
     I --> J["Warm transfer / intro<br/>liaison introduces client to AE"]
 
@@ -87,14 +88,18 @@ makes the call. A checkbox count should never promote an account on its own.
 
 ---
 
-## Stage 2 — Permanent AE (Leadership only)
+## Stage 2 — AE assignment (Leadership only)
 
 5. **Leadership is alerted** that an account needs an AE. It appears in the
    **Needs AE queue**.
-6. **Only Leadership assigns the permanent AE.** A BDT member cannot choose the
+6. **Only Leadership assigns the AE.** A BDT member cannot choose the
    AE — this is deliberately reserved for whoever manages the AE team.
 7. **The liaison makes a warm transfer** — a real introduction between the
    client and their new AE, not a silent reassignment.
+
+**AE assignment is not permanent.** Leadership can reassign an account to a
+different AE at any time — that is ordinary book management (the existing D-07
+handoff), and does not re-run this lead SOP.
 
 ---
 
@@ -119,7 +124,7 @@ makes the call. A checkbox count should never promote an account on its own.
 | Run first-contact tasks | ✅ | ✅ | — |
 | Declare "Ready for an AE" | ✅ | ✅ | — |
 | See the Needs AE queue | — | ✅ | — |
-| **Assign the permanent AE** | ❌ | ✅ | — |
+| **Assign the AE** | ❌ | ✅ | — |
 | Warm transfer / intro | ✅ | ✅ | — |
 | Own the ongoing relationship | — | — | ✅ |
 | Transition access (~2 months) | ✅ | ✅ | ✅ |
