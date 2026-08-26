@@ -1312,6 +1312,7 @@ Plans:
 **Canonical ref:** `docs/sales/LEAD-TO-AE-HANDOFF-SOP.md` — the owner-agreed SOP (flow, roles matrix, edge cases, build split). **Read before planning.**
 
 **In scope (the "build now" slice, owner-agreed 2026-08-26):**
+
 1. Lead-routed notification **fans out to every Leadership + BDT member** (replaces the arbitrary single-recipient fallback bug)
 2. A **Leads queue** surface visible to Leadership + BDT — separate from the existing leadership-only Needs-AE queue
 3. **Pick up** (self-claim, one click) or **assign a liaison** (Leader assigns to a BDT/Leadership member)
@@ -1331,6 +1332,34 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 34 to break down)
+
+### Phase 35: The Playbook — Room Content: adopt file docs into entries, unified rendering, stock the rooms
+
+**Goal:** Close the gap Phase 33 deliberately left open ("the other rooms' content" — deferred, never given a follow-on phase). The shelves are built (Phase 33 shell) and the authoring machinery exists (Phase 31.2 entries + draft→approve + room×role access editor), but every room except IT Team is empty, and the two content mechanisms don't meet.
+
+**Owner decision (2026-08-26): BOTH mechanisms, and BOTH editable from inside The Playbook, without breaking the look/feel/design of the room.**
+
+**The constraint that shapes the design:** the app runs serverless on Vercel with a **read-only filesystem** — the running app physically cannot write back to `docs/`. Editing a file in place from the browser is impossible without committing through the GitHub API (which would turn every wiki edit into a deploy). Therefore:
+
+**The adoption model.** A file-authored doc (`docs/<area>/*.md`) is **imported once** into `playbook_entries`. From that point the team edits it in-app through the existing editor and approval flow; **the DB row is the source of truth and the file is its origin, not its permanent home.** This deliberately avoids two-way sync, where a doc edited in git and in-app diverges with no principled winner.
+
+**In scope:**
+1. **Adopt-a-doc**: import a `docs/<area>/*.md` file into a room as a `playbook_entries` row (title, content, room, provenance = source path + adopted-at). Idempotent; never silently re-imports over in-app edits.
+2. **Unified rendering**: file-origin and natively-authored entries must render through the **same room components** — an adopted doc must be visually indistinguishable from one written in the editor. Today the IT room renders markdown via `lib/playbook/read-doc.ts` while 31.2 entries render through the entry surfaces; these must converge.
+3. **Generalize beyond `docs/observability/`**: `read-doc.ts` is hardcoded to that one folder, so `docs/sales/` (and any future area) cannot render today.
+4. **Stock the rooms**: seed the first real content per room — starting with **Sales** (`docs/sales/LEAD-TO-AE-HANDOFF-SOP.md`, the lead → assigned-AE SOP written 2026-08-26).
+
+**Watch-outs:** (a) Phase 31.2's role-tiered publish gate and the room×role access editor already exist — reuse, do not rebuild. (b) The IT room already works; adoption must not regress it. (c) Decide explicitly what happens if an adopted doc's source file later changes in git (proposal: surface a "source changed" notice, never auto-overwrite in-app edits). (d) UI mockup artifacts are NOT article material — they expire on ship (see the artifacts→Playbook memory); only durable process/policy docs get adopted.
+
+**Depends on:** Phase 33 (shell), Phase 31.2 (authoring + RBAC)
+
+**Status:** Roadmapped 2026-08-26. Not yet discussed/planned.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 35 to break down)
 
 ---
 
