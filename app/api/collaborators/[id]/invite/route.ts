@@ -11,12 +11,6 @@ import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
 // send mechanics (cooldown, token insert, email build/send) to the shared
 // lib/collaborators/invite.ts helper (260825-i4i Task 1) — the same helper
 // the quick-invite route uses, so there is exactly one invite implementation.
-//
-// 260825-m2k: sendCollaboratorInvite now returns an outcome discriminant —
-// invited (signup token minted), connect-requested/-pending, already-
-// connected, or already-linked. The token-disclosure rationale below now
-// applies to exactly one branch: inviteLink/emailSent/skipped are only ever
-// present when outcome is invited.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +30,7 @@ export async function POST(
   // back to the user who just proved they own this row.
   const { data: collaborator, error: collabError } = await supabase
     .from('collaborators')
-    .select('id, user_id, name, email, claimed_by')
+    .select('id, user_id, name, email')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle()
@@ -47,12 +41,7 @@ export async function POST(
 
   // ── 3. Delegate to the shared invite mechanics ────────────────────────
   const result = await sendCollaboratorInvite(supabase, {
-    collaborator: {
-      id: collaborator.id,
-      name: collaborator.name,
-      email: collaborator.email,
-      claimed_by: collaborator.claimed_by,
-    },
+    collaborator: { id: collaborator.id, name: collaborator.name, email: collaborator.email },
     invitingUserId: user.id,
   })
 
@@ -60,26 +49,13 @@ export async function POST(
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
 
-  // inviteLink is a signup capability and is disclosed ONLY for the invited
-  // outcome — the query above already proved ownership before this response
-  // is built (same posture as app/api/admin/staff/[id]/resend/route.ts's
-  // inviteLink return). emailSent is surfaced for both invited and
-  // connect-requested, since both outcomes attempt a best-effort email and
-  // the card needs to know whether it actually went out (finding 7 — never
-  // claim a delivered email that failed).
-  if (result.outcome === 'invited') {
-    return NextResponse.json({
-      ok: true,
-      outcome: result.outcome,
-      emailSent: result.emailSent,
-      ...(result.skipped ? { skipped: true } : {}),
-      inviteLink: result.inviteLink,
-    })
-  }
-
-  if (result.outcome === 'connect-requested') {
-    return NextResponse.json({ ok: true, outcome: result.outcome, emailSent: result.emailSent })
-  }
-
-  return NextResponse.json({ ok: true, outcome: result.outcome })
+  // Token disclosed only to the owning user — the query above already
+  // proved ownership before this response is built (same posture as
+  // app/api/admin/staff/[id]/resend/route.ts's inviteLink return).
+  return NextResponse.json({
+    ok: true,
+    emailSent: result.emailSent,
+    ...(result.skipped ? { skipped: true } : {}),
+    inviteLink: result.inviteLink,
+  })
 }

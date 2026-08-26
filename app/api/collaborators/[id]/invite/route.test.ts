@@ -1,6 +1,5 @@
 import { createApiClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
-import { resolveAccountIdByEmail } from '@/lib/invites/allowlist'
 import { POST } from './route'
 
 // ─── POST /api/collaborators/[id]/invite (M6 fix 27-CODEX-REVIEW.md) ──────
@@ -10,23 +9,13 @@ import { POST } from './route'
 // routes through lib/email/esc.ts before landing in the HTML body; the
 // remaining tests cover the route's pre-existing wiring (auth, ownership,
 // cooldown, missing email, insert failure, best-effort send outcome).
-//
-// 260825-m2k: resolveAccountIdByEmail is mocked to ok:true/userId:null by
-// default so every pre-existing test below still exercises the untouched
-// signup-invite path — the membership branch itself is covered in
-// lib/collaborators/invite.test.ts, not re-tested here.
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
-  createServiceClient: jest.fn(() => ({})),
 }))
 
 jest.mock('@/lib/email', () => ({
   sendEmail: jest.fn(),
-}))
-
-jest.mock('@/lib/invites/allowlist', () => ({
-  resolveAccountIdByEmail: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -38,14 +27,14 @@ function postRequest() {
 
 function mockSupabase(
   options: {
-    collaborator?: { id: string; user_id: string; name: string; email: string | null; claimed_by?: string | null } | null
+    collaborator?: { id: string; user_id: string; name: string; email: string | null } | null
     collabError?: { message: string } | null
     recentInvite?: { id: string; invite_token?: string } | null
     insertError?: { message: string } | null
   } = {}
 ) {
   const {
-    collaborator = { id: COLLAB_ID, user_id: USER_ID, name: 'Jamie Rivera', email: 'jamie@example.com', claimed_by: null },
+    collaborator = { id: COLLAB_ID, user_id: USER_ID, name: 'Jamie Rivera', email: 'jamie@example.com' },
     collabError = null,
     recentInvite = null,
     insertError = null,
@@ -93,7 +82,6 @@ beforeEach(() => {
   jest.clearAllMocks()
   process.env.NEXT_PUBLIC_APP_URL = 'https://funun.studio'
   ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
-  ;(resolveAccountIdByEmail as jest.Mock).mockResolvedValue({ ok: true, userId: null })
 })
 
 describe('POST /api/collaborators/[id]/invite', () => {
@@ -139,7 +127,7 @@ describe('POST /api/collaborators/[id]/invite', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual(expect.objectContaining({ ok: true, outcome: 'invited', emailSent: true }))
+    expect(body).toEqual(expect.objectContaining({ ok: true, emailSent: true }))
     expect(body.inviteLink).toContain('/signup?invite=')
     expect(supabase.insertSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,7 +148,7 @@ describe('POST /api/collaborators/[id]/invite', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual(expect.objectContaining({ ok: true, outcome: 'invited', emailSent: false }))
+    expect(body).toEqual(expect.objectContaining({ ok: true, emailSent: false }))
     expect(body.inviteLink).toContain('/signup?invite=')
   })
 
@@ -195,7 +183,7 @@ describe('POST /api/collaborators/[id]/invite', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toEqual(
-      expect.objectContaining({ ok: true, outcome: 'invited', skipped: true, emailSent: false })
+      expect.objectContaining({ ok: true, skipped: true, emailSent: false })
     )
     expect(body.inviteLink).toBe('https://funun.studio/signup?invite=existing-token-xyz')
     expect(supabase.insertSpy).not.toHaveBeenCalled()

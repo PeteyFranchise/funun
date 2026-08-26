@@ -17,10 +17,6 @@ import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
 //    the row's owner (proven below via user.id-scoped lookup/insert), and
 //    prod email delivery is currently unavailable (Resend down), so a
 //    copyable link is the only working delivery channel right now.
-//    260825-m2k: inviteLink is now returned only when a signup token was
-//    actually minted — i.e. only for the invited outcome. An existing-
-//    member outcome (connect-requested/-pending/already-connected/
-//    already-linked) never had a token to disclose.
 // 2. Why reuse-by-email exists: without it, re-inviting the same person
 //    from the modal would create a second roster row every time.
 
@@ -49,8 +45,7 @@ export async function POST(request: Request) {
 
   // ── 3. Reuse an existing active roster row for this email, if any. ────
   // Prevents a second roster row every time the artist re-invites the same
-  // person from the modal. `.select('*')` already carries claimed_by
-  // through to the sendCollaboratorInvite call below.
+  // person from the modal.
   const { data: existing } = await supabase
     .from('collaborators')
     .select('*')
@@ -92,12 +87,7 @@ export async function POST(request: Request) {
 
   // ── 4. Send the invite via the shared helper ───────────────────────────
   const result = await sendCollaboratorInvite(supabase, {
-    collaborator: {
-      id: collaborator.id,
-      name: collaborator.name,
-      email: collaborator.email,
-      claimed_by: collaborator.claimed_by,
-    },
+    collaborator: { id: collaborator.id, name: collaborator.name, email: collaborator.email },
     invitingUserId: user.id,
   })
 
@@ -110,31 +100,13 @@ export async function POST(request: Request) {
     )
   }
 
-  // 260825-m2k: outcome is always present; inviteLink/skipped are only ever
-  // present for the invited outcome (no signup token exists otherwise).
-  // emailSent is present for both invited and connect-requested, since both
-  // attempt a best-effort email and the modal needs to know whether it
-  // actually went out.
-  if (result.outcome === 'invited') {
-    return NextResponse.json({
-      data: {
-        collaborator,
-        outcome: result.outcome,
-        inviteLink: result.inviteLink,
-        emailSent: result.emailSent,
-        skipped: result.skipped,
-        reused,
-      },
-    })
-  }
-
-  if (result.outcome === 'connect-requested') {
-    return NextResponse.json({
-      data: { collaborator, outcome: result.outcome, emailSent: result.emailSent, reused },
-    })
-  }
-
   return NextResponse.json({
-    data: { collaborator, outcome: result.outcome, reused },
+    data: {
+      collaborator,
+      inviteLink: result.inviteLink,
+      emailSent: result.emailSent,
+      skipped: result.skipped,
+      reused,
+    },
   })
 }

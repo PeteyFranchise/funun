@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { buildRespondTransition } from '@/lib/social/connections'
-import { buildConnectionAcceptedNotification } from '@/lib/social/notifications'
+import { buildConnectRequest, buildRespondTransition } from '@/lib/social/connections'
+import {
+  buildConnectionRequestNotification,
+  buildConnectionAcceptedNotification,
+} from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
-import { createConnectionRequest, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/social/connect-request'
-import { linkClaimedCollaborators } from '@/lib/collaborators/link-claim'
+import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+const ACTIVE_CONNECTION_STATUSES = ['pending', 'accepted']
 
 // ─── actor snapshot ─────────────────────────────────────────────────────
 // Read the caller's own artist_profiles row (keyed by auth.uid()) for the
@@ -34,12 +37,6 @@ async function loadActor(
 }
 
 // POST /api/connections  { addresseeId, note? }  → create a connect request
-//
-// Thin wrapper (260825-m2k Task 1): auth gate, then delegate the self/
-// blocked/duplicate-active/insert/notification mechanics to
-// createConnectionRequest (lib/social/connect-request.ts) — the same
-// implementation the collaborator invite path uses. Every status code and
-// error string below is unchanged from before this extraction.
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true, status: 'pending' } })
 
@@ -54,45 +51,92 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (user.id === addresseeId) {
+    return NextResponse.json({ error: 'You cannot send a connection request to yourself.' }, { status: 400 })
+  }
 
+  // 13-03 hard-block-enforcement audit: connections_insert_own RLS
+  // (migration 044) already appends a no_block() check, but a raw RLS
+  // rejection surfaces a distinguishable Postgres error shape. Pre-check and
+  // return the same generic, block-state-agnostic error any other rejected
+  // request would get — checked BEFORE the existingActive precheck below so
+  // a blocked pair never even reaches that (equally generic) 409 path.
   const service = createServiceClient()
-  const result = await createConnectionRequest(supabase, service, {
-    requesterId: user.id,
-    addresseeId,
-    note,
-  })
+  if (await isBlockedRelativeTo(service, user.id, addresseeId)) {
+    return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+  }
 
-  switch (result.kind) {
-    case 'self':
-      return NextResponse.json({ error: 'You cannot send a connection request to yourself.' }, { status: 400 })
-    case 'blocked':
-      return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
-    case 'pending':
-      return NextResponse.json(
-        { error: 'There is already a pending connection request between you and this member.' },
-        { status: 409 }
-      )
-    case 'connected':
-      return NextResponse.json(
-        { error: 'You are already connected with this member.' },
-        { status: 409 }
-      )
-    case 'connected-conflict':
+  // Build the INSERT payload (trims/validates the note; may throw on a 200+
+  // char note or a self-request — surface as a 400).
+  let payload
+  try {
+    payload = buildConnectRequest(user.id, addresseeId, note)
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+  }
+
+  // Friendly pre-check for the unordered active-pair invariant enforced by
+  // migration 050. This avoids a confusing duplicate-key error when the other
+  // member has already sent a pending request or the pair is already connected.
+  const { data: existingActive, error: existingError } = await supabase
+    .from('connections')
+    .select('id, status')
+    .or(
+      `and(requester_id.eq.${user.id},addressee_id.eq.${addresseeId}),and(requester_id.eq.${addresseeId},addressee_id.eq.${user.id})`
+    )
+    .in('status', ACTIVE_CONNECTION_STATUSES)
+    .limit(1)
+    .maybeSingle()
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingActive) {
+    const status = (existingActive as { status: string }).status
+    return NextResponse.json(
+      {
+        error:
+          status === 'accepted'
+            ? 'You are already connected with this member.'
+            : 'There is already a pending connection request between you and this member.',
+      },
+      { status: 409 }
+    )
+  }
+
+  // Status transition path: SESSION client only — RLS `connections_insert_own`
+  // enforces requester_id = auth.uid() and no_block() gates the pair.
+  const { data: inserted, error } = await supabase
+    .from('connections')
+    .insert(payload)
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === '23505') {
       return NextResponse.json(
         { error: 'There is already an active connection between you and this member.' },
         { status: 409 }
       )
-    case 'error':
-      // The note-length/self-request builder throw surfaces as a 400; every
-      // other error path (existing-active lookup, insert) surfaces as a 500
-      // — same split the pre-extraction route made.
-      return NextResponse.json(
-        { error: result.message },
-        { status: result.message.includes('characters or fewer') ? 400 : 500 }
-      )
-    case 'created':
-      return NextResponse.json({ data: { ok: true, status: 'pending' } })
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // Cross-user notify via service client, best-effort (non-fatal): the
+  // request already succeeded. Recipient is the addressee (server-derived).
+  try {
+    const actor = await loadActor(supabase, user.id)
+    const notif = buildConnectionRequestNotification({
+      recipientId: addresseeId,
+      actorId: user.id,
+      actorName: actor.name,
+      actorAvatarUrl: actor.avatarUrl,
+      actorHandle: actor.handle,
+      note: payload.note,
+      connectionId: inserted.id,
+    })
+    await createNotification(service, notif)
+  } catch {
+    // Non-fatal — the connect request itself was persisted.
+  }
+
+  return NextResponse.json({ data: { ok: true, status: 'pending' } })
 }
 
 // PATCH /api/connections  { connectionId, action }  → accept | decline | withdraw
@@ -175,26 +219,6 @@ export async function PATCH(request: Request) {
       await createNotification(service, notif)
     } catch {
       // Non-fatal — the accept itself was persisted (and the trigger seeded follows).
-    }
-
-    // 260825-m2k: accept is the right hook to link the requester's
-    // collaborator roster row to this member's account — it reproduces the
-    // exact end state of the signup-time claim (claim_collaborators,
-    // migration 051), but gated on the member's explicit consent (they just
-    // accepted the request) rather than on email possession alone. No schema
-    // column correlates this connection back to a specific collaborator row
-    // — owner id + email already identify it, the same identity rule
-    // claim_collaborators uses. Same non-fatal try/catch posture as the
-    // notification above: a failed link must never roll back the accept.
-    try {
-      const service = createServiceClient()
-      await linkClaimedCollaborators(service, {
-        ownerUserId: updated.requester_id,
-        memberUserId: user.id,
-        memberEmail: user.email ?? '',
-      })
-    } catch {
-      // Non-fatal — the accept itself was persisted.
     }
   }
 

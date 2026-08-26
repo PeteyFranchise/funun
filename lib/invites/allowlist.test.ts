@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { isArtistEmailAllowed, emailHasExistingAccount, resolveAccountIdByEmail } from '@/lib/invites/allowlist'
+import { isArtistEmailAllowed, emailHasExistingAccount } from '@/lib/invites/allowlist'
 import { INVITE_ALLOWLIST_SCENARIOS, type InviteAllowlistScenario } from '@/lib/invites/invite-fixtures'
 
 // ─── Fake service-role client ─────────────────────────────────────────────
@@ -184,49 +184,5 @@ describe('emailHasExistingAccount', () => {
     const service = { from: jest.fn(), rpc } as unknown as SupabaseClient
     expect(await emailHasExistingAccount(service, '  ')).toBe(false)
     expect(rpc).not.toHaveBeenCalled()
-  })
-})
-
-describe('resolveAccountIdByEmail', () => {
-  it('returns ok with userId set when the RPC finds an account', async () => {
-    const rpc = jest.fn(async () => ({ data: 'user-123', error: null }))
-    const service = { from: jest.fn(), rpc } as unknown as SupabaseClient
-
-    const result = await resolveAccountIdByEmail(service, 'Someone@Example.com')
-
-    expect(result).toEqual({ ok: true, userId: 'user-123' })
-    expect(rpc).toHaveBeenCalledWith('user_id_for_email', { p_email: 'Someone@Example.com' })
-  })
-
-  it('returns ok with userId null when the RPC returns null', async () => {
-    const service = {
-      from: jest.fn(),
-      rpc: jest.fn(async () => ({ data: null, error: null })),
-    } as unknown as SupabaseClient
-
-    expect(await resolveAccountIdByEmail(service, 'nobody@example.com')).toEqual({
-      ok: true,
-      userId: null,
-    })
-  })
-
-  it('returns ok with userId null for an empty or whitespace-only email, without calling the RPC', async () => {
-    const rpc = jest.fn()
-    const service = { from: jest.fn(), rpc } as unknown as SupabaseClient
-
-    expect(await resolveAccountIdByEmail(service, '   ')).toEqual({ ok: true, userId: null })
-    expect(rpc).not.toHaveBeenCalled()
-  })
-
-  it('returns a NOT-ok result when the RPC errors — never collapses an error into "no account"', async () => {
-    const service = {
-      from: jest.fn(),
-      rpc: jest.fn(async () => ({ data: null, error: { message: 'connection reset' } })),
-    } as unknown as SupabaseClient
-
-    expect(await resolveAccountIdByEmail(service, 'someone@example.com')).toEqual({
-      ok: false,
-      error: 'connection reset',
-    })
   })
 })
