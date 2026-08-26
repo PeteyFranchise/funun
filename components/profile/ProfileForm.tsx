@@ -1224,6 +1224,15 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <section className="space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-white">Release identifier prefixes</h2>
+            {/* The RULE stays visible; the WHY collapses (see components/ui/
+                LearnWhy.tsx). "Most artists hold none, and nothing here is
+                required" is the one line an artist must not miss — this whole
+                section is defensive, existing mainly to stop people entering
+                junk into fields they have no business filling. */}
+            <p className="mt-1 text-xs text-white/40">
+              Only fill these in if you hold your own prefix — most artists hold none, and
+              nothing here is required.
+            </p>
             {/* Do NOT reintroduce "Funūn mints GRids by default under its own
                 platform issuer code" here. platform_identifier_config
                 .grid_issuer_code is NULL on purpose — Funūn is not registered
@@ -1235,13 +1244,16 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 declines to have. Revisit only once registration actually
                 happens — a real deal, DDEX delivery, or distributor
                 conversation is the trigger named in 082. */}
-            <p className="mt-1 text-xs text-white/40">
-              Only fill these in if you hold your own prefix — most artists hold none, and
-              nothing here is required. Funūn issues no identifiers under its own name: a
-              GS1 prefix is the only way to generate a UPC, and most artists get one free
-              from their distributor instead. GRid generation stays unavailable until you
-              add your own issuer code, or Funūn registers as an issuer.
-            </p>
+            <div className="mt-1.5">
+              <LearnWhy>
+                <p className="text-xs text-white/40">
+                  Funūn issues no identifiers under its own name: a GS1 prefix is the only
+                  way to generate a UPC, and most artists get one free from their
+                  distributor instead. GRid generation stays unavailable until you add your
+                  own issuer code, or Funūn registers as an issuer.
+                </p>
+              </LearnWhy>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
