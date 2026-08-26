@@ -1224,12 +1224,23 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <section className="space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-white">Release identifier prefixes</h2>
+            {/* Do NOT reintroduce "Funūn mints GRids by default under its own
+                platform issuer code" here. platform_identifier_config
+                .grid_issuer_code is NULL on purpose — Funūn is not registered
+                with IFPI, and migration 082 forbids seeding a placeholder
+                because a fabricated issuer code would stamp invalid GRids
+                under a non-existent authority. canGenerate() refuses the
+                scheme accordingly (lib/metadata/generate.ts), so promising it
+                here would advertise a capability the system deliberately
+                declines to have. Revisit only once registration actually
+                happens — a real deal, DDEX delivery, or distributor
+                conversation is the trigger named in 082. */}
             <p className="mt-1 text-xs text-white/40">
-              Only fill these in if you hold your own prefix. Funūn mints GRids for every
-              release by default under its own platform issuer code — no prefix or cost to
-              you — unless you enter your own here. Funūn never issues UPCs — a GS1 prefix
-              here is the only way to generate one; most artists get a UPC free from their
-              distributor instead.
+              Only fill these in if you hold your own prefix — most artists hold none, and
+              nothing here is required. Funūn issues no identifiers under its own name: a
+              GS1 prefix is the only way to generate a UPC, and most artists get one free
+              from their distributor instead. GRid generation stays unavailable until you
+              add your own issuer code, or Funūn registers as an issuer.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1248,11 +1259,19 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <input
                 value={form.grid_issuer_code}
                 onChange={e => set('grid_issuer_code', e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5))}
-                placeholder="Leave blank to use Funūn's platform code"
+                placeholder="A12B3"
                 maxLength={5}
                 className={`mt-1 ${inputClass} uppercase`}
               />
-              <p className="mt-1 text-xs text-white/30">Only if your label already holds its own GRid issuer code.</p>
+              {/* The "leave blank" instruction lives here, NOT in the
+                  placeholder: a GRid issuer code is 5 characters, so the input
+                  is sized for 5 characters and any sentence-length placeholder
+                  is guaranteed to truncate mid-word. Placeholder shows the
+                  SHAPE of a valid value; the helper carries the direction. */}
+              <p className="mt-1 text-xs text-white/30">
+                Only if your label already holds its own GRid issuer code — without one,
+                GRid generation is unavailable.
+              </p>
             </div>
             <div>
               <label className={labelClass}>Catalog number prefix</label>
