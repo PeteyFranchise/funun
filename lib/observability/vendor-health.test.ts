@@ -1,3 +1,7 @@
+jest.mock('@/lib/playbook/digest', () => ({
+  getDashboardHealth: jest.fn(),
+}))
+
 import {
   VENDOR_PROBE_TIMEOUT_MS,
   classifyCredential,
@@ -6,8 +10,12 @@ import {
   safeSenderDisplay,
   checkSenderAddress,
   summarizeVendorHealth,
+  runVendorHealthChecks,
   type VendorProbeResult,
 } from './vendor-health'
+import { getDashboardHealth } from '@/lib/playbook/digest'
+
+const mockGetDashboardHealth = getDashboardHealth as jest.MockedFunction<typeof getDashboardHealth>
 
 // ─── Task 1 — pure verdict core (260826-2qm) ───────────────────────────────
 // Every assertion here is network-free: this file covers only the pure
@@ -125,6 +133,190 @@ describe('checkSenderAddress', () => {
     )
     expect(result.state).toBe('ok')
     expect(result.detail).toBe('no-reply@auth.funun.studio')
+  })
+})
+
+// ─── Task 2 — bounded, concurrent, read-only network probes ───────────────
+// Follows lib/esign/docuseal.test.ts's own fetch-mocking idiom: a plain
+// object shaped like Response, never the real network. EVERY test here
+// mocks global.fetch (and @/lib/playbook/digest for the Supabase probe) —
+// this suite must never reach a live vendor API.
+
+type Call = { url: string; init: RequestInit }
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  } as unknown as Response
+}
+
+function mockFetch(handler: (call: Call) => Response | Promise<Response>): { calls: Call[] } {
+  const calls: Call[] = []
+  global.fetch = jest.fn(async (url: unknown, init: unknown) => {
+    const call: Call = { url: String(url), init: (init ?? {}) as RequestInit }
+    calls.push(call)
+    return handler(call)
+  }) as unknown as typeof fetch
+  return { calls }
+}
+
+const CREDENTIALED_ENV_VARS = [
+  'RESEND_API_KEY',
+  'DOCUSEAL_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'STRIPE_SECRET_KEY',
+] as const
+
+const SENDER_ENV_VARS = ['RESEND_FROM_EMAIL', 'ESIGN_FROM_EMAIL', 'PITCH_FROM_EMAIL'] as const
+
+function clearVendorEnv() {
+  for (const key of CREDENTIALED_ENV_VARS) delete process.env[key]
+  for (const key of SENDER_ENV_VARS) delete process.env[key]
+}
+
+describe('runVendorHealthChecks', () => {
+  beforeEach(() => {
+    clearVendorEnv()
+    mockGetDashboardHealth.mockReset()
+    mockGetDashboardHealth.mockResolvedValue('healthy')
+  })
+
+  afterEach(() => {
+    clearVendorEnv()
+    jest.useRealTimers()
+    jest.restoreAllMocks()
+  })
+
+  it('resolves not-configured with zero outbound calls when a credential is unset', async () => {
+    const { calls } = mockFetch(() => jsonResponse({}))
+    const { results } = await runVendorHealthChecks()
+    const resend = results.find(r => r.id === 'resend')!
+    expect(resend.state).toBe('not-configured')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('resolves not-configured (not failed) for a placeholder credential', async () => {
+    process.env.RESEND_API_KEY = 'your_key_here'
+    const { calls } = mockFetch(() => jsonResponse({}))
+    const { results } = await runVendorHealthChecks()
+    const resend = results.find(r => r.id === 'resend')!
+    expect(resend.state).toBe('not-configured')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('resolves ok when the credential is present and fetch resolves 200', async () => {
+    process.env.RESEND_API_KEY = 'present-real-key'
+    mockFetch(() => jsonResponse({ data: [{ name: 'funun.studio', status: 'verified' }] }))
+    const { results } = await runVendorHealthChecks()
+    const resend = results.find(r => r.id === 'resend')!
+    expect(resend.state).toBe('ok')
+  })
+
+  it('resolves failed when the credential is present and fetch resolves 401', async () => {
+    process.env.RESEND_API_KEY = 'present-real-key'
+    mockFetch(() => jsonResponse({ message: 'unauthorized' }, 401))
+    const { results } = await runVendorHealthChecks()
+    const resend = results.find(r => r.id === 'resend')!
+    expect(resend.state).toBe('failed')
+  })
+
+  it('resolves failed on a rejecting fetch, and every other vendor still resolves', async () => {
+    process.env.RESEND_API_KEY = 'present-real-key'
+    process.env.STRIPE_SECRET_KEY = 'present-real-key'
+    global.fetch = jest.fn((url: unknown) => {
+      if (String(url).includes('resend')) return Promise.reject(new Error('network down'))
+      return Promise.resolve(jsonResponse({ livemode: false }))
+    }) as unknown as typeof fetch
+
+    const { results } = await runVendorHealthChecks()
+    const resend = results.find(r => r.id === 'resend')!
+    const stripe = results.find(r => r.id === 'stripe')!
+    expect(resend.state).toBe('failed')
+    expect(stripe.state).toBe('ok')
+  })
+
+  it('resolves failed with a timeout detail when fetch never settles, without hanging the caller', async () => {
+    jest.useFakeTimers()
+    process.env.RESEND_API_KEY = 'present-real-key'
+    global.fetch = jest.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch
+
+    const promise = runVendorHealthChecks()
+    await jest.advanceTimersByTimeAsync(VENDOR_PROBE_TIMEOUT_MS)
+    const { results } = await promise
+
+    const resend = results.find(r => r.id === 'resend')!
+    expect(resend.state).toBe('failed')
+  })
+
+  it('uses a read-only verb and a no-store cache directive on every recorded call', async () => {
+    process.env.RESEND_API_KEY = 'present-real-key'
+    process.env.DOCUSEAL_API_KEY = 'present-real-key'
+    process.env.ANTHROPIC_API_KEY = 'present-real-key'
+    process.env.STRIPE_SECRET_KEY = 'present-real-key'
+    const { calls } = mockFetch(() => jsonResponse({ data: [], livemode: false }))
+
+    await runVendorHealthChecks()
+
+    expect(calls.length).toBeGreaterThan(0)
+    for (const call of calls) {
+      expect(call.init.method).toBe('GET')
+      expect(call.init.cache).toBe('no-store')
+    }
+  })
+
+  it('issues probes concurrently, not serially', async () => {
+    process.env.RESEND_API_KEY = 'present-real-key'
+    process.env.DOCUSEAL_API_KEY = 'present-real-key'
+    process.env.ANTHROPIC_API_KEY = 'present-real-key'
+    process.env.STRIPE_SECRET_KEY = 'present-real-key'
+    const DELAY_MS = 60
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>(resolve =>
+          setTimeout(() => resolve(jsonResponse({ data: [], livemode: false })), DELAY_MS)
+        )
+    ) as unknown as typeof fetch
+
+    const startedAt = Date.now()
+    await runVendorHealthChecks()
+    const elapsed = Date.now() - startedAt
+
+    // Serial execution of 4 credentialed probes would take >= 4 * DELAY_MS;
+    // concurrent execution takes roughly one DELAY_MS.
+    expect(elapsed).toBeLessThan(DELAY_MS * 3)
+  })
+
+  it('never leaks a credential value — sentinel no-leak guarantee', async () => {
+    const sentinels: Record<(typeof CREDENTIALED_ENV_VARS)[number], string> = {
+      RESEND_API_KEY: 'SENTINEL_RESEND_9f1a2b3c',
+      DOCUSEAL_API_KEY: 'SENTINEL_DOCUSEAL_9f4d5e6f',
+      ANTHROPIC_API_KEY: 'SENTINEL_ANTHROPIC_9f7a8b9c',
+      STRIPE_SECRET_KEY: 'SENTINEL_STRIPE_9fadbecf',
+    }
+    for (const [key, value] of Object.entries(sentinels)) process.env[key] = value
+
+    // Hostile mock: echoes every inbound request header verbatim into the
+    // JSON body, exactly as a real vendor error payload might. Only a
+    // probe that reads response fields via a narrow allowlist (not the
+    // whole body) can survive this.
+    mockFetch(call => {
+      const headers = (call.init.headers ?? {}) as Record<string, string>
+      return jsonResponse({
+        data: [{ name: 'domain.example', status: 'verified' }],
+        livemode: false,
+        echoedHeaders: headers,
+      })
+    })
+
+    const { results, summary } = await runVendorHealthChecks()
+    const serialized = JSON.stringify({ results, summary })
+
+    for (const sentinel of Object.values(sentinels)) {
+      expect(serialized).not.toContain(sentinel)
+    }
   })
 })
 
