@@ -1303,6 +1303,35 @@ Plans:
 - [x] 33-06-PLAN.md — 4 IT doc pages rendered from `docs/observability/*.md`, per-page inline guard (PLAYBOOK-04/05/06)
 - [x] 33-08-PLAN.md — Monitoring Dashboard page assembly + VendorsGrid + QuickLinks + uptime link-out (PLAYBOOK-04/07/08/09/10)
 
+### Phase 34: Lead Intake & BDT First Contact — Leads queue, liaison ownership, disqualify
+
+**Goal:** Stop a real inbound beta lead from being missed. Today a buyer self-registers on the public site and the system notifies **one arbitrary Leadership member** (`resolveLeadershipFallback` uses `.limit(1)` with no ordering — a live bug), with no shared queue and no way to reject junk. This phase builds the **first-contact stage** of the agreed lead SOP: leads fan out to **all Leadership + all BDT**, land in a **Leads queue visible to both teams**, can be **picked up or assigned** to a liaison, can be **disqualified with a reason**, and — critically — introduce a **liaison owner separate from `ae_user_id`** so taking a lead is not the same as becoming its AE.
+
+**Requirements:** TBD at planning (derive from `docs/sales/LEAD-TO-AE-HANDOFF-SOP.md`).
+
+**Canonical ref:** `docs/sales/LEAD-TO-AE-HANDOFF-SOP.md` — the owner-agreed SOP (flow, roles matrix, edge cases, build split). **Read before planning.**
+
+**In scope (the "build now" slice, owner-agreed 2026-08-26):**
+1. Lead-routed notification **fans out to every Leadership + BDT member** (replaces the arbitrary single-recipient fallback bug)
+2. A **Leads queue** surface visible to Leadership + BDT — separate from the existing leadership-only Needs-AE queue
+3. **Pick up** (self-claim, one click) or **assign a liaison** (Leader assigns to a BDT/Leadership member)
+4. **Disqualify with a recorded reason** (spam · competitor · not a fit · duplicate · no response)
+5. **A second ownership field** — the liaison — distinct from `ae_user_id`
+
+**Explicitly OUT of scope (deferred until real BDT hires + deal volume):** the ~2-month transition access window; shared-commission mechanics; role separation beyond the queue; the 24-hour escalation automation (document the target, don't build the timer yet); the full first-contact checklist (still undefined by the owner).
+
+**Watch-outs:** (a) Stage 2 already exists — the Needs-AE queue and the leadership-only D-07 AE handoff shipped in 31.1; do not rebuild or disturb them. (b) The leadership tower's All tab is deliberately `hide-not-filter` leadership-only (D-31.1-01) — the Leads queue must NOT widen that; BD sees the lead queue, not the whole book. (c) Client momentum is never blocked by the queue — a registrant who acts immediately keeps full access and flags the lead hot. (d) `pipeline_stages` (`new_lead → contacted → …`) already exists from 31.1 and maps to this flow.
+
+**Depends on:** Phase 31.1 (Needs-AE queue, D-07 handoff, pipeline stages)
+
+**Status:** Roadmapped 2026-08-26 from the owner SOP discussion. Not yet discussed/planned.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 34 to break down)
+
 ---
 
 ### Phase 32: Production Observability, Capacity & Incident Readiness
