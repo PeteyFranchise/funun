@@ -8,6 +8,7 @@ import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import { INDUSTRY_ROLE_GROUPS } from '@/lib/industry-roles'
 import { GENRES } from '@/lib/genres'
 import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
+import { LearnWhy } from '@/components/ui/LearnWhy'
 import {
   PROFILE_VISIBILITY_VALUES,
   OPEN_TO_VISIBILITY_VALUES,
@@ -526,19 +527,21 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </p>
           </div>
 
-          <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-xs text-white/60 space-y-1">
+          <div className="rounded-lg border border-lav/20 bg-lav/5 px-4 py-3 text-xs text-white/60 space-y-1.5">
             <p className="font-semibold text-white/80">Use the exact same name everywhere</p>
-            <p>
-              Your legal name must appear <span className="text-white/90 font-medium">identically</span> on
-              every composition, split sheet, PRO registration, and copyright filing.
-              For example, if you don&apos;t use your middle name when you register your work,
-              leave that field blank here, too. Inconsistencies — even minor ones — can
-              freeze payments or cause royalties to be misdirected.
-            </p>
-            <p className="text-white/40 pt-0.5">
-              Funūn does not collect or pay royalties. We organize this data so you can
-              communicate easily with the entities that do — your PRO, The MLC, SoundExchange, and others.
-            </p>
+            <LearnWhy>
+              <p>
+                Your legal name must appear <span className="text-white/90 font-medium">identically</span> on
+                every composition, split sheet, PRO registration, and copyright filing.
+                For example, if you don&apos;t use your middle name when you register your work,
+                leave that field blank here, too. Inconsistencies — even minor ones — can
+                freeze payments or cause royalties to be misdirected.
+              </p>
+              <p className="text-white/40 pt-0.5">
+                Funūn does not collect or pay royalties. We organize this data so you can
+                communicate easily with the entities that do — your PRO, The MLC, SoundExchange, and others.
+              </p>
+            </LearnWhy>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
@@ -613,10 +616,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           ) : (
             <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
               <p className="text-xs font-semibold text-white/80">Confirm &amp; lock your legal name</p>
-              <p className="text-xs text-white/40">
-                Locking your legal name lets it appear automatically, read-only, on every
-                split sheet you create — no manual re-entry, no &quot;Use my info&quot; click.
-              </p>
+              <LearnWhy label="What does locking do?">
+                <p className="text-xs text-white/40">
+                  Locking your legal name lets it appear automatically, read-only, on every
+                  split sheet you create — no manual re-entry, no &quot;Use my info&quot; click.
+                </p>
+              </LearnWhy>
               {composedLegalNamePreview ? (
                 <p className="text-sm text-white/70">
                   Preview: <span className="font-medium text-white">{composedLegalNamePreview}</span>
