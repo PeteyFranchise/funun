@@ -559,7 +559,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label (zero new schema), per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
+- [x] 18-02-PLAN.md — Contract Locker as workspace: attention-first landing reading in-flight `split_sheets` alongside `vault_documents` with the 3-state invited/opened/signed per-party label (zero new schema), per-party views with soft hide, documented block exception, reserved `ask` slot (wave 3, depends on 18-01 and 18-03, autonomous)
 - [x] 18-04-PLAN.md — Coverage-based readiness: `covered / needing` with MINIMUM tier across tracks in both the TS twin and migration 065's trigger against one shared fixture, legacy wet-sign path preserved (wave 3, depends on 18-03, two blocking checkpoints)
 
 **Execution shape**: wave 1 → 18-05; wave 2 → 18-01 (depends 18-05) and 18-03 (unchanged) in parallel; wave 3 → 18-02 (depends 18-01+18-03) and 18-04 (unchanged, depends 18-03) in parallel. 18-05/18-03/18-04 each end with a human-gated `supabase db push` (migrations 066/064/065). The 18-05 number is intentionally higher than its wave-1 position to avoid renumbering the untouched 18-03/18-04 — wave frontmatter is authoritative for execution order.
@@ -587,6 +587,38 @@ Plans:
 | 15. Account Capability Model | v1.2 (cross-cutting) | 4/4 | Complete | 2026-07-12 |
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 9/12 | In Progress|  |
 | 17. Split-Sheet E-Sign | v1.3-pre | 10/10 | Complete   | 2026-07-20 |
+
+
+**Phases 14+ — reconciled against the filesystem 2026-08-26** (plan/summary counts read from `.planning/phases/`; the table above stopped at 17 and understated progress):
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 14. Playback Room Refinement | 6/6 | Complete | - |
+| 15. Account Capability Model | 4/4 | Complete | - |
+| 16. GTM Beta Launch & Buyer Portal | 10/12 | In Progress | - |
+| 17. Split-Sheet E-Sign | 10/10 | Complete | - |
+| 18. Split-Sheet Home | 5/5 | Complete | - |
+| 19. Profile & Identity Model Cleanup | 7/7 | Complete | - |
+| 20. Profile Table Rename (artist_profiles to user_profiles) | 2/4 | In Progress | - |
+| 21. Cross-Account Collaboration & Split-Sheet ↔ Project Sync | 5/5 | Complete | - |
+| 22. Buyer Catalogue & Light-Theme Buyer UI | 4/5 | In Progress | - |
+| 23. Buyer Onboarding · Model A (sales-led B2B) | 8/8 | Complete (UAT pending) | 2026-08-07 |
+| 24. Buyer Onboarding · Model B (self-serve) | 0/0 | On hold | - |
+| 25. Funūn Team Member Accounts & AE Assignment + Role Permissions | 10/10 | Complete | 2026-08-05 |
+| 26. Sync-Library Inclusion & Artist Submission | 10/10 | Complete (UAT pending) | 2026-08-08 |
+| 27. Artist Invitation-Only Onboarding (growth gate) | 13/11 | Complete | 2026-08-10 |
+| 28. Industry Accounts & Green Room Access Model | 5/5 | Complete | - |
+| 29. Self-Serve Flat-Price Sync Licensing (Marmoset-style) | 0/0 | Not started | - |
+| 30. The Crate + Sync Library — Catalogue Engine | 9/9 | Complete (UAT pending) | 2026-08-13 |
+| 31. AE Client Workspace + Selects (My Client Partners / Client Partners) | 13/13 | Complete | 2026-08-12 |
+| 31.1. AE Console — Client Partners room, Health & AE Assignment | 7/7 | Complete (UAT deferred to beta) | 2026-08-24 |
+| 31.2. AE Console — Playbook Authoring/RBAC, Plays & Telemetry | 10/10 | Complete (UAT deferred to beta) | 2026-08-23 |
+| 32. Production Observability, Capacity & Incident Readiness | 9/10 | In Progress | - |
+| 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
+| 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
+| 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
+
+*Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work is only: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), 32-09 (k6 load test, deferred to pre-launch).***
 
 ### Phase 19: Profile & Identity Model Cleanup
 
@@ -762,7 +794,7 @@ and **distinct from artist (user) accounts**.
 
 **Provisional requirements (registered at 23-08):** SYNC-01..SYNC-10 (status lifecycle + qualifying fields, public browse, register pipeline, two-doors, lead routing, AE onboarding surface, login/register modal, buyer password auth, /sync unification, cross-company visibility).
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 
 **Wave 1 — Foundations**
 
@@ -782,7 +814,7 @@ and **distinct from artist (user) accounts**.
 
 **Wave 4 — Human checkpoint** *(blocked on Wave 3)*
 
-- [ ] 23-08-PLAN.md — [BLOCKING] owner pushes migration 092 + live onboarding-loop smoke + register SYNC-01..10 [W4]
+- [x] 23-08-PLAN.md — [BLOCKING] owner pushes migration 092 + live onboarding-loop smoke + register SYNC-01..10 [W4]
 
 **Open product question for the owner (confirm before executing):** buyer auth = email/password (planned, per the locked Marmoset design — 23-05) vs magic-link-only. 23-05 is isolated so it can be swapped with one `type` change. Note: Resend is NOT configured in prod, so invite/reset emails no-op until configured — the in-app notification + admin queue are the reliable channels.
 
@@ -847,7 +879,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 **Requirements**: see `.planning/phases/25-funun-team-accounts-ae/25-CONTEXT.md` (provisional IDs TEAM-01..TEAM-09 proposed at plan time — TEAM-08 = Team Console theme, TEAM-09 = Team Member Directory; registered in REQUIREMENTS.md by 25-07)
 **Depends on:** Phase 15 (account/capability model — adds a 3rd principal type alongside artist + buyer), Phase 16 (buyer orgs staff create/assign/edit)
 
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans complete
 **Wave 1**
 
 - [x] 25-01-PLAN.md — Team-member role gate (getStaffRole/requireStaff, verifyAdmin alias) + assignment-scope predicate [W1]
@@ -871,7 +903,7 @@ data — you don't want every team member able to edit every buyer. Today neithe
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration (TEAM-01..08) [W5]
+- [x] 25-07-PLAN.md — [BLOCKING] human migration push + live smoke + requirement registration (TEAM-01..08) [W5]
 
 **Key decisions to settle at planning:** the **bootstrap** (who creates the first staff account); **reconciliation with the existing platform-admin** used by `/admin/*` (are current admins = leadership? does staff RBAC subsume it?); **permission granularity** (role-level vs field-level; assignment-scoped editing); and **audit** (staff actions on client data are logged). These are surfaced in 25-CONTEXT.
 
@@ -896,20 +928,20 @@ supply pipeline behind live catalogue data (Phase 22 · 22-05).
 **Depends on:** Sound Vault + readiness (upstream song source), e-sign (`lib/esign/provider.ts`) for the blanket agreement, Phase 22 (the catalogue surface + `is_public`/`isRightsReady` gate to replace)
 **Resolves:** `.planning/deliberations/buyer-catalogue-inclusion-model.md` (core workflow). **Relates to:** `.planning/deliberations/sync-license-signing-model.md` (the blanket agreement is the artist→Funūn authorization).
 
-**Plans:** 10 plans (3 waves)
+**Plans:** 10/10 plans complete
 
 Plans:
 
-- [ ] 26-01-PLAN.md — Migration 096 (sync_listings state machine + capability_grants/vault_documents extensions) + [BLOCKING] human-gated schema push
-- [ ] 26-02-PLAN.md — Pure domain core: status state machine + eligibility predicate + shared types (TDD)
-- [ ] 26-03-PLAN.md — Artist self-apply submit (per-song, batched) + withdraw routes
-- [ ] 26-04-PLAN.md — Blanket agreement: versioned template + PDF renderer + mint route + DocuSeal webhook dispatch
-- [ ] 26-05-PLAN.md — Staff routes: invite + admit/reject curation gate + leadership-only removal + notification builders
-- [ ] 26-06-PLAN.md — Catalogue gate: single admission-status helper replacing duplicated is_public checks
-- [ ] 26-07-PLAN.md — Vault song-row "+ Sync Library" action + status chips + blanket-agreement signing page
-- [ ] 26-08-PLAN.md — Dashboard invited spotlight card
-- [ ] 26-09-PLAN.md — Sync Library hub + nav reorder/gating + new-feature highlight (New dot + coach-mark)
-- [ ] 26-10-PLAN.md — Admin Sync Library section: invite panel + curation queue + leadership removal
+- [x] 26-01-PLAN.md — Migration 096 (sync_listings state machine + capability_grants/vault_documents extensions) + [BLOCKING] human-gated schema push
+- [x] 26-02-PLAN.md — Pure domain core: status state machine + eligibility predicate + shared types (TDD)
+- [x] 26-03-PLAN.md — Artist self-apply submit (per-song, batched) + withdraw routes
+- [x] 26-04-PLAN.md — Blanket agreement: versioned template + PDF renderer + mint route + DocuSeal webhook dispatch
+- [x] 26-05-PLAN.md — Staff routes: invite + admit/reject curation gate + leadership-only removal + notification builders
+- [x] 26-06-PLAN.md — Catalogue gate: single admission-status helper replacing duplicated is_public checks
+- [x] 26-07-PLAN.md — Vault song-row "+ Sync Library" action + status chips + blanket-agreement signing page
+- [x] 26-08-PLAN.md — Dashboard invited spotlight card
+- [x] 26-09-PLAN.md — Sync Library hub + nav reorder/gating + new-feature highlight (New dot + coach-mark)
+- [x] 26-10-PLAN.md — Admin Sync Library section: invite panel + curation queue + leadership removal
 
 > Requirement IDs: no registered IDs existed for Phase 26 (requirements live in 26-CONTEXT.md). Plans derive a provisional **SYNCLIB-01..15** set (distinct from Phase 23's SYNC-01..10); register them in REQUIREMENTS.md via /gsd-docs-update before phase close (Phase 28 precedent).
 
@@ -1074,7 +1106,7 @@ opportunity posting (`hasCapability(user,'industry')`); the Green Room (`app/(ar
 (`member_type IN ('artist','industry')`?); the Funūn-email posting rule (enforce vs norm); per-subtype toolsets (iterative).
 **Deferred:** Client Partners posting in the Green Room (future discussion — note only).
 
-**Plans:** 4/5 plans complete; 28-05's two autonomous tasks are done — 1 BLOCKING human-verify checkpoint (migration
+**Plans:** 5/5 plans complete
 085 push) remains open
 
 Plans:
@@ -1087,7 +1119,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 28-05-PLAN.md — Migration 085 (industry capability write + backfill + Green Room RLS gate) drafted + text-tested
+- [x] 28-05-PLAN.md — Migration 085 (industry capability write + backfill + Green Room RLS gate) drafted + text-tested
   (commits `fba75e1`, `0575a97`); BLOCKING checkpoint (Task 3: owner reviews, pushes via Codex, confirms live
   `role='curator'` count, runs post-push smoke) NOT yet resolved [Wave 2]
 
@@ -1132,25 +1164,25 @@ tagging + a single role-aware Crate makes supply reliable, findable, and curate-
 
 **Status:** **Executed + Deployed 2026-08-13** — all 9 plans merged to `main` (fast-forward `7cb3902..64c5ca0`) and **live on funun.studio** (production build + 2141 tests + tsc green); migrations 107 + 108 + 109 applied + verified live on the remote. CRATE-01..10 registered in REQUIREMENTS.md; STATE.md pointer moved to Phase 30. **Pending:** human staff-session UAT only (role-aware Crate staff layers; backstage curation leadership-vs-AE; the live tag-propose/approve + admit-409 flows — all session-gated, unreachable from the executor sandbox) — DEFERRED, tracked in `30-UAT.md` (resume via `/gsd-verify-work 30`). Planned 2026-08-12 (9 plans, 3 waves); revised 2026-08-13 (real Jest verification; A&R tag-approval workflow).
 
-**Plans:** 9 plans (3 waves)
+**Plans:** 9/9 plans complete
 
 Wave 1 (pure core + migration drafts):
 
-- [ ] 30-01-PLAN.md — Sync Readiness per-track derivation (subset of Wave 1 engine) + inclusion-gate predicate + rights badge (Jest-tested). [CRATE-01, CRATE-02]
-- [ ] 30-02-PLAN.md — Layered tagging foundation: INSTRUMENT vocab + descriptor v2 (ai_suggested/pending provenance) + AI tag-suggest + non-destructive merge + pending→approved transition (Jest-tested). [CRATE-06, CRATE-10]
-- [ ] 30-03-PLAN.md — OWNER-RUN migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff CHECK adds `anr` A&R role) + StaffRole code. [CRATE-09, CRATE-10]
+- [x] 30-01-PLAN.md — Sync Readiness per-track derivation (subset of Wave 1 engine) + inclusion-gate predicate + rights badge (Jest-tested). [CRATE-01, CRATE-02]
+- [x] 30-02-PLAN.md — Layered tagging foundation: INSTRUMENT vocab + descriptor v2 (ai_suggested/pending provenance) + AI tag-suggest + non-destructive merge + pending→approved transition (Jest-tested). [CRATE-06, CRATE-10]
+- [x] 30-03-PLAN.md — OWNER-RUN migrations 107 (sync_listings quality-review + staff_notes) + 108 (funun_staff CHECK adds `anr` A&R role) + StaffRole code. [CRATE-09, CRATE-10]
 
 Wave 2 (backend, depends on Wave 1):
 
-- [ ] 30-04-PLAN.md — Inclusion-gate wiring + access fix (admit/reject → leadership-only) + leadership-only quality/notes route. [CRATE-04, CRATE-05, CRATE-09]
-- [ ] 30-05-PLAN.md — Sync Readiness worklist backend: pure shaper (Jest) + staff-gated batched GET route. [CRATE-03]
-- [ ] 30-06-PLAN.md — Layered tagging routes: AI tag-suggest + tag-propose (AE→pending, leadership/A&R→auto-confirm) + tag-approve (leadership/A&R only). [CRATE-06, CRATE-10]
-- [ ] 30-07-PLAN.md — Minimal live-data slice (Phase 22 "22-05"): live catalogue rows render real authored tags + real tri-state rights. [CRATE-08]
+- [x] 30-04-PLAN.md — Inclusion-gate wiring + access fix (admit/reject → leadership-only) + leadership-only quality/notes route. [CRATE-04, CRATE-05, CRATE-09]
+- [x] 30-05-PLAN.md — Sync Readiness worklist backend: pure shaper (Jest) + staff-gated batched GET route. [CRATE-03]
+- [x] 30-06-PLAN.md — Layered tagging routes: AI tag-suggest + tag-propose (AE→pending, leadership/A&R→auto-confirm) + tag-approve (leadership/A&R only). [CRATE-06, CRATE-10]
+- [x] 30-07-PLAN.md — Minimal live-data slice (Phase 22 "22-05"): live catalogue rows render real authored tags + real tri-state rights. [CRATE-08]
 
 Wave 3 (surfaces, depends on Wave 2):
 
-- [ ] 30-08-PLAN.md — Role-aware Crate on the SAME /sync/catalog surface: server-resolved staff layers, no fork, light-theme chrome. [CRATE-07, CRATE-08]
-- [ ] 30-09-PLAN.md — Sync Library backstage UI: Sync Readiness worklist + leadership-only curation UX. [CRATE-03, CRATE-05]
+- [x] 30-08-PLAN.md — Role-aware Crate on the SAME /sync/catalog surface: server-resolved staff layers, no fork, light-theme chrome. [CRATE-07, CRATE-08]
+- [x] 30-09-PLAN.md — Sync Library backstage UI: Sync Readiness worklist + leadership-only curation UX. [CRATE-03, CRATE-05]
 
 ### Phase 31: AE Client Workspace + Selects (My Client Partners / Client Partners)
 
@@ -1352,6 +1384,7 @@ Everything else in this phase follows from this. **Today an entry is a title plu
 Vocabulary agreed with the owner: the coloured boxes are **callouts** (a.k.a. admonitions / alerts / panels), typed by intent — note (blue) · tip (green) · caution (amber) · warning (red). The step-by-step spine is a **process flow / vertical timeline (stepper)**, distinct from a true **flowchart** (boxes, arrows, decision diamonds).
 
 Three candidate authoring models:
+
 - **(1) Markdown + syntax** — author types markdown; callouts via a GitHub-style `> [!WARNING]` convention. Cheapest; gets headings/tables/lists free; requires learning a little syntax.
 - **(2) Block editor (Notion-style)** — click **+** → insert a Callout block, pick its type. Best authoring UX by far; much the largest build.
 - **(3) Diagrams-as-text** — flowcharts described in a few lines of text and rendered (already how the repo SOP's flowchart works).
@@ -1361,6 +1394,7 @@ Three candidate authoring models:
 Whatever is chosen sets the stored content shape, so it must be settled **before** the adopt-a-doc importer is designed: an imported markdown doc has to land in whatever format the editor natively edits, or adopted pages become second-class and un-editable — which would defeat the owner's "both editable from inside The Playbook" requirement.
 
 **In scope:**
+
 1. **Adopt-a-doc**: import a `docs/<area>/*.md` file into a room as a `playbook_entries` row (title, content, room, provenance = source path + adopted-at). Idempotent; never silently re-imports over in-app edits.
 2. **Unified rendering**: file-origin and natively-authored entries must render through the **same room components** — an adopted doc must be visually indistinguishable from one written in the editor. Today the IT room renders markdown via `lib/playbook/read-doc.ts` while 31.2 entries render through the entry surfaces; these must converge.
 3. **Generalize beyond `docs/observability/`**: `read-doc.ts` is hardcoded to that one folder, so `docs/sales/` (and any future area) cannot render today.
