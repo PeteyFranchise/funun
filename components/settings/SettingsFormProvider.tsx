@@ -26,9 +26,11 @@ import {
   toForm,
   isTabDirty,
   buildTabPayload,
+  buildSaversForTab,
   type FormState,
   type SaveResult,
   type SettingsTabId,
+  type TabSaver,
 } from '@/lib/profile/settings-form'
 import type { ProfileVisibility, OpenToVisibility } from '@/lib/trust-safety/contracts'
 
@@ -81,6 +83,9 @@ type SettingsFormContextValue = {
   visibilitySaved: boolean
   visibilityDirty: boolean
   saveVisibility: () => Promise<SaveResult>
+
+  /** The ordered savers to run when leaving `tab`. See buildSaversForTab. */
+  saversForTab: (tab: SettingsTabId) => TabSaver[]
 }
 
 const SettingsFormContext = createContext<SettingsFormContextValue | null>(null)
@@ -93,6 +98,16 @@ export function useSettingsForm(): SettingsFormContextValue {
     )
   }
   return ctx
+}
+
+/**
+ * Null-tolerant read, for the one consumer that renders both inside and
+ * outside the provider: the tab bar. When the layout cannot resolve a
+ * profile it still shows the chrome (including the tabs) around a "couldn't
+ * load your profile" message, and there is nothing to save in that state.
+ */
+export function useSettingsFormOptional(): SettingsFormContextValue | null {
+  return useContext(SettingsFormContext)
 }
 
 export function SettingsFormProvider({
@@ -294,6 +309,15 @@ export function SettingsFormProvider({
     return { ok: true }
   }
 
+  function saversForTab(tab: SettingsTabId): TabSaver[] {
+    return buildSaversForTab(tab, {
+      profileDirty: tabDirty(tab),
+      saveProfile: () => saveTab(tab),
+      visibilityDirty,
+      saveVisibility,
+    })
+  }
+
   const value: SettingsFormContextValue = {
     profile,
     form,
@@ -317,6 +341,7 @@ export function SettingsFormProvider({
     visibilitySaved,
     visibilityDirty,
     saveVisibility,
+    saversForTab,
   }
 
   return <SettingsFormContext.Provider value={value}>{children}</SettingsFormContext.Provider>

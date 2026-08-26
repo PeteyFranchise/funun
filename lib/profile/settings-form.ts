@@ -249,6 +249,39 @@ export type SaveThenNavigateResult = {
 }
 
 /**
+ * The ordered savers to run when LEAVING `tab`.
+ *
+ * The public-profile tab returns two, and that is the point at which Privacy
+ * joins save-on-switch: as its own request to /api/profile/visibility,
+ * sequenced after the profile PATCH, never merged into it. Those two columns
+ * have no authenticated UPDATE grant (migration 058), so folding them into
+ * the /api/profile body would not just be untidy — it would silently not
+ * write.
+ *
+ * Payouts owns no fields, so leaving it never writes.
+ *
+ * Kept pure and dependency-injected so the composition is assertable under
+ * jest's node environment, where no component can be rendered.
+ */
+export function buildSaversForTab(
+  tab: SettingsTabId,
+  deps: {
+    profileDirty: boolean
+    saveProfile: () => Promise<SaveResult>
+    visibilityDirty: boolean
+    saveVisibility: () => Promise<SaveResult>
+  }
+): TabSaver[] {
+  const profileSaver: TabSaver = { dirty: deps.profileDirty, save: deps.saveProfile }
+
+  if (tab === 'rights') return [profileSaver]
+  if (tab === 'profile') {
+    return [profileSaver, { dirty: deps.visibilityDirty, save: deps.saveVisibility }]
+  }
+  return []
+}
+
+/**
  * Save every dirty saver, in order, and only then navigate.
  *
  * The failure path deliberately does NOT navigate. The owner chose

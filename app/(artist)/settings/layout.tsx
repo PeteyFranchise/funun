@@ -52,17 +52,25 @@ export default async function SettingsLayout({ children }: { children: React.Rea
       <h1 className="text-3xl font-semibold text-white">Settings</h1>
       <p className="mt-1 text-sm text-white/50">Manage your legal and artist profile and links.</p>
 
-      <SettingsTabs />
-
-      <div className="mt-8">
-        {profile ? (
-          <SettingsFormProvider profile={profile}>{children}</SettingsFormProvider>
-        ) : (
-          <p className="text-sm text-white/50">
-            We couldn't load your profile. Try signing out and back in.
-          </p>
-        )}
-      </div>
+      {/* The tab bar is INSIDE the provider, not a sibling of it: switching
+          tabs saves the tab being left first, so the bar needs to read the
+          form state. It still renders in the no-profile branch below, where
+          there is nothing to save and it navigates plainly. */}
+      {profile ? (
+        <SettingsFormProvider profile={profile}>
+          <SettingsTabs />
+          <div className="mt-8">{children}</div>
+        </SettingsFormProvider>
+      ) : (
+        <>
+          <SettingsTabs />
+          <div className="mt-8">
+            <p className="text-sm text-white/50">
+              We couldn't load your profile. Try signing out and back in.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   )
 }

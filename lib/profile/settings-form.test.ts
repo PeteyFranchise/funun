@@ -8,6 +8,7 @@ import {
   isTabDirty,
   buildTabPayload,
   saveThenNavigate,
+  buildSaversForTab,
   type FormState,
   type SaveResult,
   type TabSaver,
@@ -256,5 +257,97 @@ describe('field ownership covers every FormState key exactly once', () => {
   it('assigns no key to both groups', () => {
     const overlap = RIGHTS_FIELDS.filter(k => PUBLIC_FIELDS.includes(k))
     expect(overlap).toEqual([])
+  })
+})
+
+// ── Saver composition (save-on-switch wiring) ───────────────────────────
+describe('buildSaversForTab', () => {
+  const deps = (overrides: Partial<Parameters<typeof buildSaversForTab>[1]> = {}) => ({
+    profileDirty: false,
+    saveProfile: ok,
+    visibilityDirty: false,
+    saveVisibility: ok,
+    ...overrides,
+  })
+
+  it('leaves the rights tab with the main save alone', () => {
+    const saveProfile = jest.fn(ok)
+    const savers = buildSaversForTab('rights', deps({ profileDirty: true, saveProfile }))
+
+    expect(savers).toHaveLength(1)
+    expect(savers[0].dirty).toBe(true)
+    expect(savers[0].save).toBe(saveProfile)
+  })
+
+  it('leaves the profile tab with the main save then the visibility save, each with its own dirty flag', () => {
+    const saveProfile = jest.fn(ok)
+    const saveVisibility = jest.fn(ok)
+    const savers = buildSaversForTab(
+      'profile',
+      deps({ profileDirty: true, saveProfile, visibilityDirty: false, saveVisibility })
+    )
+
+    expect(savers).toHaveLength(2)
+    expect(savers[0].save).toBe(saveProfile)
+    expect(savers[0].dirty).toBe(true)
+    // Privacy is a SECOND request to a SECOND endpoint — never merged.
+    expect(savers[1].save).toBe(saveVisibility)
+    expect(savers[1].dirty).toBe(false)
+  })
+
+  it('leaves the payouts tab with nothing to save', () => {
+    expect(buildSaversForTab('payouts', deps({ profileDirty: true, visibilityDirty: true }))).toEqual([])
+  })
+
+  it('writes only visibility when only the privacy selects changed on the profile tab', async () => {
+    const navigate = jest.fn()
+    const saveProfile = jest.fn(ok)
+    const saveVisibility = jest.fn(ok)
+
+    const result = await saveThenNavigate(
+      buildSaversForTab(
+        'profile',
+        deps({ profileDirty: false, saveProfile, visibilityDirty: true, saveVisibility })
+      ),
+      navigate
+    )
+
+    expect(saveProfile).not.toHaveBeenCalled()
+    expect(saveVisibility).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({ navigated: true, error: null, writes: 1 })
+  })
+
+  it('does not navigate away from the profile tab when the visibility write fails', async () => {
+    const navigate = jest.fn()
+
+    const result = await saveThenNavigate(
+      buildSaversForTab(
+        'profile',
+        deps({
+          profileDirty: true,
+          visibilityDirty: true,
+          saveVisibility: fail('Could not save privacy settings'),
+        })
+      ),
+      navigate
+    )
+
+    expect(navigate).not.toHaveBeenCalled()
+    expect(result.error).toBe('Could not save privacy settings')
+    expect(result.writes).toBe(2)
+  })
+
+  it('leaving payouts issues zero writes and navigates immediately', async () => {
+    const navigate = jest.fn()
+    const saveProfile = jest.fn(ok)
+
+    const result = await saveThenNavigate(
+      buildSaversForTab('payouts', deps({ profileDirty: true, saveProfile })),
+      navigate
+    )
+
+    expect(saveProfile).not.toHaveBeenCalled()
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(result.writes).toBe(0)
   })
 })
