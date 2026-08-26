@@ -1345,6 +1345,8 @@ Plans:
 
 **CENTRAL DECISION — how expressive is a Playbook page? (owner-flagged 2026-08-26)**
 
+**Full brief: `.planning/deliberations/playbook-content-model.md` — READ THIS FIRST in discuss-phase.** It carries the audited current state, the four already-decided points, the vocabulary, the three candidate models with trade-offs, and six open sub-decisions.
+
 Everything else in this phase follows from this. **Today an entry is a title plus a flat list of lines** — `sop` = `{ items: string[] }`, `topic` = `{ questions: string[] }` (see `components/playbook/EntryEditor.tsx`). There are **no paragraphs, headings, callouts, tables, or diagrams**. The sales SOP written 2026-08-26 (stages, numbered steps, colored callouts, a roles matrix) **cannot be expressed in the current editor** — it would flatten to a checklist.
 
 Vocabulary agreed with the owner: the coloured boxes are **callouts** (a.k.a. admonitions / alerts / panels), typed by intent — note (blue) · tip (green) · caution (amber) · warning (red). The step-by-step spine is a **process flow / vertical timeline (stepper)**, distinct from a true **flowchart** (boxes, arrows, decision diamonds).
