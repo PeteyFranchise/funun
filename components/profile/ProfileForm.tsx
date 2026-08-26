@@ -17,6 +17,12 @@ import {
 } from '@/lib/trust-safety/contracts'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
+import {
+  toForm,
+  inputClass,
+  labelClass,
+  type FormState,
+} from '@/lib/profile/settings-form'
 
 const MAX_PROFILE_ROLES = 6
 const MAX_CUSTOM_ROLE_LEN = 40
@@ -35,10 +41,6 @@ const OPEN_TO_EDITOR_OPTIONS: { slug: OpenTo; label: string }[] = [
   { slug: 'features', label: 'Features' },
   { slug: 'management', label: 'Brand deals' },
 ]
-
-const inputClass =
-  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30'
-const labelClass = 'block text-xs font-medium uppercase tracking-wide text-white/40'
 
 // Copy per 13-UI-SPEC.md "Privacy Settings" section (SAFETY-04).
 const PROFILE_VISIBILITY_COPY: Record<ProfileVisibility, string> = {
@@ -69,83 +71,6 @@ const CAREER_STAGES: { value: 1 | 2 | 3 | 4; label: string }[] = [
   { value: 3, label: 'Established' },
   { value: 4, label: 'Professional' },
 ]
-
-type FormState = {
-  artist_name: string
-  genre: string
-  location: string
-  bio: string
-  instagram_handle: string
-  threads_handle: string
-  tiktok_handle: string
-  spotify_url: string
-  career_stage: 1 | 2 | 3 | 4
-  genres: string[]
-  isrc_country_code: string
-  isrc_registrant_code: string
-  pro: string
-  ipi: string
-  publisher: string
-  administrator: string
-  mlc_id: string
-  soundexchange_id: string
-  isni: string
-  // Generation prefixes (migration 082, 16-11) — self-assign_with_prefix
-  // schemes draw from these; placed with the ISRC registrant fields per
-  // the same edit surface, not a separate screen.
-  gs1_company_prefix: string
-  grid_issuer_code: string
-  catalog_number_prefix: string
-  legal_first_name: string
-  legal_middle_name: string
-  legal_last_name: string
-  legal_name_suffix: string
-  contact_phone: string
-  mailing_address: string
-  mailing_address_structured: Record<string, string> | null
-  industry_roles: string[]
-  roles: ProfileRole[]
-  open_to: OpenTo[]
-  allow_resharing: boolean
-}
-
-function toForm(p: UserProfile): FormState {
-  return {
-    artist_name: p.artist_name ?? '',
-    genre: p.genre ?? '',
-    location: p.location ?? '',
-    bio: p.bio ?? '',
-    instagram_handle: p.instagram_handle ?? '',
-    threads_handle: p.threads_handle ?? '',
-    tiktok_handle: p.tiktok_handle ?? '',
-    spotify_url: p.spotify_url ?? '',
-    career_stage: p.career_stage ?? 1,
-    genres: Array.isArray(p.genres) ? p.genres : [],
-    isrc_country_code: p.isrc_country_code ?? '',
-    isrc_registrant_code: p.isrc_registrant_code ?? '',
-    pro: p.pro ?? '',
-    ipi: p.ipi ?? '',
-    publisher: p.publisher ?? '',
-    administrator: p.administrator ?? '',
-    mlc_id: p.mlc_id ?? '',
-    soundexchange_id: p.soundexchange_id ?? '',
-    isni: p.isni ?? '',
-    gs1_company_prefix: p.gs1_company_prefix ?? '',
-    grid_issuer_code: p.grid_issuer_code ?? '',
-    catalog_number_prefix: p.catalog_number_prefix ?? '',
-    legal_first_name: p.legal_first_name ?? '',
-    legal_middle_name: p.legal_middle_name ?? '',
-    legal_last_name: p.legal_last_name ?? '',
-    legal_name_suffix: p.legal_name_suffix ?? '',
-    contact_phone: p.contact_phone ?? '',
-    mailing_address: (p.mailing_address as { raw?: string } | null)?.raw ?? '',
-    mailing_address_structured: (p.mailing_address as Record<string, string> | null) ?? null,
-    industry_roles: Array.isArray(p.industry_roles) ? p.industry_roles : [],
-    roles: Array.isArray(p.roles) ? p.roles : [],
-    open_to: Array.isArray(p.open_to) ? p.open_to : [],
-    allow_resharing: p.allow_resharing ?? true,
-  }
-}
 
 function IsrcLearnMore() {
   const [open, setOpen] = useState(false)
