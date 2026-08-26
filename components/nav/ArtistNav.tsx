@@ -22,6 +22,7 @@ import {
 } from './icons'
 import { CapabilityCta } from './CapabilityCta'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { ReportProblemLink } from '@/components/nav/ReportProblemLink'
 import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
 
 type Item = {
@@ -376,6 +377,12 @@ export function ArtistNav({
           </span>
         )}
       </Link>
+
+      {/* Beta escape hatch — an artist who hits something broken needs a way to
+          say so; Sentry only sees code that throws, never "nothing happened". */}
+      <div className={collapsed ? 'px-1' : 'px-3'}>
+        <ReportProblemLink collapsed={collapsed} />
+      </div>
 
       {/* Sign out — kept outside the /profile link so the tap targets stay distinct */}
       <div className={['pb-3', collapsed ? 'flex justify-center px-1' : 'px-3'].join(' ')}>
