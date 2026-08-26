@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: "Shipped to main 629608b: 31.1 hardening (6 review findings) + standalone Invite Collaborator w/ copy-link fallback + invite-first copy steer + split-sheet auto-invite. Next: Resend dashboard fix (API key -> Vercel+.env.local, verify funun.studio DNS, RESEND_FROM_EMAIL=noreply@funun.studio, redeploy), then 'resend configured' for the diagnostic send"
-last_updated: "2026-08-25T17:45:10.060Z"
+stopped_at: "Shipped 12a6398: Vendor Health page (IT room) + artist 'Report a problem' link. NEXT SESSION: artist-side page features + design work (Pete's request). FIRST: open /admin/playbook/it/vendor-health and confirm DocuSeal is green in prod — it gates the sync-library blanket agreement and throws hard if unset, and Thomas (artist account only) cannot diagnose it himself."
+last_updated: "2026-08-26T06:38:13.949Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 35
+  total_phases: 37
   completed_phases: 29
   total_plans: 230
   completed_plans: 227
-  percent: 83
+  percent: 78
 ---
 
 # Project State
@@ -573,9 +573,9 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-25T17:45:10.030Z
-Stopped at: Shipped to main 629608b: 31.1 hardening (6 review findings) + standalone Invite Collaborator w/ copy-link fallback + invite-first copy steer + split-sheet auto-invite. Next: Resend dashboard fix (API key -> Vercel+.env.local, verify funun.studio DNS, RESEND_FROM_EMAIL=noreply@funun.studio, redeploy), then 'resend configured' for the diagnostic send
-Resume file: .planning/todos/pending/2026-08-23-invite-email-resend-config.md
+Last session: 2026-08-26T06:38:13.924Z
+Stopped at: Shipped 12a6398: Vendor Health page (IT room) + artist 'Report a problem' link. NEXT SESSION: artist-side page features + design work (Pete's request). FIRST: open /admin/playbook/it/vendor-health and confirm DocuSeal is green in prod — it gates the sync-library blanket agreement and throws hard if unset, and Thomas (artist account only) cannot diagnose it himself.
+Resume file: .planning/quick/260826-2qm-vendor-health-check/260826-2qm-SUMMARY.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
