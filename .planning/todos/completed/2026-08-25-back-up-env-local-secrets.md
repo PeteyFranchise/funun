@@ -1,5 +1,7 @@
 ---
 created: 2026-08-25
+completed: 2026-08-25
+status: done
 area: ops / disaster recovery
 title: Back up the app's secret settings file to a password manager
 ---
@@ -66,3 +68,14 @@ Raised 2026-08-25 while fixing the Resend email outage, which surfaced how the
 local file and Vercel's copy are two separate sets of settings that can drift
 apart (local was correct; Vercel had the API key pasted into the sender-address
 field). See `.planning/todos/pending/2026-08-23-invite-email-resend-config.md`.
+
+
+---
+
+## DONE (2026-08-25)
+
+Saved to Dashlane as the secure note **`Funūn .env.local`**. Sits alongside the
+owner's existing *Vercel recovery codes* note.
+
+**Standing reminder:** whenever a key is rotated (e.g. the Resend API key), re-copy
+the file into that note or the backup goes stale.
