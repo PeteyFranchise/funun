@@ -1,5 +1,10 @@
 'use client'
 
+// SUPPORT_EMAIL is imported, never re-typed — it is text-locked in
+// __tests__/report-problem-link.test.ts against aspirational aliases
+// (support@ etc.) that do not yet receive mail. A second literal here
+// would silently escape that guard.
+
 // ── Contracts & rights tab (/settings) ──────────────────────────────────
 // The private half of artist Settings: legal identity, contact, rights
 // registry, ISRC registrant, and release-identifier prefixes. Every field,
@@ -14,6 +19,7 @@ import { useState } from 'react'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
 import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
 import { LearnWhy } from '@/components/ui/LearnWhy'
+import { SUPPORT_EMAIL } from '@/components/nav/ReportProblemLink'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
 import { inputClass, labelClass } from '@/lib/profile/settings-form'
@@ -307,11 +313,40 @@ export function RightsContractsSections() {
         <div>
           <h2 className="text-sm font-semibold text-white">Contact</h2>
           {/* "Used on contracts and split sheets" was dropped — the group
-              divider above now says exactly that for the whole group, and
+              divider above says exactly that for the whole group, and
               repeating it here is the wordiness beta users flagged. What
-              survives is the part the divider does NOT cover. */}
+              survives is the part the divider does NOT cover: why a contract
+              wants a home address at all, and why there is no email field in a
+              section called Contact.
+
+              The why-clause is one sentence on purpose. "Identify each party by
+              name and address" is the actual legal reason a split sheet asks —
+              a party is identified by name AND notice address, not name alone.
+              Artists asked why their home address was needed; answering costs
+              one line, and not answering reads as data collection for its own
+              sake.
+
+              This previously read "Your login email is managed through your
+              account settings." There IS no account-settings page, and no
+              self-serve way to change a sign-in email at all — the only
+              auth.updateUser() call in the codebase is the PASSWORD reset in
+              app/(auth)/update-password. The sentence sent artists looking for
+              a screen that does not exist. Do not restore it unless that
+              screen is actually built; a Supabase email change confirms to
+              BOTH the old and new address (takeover protection), so it is a
+              real feature, not a form field. Until then the honest answer is
+              "ask us", pointed at the same proven mailbox the nav's Report a
+              problem link uses. */}
           <p className="mt-1 text-xs text-white/40">
-            Your login email is managed through your account settings.
+            Contracts and split sheets identify each party by name and address. Your
+            sign-in email isn&apos;t editable here.{' '}
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Funūn — change my sign-in email')}`}
+              className="text-lav underline underline-offset-2 transition hover:text-white"
+            >
+              Ask us to change it
+            </a>
+            .
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
