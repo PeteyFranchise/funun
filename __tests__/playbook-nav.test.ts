@@ -1,6 +1,8 @@
 // Wave 0 nav-structure test (33-04 Task 1). Asserts lib/playbook/nav.ts is
-// the single source for Rail 2's 6 rooms + the 5 ordered IT sub-pages + the
-// 4 doc-page → docs/observability filename mappings (D-10).
+// the single source for Rail 2's 6 rooms + the 6 ordered IT sub-pages + the
+// 4 doc-page → docs/observability filename mappings (D-10). Sub-page count
+// updated 5->6 with vendor-health inserted (260826-2qm) — still 4 doc-page
+// mappings since Vendor Health, like the dashboard, is bespoke React.
 import { PLAYBOOK_ROOMS, IT_SUBPAGES, DOC_PAGE_FILE } from '@/lib/playbook/nav'
 
 describe('lib/playbook/nav', () => {
@@ -20,11 +22,12 @@ describe('lib/playbook/nav', () => {
     expect(itGated[0].comingSoon).toBe(false)
   })
 
-  it('has 5 IT sub-pages in the exact order, dashboard first', () => {
-    expect(IT_SUBPAGES).toHaveLength(5)
+  it('has 6 IT sub-pages in the exact order, dashboard first', () => {
+    expect(IT_SUBPAGES).toHaveLength(6)
     expect(IT_SUBPAGES.map(p => p.slug)).toEqual([
       'dashboard',
       'vendor-directory',
+      'vendor-health',
       'runbook',
       'operating-rhythm',
       'thresholds',
@@ -41,6 +44,10 @@ describe('lib/playbook/nav', () => {
     expect(bySlug['vendor-directory']).toMatchObject({
       label: 'Vendor Directory',
       href: '/admin/playbook/it/vendor-directory',
+    })
+    expect(bySlug['vendor-health']).toMatchObject({
+      label: 'Vendor Health',
+      href: '/admin/playbook/it/vendor-health',
     })
     expect(bySlug['runbook']).toMatchObject({
       label: 'Incident Runbook',
