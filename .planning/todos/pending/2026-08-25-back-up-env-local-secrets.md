@@ -34,8 +34,8 @@ including Pete. (That's why the value box always looks empty when editing one.)
 
 ## What to do
 
-1. Open the password manager (Apple Passwords, 1Password — whichever is in use).
-2. Create a new **Secure Note**. Name it: `Funūn .env.local`
+1. Open **Dashlane** (owner's password manager — `app.dashlane.com` or the browser extension).
+2. Left sidebar → **Secure Notes** → **+ New**. Name it: `Funūn .env.local`
 3. Open the settings file. Easiest way — paste this in Terminal:
    `open -e ~/Desktop/funun/.env.local`
 4. Select all (Cmd+A), copy (Cmd+C).
@@ -45,8 +45,8 @@ Done.
 
 ## Two rules to remember
 
-- **Password manager only.** Not Notes, not email, not a plain file in
-  iCloud/Dropbox. This file contains the Supabase *service-role key*, which can
+- **Dashlane (or another password manager) only.** Not Apple Notes, not email,
+  not a plain file in iCloud/Dropbox. This file contains the Supabase *service-role key*, which can
   read and change the entire database with no permission checks — the single
   most sensitive string in the project.
 - **Re-copy it after changing a key.** When a key gets rotated (e.g. the Resend
@@ -56,7 +56,8 @@ Done.
 
 1. `git clone` the repo from GitHub
 2. Install Node + npm (and the Supabase CLI)
-3. Create a new `.env.local` and paste in the secure note's contents
+3. Log into Dashlane, open the `Funūn .env.local` secure note, create a new
+   `.env.local` file in the repo and paste the contents in
 4. `npm install`
 
 ## Background
