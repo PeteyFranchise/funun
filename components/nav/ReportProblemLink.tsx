@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 // ─── ReportProblemLink — beta bug-report escape hatch ──────────────────────
@@ -23,6 +24,14 @@ export const SUPPORT_EMAIL = 'pete@funun.studio'
 export function ReportProblemLink({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname() ?? ''
 
+  // The user agent is read AFTER mount, not during render. Reading it inline
+  // (`typeof navigator !== 'undefined' ? ... : ''`) makes the server emit an
+  // href without it and the client emit one with it — a hydration mismatch
+  // React refuses to patch, which poisons the whole nav subtree. Starting at
+  // '' matches the server exactly, then the effect fills it in on the client.
+  const [userAgent, setUserAgent] = useState('')
+  useEffect(() => setUserAgent(navigator.userAgent), [])
+
   const subject = 'Funūn — problem report'
   const body = [
     'What happened?',
@@ -34,7 +43,7 @@ export function ReportProblemLink({ collapsed }: { collapsed: boolean }) {
     '— — — — —',
     'The details below help us find it faster:',
     `Page: ${pathname}`,
-    typeof navigator !== 'undefined' ? `Browser: ${navigator.userAgent}` : '',
+    userAgent ? `Browser: ${userAgent}` : '',
     '',
   ].join('\n')
 
