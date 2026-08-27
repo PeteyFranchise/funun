@@ -371,6 +371,33 @@ Three pillars:
 
 <!-- GSD:workflow-start source:GSD defaults -->
 
+## Account Vocabulary
+
+**A "User Account" is an account that owns a `user_profiles` row — exactly Artist and
+Industry, nothing else.** Team Members and Client Partners are NOT User Accounts.
+
+| Term | Identified by | Owns a `user_profiles` row? |
+|---|---|---|
+| Artist | *no* `app_metadata.role` (default branch) | yes, `member_type='artist'` |
+| Industry | `app_metadata.role = 'industry'` | yes, `member_type='industry'` |
+| Client Partner (buyer) | `app_metadata.role = 'buyer'` | **no** |
+| Team Member (staff) | `app_metadata.staff_roles[]`, table `funun_staff` | **no** |
+| Curator | `app_metadata.role = 'curator'` | **no** — but see the doc's open question |
+
+`handle_new_user()` (migration 098) decides this once at signup and returns early for
+`buyer` and `curator` before any profile insert. That is why `member_type` is
+`'artist' | 'industry'` and has no other values — no other account type has a row to
+put one on.
+
+Consequence worth relying on: scoping work to User Accounts is **structural, not a
+convention** — profile-shaped features cannot reach a Team Member or Client Partner
+because there is no row to write to. The inverse also holds: staff-shaped code must
+never assume a profile row exists (a Team Member's name comes from
+`funun_staff.display_name`).
+
+Full reference, including the two traps and the unresolved Curator question:
+`docs/architecture/ACCOUNT-TYPES.md`.
+
 ## GSD Workflow Enforcement
 
 Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
