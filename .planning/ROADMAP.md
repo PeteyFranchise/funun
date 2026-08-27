@@ -1418,14 +1418,35 @@ artist name demoted to an optional display field — so a profile is never title
 "Unnamed artist" again, and behind-the-scenes members are first-class instead of
 nameless.
 
-**SCOPE — USER ACCOUNTS ONLY. NOT Team Member accounts.**
-This touches the accounts artists and industry members sign up for — the ones that own a
-`user_profiles` row. Team Members are structurally out of reach and must stay that way:
-production data shows 11 auth users = 9 `user_profiles` + 2 `funun_staff`, with **zero
-overlap**. `pete@funun.studio` and `soko@funun.studio` have no `user_profiles` row at all;
-staff live in `funun_staff` keyed to `auth.users` and never touch the profile table. So
-"team members have no handle" is already true by construction, not a rule to enforce —
-do NOT add handle fields, prompts, or validation to any staff surface.
+**SCOPE — USER ACCOUNTS ONLY. Not Team Members. Not Client Partners.**
+This touches only the accounts artists and industry members sign up for — the ones that own
+a `user_profiles` row. Handles are for people who engage socially: profiles, the Green Room,
+DMs, collaboration. Team Member accounts are internal staff tooling, and Client Partner
+accounts exist for direct B2B licensing, not social activity. Neither has any use for a
+public @identity.
+
+**Both exclusions are STRUCTURAL, not rules anyone has to remember.** The handle work
+physically cannot reach either account type:
+
+- **Team Members** — staff live in `funun_staff`, keyed to `auth.users`, and never touch the
+  profile table. Production data: 11 auth users = 9 `user_profiles` + 2 `funun_staff`, with
+  **zero overlap**. `pete@funun.studio` and `soko@funun.studio` have no `user_profiles` row
+  at all.
+- **Client Partners (buyers)** — `handle_new_user()` (migration 098) branches on
+  `raw_app_meta_data->>'role'` and returns for `'buyer'` **before** any profile insert, with
+  the comment "buyers are a fully separate account type". No buyer ever gets a
+  `user_profiles` row.
+
+Only the `'industry'` and default `'artist'` branches of that trigger create a profile — so
+"user account" is precisely `member_type IN ('artist','industry')`, and that set is the
+whole blast radius. Do NOT add handle fields, prompts, or validation to any staff or buyer
+surface.
+
+**Open question for discussion:** that same trigger has a THIRD early return, for
+`role = 'curator'`, which also creates no profile. That predates the decision that curators
+are Industry accounts. Confirm during discussion whether curators are meant to land in the
+industry branch (and therefore get handles) or stay profile-less — the answer changes who
+is in scope.
 
 **Why:** `artist_name` is doing two incompatible jobs — "what do we call you in the UI"
 AND "what is your stage name". A mixing engineer legitimately has the second and not the
