@@ -588,7 +588,6 @@ Plans:
 | 16. GTM Beta Launch & Buyer Portal | v1.3 | 9/12 | In Progress|  |
 | 17. Split-Sheet E-Sign | v1.3-pre | 10/10 | Complete   | 2026-07-20 |
 
-
 **Phases 14+ — reconciled against the filesystem 2026-08-26** (plan/summary counts read from `.planning/phases/`; the table above stopped at 17 and understated progress):
 
 | Phase | Plans Complete | Status | Completed |
@@ -1411,6 +1410,80 @@ Whatever is chosen sets the stored content shape, so it must be settled **before
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 35 to break down)
+
+### Phase 36: Account Identity — mandatory @handle for user accounts, artist display name separate
+
+**Goal:** Every user account has a unique, mandatory `@handle` as its identity, with
+artist name demoted to an optional display field — so a profile is never titled
+"Unnamed artist" again, and behind-the-scenes members are first-class instead of
+nameless.
+
+**SCOPE — USER ACCOUNTS ONLY. NOT Team Member accounts.**
+This touches the accounts artists and industry members sign up for — the ones that own a
+`user_profiles` row. Team Members are structurally out of reach and must stay that way:
+production data shows 11 auth users = 9 `user_profiles` + 2 `funun_staff`, with **zero
+overlap**. `pete@funun.studio` and `soko@funun.studio` have no `user_profiles` row at all;
+staff live in `funun_staff` keyed to `auth.users` and never touch the profile table. So
+"team members have no handle" is already true by construction, not a rule to enforce —
+do NOT add handle fields, prompts, or validation to any staff surface.
+
+**Why:** `artist_name` is doing two incompatible jobs — "what do we call you in the UI"
+AND "what is your stage name". A mixing engineer legitimately has the second and not the
+first, so they get a profile titled "Unnamed artist" (the fallback at
+`lib/profile/load.ts:126`). **8 of 9 accounts — 89% — render that way today**, because
+signup collects only email and password and never asks who anyone is.
+
+Handle-first identity is the *superset* of name-first: a display name can always be
+rendered on top of a handle, but addressable identity cannot be retrofitted once hundreds
+of rows have no unique string. At 9 accounts this is a signup-form change; at 500 it is a
+migration plus a backfill plus asking every existing user to pick one. It also unblocks
+experimenting with The Green Room's direction (more Slack/Twitter-like, less
+LinkedIn-like) without a later identity migration.
+
+**Owner decisions (locked):**
+1. `@handle` is **mandatory** for all user accounts. It is the identity field — unique and
+   addressable.
+2. Artist name stays a **separate, optional display field**. With one set, the profile
+   header shows the artist name as the title and `@handle` beneath it; with none, the
+   `@handle` **is** the title. Never a fabricated name, never "Unnamed artist".
+3. **Legal name is unchanged** — still collected for contracts only. It is not a display
+   name and must never leak into public profile rendering.
+4. Handle-less accounts are **prompted on next sign-in**, not auto-generated. A handle is a
+   permanent public identifier and people should choose it. Only ~3 of the 8 are real
+   humans; the rest are `demo@` / `epktest-` / `droptest-` / `codex-064-*` fixtures.
+
+**Already built — verify and extend, do NOT rebuild:**
+- `handle` column exists (migration 010) with a **case-insensitive unique index** on
+  `lower(handle)`, NULLs allowed.
+- Reserved-handle guard exists (migration 037) — a `SECURITY DEFINER` trigger rejecting
+  `admin`/`funun` etc. at the DB layer, so the app cannot be bypassed.
+- `app/u/[handle]/page.tsx` already serves public profiles by handle.
+- The only genuine gap: signup never asks, and nothing requires it.
+
+**Format constraint that will bite:** the one live handle in production is `maya-reyes` —
+it contains a **hyphen**. Any format rule must allow hyphens or it invalidates the only
+existing handle and breaks `/u/maya-reyes`. Proposed: lowercase `a-z 0-9 - _`, 3–30 chars;
+confirm against the reserved-handle trigger during discussion.
+
+**Risks to get right:**
+- **Uniqueness is the DB's job.** The unique index is the guarantee; a live "that's taken"
+  check is a courtesy only. Handle the simultaneous-claim race at the DB error, never
+  optimistically in the UI.
+- **Signup is the highest-drop-off moment in the product.** A required third field there is
+  a real conversion cost; the UX needs care.
+- **Audit every display path** that falls back to `artist_name` — DMs, collaborator lists,
+  split sheets, Green Room, notifications, wall posts — so this does not just relocate
+  "Unnamed artist" somewhere else.
+- **Handle changes over time**: can someone change theirs, and does the old `/u/` URL 404 or
+  redirect? Settle this now, before links are shared.
+
+**Requirements**: TBD
+**Depends on:** Phase 35
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 36 to break down)
 
 ---
 
