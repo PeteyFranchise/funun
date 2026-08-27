@@ -5,6 +5,7 @@ import type { UserProfile } from '@/types'
 import { normalizeCountry, normalizeRegistrant } from '@/lib/metadata/identifiers'
 import { ALL_INDUSTRY_ROLE_SLUGS } from '@/lib/industry-roles'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
+import { formatContactPhone } from '@/lib/phone'
 import { sanitizeProfileRoles, filterOpenTo, isFeaturableProjectRow } from '@/lib/profile/validate'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 import { isSemanticBlankText, isSemanticBlankJson } from '@/lib/profile/semantic-blank'
@@ -117,6 +118,16 @@ async function sanitize(
     }
     if (key === 'grid_issuer_code') {
       const v = typeof value === 'string' ? value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 5) : ''
+      update[key] = v || null
+      continue
+    }
+    if (key === 'contact_phone') {
+      // Normalize, never reject. Phone is optional here and an artist may
+      // legitimately save a partial or foreign number, so there is no 400 —
+      // but the stored shape must not depend on which client wrote it (the
+      // Settings form masks live, the claim-prefill path does not).
+      // formatContactPhone leaves any non-+1 country code exactly as typed.
+      const v = typeof value === 'string' ? formatContactPhone(value).trim() : ''
       update[key] = v || null
       continue
     }

@@ -17,6 +17,7 @@
 
 import { useState } from 'react'
 import { PRO_VALUES, PRO_LABELS } from '@/lib/metadata/schema'
+import { formatContactPhone } from '@/lib/phone'
 import AddressAutocomplete from '@/components/profile/AddressAutocomplete'
 import { LearnWhy } from '@/components/ui/LearnWhy'
 import { SUPPORT_EMAIL } from '@/components/nav/ReportProblemLink'
@@ -355,7 +356,7 @@ export function RightsContractsSections() {
             <input
               type="tel"
               value={form.contact_phone}
-              onChange={e => set('contact_phone', e.target.value)}
+              onChange={e => set('contact_phone', formatContactPhone(e.target.value))}
               placeholder="+1 555 000 0000"
               className={`mt-1 ${inputClass}`}
             />
