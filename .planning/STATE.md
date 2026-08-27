@@ -28,6 +28,70 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
+### SESSION CLOSE 2026-08-26 — artist-side polish + account identity (resume here)
+
+**Everything is committed, pushed, and deployed. Working tree clean, 0 unpushed.**
+Production is at `09d7a63`.
+
+**Shipped today (7 pushes, all through tsc + lint + 2993 jest):**
+- Artist Settings split into three linkable tab routes with **save-on-switch** —
+  `/settings` (Rights & contracts), `/settings/profile` (Public profile + Privacy),
+  `/settings/payouts`. That last one **had never been linked from anywhere** — it is the
+  Stripe connection that lets artists get paid from sync deals, previously reachable only
+  by typing the URL. Quick task 260826-qsb.
+- `components/ui/LearnWhy.tsx` — collapsible disclosure, applied 3x in Settings. Rule:
+  what stays visible is the RULE, what collapses is the WHY; never an action or status.
+- Contact moved under Legal Identity; page grouped into "Contracts & rights" vs "Your
+  public profile" with dividers stating what finishing each buys you.
+- **Two false claims retired:** the platform-GRid promise (Funūn is not IFPI-registered;
+  `platform_identifier_config.grid_issuer_code` is NULL on purpose) and "managed through
+  your account settings" (no such page exists, and no self-serve email change exists at
+  all). Both now say what is true, with code comments at the point of temptation.
+- Hydration mismatch in `ReportProblemLink` — `navigator.userAgent` read during render
+  made the SSR and client hrefs differ; React refused to patch, poisoning the artist-nav
+  subtree on EVERY artist page. Now read in an effect.
+- **`app/(artist)/error.tsx`** — artists had NO error boundary while `(admin)` did, so any
+  artist page crash fell to `global-error.tsx`, which replaces the whole document. Now the
+  nav survives, `error.digest` is shown (production strips messages — the digest is the
+  only handle for finding the real exception), and there are two buttons because `reset()`
+  cannot fix a stale-build chunk failure, only a hard reload can.
+- Live phone masking (`lib/phone.ts`) that does NOT mangle international numbers — the
+  pre-existing staff helper is US-only and would silently turn `+44 20 7946 0958` into
+  `(207) 946-0958`. Quick task 260826-vw5.
+
+**Scoped, not started — Phase 36: Account Identity (mandatory @handle).**
+89% of user accounts (8 of 9) render "Unnamed artist". Owner decisions are LOCKED in
+ROADMAP.md. The handle plumbing already exists (case-insensitive unique index migration
+010, reserved-name trigger migration 037, `/u/[handle]` route) — **only signup never
+asks**. Next step: `/gsd-discuss-phase 36`.
+
+**Account vocabulary is now official** — `docs/architecture/ACCOUNT-TYPES.md`, summarised
+in `.claude/CLAUDE.md` so it loads every session. **User Account = owns a `user_profiles`
+row = exactly Artist + Industry.** Team Members and Client Partners are excluded
+STRUCTURALLY (no row to write to), not by convention.
+
+**Open items for tomorrow, roughly in priority order:**
+1. **Signed-in tab-switch check (30 seconds, only unverified path).** `/settings` → type in
+   a field → kill wifi → click "Public profile". You should STAY PUT with a retry line and
+   your typing intact. Proven by unit test and by reading, never by clicking. Owner elected
+   to ship before this pass.
+2. **Curator question — blocks Phase 36's scope.** `handle_new_user()` has a
+   `role = 'curator'` early return creating no profile, contradicting "curators are
+   Industry accounts". Dead code, or a real fifth type? Changes who gets a handle.
+3. **Thomas has two accounts** — `thomasphillips3@gmail.com` and
+   `thomas.phillips.3@gmail.com`. Resolve before handles make each a distinct public
+   identity.
+4. Rotate the Resend API key (low priority, nothing broken) → then re-copy `.env.local`
+   into the Dashlane note.
+5. Migration 133 push (human-gated) → then finish quick task 260825-m2k.
+6. `/gsd-discuss-phase 34` (lead intake) and `/gsd-discuss-phase 35` (Playbook content).
+
+**Operational lesson (already in `.claude` memory):** never run `npm run build` while the
+owner's dev server is up — it clobbers `.next` under the running server. It cost three
+broken previews, two forced re-logins, and a 1.8 GB corrupted cache today. Use
+`npx tsc --noEmit`. Recovery: `rm -rf .next`, restart dev.
+
+
 Phase: 31.2 (ae-console-playbook-authoring-rbac-plays-selects-telemetry) — 10/10 PLANS EXECUTED (phase verification + owner UAT pending)
 31.2-10 (Selects engagement telemetry — AE per-Selects readout + leadership rollup, wave 4, LAST plan in phase) COMPLETE 2026-08-24 — 31.2-10-SUMMARY.md; GET /api/admin/client-partners/selects/[id]/engagement (staff GET, own-Selects-scoped via loadSelectsInScope, 404 not 403) + EngagementPanel ('use client', self-fetches the route, mounted on the AE's Selects detail view) — per-track plays/audible-seconds/qualified-listens(≥30s)/replays + a Selects summary, computed on read via plan-02's aggregateTrack/aggregateSelectsRollup. lib/selects/engagement-rollup.ts's buildEngagementRollup (batched, no-N+1, mirrors loadWholeBookWithCoverage's shape) + GET /api/admin/client-partners/engagement-rollup (leadership-only, verifyAdmin) + ClientPartnersRoom.tsx's new "Engagement — who's getting listens" section (per-AE totals + per-Selects breakdown), fed server-side only inside loadClientPartnersRoomData's isLeadership branch (hide-not-filter, T-31.2-27) — plan 09's Today's Play banner + My/All tabs preserved untouched. Necessary plumbing beyond files_modified (Rule 2): extracted lib/selects/engagement-rollup.ts (a Next.js route module may only export HTTP handlers, so the RSC leadership tower needs a shared lib function) + a route.test.ts for the new leadership route + extended lib/admin/gate.test.ts's existing D-31.1-01 hide-not-filter suite to also assert buildEngagementRollup is never called for ae/bd. Full repo suite 266 suites/2843 tests green, tsc clean; `npm run build`'s webpack compile succeeds but its separate ESLint pass fails on a pre-existing unrelated file (lib/client-partners/health.test.ts, `@typescript-eslint/no-var-requires` rule not found) — logged to deferred-items.md, out of scope. R13 impl complete — registered in REQUIREMENTS.md's Phase 31 Slice-1 traceability table (owner UAT pending: play a Selects preview with pause/seek, confirm audible seconds + leadership rollup). Phase 31.2 is now 10/10 plans executed — remaining work is owner UAT + phase verification, no more plans to execute.
 31.2-01 (Migrations 130/131/132 — Playbook RBAC + authoring model, Plays, Selects engagement telemetry, wave 1) COMPLETE 2026-08-25 — 31.2-01-SUMMARY.md; supabase/migrations/130_playbook_rbac.sql (playbook_rooms 6-room seed in nav.ts order + playbook_room_role_grants role<>'leadership' structural CHECK + playbook_room_leads + playbook_sub_groups + playbook_entries SOP/Topic draft->publish, commit fcec1cd) + 131_plays.sql (plays one-active partial-unique index + play_assignments client_targeted|general_task + play_assignment_completions idempotent per-AE key, commit 2b95ea1) + 132_selects_engagement.sql (selects_track_engagement 0<delta<=15 CHECK + selects_opens + SECURITY DEFINER abuse-cap trigger shipped inline, commit 2b95ea1) + __tests__/migration-130/131/132.test.ts (42 jest tests, commit b4bc0ae). Task 4 blocking checkpoint cleared — owner ran `supabase db push` against prod (project wgfjakfiyeewzfuxkgyo) and confirmed `supabase migration list` LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger. Every new table (all 10) is zero-policy RLS + REVOKE from authenticated/anon, mirrors migration 128/129 doctrine. Seed reproduces Phase 33's exact it-team access behavior (leadership+it, Pitfall 6 backward-compat). Unblocks the DB-dependent surfaces in plans 03/06/07 (requireRoomAccess, plays.ts, access editor); plan 02's engagement.ts (already implemented) can now read/write these tables live.
