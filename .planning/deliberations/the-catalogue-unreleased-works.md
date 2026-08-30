@@ -199,6 +199,43 @@ Design consequence: every AI-related moment in the catalogue UI answers BOTH que
 can go?" (Crate eligibility shown as a live consequence, not a surprise). Plan a
 UI-demo/mockup pass (gsd-sketch) for these flows at discuss/plan time.
 
+### The producer FAQ (owner-driven Q&A, 2026-08-30 — use as UI/help copy source)
+
+**Q: AI adds an 8-bar guitar solo to my otherwise fully-human song. What do I own?**
+Everything except those 8 bars — and nobody owns those. Ownership attaches element by
+element, not as a percentage. Song registers as partially-AI (allowed since Oct 2025);
+the AI portion is disclaimed; splits are untouched (AI takes nothing).
+
+**Q: A session guitarist would be work-for-hire — credited, paid, zero publishing. Why
+is AI different?**
+Not in the money — in the mechanism. WFH TRANSFERS a copyright the human player CREATED.
+AI creates no copyright, so there is nothing to transfer; no payment or ToS can conjure
+one (Thaler, affirmed 2025). The difference is a hole in the fence, not the wallet.
+Re-authoring closes it: hand the AI solo to a guitarist as a sketch, they make it
+theirs, standard WFH applies, fence complete.
+
+**Q: So the writers/producers still collect ALL the money?**
+Yes — completely. Royalties flow to the registered owners of the work and master, never
+bar-by-bar. Uncopyrightable solo = nobody ELSE can claim money, never that money leaks.
+Never claim the AI bars as human-written to "fence" them — false registration risk.
+Collect 100% of what's yours; claim nothing that's nobody's.
+
+**Q: Can anyone freely sample the AI solo, like a royalty-free Splice sample?**
+Freer than Splice in principle — Splice is owned-but-licensed; the AI notes are owned by
+NOBODY. Replaying/interpolating those bars is clearly free. The gray zone: lifting the
+EXACT AUDIO from the released track — the notes are free but they sit inside a
+human-owned master (mix/production authorship); no court has drawn that line, which
+practically deters samplers. And the practical shield: disclosure is component-level
+("contains an AI instrument part"), never timestamped — Funūn's records never paint a
+target on the exact bars.
+
+**Open question raised by this thread — the Crate middle tier:** a human-produced master
+CONTAINING an AI segment (vs. a wholly AI-generated master). Instinct: FLAG, don't ban —
+buyer sees the disclosure; UI shows the fix ("re-author the solo → fully eligible").
+Extra reason the flag matters: AI segments can echo copyrighted licks from training data,
+and one-stop licensing means Funūn vouches for cleanliness (indemnity exposure). Decide
+at discuss-phase.
+
 ## Research grounding (2026-08-30, current)
 
 - **PROs** (ASCAP/BMI/SOCAN, aligned Oct 2025): partially-AI works registrable when a
