@@ -5,6 +5,14 @@ writer/artist's perspective, matching the possessive voice of the artist side (Y
 Sound Vault, Your Profile) and making the doctrine literal: this is YOURS, evidenced.
 "The Catalogue" survives only as internal/phase shorthand.
 
+**PRIORITY (owner, 2026-08-30, end of session): "I want to be able to test this
+songwriter tool soon in production."** Phase 37 jumps the queue ahead of 34/35, and
+planning must bias toward a thin vertical slice — 37.1 "The Songwriter": Start a song →
+composer (Hum-it-in with real mic capture + the lyrics pad as designed) → the diary.
+Everything else (destinations, Crate submission, DDEX export, playlists, collaborator
+sharing, volume view) defers to 37.2+. Ship the writing room first; the owner tests it
+live.
+
 **Status:** Owner vision captured + three core decisions LOCKED (2026-08-30 discussion).
 Ready for `/gsd-discuss-phase` when scheduled. Decisions below are settled — do not re-ask.
 

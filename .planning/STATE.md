@@ -69,7 +69,7 @@ via dev server.
    thomasphillips3@gmail.com; the dotted duplicate is deleted).
 3. **Turnstile in Vercel prod** — keys exist in .env.local only; waitlist has no bot
    check. Todo: 2026-08-27-configure-turnstile-production.md.
-4. `/gsd-discuss-phase 37` — short; the data model (works/versions vs vault_projects)
+4. **`/gsd-discuss-phase 37` — PRIORITY, owner wants the songwriter tool testable in prod SOON.** Bias plans to a 37.1 vertical slice (Start a song + composer + hum capture + lyrics pad + diary); defer the rest to 37.2+. Short discussion; the data model (works/versions vs vault_projects)
    is the main open question. Then plan/execute. Deferred sketch: the collaborator
    vantage (007).
 5. Settings save-on-switch manual check (from 2026-08-26) · Resend key rotation (low) ·
