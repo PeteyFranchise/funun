@@ -159,6 +159,46 @@ function FlowOverlay({ children }: { children: React.ReactNode }) {
   )
 }
 
+// A tiny confirmation toast — plain text, self-dismissing, with a jump to
+// where the thing landed. Deliberately NOT the SelectsPlayer toast, which
+// renders through an HTML sink (the audit's L-01); this takes a string and
+// renders it as a text node.
+export function Toast({
+  message,
+  onView,
+  onDismiss,
+}: {
+  message: string
+  onView: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+      <div
+        role="status"
+        className="flex items-center gap-3 rounded-[11px] border border-hairstrong bg-card2 px-4 py-2.5 shadow-2xl"
+      >
+        <span className="text-[12px] text-white">{message}</span>
+        <button
+          type="button"
+          onClick={onView}
+          className="text-[12px] font-semibold text-brandindigo hover:text-white"
+        >
+          View ↓
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="text-[13px] leading-none text-lavdim hover:text-lav"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function VersionsList({ versions }: { versions: VersionCardData[] }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
@@ -354,7 +394,25 @@ export function WorkPage({
 
   const lyricsRef = useRef<HTMLDivElement | null>(null)
   const rosterRef = useRef<HTMLDivElement | null>(null)
+  const diaryRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // A brief, self-dismissing confirmation. A saved note lands in the diary,
+  // which now sits below the pad and can be collapsed — without this it can
+  // read as "vanished". Plain text only (no HTML sink — the audit's L-01).
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function showToast(message: string) {
+    setToast(message)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000)
+  }
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    },
+    []
+  )
 
   // Gate 1 of the guiding line's own cadence rule (lib/catalogue/
   // guiding-line.ts): a splits step must fire AT MOST ONCE per
@@ -381,6 +439,13 @@ export function WorkPage({
 
   function scrollToRoster() {
     rosterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function scrollToDiary() {
+    // On mobile the diary lives behind a tab — select it first so the entry
+    // the toast points at is actually on screen when we scroll there.
+    setMobileTab('diary')
+    diaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   // ─── The AI question, inline (005-C) — fires after an add, never as a
@@ -597,7 +662,7 @@ export function WorkPage({
 
       {/* Versions + diary — 001-C two columns (desktop) / 001-A single
           stream with a Diary|Versions toggle (mobile). */}
-      <div className="mt-8">
+      <div ref={diaryRef} className="mt-8">
         {viewport === 'desktop' ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr] lg:items-start">
             <div className="lg:sticky lg:top-4">
@@ -799,6 +864,7 @@ export function WorkPage({
               if (res.ok) {
                 router.refresh()
                 setFlow(null)
+                showToast('Saved to the diary')
                 return { ok: true }
               }
               const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -816,6 +882,17 @@ export function WorkPage({
             onCancel={() => setFlow(null)}
           />
         </FlowOverlay>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast}
+          onView={() => {
+            scrollToDiary()
+            setToast(null)
+          }}
+          onDismiss={() => setToast(null)}
+        />
       )}
     </div>
   )

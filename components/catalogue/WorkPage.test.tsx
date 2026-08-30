@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { WorkPage, type VersionCardData, type WorkPageProps } from './WorkPage'
+import { WorkPage, Toast, type VersionCardData, type WorkPageProps } from './WorkPage'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
 import type { LyricsPadBlock } from './LyricsPad'
 import type { DiaryFeedEntry } from './DiaryFeed'
@@ -250,5 +250,31 @@ describe('WorkPage', () => {
     expect(markup).not.toContain('Re-author')
     expect(markup).not.toContain('Add to the sheet')
     expect(markup).not.toContain('Keep as-is')
+  })
+
+  it('does not show a toast until something triggers one', () => {
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(markup).not.toContain('Saved to the diary')
+  })
+})
+
+describe('Toast', () => {
+  const noop = () => {}
+
+  it('renders its message with a View jump and a dismiss control', () => {
+    const markup = renderToStaticMarkup(
+      <Toast message="Saved to the diary" onView={noop} onDismiss={noop} />
+    )
+    expect(markup).toContain('Saved to the diary')
+    expect(markup).toContain('View')
+    expect(markup).toContain('aria-label="Dismiss"')
+  })
+
+  it('renders the message as escaped text, never as live HTML (audit L-01)', () => {
+    const markup = renderToStaticMarkup(
+      <Toast message="<img src=x onerror=alert(1)>" onView={noop} onDismiss={noop} />
+    )
+    expect(markup).not.toContain('<img src=x')
+    expect(markup).toContain('&lt;img')
   })
 })
