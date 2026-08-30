@@ -1,0 +1,68 @@
+<title>006-A · The lyrics pad — structure blocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><style>
+:root{--ink:#0a0a0f;--card:#0E0D1E;--card2:#1A1838;--hair:rgba(199,203,247,.12);--hair2:rgba(199,203,247,.22);--lav:#C7CBF7;--dim:#7c80b4;--good:#34D399;--warn:#FBBF24;--cold:#60A5FA;--grad:linear-gradient(105deg,#818CF8,#D946EF)}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:#fff;font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:28px 22px 60px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.btn{border:1px solid var(--hair2);background:rgba(199,203,247,.06);color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.btn:hover{color:#fff}.pri{background:var(--grad);border:0;color:#fff;box-shadow:0 12px 30px -14px rgba(217,70,239,.55)}
+.dim{color:var(--dim)}.sm{font-size:12px}.xs{font-size:11px}
+.blk{border:1px solid var(--hair);border-radius:11px;background:var(--card2);margin-bottom:9px;overflow:hidden}
+.blkh{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--hair)}
+.blkh .grip{color:var(--dim);cursor:grab;font-size:13px}
+.sect{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#818CF8}
+.who{margin-left:auto;display:flex;gap:5px;align-items:center}
+.av{width:20px;height:20px;border-radius:50%;background:var(--grad);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+.av.b{background:linear-gradient(105deg,#34D399,#60A5FA)}
+.lyr{padding:11px 14px;font-size:14px;line-height:1.85;color:#EDEEFB;white-space:pre-line}
+.lyr .cursor{border-left:2px solid #D946EF;margin-left:1px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+.chip{border:1px solid var(--hair2);background:none;color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer}
+.chip:hover{color:#fff;border-color:#818CF8}
+.note{border-top:1px solid var(--hair);margin-top:26px;padding-top:12px;font-size:11.5px;color:var(--dim)}
+</style>
+<div class="wrap">
+<p class="tag">Sketch 006 · Variant A — “Start with lyrics” opens this</p>
+
+<div class="card" style="padding:14px 16px;margin:12px 0 10px;display:flex;justify-content:space-between;align-items:center">
+  <div><input value="Midnight" style="background:none;border:0;color:#fff;font:800 18px Inter;outline:none;width:200px"><br>
+  <span class="xs dim">new song · lyrics saving automatically · every edit timestamped</span></div>
+  <button class="btn">🎙 Add the melody — hum it</button>
+</div>
+
+<div class="blk">
+  <div class="blkh"><span class="grip">⠿</span><span class="sect">Verse 1</span>
+    <span class="who"><span class="av" title="@peterzora">P</span></span></div>
+  <div class="lyr">City lights are burning through the curtain
+Every word you said still feels uncertain
+I was halfway gone before you called my name</div>
+</div>
+
+<div class="blk" style="border-color:rgba(129,140,248,.4)">
+  <div class="blkh"><span class="grip">⠿</span><span class="sect">Chorus</span>
+    <span class="who"><span class="av" title="@peterzora">P</span></span></div>
+  <div class="lyr">Meet me at midnight, where the wrong feels right
+We don’t need forever, just the rest of the night<span class="cursor">&nbsp;</span></div>
+</div>
+
+<div class="blk">
+  <div class="blkh"><span class="grip">⠿</span><span class="sect">Verse 2</span>
+    <span class="who"><span class="xs dim" style="margin-right:4px">Ben</span><span class="av b" title="Ben Cooke">B</span></span></div>
+  <div class="lyr" style="color:var(--dim)">Ben is writing here — his lines land under his name, timestamped…</div>
+</div>
+
+<p class="xs dim" style="margin:4px 0 7px">Add a section —</p>
+<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">
+  <button class="chip">＋ Verse</button><button class="chip">＋ Pre-Chorus</button><button class="chip">＋ Chorus</button>
+  <button class="chip">＋ Bridge</button><button class="chip">＋ Intro</button><button class="chip">＋ Outro</button>
+  <button class="chip">＋ Hook</button><button class="chip" style="color:var(--dim)">＋ Custom…</button>
+</div>
+
+<div class="card" style="padding:11px 14px">
+  <b class="xs" style="color:var(--cold)">WHAT THE DIARY SEES</b>
+  <p class="xs dim" style="margin:5px 0 0">✎ “Chorus edited by @peterzora · just now” · “Ben added Verse 2 · 11:42” — section-level history, not a wall of ‘lyrics changed’. Who wrote which lines is on the record, line by line, the moment it happens.</p>
+</div>
+
+<p class="note">Structure blocks: draggable to reorder, labeled with the section vocabulary artists already use, one author badge per block (attribution = evidence = the splits nudge knows exactly WHO to add). Paste-a-full-lyric imports and auto-splits on blank lines. The melody button keeps the hum one tap away — lyrics and melody are the two halves of what you own.</p>
+</div>

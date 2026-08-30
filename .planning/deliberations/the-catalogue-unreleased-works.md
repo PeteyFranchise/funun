@@ -96,6 +96,14 @@ diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
 two-door form (A) forever after; A keeps a "walk me through it again" link that reopens
 B's pacing; DDEX vocabulary only ever in the receipt.
+006 DECIDED → A: the lyrics pad is STRUCTURE BLOCKS — draggable section cards
+(Verse/Pre-Chorus/Chorus/Bridge/Intro/Outro/Hook/Custom chips), ONE AUTHOR BADGE PER
+BLOCK (attribution as a property of the text: section-level diary events, splits nudge
+knows who to add, disputes answered by the block itself), paste-a-full-lyric auto-splits
+on blank lines, hum button in the header (melody one tap from words). EXPORT: "Copy full
+lyric" in two flavors — TAGGED with [Verse]/[Chorus] section brackets (Suno's native
+input format — the blocks serialize 1:1) and PLAIN; pairs with the exported hum as
+worked-example-1's complete kit, evidence already banked.
 005 DECIDED → C: the composer room (one bar, four verbs — Hum it / Write lyrics / Add
 audio / Note — AI questions and evidence folding inline into the add flow) with ONE
 guiding line between composer and diary: the song's single next-best step, rotating
