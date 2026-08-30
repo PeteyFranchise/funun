@@ -1584,6 +1584,34 @@ Plans:
 
 - [x] 36-07-PLAN.md — Migration 134: handle format CHECK, text-locked to lib/handles/validate.ts [human-gated push, applied 2026-08-27]; D-13 NOT NULL DEFERRED with an owner tripwire — the planned fixture sweep was removed after the fixtures were deleted outright (D-05/D-13)
 
+### Phase 37: The Catalogue — unreleased works as living assets (versions, rights-ready scoring, graduation, pitch life, AI authorship hygiene)
+
+**Goal:** "Unreleased" graduates from junk drawer to publisher-grade catalogue: a work
+with a living history (versioned recordings, evolving contributors, a diary timeline),
+scored on RIGHTS readiness not release readiness, able to graduate into a release with
+its whole history, enter The Crate by invite/submission, track its pitch life, be shared
+via artist playlists, and administer at volume with DDEX standards met on a guided path.
+
+**North star:** artists cite Suno or any AI tool where necessary but own the full song as
+much as possible — disclosure is not forfeiture; the authorship-hygiene layer keeps the
+human-authored share maximal by construction.
+
+**Vision + THREE LOCKED DECISIONS (CAT-Q1 diary versioning · CAT-Q2 execute-at-commercial-
+commitment with draft→executed→addendum sheet lifecycle · CAT-Q3 DDEX-native zero-split AI
+entries + authorship hygiene) + current PRO/USCO/DDEX research:**
+`.planning/deliberations/the-catalogue-unreleased-works.md` — decisions are settled, do
+not re-ask at discuss-phase. Likely splits into a phase pair at planning (31→31.1/31.2
+precedent).
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 36
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 37 to break down)
+
 ---
 
 ### Phase 32: Production Observability, Capacity & Incident Readiness
