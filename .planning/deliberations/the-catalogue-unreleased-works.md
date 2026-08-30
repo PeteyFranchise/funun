@@ -42,6 +42,23 @@ industry's composition/master split (ISWC vs ISRC) and what makes the DDEX guide
 possible. A work accumulates iterations over time: new demos, new reference vocals, new
 contributors joining (a writer adds a verse in month 2 → splits change).
 
+## Owner-added scope (2026-08-30, during sketch review)
+
+**7. "Hum it in" — native voice-memo capture into the diary.** Owner: yes, artists can
+hum voicenotes directly into the diary to sketch and memorialize ideas. Why it punches
+above its weight: (a) EVIDENCE-GRADE — an in-app capture is platform-timestamped at the
+moment of creation, the strongest form the authorship trail can take (an uploaded file
+merely claims its date); (b) FRICTIONLESS HABIT — every hygiene nudge (hum-first, the
+one-pass BGV fix) ends in a record button that is right there, one tap; (c) HOW WRITERS
+WORK — "voice memos, except these count": memorialized, timestamped, already a work;
+(d) WHERE SONGS BEGIN — "hum a new idea" CREATES a work with v1 = the hum; the catalogue
+starts from thirty seconds of melody and Funūn becomes the first app opened, not the
+last. Browser mic capture (MediaRecorder) + existing audio storage machinery.
+
+**Sketch verdicts so far:** 001 → C on desktop; mobile layout open (likely single-stream
+collapse; mobile sketch queued). 004 → redrawn to the vocal-line Crate rule; pending
+final call.
+
 ## LOCKED DECISIONS
 
 ### CAT-Q1 — What creates a version: **the diary** (option B)
