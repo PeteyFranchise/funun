@@ -56,6 +56,40 @@ Production data confirms the separation holds: 11 auth users = 9 `user_profiles`
 
 ---
 
+## Important caveat — the early returns do NOT fire at INSERT on this instance
+
+The section above describes the trigger's *source*. At runtime on this Supabase instance the
+behaviour is different, and the difference matters.
+
+`app_metadata` is applied **after** the `auth.users` INSERT here (the Phase 27 finding, see
+`lib/accounts/provisionIntent.ts`). `handle_new_user()` reads
+`NEW.raw_app_meta_data->>'role'`, which is therefore **NULL for every account at INSERT time**.
+So the `curator`, `buyer`, and `industry` branches never fire during creation — **every single
+account creation path falls through to the default artist branch and gets a `user_profiles`
+row.**
+
+Staff and buyer accounts end up with no profile row because their provisioning helpers
+**delete it afterwards**:
+
+- `lib/staff/createStaffAccount.ts:94` — `.from('user_profiles').delete().eq('id', userId)`
+- `lib/buyers/createBuyerAccount.ts:87` — same
+
+**The end state is still exactly what this document says** — a Team Member or Client Partner
+has no profile row, so profile-shaped features genuinely cannot reach them. Scoping work to
+User Accounts remains sound. But the mechanism is *created-then-deleted*, not *never created*,
+and two consequences follow:
+
+1. **Anything enforced at INSERT sees every account type**, briefly, as an artist row. This is
+   what blocks Phase 36's `NOT NULL` constraint on `handle`: `SET NOT NULL` would reject the
+   profile insert for staff, buyer, industry, and curator provisioning — before the delete that
+   would have cleaned it up ever runs.
+2. **A transaction that fails mid-provisioning can leave an orphan profile row** for an account
+   type that should not have one. Worth checking if account types ever look wrong.
+
+Do not read "structural" as "cannot happen at any moment". Read it as "cannot persist".
+
+---
+
 ## What this buys you
 
 Scoping a feature to User Accounts is **structural, not a convention**. Profile-shaped
