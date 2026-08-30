@@ -382,7 +382,7 @@ Industry, nothing else.** Team Members and Client Partners are NOT User Accounts
 | Industry | `app_metadata.role = 'industry'` | yes, `member_type='industry'` |
 | Client Partner (buyer) | `app_metadata.role = 'buyer'` | **no** |
 | Team Member (staff) | `app_metadata.staff_roles[]`, table `funun_staff` | **no** |
-| Curator | `app_metadata.role = 'curator'` | **no** — but see the doc's open question |
+| Curator | provisioned as **Industry** | yes — the `role='curator'` branch is dead code |
 
 `handle_new_user()` (migration 098) decides this once at signup and returns early for
 `buyer` and `curator` before any profile insert. That is why `member_type` is

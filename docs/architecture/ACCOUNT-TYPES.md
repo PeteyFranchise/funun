@@ -23,7 +23,7 @@ types with their own tables and their own surfaces.
 | **Industry** | `app_metadata.role = 'industry'` | yes, `member_type = 'industry'` | `/vault` |
 | **Client Partner** (buyer) | `app_metadata.role = 'buyer'` | **no** | buyer catalogue |
 | **Team Member** (staff) | `app_metadata.staff_roles[]` | **no** — lives in `funun_staff` | `/admin/*` |
-| **Curator** | `app_metadata.role = 'curator'` | **no** | see *Open question* below |
+| **Curator** | provisioned as **Industry** | yes, `member_type = 'industry'` | `/vault` |
 
 "User Account" is the umbrella for the first two rows. It is not a database value —
 there is no `account_type` column. It is a *derived* category, and the derivation is
@@ -135,17 +135,27 @@ Do not model them as grants on a profile.
 
 ---
 
-## Open question — Curator
+## Resolved — Curator (2026-08-27)
 
-The trigger has a distinct `role = 'curator'` early return that creates **no** profile,
-putting curators in the same posture as buyers. That contradicts the standing decision
-that curators are Industry accounts (Phases 23/25/27/28).
+**Curators ARE User Accounts.** They are provisioned as **Industry** and get a
+`user_profiles` row like any other Industry member.
 
-One of two things is true and nobody has confirmed which:
+This was an open question because `handle_new_user()` has a `role = 'curator'` branch
+that returns early and creates no profile — which looked like it contradicted the
+standing decision. It does not. **That branch is dead code.** Evidence, gathered against
+production during the Phase 36 discussion:
 
-- the `curator` branch is dead code from before that decision, and curators now sign up
-  through the `industry` branch (and therefore ARE User Accounts); or
-- curators genuinely have no profile, and the taxonomy note is out of date.
+- **0** auth users carry `app_metadata.role = 'curator'`
+- the `curators` table has **0 rows**
+- nothing in the codebase *sets* that role — exactly one place reads it
+  (`app/api/curators/[id]/route.ts`)
+- `app/api/curators/claim/[token]/route.ts` states in its own header that it
+  **"NEVER mints app_metadata.role='curator'"**; it provisions via
+  `provisionIndustryAccount()`
 
-**This is unresolved.** It changes whether curators are in scope for any User Account
-feature, `@handle` included. Resolve it before shipping Phase 36.
+So no current code path can reach that branch. It is a leftover guard from before
+curators were folded into Industry. Removing it is safe cleanup, but nothing depends on
+it happening.
+
+**Consequence:** curators are in scope for every User Account feature, `@handle`
+included. See `.planning/phases/36-account-identity-mandatory-handle-for-user-accounts-artist-d/36-CONTEXT.md` D-01.
