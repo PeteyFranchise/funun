@@ -56,7 +56,10 @@ starts from thirty seconds of melody and Funūn becomes the first app opened, no
 last. Browser mic capture (MediaRecorder) + existing audio storage machinery.
 
 **Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
-diary as default with a Diary|Versions toggle reaching B's cards. 004 → redrawn to the vocal-line Crate rule; pending
+diary as default with a Diary|Versions toggle reaching B's cards.
+002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
+two-door form (A) forever after; A keeps a "walk me through it again" link that reopens
+B's pacing; DDEX vocabulary only ever in the receipt. 004 → redrawn to the vocal-line Crate rule; pending
 final call.
 
 ## LOCKED DECISIONS
