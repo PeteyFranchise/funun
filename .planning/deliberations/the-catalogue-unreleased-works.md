@@ -111,6 +111,27 @@ protection. The when-in-doubt rule the UI asks:
 The diary is the arbiter — Q1's auto-capture means the timeline either shows the
 human-first version or it doesn't; memory is never the evidence.
 
+### Worked example — the Suno hum workflow (canonical safe case, owner-raised)
+
+Human hums the melody + types all lyrics into Suno; Suno renders a sung demo of THEIR
+material. Ownership map: lyrics fully human; every hummed section fully human (the hum
+IS the evidence — it answers the when-in-doubt question with a recording of the
+artist's own voice); Suno's vocal = performance, demo-only, no ownership impact.
+
+The two edges to surface in UI:
+1. **Suno composes whatever the hum didn't cover.** Verse melodies for typed-but-unhummed
+   lyrics, chords, the whole arrangement — AI-authored even though the words are human.
+   Rule: you own every section you hummed; hum it all, or re-author the sections Suno
+   invented before release singers copy them.
+2. **Embellishment drift.** Small interpretive phrasing = performance; a meaningfully
+   changed melodic line the artist KEEPS is AI-born — the re-author prompt fires here.
+
+Workflow commandment: **the hum lands in the diary BEFORE Suno** — a hum living only in
+Suno's interface is evidence the artist doesn't hold. Endgame done right: human
+re-record from the human melody/lyrics + fresh human arrangement → released master needs
+NO AI disclosure; the Suno demo stays in history cited "AI reference vocal +
+AI-generated arrangement — demo only"; artist owns the entire song.
+
 ## Research grounding (2026-08-30, current)
 
 - **PROs** (ASCAP/BMI/SOCAN, aligned Oct 2025): partially-AI works registrable when a
