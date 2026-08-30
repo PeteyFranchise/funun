@@ -96,6 +96,40 @@ See `docs/architecture/ACCOUNT-TYPES.md`.
   of the admin console and buyers out of the catalogue. Structurally they cannot be given a
   handle, so the gate must not ask them for one.
 
+- **D-10a — MOUNT THE GATE IN `app/(artist)/layout.tsx`, NOT IN `middleware.ts`.** This is the
+  decision that makes D-10 structural rather than a rule someone has to remember. The route
+  groups already separate the account types completely: `app/(artist)/` (41 pages) is rendered
+  **only** for User Accounts, `app/(admin)/` (37 pages) only for Team Members, `app/sync/`
+  (8 pages) only for Client Partners. A gate mounted in the artist layout is therefore
+  *physically incapable* of reaching staff or buyers — their pages are in different trees and
+  never render that layout.
+
+  **Middleware is the wrong home and it is the tempting one.** It runs on every request holding
+  only the auth session, so it would need a DB round-trip per request just to learn whether a
+  profile row exists — and it already gates `/admin` in the same `isProtected` expression as
+  `/vault`. That is precisely the context in which "is authenticated" gets used as a proxy for
+  "is a User Account" and staff get locked out.
+
+  Bonus: `app/(artist)/layout.tsx` **already** calls `supabase.auth.getUser()` and already
+  queries `capability_grants` for the nav. The handle check rides along on work that is
+  happening anyway.
+
+- **D-10b — absence of a profile row means DO NOT GATE.** Write the condition as
+  `if (profile && !profile.handle)`. The `profile &&` is load-bearing: if the row is missing for
+  any reason, let the person through. The gate exists to collect a handle from someone who
+  should have one; a missing profile means "not my business", never "block".
+
+- **D-10c — the test must not be an artist.** Layers D-10a and D-10b both look correct in
+  review, and testing with an artist account passes every time — which is exactly how this bug
+  would ship. Follow the existing precedent in `lib/admin/gate.test.ts`, which machine-verifies
+  that leadership-only loaders are *never called* for `ae`/`bd`. Required cases:
+  1. a **staff** identity → the gate never fires
+  2. a **buyer** identity → the gate never fires
+  3. a User Account **with** a handle → passes through
+  4. a User Account **without** one → gated
+  Cases 1 and 2 are the ones a normal pass would skip, and the only ones that actually prevent
+  the lockout.
+
 ### Rendering
 
 - **D-11:** With an artist name set, the profile header shows the artist name as the title and
