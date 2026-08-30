@@ -14,7 +14,7 @@ import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
-import type { AiEntryComponent } from '@/lib/catalogue/ai-entries'
+import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogue/ai-entries'
 import type { WorkTier } from '@/lib/catalogue/membership'
 import type { LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '@/types/catalogue'
 
@@ -733,10 +733,14 @@ export function WorkPage({
                 if (result.guidance) {
                   // The re-author moment, mounted where the artist meets
                   // THIS entry (right after filing it) — never stapled
-                  // onto a diary row (DiaryFeed's own header comment).
+                  // onto a diary row (DiaryFeed's own header comment). The
+                  // headline uses the LABEL, not the raw component value —
+                  // same translated vocabulary AiEntryFlow.tsx's own
+                  // two-door chips already render outside its receipt
+                  // block, never a second, ad hoc rendering of the enum.
                   setFlow({
                     kind: 'reauthor',
-                    headline: `${result.data.component} — this song's newest AI contribution`,
+                    headline: `${AI_ENTRY_COMPONENT_LABELS[result.data.component]} — this song's newest AI contribution`,
                     component: result.data.component,
                   })
                 } else {
