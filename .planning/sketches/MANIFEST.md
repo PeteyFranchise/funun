@@ -12,6 +12,8 @@ legal — "citation is a badge, not a confession." Doctrine source:
 | 003 | hygiene-nudges | How hard do we interrupt (hum-first + re-author)? | A soft inline · B deliberate full-screen minute | **SPLIT: B for hum-first (once per song), A inline for re-author** (owner 2026-08-30). Copy friendlier, owner line leads: "Save and protect your idea by just humming or singing right now"; depth behind a read-more (reuse components/ui/LearnWhy.tsx) |
 | 004 | song-destinations | Crate eligibility as live consequence, not gate rejection | A header lights rail · B doors panel · C hybrid (lights open doors; closed doors arrive pre-opened) | **C — the hybrid WINS** (owner 2026-08-30), plus an ⓘ info affordance beside The Crate explaining what it is in plain words (Funūn vocabulary must never be a mystery inside someone's diary) |
 
+| 005 | the-composer | How does creation feel like ONE act, not five features? | A composer bar (creation as conversation, guidance inline) · B guided next-step strip (song tells you its next move, creation behind ＋) | TBD |
+
 All sketches use "Midnight" (@peterzora 60 / Ben Cooke 40, AI solo at bars 57–64) so every
 screen exercises the real doctrine: the diary, the safe/unsafe AI cases, the Crate flag
 middle tier, and the sheet lifecycle.
