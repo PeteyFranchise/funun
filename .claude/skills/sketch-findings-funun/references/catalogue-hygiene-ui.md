@@ -50,7 +50,12 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; REPEAT RULE (owner-raised): a repeated section (chorus x2 etc.) is a LINKED block, not
+paste auto-splits on blank lines; INSERT-ANYWHERE RULE: the gap between any two blocks reveals a ＋ divider on hover
+(tap on mobile) opening a mini chip row that inserts exactly at that position — with
+"Chorus ↺ repeat" offered first once a chorus exists. Fallbacks: end-of-song chip row,
+then drag into place.
+
+REPEAT RULE (owner-raised): a repeated section (chorus x2 etc.) is a LINKED block, not
 a duplicate — displays the source lyrics dimmed with an ↺ badge; editing the source
 updates every repeat; attribution stays with the original writer automatically. "＋
 Chorus ▾" offers Repeat existing / Write a new one once one exists. "Detach to vary" is
