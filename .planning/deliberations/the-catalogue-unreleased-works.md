@@ -179,6 +179,26 @@ regardless of the composition being clean.
    fully Crate-eligible through any human-made master of it** — only that recording is
    excluded, never the song.
 
+### THE DUAL MANDATE — what the hygiene UI is FOR (owner, 2026-08-30, locked)
+
+Workarounds 1 (sketchpad-not-record) and 2 (hybrid rebuild) are not documentation —
+they are **guided flows built into the UI**, teaching creators how to navigate AI use
+so that:
+
+1. **Artists keep 100% of their songs for humans, even when AI is a sketch tool.**
+   The UI's job is that the safe path is the obvious path: hum-first nudges, the
+   sketchpad framing on any AI iteration, the re-author prompt when AI ideas stick,
+   and the "hum every melody you want to own" rule surfaced where it matters.
+2. **Funūn's reputation with clients stays intact.** Everything a buyer licenses from
+   The Crate is one-stop clean because the catalogue GUIDED it clean upstream — the
+   Crate rule (no AI-generated masters) enforced not as a rejection at the gate but as
+   a path artists were walked around long before they arrived.
+
+Design consequence: every AI-related moment in the catalogue UI answers BOTH questions
+— "what does this mean for MY ownership?" and "what does this mean for where this song
+can go?" (Crate eligibility shown as a live consequence, not a surprise). Plan a
+UI-demo/mockup pass (gsd-sketch) for these flows at discuss/plan time.
+
 ## Research grounding (2026-08-30, current)
 
 - **PROs** (ASCAP/BMI/SOCAN, aligned Oct 2025): partially-AI works registrable when a
