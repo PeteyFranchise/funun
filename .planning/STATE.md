@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 36-05-PLAN.md
-last_updated: "2026-08-30T05:53:42.360Z"
+stopped_at: Completed 36-04-PLAN.md
+last_updated: "2026-08-30T05:55:08.444Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 38
   completed_phases: 29
   total_plans: 237
-  completed_plans: 231
+  completed_plans: 232
   percent: 76
 ---
 
@@ -300,6 +300,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 36 P01 | 15min | 3 tasks | 7 files |
 | Phase 36 P03 | 25min | 2 tasks | 6 files |
 | Phase 36 P05 | 7min | 2 tasks | 3 files |
+| Phase 36 P04 | 10min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -567,6 +568,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: PATCH /api/profile/handle is the only handle_history write path — the database rejection (23505/reserved-retired raise) is the sole authority, never an availability pre-check (D-14)
 - [Phase ?]: resolveHandle() wraps migration 133 resolve_profile_by_handle RPC rather than a PostgREST filter -- an underscore is both a legal handle character and a LIKE wildcard, so a pattern-match filter could resolve the wrong profile — D-04/D-07 fix + redirect share one round trip; handle_history stays revoked from anon/authenticated
 - [Phase ?]: HandleResolverClient.rpc typed PromiseLike, not Promise -- supabase-js PostgrestFilterBuilder is a thenable, not a native Promise — tsc rejected the stricter Promise signature against the real SupabaseClient
+- [Phase 36]: D-14 courtesy-only availability endpoint: separate handle-check:ip: rate-limit keyspace from check-invite's ip: prefix so debounced typing can never exhaust signup admission's budget — Taken/reserved/retired handles collapse into one 'unavailable' reason; a DB error reports unknown, never a false verdict
 
 ### Pending Todos
 
@@ -657,10 +659,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-30T05:53:42.325Z
-Stopped at: Completed 36-05-PLAN.md
-Resume file: .planning/quick/260826-2qm-vendor-health-check/260826-2qm-SUMMARY.md
-Last session: 2026-08-06T01:06:36.617Z
+Last session: 2026-08-30T05:55:08.409Z
+Stopped at: Completed 36-04-PLAN.md
+Resume file: 
+None
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
