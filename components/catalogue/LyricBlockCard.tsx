@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { WorkVocalState } from '@/types/catalogue'
 
@@ -72,6 +73,14 @@ export type LyricBlockCardProps = {
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
   onDetach: () => void
+  /**
+   * Remove this section entirely (DELETE). The card confirms in place
+   * first whenever the block still holds words — an empty just-added
+   * block, or a repeat (whose words live on its source), removes on a
+   * single click, so clearing out spare sections stays one tap while a
+   * written verse is never lost to a stray click.
+   */
+  onRemove: () => void
   /** dnd-kit's `setNodeRef` for the sortable wrapper, forwarded from LyricsPad. */
   containerRef?: (node: HTMLDivElement | null) => void
   /** dnd-kit's transform/transition style, forwarded from LyricsPad. */
@@ -152,6 +161,7 @@ export function LyricBlockCard({
   onTextChange,
   onAddSinger,
   onDetach,
+  onRemove,
   containerRef,
   containerStyle,
   dragHandleRef,
@@ -160,6 +170,10 @@ export function LyricBlockCard({
   isDragging,
 }: LyricBlockCardProps) {
   const showSingerAffordance = vocalState !== 'instrumental'
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
+  // Confirm only when there are words to lose. An empty just-added block or
+  // a repeat (its words live on the source) removes on a single click.
+  const removeNeedsConfirm = !isRepeat && text.trim().length > 0
 
   return (
     <div
@@ -196,6 +210,39 @@ export function LyricBlockCard({
           {!isRepeat && author && <WriterBadge author={author} />}
           {showSingerAffordance && <SingerCluster singers={singers} onAddSinger={onAddSinger} />}
         </span>
+        {/* Remove — far right, kept apart from the identity badges. The
+            two-step confirm below only appears for a block that still
+            holds words (removeNeedsConfirm), so spare empty sections
+            clear on a single tap. */}
+        {confirmingRemove ? (
+          <span className="flex items-center gap-[7px] text-[11px]">
+            <span className="text-lavdim">Remove?</span>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="font-semibold text-rose-400 hover:text-rose-300"
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingRemove(false)}
+              className="text-lavdim hover:text-lav"
+            >
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => (removeNeedsConfirm ? setConfirmingRemove(true) : onRemove())}
+            aria-label={`Remove ${label}`}
+            title="Remove this section"
+            className="text-[13px] leading-none text-lavdim hover:text-rose-400"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {isRepeat ? (

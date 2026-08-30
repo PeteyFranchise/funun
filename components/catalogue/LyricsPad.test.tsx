@@ -37,6 +37,7 @@ const baseProps = {
   onTextChange: noop,
   onAddSinger: noop,
   onDetach: noop,
+  onRemoveBlock: noop,
   onInsertSingle: noop,
   onInsertRepeat: noop,
   onReorder: noopAsync,

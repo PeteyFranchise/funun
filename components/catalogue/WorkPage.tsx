@@ -468,6 +468,16 @@ export function WorkPage({
     if (res.ok) router.refresh()
   }
 
+  async function handleRemoveBlock(blockId: string) {
+    // Plan-07's DELETE renumbers the survivors and, via migration 135's
+    // ON DELETE SET NULL, turns any repeat of this block into an ordinary
+    // empty block — the refresh re-pulls both, so no local guess is made.
+    const res = await fetch(`/api/works/${workId}/blocks/${blockId}`, {
+      method: 'DELETE',
+    })
+    if (res.ok) router.refresh()
+  }
+
   async function handleReorder(order: { id: string; position: number }[]) {
     const res = await fetch(`/api/works/${workId}/blocks/reorder`, {
       method: 'POST',
@@ -622,6 +632,7 @@ export function WorkPage({
           vocalState={vocalState}
           onHum={handleHum}
           onTextChange={handleTextChange}
+          onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}
           onInsertSingle={handleInsertSingle}

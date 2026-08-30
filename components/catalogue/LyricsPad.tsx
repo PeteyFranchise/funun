@@ -54,6 +54,8 @@ export type LyricsPadProps = {
   onTextChange: (blockId: string, text: string) => void
   onAddSinger: (blockId: string) => void
   onDetach: (blockId: string) => void
+  /** Delete a section. The card confirms in place first when the block still holds words. */
+  onRemoveBlock: (blockId: string) => void
   /** `index` undefined appends at the end (the bottom add-section row); a number inserts at that gap (a divider). */
   onInsertSingle: (blockType: LyricBlockType, index: number | undefined, customLabel?: string) => void
   onInsertRepeat: (sourceBlockId: string, index: number | undefined) => void
@@ -208,6 +210,7 @@ function SortableLyricBlock({
   onTextChange,
   onAddSinger,
   onDetach,
+  onRemove,
 }: {
   id: string
   label: string
@@ -219,6 +222,7 @@ function SortableLyricBlock({
   onTextChange: (text: string) => void
   onAddSinger: () => void
   onDetach: () => void
+  onRemove: () => void
 }) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id,
@@ -236,6 +240,7 @@ function SortableLyricBlock({
       onTextChange={onTextChange}
       onAddSinger={onAddSinger}
       onDetach={onDetach}
+      onRemove={onRemove}
       containerRef={setNodeRef}
       containerStyle={style}
       dragHandleRef={setActivatorNodeRef}
@@ -255,6 +260,7 @@ export function LyricsPad({
   onTextChange,
   onAddSinger,
   onDetach,
+  onRemoveBlock,
   onInsertSingle,
   onInsertRepeat,
   onReorder,
@@ -452,6 +458,7 @@ export function LyricsPad({
                         onTextChange={value => handleBlockTextChange(block.id, value)}
                         onAddSinger={() => onAddSinger(block.id)}
                         onDetach={() => onDetach(block.id)}
+                        onRemove={() => onRemoveBlock(block.id)}
                       />
                     </div>
                   )

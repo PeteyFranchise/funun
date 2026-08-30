@@ -19,9 +19,31 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     expect(markup).toContain('Verse 2')
+  })
+
+  it('offers a remove control labelled for the section, without a destructive confirm on first paint', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Verse 2"
+        text="City lights"
+        isRepeat={false}
+        author={{ initial: 'P', name: '@peterzora', isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('aria-label="Remove Verse 2"')
+    // The two-step confirm is state, not first paint — a stray render never
+    // shows a live "Yes" that could delete on one click.
+    expect(markup).not.toContain('Remove?')
   })
 
   it('renders the source text and the repeat badge, and suppresses the author affordance, on a linked repeat', () => {
@@ -36,6 +58,7 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     expect(markup).toContain('Meet me at midnight, where the wrong feels right')
@@ -57,6 +80,7 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     expect(markup).not.toContain('who sings this?')
@@ -78,6 +102,7 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     // No writer badge here (author is null), so every "avatar dot" match
@@ -100,6 +125,7 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     expect(markup).toContain('who sings this?')
@@ -117,6 +143,7 @@ describe('LyricBlockCard', () => {
         onTextChange={noop}
         onAddSinger={noop}
         onDetach={noop}
+        onRemove={noop}
       />
     )
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
