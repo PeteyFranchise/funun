@@ -156,12 +156,28 @@ risk flips layers versus the demo case:
   A kept Suno-invented hook = unowned melodic strand (same rule as the unhummed verse;
   re-author prompt fires).
 
-**THE CRATE RULE (locked from this discussion):** sync is TWO licenses — composition +
-master — and the Crate's promise is one-stop rights-ready. **A recording whose master is
-AI-generated (no ownable master right) is NOT Crate-eligible.** Crate eligibility
-attaches to a specific recording; work-level AI entries of type arrangement/vocal/
-instrument on the CANDIDATE RECORDING itself disqualify it (or at minimum hard-flag it),
-regardless of the composition being clean.
+**THE CRATE RULE (locked, refined by owner 2026-08-30):** sync is TWO licenses —
+composition + master — and the Crate's promise is one-stop rights-ready. The rule has
+exactly two disqualifiers and one disclosure tier:
+
+1. **Wholly AI-generated masters: NOT eligible.** Nobody owns the recording, so nobody
+   can one-stop license it. (Ownership grounds — unchanged.)
+2. **AI VOCALS on the candidate master: NOT eligible — the one hard "no AI."** Owner's
+   line: vocals are where voice-likeness risk, buyer sensitivity, and reputation live,
+   and it is a line Funūn can actually police. Fix shown in UI: swap to a human vocal /
+   submit a human-vocal version.
+3. **AI instrumentation / MIDI / beats inside a human-produced master: ELIGIBLE,
+   disclosed.** Owner's reasoning verbatim in spirit: "so many tools now help with AI
+   generation for instrumentation, MIDI, and beats — that is a hard ask and much harder
+   to police since so much of that lives in the DAW of the producer." Disclosure travels
+   to the buyer; re-authoring stays RECOMMENDED for ownership of the AI-born bars, never
+   required for entry.
+
+This RESOLVES the middle-tier open question from the producer-FAQ thread: the human
+master with an AI guitar solo is **eligible + disclosed** (was: flagged/open). Residuals
+carried consciously under disclosure: AI-born segments remain unowned, and AI segments
+can echo training-data licks (indemnity posture to revisit with counsel at Crate-terms
+time).
 
 **The workarounds (surface these in UI, in order):**
 1. **Canonical — sketchpad, not record.** The AI genre-flip enters the catalogue as an
@@ -174,10 +190,10 @@ regardless of the composition being clean.
    that merely referenced the AI sketch. Master-level re-authoring; the more replaced,
    the stronger the claim (degree = counsel territory, same as compositional
    re-authoring).
-3. **Release the raw AI master anyway** — allowed, disclosed, labeled — but it is
-   flagged NOT Crate-eligible. Important nuance to show the artist: **the WORK remains
-   fully Crate-eligible through any human-made master of it** — only that recording is
-   excluded, never the song.
+3. **Release the raw AI master anyway** — allowed, disclosed, labeled — but as a wholly
+   AI-generated master it is NOT Crate-eligible (rule 1). Important nuance to show the
+   artist: **the WORK remains fully Crate-eligible through any human-made master of it**
+   — only that recording is excluded, never the song.
 
 ### THE DUAL MANDATE — what the hygiene UI is FOR (owner, 2026-08-30, locked)
 
