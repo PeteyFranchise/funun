@@ -50,8 +50,13 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; DEFAULT-PERFORMER RULE (owner-raised): every work has a PRIMARY PERFORMER (defaults to
-its creator, editable in the header: "🎤 primary performer: @x — sections inherit unless
+paste auto-splits on blank lines; DEFAULT-PERFORMER RULE (owner-raised): the header vocal setting has THREE states —
+(1) a primary performer (defaults to the creator), (2) varies/per-block tags, (3)
+INSTRUMENTAL — no vocals. Instrumental does real work: all who-sings prompts disappear
+(blocks stay as pure structure — Intro/Drop/Bridge in producer vocabulary), the Crate
+vocal check passes by definition (no vocals = the hard no cannot trigger), DDEX exports
+omit vocal performer roles, and it is the same fact as the 'instrumental' label. For
+state (1), editable in the header: "🎤 primary performer: @x — sections inherit unless
 tagged"). Blank blocks inherit it — the solo artist is never nagged; per-block 🎤 is for
 exceptions only. Two guardrails keep inheritance honest: (1) a default fills the PLAN,
 never the RECORD — a credit becomes fact only when a version carries that performance;
