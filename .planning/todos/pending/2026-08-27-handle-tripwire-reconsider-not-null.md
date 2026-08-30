@@ -41,3 +41,26 @@ Reopen the decision with real evidence in hand. The prepared path is
 staff/buyer/industry provisioning + reworking the D-10b gate condition + its test
 suite. Scoped in `.planning/phases/36-*/36-07-PLAN.md`'s decision checkpoint and the
 D-13 amendment in `36-CONTEXT.md`.
+
+**A cheaper interim, if the sighting is a one-off rather than a pattern:** extend the
+presence check to the write paths that actually produce public activity (the wall,
+endorsement and DM POST routes). That closes the API-only hole — which is the whole of
+the exposure here — without touching D-10b's gate condition, plan 06's test suite, or the
+schema. Worth pricing before committing to the full rework.
+
+## Why the schema route is not simply "add the constraint"
+
+The obstacle was never the old un-backfilled rows, so draining them did not clear it (and
+neither did deleting the five fixture accounts on 2026-08-27). On this Supabase instance
+`app_metadata` is invisible to `handle_new_user()` at INSERT — the Phase 27 `27-13`
+diagnostic — so the buyer, staff, industry and curator branches cannot fire and every
+provisioning lane falls through to the default branch, which carries a handle only for a
+self-serve artist signup. A non-nullable column would reject all four admin lanes outright,
+and would also fire inside migration 133's D-15 fallback, the handler whose entire purpose
+is to insert a handle-less row so a lost race costs a handle rather than an account.
+
+## References
+
+- `.planning/phases/36-account-identity-mandatory-handle-for-user-accounts-artist-d/36-CONTEXT.md` — D-13 as amended, plus D-09, D-10b, D-15
+- `supabase/migrations/133_handle_identity.sql` — the D-15 fallback and the reserved/retired guard
+- `supabase/migrations/134_handle_format_and_backfill.sql` — the format constraint; its header records why no nullability alteration is present

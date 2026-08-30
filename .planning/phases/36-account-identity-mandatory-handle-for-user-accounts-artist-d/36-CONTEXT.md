@@ -160,6 +160,51 @@ See `docs/architecture/ACCOUNT-TYPES.md`.
   it **cannot be added until every existing row is backfilled** — it would fail on deploy.
   Sequence it **last**, after D-09's gate has drained the handle-less accounts. Until then
   "mandatory" is enforced by the application.
+
+- **D-13 — AMENDED 2026-08-27 (owner, at plan 07's decision checkpoint): `NOT NULL` is
+  DEFERRED, with a named tripwire.** Owner's words: *"option 1, for now. The moment we start
+  to see handle-less accounts posting on the website, we need to reconsider our options."*
+
+  **Why the original sequencing did not survive contact.** D-13 assumed the only obstacle was
+  old un-backfilled rows, and that draining them would clear the way. It does not. On this
+  Supabase instance `app_metadata` is **invisible to `handle_new_user()` at INSERT** (the Phase
+  27 `27-13` diagnostic, which cost two failed cutovers), so the curator, buyer, staff and
+  industry branches cannot fire and **every** provisioning lane falls through to the default
+  branch — which carries a handle only for a self-serve artist signup. A non-nullable column
+  would therefore reject buyer, staff, industry and curator provisioning outright, and would
+  also fire *inside* migration 133's D-15 fallback, whose entire purpose is to insert a
+  handle-less row so that a lost race costs a handle rather than an account. A `NOT NULL`
+  violation raised in that handler propagates, aborts the trigger, and rolls back the signup:
+  precisely the failure D-15 exists to prevent, re-entered through a different door. The
+  obstacle is **INSERT-time provisioning, not old rows** — which is why deleting the five
+  fixture accounts on 2026-08-27 did not unblock this.
+
+  **What enforces what, as shipped.** The database guarantees **uniqueness** (migration 010's
+  lowered functional index), **reserved and retired names** (migration 133's
+  `check_handle_not_reserved()`, on both write paths), and **format** (migration 134's
+  `user_profiles_handle_format_chk`, text-locked to `lib/handles/validate.ts`). **Presence is
+  the one property that stays application-enforced**, by D-09's hard gate in
+  `app/(artist)/layout.tsx`.
+
+  **Known residual, accepted.** The gate guards **page loads, not direct API calls**. A
+  deliberate API-only user could act while handle-less. This is **security-neutral** — no
+  impersonation, no access escalation, no data exposure, since a handle is a display identity
+  and never an authorisation input — but it is **visible**: such an account can surface on
+  social surfaces without a name.
+
+  **TRIPWIRE (owner's words).** *The moment handle-less accounts are seen POSTING on the
+  website, this decision is reopened.* At that point the candidate is the
+  `not-null-with-trigger-rework` path: a placeholder-handle scheme for the four admin lanes and
+  the D-15 fallback, which necessarily amends **D-10b**'s gate condition (today a plain
+  "profile row exists and has no handle" test) into a "real handle vs placeholder" predicate,
+  rewrites plan 06's test suite around it, and requires excluding placeholder values from the
+  unique index's practical namespace and from public rendering. **That is its own phase, not a
+  task.** Tracked at `.planning/todos/pending/2026-08-27-handle-tripwire-reconsider-not-null.md`.
+
+  **Rejected outright:** applying `NOT NULL` as D-13 literally specified. It breaks buyer,
+  staff, industry and curator provisioning at the first attempt after the push and converts a
+  lost handle race back into a lost signup. Recorded here so the option is on the record as
+  *considered and rejected*, never silently dropped.
 - **D-14:** **Uniqueness is the database's job.** The unique index is the guarantee; a live
   "that's taken" check in the UI is a courtesy only and must never be the enforcement. Handle
   the simultaneous-claim race at the DB error, never optimistically.
