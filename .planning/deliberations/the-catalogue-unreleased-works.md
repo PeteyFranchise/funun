@@ -109,6 +109,33 @@ Framing owner added: the voicenote is a PORTABLE ASSET — access it anytime, ex
 Suno or any AI tool, knowing the idea is yours; Funūn is the first stop before the tool. 004 → redrawn to the vocal-line Crate rule; pending
 final call.
 
+## Information architecture + naming (owner-decided 2026-08-30)
+
+**WHERE IT LIVES: inside the Sound Vault, as the first shelf.** One roof, two shelves:
+My Catalogue (works — hums, drafts, versions, the diary) and Releases (singles, EPs,
+albums in flight). Rationale: the vault is already the promise ("Start building your
+Sound Vault"); one home avoids "where's my song?"; graduation becomes a doorway inside
+one room, not emigration between nav items; the rail stays tight; and it leaves the
+works-first long-term architecture open without committing to the migration. The vault
+may land on whichever shelf was used last, so catalogue-heavy producers effectively get
+the catalogue as home.
+
+**THE CREATE FLOW: two doors replace the five types.** "What are you starting?" →
+🎵 Start a song (→ My Catalogue) · 🚀 Start a release (Single/Snippet/EP/Album). The
+"Unreleased" PROJECT TYPE retires from the create flow — the junk-drawer checkbox that
+started this entire design is replaced by the thing it was always trying to be.
+(Existing type='unreleased' projects migrate into the catalogue shelf.)
+
+**NAMING: "Song" as the face, "work" as the backbone.** The button says Start a song;
+split sheets, registration, and doctrine copy keep "work" where precision matters —
+same warm-front/correct-backbone pattern as My Catalogue itself.
+
+**LABELS: the artist's own vocabulary.** Free, artist-applied labels on works AND
+versions, over time as they see fit — suggested set: demo, beat, track, idea,
+instrumental, concept — plus custom. The words debated for the type name become tags
+instead of taxonomy. Labels power the volume view's filters (scope 6) alongside
+mood/BPM/rights-status.
+
 ## LOCKED DECISIONS
 
 ### CAT-Q1 — What creates a version: **the diary** (option B)
