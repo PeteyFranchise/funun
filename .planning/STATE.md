@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Ready to plan
-stopped_at: Completed 37-09-PLAN.md (hum capture + AI-entry flow + hygiene nudges)
-last_updated: "2026-08-30T14:36:43.465Z"
+status: Awaiting owner checkpoint
+stopped_at: Phase 37.1 fully executed (13/13 plans, 3572 tests green) — 37-13 Task 3, the owner's cross-device hum test, is the one open gate
+last_updated: "2026-08-30T15:05:00.000Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 39
   completed_phases: 30
   total_plans: 250
-  completed_plans: 245
+  completed_plans: 246
   percent: 77
 ---
 
@@ -36,6 +36,31 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > one-line patch from a plan executor.
 
 ## Current Position
+
+### UPDATE 2026-08-30 (later, same day) — Phase 37.1 "The Songwriter" EXECUTED
+
+**All 13 plans ran on `feat/phase-37-songwriter` (NOT yet merged to main — merging IS
+the deploy).** Migrations 135–138 applied to prod by the owner and independently
+verified. Five waves, parallel executors, explicit-pathspec git discipline throughout
+(three index races caught and cleanly recovered). Full suite: **318 suites / 3572
+tests green** (from 3134 at session start). Every SUMMARY committed.
+
+What exists now: works/versions/blocks/diary/AI-entry/notes APIs; the lyrics pad
+(006-A verbatim: derived numerals, linked repeats + detach, insert-anywhere, ✍/🎤,
+tool-agnostic copy); hum capture (runtime-asked codec, mic always released); the
+deliberate-minute + re-author nudges; first-time-conversational vs two-door AI entry
+with server-composed receipts; work header (rename diaried, three vocal states) +
+roster (promote-existing route added by 37-11 to close a real 37-05 gap); the work
+page at `/vault/works/[workId]` (005-C spine); the Vault's two shelves + two doors
+(`unreleased` retired from create; legacy projects surface on the catalogue shelf).
+
+**The one open gate — 37-13 Task 3, owner-only:** record a hum on Chrome desktop and
+iPhone Safari against prod, play each take back on the other device, plus the
+mic-release and permission-denied checks and one full end-to-end slice per device.
+Known honest stubs (documented in 37-12-SUMMARY): performer picker is guest-name-only;
+"attach an existing take" has no version selector yet. Known behavior (37-07): detach
+fires two diary events from one UPDATE. All route/DB writes flagged human_judgment
+pending this same prod pass.
 
 ### SESSION CLOSE 2026-08-30 (extended session) — Phase 36 LIVE + Phase 37 fully designed
 

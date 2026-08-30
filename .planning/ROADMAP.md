@@ -1631,8 +1631,11 @@ Plans:
 - [x] 37-09-PLAN.md — hum capture, the deliberate minute, the re-author prompt, the AI-entry flow (003-B/003-A/002-B/002-A)
 - [x] 37-10-PLAN.md — the composer spine: composer card, one guiding line, the diary (005-C, 001-A/C)
 - [x] 37-11-PLAN.md — work header (rename, three vocal states) + roster (membership vs splits)
-- [ ] 37-12-PLAN.md — the composer room: the work page, mounted and wired
+- [x] 37-12-PLAN.md — the composer room: the work page, mounted and wired
 - [ ] 37-13-PLAN.md — two shelves, two doors, and the owner's blocking device test
+      *(code complete — tasks 1–2 committed, gates green; Task 3 is the owner's
+      device test: hum record/playback across Chrome desktop ↔ iPhone Safari.
+      Phase closes when the owner reports the result.)*
 
 ---
 
