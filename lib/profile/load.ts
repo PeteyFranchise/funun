@@ -1,6 +1,7 @@
 import type { UserProfile, OpenTo, ProfileRole } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS, type VaultProjectType } from '@/types'
 import type { ProfileData, ProfileRelease } from '@/components/profile/ProfileView'
+import { profileDisplayTitle } from '@/lib/profile/display-name'
 
 export type ProfileProjectRow = {
   id: string
@@ -123,7 +124,7 @@ export function buildProfileData(
 
   return {
     id: profile.id,
-    name: profile.artist_name || 'Unnamed artist',
+    name: profileDisplayTitle({ artistName: profile.artist_name, handle: profile.handle }),
     handle: profile.handle,
     pronouns: profile.pronouns,
     verified: profile.verified,

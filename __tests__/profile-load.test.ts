@@ -42,4 +42,25 @@ describe('buildProfileData', () => {
     const result = buildProfileData(DEMO_PROFILE, projects, { publicOnly: true })
     expect(result.placementsCount).toBeNull()
   })
+
+  // Phase 36 (D-11/D-12) — the "Unnamed artist" fallback is gone. A
+  // nameless profile's title is @handle, never a fabricated stand-in.
+  it('renders @handle as the name when the artist name is null', () => {
+    const result = buildProfileData(
+      { ...DEMO_PROFILE, artist_name: null, handle: 'maya-reyes' },
+      projects,
+      { publicOnly: true }
+    )
+    expect(result.name).toBe('@maya-reyes')
+  })
+
+  it('renders an empty name — never "Unnamed artist" — when both artist name and handle are null', () => {
+    const result = buildProfileData(
+      { ...DEMO_PROFILE, artist_name: null, handle: null },
+      projects,
+      { publicOnly: true }
+    )
+    expect(result.name).toBe('')
+    expect(result.name).not.toMatch(/unnamed/i)
+  })
 })
