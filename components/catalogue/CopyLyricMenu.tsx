@@ -91,7 +91,7 @@ export function CopyLyricMenu({ blocks }: CopyLyricMenuProps) {
         aria-expanded={open}
         className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[7px] text-[12px] font-semibold text-lav hover:text-white"
       >
-        Copy lyric ▾
+        Copy lyrics ▾
       </button>
 
       {/*

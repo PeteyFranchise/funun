@@ -255,15 +255,15 @@ export function WorkHeader({
                   comment: what stays visible is the rule (the line
                   above), what collapses is the why. */}
               <p className="text-[11.5px] text-lavdim">
-                A default fills the plan and never the record — a credit becomes fact only when a
-                version carries that performance, and the human-take registry requires an actual
-                take, never an inherited badge.
+                The default just fills in who&apos;s likely singing, so you don&apos;t have to tag
+                every section — it&apos;s a plan, not a credit. Nobody&apos;s credited for a part
+                until a real recording actually has them performing it.
               </p>
               {/* Guardrail 2: an AI vocal can never hide under the
                   default. */}
               <p className="text-[11.5px] text-lavdim">
-                An AI vocal can never hide under the default, either — the add-audio flow asks
-                regardless, and a declared fact always beats inheritance.
+                AI vocals can&apos;t hide behind the default either — adding audio always asks
+                whether it&apos;s AI, and what you declare wins over the default.
               </p>
             </LearnWhy>
           </div>

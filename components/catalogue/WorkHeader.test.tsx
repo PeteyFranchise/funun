@@ -89,8 +89,8 @@ describe('WorkHeader', () => {
       <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
     )
     expect(markup).toContain('Why does inheritance work this way?')
-    expect(markup).not.toContain('fills the plan and never the record')
-    expect(markup).not.toContain('can never hide under the default')
+    expect(markup).not.toContain('a plan, not a credit')
+    expect(markup).not.toContain('hide behind the default')
   })
 
   it('disables the title input and vocal control when the viewer cannot edit', () => {
