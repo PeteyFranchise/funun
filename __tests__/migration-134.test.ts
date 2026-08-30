@@ -1,10 +1,6 @@
 import { readFileSync } from 'fs'
 import path from 'path'
-import {
-  HANDLE_MIN_LENGTH,
-  HANDLE_MAX_LENGTH,
-  isValidHandle,
-} from '@/lib/handles/validate'
+import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH } from '@/lib/handles/validate'
 
 // ─── migration 134 — the fixture sweep + the handle format constraint ───────
 // Text-lock + structural test, in the same style as
@@ -55,7 +51,7 @@ const commentProse = normalizeWhitespace(
 const tsPatternMatch = validateSource.match(/^const HANDLE_PATTERN = \/(.*)\/$/m)
 const sqlPatternMatch = sqlOnly.match(/handle ~ '([^']*)'/)
 
-describe('migration 134 — handle format constraint + fixture sweep', () => {
+describe('migration 134 — handle format constraint, and deliberately no backfill', () => {
   // ══ D-05: the SQL rule and the TypeScript rule are the same rule ══════════
   describe('format constraint mirrors the application validator exactly', () => {
     it('finds a single unflagged HANDLE_PATTERN literal in lib/handles/validate.ts', () => {
@@ -120,48 +116,60 @@ describe('migration 134 — handle format constraint + fixture sweep', () => {
     })
   })
 
-  // ══ The sweep is a fixture sweep, not a backfill ══════════════════════════
-  describe('fixture sweep', () => {
-    const sweep = normalizeWhitespace(
-      sqlOnly.slice(
-        sqlOnly.indexOf('UPDATE public.user_profiles'),
-        sqlOnly.indexOf(';', sqlOnly.indexOf('UPDATE public.user_profiles')) + 1
-      )
-    )
-
-    it('is the only UPDATE in the file, and is scoped to rows that have no handle', () => {
-      const updates = sqlOnly.match(/UPDATE public\./g) ?? []
-      expect(updates).toHaveLength(1)
-      expect(sweep).toMatch(/WHERE handle IS NULL;$/)
+  // ══ There is no sweep, and there must never be one again ═════════
+  // An earlier draft of this migration swept the handle-less rows on the
+  // premise that all of them were fixtures. The owner instead DELETED those
+  // five fixture accounts outright (2026-08-27), so every remaining
+  // handle-less row belongs to a REAL PERSON. A sweep would now auto-assign a
+  // public identity to someone who has simply not signed in since the D-09
+  // gate shipped — the exact thing the owner's locked decision forbids
+  // (36-CONTEXT.md D-09, ROADMAP owner decision 4). These assertions are the
+  // inverse text-lock: they fail the moment the sweep returns in any form.
+  describe('no backfill and no sweep — handles are prompted, never generated', () => {
+    it('contains no UPDATE statement at all', () => {
+      expect(sqlOnly).not.toMatch(/\bUPDATE\b/i)
     })
 
-    it('derives the generated value from the row\'s own primary key, so it cannot collide', () => {
-      expect(sweep).toMatch(/SET handle = 'user-' \|\| left\(replace\(id::text, '-', ''\), 12\)/)
+    it('writes to no row of user_profiles — the only DDL is the constraint plus its comment', () => {
+      expect(sqlOnly).not.toMatch(/SET\s+handle/i)
+      expect(sqlOnly).not.toMatch(/\bINSERT\s+INTO\b/i)
+      expect(sqlOnly).not.toMatch(/\bDELETE\s+FROM\b/i)
+      // Statement-initiating verbs at line start, rather than a naive split on
+      // ';' — the column comment's own prose contains a semicolon, so splitting
+      // would report a phantom fourth statement.
+      const verbs = (
+        sqlOnly.match(
+          /^\s*(ALTER|COMMENT|NOTIFY|UPDATE|INSERT|DELETE|CREATE|DROP|GRANT|REVOKE|TRUNCATE)\b/gim
+        ) ?? []
+      ).map(verb => verb.trim().toUpperCase())
+      expect(verbs).toEqual(['ALTER', 'COMMENT', 'NOTIFY'])
+      expect(sqlOnly).toMatch(/ALTER TABLE public\.user_profiles\s+ADD CONSTRAINT /)
+      expect(sqlOnly).toMatch(/COMMENT ON COLUMN public\.user_profiles\.handle IS/)
     })
 
-    it('generates a value the format constraint itself accepts', () => {
-      // Reproduce the SQL expression in TypeScript against a representative id
-      // and run it through the application validator: if the sweep could ever
-      // produce a value the constraint rejects, section 2 would fail to
-      // validate on push against the rows section 1 just wrote.
-      const id = '0f9c1a2b-3d4e-5f60-7182-93a4b5c6d7e8'
-      const generated = 'user-' + id.replace(/-/g, '').slice(0, 12)
-      expect(generated).toBe('user-0f9c1a2b3d4e')
-      expect(generated).toHaveLength(17)
-      expect(isValidHandle(generated)).toBe(true)
-      expect(new RegExp(sqlPatternMatch![1]).test(generated)).toBe(true)
+    it('never generates a handle value, in any statement or any leftover comment', () => {
+      // Asserted against the WHOLE file: a commented-out sweep is one
+      // uncomment away from renaming three real people.
+      expect(migration134).not.toMatch(/'user-'\s*\|\|/)
+      expect(migration134).not.toMatch(/WHERE handle IS NULL;/)
     })
 
-    it('runs BEFORE the constraint is added', () => {
-      expect(sqlOnly.indexOf('UPDATE public.user_profiles')).toBeLessThan(
-        sqlOnly.indexOf('ADD CONSTRAINT')
-      )
-    })
-
-    it('documents itself as a fixture sweep gated on an owner confirmation, not a general backfill', () => {
-      expect(commentProse).toMatch(/FIXTURE SWEEP, NOT A BACKFILL/)
-      expect(commentProse).toMatch(/CHOSEN, never assigned/)
+    it('records WHY there is no sweep, so its absence cannot be read as an oversight', () => {
+      expect(commentProse).toMatch(/THERE IS NO BACKFILL AND NO SWEEP IN THIS FILE/)
+      expect(commentProse).toMatch(/DELETED those five fixture accounts outright/)
+      expect(commentProse).toMatch(/2026-08-27/)
+      expect(commentProse).toMatch(/REAL PEOPLE/)
+      expect(commentProse).toMatch(/PROMPTED to choose a handle and never have one generated/)
       expect(commentProse).toMatch(/D-09/)
+    })
+
+    it('the constraint tolerates the handle-less humans it will be pushed against', () => {
+      // Three real accounts still have no handle at push time. The
+      // NULL-tolerant disjunct is what makes applying this migration today a
+      // no-op for them rather than a failed validation — and the column
+      // comment says so, so nobody "tidies it away" later.
+      expect(sqlOnly).toMatch(/handle IS NULL\s+OR /)
+      expect(sqlOnly).toMatch(/Never generate a handle for an existing account/)
     })
   })
 
