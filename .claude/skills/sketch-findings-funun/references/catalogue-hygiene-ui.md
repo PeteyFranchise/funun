@@ -50,7 +50,12 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; "Copy full lyric" exports tagged ([Verse]/[Chorus],
+paste auto-splits on blank lines; RENUMBERING RULE (owner-confirmed): section numerals are DERIVED from position among
+same-type siblings, never stored — drag a verse above another and the numbers swap
+instantly. Authorship binds to BLOCK IDENTITY (and its lines), never the numeral, so
+reordering cannot smudge evidence; the diary logs the reorder as its own event and old
+entries reference blocks, staying truthful across reshuffles. Custom-named sections
+never renumber. "Copy full lyric" exports tagged ([Verse]/[Chorus],
 Suno-native) or plain.
 
 ## Copy doctrine (use verbatim where possible)
