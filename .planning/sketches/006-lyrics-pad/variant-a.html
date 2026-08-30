@@ -28,7 +28,14 @@
 <div class="card" style="padding:14px 16px;margin:12px 0 10px;display:flex;justify-content:space-between;align-items:center">
   <div><input value="Midnight" style="background:none;border:0;color:#fff;font:800 18px Inter;outline:none;width:200px"><br>
   <span class="xs dim">new song · lyrics saving automatically · every edit timestamped</span></div>
-  <button class="btn">🎙 Add the melody — hum it</button>
+  <div style="display:flex;gap:7px;align-items:center">
+    <button class="btn">🎙 Add the melody — hum it</button>
+    <button class="btn" onclick="var t=document.getElementById('copied');t.style.display='flex';setTimeout(()=>t.style.display='none',2200)">⧉ Copy lyric ▾</button>
+  </div>
+</div>
+<div id="copied" style="display:none;align-items:center;gap:8px;padding:9px 13px;margin:0 0 10px;border:1px solid rgba(52,211,153,.35);border-radius:10px;background:rgba(52,211,153,.08)">
+  <span class="xs" style="color:var(--good)">✓ Copied with [Verse] / [Chorus] tags — paste-ready for Suno or any tool.</span>
+  <span class="xs dim" style="margin-left:auto">also available: plain text, no tags</span>
 </div>
 
 <div class="blk">
@@ -64,5 +71,5 @@ We don’t need forever, just the rest of the night<span class="cursor">&nbsp;</
   <p class="xs dim" style="margin:5px 0 0">✎ “Chorus edited by @peterzora · just now” · “Ben added Verse 2 · 11:42” — section-level history, not a wall of ‘lyrics changed’. Who wrote which lines is on the record, line by line, the moment it happens.</p>
 </div>
 
-<p class="note">Structure blocks: draggable to reorder, labeled with the section vocabulary artists already use, one author badge per block (attribution = evidence = the splits nudge knows exactly WHO to add). Paste-a-full-lyric imports and auto-splits on blank lines. The melody button keeps the hum one tap away — lyrics and melody are the two halves of what you own.</p>
+<p class="note">Structure blocks: draggable to reorder, labeled with the section vocabulary artists already use, one author badge per block (attribution = evidence = the splits nudge knows exactly WHO to add). Paste-a-full-lyric imports and auto-splits on blank lines. The melody button keeps the hum one tap away — lyrics and melody are the two halves of what you own. “Copy lyric ▾” lives in the header with the other whole-song actions — tagged (Suno-native) by default, plain via the caret.</p>
 </div>
