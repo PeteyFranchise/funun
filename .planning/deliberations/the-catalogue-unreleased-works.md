@@ -140,6 +140,45 @@ re-record from the human melody/lyrics + fresh human arrangement → released ma
 NO AI disclosure; the Suno demo stays in history cited "AI reference vocal +
 AI-generated arrangement — demo only"; artist owns the entire song.
 
+### Worked example 2 — the genre-flip remix (owner-raised) + THE CRATE RULE
+
+Artist uploads their finished acoustic song; Suno re-renders it as (e.g.) K-pop. The
+risk flips layers versus the demo case:
+
+- **The SONG stays 100% the artist's, untouched.** Melody + lyrics are the composition;
+  a genre flip changes the clothing, not the authorship. Anyone copying the K-pop track
+  still infringes the human composition.
+- **The K-pop MASTER is the weak layer.** The audio Suno produced is an AI-generated
+  recording — uploading source + prompting is not sufficient human authorship of the
+  RECORDING (USCO). Fully-owned song inside a largely unownable master. Releasable, but
+  DDEX-disclosed and platform-labeled.
+- **Familiar edge rides along:** genre flips often add new toplines/post-chorus hooks.
+  A kept Suno-invented hook = unowned melodic strand (same rule as the unhummed verse;
+  re-author prompt fires).
+
+**THE CRATE RULE (locked from this discussion):** sync is TWO licenses — composition +
+master — and the Crate's promise is one-stop rights-ready. **A recording whose master is
+AI-generated (no ownable master right) is NOT Crate-eligible.** Crate eligibility
+attaches to a specific recording; work-level AI entries of type arrangement/vocal/
+instrument on the CANDIDATE RECORDING itself disqualify it (or at minimum hard-flag it),
+regardless of the composition being clean.
+
+**The workarounds (surface these in UI, in order):**
+1. **Canonical — sketchpad, not record.** The AI genre-flip enters the catalogue as an
+   iteration: "AI re-arrangement — exploration demo." Human producers/singers then build
+   the real version FROM the artist's song. Both layers fully owned; zero disclosure on
+   the release; Crate-clean. Cheap way to hear your song in another world, then make it
+   for real.
+2. **Hybrid rebuild.** Replace the AI layers with human ones — human vocal takes, human
+   instruments, human mix/production — until the released master is a human production
+   that merely referenced the AI sketch. Master-level re-authoring; the more replaced,
+   the stronger the claim (degree = counsel territory, same as compositional
+   re-authoring).
+3. **Release the raw AI master anyway** — allowed, disclosed, labeled — but it is
+   flagged NOT Crate-eligible. Important nuance to show the artist: **the WORK remains
+   fully Crate-eligible through any human-made master of it** — only that recording is
+   excluded, never the song.
+
 ## Research grounding (2026-08-30, current)
 
 - **PROs** (ASCAP/BMI/SOCAN, aligned Oct 2025): partially-AI works registrable when a
