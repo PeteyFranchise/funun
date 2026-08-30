@@ -352,6 +352,12 @@ at discuss-phase.
   declared at release + track + composition levels. Spotify AI Credits (Apr 2026,
   DistroKid first), Apple Transparency Tags (Mar 2026) ride it.
   https://undetectr.com/blog/ddex-ai-disclosure-standard-explained
+- **DistroKid's upload flow — VERIFIED 2026-08-30:** DistroKid has an "AI Credits"
+  step at upload asking for AI contributions BY COMPONENT (vocals / lyrics /
+  instrumental performance / composition / audio), feeding Spotify's AI Credits via
+  DDEX; credits can be added or updated post-upload. This maps 1:1 onto My Catalogue's
+  component-level AI entries — the diary IS the answers to the distributor's form.
+  https://jackrighteous.com/en-us/blogs/ai-music-distribution-guide/distrokid-upload-form-ai-music-paper-trail
 - **Key ownership mechanics**: performance ≠ authorship — re-singing an AI-invented
   melody does not launder it; AI performing a human-written melody leaves ownership
   fully intact (the released master then needs no AI disclosure at all).
