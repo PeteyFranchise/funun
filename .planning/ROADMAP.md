@@ -1562,17 +1562,17 @@ confirm against the reserved-handle trigger during discussion.
 
 **Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 1/7 plans executed
+**Plans:** 3/7 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 36-01-PLAN.md — Handle format validator + profile display-name fix (D-04/D-05/D-11/D-12)
-- [ ] 36-02-PLAN.md — Migration 133: INSERT-path reserved guard, handle_history, signup-handle trigger catch, handle resolver [human-gated push] (D-01/D-03/D-06/D-08/D-15)
+- [x] 36-02-PLAN.md — Migration 133: INSERT-path reserved guard, handle_history, signup-handle trigger catch, handle resolver [human-gated push] (D-01/D-03/D-06/D-08/D-15)
 
 **Wave 2** *(blocked on Wave 1 — migration 133 must be pushed first)*
 
-- [ ] 36-03-PLAN.md — PATCH /api/profile/handle + settings change-handle field (D-07/D-08/D-14)
+- [x] 36-03-PLAN.md — PATCH /api/profile/handle + settings change-handle field (D-07/D-08/D-14)
 - [ ] 36-04-PLAN.md — Signup collects the handle + public availability endpoint (D-02/D-03/D-14)
 - [ ] 36-05-PLAN.md — /u/[handle] case-insensitive resolution + retired-handle redirect (D-04/D-07)
 

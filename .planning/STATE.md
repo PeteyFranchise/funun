@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 36-01-PLAN.md (handle format authority + profile display-title derivation)
-last_updated: "2026-08-30T05:31:03.954Z"
+stopped_at: Completed 36-03-PLAN.md
+last_updated: "2026-08-30T05:52:12.487Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 38
   completed_phases: 29
   total_plans: 237
-  completed_plans: 228
+  completed_plans: 230
   percent: 76
 ---
 
@@ -298,6 +298,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.2 P01 | 8min | 3 tasks | 6 files |
 | Phase 31.2 P10 | 15min | 3 tasks | 11 files |
 | Phase 36 P01 | 15min | 3 tasks | 7 files |
+| Phase 36 P03 | 25min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -562,6 +563,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: [Phase 31.2-10]: Extracted lib/selects/engagement-rollup.ts's buildEngagementRollup so the leadership-only HTTP route and the RSC leadership-tower page compute the SAME aggregate via one function -- a Next.js route module may only export HTTP handlers
 - [Phase ?]: [Phase 31.2-10]: EngagementPanel (AE readout) self-fetches its route client-side, while the leadership rollup is computed server-side inside the RSC page's isLeadership branch -- keeps the hide-not-filter guarantee machine-testable the same way allData's is
 - [Phase 36]: handleFormatError() returns a distinct message per rejection reason (length/edge-separator/bad-character) so later signup/settings/API-route plans can surface it directly
+- [Phase ?]: PATCH /api/profile/handle is the only handle_history write path — the database rejection (23505/reserved-retired raise) is the sole authority, never an availability pre-check (D-14)
 
 ### Pending Todos
 
@@ -652,8 +654,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-30T05:31:03.927Z
-Stopped at: Completed 36-01-PLAN.md (handle format authority + profile display-title derivation)
+Last session: 2026-08-30T05:52:12.454Z
+Stopped at: Completed 36-03-PLAN.md
 Resume file: .planning/quick/260826-2qm-vendor-health-check/260826-2qm-SUMMARY.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
