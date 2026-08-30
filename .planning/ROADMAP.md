@@ -1562,7 +1562,7 @@ confirm against the reserved-handle trigger during discussion.
 
 **Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 3/7 plans executed
+**Plans:** 4/7 plans executed
 
 Plans:
 **Wave 1**
@@ -1574,7 +1574,7 @@ Plans:
 
 - [x] 36-03-PLAN.md — PATCH /api/profile/handle + settings change-handle field (D-07/D-08/D-14)
 - [ ] 36-04-PLAN.md — Signup collects the handle + public availability endpoint (D-02/D-03/D-14)
-- [ ] 36-05-PLAN.md — /u/[handle] case-insensitive resolution + retired-handle redirect (D-04/D-07)
+- [x] 36-05-PLAN.md — /u/[handle] case-insensitive resolution + retired-handle redirect (D-04/D-07)
 
 **Wave 3** *(blocked on Wave 2)*
 
