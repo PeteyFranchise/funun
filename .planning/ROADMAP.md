@@ -1603,14 +1603,36 @@ entries + authorship hygiene) + current PRO/USCO/DDEX research:**
 not re-ask at discuss-phase. Likely splits into a phase pair at planning (31→31.1/31.2
 precedent).
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**PLANNED AS 37.1 "The Songwriter" (2026-08-30)** — the production-testable writing room,
+per `37-CONTEXT.md`'s slice decisions S-01..S-04. Everything else on this entry (destination
+doors, Crate submission, DDEX export, playlists, volume view, graduation, labels) defers to
+37.2+.
+
+**Goal:** An artist at funun.studio can start a song from the Sound Vault's new My Catalogue
+shelf, hum it in with real mic capture, upload audio through the full AI-entry flow, write
+structured lyrics with per-block authorship, invite collaborators into a shared diary, and
+watch the diary record every one of those without being asked to.
+**Requirements**: S-01 (hum + upload + AI-entry flow), S-02 (collaborators + shared diary +
+tiers + splits nudge), S-03 (two shelves, two doors, Releases untouched), S-04 (copy full
+lyric, tagged + plain)
 **Depends on:** Phase 36
-**Plans:** 0 plans
+**Plans:** 13 plans (5 waves)
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 37 to break down)
+- [ ] 37-01-PLAN.md — migrations 135–138 (works core, membership + RLS, sheet link, diary) + text-locks + human-gated push
+- [ ] 37-02-PLAN.md — pad logic: derived block numerals, linked repeats/detach, paste split, both lyric serializers
+- [ ] 37-03-PLAN.md — hygiene logic: the when-in-doubt citation, equal-split redraft, the single guiding line
+- [ ] 37-04-PLAN.md — row types, work tiers, the one access decision, diary event shapes
+- [ ] 37-05-PLAN.md — works API: start a song, rename, vocal state, members + writer promotion
+- [ ] 37-06-PLAN.md — capture API: hum/upload versions, AI entries with server-composed receipts, notes
+- [ ] 37-07-PLAN.md — blocks API: insert anywhere, repeat, detach, atomic reorder
+- [ ] 37-08-PLAN.md — the lyrics pad (sketch 006-A)
+- [ ] 37-09-PLAN.md — hum capture, the deliberate minute, the re-author prompt, the AI-entry flow (003-B/003-A/002-B/002-A)
+- [ ] 37-10-PLAN.md — the composer spine: composer card, one guiding line, the diary (005-C, 001-A/C)
+- [ ] 37-11-PLAN.md — work header (rename, three vocal states) + roster (membership vs splits)
+- [ ] 37-12-PLAN.md — the composer room: the work page, mounted and wired
+- [ ] 37-13-PLAN.md — two shelves, two doors, and the owner's blocking device test
 
 ---
 
