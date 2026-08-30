@@ -168,6 +168,26 @@ exactly two disqualifiers and one disclosure tier:
    line: vocals are where voice-likeness risk, buyer sensitivity, and reputation live,
    and it is a line Funūn can actually police. Fix shown in UI: swap to a human vocal /
    submit a human-vocal version.
+**THE BGV CLAUSE (owner-adopted 2026-08-30) — the vocal rule follows performance, not
+register.** One test for every voice on a Crate master, lead or background:
+
+> **"Can you point to the human take it came from?"**
+> YES → production. Harmonies, doubles, stacks, and voice-converted layers built FROM
+> human takes are eligible + disclosed — and the diary holds the source take, so a
+> buyer's AI-vocal scanner flag is answered with a receipt, not an argument.
+> NO → an AI voice. Generated voices singing parts no human performed are the hard no —
+> "background" does not launder them, and a real human lead on the track does not
+> either.
+
+**The one-pass fix (written into the UI, per owner):** when a work has a real singer and
+someone adds a generated-vocal entry, the nudge reads: "Your singer's already here —
+track rough passes of these parts and the AI can build from them instead. That keeps the
+Crate door open." One rough guide take per harmony line — thirty seconds a part, doesn't
+need to be pretty — converts generation into production: every voice then traces to a
+human performance, the stacks are AI-polished takes of HER parts, and the track is
+Crate-eligible with a clean disclosure. Same habit as the hum rule: hum the harmony
+parts first.
+
 3. **AI instrumentation / MIDI / beats inside a human-produced master: ELIGIBLE,
    disclosed.** Owner's reasoning verbatim in spirit: "so many tools now help with AI
    generation for instrumentation, MIDI, and beats — that is a hard ask and much harder
