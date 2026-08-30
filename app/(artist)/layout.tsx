@@ -9,6 +9,7 @@ import { ChooseHandleGate } from '@/components/handles/ChooseHandleGate'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { hasAdmittedSyncListing } from '@/lib/sync-library/hub-access'
 import { resolveHandleGate } from '@/lib/handles/gate'
+import { profileDisplayTitle } from '@/lib/profile/display-name'
 
 // Reads the account's approved capability set server-side and passes it to
 // ArtistNav as a prop (D-08). Never fetched client-side — capability_grants
@@ -26,6 +27,8 @@ export default async function ArtistLayout({ children }: { children: React.React
   // capabilities, and passed down as a prop (never client-fetched),
   // mirroring the capabilities read immediately above (26-CONTEXT.md).
   let hasSyncLibraryAccess = false
+  let navUser: { name: string } | undefined
+
   if (user) {
     const service = createServiceClient()
     const { data: grants } = await service
@@ -66,16 +69,27 @@ export default async function ArtistLayout({ children }: { children: React.React
     // equivalent "the profile row may not exist, and that is fine" query today
     // for claimed_at, on every authenticated non-auth-route request including
     // staff hitting /admin, and short-circuits safely when the row is null.
+    // Fetched once, used twice: the gate decision below, and the nav footer's
+    // identity label (the spot that read "Your Profile" for every artist —
+    // ArtistNav's user prop existed but nothing ever fed it). Same D-11 rule
+    // as the profile header: artist name if set, otherwise the @handle.
+    const { data: profileRow } = await service
+      .from('user_profiles')
+      .select('handle, artist_name')
+      .eq('id', user.id)
+      .maybeSingle()
+    const navName = profileRow
+      ? profileDisplayTitle({
+          artistName: (profileRow.artist_name as string | null) ?? null,
+          handle: (profileRow.handle as string | null) ?? null,
+        })
+      : ''
+    if (navName) navUser = { name: navName }
+
     const handleGate = await resolveHandleGate({
       user,
-      loadProfile: async userId => {
-        const { data } = await service
-          .from('user_profiles')
-          .select('handle')
-          .eq('id', userId)
-          .maybeSingle()
-        return data ? { handle: (data.handle as string | null) ?? null } : null
-      },
+      loadProfile: async () =>
+        profileRow ? { handle: (profileRow.handle as string | null) ?? null } : null,
       renderGate: userId => <ChooseHandleGate userId={userId} />,
     })
     // Returned directly rather than composed with children: no nav, no
@@ -90,6 +104,7 @@ export default async function ArtistLayout({ children }: { children: React.React
         capabilities={capabilities}
         hasSyncLibraryAccess={hasSyncLibraryAccess}
         userId={user?.id}
+        user={navUser}
       />
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">

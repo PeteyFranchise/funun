@@ -108,10 +108,14 @@ export function ArtistNav({
   const pathname = usePathname() ?? ''
   const name = user?.name ?? 'Your Profile'
   const plan = user?.plan ?? 'Free plan'
+  // Same treatment as ProfileView's initials(): strip a leading @ and split
+  // on separator characters, so "@peterzora" renders "P", not "@".
   const initials =
     user?.initials ??
     name
-      .split(' ')
+      .replace(/^@/, '')
+      .split(/[\s\-_.]+/)
+      .filter(Boolean)
       .map(w => w[0])
       .slice(0, 2)
       .join('')
