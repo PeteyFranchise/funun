@@ -162,7 +162,9 @@ exactly two disqualifiers and one disclosure tier:
 
 1. **Wholly AI-generated masters: NOT eligible.** Nobody owns the recording, so nobody
    can one-stop license it. (Ownership grounds — unchanged.)
-2. **AI VOCALS on the candidate master: NOT eligible — the one hard "no AI."** Owner's
+2. **AI VOCALS on the candidate master: NOT eligible — the one hard "no AI," FOR NOW
+   (owner, 2026-08-30: "for now, no AI vocals for THE CRATE" — a current stance,
+   revisitable as the market and buyer sentiment move, not eternal doctrine).** Owner's
    line: vocals are where voice-likeness risk, buyer sensitivity, and reputation live,
    and it is a line Funūn can actually police. Fix shown in UI: swap to a human vocal /
    submit a human-vocal version.
