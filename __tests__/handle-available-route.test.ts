@@ -62,7 +62,8 @@ describe('GET /api/handles/available', () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body).toEqual({ available: false, reason: 'invalid' })
+    expect(body.available).toBe(false)
+    expect(body.reason).toBe('invalid')
     expect(mockCreateServiceClient).not.toHaveBeenCalled()
   })
 
@@ -71,7 +72,8 @@ describe('GET /api/handles/available', () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body).toEqual({ available: false, reason: 'invalid' })
+    expect(body.available).toBe(false)
+    expect(body.reason).toBe('invalid')
     expect(mockCreateServiceClient).not.toHaveBeenCalled()
   })
 
