@@ -12,7 +12,7 @@
 // test (plan 13's UAT gate across Chrome desktop and iPhone Safari), not
 // a change to this module.
 
-import { extensionForMime } from '@/lib/catalogue/audio'
+import { extensionForMime } from '@/lib/catalogue/audio-mime'
 
 // The route's own MIME→extension mapper (plan 06), re-exported rather
 // than reimplemented — HumCaptureButton, and this module's own test,
