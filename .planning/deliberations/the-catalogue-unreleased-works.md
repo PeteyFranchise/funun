@@ -1,4 +1,9 @@
-# The Catalogue — Unreleased works as first-class assets
+# My Catalogue — Unreleased works as first-class assets
+
+**NAMING (owner, 2026-08-30):** the artist-facing surface is **"My Catalogue"** — the
+writer/artist's perspective, matching the possessive voice of the artist side (Your
+Sound Vault, Your Profile) and making the doctrine literal: this is YOURS, evidenced.
+"The Catalogue" survives only as internal/phase shorthand.
 
 **Status:** Owner vision captured + three core decisions LOCKED (2026-08-30 discussion).
 Ready for `/gsd-discuss-phase` when scheduled. Decisions below are settled — do not re-ask.

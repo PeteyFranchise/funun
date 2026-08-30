@@ -1584,7 +1584,7 @@ Plans:
 
 - [x] 36-07-PLAN.md — Migration 134: handle format CHECK, text-locked to lib/handles/validate.ts [human-gated push, applied 2026-08-27]; D-13 NOT NULL DEFERRED with an owner tripwire — the planned fixture sweep was removed after the fixtures were deleted outright (D-05/D-13)
 
-### Phase 37: The Catalogue — unreleased works as living assets (versions, rights-ready scoring, graduation, pitch life, AI authorship hygiene)
+### Phase 37: My Catalogue — unreleased works as living assets (versions, rights-ready scoring, graduation, pitch life, AI authorship hygiene)
 
 **Goal:** "Unreleased" graduates from junk drawer to publisher-grade catalogue: a work
 with a living history (versioned recordings, evolving contributors, a diary timeline),
