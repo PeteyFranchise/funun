@@ -118,12 +118,20 @@ material. Ownership map: lyrics fully human; every hummed section fully human (t
 IS the evidence — it answers the when-in-doubt question with a recording of the
 artist's own voice); Suno's vocal = performance, demo-only, no ownership impact.
 
-The two edges to surface in UI:
-1. **Suno composes whatever the hum didn't cover.** Verse melodies for typed-but-unhummed
-   lyrics, chords, the whole arrangement — AI-authored even though the words are human.
-   Rule: you own every section you hummed; hum it all, or re-author the sections Suno
-   invented before release singers copy them.
-2. **Embellishment drift.** Small interpretive phrasing = performance; a meaningfully
+**OWNER CORRECTION (2026-08-30): in this scenario the SONG is fully human-owned, full
+stop.** The composition's ownable core is melody + lyrics — both human here. Suno's
+chords/demo arrangement/production are NOT a counter-claim: generic progressions and
+demo production are ownable by no one (human or AI) and die with the demo; the
+human-made release arrangement belongs to the humans who make it. Do not present the
+demo's AI dressing as diminishing the artist's ownership.
+
+The ONE narrow edge to surface in UI:
+1. **A section whose MELODY was never hummed.** Melody is the ownable core, so if lyrics
+   were typed for a verse but its melody was never hummed, Suno invents that melodic
+   line — and that one strand is unownable by anyone, forever, no matter who sings it
+   later. The artist's hook and lyrics remain fully theirs regardless. One-line rule:
+   **"Hum every melody you want to own, and the song is entirely yours."**
+2. **Embellishment drift** (minor): interpretive phrasing = performance; a meaningfully
    changed melodic line the artist KEEPS is AI-born — the re-author prompt fires here.
 
 Workflow commandment: **the hum lands in the diary BEFORE Suno** — a hum living only in
