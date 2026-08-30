@@ -37,8 +37,11 @@ import type { LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '
 // catalogue-hygiene-ui.md's own "what was tried and rejected" note).
 //
 // ORDER (005-C's rule, structural): WorkHeader, then the composer, then
-// AT MOST one GuidingLine, then the diary. Creation leads; the song gets
-// one sentence; the diary follows clean.
+// AT MOST one GuidingLine, then the WRITING SURFACE (the lyrics pad),
+// then the versions + diary ledger. Creation leads — the composer opens
+// it, the pad is where it happens — and the ledger follows clean. (The
+// pad sat below the ledger until 2026-08-30, when the owner moved it up
+// so the writing surface is never behind the history.)
 //
 // HYGIENE MOMENTS fire INSIDE the add flows (005-C), never beside them —
 // the small state machine below (`Flow`) is what makes that true: there
@@ -571,9 +574,30 @@ export function WorkPage({
         )}
       </div>
 
-      {/* ── Versions + diary — 001-C two columns (desktop) / 001-A single
-          stream with a Diary|Versions toggle (mobile). ──────────────── */}
-      <div className="mt-6">
+      {/* The pad — the other half of what an artist owns. Creation leads
+          (005-C): the writing surface sits directly under the composer,
+          ABOVE the versions + diary ledger, so writing is not behind the
+          history. */}
+      <div ref={lyricsRef} className="mt-6">
+        <p className="mb-2 text-[13px] font-semibold text-white">Lyrics</p>
+        <LyricsPad
+          blocks={lyricsBlocks}
+          vocalState={vocalState}
+          onHum={handleHum}
+          onTextChange={handleTextChange}
+          onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
+          onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
+          onDetach={blockId => void handleDetach(blockId)}
+          onInsertSingle={handleInsertSingle}
+          onInsertRepeat={handleInsertRepeat}
+          onReorder={handleReorder}
+          onPasteImport={handlePasteImport}
+        />
+      </div>
+
+      {/* Versions + diary — 001-C two columns (desktop) / 001-A single
+          stream with a Diary|Versions toggle (mobile). */}
+      <div className="mt-8">
         {viewport === 'desktop' ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr] lg:items-start">
             <div className="lg:sticky lg:top-4">
@@ -622,24 +646,6 @@ export function WorkPage({
             )}
           </div>
         )}
-      </div>
-
-      {/* ── The pad — the other half of what an artist owns. ─────────── */}
-      <div ref={lyricsRef} className="mt-8">
-        <p className="mb-2 text-[13px] font-semibold text-white">Lyrics</p>
-        <LyricsPad
-          blocks={lyricsBlocks}
-          vocalState={vocalState}
-          onHum={handleHum}
-          onTextChange={handleTextChange}
-          onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
-          onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
-          onDetach={blockId => void handleDetach(blockId)}
-          onInsertSingle={handleInsertSingle}
-          onInsertRepeat={handleInsertRepeat}
-          onReorder={handleReorder}
-          onPasteImport={handlePasteImport}
-        />
       </div>
 
       {/*
