@@ -50,7 +50,16 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; PERFORMER RULE (owner-raised): each block carries TWO badge clusters — ✍ writer
+paste auto-splits on blank lines; DEFAULT-PERFORMER RULE (owner-raised): every work has a PRIMARY PERFORMER (defaults to
+its creator, editable in the header: "🎤 primary performer: @x — sections inherit unless
+tagged"). Blank blocks inherit it — the solo artist is never nagged; per-block 🎤 is for
+exceptions only. Two guardrails keep inheritance honest: (1) a default fills the PLAN,
+never the RECORD — a credit becomes fact only when a version carries that performance;
+the human-take registry requires an actual take, never an inherited badge; (2) an AI
+vocal can never hide under the default — the add-audio flow asks regardless, and
+declared facts always beat inheritance.
+
+PERFORMER RULE (owner-raised): each block carries TWO badge clusters — ✍ writer
 (automatic: whoever typed; moves splits) and 🎤 performer (declared: tap "＋🎤 who sings
 this?" and pick a member or name a guest; moves credits, never splits). Multiple 🎤
 avatars stack for duets. Authoritative per-recording performance credits live on the
