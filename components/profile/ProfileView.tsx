@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ProfileRole, OpenTo } from '@/types'
 import { PROFILE_ROLE_LABELS } from '@/types'
+import { profileHandleSubtitle } from '@/lib/profile/display-name'
 import { FollowButton } from './FollowButton'
 import { ConnectButton, type ConnectStateValue } from './ConnectButton'
 import { Wall, type WallState } from './Wall'
@@ -74,7 +75,9 @@ function roleLabel(r: ProfileRole): string {
   return r.kind === 'preset' ? PROFILE_ROLE_LABELS[r.slug] : r.label
 }
 function initials(name: string): string {
-  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  const stripped = name.replace(/^@/, '')
+  const words = stripped.split(/[\s\-_.]+/).filter(Boolean)
+  return words.map(w => w[0]).slice(0, 2).join('').toUpperCase()
 }
 function fmtNum(n: number | null): string {
   if (n == null) return '—'
@@ -152,6 +155,7 @@ export function ProfileView({
   activity?: ActivityState
 }) {
   const shareCaption = `Check out ${data.name} on Funūn → ${profileUrl}`
+  const handleSubtitle = profileHandleSubtitle({ title: data.name, handle: data.handle })
   return (
     <div className="min-h-screen bg-ink text-white">
       {/* Top bar */}
@@ -204,6 +208,10 @@ export function ProfileView({
               )}
               {data.pronouns && <span className="text-[15px] font-medium text-lavdim">{data.pronouns}</span>}
             </div>
+
+            {handleSubtitle && (
+              <div className="mt-1 text-[15px] font-medium text-lavdim">{handleSubtitle}</div>
+            )}
 
             {data.roles.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-[10px]">
