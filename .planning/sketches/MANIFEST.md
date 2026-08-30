@@ -7,7 +7,7 @@ legal — "citation is a badge, not a confession." Doctrine source:
 
 | # | Sketch | Design question | Variants | Winner |
 |---|---|---|---|---|
-| 001 | work-page-diary | How does a song's living history read at a glance? | A one vertical diary · B version cards + collapsed log · C two-column | **C on desktop** (owner 2026-08-30); mobile TBD — likely A-style single stream when columns collapse; mobile sketch queued |
+| 001 | work-page-diary | How does a song's living history read at a glance? | A one vertical diary · B version cards + collapsed log · C two-column | **C desktop · mobile = A default with a Diary|Versions toggle to B's cards** (owner 2026-08-30) — 001 fully decided |
 | 002 | ai-entry-moment | Ask "performed or wrote?" without a deposition | A two honest doors + receipt · B conversational | TBD |
 | 003 | hygiene-nudges | How hard do we interrupt (hum-first + re-author)? | A soft inline · B deliberate full-screen minute | TBD |
 | 004 | song-destinations | Crate eligibility as live consequence, not gate rejection | A header lights rail · B doors panel with reasons+fixes | TBD |

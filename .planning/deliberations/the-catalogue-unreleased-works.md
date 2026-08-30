@@ -55,8 +55,8 @@ WORK — "voice memos, except these count": memorialized, timestamped, already a
 starts from thirty seconds of melody and Funūn becomes the first app opened, not the
 last. Browser mic capture (MediaRecorder) + existing audio storage machinery.
 
-**Sketch verdicts so far:** 001 → C on desktop; mobile layout open (likely single-stream
-collapse; mobile sketch queued). 004 → redrawn to the vocal-line Crate rule; pending
+**Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
+diary as default with a Diary|Versions toggle reaching B's cards. 004 → redrawn to the vocal-line Crate rule; pending
 final call.
 
 ## LOCKED DECISIONS
