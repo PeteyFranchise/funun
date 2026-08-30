@@ -36,7 +36,7 @@ export interface HandleResolverClient {
   rpc(
     fn: 'resolve_profile_by_handle',
     args: { p_handle: string }
-  ): Promise<{ data: ResolveProfileByHandleRow[] | null; error: unknown }>
+  ): PromiseLike<{ data: ResolveProfileByHandleRow[] | null; error: unknown }>
 }
 
 /**

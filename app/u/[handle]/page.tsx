@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { resolveHandle } from '@/lib/handles/resolve'
 import type { UserProfile } from '@/types'
 import { VAULT_PROJECT_TYPE_LABELS } from '@/types'
 import { getDemoProjects } from '@/lib/vault/demo-store'
@@ -47,7 +48,13 @@ function toFeaturedPickerRelease(p: ProfileProjectRow): FeaturedPickerRelease {
   }
 }
 
-export default async function PublicProfilePage({ params }: { params: Promise<{ handle: string }> }) {
+export default async function PublicProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ handle: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { handle } = await params
 
   // Absolute base URL, resolved server-side. This page has no `req` object
@@ -137,6 +144,37 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     }
   } else {
     const supabase = await createServerClient()
+
+    // D-04/D-07: resolve the URL segment through migration 133's resolver —
+    // a case-insensitive lookup with a fallback to a retired handle's
+    // current owner, both in one round trip. Never a pattern-match filter
+    // (`.ilike()`): an underscore is a legal handle character AND a
+    // single-char wildcard, so a pattern match could resolve the wrong
+    // profile or 404 a legitimate one. handle_history itself is never read
+    // here — the RPC is SECURITY DEFINER and fully revoked from anon and
+    // authenticated.
+    const resolution = await resolveHandle(supabase, handle)
+    if (resolution.kind === 'none') notFound()
+    if (resolution.kind === 'redirect') {
+      // D-07: an already-shared /u/<old-handle> link permanently settles on
+      // the current handle — permanentRedirect (301), not redirect (307),
+      // and called outside any try/catch since App Router signals a
+      // redirect by throwing. Query string is preserved; the fragment never
+      // reaches the server and browsers carry it across a redirect whose
+      // target has none, so #wall / #endorsements deep links keep working.
+      const sp = await searchParams
+      const qs = new URLSearchParams()
+      for (const [key, value] of Object.entries(sp)) {
+        if (Array.isArray(value)) {
+          for (const v of value) qs.append(key, v)
+        } else if (value !== undefined) {
+          qs.append(key, value)
+        }
+      }
+      const query = qs.toString()
+      permanentRedirect(`/u/${resolution.handle}${query ? `?${query}` : ''}`)
+    }
+
     // Explicit PUBLIC column list (D-11) — must stay identical to migration
     // 040's GRANT SELECT list so the app-layer projection and the DB-layer
     // grant never drift. Includes `genre` and `sound_identity` (legacy
@@ -148,7 +186,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     const { data: prof } = await supabase
       .from('user_profiles')
       .select('id, artist_name, genre, genres, sound_identity, location, bio, career_stage, instagram_handle, threads_handle, tiktok_handle, spotify_url, monthly_listeners, total_streams, industry_roles, handle, member_type, pronouns, banner_url, open_to, featured_project_id, allow_resharing, search_vector, avatar_url, verified, roles, is_public, profile_visibility, open_to_visibility, created_at, updated_at')
-      .eq('handle', handle)
+      .eq('id', resolution.profileId)
       .maybeSingle()
 
     // App-level gate: only public profiles render.
