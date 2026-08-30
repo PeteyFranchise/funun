@@ -50,7 +50,13 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; DEFAULT-PERFORMER RULE (owner-raised): the header vocal setting has THREE states —
+paste auto-splits on blank lines; RENAME RULE (owner-raised): the title in the pad header is a live input — click, type,
+autosaved. Identity is the work id; the title is presentation. The diary logs renames
+("Renamed 'Late Drive' → 'Midnight'") and former titles stay searchable so collaborators
+asking for the old name still find the song. Graduation carries the current title into
+the release, where it takes its final form.
+
+DEFAULT-PERFORMER RULE (owner-raised): the header vocal setting has THREE states —
 (1) a primary performer (defaults to the creator), (2) varies/per-block tags, (3)
 INSTRUMENTAL — no vocals. Instrumental does real work: all who-sings prompts disappear
 (blocks stay as pure structure — Intro/Drop/Bridge in producer vocabulary), the Crate
