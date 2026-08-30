@@ -1562,7 +1562,7 @@ confirm against the reserved-handle trigger during discussion.
 
 **Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans executed
 
 Plans:
 **Wave 1**
@@ -1582,7 +1582,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 36-07-PLAN.md — Migration 134: fixture sweep + handle format CHECK; D-13 NOT NULL decision [human-gated push] (D-05/D-13)
+- [x] 36-07-PLAN.md — Migration 134: handle format CHECK, text-locked to lib/handles/validate.ts [human-gated push, applied 2026-08-27]; D-13 NOT NULL DEFERRED with an owner tripwire — the planned fixture sweep was removed after the fixtures were deleted outright (D-05/D-13)
 
 ---
 

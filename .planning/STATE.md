@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 36-06-PLAN.md
-last_updated: "2026-08-30T06:06:52.493Z"
+stopped_at: Completed 36-07-PLAN.md
+last_updated: "2026-08-27T00:00:00.000Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 38
   completed_phases: 29
   total_plans: 237
-  completed_plans: 233
+  completed_plans: 234
   percent: 76
 ---
 
@@ -25,6 +25,15 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
 **Current focus:** Phase 31.2 — ae-console-playbook-authoring-rbac-plays-selects-telemetry
+
+> **Stale pointer, recorded not forced (2026-08-27).** The `current_phase: 31.2` /
+> `current_phase_name` frontmatter keys have not tracked actual work since Phase 31.2 was
+> paused — every Phase 36 plan (36-01 through 36-07) ran against them unchanged, advancing
+> only `stopped_at`, `completed_plans` and the session block. Phase 36 is the real current
+> phase and is now **complete**. Left as-is deliberately rather than hand-edited: 31.2 is
+> genuinely unfinished (UAT deferred to organic beta), so overwriting the pointer would
+> lose that, and the correct fix is a phase-completion pass over both phases, not a
+> one-line patch from a plan executor.
 
 ## Current Position
 
@@ -302,6 +311,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 36 P05 | 7min | 2 tasks | 3 files |
 | Phase 36 P04 | 10min | 3 tasks | 5 files |
 | Phase 36 P06 | ~14min | 3 tasks | 5 files |
+| Phase 36 P07 | ~50min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -572,6 +582,9 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 36]: D-14 courtesy-only availability endpoint: separate handle-check:ip: rate-limit keyspace from check-invite's ip: prefix so debounced typing can never exhaust signup admission's budget — Taken/reserved/retired handles collapse into one 'unavailable' reason; a DB error reports unknown, never a false verdict
 - [Phase ?]: 36-06: the handle gate keys on owning a user_profiles row, never on being signed in — a missing profile row means 'not my business'. Machine-verified by never-called assertions on an injected renderGate callback for staff and buyer identities (D-10/D-10b/D-10c).
 - [Phase ?]: 36-06: the gate is mounted in app/(artist)/layout.tsx, not middleware — but the route group is NOT a wall: middleware's isProtected tests only !user, so a signed-in Client Partner at /vault does render the artist layout (D-10a correction).
+- [Phase 36]: 36-07: D-13 AMENDED — NOT NULL on user_profiles.handle is DEFERRED with a named owner tripwire ("the moment we start to see handle-less accounts posting on the website"). The blocker is INSERT-time provisioning, not old rows: app_metadata is invisible to handle_new_user() at INSERT, so all four admin lanes fall through to the default branch and a non-nullable column would reject buyer/staff/industry/curator provisioning AND fire inside migration 133's D-15 fallback, turning a lost handle race back into a lost signup.
+- [Phase 36]: 36-07: presence is the ONLY handle property still application-enforced (D-09's gate). The database now owns uniqueness (010), reserved/retired names (133) and format (134's user_profiles_handle_format_chk). Residual: the gate guards page loads, not direct API calls — security-neutral, but a handle-less account can surface on social surfaces.
+- [Phase 36]: 36-07: migration 134 writes to NO row. Its planned fixture sweep was removed after the owner deleted the five fixture accounts outright — the remaining handle-less rows are three real people, and generating handles for them would violate D-09's prompted-never-assigned rule.
 
 ### Pending Todos
 
@@ -662,8 +675,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-30T06:06:44.098Z
-Stopped at: Completed 36-06-PLAN.md
+Last session: 2026-08-27T00:00:00.000Z
+Stopped at: Completed 36-07-PLAN.md
 Resume file: 
 None
 Stopped at: Completed 28-03-PLAN.md
