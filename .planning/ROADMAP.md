@@ -1562,7 +1562,7 @@ confirm against the reserved-handle trigger during discussion.
 
 **Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 5/7 plans executed
+**Plans:** 6/7 plans executed
 
 Plans:
 **Wave 1**
@@ -1578,7 +1578,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 36-06-PLAN.md — The hard gate for handle-less User Accounts, staff/buyer-proof (D-09/D-10/D-10a/D-10b/D-10c)
+- [x] 36-06-PLAN.md — The hard gate for handle-less User Accounts, staff/buyer-proof (D-09/D-10/D-10a/D-10b/D-10c)
 
 **Wave 4** *(blocked on Wave 3)*
 

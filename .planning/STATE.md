@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 36-04-PLAN.md
-last_updated: "2026-08-30T05:55:08.444Z"
+stopped_at: Completed 36-06-PLAN.md
+last_updated: "2026-08-30T06:06:52.493Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 38
   completed_phases: 29
   total_plans: 237
-  completed_plans: 232
+  completed_plans: 233
   percent: 76
 ---
 
@@ -301,6 +301,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 36 P03 | 25min | 2 tasks | 6 files |
 | Phase 36 P05 | 7min | 2 tasks | 3 files |
 | Phase 36 P04 | 10min | 3 tasks | 5 files |
+| Phase 36 P06 | ~14min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -569,6 +570,8 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase ?]: resolveHandle() wraps migration 133 resolve_profile_by_handle RPC rather than a PostgREST filter -- an underscore is both a legal handle character and a LIKE wildcard, so a pattern-match filter could resolve the wrong profile — D-04/D-07 fix + redirect share one round trip; handle_history stays revoked from anon/authenticated
 - [Phase ?]: HandleResolverClient.rpc typed PromiseLike, not Promise -- supabase-js PostgrestFilterBuilder is a thenable, not a native Promise — tsc rejected the stricter Promise signature against the real SupabaseClient
 - [Phase 36]: D-14 courtesy-only availability endpoint: separate handle-check:ip: rate-limit keyspace from check-invite's ip: prefix so debounced typing can never exhaust signup admission's budget — Taken/reserved/retired handles collapse into one 'unavailable' reason; a DB error reports unknown, never a false verdict
+- [Phase ?]: 36-06: the handle gate keys on owning a user_profiles row, never on being signed in — a missing profile row means 'not my business'. Machine-verified by never-called assertions on an injected renderGate callback for staff and buyer identities (D-10/D-10b/D-10c).
+- [Phase ?]: 36-06: the gate is mounted in app/(artist)/layout.tsx, not middleware — but the route group is NOT a wall: middleware's isProtected tests only !user, so a signed-in Client Partner at /vault does render the artist layout (D-10a correction).
 
 ### Pending Todos
 
@@ -659,8 +662,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-30T05:55:08.409Z
-Stopped at: Completed 36-04-PLAN.md
+Last session: 2026-08-30T06:06:44.098Z
+Stopped at: Completed 36-06-PLAN.md
 Resume file: 
 None
 Stopped at: Completed 28-03-PLAN.md
