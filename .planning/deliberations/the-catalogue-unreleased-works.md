@@ -55,11 +55,26 @@ WORK — "voice memos, except these count": memorialized, timestamped, already a
 starts from thirty seconds of melody and Funūn becomes the first app opened, not the
 last. Browser mic capture (MediaRecorder) + existing audio storage machinery.
 
+**8. "Type it in" — the lyrics pad (owner-added 2026-08-30).** Typed, stored, editable
+lyrics on the WORK, auto-versioned into the diary with every edit timestamped. The
+symmetry that makes it essential: the ownable core of a song is melody + lyrics — the
+hum evidences the melody, the lyric pad evidences the words; together they cover the
+entire copyrightable song. Export bundle (hum + lyrics) to any AI tool closes worked
+example 1's loop: human core captured here first, demos come back as iterations. Meets
+the existing release-pipeline lyrics machinery (lib/metadata readLyrics/TrackLyrics) at
+graduation.
+
 **Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
 diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
 two-door form (A) forever after; A keeps a "walk me through it again" link that reopens
-B's pacing; DDEX vocabulary only ever in the receipt. 004 → redrawn to the vocal-line Crate rule; pending
+B's pacing; DDEX vocabulary only ever in the receipt.
+003 DECIDED → SPLIT: the deliberate full-screen minute (B) for hum-first, once per song;
+inline (A) for the recurring re-author prompt. Copy friendlier with a read-more
+expandable (reuse components/ui/LearnWhy.tsx — action visible, why folds). Owner's lead
+line verbatim: "Save and protect your idea by just humming or singing right now."
+Framing owner added: the voicenote is a PORTABLE ASSET — access it anytime, export it to
+Suno or any AI tool, knowing the idea is yours; Funūn is the first stop before the tool. 004 → redrawn to the vocal-line Crate rule; pending
 final call.
 
 ## LOCKED DECISIONS
