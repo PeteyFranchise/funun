@@ -64,6 +64,19 @@ example 1's loop: human core captured here first, demos come back as iterations.
 the existing release-pipeline lyrics machinery (lib/metadata readLyrics/TrackLyrics) at
 graduation.
 
+**9. The shared diary — collaborator access and contribution (owner-confirmed
+2026-08-30).** A collaborator added to a work (via the existing invite/claim/connect
+machinery) can access the diary and CONTRIBUTE: play versions, add their own iterations
+(uploads and Hum-it-in takes), edit the lyrics pad (tracked), annotate. Every entry is
+attributed and timestamped — which compounds the evidence value: the diary answers
+who-did-what-when, the question that starts split disputes. Two permission tiers:
+CONTRIBUTE (any member) vs ADMINISTER (owner or elevated: graduate, Crate submission,
+sheet-execution requests, membership changes — the Q2 money/release doors stay with the
+owner by default). Kept crisp: being ON THE WORK and being ON THE SPLITS are different
+facts — membership grants access, the sheet grants ownership, the diary records both.
+Aligns with the Phase 21 shared-projects access model; this is its works-level
+expression.
+
 **Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
 diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
