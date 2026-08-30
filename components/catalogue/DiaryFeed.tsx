@@ -1,3 +1,6 @@
+'use client'
+
+import { useMemo, useState } from 'react'
 import type { DiaryAccent, DiaryEntryView } from '@/lib/catalogue/diary'
 
 // ─── The diary — the reverse-chronological ledger (sketch 001-A / 001-C) ─
@@ -64,6 +67,15 @@ export type DiaryFeedProps = {
   entries: DiaryFeedEntry[]
   /** 'compact' (001-C, desktop default) or 'rail' (001-A, mobile). Defaults to 'compact'. */
   layout?: DiaryFeedLayout
+  /**
+   * When set and the diary is longer than this, the feed collapses to this
+   * many most-recent entries behind a "Show all" toggle, and a search box
+   * appears so a long history can be filtered by anything in a row's text —
+   * a person's handle or a section label, both of which live in the
+   * headline. Unset (the default) renders the whole feed with no chrome, so
+   * every existing caller and test is unchanged; the page opts in.
+   */
+  collapseAfter?: number
 }
 
 // ─── Relative timestamp helper — adapted from ActivityFeed.tsx's timeAgo() ─
@@ -166,14 +178,22 @@ function RailRow({ entry, isLast }: { entry: DiaryFeedEntry; isLast: boolean }) 
 
 // ─── DiaryFeed ────────────────────────────────────────────────────────
 
-export function DiaryFeed({ entries, layout = 'compact' }: DiaryFeedProps) {
-  if (entries.length === 0) {
-    // One quiet line — a brand-new song's page is already carrying the
-    // composer's empty-state hero above, so this stays a footnote, not a
-    // second pitch.
-    return <p className="text-[11px] text-lavdim">Nothing recorded yet — it fills in as you add to this song above.</p>
-  }
+// Search over exactly what a row SHOWS — its headline and consequence. A
+// person's @handle and a section label ("Verse 2") both live in the headline,
+// so a free-text match answers "find by person" and "find by section" without
+// inventing structured fields the diary row does not carry. Exported so the
+// match rule is unit-tested directly (this repo has no jsdom to drive the
+// input). An empty query matches everything.
+export function diaryMatchesQuery(
+  entry: Pick<DiaryFeedEntry, 'headline' | 'consequence'>,
+  query: string
+): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return `${entry.headline} ${entry.consequence ?? ''}`.toLowerCase().includes(q)
+}
 
+function DiaryRows({ entries, layout }: { entries: DiaryFeedEntry[]; layout: DiaryFeedLayout }) {
   if (layout === 'rail') {
     return (
       <div className="flex flex-col gap-0">
@@ -183,12 +203,77 @@ export function DiaryFeed({ entries, layout = 'compact' }: DiaryFeedProps) {
       </div>
     )
   }
-
   return (
     <div className="rounded-[12px] border border-hair bg-card px-[14px]">
       {entries.map(entry => (
         <CompactRow key={entry.id} entry={entry} />
       ))}
+    </div>
+  )
+}
+
+export function DiaryFeed({ entries, layout = 'compact', collapseAfter }: DiaryFeedProps) {
+  const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState(false)
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filtered = useMemo(
+    () => (normalizedQuery ? entries.filter(entry => diaryMatchesQuery(entry, normalizedQuery)) : entries),
+    [entries, normalizedQuery]
+  )
+
+  if (entries.length === 0) {
+    // One quiet line — a brand-new song's page is already carrying the
+    // composer's empty-state hero above, so this stays a footnote, not a
+    // second pitch.
+    return <p className="text-[11px] text-lavdim">Nothing recorded yet — it fills in as you add to this song above.</p>
+  }
+
+  // Chrome (search + the collapse toggle) appears only once the diary is long
+  // enough to need finding — a short one stays a plain list, per 005-C.
+  const canCollapse = collapseAfter != null && entries.length > collapseAfter
+  const collapsed = canCollapse && !expanded && !normalizedQuery && filtered.length > collapseAfter
+  const visible = collapsed ? filtered.slice(0, collapseAfter) : filtered
+
+  return (
+    <div>
+      {canCollapse && (
+        <div className="mb-[10px]">
+          <input
+            type="search"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            aria-label="Search the diary"
+            placeholder="Search updates — a name, a section…"
+            className="w-full rounded-[9px] border border-hair bg-card px-[11px] py-[7px] text-[12px] text-white/95 outline-none placeholder:text-lavdim"
+          />
+        </div>
+      )}
+
+      {normalizedQuery && filtered.length === 0 ? (
+        <p className="text-[11px] text-lavdim">No updates match “{query}”.</p>
+      ) : (
+        <DiaryRows entries={visible} layout={layout} />
+      )}
+
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-[10px] text-[11px] font-semibold text-lav hover:text-white"
+        >
+          Show all {filtered.length} updates ↓
+        </button>
+      )}
+      {canCollapse && expanded && !normalizedQuery && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="mt-[10px] text-[11px] font-semibold text-lavdim hover:text-lav"
+        >
+          Show fewer ↑
+        </button>
+      )}
     </div>
   )
 }

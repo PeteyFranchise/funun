@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } from '@/lib/catalogue/diary'
-import { DiaryFeed, type DiaryFeedEntry } from './DiaryFeed'
+import { DiaryFeed, diaryMatchesQuery, type DiaryFeedEntry } from './DiaryFeed'
 
 // No jsdom in this repo (testEnvironment: 'node') — asserted as static
 // markup, matching components/handles/ChooseHandleGate.test.tsx.
@@ -193,5 +193,57 @@ describe('DiaryFeed', () => {
   it('contains no raw hex colour', () => {
     const markup = renderToStaticMarkup(<DiaryFeed entries={buildEntries()} layout="rail" />)
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+  })
+
+  // ─── Collapse + search (opt-in via collapseAfter) ─────────────────────
+
+  it('without collapseAfter renders the whole feed and no chrome', () => {
+    const markup = renderToStaticMarkup(<DiaryFeed entries={buildEntries()} />)
+    expect(markup).toContain('Thinking about a bridge here.') // the 10th (oldest) entry
+    expect(markup).not.toContain('Search the diary')
+    expect(markup).not.toContain('Show all')
+  })
+
+  it('collapses to the most recent N and offers a "Show all" toggle when longer', () => {
+    const markup = renderToStaticMarkup(<DiaryFeed entries={buildEntries()} collapseAfter={4} />)
+    // First four (as given, newest-first) are shown…
+    expect(markup).toContain('v2 — audio uploaded')
+    expect(markup).toContain('Ben Cooke added Verse')
+    // …and a later one is hidden behind the toggle.
+    expect(markup).not.toContain('Thinking about a bridge here.')
+    expect(markup).toContain('Show all 10 updates')
+    expect(markup).toContain('Search the diary')
+  })
+
+  it('shows no chrome when the diary is not longer than collapseAfter', () => {
+    const short = buildEntries().slice(0, 3)
+    const markup = renderToStaticMarkup(<DiaryFeed entries={short} collapseAfter={6} />)
+    expect(markup).toContain('v2 — audio uploaded')
+    expect(markup).not.toContain('Search the diary')
+    expect(markup).not.toContain('Show all')
+  })
+
+  it('diaryMatchesQuery finds by person and by section, case-insensitively', () => {
+    const entries = buildEntries()
+    const lyricEntry = entries.find(e => e.kind === 'lyric_edit')! // "Ben Cooke added Verse"
+    const versionEntry = entries.find(e => e.kind === 'version')! // "v2 — audio uploaded"
+
+    // by section
+    expect(diaryMatchesQuery(lyricEntry, 'verse')).toBe(true)
+    expect(diaryMatchesQuery(versionEntry, 'verse')).toBe(false)
+    // by person (the actor's name is in the headline), case-insensitive
+    expect(diaryMatchesQuery(lyricEntry, 'ben cooke')).toBe(true)
+    expect(diaryMatchesQuery(lyricEntry, 'BEN')).toBe(true)
+    // empty query matches everything; a miss matches nothing
+    expect(diaryMatchesQuery(lyricEntry, '   ')).toBe(true)
+    expect(diaryMatchesQuery(lyricEntry, 'saxophone')).toBe(false)
+  })
+
+  it('matches text carried in the consequence line, not only the headline', () => {
+    const rosterEntry = buildEntries().find(e => e.kind === 'roster')!
+    // "ownership" lives in the roster consequence ("…the sheet decides
+    // ownership."), never in its headline ("Ben Cooke joined as …").
+    expect(rosterEntry.headline.toLowerCase()).not.toContain('ownership')
+    expect(diaryMatchesQuery(rosterEntry, 'ownership')).toBe(true)
   })
 })

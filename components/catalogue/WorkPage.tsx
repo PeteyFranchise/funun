@@ -582,7 +582,7 @@ export function WorkPage({
             </div>
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Diary</p>
-              <DiaryFeed entries={diaryEntries} layout="compact" />
+              <DiaryFeed entries={diaryEntries} layout="compact" collapseAfter={6} />
             </div>
           </div>
         ) : (
@@ -616,7 +616,7 @@ export function WorkPage({
               </button>
             </div>
             {mobileTab === 'diary' ? (
-              <DiaryFeed entries={diaryEntries} layout="rail" />
+              <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} />
             ) : (
               <VersionsList versions={versions} />
             )}
