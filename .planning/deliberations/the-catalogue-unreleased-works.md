@@ -77,6 +77,15 @@ facts — membership grants access, the sheet grants ownership, the diary record
 Aligns with the Phase 21 shared-projects access model; this is its works-level
 expression.
 
+**10. Destination-neutral doors (owner, 2026-08-30).** The catalogue serves artists and
+teams whose endpoint is NOT The Crate — keeping DDEX metadata handy for their distributor
+(DistroKid/TuneCore/etc.) or direct DSP delivery. So "Distribution — DDEX-ready" is a
+FIRST-CLASS door beside Crate/Release/Registration: readout = delivery-metadata
+completeness (identifiers, credits, AI-disclosure fields), nudges for gaps, and an
+EXPORT that hands over the answers (DDEX metadata bundle + copy-ready disclosure
+answers for distributor upload flows). Copy principle across the phase: **The Crate is
+offered, never assumed** — same guidance energy for the artist who never submits to it.
+
 **Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
 diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the

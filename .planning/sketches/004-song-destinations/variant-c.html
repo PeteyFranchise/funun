@@ -31,6 +31,7 @@
       <button class="chip c-good" onclick="tg('crate',this)"><i></i>Crate ✓</button>
       <button class="chip c-good" onclick="tg('rel',this)"><i></i>Release ✓</button>
       <button class="chip c-good" onclick="tg('reg',this)"><i></i>Registration ✓</button>
+      <button class="chip c-good" onclick="tg('dist',this)"><i></i>Distribution ✓</button>
     </div>
   </div>
 
@@ -44,6 +45,12 @@
     <b class="sm">🚀 Release — ready to graduate</b>
     <p class="xs dim" style="margin:4px 0 9px">Splits draft executes at graduation — Ben signs, then audio, sheets, and the whole diary carry over into the new single.</p>
     <button class="btn">Graduate to a single →</button>
+  </div></div>
+
+  <div class="panel" id="p-dist"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
+    <b class="sm">📦 Distribution — DDEX-ready for your distributor or DSP</b>
+    <p class="xs dim" style="margin:4px 0 9px">Everything your distributor asks for, already answered: identifiers, credits, and the AI-disclosure fields (one AI instrument part, disclosed — no AI vocals). When DistroKid or your DSP asks, you don’t guess — you export.</p>
+    <div style="display:flex;gap:8px"><button class="btn pri">Export DDEX metadata</button><button class="btn">Copy disclosure answers</button></div>
   </div></div>
 
   <div class="panel" id="p-reg"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
@@ -70,7 +77,7 @@
   </div></div>
 </div>
 
-<p class="note">The hybrid: lights are always visible (A’s glance), any light clicks open into its door (B’s reasons + fixes). A closed door arrives pre-opened so the fix is never hidden. Below: the rest of 001-C’s two-column page would continue here.</p>
+<p class="note">The hybrid, destination-neutral: four doors — Crate, Release, Registration, Distribution — none assumed. The Crate is offered, never the default endpoint; an artist whose destination is their own distributor gets the same guidance and a DDEX export. Below: the rest of 001-C’s two-column page would continue here.</p>
 </div>
 <script>
 function tg(id,el){var p=document.getElementById('p-'+id);var open=p.classList.toggle('open');el.classList.toggle('on',open)}
