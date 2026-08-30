@@ -1,4 +1,4 @@
-// ─── Lyric block logic — numerals, repeats, detach ────────────────────
+// ─── Lyric block logic — numerals, repeats, detach, export, paste ────
 // Pure module in the style of lib/split-sheets/approval.ts: no Supabase
 // client, no framework import, no I/O. Everything here operates over a
 // structural row shape (declared locally — plan 04's types/catalogue.ts
@@ -223,4 +223,132 @@ export function planDetach<T extends LyricBlockRecord>(
     },
     source,
   }
+}
+
+// ─── "Copy full lyric" serializers (S-04) ──────────────────────────
+
+export type LyricsFlavor = 'tagged' | 'plain'
+
+/**
+ * Serializes a work's blocks to a single string for "Copy full lyric".
+ * `tagged` prefixes each section with its derived label in square
+ * brackets on its own line ([Verse], [Chorus 2], …); `plain` emits only
+ * the lines. Both flavors are described to the artist in tool-agnostic
+ * language ("ready to paste into any tool or document") — the tagged
+ * shape happens to be what several AI tools ingest natively, but that is
+ * a property of the format, not a marketing line, and no tool name
+ * appears anywhere in this module, its comments, or any string it
+ * returns; the UI copy that wraps this (plan 08) must stay just as
+ * neutral. Every linked repeat is expanded to its source's full text in
+ * BOTH flavors — a lyric handed to a collaborator, a registrar or a tool
+ * has to read as the finished song; a link is an internal storage detail
+ * that must never leak into an export as a placeholder or repeat marker.
+ */
+export function serializeLyrics<T extends LyricBlockRecord>(
+  blocks: T[],
+  flavor: LyricsFlavor
+): string {
+  const byId = new Map(blocks.map(b => [b.id, b]))
+  const labeled = deriveBlockNumerals(blocks)
+
+  const sections = labeled.map(block => {
+    const resolved = resolveRepeat(block, byId)
+    return flavor === 'tagged' ? `[${block.label}]\n${resolved.text}` : resolved.text
+  })
+
+  return sections.join('\n\n')
+}
+
+// ─── Paste auto-split ──────────────────────────────────────────────
+
+export type DraftBlock = {
+  block_type: Exclude<BlockType, 'custom'> | 'verse'
+  text: string
+}
+
+/**
+ * Recognized section names, normalized (lowercase, hyphens/underscores
+ * collapsed to a single space) mapped to the block type they adopt.
+ * Deliberately excludes "custom" — a pasted heading can only adopt one
+ * of the seven fixed types; anything else is left as ordinary text.
+ */
+const SECTION_NAME_TO_TYPE: Record<string, Exclude<BlockType, 'custom'>> = {
+  verse: 'verse',
+  'pre chorus': 'pre_chorus',
+  prechorus: 'pre_chorus',
+  chorus: 'chorus',
+  bridge: 'bridge',
+  intro: 'intro',
+  introduction: 'intro',
+  outro: 'outro',
+  hook: 'hook',
+}
+
+/**
+ * Tests a stanza's first line against the recognized section vocabulary,
+ * tolerating optional surrounding square brackets, an optional trailing
+ * numeral, an optional trailing colon, and any casing. Returns null when
+ * the line doesn't match a recognized name.
+ */
+function matchSectionHeader(line: string): Exclude<BlockType, 'custom'> | null {
+  let stripped = line.trim()
+
+  // Peel decorations (brackets, trailing colon, trailing numeral) in any
+  // combination and any order — "[Hook]:", "Hook 2:", "[Hook 2]" all
+  // reduce to the same bare name.
+  let previous: string
+  do {
+    previous = stripped
+    stripped = stripped
+      .replace(/^\[/, '')
+      .replace(/\]$/, '')
+      .replace(/:$/, '')
+      .replace(/\s*\d+$/, '')
+      .trim()
+  } while (stripped !== previous)
+
+  const normalized = stripped
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return SECTION_NAME_TO_TYPE[normalized] ?? null
+}
+
+/**
+ * Splits a pasted full lyric into one draft block per stanza, ready for
+ * plan 07's bulk-create route. Normalizes line endings first (Windows
+ * \r\n and bare \r both fold to \n), then groups lines into stanzas
+ * separated by one or more blank (whitespace-only) lines, trimming
+ * trailing whitespace per line. Each stanza defaults to a verse; when its
+ * first line reads as a recognized section header, that stanza adopts
+ * the matching type instead and the header line is dropped from its text.
+ */
+export function splitPastedLyric(text: string): DraftBlock[] {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalized.split('\n')
+
+  const stanzas: string[][] = []
+  let current: string[] = []
+  for (const line of lines) {
+    if (line.trim() === '') {
+      if (current.length > 0) {
+        stanzas.push(current)
+        current = []
+      }
+      continue
+    }
+    current.push(line.replace(/\s+$/, ''))
+  }
+  if (current.length > 0) stanzas.push(current)
+
+  return stanzas.map(stanzaLines => {
+    const [firstLine, ...rest] = stanzaLines
+    const matchedType = matchSectionHeader(firstLine)
+    if (matchedType) {
+      return { block_type: matchedType, text: rest.join('\n').trim() }
+    }
+    return { block_type: 'verse', text: stanzaLines.join('\n').trim() }
+  })
 }

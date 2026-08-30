@@ -2,6 +2,7 @@
 // suite each: the RENUMBERING RULE (numerals are derived from position
 // among same-type siblings, never stored) and the REPEAT RULE (a linked
 // repeat resolves the source's text and author; detach is copy-on-write).
+// Plus the "Copy full lyric" serializers (S-04) and paste auto-split.
 // All fixtures are plain objects — no database, no mocks.
 
 import {
@@ -10,7 +11,10 @@ import {
   deriveBlockNumerals,
   resolveRepeat,
   planDetach,
+  serializeLyrics,
+  splitPastedLyric,
   type LyricBlockRecord,
+  type BlockType,
 } from './blocks'
 
 function makeBlock(overrides: Partial<LyricBlockRecord> & { id: string }): LyricBlockRecord {
@@ -253,5 +257,121 @@ describe('resolveRepeat / planDetach — REPEAT RULE', () => {
       [b.id, b],
     ])
     expect(() => resolveRepeat(a, byId2)).not.toThrow()
+  })
+})
+
+describe('serializeLyrics — "Copy full lyric" (S-04)', () => {
+  function fixtureBlocks(): LyricBlockRecord[] {
+    return [
+      makeBlock({ id: 'v1', block_type: 'verse', position: 0, text: 'first line\nsecond line' }),
+      makeBlock({ id: 'c1', block_type: 'chorus', position: 1, text: 'chorus words' }),
+      makeBlock({
+        id: 'c2',
+        block_type: 'chorus',
+        position: 2,
+        repeat_of_block_id: 'c1',
+        text: '',
+      }),
+      makeBlock({
+        id: 'x1',
+        block_type: 'custom',
+        custom_label: 'Drop',
+        position: 3,
+        text: 'drop line',
+      }),
+    ]
+  }
+
+  it('tagged flavour emits a bracketed label line then the lines, sections separated by a blank line', () => {
+    const out = serializeLyrics(fixtureBlocks(), 'tagged')
+    expect(out).toBe(
+      [
+        '[Verse]\nfirst line\nsecond line',
+        '[Chorus 1]\nchorus words',
+        '[Chorus 2]\nchorus words',
+        '[Drop]\ndrop line',
+      ].join('\n\n')
+    )
+  })
+
+  it('plain flavour emits only the lines, sections separated by a blank line, no brackets anywhere', () => {
+    const out = serializeLyrics(fixtureBlocks(), 'plain')
+    expect(out).toBe(['first line\nsecond line', 'chorus words', 'chorus words', 'drop line'].join('\n\n'))
+    expect(out).not.toMatch(/[[\]]/)
+  })
+
+  it('both flavours expand a linked repeat to the source full text — the words appear twice', () => {
+    const tagged = serializeLyrics(fixtureBlocks(), 'tagged')
+    const plain = serializeLyrics(fixtureBlocks(), 'plain')
+    expect(tagged.match(/chorus words/g)).toHaveLength(2)
+    expect(plain.match(/chorus words/g)).toHaveLength(2)
+    expect(tagged).not.toMatch(/repeat/i)
+  })
+
+  it('a lone chorus exports as Chorus and a second chorus exports as Chorus 2', () => {
+    const lone = serializeLyrics(
+      [makeBlock({ id: 'c1', block_type: 'chorus', position: 0, text: 'la la' })],
+      'tagged'
+    )
+    expect(lone).toBe('[Chorus]\nla la')
+  })
+
+  it('an empty block contributes its label in tagged and nothing but the separator in plain', () => {
+    const blocks = [
+      makeBlock({ id: 'v1', block_type: 'verse', position: 0, text: '' }),
+      makeBlock({ id: 'v2', block_type: 'verse', position: 1, text: 'second' }),
+    ]
+    const tagged = serializeLyrics(blocks, 'tagged')
+    const plain = serializeLyrics(blocks, 'plain')
+    expect(tagged).toBe('[Verse 1]\n\n\n[Verse 2]\nsecond')
+    expect(plain).toBe('\n\nsecond')
+  })
+
+  it('no tool names appear anywhere in the serialized output', () => {
+    const out = serializeLyrics(fixtureBlocks(), 'tagged')
+    expect(out.toLowerCase()).not.toMatch(/suno|udio|anthropic|claude|openai|chatgpt/)
+  })
+})
+
+describe('splitPastedLyric — paste auto-split', () => {
+  it('splits on blank lines into one draft block per stanza, defaulting to verse', () => {
+    const drafts = splitPastedLyric('first stanza line one\nline two\n\nsecond stanza')
+    expect(drafts).toEqual([
+      { block_type: 'verse', text: 'first stanza line one\nline two' },
+      { block_type: 'verse', text: 'second stanza' },
+    ])
+  })
+
+  it.each<[string, BlockType]>([
+    ['Verse', 'verse'],
+    ['[Chorus]', 'chorus'],
+    ['bridge:', 'bridge'],
+    ['INTRO', 'intro'],
+    ['Outro 2', 'outro'],
+    ['[Hook]:', 'hook'],
+    ['Pre-Chorus', 'pre_chorus'],
+  ])('recognizes %s as a %s section header and drops it from the text', (header, type) => {
+    const drafts = splitPastedLyric(`${header}\nthe actual lyric line`)
+    expect(drafts).toEqual([{ block_type: type, text: 'the actual lyric line' }])
+  })
+
+  it('pasting text with no blank lines yields exactly one block', () => {
+    const drafts = splitPastedLyric('line one\nline two\nline three')
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].text).toBe('line one\nline two\nline three')
+  })
+
+  it('Windows line endings and trailing whitespace produce the same result as clean input', () => {
+    const clean = splitPastedLyric('Verse\nfirst line\n\nChorus\nsecond line')
+    const windows = splitPastedLyric('Verse\r\nfirst line  \r\n\r\nChorus\r\nsecond line\r\n')
+    expect(windows).toEqual(clean)
+  })
+
+  it('drops empty stanzas produced by multiple consecutive blank lines', () => {
+    const drafts = splitPastedLyric('first\n\n\n\nsecond')
+    expect(drafts).toEqual([
+      { block_type: 'verse', text: 'first' },
+      { block_type: 'verse', text: 'second' },
+    ])
   })
 })
