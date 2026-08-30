@@ -224,7 +224,7 @@ export function WorkHeader({
           {localVocalState === 'primary' && (
             <p className="mt-[7px] text-[11.5px] text-lavdim">
               🎤 primary performer: {primaryPerformerLabel ? `@${primaryPerformerLabel}` : 'you'} —
-              sections inherit unless tagged.
+              every section uses this unless you tag one.
             </p>
           )}
           {localVocalState === 'varies' && (
@@ -248,7 +248,7 @@ export function WorkHeader({
           )}
 
           <div className="mt-2">
-            <LearnWhy label="Why does inheritance work this way?">
+            <LearnWhy label="Why does the default work this way?">
               {/* Guardrail 1: a default fills the PLAN, never the
                   RECORD. Folded behind LearnWhy rather than printed
                   inline — see components/ui/LearnWhy.tsx's own doctrine

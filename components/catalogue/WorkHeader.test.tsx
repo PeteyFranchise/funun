@@ -43,30 +43,30 @@ describe('WorkHeader', () => {
     expect(markup).not.toMatch(/Ben Cooke[^<]*\d/)
   })
 
-  it('renders the primary state with the inheritance line and the resolved performer', () => {
+  it('renders the primary state with the coverage line and the resolved performer', () => {
     const markup = renderToStaticMarkup(
       <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
     )
     expect(markup).toContain('primary performer: @peterzora')
-    expect(markup).toContain('sections inherit unless tagged')
+    expect(markup).toContain('every section uses this unless you tag one')
   })
 
-  it('renders the varies state distinctly, without the inheritance line', () => {
+  it('renders the varies state distinctly, without the coverage line', () => {
     const markup = renderToStaticMarkup(
       <WorkHeader {...baseProps} vocalState="varies" primaryPerformerLabel={null} />
     )
     expect(markup).toContain('Varies')
     expect(markup).toContain('per-block')
-    expect(markup).not.toContain('sections inherit unless tagged')
+    expect(markup).not.toContain('every section uses this unless you tag one')
   })
 
-  it('renders the instrumental state distinctly and states what it causes, without the inheritance line', () => {
+  it('renders the instrumental state distinctly and states what it causes, without the coverage line', () => {
     const markup = renderToStaticMarkup(
       <WorkHeader {...baseProps} vocalState="instrumental" primaryPerformerLabel={null} />
     )
     expect(markup).toContain('Instrumental — no vocals')
     expect(markup).toContain('Crate vocal check')
-    expect(markup).not.toContain('sections inherit unless tagged')
+    expect(markup).not.toContain('every section uses this unless you tag one')
   })
 
   it('each of the three vocal states renders its own distinct affordance', () => {
@@ -88,7 +88,7 @@ describe('WorkHeader', () => {
     const markup = renderToStaticMarkup(
       <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
     )
-    expect(markup).toContain('Why does inheritance work this way?')
+    expect(markup).toContain('Why does the default work this way?')
     expect(markup).not.toContain('a plan, not a credit')
     expect(markup).not.toContain('hide behind the default')
   })
