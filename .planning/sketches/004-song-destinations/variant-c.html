@@ -1,0 +1,77 @@
+<title>004-C · Lights that open doors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><style>
+:root{--ink:#0a0a0f;--card:#0E0D1E;--card2:#1A1838;--hair:rgba(199,203,247,.12);--hair2:rgba(199,203,247,.22);--lav:#C7CBF7;--dim:#7c80b4;--good:#34D399;--warn:#FBBF24;--risk:#F87171;--cold:#60A5FA;--grad:linear-gradient(105deg,#818CF8,#D946EF)}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:#fff;font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:980px;margin:0 auto;padding:28px 22px 60px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.btn{border:1px solid var(--hair2);background:rgba(199,203,247,.06);color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.btn:hover{color:#fff}.pri{background:var(--grad);border:0;color:#fff;box-shadow:0 12px 30px -14px rgba(217,70,239,.55)}
+.dim{color:var(--dim)}.sm{font-size:12px}.xs{font-size:11px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;cursor:pointer;border:1px solid transparent;background:rgba(199,203,247,.08);color:var(--lav);font-family:inherit}
+.chip:hover{border-color:var(--hair2)}
+.c-good{background:rgba(52,211,153,.12);color:var(--good)}.c-warn{background:rgba(251,191,36,.12);color:var(--warn)}.c-risk{background:rgba(248,113,113,.13);color:var(--risk)}
+.chip i{width:5px;height:5px;border-radius:50%;background:currentColor;font-style:normal}
+.chip.on{border-color:currentColor}
+.note{border-top:1px solid var(--hair);margin-top:26px;padding-top:12px;font-size:11.5px;color:var(--dim)}
+.panel{overflow:hidden;max-height:0;transition:max-height .25s ease}
+.panel.open{max-height:600px}
+@media (prefers-reduced-motion:reduce){.panel{transition:none}}
+</style>
+<div class="wrap">
+<p class="tag">Sketch 004 · Variant C — the hybrid: lights always on, doors on demand</p>
+
+<div class="card" style="padding:16px 20px;margin:10px 0 0">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="display:flex;gap:14px;align-items:center">
+      <div style="width:56px;height:56px;border-radius:50%;background:conic-gradient(#34D399 0 78%,rgba(199,203,247,.12) 78% 100%);display:flex;align-items:center;justify-content:center"><b style="width:44px;height:44px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:13px">78</b></div>
+      <div><b style="font-size:19px">Midnight</b><br><span class="xs dim">@peterzora 60% · Ben Cooke 40% · splits draft</span></div>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap" id="rail">
+      <button class="chip c-good" onclick="tg('crate',this)"><i></i>Crate ✓</button>
+      <button class="chip c-good" onclick="tg('rel',this)"><i></i>Release ✓</button>
+      <button class="chip c-good" onclick="tg('reg',this)"><i></i>Registration ✓</button>
+    </div>
+  </div>
+
+  <div class="panel" id="p-crate"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
+    <b class="sm">🧺 The Crate — eligible, AI instrument disclosed</b>
+    <p class="xs dim" style="margin:4px 0 9px">The AI guitar part rides along disclosed — buyers see it, nothing hides. The one hard no is AI vocals; Midnight’s vocal is Dana, human. <span style="color:var(--lav)">Re-authoring the solo is recommended to own those 8 bars — never required for entry.</span></p>
+    <div style="display:flex;gap:8px"><button class="btn pri">Submit to The Crate</button><button class="btn">Re-author the solo →</button></div>
+  </div></div>
+
+  <div class="panel" id="p-rel"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
+    <b class="sm">🚀 Release — ready to graduate</b>
+    <p class="xs dim" style="margin:4px 0 9px">Splits draft executes at graduation — Ben signs, then audio, sheets, and the whole diary carry over into the new single.</p>
+    <button class="btn">Graduate to a single →</button>
+  </div></div>
+
+  <div class="panel" id="p-reg"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
+    <b class="sm">🏛 Registration — ready</b>
+    <p class="xs dim" style="margin:4px 0 9px">Registers as partially-AI (human authorship leads). The solo is disclaimed automatically; your splits are untouched.</p>
+    <button class="btn">Start guided registration</button>
+  </div></div>
+</div>
+
+<p class="sm dim" style="margin:20px 0 4px">Same header on a song that hits the vocal rule:</p>
+<div class="card" style="padding:14px 20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div><b style="font-size:16px">Neon Run</b><br><span class="xs dim">@peterzora 100%</span></div>
+    <div style="display:flex;gap:7px">
+      <button class="chip c-risk on" onclick="tg('neon',this)"><i></i>Crate ✕</button>
+      <button class="chip c-good"><i></i>Release ✓</button>
+      <button class="chip c-warn"><i></i>Registration —</button>
+    </div>
+  </div>
+  <div class="panel open" id="p-neon"><div style="border-top:1px solid var(--hair);margin-top:13px;padding-top:12px">
+    <b class="sm" style="color:var(--risk)">🧺 The Crate — not eligible · AI vocal on the master</b>
+    <p class="xs dim" style="margin:4px 0 9px">Crate masters carry no AI vocals — voices are where buyer trust lives. The song itself stays welcome everywhere else.</p>
+    <div style="display:flex;gap:8px"><button class="btn pri">Fix: record a human vocal</button><button class="btn">Submit v2 (Dana’s take) instead</button></div>
+  </div></div>
+</div>
+
+<p class="note">The hybrid: lights are always visible (A’s glance), any light clicks open into its door (B’s reasons + fixes). A closed door arrives pre-opened so the fix is never hidden. Below: the rest of 001-C’s two-column page would continue here.</p>
+</div>
+<script>
+function tg(id,el){var p=document.getElementById('p-'+id);var open=p.classList.toggle('open');el.classList.toggle('on',open)}
+</script>
