@@ -25,7 +25,7 @@ function row(kind: string, payload: unknown, actorUserId: string | null = 'u-1')
 describe('lib/catalogue/diary — describeDiaryEvent', () => {
   it('version (hum) distinguishes hum from upload and carries the derived numeral', () => {
     const context: DiaryEventContext = { names: {}, versionNumerals: { 'v-1': 2 } }
-    const entry = describeDiaryEvent(row('version', { versionId: 'v-1', source: 'hum' }), context)
+    const entry = describeDiaryEvent(row('version', { versionId: 'v-1', source: 'hum', label: null }), context)
     expect(entry.headline).toContain('v2')
     expect(entry.headline.toLowerCase()).toContain('hum')
     expect(entry.consequence).toMatch(/authorship evidence/i)
@@ -35,7 +35,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
 
   it('version (upload) reads distinctly from a hum', () => {
     const context: DiaryEventContext = { names: {}, versionNumerals: { 'v-2': 3 } }
-    const entry = describeDiaryEvent(row('version', { versionId: 'v-2', source: 'upload' }), context)
+    const entry = describeDiaryEvent(row('version', { versionId: 'v-2', source: 'upload', label: 'Acoustic take' }), context)
     expect(entry.headline).toContain('v3')
     expect(entry.headline.toLowerCase()).toContain('upload')
     expect(entry.headline.toLowerCase()).not.toContain('hum')
@@ -63,7 +63,14 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
   it('ai_entry consequence is the stored citation, character-identical, never recomposed', () => {
     const citation = 'AI reference vocal — demo only. Ownership fully preserved; the diary proves it.'
     const entry = describeDiaryEvent(
-      row('ai_entry', { entryId: 'ai-1', level: 'version', component: 'vocal', mode: 'performance', citation }),
+      row('ai_entry', {
+        entryId: 'ai-1',
+        level: 'version',
+        component: 'vocal',
+        mode: 'performance',
+        citation,
+        humanSourceVersionId: 'v-9',
+      }),
       EMPTY_CONTEXT
     )
     expect(entry.consequence).toBe(citation)
@@ -73,7 +80,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
   it('roster names the person who joined and their tier; consequence states membership is not a split', () => {
     const context: DiaryEventContext = { names: { 'collab-1': 'Dana Rowe' }, versionNumerals: {} }
     const entry = describeDiaryEvent(
-      row('roster', { memberId: 'm-1', tier: 'contribute', collaboratorId: 'collab-1' }),
+      row('roster', { memberId: 'm-1', tier: 'contribute', collaboratorId: 'collab-1', memberUserId: null }),
       context
     )
     expect(entry.headline).toContain('Dana Rowe')
@@ -81,19 +88,18 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.consequence).toMatch(/not a split/i)
   })
 
-  it('sheet names the writer and the split, and cites the living-draft consequence', () => {
+  it('sheet names the writer, and cites the living-draft consequence', () => {
     const entry = describeDiaryEvent(
-      row('sheet', { partyId: 'p-1', sheetId: 'sheet-1', name: 'Ben Cooke', splitPercentage: 40 }),
+      row('sheet', { partyId: 'p-1', sheetId: 'sheet-1', name: 'Ben Cooke', collaboratorId: null, operation: 'party_added' }),
       EMPTY_CONTEXT
     )
     expect(entry.headline).toContain('Ben Cooke')
-    expect(entry.headline).toContain('40')
     expect(entry.consequence).toMatch(/money or release/i)
   })
 
   it('rename states both the old and the new title', () => {
     const entry = describeDiaryEvent(
-      row('rename', { oldTitle: 'Late Drive', newTitle: 'Midnight' }),
+      row('rename', { previousTitle: 'Late Drive', title: 'Midnight' }),
       EMPTY_CONTEXT
     )
     expect(entry.headline).toContain('Late Drive')
@@ -109,7 +115,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
 
   it('detach names the section that was detached and states it now carries its own authorship', () => {
     const entry = describeDiaryEvent(
-      row('detach', { blockId: 'b-3', blockType: 'chorus', customLabel: null }),
+      row('detach', { blockId: 'b-3', blockType: 'chorus', detachedFromBlockId: 'b-0' }),
       { names: { 'u-1': 'Ben' }, versionNumerals: {} }
     )
     expect(entry.headline).toContain('Chorus')
@@ -132,14 +138,14 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
 
   it('every one of the nine known kinds produces a headline, a date, and a consequence field (possibly null)', () => {
     const fixtures: Array<{ kind: DiaryEventKind; payload: unknown }> = [
-      { kind: 'version', payload: { versionId: 'v-1', source: 'hum' } },
+      { kind: 'version', payload: { versionId: 'v-1', source: 'hum', label: null } },
       { kind: 'lyric_edit', payload: { blockId: 'b-1', blockType: 'verse', customLabel: null, operation: 'added' } },
-      { kind: 'roster', payload: { memberId: 'm-1', tier: 'contribute', collaboratorId: 'c-1' } },
-      { kind: 'sheet', payload: { partyId: 'p-1', sheetId: 's-1', name: 'X', splitPercentage: 50 } },
-      { kind: 'ai_entry', payload: { entryId: 'a-1', level: 'work', component: 'lyric', mode: 'generate', citation: 'x' } },
-      { kind: 'rename', payload: { oldTitle: 'A', newTitle: 'B' } },
+      { kind: 'roster', payload: { memberId: 'm-1', tier: 'contribute', collaboratorId: 'c-1', memberUserId: null } },
+      { kind: 'sheet', payload: { partyId: 'p-1', sheetId: 's-1', name: 'X', collaboratorId: null, operation: 'party_added' } },
+      { kind: 'ai_entry', payload: { entryId: 'a-1', level: 'work', component: 'lyric', mode: 'generate', citation: 'x', humanSourceVersionId: null } },
+      { kind: 'rename', payload: { previousTitle: 'A', title: 'B' } },
       { kind: 'reorder', payload: { blockCount: 3 } },
-      { kind: 'detach', payload: { blockId: 'b-2', blockType: 'bridge', customLabel: null } },
+      { kind: 'detach', payload: { blockId: 'b-2', blockType: 'bridge', detachedFromBlockId: 'b-1' } },
       { kind: 'note', payload: { text: 'hi' } },
     ]
     for (const { kind, payload } of fixtures) {

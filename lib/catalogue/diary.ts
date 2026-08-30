@@ -215,7 +215,7 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
       const payload = row.payload as DiaryEventPayloadMap['sheet']
       return {
         kind: 'sheet',
-        headline: `${payload.name} joined the split sheet — ${payload.splitPercentage}%`,
+        headline: `${payload.name} joined the split sheet`,
         consequence: 'Living draft — executes when money or release is on the table.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.sheet,
@@ -239,7 +239,7 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
       const payload = row.payload as DiaryEventPayloadMap['rename']
       return {
         kind: 'rename',
-        headline: `Renamed "${payload.oldTitle}" → "${payload.newTitle}"`,
+        headline: `Renamed "${payload.previousTitle}" → "${payload.title}"`,
         consequence: 'Former titles stay searchable.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.rename,
@@ -259,7 +259,10 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
 
     case 'detach': {
       const payload = row.payload as DiaryEventPayloadMap['detach']
-      const section = blockLabel(payload.blockType, payload.customLabel)
+      // No customLabel on this payload (138 does not carry it for a detach
+      // event) — a custom section's display heading falls back to the
+      // generic label here, unlike lyric_edit's headline.
+      const section = blockLabel(payload.blockType, null)
       return {
         kind: 'detach',
         headline: `${actor} detached ${section}`,

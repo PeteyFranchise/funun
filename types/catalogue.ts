@@ -5,13 +5,14 @@
 // route and every wave-3+ component in this phase speaks — do not
 // redeclare any of these shapes locally in a route or component.
 //
-// Source of truth (once pushed): supabase/migrations/135_works_core.sql,
+// Source of truth: supabase/migrations/135_works_core.sql,
 // 136_work_members.sql, 137_split_sheets_work_link.sql,
-// 138_work_diary_events.sql. 37-01 authors those files; this module is a
-// considered proposal built from RESEARCH.md's DDL sketch and 37-01's own
-// plan text (same 2026-08-30 research pass) — read, do not edit, 37-01's
-// migration files once they land, and reconcile this file's shapes against
-// them rather than the other way around if the two ever disagree.
+// 138_work_diary_events.sql — authored and landed by 37-01 in this same
+// wave. This file's row and JSONB-payload shapes are verified against
+// those migrations' actual columns, CHECK constraints and
+// `jsonb_build_object(...)` calls, not against RESEARCH.md's earlier
+// sketch. Read, do not edit, 37-01's migration files; reconcile this file
+// against them, never the other way around, if the two ever disagree.
 //
 // TWO COLUMNS DELIBERATELY DO NOT EXIST HERE, ON PURPOSE, NOT BY OVERSIGHT:
 //   1. No stored numeral on a `WorkVersion` or a `LyricBlock`. A version's
@@ -155,59 +156,89 @@ export type AiEntry = {
 // for the enforced contract and RESEARCH Pitfall 1 for why this table is
 // not, and must never become, `activity_events`.
 //
-// Payload field names below are this plan's considered proposal for what
-// migration 138's SECURITY DEFINER trigger functions write — coordinate
-// against 138 once it lands rather than editing it to match a stale guess
-// here.
+// Payload field names below are verified against migration 138's actual
+// `jsonb_build_object(...)` calls (supabase/migrations/138_work_diary_events.sql,
+// landed by 37-01 during this same wave) — not a guess. Field names are
+// camelCase in the payload even though the columns they read from are
+// snake_case, matching 138's own jsonb_build_object key choices.
 
 export type DiaryEventPayloadMap = {
-  /** AFTER INSERT ON work_versions. */
+  /** capture_work_version_event() — AFTER INSERT ON work_versions. */
   version: {
     versionId: string
     source: WorkVersionSource
+    label: string | null
   }
-  /** AFTER INSERT / AFTER UPDATE OF text,block_type,custom_label / AFTER DELETE ON lyric_blocks. Fires per saved edit, never per keystroke — the pad debounces before it PATCHes. */
+  /**
+   * capture_lyric_block_added/edited/removed() — AFTER INSERT / AFTER UPDATE
+   * OF text,block_type,custom_label (guarded to fire only when one of those
+   * three actually changed) / AFTER DELETE ON lyric_blocks. Fires per saved
+   * edit, never per keystroke — the pad debounces before it PATCHes.
+   */
   lyric_edit: {
     blockId: string
     blockType: LyricBlockType
     customLabel: string | null
     operation: 'added' | 'edited' | 'removed'
   }
-  /** AFTER INSERT ON work_members. */
+  /**
+   * capture_work_member_event() — AFTER INSERT ON work_members. `memberUserId`
+   * is the person who joined; the diary's actor_user_id column is `added_by`
+   * (who did the inviting) — the diary records actions, and an invitee has
+   * not acted yet.
+   */
   roster: {
     memberId: string
     tier: WorkTier
     collaboratorId: string | null
+    memberUserId: string | null
   }
-  /** AFTER INSERT ON split_sheet_parties, only when the parent sheet's work_id is non-null (strict no-op otherwise). */
+  /**
+   * capture_split_sheet_party_event() — AFTER INSERT ON split_sheet_parties,
+   * only when the parent sheet's work_id is non-null (strict no-op
+   * otherwise — the trigger is attached to a table the existing split-sheet
+   * builder already writes on every save). `name` is
+   * split_sheet_parties.name, denormalized at row creation — no join
+   * needed. `operation` is a string, not yet a closed union, because 138
+   * only ever writes 'party_added' today; a future sheet-status trigger may
+   * add values here.
+   */
   sheet: {
     partyId: string
     sheetId: string
-    name: string // split_sheet_parties.name is denormalized at row creation — no join needed
-    splitPercentage: number
+    name: string
+    collaboratorId: string | null
+    operation: string
   }
-  /** AFTER INSERT ON ai_entries. */
+  /** capture_ai_entry_event() — AFTER INSERT ON ai_entries. `citation` is rendered verbatim by describeDiaryEvent (T-37-24) — never recomposed. */
   ai_entry: {
     entryId: string
     level: AiEntryLevel
     component: AiEntryComponent
     mode: AiEntryMode
     citation: string
+    humanSourceVersionId: string | null
   }
-  /** AFTER UPDATE OF title ON works, fired only when the title actually changed. */
+  /** capture_work_rename_event() — AFTER UPDATE OF title ON works, fired only when the title actually changed. */
   rename: {
-    oldTitle: string
-    newTitle: string
+    previousTitle: string
+    title: string
   }
   /** Emitted once per drag from inside reorder_lyric_blocks(), never per row — a set-based update of N rows must not become N diary entries. */
   reorder: {
     blockCount: number
   }
-  /** AFTER UPDATE OF repeat_of_block_id ON lyric_blocks, fired only when the old value was non-null and the new value is null. */
+  /**
+   * capture_lyric_block_detached() — AFTER UPDATE OF repeat_of_block_id ON
+   * lyric_blocks, fired only when the old value was non-null and the new
+   * value is null (the detach transition; re-pointing a repeat at a
+   * different source is not one). No `customLabel` here — a detach payload
+   * carries the block that now stands alone, not its display heading.
+   */
   detach: {
     blockId: string
     blockType: LyricBlockType
-    customLabel: string | null
+    detachedFromBlockId: string | null
   }
   /** App-authored — the one exception to trigger-sourced capture. Written directly by a service-role route, never a trigger. */
   note: {
