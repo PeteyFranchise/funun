@@ -93,6 +93,24 @@ WROTE, nobody can own — no workflow launders it.
 Differentiator: everyone else treats AI disclosure as an upload-time confession; this
 GUIDES retention of ownership while the song is being made.
 
+### The when-in-doubt rule (owner-ratified default citation)
+
+The maximal-ownership citation is **"AI reference vocal — performed a human-written
+melody, demo only."** If the AI element never reaches the released master, the release
+needs no disclosure at all; the citation lives in the work's history as provenance.
+
+But the label must be TRUE — citing invention as performance is a false record, not
+protection. The when-in-doubt rule the UI asks:
+
+> "Can you point to the human version that existed before the AI touched it?"
+> - YES (scratch vocal / memo / MIDI in the diary) → cite "AI reference vocal — demo
+>   only." Ownership fully preserved; the diary proves it.
+> - NO → do not reach for the label. RE-AUTHOR the part first; then the citation
+>   becomes true. Doubt is resolved by work, not wording.
+
+The diary is the arbiter — Q1's auto-capture means the timeline either shows the
+human-first version or it doesn't; memory is never the evidence.
+
 ## Research grounding (2026-08-30, current)
 
 - **PROs** (ASCAP/BMI/SOCAN, aligned Oct 2025): partially-AI works registrable when a
