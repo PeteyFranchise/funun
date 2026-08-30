@@ -100,9 +100,24 @@ See `docs/architecture/ACCOUNT-TYPES.md`.
   decision that makes D-10 structural rather than a rule someone has to remember. The route
   groups already separate the account types completely: `app/(artist)/` (41 pages) is rendered
   **only** for User Accounts, `app/(admin)/` (37 pages) only for Team Members, `app/sync/`
-  (8 pages) only for Client Partners. A gate mounted in the artist layout is therefore
-  *physically incapable* of reaching staff or buyers — their pages are in different trees and
-  never render that layout.
+  (8 pages) only for Client Partners. Mounting the gate there keeps it out of the staff and
+  buyer trees, which is where the risk of a blanket auth check actually bites.
+
+  **CORRECTION (2026-08-27, found by research — do not rely on the stronger claim).** An
+  earlier draft of this decision said a gate in the artist layout would be *physically
+  incapable* of reaching staff or buyers. **That is false.** `middleware.ts`'s `isProtected`
+  check only tests `!user` — it does NOT check role. A signed-in Client Partner who navigates
+  directly to `/vault` therefore DOES render `app/(artist)/layout.tsx`. Route groups separate
+  where pages live, not who can reach them.
+
+  What this changes:
+  - **D-10b is the real protection, not D-10a.** The `profile &&` guard is load-bearing — a
+    buyer has no `user_profiles` row, so the gate must not fire for them. Location alone does
+    not save it.
+  - **D-10c's buyer case covers a reachable path**, not a hypothetical. Write it as such.
+  - Mounting in the layout is still correct — it is cheaper than middleware, rides on queries
+    already happening, and keeps the check off `/admin` entirely. It is just not a guarantee
+    on its own.
 
   **Middleware is the wrong home and it is the tempting one.** It runs on every request holding
   only the auth session, so it would need a DB round-trip per request just to learn whether a
