@@ -536,6 +536,17 @@ export function WorkPage({
     if (res.ok) router.refresh()
   }
 
+  async function handleRemoveNote(eventId: string) {
+    // Only a note, only your own — the route re-checks both. A clean
+    // removal: refresh re-pulls the diary without it, and a toast confirms
+    // so it doesn't read as a silent disappearance.
+    const res = await fetch(`/api/works/${workId}/notes/${eventId}`, { method: 'DELETE' })
+    if (res.ok) {
+      router.refresh()
+      showToast('Note removed')
+    }
+  }
+
   async function handleRemoveBlock(blockId: string) {
     // Plan-07's DELETE renumbers the survivors and, via migration 135's
     // ON DELETE SET NULL, turns any repeat of this block into an ordinary
@@ -671,7 +682,7 @@ export function WorkPage({
             </div>
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Diary</p>
-              <DiaryFeed entries={diaryEntries} layout="compact" collapseAfter={6} />
+              <DiaryFeed entries={diaryEntries} layout="compact" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
             </div>
           </div>
         ) : (
@@ -705,7 +716,7 @@ export function WorkPage({
               </button>
             </div>
             {mobileTab === 'diary' ? (
-              <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} />
+              <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
             ) : (
               <VersionsList versions={versions} />
             )}

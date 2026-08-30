@@ -32,7 +32,11 @@ import type { DiaryAccent, DiaryEntryView } from '@/lib/catalogue/diary'
 // THE DIARY STAYS CLEAN (sketch 005-C): no re-author button, no splits
 // prompt, no warning lives on a row here. Nudges live in GuidingLine,
 // never stapled onto an entry — plan 09's ReauthorPrompt is mounted by
-// the page in its own place, not here.
+// the page in its own place, not here. The two on-row controls that DO
+// exist are direct manipulation of the viewer's own content, not nudges:
+// a version's play control (playback, in the sketches themselves) and a
+// note's Remove (own hand-written line only, gated by `canRemove` +
+// onRemoveNote). Neither ever appears on an auto-captured record.
 //
 // ONE component, two treatments — 001 was decided as C (compact,
 // hairline-separated rows) on desktop and A (a left rail of kind chips
@@ -59,6 +63,13 @@ export type DiaryFeedEntry = DiaryEntryView & {
   playbackUrl?: string | null
   /** `version` kind only. Seconds, rendered as m:ss beside the play control. */
   playbackDurationSeconds?: number | null
+  /**
+   * True only for a `note` the viewer authored — the one hand-written kind,
+   * and only one's own. Set by the page, which knows both the row's actor
+   * and the viewer; the delete route re-checks both. Everything else in the
+   * diary is an immutable record and never carries this.
+   */
+  canRemove?: boolean
 }
 
 export type DiaryFeedLayout = 'compact' | 'rail'
@@ -67,6 +78,8 @@ export type DiaryFeedProps = {
   entries: DiaryFeedEntry[]
   /** 'compact' (001-C, desktop default) or 'rail' (001-A, mobile). Defaults to 'compact'. */
   layout?: DiaryFeedLayout
+  /** Remove a note (only entries with `canRemove`). Absent → no remove control renders at all. */
+  onRemoveNote?: (id: string) => void
   /**
    * When set and the diary is longer than this, the feed collapses to this
    * many most-recent entries behind a "Show all" toggle, and a search box
@@ -137,9 +150,43 @@ function VersionPlayback({ entry }: { entry: DiaryFeedEntry }) {
   )
 }
 
+// ─── Remove control — note rows only (own notes) ────────────────────────
+// This is direct manipulation of the viewer's OWN hand-written line, not a
+// nudge — the same category as the play control above, and explicitly NOT
+// the kind of on-row CTA the file header forbids. It renders only when the
+// page marked the entry `canRemove` (a note the viewer authored) AND passed
+// an onRemoveNote handler; it can never appear on an auto-captured record.
+
+function NoteRemoveControl({ onRemove }: { onRemove: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <div className="mt-[6px]">
+      {confirming ? (
+        <span className="text-[11px]">
+          <span className="text-lavdim">Remove note?</span>{' '}
+          <button type="button" onClick={onRemove} className="font-semibold text-rose-400 hover:text-rose-300">
+            Yes
+          </button>{' '}
+          <button type="button" onClick={() => setConfirming(false)} className="text-lavdim hover:text-lav">
+            Cancel
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="text-[11px] text-lavdim hover:text-rose-400"
+        >
+          Remove
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Compact rows (001-C) — the default ─────────────────────────────────
 
-function CompactRow({ entry }: { entry: DiaryFeedEntry }) {
+function CompactRow({ entry, onRemoveNote }: { entry: DiaryFeedEntry; onRemoveNote?: (id: string) => void }) {
   return (
     <div className="border-b border-hair py-[10px] last:border-none">
       <div className="flex items-start justify-between gap-[10px]">
@@ -148,13 +195,22 @@ function CompactRow({ entry }: { entry: DiaryFeedEntry }) {
       </div>
       {entry.consequence && <p className="mt-[2px] text-[11px] text-lavdim">{entry.consequence}</p>}
       <VersionPlayback entry={entry} />
+      {entry.canRemove && onRemoveNote && <NoteRemoveControl onRemove={() => onRemoveNote(entry.id)} />}
     </div>
   )
 }
 
 // ─── Rail treatment (001-A) — kind chips on a connecting line ──────────
 
-function RailRow({ entry, isLast }: { entry: DiaryFeedEntry; isLast: boolean }) {
+function RailRow({
+  entry,
+  isLast,
+  onRemoveNote,
+}: {
+  entry: DiaryFeedEntry
+  isLast: boolean
+  onRemoveNote?: (id: string) => void
+}) {
   const accentClass = ACCENT_CHIP_CLASS[entry.accent]
   return (
     <div className="flex gap-[14px]">
@@ -171,6 +227,7 @@ function RailRow({ entry, isLast }: { entry: DiaryFeedEntry; isLast: boolean }) 
         </div>
         {entry.consequence && <p className="mt-[4px] text-[11px] text-lavdim">{entry.consequence}</p>}
         <VersionPlayback entry={entry} />
+        {entry.canRemove && onRemoveNote && <NoteRemoveControl onRemove={() => onRemoveNote(entry.id)} />}
       </div>
     </div>
   )
@@ -193,12 +250,20 @@ export function diaryMatchesQuery(
   return `${entry.headline} ${entry.consequence ?? ''}`.toLowerCase().includes(q)
 }
 
-function DiaryRows({ entries, layout }: { entries: DiaryFeedEntry[]; layout: DiaryFeedLayout }) {
+function DiaryRows({
+  entries,
+  layout,
+  onRemoveNote,
+}: {
+  entries: DiaryFeedEntry[]
+  layout: DiaryFeedLayout
+  onRemoveNote?: (id: string) => void
+}) {
   if (layout === 'rail') {
     return (
       <div className="flex flex-col gap-0">
         {entries.map((entry, i) => (
-          <RailRow key={entry.id} entry={entry} isLast={i === entries.length - 1} />
+          <RailRow key={entry.id} entry={entry} isLast={i === entries.length - 1} onRemoveNote={onRemoveNote} />
         ))}
       </div>
     )
@@ -206,13 +271,13 @@ function DiaryRows({ entries, layout }: { entries: DiaryFeedEntry[]; layout: Dia
   return (
     <div className="rounded-[12px] border border-hair bg-card px-[14px]">
       {entries.map(entry => (
-        <CompactRow key={entry.id} entry={entry} />
+        <CompactRow key={entry.id} entry={entry} onRemoveNote={onRemoveNote} />
       ))}
     </div>
   )
 }
 
-export function DiaryFeed({ entries, layout = 'compact', collapseAfter }: DiaryFeedProps) {
+export function DiaryFeed({ entries, layout = 'compact', collapseAfter, onRemoveNote }: DiaryFeedProps) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(false)
 
@@ -253,7 +318,7 @@ export function DiaryFeed({ entries, layout = 'compact', collapseAfter }: DiaryF
       {normalizedQuery && filtered.length === 0 ? (
         <p className="text-[11px] text-lavdim">No updates match “{query}”.</p>
       ) : (
-        <DiaryRows entries={visible} layout={layout} />
+        <DiaryRows entries={visible} layout={layout} onRemoveNote={onRemoveNote} />
       )}
 
       {collapsed && (

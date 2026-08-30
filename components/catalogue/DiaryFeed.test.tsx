@@ -246,4 +246,35 @@ describe('DiaryFeed', () => {
     expect(rosterEntry.headline.toLowerCase()).not.toContain('ownership')
     expect(diaryMatchesQuery(rosterEntry, 'ownership')).toBe(true)
   })
+
+  // ─── Note removal (own notes only) ────────────────────────────────────
+
+  it('shows a Remove control only on a removable note AND only with a handler', () => {
+    const note = buildEntries().find(e => e.kind === 'note')!
+
+    // canRemove + handler → the control is present
+    const withControl = renderToStaticMarkup(
+      <DiaryFeed entries={[{ ...note, canRemove: true }]} onRemoveNote={() => {}} />
+    )
+    expect(withControl).toContain('>Remove<')
+
+    // removable, but the page wired no handler → nothing
+    const noHandler = renderToStaticMarkup(<DiaryFeed entries={[{ ...note, canRemove: true }]} />)
+    expect(noHandler).not.toContain('>Remove<')
+
+    // handler present, but not the viewer's own (canRemove false) → nothing
+    const notOwn = renderToStaticMarkup(
+      <DiaryFeed entries={[{ ...note, canRemove: false }]} onRemoveNote={() => {}} />
+    )
+    expect(notOwn).not.toContain('>Remove<')
+  })
+
+  it('never offers removal on an auto-captured entry, even with a handler', () => {
+    // A version entry is a record, never carries canRemove — the page only
+    // ever sets it on the viewer's own note.
+    const version = buildEntries().find(e => e.kind === 'version')!
+    expect(version.canRemove).toBeUndefined()
+    const markup = renderToStaticMarkup(<DiaryFeed entries={[version]} onRemoveNote={() => {}} />)
+    expect(markup).not.toContain('>Remove<')
+  })
 })

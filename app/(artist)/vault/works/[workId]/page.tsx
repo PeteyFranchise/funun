@@ -259,19 +259,24 @@ export default async function WorkComposerPage({
   // version's signed playback URL) ─────────────────────────────────────
   const diaryContext: DiaryEventContext = { names: namesById, versionNumerals }
   const diaryEntries: DiaryFeedEntry[] = diaryRows.map(row => {
-    const view = describeDiaryEvent(row as DiaryEventRowLike, diaryContext)
+    const typed = row as DiaryEventRowLike
+    const view = describeDiaryEvent(typed, diaryContext)
+    // Only a hand-authored note, and only the viewer's own, may be removed
+    // — the delete route enforces the same two facts server-side.
+    const canRemove = view.kind === 'note' && typed.actor_user_id === user.id
     if (view.kind === 'version') {
       const payload = (row as { payload: { versionId?: string } }).payload
       const version = payload.versionId ? versions.find(v => v.id === payload.versionId) : undefined
       return {
         ...view,
         id: row.id,
+        canRemove,
         versionNumeral: version ? versionNumerals[version.id] ?? null : null,
         playbackUrl: version ? signedByPath[version.audio_path] ?? null : null,
         playbackDurationSeconds: version?.duration_seconds ?? null,
       }
     }
-    return { ...view, id: row.id }
+    return { ...view, id: row.id, canRemove }
   })
 
   // ─── The versions column — newest first, matching sketch 001-C ───────
