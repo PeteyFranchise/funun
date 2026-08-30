@@ -16,9 +16,65 @@ export type VerifyContext = {
 }
 
 export type VerifyResult = {
-  status: 'verified' | 'failed'
+  // 'verified' = assessed and clean. 'failed' = assessed and a clear problem
+  // was found. 'unverified' = could NOT be assessed (unparseable, truncated,
+  // missing checks, or the model punted on everything) — the fail-closed
+  // state, an existing value in migration 011's verification_status CHECK.
+  status: 'verified' | 'failed' | 'unverified'
   summary: string
   checks: VerificationCheck[]
+}
+
+const VALID_STATES = new Set(['pass', 'fail', 'pending'])
+
+/**
+ * Turns a parsed model response (or null, when nothing parseable came back)
+ * into a verdict. Fail-closed by construction: 'verified' is reachable ONLY
+ * when the response parsed, every required check returned a valid state, none
+ * failed, and at least one affirmatively passed. A single clear problem is
+ * 'failed'; everything else — malformed, truncated, missing checks, an
+ * unknown state, or an all-'pending' punt — is 'unverified'. Pure and
+ * dependency-free so the decision can be tested without the network.
+ */
+export function decideVerification(parsed: Record<string, unknown> | null): VerifyResult {
+  const rawChecks = (parsed?.checks ?? {}) as Record<string, { state?: string; detail?: string }>
+
+  // A check is ASSESSED only when the model returned one of the three allowed
+  // states for it. A missing key or an unknown state is not-assessed — never
+  // silently a pass. parsed === null makes rawChecks empty, so every check is
+  // unassessed and the whole thing lands on 'unverified'.
+  let allAssessed = parsed !== null
+  const checks: VerificationCheck[] = CHECK_DEFS.map(c => {
+    const raw = rawChecks[c.key]?.state
+    const assessed = typeof raw === 'string' && VALID_STATES.has(raw)
+    if (!assessed) allAssessed = false
+    const state = raw === 'pass' ? 'pass' : raw === 'fail' ? 'fail' : 'pending'
+    return { key: c.key, label: c.label, detail: rawChecks[c.key]?.detail ?? 'Not assessed', state }
+  })
+
+  const anyFail = checks.some(c => c.state === 'fail')
+  const anyPass = checks.some(c => c.state === 'pass')
+
+  const status: VerifyResult['status'] = anyFail
+    ? 'failed'
+    : allAssessed && anyPass
+      ? 'verified'
+      : 'unverified'
+
+  // For 'unverified' the model's own summary is untrustworthy (it may be a
+  // hallucinated "looks complete", or absent), so it is never surfaced.
+  const summary =
+    status === 'failed'
+      ? typeof parsed?.summary === 'string'
+        ? parsed.summary
+        : 'Issues found — review the flagged checks.'
+      : status === 'verified'
+        ? typeof parsed?.summary === 'string'
+          ? parsed.summary
+          : 'Looks complete and consistent.'
+        : 'Could not verify automatically — please review this document yourself.'
+
+  return { status, summary, checks }
 }
 
 const DOC_LABEL: Record<DocumentType, string> = {
@@ -85,7 +141,7 @@ export async function verifyContractPdf(pdfBase64: string, ctx: VerifyContext): 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return {
-      status: 'failed',
+      status: 'unverified',
       summary: 'Verification unavailable — AI is not configured.',
       checks: CHECK_DEFS.map(c => ({ ...c, detail: 'Could not verify', state: 'pending' as const })),
     }
@@ -111,18 +167,5 @@ export async function verifyContractPdf(pdfBase64: string, ctx: VerifyContext): 
 
   const text = msg.content.find(b => b.type === 'text')
   const parsed = text && text.type === 'text' ? extractJson(text.text) : null
-  const rawChecks = (parsed?.checks ?? {}) as Record<string, { state?: string; detail?: string }>
-
-  const checks: VerificationCheck[] = CHECK_DEFS.map(c => {
-    const r = rawChecks[c.key]
-    const state = r?.state === 'pass' ? 'pass' : r?.state === 'fail' ? 'fail' : 'pending'
-    return { key: c.key, label: c.label, detail: r?.detail ?? 'Not assessed', state }
-  })
-
-  const anyFail = checks.some(c => c.state === 'fail')
-  return {
-    status: anyFail ? 'failed' : 'verified',
-    summary: typeof parsed?.summary === 'string' ? parsed.summary : anyFail ? 'Issues found — review the flagged checks.' : 'Looks complete and consistent.',
-    checks,
-  }
+  return decideVerification(parsed)
 }
