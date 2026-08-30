@@ -1432,6 +1432,7 @@ physically cannot reach either account type:
   profile table. Production data: 11 auth users = 9 `user_profiles` + 2 `funun_staff`, with
   **zero overlap**. `pete@funun.studio` and `soko@funun.studio` have no `user_profiles` row
   at all.
+
 - **Client Partners (buyers)** — `handle_new_user()` (migration 098) branches on
   `raw_app_meta_data->>'role'` and returns for `'buyer'` **before** any profile insert, with
   the comment "buyers are a fully separate account type". No buyer ever gets a
@@ -1462,22 +1463,29 @@ experimenting with The Green Room's direction (more Slack/Twitter-like, less
 LinkedIn-like) without a later identity migration.
 
 **Owner decisions (locked):**
+
 1. `@handle` is **mandatory** for all user accounts. It is the identity field — unique and
    addressable.
+
 2. Artist name stays a **separate, optional display field**. With one set, the profile
    header shows the artist name as the title and `@handle` beneath it; with none, the
    `@handle` **is** the title. Never a fabricated name, never "Unnamed artist".
+
 3. **Legal name is unchanged** — still collected for contracts only. It is not a display
    name and must never leak into public profile rendering.
+
 4. Handle-less accounts are **prompted on next sign-in**, not auto-generated. A handle is a
    permanent public identifier and people should choose it. Only ~3 of the 8 are real
    humans; the rest are `demo@` / `epktest-` / `droptest-` / `codex-064-*` fixtures.
 
 **Already built — verify and extend, do NOT rebuild:**
+
 - `handle` column exists (migration 010) with a **case-insensitive unique index** on
   `lower(handle)`, NULLs allowed.
+
 - Reserved-handle guard exists (migration 037) — a `SECURITY DEFINER` trigger rejecting
   `admin`/`funun` etc. at the DB layer, so the app cannot be bypassed.
+
 - `app/u/[handle]/page.tsx` already serves public profiles by handle.
 - The only genuine gap: signup never asks, and nothing requires it.
 
@@ -1514,6 +1522,7 @@ placement never opens.
    decision 4: prompt, never auto-generate). Only ~3 are real humans, so the window is
    small in practice — but it is real, and it means "every User Account has a handle"
    becomes true only after the last of them signs in.
+
 2. **The uniqueness race deliberately opens a gap rather than losing an account.** If a
    handle is claimed between the availability check and the INSERT, the unique index
    rejects it, the trigger raises, and `signUp` ABORTS — the person sees a generic
@@ -1536,25 +1545,29 @@ existing handle and breaks `/u/maya-reyes`. Proposed: lowercase `a-z 0-9 - _`, 3
 confirm against the reserved-handle trigger during discussion.
 
 **Risks to get right:**
+
 - **Uniqueness is the DB's job.** The unique index is the guarantee; a live "that's taken"
   check is a courtesy only. Handle the simultaneous-claim race at the DB error, never
   optimistically in the UI.
+
 - **Signup is the highest-drop-off moment in the product.** A required third field there is
   a real conversion cost; the UX needs care.
+
 - **Audit every display path** that falls back to `artist_name` — DMs, collaborator lists,
   split sheets, Green Room, notifications, wall posts — so this does not just relocate
   "Unnamed artist" somewhere else.
+
 - **Handle changes over time**: can someone change theirs, and does the old `/u/` URL 404 or
   redirect? Settle this now, before links are shared.
 
 **Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 7 plans
+**Plans:** 1/7 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 36-01-PLAN.md — Handle format validator + profile display-name fix (D-04/D-05/D-11/D-12)
+- [x] 36-01-PLAN.md — Handle format validator + profile display-name fix (D-04/D-05/D-11/D-12)
 - [ ] 36-02-PLAN.md — Migration 133: INSERT-path reserved guard, handle_history, signup-handle trigger catch, handle resolver [human-gated push] (D-01/D-03/D-06/D-08/D-15)
 
 **Wave 2** *(blocked on Wave 1 — migration 133 must be pushed first)*

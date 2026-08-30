@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: "Shipped 12a6398: Vendor Health page (IT room) + artist 'Report a problem' link. NEXT SESSION: artist-side page features + design work (Pete's request). FIRST: open /admin/playbook/it/vendor-health and confirm DocuSeal is green in prod — it gates the sync-library blanket agreement and throws hard if unset, and Thomas (artist account only) cannot diagnose it himself."
-last_updated: "2026-08-26T06:38:13.949Z"
+stopped_at: Completed 36-01-PLAN.md (handle format authority + profile display-title derivation)
+last_updated: "2026-08-30T05:31:03.954Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 37
+  total_phases: 38
   completed_phases: 29
-  total_plans: 230
-  completed_plans: 227
-  percent: 78
+  total_plans: 237
+  completed_plans: 228
+  percent: 76
 ---
 
 # Project State
@@ -34,27 +34,34 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 Production is at `09d7a63`.
 
 **Shipped today (7 pushes, all through tsc + lint + 2993 jest):**
+
 - Artist Settings split into three linkable tab routes with **save-on-switch** —
   `/settings` (Rights & contracts), `/settings/profile` (Public profile + Privacy),
   `/settings/payouts`. That last one **had never been linked from anywhere** — it is the
   Stripe connection that lets artists get paid from sync deals, previously reachable only
   by typing the URL. Quick task 260826-qsb.
+
 - `components/ui/LearnWhy.tsx` — collapsible disclosure, applied 3x in Settings. Rule:
   what stays visible is the RULE, what collapses is the WHY; never an action or status.
+
 - Contact moved under Legal Identity; page grouped into "Contracts & rights" vs "Your
   public profile" with dividers stating what finishing each buys you.
+
 - **Two false claims retired:** the platform-GRid promise (Funūn is not IFPI-registered;
   `platform_identifier_config.grid_issuer_code` is NULL on purpose) and "managed through
   your account settings" (no such page exists, and no self-serve email change exists at
   all). Both now say what is true, with code comments at the point of temptation.
+
 - Hydration mismatch in `ReportProblemLink` — `navigator.userAgent` read during render
   made the SSR and client hrefs differ; React refused to patch, poisoning the artist-nav
   subtree on EVERY artist page. Now read in an effect.
+
 - **`app/(artist)/error.tsx`** — artists had NO error boundary while `(admin)` did, so any
   artist page crash fell to `global-error.tsx`, which replaces the whole document. Now the
   nav survives, `error.digest` is shown (production strips messages — the digest is the
   only handle for finding the real exception), and there are two buttons because `reset()`
   cannot fix a stale-build chunk failure, only a hard reload can.
+
 - Live phone masking (`lib/phone.ts`) that does NOT mangle international numbers — the
   pre-existing staff helper is US-only and would silently turn `+44 20 7946 0958` into
   `(207) 946-0958`. Quick task 260826-vw5.
@@ -71,18 +78,23 @@ row = exactly Artist + Industry.** Team Members and Client Partners are excluded
 STRUCTURALLY (no row to write to), not by convention.
 
 **Open items for tomorrow, roughly in priority order:**
+
 1. **Signed-in tab-switch check (30 seconds, only unverified path).** `/settings` → type in
    a field → kill wifi → click "Public profile". You should STAY PUT with a retry line and
    your typing intact. Proven by unit test and by reading, never by clicking. Owner elected
    to ship before this pass.
+
 2. **Curator question — blocks Phase 36's scope.** `handle_new_user()` has a
    `role = 'curator'` early return creating no profile, contradicting "curators are
    Industry accounts". Dead code, or a real fifth type? Changes who gets a handle.
+
 3. **Thomas has two accounts** — `thomasphillips3@gmail.com` and
    `thomas.phillips.3@gmail.com`. Resolve before handles make each a distinct public
    identity.
+
 4. Rotate the Resend API key (low priority, nothing broken) → then re-copy `.env.local`
    into the Dashlane note.
+
 5. Migration 133 push (human-gated) → then finish quick task 260825-m2k.
 6. `/gsd-discuss-phase 34` (lead intake) and `/gsd-discuss-phase 35` (Playbook content).
 
@@ -90,7 +102,6 @@ STRUCTURALLY (no row to write to), not by convention.
 owner's dev server is up — it clobbers `.next` under the running server. It cost three
 broken previews, two forced re-logins, and a 1.8 GB corrupted cache today. Use
 `npx tsc --noEmit`. Recovery: `rm -rf .next`, restart dev.
-
 
 Phase: 31.2 (ae-console-playbook-authoring-rbac-plays-selects-telemetry) — 10/10 PLANS EXECUTED (phase verification + owner UAT pending)
 31.2-10 (Selects engagement telemetry — AE per-Selects readout + leadership rollup, wave 4, LAST plan in phase) COMPLETE 2026-08-24 — 31.2-10-SUMMARY.md; GET /api/admin/client-partners/selects/[id]/engagement (staff GET, own-Selects-scoped via loadSelectsInScope, 404 not 403) + EngagementPanel ('use client', self-fetches the route, mounted on the AE's Selects detail view) — per-track plays/audible-seconds/qualified-listens(≥30s)/replays + a Selects summary, computed on read via plan-02's aggregateTrack/aggregateSelectsRollup. lib/selects/engagement-rollup.ts's buildEngagementRollup (batched, no-N+1, mirrors loadWholeBookWithCoverage's shape) + GET /api/admin/client-partners/engagement-rollup (leadership-only, verifyAdmin) + ClientPartnersRoom.tsx's new "Engagement — who's getting listens" section (per-AE totals + per-Selects breakdown), fed server-side only inside loadClientPartnersRoomData's isLeadership branch (hide-not-filter, T-31.2-27) — plan 09's Today's Play banner + My/All tabs preserved untouched. Necessary plumbing beyond files_modified (Rule 2): extracted lib/selects/engagement-rollup.ts (a Next.js route module may only export HTTP handlers, so the RSC leadership tower needs a shared lib function) + a route.test.ts for the new leadership route + extended lib/admin/gate.test.ts's existing D-31.1-01 hide-not-filter suite to also assert buildEngagementRollup is never called for ae/bd. Full repo suite 266 suites/2843 tests green, tsc clean; `npm run build`'s webpack compile succeeds but its separate ESLint pass fails on a pre-existing unrelated file (lib/client-partners/health.test.ts, `@typescript-eslint/no-var-requires` rule not found) — logged to deferred-items.md, out of scope. R13 impl complete — registered in REQUIREMENTS.md's Phase 31 Slice-1 traceability table (owner UAT pending: play a Selects preview with pause/seek, confirm audible seconds + leadership rollup). Phase 31.2 is now 10/10 plans executed — remaining work is owner UAT + phase verification, no more plans to execute.
@@ -286,6 +297,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 31.2 P02 | 5min | 3 tasks | 5 files |
 | Phase 31.2 P01 | 8min | 3 tasks | 6 files |
 | Phase 31.2 P10 | 15min | 3 tasks | 11 files |
+| Phase 36 P01 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -549,6 +561,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 31.2]: 31.2-01: owner ran supabase db push against prod (project wgfjakfiyeewzfuxkgyo) and confirmed supabase migration list LOCAL=REMOTE through 132 (also cleared the previously-pending migration 129), no errors on any table create, the plays partial-unique active index, or the engagement cap trigger — Task 4 blocking checkpoint cleared
 - [Phase ?]: [Phase 31.2-10]: Extracted lib/selects/engagement-rollup.ts's buildEngagementRollup so the leadership-only HTTP route and the RSC leadership-tower page compute the SAME aggregate via one function -- a Next.js route module may only export HTTP handlers
 - [Phase ?]: [Phase 31.2-10]: EngagementPanel (AE readout) self-fetches its route client-side, while the leadership rollup is computed server-side inside the RSC page's isLeadership branch -- keeps the hide-not-filter guarantee machine-testable the same way allData's is
+- [Phase 36]: handleFormatError() returns a distinct message per rejection reason (length/edge-separator/bad-character) so later signup/settings/API-route plans can surface it directly
 
 ### Pending Todos
 
@@ -639,8 +652,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-26T06:38:13.924Z
-Stopped at: Shipped 12a6398: Vendor Health page (IT room) + artist 'Report a problem' link. NEXT SESSION: artist-side page features + design work (Pete's request). FIRST: open /admin/playbook/it/vendor-health and confirm DocuSeal is green in prod — it gates the sync-library blanket agreement and throws hard if unset, and Thomas (artist account only) cannot diagnose it himself.
+Last session: 2026-08-30T05:31:03.927Z
+Stopped at: Completed 36-01-PLAN.md (handle format authority + profile display-title derivation)
 Resume file: .planning/quick/260826-2qm-vendor-health-check/260826-2qm-SUMMARY.md
 Last session: 2026-08-06T01:06:36.617Z
 Stopped at: Completed 28-03-PLAN.md
