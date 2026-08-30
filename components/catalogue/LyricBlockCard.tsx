@@ -78,8 +78,14 @@ export type LyricBlockCardProps = {
   containerStyle?: CSSProperties
   /** dnd-kit's `setActivatorNodeRef`, applied to the grip button so only the grip (not the whole card) starts a drag. */
   dragHandleRef?: (node: HTMLButtonElement | null) => void
-  dragHandleAttributes?: Record<string, unknown>
-  dragHandleListeners?: Record<string, unknown>
+  /**
+   * dnd-kit's `DraggableAttributes`/`SyntheticListenerMap`, spread onto
+   * the grip button as-is. Typed as `object` (not dnd-kit's own types)
+   * so this component stays framework-decoupled — it just spreads
+   * whatever LyricsPad's `useSortable()` call hands it.
+   */
+  dragHandleAttributes?: object
+  dragHandleListeners?: object
   isDragging?: boolean
 }
 
