@@ -96,6 +96,11 @@ diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
 two-door form (A) forever after; A keeps a "walk me through it again" link that reopens
 B's pacing; DDEX vocabulary only ever in the receipt.
+004 DECIDED → C, the hybrid: lights always visible, any light opens its door, closed
+doors arrive pre-opened; four destination-neutral doors (Crate/Release/Registration/
+Distribution); an ⓘ beside The Crate opens a plain-words explainer ("Funūn's sync
+licensing catalogue… rights-ready… one stop… you get paid") — Funūn vocabulary must
+never be a mystery inside someone's diary.
 003 DECIDED → SPLIT: the deliberate full-screen minute (B) for hum-first, once per song;
 inline (A) for the recurring re-author prompt. Copy friendlier with a read-more
 expandable (reuse components/ui/LearnWhy.tsx — action visible, why folds). Owner's lead
