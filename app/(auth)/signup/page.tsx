@@ -6,6 +6,13 @@ import Script from 'next/script'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isWaitlistSubmitDisabled } from './waitlist-gate'
+import { handleFieldState } from '@/lib/handles/availability'
+import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
+
+// Debounce delay for the live availability check (D-14, courtesy only) and
+// the shape of a resolved GET /api/handles/available verdict.
+const HANDLE_CHECK_DEBOUNCE_MS = 400
+type HandleRemote = { available: boolean | null; reason: string | null }
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -49,10 +56,21 @@ function SignUpFlow() {
 
   const [gateState, setGateState] = useState<GateState>('form')
   const [email, setEmail] = useState('')
+  const [handle, setHandle] = useState('')
   const [password, setPassword] = useState('')
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState<string | null>(null)
   const [deepLink, setDeepLink] = useState<DeepLinkInfo | null>(null)
+
+  // D-02/D-03/D-14: the handle field's own state, independent of the
+  // invite-gate `checking`/`checkError` above.
+  const [handleChecking, setHandleChecking] = useState(false)
+  const [handleRemote, setHandleRemote] = useState<HandleRemote | null>(null)
+  const handleFieldStatus = handleFieldState({ raw: handle, checking: handleChecking, remote: handleRemote })
+  const handleDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Monotonic counter (T-36-22): a response for a stale request must never
+  // overwrite the verdict for a value the person has since edited.
+  const handleRequestCounter = useRef(0)
 
   const [submitting, setSubmitting] = useState(false)
   const [signUpError, setSignUpError] = useState<string | null>(null)
@@ -146,6 +164,54 @@ function SignUpFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Live handle availability check (D-14, courtesy only — the unique index
+  // and migration 133's reserved/retired guard are the real enforcement).
+  // Debounced ~400ms after typing stops, and only dispatched once the value
+  // is already locally valid — handleFieldState()'s format gate is exactly
+  // handleFormatError(), called directly here so this effect's own decision
+  // to fire never depends on its own checking/remote state. A monotonic
+  // request counter (T-36-22) discards any response that is not the latest,
+  // since a slow early response can otherwise resolve after a newer one.
+  useEffect(() => {
+    if (handleDebounceTimer.current) {
+      clearTimeout(handleDebounceTimer.current)
+      handleDebounceTimer.current = null
+    }
+
+    if (handleFormatError(handle)) {
+      setHandleChecking(false)
+      setHandleRemote(null)
+      return
+    }
+
+    const requestId = ++handleRequestCounter.current
+    handleDebounceTimer.current = setTimeout(() => {
+      setHandleChecking(true)
+      fetch(`/api/handles/available?handle=${encodeURIComponent(handle.trim())}`)
+        .then(res => res.json())
+        .then((data: HandleRemote) => {
+          if (requestId !== handleRequestCounter.current) return
+          setHandleRemote({ available: data.available, reason: data.reason })
+        })
+        .catch(() => {
+          if (requestId !== handleRequestCounter.current) return
+          // A courtesy check that could not reach the server is 'unknown',
+          // never a false 'unavailable' (D-14).
+          setHandleRemote({ available: null, reason: null })
+        })
+        .finally(() => {
+          if (requestId === handleRequestCounter.current) setHandleChecking(false)
+        })
+    }, HANDLE_CHECK_DEBOUNCE_MS)
+
+    return () => {
+      if (handleDebounceTimer.current) {
+        clearTimeout(handleDebounceTimer.current)
+        handleDebounceTimer.current = null
+      }
+    }
+  }, [handle])
+
   async function handleGateSubmit(e: React.FormEvent) {
     e.preventDefault()
     await checkInvite(email.trim())
@@ -169,7 +235,26 @@ function SignUpFlow() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // D-03: user_metadata IS visible to handle_new_user() at INSERT on
+        // this Supabase instance, while app_metadata and email_confirmed_at
+        // are NOT — the same asymmetry documented in
+        // lib/accounts/provisionIntent.ts that cost two cutover failures in
+        // Phase 27. The industry branch's display_name key (below, same
+        // trigger) is the existing proof of the mechanism. Because of this,
+        // the profile row and its handle are created in ONE statement — a
+        // new signup has no window in which it exists without a handle.
+        //
+        // Key name MUST be exactly `handle` — migration 133's trigger reads
+        // NEW.raw_user_meta_data->>'handle', and a mismatch fails silently
+        // by inserting NULL rather than erroring.
+        //
+        // Trimmed only, never lowercased (D-04) — storage preserves the
+        // case the person typed; migration 010's lowered unique index is
+        // what makes it unique regardless of casing.
+        data: { handle: handle.trim() },
+      },
     })
     if (error) {
       setSignUpError(error.message)
@@ -364,6 +449,44 @@ function SignUpFlow() {
                   )}
                 </div>
                 <div>
+                  <label htmlFor="handle" className="block text-sm font-medium text-white/80">
+                    Handle
+                  </label>
+                  <div className="relative mt-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
+                      @
+                    </span>
+                    <input
+                      id="handle"
+                      type="text"
+                      value={handle}
+                      onChange={e => setHandle(e.target.value)}
+                      required
+                      minLength={HANDLE_MIN_LENGTH}
+                      maxLength={HANDLE_MAX_LENGTH}
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="maya-reyes"
+                      className={`${inputClass} pl-7`}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-white/40">
+                    This is your permanent public identity — your profile will live at
+                    funun.io/u/{handle.trim() || 'your-handle'}. You can change it later.
+                  </p>
+                  {handleFieldStatus.message && (
+                    <p className="mt-1 text-xs text-rose-300">{handleFieldStatus.message}</p>
+                  )}
+                  {handleFieldStatus.status === 'checking' && (
+                    <p className="mt-1 text-xs text-white/40">Checking availability…</p>
+                  )}
+                  {handleFieldStatus.status === 'available' && (
+                    <p className="mt-1 text-xs text-emerald-300">Available</p>
+                  )}
+                </div>
+                <div>
                   <label htmlFor="password" className="block text-sm font-medium text-white/80">
                     Password
                   </label>
@@ -388,7 +511,7 @@ function SignUpFlow() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || handleFieldStatus.blocksSubmit}
                   className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
                 >
                   {submitting ? 'Creating account…' : 'Create account'}
