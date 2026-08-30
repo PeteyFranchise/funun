@@ -50,7 +50,14 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; INSERT-ANYWHERE RULE: the gap between any two blocks reveals a ＋ divider on hover
+paste auto-splits on blank lines; PERFORMER RULE (owner-raised): each block carries TWO badge clusters — ✍ writer
+(automatic: whoever typed; moves splits) and 🎤 performer (declared: tap "＋🎤 who sings
+this?" and pick a member or name a guest; moves credits, never splits). Multiple 🎤
+avatars stack for duets. Authoritative per-recording performance credits live on the
+VERSION (feeds DDEX contributor roles and the human-take registry behind the vocal
+rule); the pad's 🎤 shows the current plan and seeds each new version's credits.
+
+INSERT-ANYWHERE RULE: the gap between any two blocks reveals a ＋ divider on hover
 (tap on mobile) opening a mini chip row that inserts exactly at that position — with
 "Chorus ↺ repeat" offered first once a chorus exists. Fallbacks: end-of-song chip row,
 then drag into place.
