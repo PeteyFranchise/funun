@@ -168,6 +168,15 @@ verse 2"). Auto-capture, optional annotation — never depends on discipline. Tr
 accepted: noisy timelines you can collapse beat history you can't recover. The diary
 doubles as an **authorship evidence trail** (see Q3).
 
+### CAT-Q1a — SPLITS DEFAULT (owner, 2026-08-30, locked)
+**Splits default to EQUAL shares — 50/50 for two writers, even N-way for more — unless
+the writers decide otherwise.** Adding a writer to a work redrafts the living sheet to
+equal shares automatically. **The system NEVER proposes contribution-based percentages**
+— no "Ben wrote a verse, suggest 60/40". Nudges name PEOPLE ("Ben isn't on the sheet
+yet — add him?"), never NUMBERS. The diary is evidence the writers MAY consult when
+deciding their own split; it is never an input the product converts into percentages.
+Deciding that is theirs, not ours.
+
 ### CAT-Q2 — When the split sheet must execute: **commercial commitment** (option B)
 Sheet lifecycle (owner-specified): **living editable draft** through the unreleased
 stage → **executed** at the moment of truth → **addendum** for post-execution changes
