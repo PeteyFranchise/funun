@@ -1481,6 +1481,55 @@ LinkedIn-like) without a later identity migration.
 - `app/u/[handle]/page.tsx` already serves public profiles by handle.
 - The only genuine gap: signup never asks, and nothing requires it.
 
+**WHERE THE HANDLE IS CHOSEN (decided 2026-08-27) — on the create-account form.**
+
+Signup step 2 currently asks two things, email and password. The handle becomes the
+third field there, NOT a separate step after email verification.
+
+This works because of a mechanism already proven in the same trigger: the `industry`
+branch of `handle_new_user()` reads `NEW.raw_user_meta_data->>'display_name'`, so
+**`user_metadata` IS visible to the trigger at INSERT** (`app_metadata` and
+`email_confirmed_at` are NOT — that asymmetry cost two cutover failures in Phase 27).
+So the handle rides along with the signup call:
+
+```
+signUp({ email, password, options: { data: { handle } } })
+   -> raw_user_meta_data.handle
+   -> handle_new_user() inserts it with the profile row
+```
+
+The artist branch today inserts a bare `INSERT INTO public.user_profiles (id) VALUES
+(NEW.id)`. It gains the handle column. Profile and handle are then created in the SAME
+statement — **for a new signup there is genuinely no window where a User Account exists
+without a handle.**
+
+A post-verification step was rejected: it would leave every new account handle-less
+between creation and first sign-in, requiring a blocking gate to close a gap that this
+placement never opens.
+
+**THE TWO GAPS THAT REMAIN — do not claim "no gap" without these.**
+
+1. **Existing accounts are not covered by that atomicity.** The 8 handle-less rows exist
+   right now and stay handle-less until each person next signs in and picks one (owner
+   decision 4: prompt, never auto-generate). Only ~3 are real humans, so the window is
+   small in practice — but it is real, and it means "every User Account has a handle"
+   becomes true only after the last of them signs in.
+2. **The uniqueness race deliberately opens a gap rather than losing an account.** If a
+   handle is claimed between the availability check and the INSERT, the unique index
+   rejects it, the trigger raises, and `signUp` ABORTS — the person sees a generic
+   failure after already committing a password. The trigger must instead catch the
+   unique violation and insert NULL, with the app forcing a pick on first sign-in. A
+   rare, brief gap is the correct trade against costing someone their signup.
+
+**Consequence for enforcement:** a `NOT NULL` constraint on `handle` is the only real
+guarantee, and it CANNOT be added until every existing row is backfilled. Sequence it
+last — after the prompt-on-sign-in path has drained the handle-less accounts — or it will
+fail on deploy. Until then "mandatory" is enforced by the application, not the database.
+
+**Unverified-account squatting:** someone can claim `@maya`, never click the verification
+email, and hold the name indefinitely. Decide during discussion whether unverified claims
+expire (Twitter and Instagram both release them).
+
 **Format constraint that will bite:** the one live handle in production is `maya-reyes` —
 it contains a **hyphen**. Any format rule must allow hyphens or it invalidates the only
 existing handle and breaks `/u/maya-reyes`. Proposed: lowercase `a-z 0-9 - _`, 3–30 chars;
