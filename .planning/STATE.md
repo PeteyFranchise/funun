@@ -37,39 +37,43 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-### SESSION CLOSE 2026-08-30 — Phase 36 SHIPPED (resume here)
+### SESSION CLOSE 2026-08-30 (extended session) — Phase 36 LIVE + Phase 37 fully designed
 
-**Everything committed, pushed, deployed. Prod = `79cc322`. Zero unpushed.**
+**Everything committed and pushed. Prod code = Phase 36 live on funun.studio. Working
+tree clean. This block supersedes the earlier 2026-08-30 close.**
 
-**Phase 36 (Account Identity) executed end-to-end and LIVE:** 7/7 plans, 3134 tests,
-migrations 133+134 applied by owner and verified against prod (reserved names rejected on
-INSERT, casing uniqueness, /u/ case-insensitive with redirect resolver, format CHECK
-enforcing). Signup now collects @handle atomically; the hard gate converts existing
-accounts; "Unnamed artist" is gone; nav footer shows identity (@handle/artist name).
-D-13 NOT NULL deferred with a named tripwire (handle-less account POSTING reopens it —
-`.planning/todos/pending/2026-08-27-handle-tripwire-reconsider-not-null.md`).
+**Phase 36 (Account Identity): SHIPPED AND FIELD-TESTED.** Migrations 133+134 applied
+and verified against prod (@admin rejected, casing uniqueness, /u/ case-insensitive,
+format CHECK enforcing). The owner walked the hard gate live → @peterzora. Roster
+cleaned to exactly 5 real accounts (5 fixtures + Thomas's dotted duplicate DELETED;
+Crate content verified intact). Nav footer shows identity. D-13 deferred with a named
+tripwire todo.
 
-**Account cleanup (owner-directed, via management API):** all 5 fixture accounts DELETED
-(incl. demo@artistos.app + its content; Crate verified intact) and Thomas's duplicate
-`thomas.phillips.3@gmail.com` deleted (Gmail-dots accident; real = `thomasphillips3@`).
-Roster is now exactly 5 real accounts. Owner walked the handle gate live → **@peterzora**.
-
-**IN FLIGHT — first real Phase 36 signup:** Eric invited to a personal Gmail
-(collaborator-invite path, Resend DELIVERED 2026-08-30 07:37). He signs up in ~a day.
-**When he does:** verify his profile row (handle written at INSERT, no gate), and that
-he saw the handle field on the create-account form. First stranger through the new flow.
+**Phase 37 (My Catalogue): DESIGNED TO NEAR-SPEC in one session.** Everything lives in
+`.planning/deliberations/the-catalogue-unreleased-works.md` (doctrine: 3 locked
+decisions, north star "cite the tool, own the song", when-in-doubt rule, 2 worked
+examples, producer FAQ (living), Crate vocal-line rule + BGV clause + one-pass fix,
+destination-neutral doors, dual mandate, 10 scope items incl. Hum-it-in / Type-it-in /
+shared diary) and the banked skill `.claude/skills/sketch-findings-funun/` (SIX decided
+sketches 001-006 + all UI rules: renumbering, linked repeats, insert-anywhere,
+writer✍/performer🎤 badges, default-performer with the Instrumental third state,
+tool-agnostic export copy). IA: My Catalogue INSIDE the Sound Vault (two shelves);
+create flow = Start a song / Start a release; "Song" face, "work" backbone; artist
+labels replace the unreleased type. Sketches viewable: public/sketches37 (gitignored)
+via dev server.
 
 **Open items, priority order:**
-1. Eric's signup verification (above) — also tell Thomas his next sign-in demands a handle.
-2. Turnstile: keys exist in .env.local but NOT in Vercel prod → waitlist has no bot check.
-   Todo: `.planning/todos/pending/2026-08-27-configure-turnstile-production.md`.
-3. Settings save-on-switch: still the one unverified path from 2026-08-26 (type → wifi off
-   → switch tab → text survives). 30 seconds signed in.
-4. Resend key rotation (low) → then refresh Dashlane note.
-5. `/gsd-discuss-phase 34` (lead intake) / 35 (Playbook content). Quick task 260825-m2k
-   still stashed; its migration needs renumbering (Phase 36 took 133).
-6. STATE.md `current_phase` pointer reads 31.2 (genuinely unfinished, UAT-deferred) while
-   36 executed — needs a deliberate phase-completion pass, not a one-line patch.
+1. **Eric's signup** (invite delivered 2026-08-30 07:37, he signs up in ~a day) — verify
+   his profile row: handle written at INSERT, no gate, first stranger through Phase 36.
+2. **Tell Thomas**: next sign-in demands a handle (his real account is
+   thomasphillips3@gmail.com; the dotted duplicate is deleted).
+3. **Turnstile in Vercel prod** — keys exist in .env.local only; waitlist has no bot
+   check. Todo: 2026-08-27-configure-turnstile-production.md.
+4. `/gsd-discuss-phase 37` — short; the data model (works/versions vs vault_projects)
+   is the main open question. Then plan/execute. Deferred sketch: the collaborator
+   vantage (007).
+5. Settings save-on-switch manual check (from 2026-08-26) · Resend key rotation (low) ·
+   phases 34/35 discussions · quick task 260825-m2k (stashed; renumber its migration).
 
 
 ### SESSION CLOSE 2026-08-26 — artist-side polish + account identity (resume here)
