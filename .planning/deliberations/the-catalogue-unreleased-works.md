@@ -201,6 +201,11 @@ UI-demo/mockup pass (gsd-sketch) for these flows at discuss/plan time.
 
 ### The producer FAQ (owner-driven Q&A, 2026-08-30 — use as UI/help copy source)
 
+**LIVING SECTION (owner, 2026-08-30):** FAQs get added as they arise from the community.
+Design consequence for the phase: the hygiene UI needs a "still unsure? ask" path that
+feeds real artist questions back to the team, and answered ones graduate into this FAQ →
+artist-facing help → eventually a Playbook article (Phase 35 adoption model).
+
 **Q: AI adds an 8-bar guitar solo to my otherwise fully-human song. What do I own?**
 Everything except those 8 bars — and nobody owns those. Ownership attaches element by
 element, not as a percentage. Song registers as partially-AI (allowed since Oct 2025);

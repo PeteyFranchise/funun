@@ -14,3 +14,4 @@ supabase/.temp
 .vercel
 .planning/research/.cache/
 scripts/load/last-run-summary.json
+public/sketches37/

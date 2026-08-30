@@ -1,0 +1,50 @@
+<title>001-B · Versions up top, log below</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><style>
+:root{--ink:#0a0a0f;--card:#0E0D1E;--card2:#1A1838;--hair:rgba(199,203,247,.12);--hair2:rgba(199,203,247,.22);--lav:#C7CBF7;--dim:#7c80b4;--good:#34D399;--warn:#FBBF24;--risk:#F87171;--cold:#60A5FA;--money:#F59E0B;--grad:linear-gradient(105deg,#818CF8,#D946EF)}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:#fff;font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:28px 22px 60px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+h1{font-size:22px;font-weight:800;margin:2px 0 0;letter-spacing:-.01em}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(199,203,247,.08);color:var(--lav)}
+.chip i{width:5px;height:5px;border-radius:50%;background:currentColor;font-style:normal}
+.c-good{background:rgba(52,211,153,.12);color:var(--good)}.c-warn{background:rgba(251,191,36,.12);color:var(--warn)}
+.c-ai{background:rgba(96,165,250,.13);color:var(--cold)}.c-sheet{background:rgba(245,158,11,.12);color:var(--money)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.btn{border:1px solid var(--hair2);background:rgba(199,203,247,.06);color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.btn:hover{color:#fff;background:rgba(199,203,247,.12)}
+.pri{background:var(--grad);border:0;color:#fff;box-shadow:0 12px 30px -14px rgba(217,70,239,.55)}
+.dim{color:var(--dim)}.sm{font-size:12px}.xs{font-size:11px}
+.ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(#34D399 0 78%,rgba(199,203,247,.12) 78% 100%);display:flex;align-items:center;justify-content:center;flex:none}
+.ring b{width:52px;height:52px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:15px}
+.note{border-top:1px solid var(--hair);margin-top:26px;padding-top:12px;font-size:11.5px;color:var(--dim)}
+</style>
+<div class="wrap">
+<p class="tag">Sketch 001 · Variant B — versions as cards, events collapsed</p>
+<div class="card" style="padding:18px 20px;margin-top:10px;display:flex;gap:16px;align-items:center">
+  <div class="ring"><b>78</b></div>
+  <div style="flex:1"><p class="tag">Unreleased work</p><h1>Midnight</h1>
+  <div style="display:flex;gap:6px;margin-top:7px"><span class="chip">@peterzora 60%</span><span class="chip">Ben Cooke 40%</span><span class="chip c-warn"><i></i>Splits: draft</span></div></div>
+  <button class="btn pri">Graduate to release</button>
+</div>
+<b style="font-size:13px;display:block;margin:20px 0 10px">Versions</b>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+  <div class="card" style="padding:12px"><div style="height:34px;border-radius:7px;background:repeating-linear-gradient(90deg,rgba(199,203,247,.25) 0 2px,transparent 2px 5px);margin-bottom:9px"></div>
+    <b class="sm">v4 · AI solo test</b><p class="xs dim" style="margin:3px 0 8px">Aug 28 · <span style="color:var(--cold)">AI instrument</span></p>
+    <div style="display:flex;gap:6px"><button class="btn" style="padding:4px 9px">▶</button><span class="chip c-ai"><i></i>AI</span></div></div>
+  <div class="card" style="padding:12px;border-color:rgba(52,211,153,.4)"><div style="height:34px;border-radius:7px;background:repeating-linear-gradient(90deg,rgba(52,211,153,.4) 0 2px,transparent 2px 5px);margin-bottom:9px"></div>
+    <b class="sm">v3 · Dana demo</b><p class="xs dim" style="margin:3px 0 8px">Jul 12 · human vocal</p>
+    <div style="display:flex;gap:6px"><button class="btn" style="padding:4px 9px">▶</button><span class="chip c-good"><i></i>Master candidate</span></div></div>
+  <div class="card" style="padding:12px"><div style="height:34px;border-radius:7px;background:repeating-linear-gradient(90deg,rgba(96,165,250,.35) 0 2px,transparent 2px 5px);margin-bottom:9px"></div>
+    <b class="sm">v2 · AI reference</b><p class="xs dim" style="margin:3px 0 8px">May 21 · <span style="color:var(--good)">demo only</span></p>
+    <button class="btn" style="padding:4px 9px">▶</button></div>
+  <div class="card" style="padding:12px"><div style="height:34px;border-radius:7px;background:repeating-linear-gradient(90deg,rgba(199,203,247,.25) 0 2px,transparent 2px 5px);margin-bottom:9px"></div>
+    <b class="sm">v1 · Scratch hum</b><p class="xs dim" style="margin:3px 0 8px">May 02 · <span style="color:var(--good)">authorship evidence</span></p>
+    <button class="btn" style="padding:4px 9px">▶</button></div>
+</div>
+<details style="margin-top:18px" open><summary style="cursor:pointer;font-size:13px;font-weight:700">Everything else — 3 events</summary>
+  <div class="card" style="padding:4px 14px;margin-top:9px">
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--hair)"><span class="sm">§ Ben joined · splits redrafted 60/40 <span class="xs dim">— wrote verse 2</span></span><span class="xs dim">Jun 03</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--hair)"><span class="sm">✎ Lyric sheet updated <span class="xs dim">— bridge rewrite</span></span><span class="xs dim">May 30</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0"><span class="sm">＋ Work created by @peterzora</span><span class="xs dim">May 02</span></div>
+  </div></details>
+<p class="note">Q: does separating audio (cards) from paperwork (log) beat one merged stream — or does it hide the story?</p>
+</div>
