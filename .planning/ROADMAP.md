@@ -1547,13 +1547,29 @@ confirm against the reserved-handle trigger during discussion.
 - **Handle changes over time**: can someone change theirs, and does the old `/u/` URL 404 or
   redirect? Settle this now, before links are shared.
 
-**Requirements**: TBD
+**Requirements**: D-01–D-15 (locked in 36-CONTEXT.md; no numbered REQUIREMENTS.md for this phase)
 **Depends on:** Phase 35
-**Plans:** 0 plans
+**Plans:** 7 plans
 
 Plans:
+**Wave 1**
 
-- [ ] TBD (run /gsd-plan-phase 36 to break down)
+- [ ] 36-01-PLAN.md — Handle format validator + profile display-name fix (D-04/D-05/D-11/D-12)
+- [ ] 36-02-PLAN.md — Migration 133: INSERT-path reserved guard, handle_history, signup-handle trigger catch, handle resolver [human-gated push] (D-01/D-03/D-06/D-08/D-15)
+
+**Wave 2** *(blocked on Wave 1 — migration 133 must be pushed first)*
+
+- [ ] 36-03-PLAN.md — PATCH /api/profile/handle + settings change-handle field (D-07/D-08/D-14)
+- [ ] 36-04-PLAN.md — Signup collects the handle + public availability endpoint (D-02/D-03/D-14)
+- [ ] 36-05-PLAN.md — /u/[handle] case-insensitive resolution + retired-handle redirect (D-04/D-07)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 36-06-PLAN.md — The hard gate for handle-less User Accounts, staff/buyer-proof (D-09/D-10/D-10a/D-10b/D-10c)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 36-07-PLAN.md — Migration 134: fixture sweep + handle format CHECK; D-13 NOT NULL decision [human-gated push] (D-05/D-13)
 
 ---
 
