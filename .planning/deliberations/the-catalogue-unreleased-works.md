@@ -175,7 +175,9 @@ equal shares automatically. **The system NEVER proposes contribution-based perce
 — no "Ben wrote a verse, suggest 60/40". Nudges name PEOPLE ("Ben isn't on the sheet
 yet — add him?"), never NUMBERS. The diary is evidence the writers MAY consult when
 deciding their own split; it is never an input the product converts into percentages.
-Deciding that is theirs, not ours.
+Deciding that is theirs, not ours. CADENCE (owner): the nudge fires ONCE per new
+contributor per song, in the guiding line, dismissible — never per edit; a pad setting
+can defer split reminders to the doors entirely (Q2 is the real enforcement).
 
 ### CAT-Q2 — When the split sheet must execute: **commercial commitment** (option B)
 Sheet lifecycle (owner-specified): **living editable draft** through the unreleased

@@ -50,7 +50,12 @@ chores. Creation is the interface; evidence is the exhaust.
 labels, grip-reorder, one author avatar per block; add-section chip row (Verse,
 Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom…); autosave line in header +
 "Add the melody — hum it" button; diary events are section-level ("Ben added Verse 2");
-paste auto-splits on blank lines; SPLITS-DEFAULT RULE (owner, locked): adding a writer redrafts the living sheet to
+paste auto-splits on blank lines; NUDGE-CADENCE RULE (owner): the splits nudge fires ONCE per new contributor per song —
+at their first contribution, in the guiding line only — never per edit, keystroke, or
+block. Dismissible. A pad setting quiets it entirely ("Split reminders: on / only at
+the doors") because Q2's doors are the real enforcement; the line is courtesy.
+
+SPLITS-DEFAULT RULE (owner, locked): adding a writer redrafts the living sheet to
 EQUAL shares (50/50, even N-way) automatically; writers move it from there if THEY
 choose. The system NEVER proposes contribution-based percentages, and nudges name
 PEOPLE, never numbers. The diary is evidence writers may consult — never an input the
