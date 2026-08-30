@@ -1,0 +1,47 @@
+<title>002-A · Two honest steps</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><style>
+:root{--ink:#0a0a0f;--card:#0E0D1E;--card2:#1A1838;--hair:rgba(199,203,247,.12);--hair2:rgba(199,203,247,.22);--lav:#C7CBF7;--dim:#7c80b4;--good:#34D399;--warn:#FBBF24;--risk:#F87171;--cold:#60A5FA;--money:#F59E0B;--grad:linear-gradient(105deg,#818CF8,#D946EF)}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:#fff;font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:28px 22px 60px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.btn{border:1px solid var(--hair2);background:rgba(199,203,247,.06);color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.btn:hover{color:#fff}.pri{background:var(--grad);border:0;color:#fff}
+.dim{color:var(--dim)}.sm{font-size:12px}.xs{font-size:11px}
+.big{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--hair);border-radius:12px;padding:14px 16px;color:#fff;font:inherit;cursor:pointer}
+.big:hover{border-color:var(--hair2)}
+.big.sel{border-color:#818CF8;box-shadow:0 0 0 1px #818CF8}
+.chipbtn{border:1px solid var(--hair2);background:none;color:var(--lav);font:inherit;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer}
+.chipbtn.sel{background:var(--grad);border-color:transparent;color:#fff}
+.note{border-top:1px solid var(--hair);margin-top:26px;padding-top:12px;font-size:11.5px;color:var(--dim)}
+.receipt{border-left:3px solid var(--cold);background:rgba(96,165,250,.07);border-radius:0 10px 10px 0;padding:11px 14px;margin-top:14px}
+</style>
+<div class="wrap">
+<p class="tag">Sketch 002 · Variant A — guided two-step</p>
+<div class="card" style="padding:20px;margin-top:12px">
+  <p class="tag">Adding to Midnight · AI was involved</p>
+  <b style="font-size:16px;display:block;margin:4px 0 2px">What did the AI do?</b>
+  <p class="sm dim" style="margin:0 0 12px">Honest answer here keeps your song yours. There is no wrong door.</p>
+  <div style="display:flex;flex-direction:column;gap:9px">
+    <button class="big sel"><b class="sm">It performed something we wrote</b><br>
+      <span class="xs dim">Sang our melody, played our part, or re-voiced a human take. Ownership untouched.</span><br>
+      <span class="xs" style="color:var(--good)">✓ the safe path — cite it proudly</span></button>
+    <button class="big"><b class="sm">It created something new</b><br>
+      <span class="xs dim">Invented a melody, lyric, solo, or arrangement we kept. That part is owned by no one.</span><br>
+      <span class="xs" style="color:var(--warn)">→ we'll show you how to make it yours</span></button>
+  </div>
+  <div style="border-top:1px solid var(--hair);margin:16px 0 12px;padding-top:14px">
+    <b class="sm" style="display:block;margin-bottom:8px">Step 2 · What did it touch?</b>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="chipbtn sel">Vocal</button><button class="chipbtn">Instrument</button>
+      <button class="chipbtn">Lyrics</button><button class="chipbtn">Melody</button><button class="chipbtn">Whole track</button>
+    </div>
+  </div>
+  <div class="receipt">
+    <b class="xs" style="color:var(--cold)">YOUR RECEIPT</b>
+    <p class="sm" style="margin:4px 0 0">“AI reference vocal — performed a human-written melody, demo only.”</p>
+    <p class="xs dim" style="margin:5px 0 0">Recorded on this version · zero effect on splits · disappears from your release if a human re-records · The Crate: <span style="color:var(--good)">still fully eligible</span></p>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn">Cancel</button><button class="btn pri">Record it</button></div>
+</div>
+<p class="note">Q: two big honest doors + chips — clear without feeling like a deposition? DDEX vocabulary appears only in the receipt.</p>
+</div>

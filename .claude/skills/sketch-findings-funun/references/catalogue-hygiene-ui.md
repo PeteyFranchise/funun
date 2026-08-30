@@ -1,0 +1,64 @@
+# My Catalogue — hygiene UI (Phase 37, decided 2026-08-30)
+
+## The four decided moments
+
+**Work page (001 → C desktop / A mobile).** Desktop: two-column — versions list sticky
+left, diary ledger right, header spans (score ring, title, contributor chips, splits
+status, ONE gradient CTA). Mobile: single-stream diary (A) as default with a
+Diary|Versions segmented toggle reaching the version-cards view (B). The diary is
+reverse-chron; entry types: version (vN chip), sheet event (§ amber), roster event, AI
+entry (blue). Every entry: bold what + date right-aligned + one dim consequence line.
+
+**AI-entry moment (002 → B first time, A after).** The account's FIRST-EVER AI entry
+runs conversational pacing (one question per bubble, plain words, "Not sure" routes to
+the hum-evidence check). Every later entry uses the two-door form: "It performed
+something we wrote" (green ✓ safe path) vs "It created something new" (amber → guided),
+then component chips (Vocal/Instrument/Lyrics/Melody/Whole track). DDEX vocabulary
+appears ONLY in the receipt block (cold-blue left border) which always states: the
+citation line, splits effect, release effect, Crate consequence. A keeps a "walk me
+through it again" link reopening B's pacing.
+
+**Nudges (003 → the split).** Hum-first = full-screen deliberate minute, ONCE per song,
+before its first AI entry: gradient record button center, owner copy leads — "Save and
+protect your idea by just humming or singing right now" — depth behind a read-more
+(reuse components/ui/LearnWhy.tsx), skip present but honest ("Continue without — I
+understand the risk"). Re-author = inline on the diary entry (recurs, low ceremony):
+"owned by no one" chip, Re-author (primary) / Keep as-is, disclosed (secondary), plus
+the note-for-note-doesn't-count line.
+
+**Destinations (004 → C hybrid).** Lights always in the work header: Crate / Release /
+Registration / Distribution — chips with ✓/✕/—. Click a light → its door expands inside
+the header card (max-height transition) with reason + fix buttons. A CLOSED door
+arrives PRE-OPENED (bad news explains itself; good news waits for a click). ⓘ beside
+The Crate opens a plain-words explainer — Funūn vocabulary is never a mystery inside
+someone's diary. DESTINATION-NEUTRAL: the Crate is offered, never assumed; Distribution
+door = DDEX-readiness + "Export DDEX metadata" + "Copy disclosure answers" (maps 1:1 to
+DistroKid's per-component AI Credits step).
+
+## Copy doctrine (use verbatim where possible)
+- "Hum every melody you want to own, and the song is entirely yours."
+- "Save and protect your idea by just humming or singing right now."
+- "Citation is a badge, not a confession." / "owned by no one" for AI-born material.
+- Closed Crate door: reason in one line + fix as buttons; the song "stays welcome
+  everywhere else."
+
+## What was tried and rejected
+- 001-B (versions-cards-only default on desktop) — hides the story; survives only as
+  the mobile toggle view.
+- 002 single-mode (either doors-only or chat-only) — first-timers need pacing, veterans
+  need speed; the split serves both.
+- 004-A alone (lights with one-line why) — not enough room for fixes; 004-B alone (full
+  panel) — costs a section permanently. Hybrid keeps both virtues.
+- Hard "no AI anywhere" Crate rule — unenforceable for DAW-level instrumentation;
+  vocals-only is the policed line (for now).
+
+## Theme tokens (match tailwind.config.ts — never invent)
+ink #0a0a0f · card #0E0D1E · card2 #1A1838 · lav #C7CBF7 · lavdim #7c80b4 ·
+hair rgba(199,203,247,.12) · grad 105deg #818CF8→#D946EF (ONE per screen, on the
+primary action) · good #34D399 · warn #FBBF24 · risk #F87171 · ai/cold #60A5FA ·
+money #F59E0B · Inter, radius 12 cards / 9 buttons / 999 chips.
+
+## Origin
+Sketches 001–004, .planning/sketches/ · doctrine:
+.planning/deliberations/the-catalogue-unreleased-works.md · winning sources in
+sources/.

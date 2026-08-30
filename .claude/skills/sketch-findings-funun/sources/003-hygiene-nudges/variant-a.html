@@ -1,0 +1,33 @@
+<title>003-A · Soft nudges</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"><style>
+:root{--ink:#0a0a0f;--card:#0E0D1E;--card2:#1A1838;--hair:rgba(199,203,247,.12);--hair2:rgba(199,203,247,.22);--lav:#C7CBF7;--dim:#7c80b4;--good:#34D399;--warn:#FBBF24;--risk:#F87171;--cold:#60A5FA;--money:#F59E0B;--grad:linear-gradient(105deg,#818CF8,#D946EF)}
+*{box-sizing:border-box}body{margin:0;background:var(--ink);color:#fff;font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding:28px 22px 60px}
+.tag{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px}
+.btn{border:1px solid var(--hair2);background:rgba(199,203,247,.06);color:var(--lav);font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.btn:hover{color:#fff}.pri{background:var(--grad);border:0;color:#fff;box-shadow:0 12px 30px -14px rgba(217,70,239,.55)}
+.dim{color:var(--dim)}.sm{font-size:12px}.xs{font-size:11px}
+.note{border-top:1px solid var(--hair);margin-top:26px;padding-top:12px;font-size:11.5px;color:var(--dim)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px}
+.c-good{background:rgba(52,211,153,.12);color:var(--good)}.c-warn{background:rgba(251,191,36,.12);color:var(--warn)}
+.c-risk{background:rgba(248,113,113,.13);color:var(--risk)}.c-cold{background:rgba(96,165,250,.13);color:var(--cold)}
+.chip i{width:5px;height:5px;border-radius:50%;background:currentColor;font-style:normal}
+</style>
+<div class="wrap">
+<p class="tag">Sketch 003 · Variant A — soft, inline, never blocking</p>
+<p class="sm dim" style="margin:8px 0 4px">Moment 1 — artist is about to add their first AI vocal to <b style="color:#fff">Midnight</b>:</p>
+<div class="card" style="border-color:rgba(129,140,248,.35);background:linear-gradient(105deg,rgba(129,140,248,.10),rgba(217,70,239,.07));padding:13px 15px">
+  <b class="sm">Save and protect your idea by just humming or singing right now</b>
+  <p class="xs dim" style="margin:4px 0 9px">Hum or record your melody before the AI sings it. That timestamp is your proof you wrote it.
+  <b style="color:var(--lav)">Hum every melody you want to own, and the song is entirely yours.</b></p>
+  <div style="display:flex;gap:8px"><button class="btn pri">⏺ Record a scratch take</button><button class="btn">I already have one — attach it</button><button class="btn" style="border:0;background:none">Skip</button></div>
+</div>
+<p class="sm dim" style="margin:24px 0 4px">Moment 2 — the AI invented a run and the artist kept it (inline, on the diary entry):</p>
+<div class="card" style="padding:13px 15px">
+  <div style="display:flex;justify-content:space-between"><b class="sm">v4 · AI guitar solo (bars 57–64)</b><span class="chip c-cold"><i></i>owned by no one</span></div>
+  <p class="xs dim" style="margin:5px 0 9px">Keeping it as-is is fine — it just stays public land. Make it yours instead:</p>
+  <div style="display:flex;gap:8px"><button class="btn pri">Re-author it →</button><button class="btn">Keep as-is, disclosed</button></div>
+  <p class="xs dim" style="margin:8px 0 0">Re-author = a human plays it their own way — new phrasing, their ending. Note-for-note replay doesn’t count.</p>
+</div>
+<p class="note">Q: is soft enough? Skippable banners get skipped — but artists mid-flow hate walls.</p>
+</div>
