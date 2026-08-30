@@ -1616,21 +1616,21 @@ watch the diary record every one of those without being asked to.
 tiers + splits nudge), S-03 (two shelves, two doors, Releases untouched), S-04 (copy full
 lyric, tagged + plain)
 **Depends on:** Phase 36
-**Plans:** 13 plans (5 waves)
+**Plans:** 11/13 plans executed
 
 Plans:
 
-- [ ] 37-01-PLAN.md — migrations 135–138 (works core, membership + RLS, sheet link, diary) + text-locks + human-gated push
-- [ ] 37-02-PLAN.md — pad logic: derived block numerals, linked repeats/detach, paste split, both lyric serializers
-- [ ] 37-03-PLAN.md — hygiene logic: the when-in-doubt citation, equal-split redraft, the single guiding line
-- [ ] 37-04-PLAN.md — row types, work tiers, the one access decision, diary event shapes
-- [ ] 37-05-PLAN.md — works API: start a song, rename, vocal state, members + writer promotion
-- [ ] 37-06-PLAN.md — capture API: hum/upload versions, AI entries with server-composed receipts, notes
-- [ ] 37-07-PLAN.md — blocks API: insert anywhere, repeat, detach, atomic reorder
-- [ ] 37-08-PLAN.md — the lyrics pad (sketch 006-A)
-- [ ] 37-09-PLAN.md — hum capture, the deliberate minute, the re-author prompt, the AI-entry flow (003-B/003-A/002-B/002-A)
-- [ ] 37-10-PLAN.md — the composer spine: composer card, one guiding line, the diary (005-C, 001-A/C)
-- [ ] 37-11-PLAN.md — work header (rename, three vocal states) + roster (membership vs splits)
+- [x] 37-01-PLAN.md — migrations 135–138 (works core, membership + RLS, sheet link, diary) + text-locks + human-gated push
+- [x] 37-02-PLAN.md — pad logic: derived block numerals, linked repeats/detach, paste split, both lyric serializers
+- [x] 37-03-PLAN.md — hygiene logic: the when-in-doubt citation, equal-split redraft, the single guiding line
+- [x] 37-04-PLAN.md — row types, work tiers, the one access decision, diary event shapes
+- [x] 37-05-PLAN.md — works API: start a song, rename, vocal state, members + writer promotion
+- [x] 37-06-PLAN.md — capture API: hum/upload versions, AI entries with server-composed receipts, notes
+- [x] 37-07-PLAN.md — blocks API: insert anywhere, repeat, detach, atomic reorder
+- [x] 37-08-PLAN.md — the lyrics pad (sketch 006-A)
+- [x] 37-09-PLAN.md — hum capture, the deliberate minute, the re-author prompt, the AI-entry flow (003-B/003-A/002-B/002-A)
+- [x] 37-10-PLAN.md — the composer spine: composer card, one guiding line, the diary (005-C, 001-A/C)
+- [x] 37-11-PLAN.md — work header (rename, three vocal states) + roster (membership vs splits)
 - [ ] 37-12-PLAN.md — the composer room: the work page, mounted and wired
 - [ ] 37-13-PLAN.md — two shelves, two doors, and the owner's blocking device test
 

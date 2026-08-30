@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to plan
-stopped_at: Completed 36-07-PLAN.md
-last_updated: "2026-08-27T00:00:00.000Z"
+stopped_at: Completed 37-09-PLAN.md (hum capture + AI-entry flow + hygiene nudges)
+last_updated: "2026-08-30T14:36:43.465Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 38
-  completed_phases: 29
-  total_plans: 237
-  completed_plans: 234
-  percent: 76
+  total_phases: 39
+  completed_phases: 30
+  total_plans: 250
+  completed_plans: 245
+  percent: 77
 ---
 
 # Project State
@@ -63,18 +63,22 @@ labels replace the unreleased type. Sketches viewable: public/sketches37 (gitign
 via dev server.
 
 **Open items, priority order:**
+
 1. **Eric's signup** (invite delivered 2026-08-30 07:37, he signs up in ~a day) — verify
    his profile row: handle written at INSERT, no gate, first stranger through Phase 36.
+
 2. **Tell Thomas**: next sign-in demands a handle (his real account is
    thomasphillips3@gmail.com; the dotted duplicate is deleted).
+
 3. **Turnstile in Vercel prod** — keys exist in .env.local only; waitlist has no bot
    check. Todo: 2026-08-27-configure-turnstile-production.md.
+
 4. **`/gsd-discuss-phase 37` — PRIORITY, owner wants the songwriter tool testable in prod SOON.** Bias plans to a 37.1 vertical slice (Start a song + composer + hum capture + lyrics pad + diary); defer the rest to 37.2+. Short discussion; the data model (works/versions vs vault_projects)
    is the main open question. Then plan/execute. Deferred sketch: the collaborator
    vantage (007).
+
 5. Settings save-on-switch manual check (from 2026-08-26) · Resend key rotation (low) ·
    phases 34/35 discussions · quick task 260825-m2k (stashed; renumber its migration).
-
 
 ### SESSION CLOSE 2026-08-26 — artist-side polish + account identity (resume here)
 
@@ -351,6 +355,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 36 P04 | 10min | 3 tasks | 5 files |
 | Phase 36 P06 | ~14min | 3 tasks | 5 files |
 | Phase 36 P07 | ~50min | 3 tasks | 4 files |
+| Phase 37 P09 | 25min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -624,6 +629,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 36]: 36-07: D-13 AMENDED — NOT NULL on user_profiles.handle is DEFERRED with a named owner tripwire ("the moment we start to see handle-less accounts posting on the website"). The blocker is INSERT-time provisioning, not old rows: app_metadata is invisible to handle_new_user() at INSERT, so all four admin lanes fall through to the default branch and a non-nullable column would reject buyer/staff/industry/curator provisioning AND fire inside migration 133's D-15 fallback, turning a lost handle race back into a lost signup.
 - [Phase 36]: 36-07: presence is the ONLY handle property still application-enforced (D-09's gate). The database now owns uniqueness (010), reserved/retired names (133) and format (134's user_profiles_handle_format_chk). Residual: the gate guards page loads, not direct API calls — security-neutral, but a handle-less account can surface on social surfaces.
 - [Phase 36]: 36-07: migration 134 writes to NO row. Its planned fixture sweep was removed after the owner deleted the five fixture accounts outright — the remaining handle-less rows are three real people, and generating handles for them would violate D-09's prompted-never-assigned rule.
+- [Phase 37]: Test-only injectable props (isTypeSupported, initialError, initialResult) drive HumCaptureButton/AiEntryFlow states unreachable via renderToStaticMarkup alone, since this repo has no jsdom/testing-library — Mirrors pickSupportedMimeType()'s own injectable-predicate convention rather than inventing a new test mechanism; documented inline as never set by a production caller.
 
 ### Pending Todos
 
@@ -714,8 +720,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-27T00:00:00.000Z
-Stopped at: Completed 36-07-PLAN.md
+Last session: 2026-08-30T14:36:43.437Z
+Stopped at: Completed 37-09-PLAN.md (hum capture + AI-entry flow + hygiene nudges)
 Resume file: 
 None
 Stopped at: Completed 28-03-PLAN.md
