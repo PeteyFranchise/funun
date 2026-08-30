@@ -26,9 +26,9 @@ doors; the safe path is always the obvious path with depth folded behind read-mo
 ## Design Areas
 | Area | Reference | Key Decision |
 |------|-----------|--------------|
-| Catalogue hygiene UI (all four moments) | references/catalogue-hygiene-ui.md | 001 C-desktop/A-mobile · 002 chat-first-then-doors · 003 the split · 004 hybrid lights-open-doors, destination-neutral |
+| Catalogue hygiene UI (all four moments) | references/catalogue-hygiene-ui.md | 001 C-desktop/A-mobile · 002 chat-first-then-doors · 003 the split · 004 hybrid lights-open-doors, destination-neutral · 005 composer + one guiding line |
 </findings_index>
 
 <processed_sketches>
-processed: [001, 002, 003, 004]
+processed: [001, 002, 003, 004, 005]
 </processed_sketches>

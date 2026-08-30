@@ -96,6 +96,12 @@ diary as default with a Diary|Versions toggle reaching B's cards.
 002 DECIDED → conversational (B) for the account's FIRST-EVER AI entry, then the
 two-door form (A) forever after; A keeps a "walk me through it again" link that reopens
 B's pacing; DDEX vocabulary only ever in the receipt.
+005 DECIDED → C: the composer room (one bar, four verbs — Hum it / Write lyrics / Add
+audio / Note — AI questions and evidence folding inline into the add flow) with ONE
+guiding line between composer and diary: the song's single next-best step, rotating
+(splits nudge → hum-to-claim → DDEX gap → Crate-qualifies), dismissible, never a stack,
+absent when nothing is needed. Creation leads; the song gets one sentence. Empty state:
+"Start with a hum."
 004 DECIDED → C, the hybrid: lights always visible, any light opens its door, closed
 doors arrive pre-opened; four destination-neutral doors (Crate/Release/Registration/
 Distribution); an ⓘ beside The Crate opens a plain-words explainer ("Funūn's sync

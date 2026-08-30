@@ -35,6 +35,17 @@ someone's diary. DESTINATION-NEUTRAL: the Crate is offered, never assumed; Distr
 door = DDEX-readiness + "Export DDEX metadata" + "Copy disclosure answers" (maps 1:1 to
 DistroKid's per-component AI Credits step).
 
+**The composer (005 → C).** Every song page leads with the composer card: "Add to this
+song —" + four verb tiles (🎙 Hum it / ✎ Write lyrics / ⬆ Add audio / 💬 Note) + the
+reassurance line ("Whatever you add, the song remembers — who, what, when. That's your
+proof, kept automatically."). Directly beneath: ONE guiding line — 💡 "Next for this
+song: …" with a Do-it button and a dismiss ✕ — gradient-tinted border, rotates through
+the song's single most important next step, never stacks, absent when nothing is
+needed. The diary follows, clean (nudges live in the line, not on entries). Empty state
+= "Start with a hum" hero with Hum-your-idea primary + Start-with-lyrics secondary.
+AI questions (002) and hum-first (003) fire INSIDE the add flows, never as separate
+chores. Creation is the interface; evidence is the exhaust.
+
 ## Copy doctrine (use verbatim where possible)
 - "Hum every melody you want to own, and the song is entirely yours."
 - "Save and protect your idea by just humming or singing right now."
@@ -59,6 +70,6 @@ primary action) · good #34D399 · warn #FBBF24 · risk #F87171 · ai/cold #60A5
 money #F59E0B · Inter, radius 12 cards / 9 buttons / 999 chips.
 
 ## Origin
-Sketches 001–004, .planning/sketches/ · doctrine:
+Sketches 001–005, .planning/sketches/ · doctrine:
 .planning/deliberations/the-catalogue-unreleased-works.md · winning sources in
 sources/.
