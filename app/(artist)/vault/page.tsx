@@ -10,6 +10,7 @@ import type { ProjectRole } from '@/lib/vault/membership'
 import { Topbar, TopbarSearch } from '@/components/layout/Topbar'
 import { CatalogueShelf } from '@/components/catalogue/CatalogueShelf'
 import type { CatalogueCard, CatalogueWorkCard, CatalogueWorkContributor } from '@/components/catalogue/WorkCard'
+import { profileDisplayTitle } from '@/lib/profile/display-name'
 import { latestVersion, type WorkVersionRecord } from '@/lib/catalogue/versions'
 import type { Work } from '@/types/catalogue'
 
@@ -50,7 +51,9 @@ type WorkRow = Work & {
 }
 
 function initialOf(name: string | null | undefined): string {
-  const trimmed = (name ?? '').trim()
+  // Strip a leading '@' so a handle-derived name (e.g. '@peterzora', when no
+  // artist name is set — Phase 36's fallback identity) yields 'P', not '@'.
+  const trimmed = (name ?? '').trim().replace(/^@/, '')
   return trimmed ? trimmed[0]!.toUpperCase() : '?'
 }
 
@@ -119,6 +122,9 @@ function buildWorkCard(
 export default async function VaultPage() {
   let projects: VaultProjectRow[] = []
   let artist: string | null = null
+  // The viewer's own @handle — Phase 36's fallback identity, so a contributor
+  // dot on the viewer's own work never renders '?' when no artist name is set.
+  let viewerHandle: string | null = null
   let error: { message: string } | null = null
   // "Shared with me" lane (③) — populated only in the live (non-demo) path
   // below. Kept as a wholly separate array from `projects`/`cards`; never
@@ -158,7 +164,7 @@ export default async function VaultPage() {
     // exclusion is satisfied "for free". Do not widen it for the shared
     // lane below; that is a wholly separate, parallel query.
     const [{ data: profile }, res, membershipRes, ownedWorksRes, workMembershipRes] = await Promise.all([
-      supabase.from('user_profiles').select('artist_name').eq('id', user?.id ?? '').maybeSingle(),
+      supabase.from('user_profiles').select('artist_name, handle').eq('id', user?.id ?? '').maybeSingle(),
       supabase
         .from('vault_projects')
         .select(
@@ -190,6 +196,7 @@ export default async function VaultPage() {
     ])
 
     artist = profile?.artist_name ?? null
+    viewerHandle = (profile as { handle?: string | null } | null)?.handle ?? null
     projects = (res.data ?? []) as VaultProjectRow[]
     error = res.error
     ownedWorks = (ownedWorksRes.data ?? []) as unknown as WorkRow[]
@@ -330,7 +337,11 @@ export default async function VaultPage() {
     .filter(p => p.type === 'unreleased')
     .map(p => ({ kind: 'legacy' as const, id: p.id, title: p.title, lastActivityAt: p.updated_at }))
 
-  const workCardContext = { viewerId: viewerId ?? '', viewerArtistName: artist, collabNameById, workOwnerNameById, sheetByWorkId }
+  // The viewer's own display name for their contributor dot: artist name when
+  // set, else '@handle' (Phase 36's fallback), never a fabricated '?'. `null`
+  // only in the unreachable no-name-no-handle case (handle is mandatory).
+  const viewerDisplayName = profileDisplayTitle({ artistName: artist, handle: viewerHandle }) || null
+  const workCardContext = { viewerId: viewerId ?? '', viewerArtistName: viewerDisplayName, collabNameById, workOwnerNameById, sheetByWorkId }
   const catalogueCards: CatalogueCard[] = [
     ...ownedWorks.map(w => buildWorkCard(w, workCardContext)),
     ...memberWorks.map(w => buildWorkCard(w, workCardContext)),
@@ -438,7 +449,12 @@ export default async function VaultPage() {
           <p className="rounded-card border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
             Couldn’t load your vault: {error.message}
           </p>
-        ) : cards.length === 0 ? (
+        ) : cards.length > 0 ? (
+          <VaultBrowser cards={cards} />
+        ) : catalogueCards.length === 0 ? (
+          // The whole vault is empty — no catalogue songs AND no releases.
+          // (Before the catalogue shelf existed this gated on releases alone,
+          // which is why it wrongly showed under a populated My Catalogue.)
           <div className="mt-16 flex flex-col items-center text-center">
             <p className="text-lg font-semibold text-white">Your vault is empty</p>
             <p className="mt-1 max-w-sm text-sm text-lavdim">
@@ -453,7 +469,11 @@ export default async function VaultPage() {
             </Link>
           </div>
         ) : (
-          <VaultBrowser cards={cards} />
+          // Catalogue has songs but no releases yet — a quiet note beats the
+          // whole-vault empty pitch (which is what the user saw as a bug).
+          <p className="mt-10 text-sm text-lavdim">
+            No releases yet — when a song’s ready to put out, start a release from “New project”.
+          </p>
         )}
 
         {sharedCards.length > 0 && (
