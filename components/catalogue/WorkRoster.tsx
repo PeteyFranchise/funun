@@ -114,7 +114,7 @@ function DesignationPicker({
 }) {
   const [showMore, setShowMore] = useState(false)
   const chip =
-    'rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[11.5px] font-semibold text-lav hover:text-white disabled:opacity-40'
+    'rounded-lg bg-grad px-3 py-1.5 text-[11.5px] font-semibold text-white hover:opacity-90 disabled:opacity-40'
   return (
     <div className="mt-2 rounded-[9px] border border-hair bg-card2 px-3 py-2.5">
       <p className="text-[11.5px] font-semibold text-white">What did you write?</p>
@@ -331,13 +331,14 @@ export function WorkRoster({
               >
                 {!member.avatarUrl && initialsOf(member.name)}
               </span>
-              <div className="flex flex-wrap items-center gap-[6px]">
-                <span className="text-[13px] font-semibold text-white">{member.name}</span>
-              <span className="rounded-full bg-lav/[.08] px-2 py-0.5 text-[10px] font-bold text-lav">
-                {member.isOwner ? 'Owner' : WORK_TIER_LABELS[member.tier]}
-              </span>
+              <div className="flex min-w-0 items-center">
+                <span className="truncate text-[13px] font-semibold text-white">{member.name}</span>
+              </div>
+            </div>
+            <div className="ml-auto flex flex-none items-center gap-[6px]">
               {/* ✍ / 🎤 — same badge vocabulary as the pad, so one person
-                  reads the same in both places. */}
+                  reads the same in both places. Right-aligned so the plate
+                  reads name-left / credit-right. */}
               {member.isWriterBadge && (
                 <span aria-label="Writer" title="Writer">
                   ✍
@@ -358,7 +359,6 @@ export function WorkRoster({
                   Pending — hasn&apos;t signed up yet
                 </span>
               )}
-              </div>
             </div>
 
             {canManage && !member.isOwner && !member.isOnSheet && choosingWriterFor !== member.id && (
