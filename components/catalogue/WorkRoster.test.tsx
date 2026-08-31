@@ -89,4 +89,37 @@ describe('WorkRoster', () => {
     )
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
+
+  // ─── Owner self-add as a writer (split-sheet section) ─────────────────
+
+  const ownerOffSheet: WorkRosterMember[] = [
+    { id: 'm-owner', name: 'peterzora', tier: 'administer', isOwner: true, isPending: false, isOnSheet: false },
+    { id: 'm-ben', name: 'Ben Cooke', tier: 'contribute', isOwner: false, isPending: false, isOnSheet: false },
+  ]
+
+  it('offers the owner a self-add-as-writer control, with its proper-use copy, when they are not yet on the sheet', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={ownerOffSheet} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).toContain('Add yourself as a writer')
+    expect(markup).toContain('put yourself on the split sheet')
+    expect(markup).toContain('What makes someone a writer?')
+    // It lives in the split-sheet section, never inside the collaborator form.
+    const formMatch = markup.match(/<form[\s\S]*?<\/form>/)
+    expect(formMatch?.[0] ?? '').not.toContain('Add yourself as a writer')
+  })
+
+  it('drops the self-add control once the owner is on the sheet', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).not.toContain('Add yourself as a writer')
+  })
+
+  it('never shows self-add to a non-owner, even when the owner is off the sheet', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={ownerOffSheet} viewerTier="contribute" viewerIsOwner={false} />
+    )
+    expect(markup).not.toContain('Add yourself as a writer')
+  })
 })

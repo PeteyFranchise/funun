@@ -58,10 +58,13 @@ export async function POST(_request: Request, { params }: RouteCtx) {
   }
 
   // planWriterPromotion() needs a display NAME (PartyIdentity), which
-  // work_members itself does not carry. Read it from the collaborator row
-  // — every invited member has one (migration 136: collaborator_id is
-  // NULL only for the owner's own row, and the owner is never routed
-  // through this endpoint since they already own the work outright).
+  // work_members itself does not carry. For an invited member it comes from
+  // the collaborator row (migration 136: collaborator_id is set for every
+  // invitee). For the OWNER's own row — collaborator_id NULL — it comes
+  // from the profile: the owner can now add THEMSELVES as a writer from the
+  // roster (they wrote the song), so this endpoint must resolve their name
+  // too. Artist name, else the handle (Phase 36's fallback identity), never
+  // a fabricated stand-in.
   let name: string | null = null
   if (member.collaborator_id) {
     const { data: collaborator } = await service
@@ -70,6 +73,13 @@ export async function POST(_request: Request, { params }: RouteCtx) {
       .eq('id', member.collaborator_id)
       .maybeSingle()
     name = collaborator?.name ?? null
+  } else if (member.user_id) {
+    const { data: profile } = await service
+      .from('user_profiles')
+      .select('artist_name, handle')
+      .eq('id', member.user_id)
+      .maybeSingle()
+    name = profile?.artist_name?.trim() || profile?.handle || null
   }
 
   if (!name) {

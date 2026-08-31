@@ -7,6 +7,7 @@ import {
   WORK_TIER_VALUES,
   type WorkTier,
 } from '@/lib/catalogue/membership'
+import { LearnWhy } from '@/components/ui/LearnWhy'
 
 // ─── WorkRoster — who is on the song, and who is on the sheet ──────────
 // (S-02, doctrine — plan 11.)
@@ -110,6 +111,10 @@ export function WorkRoster({
   const linkInputRef = useRef<HTMLInputElement | null>(null)
 
   const writersOnSheet = list.filter(m => m.isOnSheet)
+  // The owner's own row — the one member who has no per-row "Mark as writer"
+  // button (that control is for promoting collaborators). When the owner
+  // isn't yet on the sheet, the split-sheet section offers them a self-add.
+  const ownerMember = list.find(m => m.isOwner)
 
   function resetAddForm() {
     setAddState('form')
@@ -185,6 +190,9 @@ export function WorkRoster({
 
   async function handlePromote(member: WorkRosterMember) {
     if (!canManage || member.isOnSheet || promotingId) return
+    // Captured before the optimistic update: a first writer is a sole
+    // writer (no split to draft), a later one triggers the equal redraft.
+    const priorWriterCount = list.filter(m => m.isOnSheet).length
     setPromotingId(member.id)
     setPromotionMessage(null)
     try {
@@ -199,8 +207,13 @@ export function WorkRoster({
         // CAT-Q1a, in words, never a number: equal is the default, and
         // writers move it from there themselves if they choose. This
         // component never states, computes, or displays what the new
-        // share actually is.
-        setPromotionMessage(`${member.name} was added to the split sheet — redrafted to equal shares.`)
+        // share actually is. The sole-writer case is stated honestly — there
+        // is no split to "redraft to equal" when there is only one writer.
+        setPromotionMessage(
+          priorWriterCount === 0
+            ? `${member.name} is now the only writer on the sheet.`
+            : `${member.name} was added to the split sheet — redrafted to equal shares.`
+        )
         onWriterPromoted?.(member.id)
       } else {
         setPromotionMessage(json.error ?? 'Could not promote — try again')
@@ -289,6 +302,39 @@ export function WorkRoster({
             ))
           )}
         </div>
+
+        {/* The owner's self-add — the split sheet is the ownership section,
+            so the owner's "I wrote this" claim belongs here, not in the
+            access-oriented "Add a collaborator" form below. Shown only to
+            the owner, only while they are not already on the sheet. */}
+        {viewerIsOwner && ownerMember && !ownerMember.isOnSheet && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => handlePromote(ownerMember)}
+              disabled={promotingId === ownerMember.id}
+              className="rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[12px] font-semibold text-lav hover:text-white disabled:opacity-40"
+            >
+              {promotingId === ownerMember.id ? 'Adding…' : '+ Add yourself as a writer'}
+            </button>
+            <p className="mt-2 text-[11px] text-lavdim">
+              You wrote this — put yourself on the split sheet. You&apos;ll hold the whole song
+              until other writers are added; then it splits equally between you, unless you
+              change it.
+            </p>
+            <div className="mt-2">
+              <LearnWhy label="What makes someone a writer?">
+                <p className="text-[11px] text-lavdim">
+                  A writer is anyone who created the music or the lyrics — a composer, a lyricist,
+                  or both. These are the people who own the song, not everyone who helped make it.
+                  It&apos;s what your contracts, your PRO (ASCAP/BMI), and your registrations read
+                  from, so add a writer only for real songwriting. Session help, feedback, or
+                  access to the file isn&apos;t writing — keep those as collaborators.
+                </p>
+              </LearnWhy>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── Add a collaborator — the field shape matches the existing
