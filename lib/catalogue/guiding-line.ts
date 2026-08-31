@@ -83,6 +83,15 @@ export type GuidingLineSnapshot = {
   splitsNudgeFiredFor: string[]
   /** The pad setting (sketch 006): 'on' shows the courtesy line; 'doors_only' silences the splits step entirely. */
   splitReminderSetting: 'on' | 'doors_only'
+  /**
+   * The viewer's own identity key, set ONLY when the viewer can actually
+   * put themselves on the sheet (the owner). When their own row is among
+   * `writersMissingFromSheet`, the splits step becomes a first-person
+   * "add yourself" that persists until they resolve it — writing your own
+   * song and not being on its sheet is a state to fix, not a one-time
+   * courtesy about someone else. Undefined for a viewer who can't self-add.
+   */
+  viewerIdentityKey?: string
 }
 
 // ─── Splits nudge ──────────────────────────────────────────────────────
@@ -93,8 +102,34 @@ function resolveSplitsStep(snapshot: GuidingLineSnapshot): GuidingLineStep | nul
   // never appears, no matter how many writers are missing.
   if (snapshot.splitReminderSetting === 'doors_only') return null
 
+  // The viewer's OWN claim comes first and is treated differently: it is
+  // NOT subject to Gate 1 (fired-once), because "you wrote this but aren't
+  // on the sheet" is a state to resolve, not a one-time courtesy about
+  // someone else — it should keep offering until they add themselves (at
+  // which point they leave `writersMissingFromSheet` and it stops on its
+  // own). Still dismissible (Gate 2), and worded first-person.
+  if (snapshot.viewerIdentityKey) {
+    const self = snapshot.writersMissingFromSheet.find(
+      w => identityKey(w) === snapshot.viewerIdentityKey
+    )
+    if (self && !snapshot.dismissedStepKeys.includes(`splits:${snapshot.viewerIdentityKey}`)) {
+      return {
+        key: 'splits',
+        headline: "You've written on this — add yourself as a writer?",
+        reason: 'Writing the song and owning a share of it are separate facts — this puts you on the split sheet.',
+        actionLabel: 'Add yourself',
+        actionTarget: 'splits',
+        contributorIdentity: snapshot.viewerIdentityKey,
+      }
+    }
+  }
+
   for (const writer of snapshot.writersMissingFromSheet) {
     const key = identityKey(writer)
+
+    // The viewer's own row is handled first-person above — never also
+    // nudge about yourself in the third person.
+    if (key === snapshot.viewerIdentityKey) continue
 
     // Gate 1 — once per new contributor per work, regardless of dismissal.
     if (snapshot.splitsNudgeFiredFor.includes(key)) continue

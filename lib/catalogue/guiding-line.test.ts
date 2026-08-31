@@ -153,3 +153,56 @@ describe('resolveGuidingLine — cadence gates', () => {
     expect(step?.headline).toContain('Cara')
   })
 })
+
+describe('resolveGuidingLine — the viewer’s own writer claim (first-person)', () => {
+  const me = { collaboratorId: null, userId: 'me-id', name: 'peterzora' }
+  const meKey = 'user:me-id'
+
+  it('phrases the viewer’s own missing-writer nudge in the first person', () => {
+    const step = resolveGuidingLine(
+      baseSnapshot({ writersMissingFromSheet: [me], viewerIdentityKey: meKey })
+    )
+    expect(step?.key).toBe('splits')
+    expect(step?.headline.toLowerCase()).toContain('add yourself')
+    expect(step?.actionLabel).toBe('Add yourself')
+    expect(step?.headline).not.toMatch(/\d/)
+  })
+
+  it('keeps offering the self-claim even after it has fired before (not gated once)', () => {
+    const step = resolveGuidingLine(
+      baseSnapshot({
+        writersMissingFromSheet: [me],
+        viewerIdentityKey: meKey,
+        splitsNudgeFiredFor: [meKey], // would suppress a third-person nudge
+      })
+    )
+    expect(step?.headline.toLowerCase()).toContain('add yourself')
+  })
+
+  it('respects a dismissal of the self-claim, falling through to others', () => {
+    const step = resolveGuidingLine(
+      baseSnapshot({
+        writersMissingFromSheet: [me, ben],
+        viewerIdentityKey: meKey,
+        dismissedStepKeys: [`splits:${meKey}`],
+      })
+    )
+    // Self is dismissed → the next eligible is the third-person Ben nudge.
+    expect(step?.headline.toLowerCase()).not.toContain('add yourself')
+    expect(step?.headline).toContain('Ben')
+  })
+
+  it('puts the viewer’s own claim ahead of nudging about someone else', () => {
+    const step = resolveGuidingLine(
+      baseSnapshot({ writersMissingFromSheet: [ben, me], viewerIdentityKey: meKey })
+    )
+    expect(step?.headline.toLowerCase()).toContain('add yourself')
+    expect(step?.headline).not.toContain('Ben')
+  })
+
+  it('falls back to third-person for a viewer who cannot self-add (no viewerIdentityKey)', () => {
+    const step = resolveGuidingLine(baseSnapshot({ writersMissingFromSheet: [me] }))
+    expect(step?.headline.toLowerCase()).not.toContain('add yourself')
+    expect(step?.headline).toContain('peterzora')
+  })
+})

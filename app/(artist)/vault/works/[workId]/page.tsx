@@ -10,7 +10,7 @@ import { deriveVersionNumerals, presentVersion } from '@/lib/catalogue/versions'
 import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } from '@/lib/catalogue/diary'
 import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
-import { writersMissingFromSheet, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
+import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
 import type { LyricsPadBlock } from '@/components/catalogue/LyricsPad'
@@ -327,6 +327,13 @@ export default async function WorkComposerPage({
     // the destination doors in 37.2. Until it exists, the courtesy line
     // always shows (never silenced).
     splitReminderSetting: 'on',
+    // Only the owner can put themselves on the sheet (the roster self-add is
+    // owner-only), so only the owner gets the first-person "add yourself"
+    // treatment; every other viewer sees the ordinary third-person nudge.
+    viewerIdentityKey:
+      user && user.id === work.user_id
+        ? identityKey({ collaboratorId: null, userId: user.id, name: '' })
+        : undefined,
   }
 
   const isEmpty = versions.length === 0 && blocks.length === 0
