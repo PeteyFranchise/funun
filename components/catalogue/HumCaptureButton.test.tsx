@@ -16,7 +16,7 @@ describe('HumCaptureButton', () => {
       <HumCaptureButton workId="w1" onCaptured={noop} isTypeSupported={() => true} />
     )
     expect(markup).toContain('tap to record')
-    expect(markup).toContain('⏺')
+    expect(markup).toContain('🎙')
   })
 
   it('unsupported state: renders nothing when no candidate is supported', () => {

@@ -48,7 +48,7 @@ describe('WorkHeader', () => {
       <WorkHeader {...baseProps} vocalState="primary" primaryPerformerLabel="peterzora" />
     )
     expect(markup).toContain('primary performer: @peterzora')
-    expect(markup).toContain('every section uses this unless you tag one')
+    expect(markup).toContain('every section, unless you tag someone else')
   })
 
   it('renders the varies state distinctly, without the coverage line', () => {
@@ -57,7 +57,7 @@ describe('WorkHeader', () => {
     )
     expect(markup).toContain('Varies')
     expect(markup).toContain('per-block')
-    expect(markup).not.toContain('every section uses this unless you tag one')
+    expect(markup).not.toContain('every section, unless you tag someone else')
   })
 
   it('renders the instrumental state distinctly and states what it causes, without the coverage line', () => {
@@ -66,7 +66,7 @@ describe('WorkHeader', () => {
     )
     expect(markup).toContain('Instrumental — no vocals')
     expect(markup).toContain('Crate vocal check')
-    expect(markup).not.toContain('every section uses this unless you tag one')
+    expect(markup).not.toContain('every section, unless you tag someone else')
   })
 
   it('each of the three vocal states renders its own distinct affordance', () => {

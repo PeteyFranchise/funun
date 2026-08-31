@@ -39,26 +39,25 @@ export function GuidingLine({ step, onDoIt, onDismiss }: GuidingLineProps) {
   if (!step) return null
 
   return (
-    <div className="mt-2 flex items-center gap-[9px] rounded-[10px] border border-brandindigo/30 bg-gradient-to-r from-brandindigo/10 to-brandfuchsia/5 px-[13px] py-[9px]">
-      <span aria-hidden="true" className="text-[13px]">💡</span>
-      <span className="flex-1 text-[11px] text-lav">
-        <b className="font-bold text-white">Next for this song:</b> {step.headline}
-      </span>
-      <button
-        type="button"
-        onClick={() => onDoIt(step)}
-        className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[11px] py-[4px] text-[11px] font-semibold text-lav hover:text-white"
-      >
-        {step.actionLabel} →
-      </button>
+    <div className="relative mt-2 flex flex-col gap-[8px] rounded-[10px] border border-brandindigo/30 bg-gradient-to-r from-brandindigo/10 to-brandfuchsia/5 px-[14px] py-[13px]">
       <button
         type="button"
         onClick={() => onDismiss(step)}
         aria-label="Dismiss"
         title="Dismiss"
-        className="border-0 bg-transparent p-0 text-[13px] text-lavdim hover:text-white"
+        className="absolute right-[12px] top-[12px] border-0 bg-transparent p-0 text-[12px] text-lavdim hover:text-white"
       >
         ✕
+      </button>
+      <p className="flex items-center gap-2 pr-6 text-[12.5px] font-bold text-white">
+        <span aria-hidden="true">💡</span> {step.headline}
+      </p>
+      <button
+        type="button"
+        onClick={() => onDoIt(step)}
+        className="self-start rounded-[9px] bg-gradient-to-r from-brandindigo to-brandfuchsia px-[14px] py-[7px] text-[11.5px] font-bold text-white hover:opacity-90"
+      >
+        {step.actionLabel} →
       </button>
     </div>
   )

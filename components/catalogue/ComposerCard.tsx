@@ -50,16 +50,16 @@ export function ComposerCard({ onHum, onWriteLyrics, onAddAudio, onNote, support
 
   return (
     <div className="rounded-[12px] border border-brandindigo/40 bg-card px-4 py-[14px]">
-      <p className="mb-[9px] text-[11px] text-lavdim">Add to this song —</p>
-      <div className="flex gap-2">
+      <p className="mb-[9px] text-[11px] text-lavdim">Add to this song</p>
+      <div className="grid grid-cols-2 gap-[7px]">
         {verbs.map(verb => (
           <button
             key={verb.key}
             type="button"
             onClick={verb.onClick}
-            className="flex flex-1 flex-col items-center gap-[5px] rounded-[11px] border border-hair bg-card2 px-2 py-[13px] text-[12px] font-semibold text-lav hover:border-hairstrong hover:text-white"
+            className="flex flex-col items-center justify-center gap-[7px] rounded-[9px] border border-hairstrong bg-card2 px-2 py-[11px] text-[12px] font-semibold text-white hover:border-brandindigo/50"
           >
-            <b aria-hidden="true" className="text-[19px]">{verb.glyph}</b>
+            <span aria-hidden="true" className="grid h-[30px] w-[30px] place-items-center rounded-[7px] border border-hairstrong bg-lav/[.09] text-[15px]">{verb.glyph}</span>
             {verb.label}
           </button>
         ))}

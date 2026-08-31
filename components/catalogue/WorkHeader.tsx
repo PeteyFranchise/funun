@@ -223,8 +223,9 @@ export function WorkHeader({
               deliberately not decoration, it's the fact the state sets. */}
           {localVocalState === 'primary' && (
             <p className="mt-[7px] text-[11.5px] text-lavdim">
-              🎤 primary performer: {primaryPerformerLabel ? `@${primaryPerformerLabel}` : 'you'} —
-              every section uses this unless you tag one.
+              🎤 <span className="font-semibold text-lav">primary performer: {primaryPerformerLabel ? `@${primaryPerformerLabel}` : 'you'}</span>
+              <br />
+              every section, unless you tag someone else.
             </p>
           )}
           {localVocalState === 'varies' && (

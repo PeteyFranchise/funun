@@ -213,16 +213,28 @@ export function HumCaptureButton({
   }
 
   return (
-    <div className="flex flex-col items-center gap-[8px]">
-      <button
-        type="button"
-        onClick={recording ? stopRecording : startRecording}
-        disabled={saving}
-        aria-label={recording ? 'Stop recording' : 'Record'}
-        className="flex h-24 w-24 items-center justify-center rounded-full bg-grad text-[30px] text-white shadow-cta disabled:opacity-60"
-      >
-        ⏺
-      </button>
+    <div className="flex flex-col items-center gap-[10px]">
+      <div className="relative grid place-items-center">
+        {recording && (
+          <span aria-hidden="true" className="absolute h-24 w-24 rounded-full border-2 border-brandfuchsia/50 animate-ping" />
+        )}
+        <button
+          type="button"
+          onClick={recording ? stopRecording : startRecording}
+          disabled={saving}
+          aria-label={recording ? 'Stop recording' : 'Record'}
+          className="relative flex h-24 w-24 items-center justify-center rounded-full bg-grad text-[34px] text-white shadow-cta disabled:opacity-60"
+        >
+          🎙
+        </button>
+      </div>
+      {recording && (
+        <div aria-hidden="true" className="flex h-[22px] items-end gap-[3px]">
+          {[8, 15, 22, 12, 25, 16, 23, 10, 19, 13, 7].map((h, i) => (
+            <span key={i} className="w-[3px] rounded-full bg-brandindigo/80 animate-pulse" style={{ height: h }} />
+          ))}
+        </div>
+      )}
       <p className="text-[11px] text-lavdim">
         {saving ? 'Saving…' : recording ? `recording · ${formatElapsed(elapsedSeconds)}` : 'tap to record · 0:00'}
       </p>

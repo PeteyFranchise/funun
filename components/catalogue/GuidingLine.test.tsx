@@ -19,7 +19,6 @@ describe('GuidingLine', () => {
   it('renders the lamp, the bold prefix, the sentence, the action label and the dismiss', () => {
     const markup = renderToStaticMarkup(<GuidingLine step={mockStep} onDoIt={noop} onDismiss={noop} />)
     expect(markup).toContain('💡')
-    expect(markup).toContain('Next for this song:')
     expect(markup).toContain('Start with a hum')
     expect(markup).toContain('Hum it in')
     expect(markup).toContain('✕')
