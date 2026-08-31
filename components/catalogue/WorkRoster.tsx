@@ -8,6 +8,13 @@ import {
   type WorkTier,
 } from '@/lib/catalogue/membership'
 import { LearnWhy } from '@/components/ui/LearnWhy'
+import {
+  PRIMARY_WRITER_DESIGNATIONS,
+  WRITER_DESIGNATIONS,
+  WRITER_DESIGNATION_LABELS,
+  WRITER_DESIGNATION_PLAIN,
+  type WriterDesignation,
+} from '@/lib/catalogue/designation'
 
 // ─── WorkRoster — who is on the song, and who is on the sheet ──────────
 // (S-02, doctrine — plan 11.)
@@ -38,6 +45,8 @@ export type WorkRosterMember = {
   isPending: boolean
   /** True when this person is currently a party on the work's living-draft split sheet. */
   isOnSheet: boolean
+  /** The writer's DDEX/PRO designation when on the sheet (lib/catalogue/designation.ts), else null/undefined. Display only. */
+  writerDesignation?: WriterDesignation | null
   /**
    * ✍ badge — matches the pad's own badge vocabulary (PERFORMER RULE:
    * "whoever typed; moves splits"). Supplied by the caller, since only
@@ -82,6 +91,66 @@ type AddFormState = 'form' | 'sending' | 'done' | 'error'
 const INPUT_CLASS =
   'w-full rounded-lg border border-hairstrong bg-card2 px-3 py-2 text-[13.5px] text-white placeholder:text-lavdim/60 transition focus:border-brandindigo focus:outline-none'
 
+// ─── Designation picker — captured at the moment a writer is added ──────
+// The DDEX/PRO role (Composer / Lyricist / both, plus the rarer arranger /
+// adapter / translator behind "More roles"). Plain-language up front ("what
+// did you write"), the formal designation is what's stored + mapped. A
+// "Skip" promotes with no role — an honest "not stated", never a fabricated
+// Composer — since the owner may not know a collaborator's exact role yet.
+const SECONDARY_DESIGNATIONS = WRITER_DESIGNATIONS.filter(
+  d => !PRIMARY_WRITER_DESIGNATIONS.includes(d)
+)
+
+function DesignationPicker({
+  onPick,
+  onCancel,
+  busy,
+}: {
+  onPick: (designation: WriterDesignation | null) => void
+  onCancel: () => void
+  busy: boolean
+}) {
+  const [showMore, setShowMore] = useState(false)
+  const chip =
+    'rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[11.5px] font-semibold text-lav hover:text-white disabled:opacity-40'
+  return (
+    <div className="mt-2 rounded-[9px] border border-hair bg-card2 px-3 py-2.5">
+      <p className="text-[11.5px] font-semibold text-white">What did you write?</p>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {PRIMARY_WRITER_DESIGNATIONS.map(d => (
+          <button key={d} type="button" disabled={busy} onClick={() => onPick(d)} className={chip}>
+            {WRITER_DESIGNATION_PLAIN[d]}
+          </button>
+        ))}
+        {showMore ? (
+          SECONDARY_DESIGNATIONS.map(d => (
+            <button key={d} type="button" disabled={busy} onClick={() => onPick(d)} className={chip}>
+              {WRITER_DESIGNATION_LABELS[d]}
+            </button>
+          ))
+        ) : (
+          <button type="button" onClick={() => setShowMore(true)} className="text-[11px] text-lavdim hover:text-lav">
+            More roles…
+          </button>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onPick(null)}
+          className="text-[11px] text-lavdim hover:text-lav disabled:opacity-40"
+        >
+          Skip — not sure yet
+        </button>
+        <button type="button" onClick={onCancel} className="text-[11px] text-lavdim hover:text-lav">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function WorkRoster({
   workId,
   members,
@@ -107,6 +176,9 @@ export function WorkRoster({
   const [copied, setCopied] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
   const [promotionMessage, setPromotionMessage] = useState<string | null>(null)
+  // The member currently choosing their DDEX/PRO designation before the
+  // promotion completes (member id, or null when no picker is open).
+  const [choosingWriterFor, setChoosingWriterFor] = useState<string | null>(null)
 
   const linkInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -188,7 +260,7 @@ export function WorkRoster({
     }
   }
 
-  async function handlePromote(member: WorkRosterMember) {
+  async function handlePromote(member: WorkRosterMember, designation: WriterDesignation | null) {
     if (!canManage || member.isOnSheet || promotingId) return
     // Captured before the optimistic update: a first writer is a sole
     // writer (no split to draft), a later one triggers the equal redraft.
@@ -198,11 +270,16 @@ export function WorkRoster({
     try {
       const res = await fetch(`/api/works/${workId}/members/${member.id}/promote`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ designation }),
       })
       const json = (await res.json().catch(() => ({}))) as PromoteResponse
       if (res.ok) {
+        setChoosingWriterFor(null)
         setList(prev =>
-          prev.map(m => (m.id === member.id ? { ...m, isOnSheet: true, isWriterBadge: true } : m))
+          prev.map(m =>
+            m.id === member.id ? { ...m, isOnSheet: true, isWriterBadge: true, writerDesignation: designation } : m
+          )
         )
         // CAT-Q1a, in words, never a number: equal is the default, and
         // writers move it from there themselves if they choose. This
@@ -265,15 +342,25 @@ export function WorkRoster({
               )}
             </div>
 
-            {canManage && !member.isOwner && !member.isOnSheet && (
+            {canManage && !member.isOwner && !member.isOnSheet && choosingWriterFor !== member.id && (
               <button
                 type="button"
-                onClick={() => handlePromote(member)}
+                onClick={() => setChoosingWriterFor(member.id)}
                 disabled={promotingId === member.id}
                 className="rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[11.5px] font-semibold text-lav hover:text-white disabled:opacity-40"
               >
                 {promotingId === member.id ? 'Promoting…' : 'Mark as writer'}
               </button>
+            )}
+
+            {choosingWriterFor === member.id && (
+              <div className="w-full">
+                <DesignationPicker
+                  onPick={d => handlePromote(member, d)}
+                  onCancel={() => setChoosingWriterFor(null)}
+                  busy={promotingId === member.id}
+                />
+              </div>
             )}
           </li>
         ))}
@@ -295,9 +382,12 @@ export function WorkRoster({
             writersOnSheet.map(w => (
               <span
                 key={w.id}
-                className="inline-flex items-center gap-1 rounded-full bg-lav/[.08] px-2.5 py-1 text-[11px] font-semibold text-lav"
+                className="inline-flex items-center gap-1.5 rounded-full bg-lav/[.08] px-2.5 py-1 text-[11px] font-semibold text-lav"
               >
                 {w.name}
+                {w.writerDesignation && (
+                  <span className="font-medium text-lavdim">· {WRITER_DESIGNATION_LABELS[w.writerDesignation]}</span>
+                )}
               </span>
             ))
           )}
@@ -309,30 +399,41 @@ export function WorkRoster({
             the owner, only while they are not already on the sheet. */}
         {viewerIsOwner && ownerMember && !ownerMember.isOnSheet && (
           <div className="mt-3">
-            <button
-              type="button"
-              onClick={() => handlePromote(ownerMember)}
-              disabled={promotingId === ownerMember.id}
-              className="rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[12px] font-semibold text-lav hover:text-white disabled:opacity-40"
-            >
-              {promotingId === ownerMember.id ? 'Adding…' : '+ Add yourself as a writer'}
-            </button>
-            <p className="mt-2 text-[11px] text-lavdim">
-              You wrote this — put yourself on the split sheet. You&apos;ll hold the whole song
-              until other writers are added; then it splits equally between you, unless you
-              change it.
-            </p>
-            <div className="mt-2">
-              <LearnWhy label="What makes someone a writer?">
-                <p className="text-[11px] text-lavdim">
-                  A writer is anyone who created the music or the lyrics — a composer, a lyricist,
-                  or both. These are the people who own the song, not everyone who helped make it.
-                  It&apos;s what your contracts, your PRO (ASCAP/BMI), and your registrations read
-                  from, so add a writer only for real songwriting. Session help, feedback, or
-                  access to the file isn&apos;t writing — keep those as collaborators.
+            {choosingWriterFor === ownerMember.id ? (
+              <DesignationPicker
+                onPick={d => handlePromote(ownerMember, d)}
+                onCancel={() => setChoosingWriterFor(null)}
+                busy={promotingId === ownerMember.id}
+              />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setChoosingWriterFor(ownerMember.id)}
+                  disabled={promotingId === ownerMember.id}
+                  className="rounded-lg border border-hairstrong bg-lav/[.06] px-3 py-1.5 text-[12px] font-semibold text-lav hover:text-white disabled:opacity-40"
+                >
+                  {promotingId === ownerMember.id ? 'Adding…' : '+ Add yourself as a writer'}
+                </button>
+                <p className="mt-2 text-[11px] text-lavdim">
+                  You wrote this — put yourself on the split sheet. You&apos;ll hold the whole song
+                  until other writers are added; then it splits equally between you, unless you
+                  change it.
                 </p>
-              </LearnWhy>
-            </div>
+                <div className="mt-2">
+                  <LearnWhy label="What makes someone a writer?">
+                    <p className="text-[11px] text-lavdim">
+                      A writer is anyone who created the music or the lyrics — a composer, a
+                      lyricist, or both. These are the people who own the song, not everyone who
+                      helped make it. It&apos;s what your contracts, your PRO (ASCAP/BMI), and your
+                      registrations read from, so add a writer only for real songwriting. Session
+                      help, feedback, or access to the file isn&apos;t writing — keep those as
+                      collaborators.
+                    </p>
+                  </LearnWhy>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -122,4 +122,34 @@ describe('WorkRoster', () => {
     )
     expect(markup).not.toContain('Add yourself as a writer')
   })
+
+  // ─── Writer designation (DDEX/PRO) ────────────────────────────────────
+
+  it('does not open the designation picker until a writer is being added', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={ownerOffSheet} viewerTier="administer" viewerIsOwner />
+    )
+    // The picker is state-driven — closed on first paint, so no role
+    // prompt appears until the owner clicks to add themselves.
+    expect(markup).not.toContain('What did you write?')
+  })
+
+  it('shows a writer’s designation on the split sheet, in the formal DDEX/PRO label', () => {
+    const withRole: WorkRosterMember[] = [
+      {
+        id: 'm-owner',
+        name: 'peterzora',
+        tier: 'administer',
+        isOwner: true,
+        isPending: false,
+        isOnSheet: true,
+        isWriterBadge: true,
+        writerDesignation: 'composer_lyricist',
+      },
+    ]
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={withRole} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).toContain('Composer / Lyricist')
+  })
 })

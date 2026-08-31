@@ -26,6 +26,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import { LIVING_DRAFT_STATUSES, type SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
 import type { LivingDraftParty } from '@/lib/catalogue/splits'
+import { asWriterDesignation } from '@/lib/catalogue/designation'
 
 export type WorkSplitsSheet = {
   sheetId: string
@@ -40,6 +41,7 @@ type SplitSheetPartyRow = {
   user_id: string | null
   name: string
   split_percentage: number
+  writer_designation: string | null
 }
 
 /**
@@ -69,7 +71,7 @@ export async function loadWorkSplits(
 
   const { data: partyRows } = await client
     .from('split_sheet_parties')
-    .select('id, collaborator_id, user_id, name, split_percentage')
+    .select('id, collaborator_id, user_id, name, split_percentage, writer_designation')
     .eq('split_sheet_id', sheetRow.id)
 
   const parties: LivingDraftParty[] = ((partyRows ?? []) as SplitSheetPartyRow[]).map((p) => ({
@@ -77,6 +79,7 @@ export async function loadWorkSplits(
     userId: p.user_id,
     name: p.name,
     splitPercentage: Number(p.split_percentage),
+    writerDesignation: asWriterDesignation(p.writer_designation),
   }))
 
   return { sheetId: sheetRow.id, status: sheetRow.status as SplitSheetStatus, parties }
@@ -128,6 +131,7 @@ export async function applyWorkSplits(
     user_id: p.userId ?? null,
     name: p.name,
     split_percentage: p.splitPercentage,
+    writer_designation: p.writerDesignation ?? null,
   }))
 
   const { error: insertError } = await client.from('split_sheet_parties').insert(rows)

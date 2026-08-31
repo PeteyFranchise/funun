@@ -345,7 +345,9 @@ export default async function WorkComposerPage({
   // ─── The roster — membership vs. the living split sheet, two facts ───
   const rosterMembers: WorkRosterMember[] = members.map(m => {
     const isOwner = !m.collaborator_id
-    const isOnSheet = sheetParties.some(
+    // Match against the full sheet party (which carries the designation),
+    // not the identity-only `sheetParties` used for the nudge math.
+    const party = (splitsSheet?.parties ?? []).find(
       p =>
         (m.collaborator_id && p.collaboratorId === m.collaborator_id) ||
         (m.user_id && p.userId === m.user_id)
@@ -356,8 +358,9 @@ export default async function WorkComposerPage({
       tier: m.tier,
       isOwner,
       isPending: !isOwner && !m.user_id,
-      isOnSheet,
-      isWriterBadge: isOnSheet,
+      isOnSheet: !!party,
+      isWriterBadge: !!party,
+      writerDesignation: party?.writerDesignation ?? null,
     }
   })
 

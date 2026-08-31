@@ -34,6 +34,7 @@
 
 import { evenSplit, validateApprovalTotal } from '@/lib/split-sheets/approval'
 import { assertEditable, LIVING_DRAFT_STATUSES, type SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
+import type { WriterDesignation } from '@/lib/catalogue/designation'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -44,9 +45,11 @@ export type PartyIdentity = {
   name: string
 }
 
-/** A living-draft split-sheet party — identity plus the current share. No other field belongs here. */
+/** A living-draft split-sheet party — identity, the current share, and the DDEX/PRO writer role (null when not stated). */
 export type LivingDraftParty = PartyIdentity & {
   splitPercentage: number
+  /** The writer's DDEX/PRO designation (lib/catalogue/designation.ts), or null. Orthogonal to the share — never affects the equal-split math. */
+  writerDesignation?: WriterDesignation | null
 }
 
 /** A work member as seen by the catalogue's hygiene layer — note there is no percentage field on this type, ever. */
@@ -130,8 +133,15 @@ function equalShares(n: number): number[] {
   return shares
 }
 
-/** Redrafts `identities` to equal shares, asserting the CAT-Q1a invariant before returning. */
-function equalRedraft(identities: PartyIdentity[]): LivingDraftParty[] {
+/**
+ * Redrafts `identities` to equal shares, asserting the CAT-Q1a invariant
+ * before returning. Any `writerDesignation` already on an identity is
+ * preserved through the spread — the equal-split math only ever touches the
+ * percentage, never the role.
+ */
+function equalRedraft(
+  identities: Array<PartyIdentity & { writerDesignation?: WriterDesignation | null }>
+): LivingDraftParty[] {
   if (identities.length === 0) return []
   const shares = equalShares(identities.length)
   const parties = identities.map((identity, i) => ({ ...identity, splitPercentage: shares[i] }))
@@ -151,6 +161,8 @@ function equalRedraft(identities: PartyIdentity[]): LivingDraftParty[] {
 export type PlanWriterPromotionInput = {
   parties: LivingDraftParty[]
   writer: PartyIdentity
+  /** The new writer's DDEX/PRO role, captured at promotion. Null when not stated. */
+  designation?: WriterDesignation | null
   status: SplitSheetStatus
 }
 
@@ -169,7 +181,10 @@ export function planWriterPromotion(input: PlanWriterPromotionInput): SplitRedra
     return { ok: true, parties: input.parties, changed: false }
   }
 
-  const withNewWriter: PartyIdentity[] = [...input.parties, input.writer]
+  // The new writer carries their designation onto the sheet; existing
+  // parties keep theirs (equalRedraft preserves it through the spread).
+  const newParty = { ...input.writer, writerDesignation: input.designation ?? null }
+  const withNewWriter = [...input.parties, newParty]
   return { ok: true, parties: equalRedraft(withNewWriter), changed: true }
 }
 

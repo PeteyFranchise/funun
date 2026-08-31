@@ -29,6 +29,7 @@ type FakePartyRow = {
   user_id: string | null
   name: string
   split_percentage: number
+  writer_designation: string | null
 }
 
 function makeClient(opts: { sheet?: FakeSheetRow; parties?: FakePartyRow[] } = {}) {
@@ -49,8 +50,8 @@ describe('loadWorkSplits', () => {
     const { client, sheetBuilder, partiesBuilder } = makeClient({
       sheet: { id: 'sheet-1', status: 'draft' },
       parties: [
-        { id: 'p1', collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50 },
-        { id: 'p2', collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50 },
+        { id: 'p1', collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50, writer_designation: 'composer' },
+        { id: 'p2', collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50, writer_designation: null },
       ],
     })
 
@@ -60,8 +61,8 @@ describe('loadWorkSplits', () => {
       sheetId: 'sheet-1',
       status: 'draft',
       parties: [
-        { collaboratorId: 'collab-1', userId: null, name: 'Alice', splitPercentage: 50 },
-        { collaboratorId: 'collab-2', userId: null, name: 'Ben', splitPercentage: 50 },
+        { collaboratorId: 'collab-1', userId: null, name: 'Alice', splitPercentage: 50, writerDesignation: 'composer' },
+        { collaboratorId: 'collab-2', userId: null, name: 'Ben', splitPercentage: 50, writerDesignation: null },
       ],
     })
     expect(sheetBuilder.eq).toHaveBeenCalledWith('work_id', 'work-1')
@@ -78,7 +79,7 @@ describe('loadWorkSplits', () => {
 
 describe('applyWorkSplits', () => {
   const parties: LivingDraftParty[] = [
-    { collaboratorId: 'collab-1', name: 'Alice', splitPercentage: 50 },
+    { collaboratorId: 'collab-1', name: 'Alice', splitPercentage: 50, writerDesignation: 'lyricist' },
     { collaboratorId: 'collab-2', name: 'Ben', splitPercentage: 50 },
   ]
 
@@ -90,8 +91,8 @@ describe('applyWorkSplits', () => {
     expect(result).toEqual({ ok: true })
     expect(partiesBuilder.delete).toHaveBeenCalled()
     expect(partiesBuilder.insert).toHaveBeenCalledWith([
-      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50 },
-      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50 },
+      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50, writer_designation: 'lyricist' },
+      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50, writer_designation: null },
     ])
   })
 

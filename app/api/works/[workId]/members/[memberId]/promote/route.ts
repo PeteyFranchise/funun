@@ -3,6 +3,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import { planWriterPromotion } from '@/lib/catalogue/splits'
 import { loadWorkSplits, applyWorkSplits } from '@/lib/catalogue/splits-io'
+import { asWriterDesignation } from '@/lib/catalogue/designation'
 
 type RouteCtx = { params: Promise<{ workId: string; memberId: string }> }
 
@@ -28,8 +29,15 @@ type RouteCtx = { params: Promise<{ workId: string; memberId: string }> }
 // and splits stay two different facts, enforced structurally: this route
 // has no `.insert()`, `.update()` or `.delete()` against work_members
 // anywhere in its body.
-export async function POST(_request: Request, { params }: RouteCtx) {
+export async function POST(request: Request, { params }: RouteCtx) {
   const { workId, memberId } = await params
+
+  // Optional body: the writer's DDEX/PRO designation, captured at the moment
+  // of promotion. Anything not in the designation set (or an absent body) is
+  // a null designation — an honest "not stated", never a fabricated role.
+  const body = (await request.json().catch(() => null)) as { designation?: unknown } | null
+  const designation = asWriterDesignation(body?.designation)
+
   const supabase = await createApiClient()
   const {
     data: { user },
@@ -103,6 +111,7 @@ export async function POST(_request: Request, { params }: RouteCtx) {
   const promotion = planWriterPromotion({
     parties: sheet.parties,
     writer: { collaboratorId: member.collaborator_id, userId: member.user_id, name },
+    designation,
     status: sheet.status,
   })
   if (!promotion.ok) {
