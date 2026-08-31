@@ -162,19 +162,43 @@ export default async function WorkComposerPage({
   const collaboratorIds = Array.from(
     new Set(members.map(m => m.collaborator_id).filter((id): id is string => Boolean(id)))
   )
-  const [{ data: collabRows }, { data: ownerProfile }] = await Promise.all([
+  // Claimed collaborators (signed up → have a user_id) carry a profile
+  // avatar; invited-but-unclaimed ones don't. The owner's avatar comes
+  // from their own profile row (queried alongside their handle/name).
+  const memberUserIds = Array.from(
+    new Set(
+      members
+        .map(m => m.user_id)
+        .filter((id): id is string => Boolean(id) && id !== work.user_id)
+    )
+  )
+  const [{ data: collabRows }, { data: ownerProfile }, { data: memberAvatarRows }] = await Promise.all([
     collaboratorIds.length > 0
       ? supabase.from('collaborators').select('id, name').in('id', collaboratorIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    supabase.from('user_profiles').select('handle, artist_name').eq('id', work.user_id).maybeSingle(),
+    supabase.from('user_profiles').select('handle, artist_name, avatar_url').eq('id', work.user_id).maybeSingle(),
+    memberUserIds.length > 0
+      ? supabase.from('user_profiles').select('id, avatar_url').in('id', memberUserIds)
+      : Promise.resolve({ data: [] as { id: string; avatar_url: string | null }[] }),
   ])
   const collabNameById = new Map((collabRows ?? []).map(c => [c.id, c.name]))
+  const memberAvatarById = new Map(
+    (memberAvatarRows ?? []).map(r => [r.id, r.avatar_url ?? null] as const)
+  )
   const ownerHandle = ownerProfile?.handle || ownerProfile?.artist_name || 'artist'
   const ownerDisplayName = ownerProfile?.artist_name || ownerHandle
 
   function nameForMember(m: WorkMemberRow): string {
     if (!m.collaborator_id) return ownerDisplayName // the owner's own row
     return collabNameById.get(m.collaborator_id) ?? 'A collaborator'
+  }
+
+  // Avatar for a roster row: the owner's and a claimed collaborator's come
+  // from their profiles; anyone still pending has none (initials monogram).
+  function avatarFor(m: WorkMemberRow): string | null {
+    if (!m.collaborator_id) return ownerProfile?.avatar_url ?? null
+    if (m.user_id) return memberAvatarById.get(m.user_id) ?? null
+    return null
   }
 
   // Every id describeDiaryEvent() or the pad's badges might need a
@@ -355,6 +379,7 @@ export default async function WorkComposerPage({
     return {
       id: m.id,
       name: nameForMember(m),
+      avatarUrl: avatarFor(m),
       tier: m.tier,
       isOwner,
       isPending: !isOwner && !m.user_id,

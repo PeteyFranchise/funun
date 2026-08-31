@@ -152,4 +152,24 @@ describe('WorkRoster', () => {
     )
     expect(markup).toContain('Composer / Lyricist')
   })
+
+  // --- Profile avatars --------------------------------------------------
+
+  it('renders a member profile avatar when they have one', () => {
+    const withAvatar: WorkRosterMember[] = [
+      { id: 'm-owner', name: 'Maya Reyes', avatarUrl: 'https://cdn.test/maya.png', tier: 'administer', isOwner: true, isPending: false, isOnSheet: false },
+    ]
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={withAvatar} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).toContain('https://cdn.test/maya.png')
+  })
+
+  it('falls back to an initials monogram for a member with no avatar', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    // Ben Cooke has no avatarUrl in the fixture -> two-letter monogram.
+    expect(markup).toContain('>BC<')
+  })
 })

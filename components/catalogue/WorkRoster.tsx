@@ -39,6 +39,8 @@ export type WorkRosterMember = {
   /** work_members.id */
   id: string
   name: string
+  /** Profile avatar URL when this person is a User Account with one set, else null (initials fallback). Display only. */
+  avatarUrl?: string | null
   tier: WorkTier
   isOwner: boolean
   /** True when work_members.user_id is still null — invited, not yet signed up. */
@@ -149,6 +151,14 @@ function DesignationPicker({
       </div>
     </div>
   )
+}
+
+// Two-letter monogram fallback when a member has no avatar (invited
+// collaborators who haven't signed up have no profile photo yet).
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  return parts.slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?'
 }
 
 export function WorkRoster({
@@ -313,8 +323,16 @@ export function WorkRoster({
             key={member.id}
             className="flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-hair bg-card2 px-3 py-2"
           >
-            <div className="flex flex-wrap items-center gap-[6px]">
-              <span className="text-[13px] font-semibold text-white">{member.name}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className="grid h-7 w-7 flex-none place-items-center overflow-hidden rounded-full bg-lav/[.14] bg-cover bg-center text-[10px] font-bold text-lav"
+                style={member.avatarUrl ? { backgroundImage: `url('${member.avatarUrl}')` } : undefined}
+                aria-hidden="true"
+              >
+                {!member.avatarUrl && initialsOf(member.name)}
+              </span>
+              <div className="flex flex-wrap items-center gap-[6px]">
+                <span className="text-[13px] font-semibold text-white">{member.name}</span>
               <span className="rounded-full bg-lav/[.08] px-2 py-0.5 text-[10px] font-bold text-lav">
                 {member.isOwner ? 'Owner' : WORK_TIER_LABELS[member.tier]}
               </span>
@@ -340,6 +358,7 @@ export function WorkRoster({
                   Pending — hasn&apos;t signed up yet
                 </span>
               )}
+              </div>
             </div>
 
             {canManage && !member.isOwner && !member.isOnSheet && choosingWriterFor !== member.id && (
