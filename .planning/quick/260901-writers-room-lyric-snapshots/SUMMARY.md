@@ -2,9 +2,9 @@
 
 ## Outcome
 
-Stage 3 Writer's Room safety is implemented in code. Every editable lyric section now has a private recovery history, and a writer can restore an earlier accepted version without silently destroying the current one.
+Stage 3 Writer's Room safety is live in production. Every editable lyric section now has a private recovery history, and a writer can restore an earlier accepted version without silently destroying the current one.
 
-The implementation is ready for migration 145, deployment and signed-in production UAT. Until those activation steps are complete, describe this as built and awaiting production activation—not yet live for users.
+Migration 145 was applied on 2026-09-01. Automated production checks and a signed-in browser acceptance test passed against the deployed Funūn application. A separate multi-member visual session remains useful follow-up evidence for the live-refresh experience, but the recovery-history and restore capability itself is production-verified.
 
 ## What shipped
 
@@ -55,20 +55,43 @@ Deleted-section recovery and whole-song rollback are not claimed in this slice.
 - Production build: `npm run build` passed and included both new snapshot routes.
 - Full repository Jest: 333/334 suites passed and 3,683/3,686 tests passed. The only three failures are existing stale `WorkPage.test.tsx` expectations for the removed “Add to this song —” and “Next for this song:” copy. The current UI already renders different copy, those assertions are unrelated to lyric snapshots, and they were left untouched to preserve concurrent user/Claude work.
 
+### Production UAT — 2026-09-01
+
+Passed against the live Supabase project and deployed Funūn application:
+
+- migration 145's snapshot table and edit-cycle column are available;
+- repeated autosaves create one baseline per continuous editing reservation;
+- leaving and returning to a section creates a fresh baseline;
+- another writer cannot restore across an active section lock;
+- members can read history while non-members cannot read or restore it;
+- direct lyric-table updates fail closed outside the approved save, restore and detach paths;
+- restore preserves the displaced current words and records the correct diary actor;
+- “Detach to vary” remains functional without creating a duplicate edit event;
+- the deployed snapshot API returns the expected authenticated-route response;
+- the live Writer's Room visibly exposes `History` on the lyric section;
+- the recovery panel shows current words, prior words, writer attribution and the two-step restore confirmation;
+- a production restore changed the visible canonical lyric, added the correct “restored Verse” diary entry and kept the displaced version available in History.
+
+The UAT used disposable, clearly labeled accounts and works. Cleanup verification passed; no synthetic users, invites, works, lyrics or snapshots remain.
+
 ## Activation gate
 
-1. Apply migration 145 with `npm run db:push`.
-2. Confirm the deployment containing this build is live.
-3. In a signed-in Writer's Room, edit and save one section, leave it, edit it again, then open History and confirm both editing sessions produced useful recovery points rather than per-autosave duplicates.
-4. Restore an earlier version and confirm the displaced current words appear as a new recovery point.
-5. In a second member session, confirm the restored lyric appears without refresh and the diary says the correct writer restored the correct section.
-6. While the second writer holds that section, confirm the first writer cannot restore over the active edit.
-7. Confirm a non-member cannot list or restore any recovery point.
+Completed:
+
+1. Migration 145 applied.
+2. Deployment containing commit `14cdb31` confirmed live through both the authenticated snapshot route and signed-in Writer's Room UI.
+3. Production edit-cycle, autosave-deduplication, restore, displaced-version preservation, diary attribution, lock collision, membership and non-member checks passed.
+4. Signed-in visual acceptance passed for History, recovery-point presentation, two-step restore, canonical lyric replacement and reversible recovery.
+5. All disposable UAT data was removed and cleanup verified.
+
+Follow-up acceptance evidence:
+
+1. In a separate signed-in member browser, visually confirm that a restored lyric appears without refresh. The private broadcast path was already production-tested in the preceding soft-lock stage, and the snapshot build reuses that same `lyric_saved` invalidation path.
 
 ## Claude/GSD handoff
 
 - Primary implementation: migration 145, the two nested snapshot API routes, `LyricHistoryPanel`, the lyric-card/pad wiring, WorkPage restore orchestration and restored-event diary formatting.
 - The database remains the canonical text and lock authority; Realtime carries invalidation hints only.
 - Do not turn snapshots into a keystroke log or expand them into legal/release facts.
-- Do not claim the feature is live until the activation gate above passes.
+- The recoverable lyric-history feature may now be described as live. Keep the narrower multi-member visual follow-up above visible; do not turn that open acceptance item into a broader Google Docs-style collaboration claim.
 - After activation, the next creative-collaboration slice is comments, suggestions and intentional alternate lyric versions; it should build on these immutable recovery points rather than overload them.
