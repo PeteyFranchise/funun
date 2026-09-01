@@ -87,6 +87,15 @@ type ReleaseState = {
   catalog_number: string
 }
 
+type DeliveryActionState = {
+  busy: boolean
+  kind?: 'tagged_mp3' | 'metadata_sidecar'
+  url?: string
+  manifestUrl?: string
+  receiptUrl?: string
+  msg?: string
+}
+
 const LEVEL_DOT: Record<'error' | 'warn' | 'ok', string> = {
   error: 'bg-rose-400',
   warn: 'bg-amber-400',
@@ -128,7 +137,7 @@ export function MetadataStudio({
   const [tracks, setTracks] = useState<StudioTrack[]>(initialTracks)
   const [savingRelease, setSavingRelease] = useState(false)
   const [savingTrack, setSavingTrack] = useState<string | null>(null)
-  const [embedState, setEmbedState] = useState<Record<string, { busy: boolean; url?: string; msg?: string }>>({})
+  const [deliveryState, setDeliveryState] = useState<Record<string, DeliveryActionState>>({})
   const [isrcState, setIsrcState] = useState<Record<string, { busy: boolean; msg?: string; needsSetup?: boolean }>>({})
   const [collaborators, setCollaborators] = useState<CollaboratorProfile[]>([])
 
@@ -288,20 +297,34 @@ export function MetadataStudio({
     }
   }
 
-  async function embed(t: StudioTrack) {
-    setEmbedState(s => ({ ...s, [t.id]: { busy: true } }))
+  async function generateDelivery(t: StudioTrack, kind: 'tagged_mp3' | 'metadata_sidecar') {
+    setDeliveryState(s => ({ ...s, [t.id]: { busy: true, kind } }))
     try {
-      const res = await fetch(`/api/vault/${projectId}/tracks/${t.id}/metadata/embed`, {
+      const endpoint = kind === 'tagged_mp3' ? 'embed' : 'sidecar'
+      const res = await fetch(`/api/vault/${projectId}/tracks/${t.id}/metadata/${endpoint}`, {
         method: 'POST',
       })
       const json = await res.json()
       if (!res.ok) {
-        setEmbedState(s => ({ ...s, [t.id]: { busy: false, msg: json.error ?? 'Embed failed' } }))
+        setDeliveryState(s => ({
+          ...s,
+          [t.id]: { busy: false, kind, msg: json.error ?? 'Delivery generation failed' },
+        }))
         return
       }
-      setEmbedState(s => ({ ...s, [t.id]: { busy: false, url: json.data?.url, msg: 'Tagged copy ready.' } }))
+      setDeliveryState(s => ({
+        ...s,
+        [t.id]: {
+          busy: false,
+          kind,
+          url: json.data?.url,
+          manifestUrl: json.data?.manifestUrl,
+          receiptUrl: json.data?.receiptUrl,
+          msg: kind === 'tagged_mp3' ? 'Tagged delivery copy ready.' : 'Delivery sidecar ready.',
+        },
+      }))
     } catch {
-      setEmbedState(s => ({ ...s, [t.id]: { busy: false, msg: 'Network error' } }))
+      setDeliveryState(s => ({ ...s, [t.id]: { busy: false, kind, msg: 'Network error' } }))
     }
   }
 
@@ -418,7 +441,7 @@ export function MetadataStudio({
         </div>
         {tracks.map(t => {
           const splitTotal = Math.round(t.composers.reduce((s, c) => s + (c.split || 0), 0) * 100) / 100
-          const es = embedState[t.id]
+          const delivery = deliveryState[t.id]
           const canEmbedMp3 = (t.audio_file_url ?? '').toLowerCase().split('?')[0].endsWith('.mp3')
           return (
             <div key={t.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
@@ -556,27 +579,47 @@ export function MetadataStudio({
                 >
                   Save track
                 </button>
-                <a
-                  href={`/api/vault/${projectId}/tracks/${t.id}/metadata/sidecar`}
+                <button
+                  type="button"
+                  onClick={() => generateDelivery(t, 'metadata_sidecar')}
+                  disabled={!t.audio_file_url || delivery?.busy}
+                  title={t.audio_file_url ? 'Generate a sidecar with hashes, manifest and receipt' : 'Upload audio first'}
                   className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white"
                 >
-                  Download sidecar (.txt)
-                </a>
+                  {delivery?.busy && delivery.kind === 'metadata_sidecar' ? 'Generating…' : 'Generate sidecar'}
+                </button>
                 <button
-                  onClick={() => embed(t)}
-                  disabled={!canEmbedMp3 || es?.busy}
-                  title={canEmbedMp3 ? 'Write tags into the MP3' : 'Embedding needs an MP3 — use the sidecar for other formats'}
+                  onClick={() => generateDelivery(t, 'tagged_mp3')}
+                  disabled={!canEmbedMp3 || delivery?.busy}
+                  title={canEmbedMp3 ? 'Generate a separately tagged MP3 with hashes, manifest and receipt' : 'Embedding needs an MP3 — use the sidecar for other formats'}
                   className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-30"
                 >
-                  {es?.busy ? 'Embedding…' : 'Embed in MP3'}
+                  {delivery?.busy && delivery.kind === 'tagged_mp3' ? 'Generating…' : 'Generate tagged MP3'}
                 </button>
-                {es?.url && (
-                  <a href={es.url} className="text-xs font-medium text-indigo-300 hover:text-indigo-200">
-                    Download tagged file →
-                  </a>
+                {delivery?.url && (
+                  <>
+                    <a href={delivery.url} className="text-xs font-medium text-indigo-300 hover:text-indigo-200">
+                      Download {delivery.kind === 'tagged_mp3' ? 'tagged MP3' : 'sidecar'} →
+                    </a>
+                    {delivery.manifestUrl && (
+                      <a href={delivery.manifestUrl} className="text-xs text-white/50 hover:text-white">
+                        Manifest
+                      </a>
+                    )}
+                    {delivery.receiptUrl && (
+                      <a href={delivery.receiptUrl} className="text-xs text-white/50 hover:text-white">
+                        Receipt
+                      </a>
+                    )}
+                  </>
                 )}
-                {es?.msg && !es.url && <span className="text-xs text-white/40">{es.msg}</span>}
+                {delivery?.msg && !delivery.url && <span className="text-xs text-white/40">{delivery.msg}</span>}
               </div>
+              {delivery?.url && (
+                <p className="mt-2 text-[11px] text-white/35">
+                  The original audio remains unchanged. This generated copy has its own manifest and export receipt.
+                </p>
+              )}
             </div>
           )
         })}
