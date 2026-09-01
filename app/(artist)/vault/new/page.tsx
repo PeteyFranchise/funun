@@ -118,26 +118,28 @@ export default function NewVaultProjectPage() {
             <button
               type="button"
               onClick={() => setDoor('song')}
-              aria-label="Start a song — goes into My Catalogue"
+              aria-label="Enter the Writer's Room — start a song in My Catalogue"
               className="flex flex-col items-start gap-2 rounded-[12px] bg-grad px-5 py-6 text-left text-white shadow-cta transition hover:brightness-110"
             >
               <span className="text-3xl">🎵</span>
-              <span className="text-lg font-bold">Start a song</span>
+              <span className="text-lg font-bold">The Writer&apos;s Room</span>
               <span className="text-sm text-white/80">
-                Hum it, write the lyrics, or upload a take — your diary starts the moment you do.
+                Start a song. Hum it, write lyrics, upload a take, or invite collaborators. Your
+                song diary starts the moment you do.
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setDoor('release')}
-              aria-label="Start a release — single, snippet, EP, or album"
+              aria-label="Open The Release Report — start a release"
               className="flex flex-col items-start gap-2 rounded-[12px] border border-white/10 bg-white/5 px-5 py-6 text-left text-white/90 transition hover:border-white/30"
             >
               <span className="text-3xl">🚀</span>
-              <span className="text-lg font-bold">Start a release</span>
+              <span className="text-lg font-bold">The Release Report</span>
               <span className="text-sm text-white/50">
-                Single, snippet, EP, or album — the full readiness checklist for going out.
+                Start a release. Build a single, snippet, EP, or album with the full readiness
+                checklist for going out.
               </span>
             </button>
           </div>
