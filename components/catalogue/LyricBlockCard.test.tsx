@@ -151,6 +151,26 @@ describe('LyricBlockCard', () => {
     expect(markup).toContain('↶ History')
   })
 
+  it('offers private section comments only when the caller provides the discussion action', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus"
+        text="Hook"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenComments={noop}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('Open comments for Chorus')
+    expect(markup).toContain('Comments')
+  })
+
   it('contains no raw hex colour and no inline style attribute carrying one', () => {
     const markup = renderToStaticMarkup(
       <LyricBlockCard

@@ -55,4 +55,11 @@ describe("Writer's Room section collaboration", () => {
     expect(normalizeCollaborationHint('rights_changed', { blockId })).toBeNull()
     expect(normalizeCollaborationHint('lock_changed', { blockId: 'bad' })).toBeNull()
   })
+
+  it('accepts a comment invalidation id without accepting remote comment text', () => {
+    expect(normalizeCollaborationHint('comment_changed', { blockId, body: 'untrusted comment' })).toEqual({
+      kind: 'comment_changed',
+      blockId,
+    })
+  })
 })

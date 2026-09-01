@@ -15,7 +15,10 @@ import {
 type ConnectionState = 'connecting' | 'live' | 'offline'
 
 export type WriterRoomLiveHandle = {
-  broadcast: (event: 'lock_changed' | 'lyric_saved', payload: { blockId: string }) => Promise<boolean>
+  broadcast: (
+    event: 'lock_changed' | 'lyric_saved' | 'comment_changed',
+    payload: { blockId: string }
+  ) => Promise<boolean>
 }
 
 function initials(name: string): string {
@@ -31,7 +34,7 @@ export const WriterRoomPresence = forwardRef<WriterRoomLiveHandle, {
   viewer: RoomPresencePerson
   people: RoomPresencePerson[]
   activity: RoomActivity
-  onLiveHint?: (event: 'lock_changed' | 'lyric_saved', payload: unknown) => void
+  onLiveHint?: (event: 'lock_changed' | 'lyric_saved' | 'comment_changed', payload: unknown) => void
   onResync?: () => void
 }>(function WriterRoomPresence({
   workId,
@@ -103,6 +106,9 @@ export const WriterRoomPresence = forwardRef<WriterRoomLiveHandle, {
     })
     channel.on('broadcast', { event: 'lyric_saved' }, ({ payload }) => {
       liveHintRef.current?.('lyric_saved', payload)
+    })
+    channel.on('broadcast', { event: 'comment_changed' }, ({ payload }) => {
+      liveHintRef.current?.('comment_changed', payload)
     })
 
     void supabase.auth.getSession().then(async ({ data }) => {

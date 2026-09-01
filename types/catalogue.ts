@@ -139,6 +139,42 @@ export type LyricBlockSnapshotView = Pick<
   actorName: string
 }
 
+// ─── lyric-section comments — private creative discussion ────────────
+
+export type LyricBlockComment = {
+  id: string
+  work_id: string
+  block_id: string
+  parent_comment_id: string | null
+  author_user_id: string | null
+  body: string
+  mentioned_user_ids: string[]
+  resolved_at: string | null
+  resolved_by_user_id: string | null
+  created_at: string
+}
+
+export type LyricCommentParticipant = {
+  userId: string
+  name: string
+  handle: string | null
+  avatarUrl: string | null
+}
+
+/** Member-safe comment presentation. Resolution authority is decided server-side. */
+export type LyricBlockCommentView = {
+  id: string
+  blockId: string
+  parentCommentId: string | null
+  body: string
+  author: LyricCommentParticipant | null
+  mentioned: LyricCommentParticipant[]
+  resolvedAt: string | null
+  resolvedByName: string | null
+  createdAt: string
+  canResolve: boolean
+}
+
 // ─── work_members — collaborator access + tier (S-02) ─────────────────
 
 export type WorkMember = {
@@ -266,6 +302,14 @@ export type DiaryEventPayloadMap = {
     blockId: string
     blockType: LyricBlockType
     detachedFromBlockId: string | null
+  }
+  /** Trigger-sourced root-thread lifecycle; replies stay inside the thread instead of flooding the diary. */
+  comment: {
+    commentId: string
+    blockId: string
+    blockType: LyricBlockType
+    customLabel: string | null
+    operation: 'opened' | 'resolved' | 'reopened'
   }
   /** App-authored — the one exception to trigger-sourced capture. Written directly by a service-role route, never a trigger. */
   note: {

@@ -15,7 +15,7 @@ export type SectionLockView =
   | { state: 'other'; holderName: string }
 
 export type CollaborationHint = {
-  kind: 'lock_changed' | 'lyric_saved'
+  kind: 'lock_changed' | 'lyric_saved' | 'comment_changed'
   blockId: string
 }
 
@@ -41,7 +41,7 @@ export function normalizeLyricSectionLock(value: unknown, nowMs = Date.now()): L
 }
 
 export function normalizeCollaborationHint(kind: unknown, payload: unknown): CollaborationHint | null {
-  if (kind !== 'lock_changed' && kind !== 'lyric_saved') return null
+  if (kind !== 'lock_changed' && kind !== 'lyric_saved' && kind !== 'comment_changed') return null
   if (!payload || typeof payload !== 'object') return null
   const blockId = (payload as Record<string, unknown>).blockId
   if (!isUuid(blockId)) return null

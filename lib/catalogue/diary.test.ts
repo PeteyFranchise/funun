@@ -143,6 +143,22 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.consequence).toBeNull()
   })
 
+  it('comment lifecycle entries name the section without implying a lyric or rights change', () => {
+    const opened = describeDiaryEvent(
+      row('comment', { commentId: 'c-1', blockId: 'b-1', blockType: 'chorus', customLabel: null, operation: 'opened' }),
+      { names: { 'u-1': 'Maya' }, versionNumerals: {} }
+    )
+    expect(opened.headline).toBe('Maya opened a comment on Chorus')
+    expect(opened.consequence).toMatch(/lyrics, splits and approvals stay unchanged/i)
+
+    const resolved = describeDiaryEvent(
+      row('comment', { commentId: 'c-1', blockId: 'b-1', blockType: 'chorus', customLabel: null, operation: 'resolved' }),
+      { names: { 'u-1': 'Peter' }, versionNumerals: {} }
+    )
+    expect(resolved.headline).toBe('Peter resolved a Chorus comment')
+    expect(resolved.consequence).toMatch(/can be reopened/i)
+  })
+
   it('degrades an unknown or future kind to a neutral entry rather than throwing', () => {
     expect(() => describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)).not.toThrow()
     const entry = describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)
@@ -151,7 +167,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.date).toBe(NOW)
   })
 
-  it('every one of the nine known kinds produces a headline, a date, and a consequence field (possibly null)', () => {
+  it('every known kind produces a headline, a date, and a consequence field (possibly null)', () => {
     const fixtures: Array<{ kind: DiaryEventKind; payload: unknown }> = [
       { kind: 'version', payload: { versionId: 'v-1', source: 'hum', label: null } },
       { kind: 'lyric_edit', payload: { blockId: 'b-1', blockType: 'verse', customLabel: null, operation: 'added' } },
@@ -161,6 +177,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
       { kind: 'rename', payload: { previousTitle: 'A', title: 'B' } },
       { kind: 'reorder', payload: { blockCount: 3 } },
       { kind: 'detach', payload: { blockId: 'b-2', blockType: 'bridge', detachedFromBlockId: 'b-1' } },
+      { kind: 'comment', payload: { commentId: 'c-1', blockId: 'b-2', blockType: 'bridge', customLabel: null, operation: 'opened' } },
       { kind: 'note', payload: { text: 'hi' } },
     ]
     for (const { kind, payload } of fixtures) {
@@ -183,6 +200,7 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
     'rename',
     'reorder',
     'detach',
+    'comment',
     'note',
   ]
 
@@ -195,6 +213,6 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
   it('note is the single app-authored exception', () => {
     expect(isTriggerSourced('note')).toBe(false)
     const triggerSourced = ALL_KINDS.filter(k => isTriggerSourced(k))
-    expect(triggerSourced).toHaveLength(8)
+    expect(triggerSourced).toHaveLength(9)
   })
 })

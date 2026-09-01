@@ -8,6 +8,7 @@ import { DiaryFeed, type DiaryFeedEntry } from './DiaryFeed'
 import { WorkHeader } from './WorkHeader'
 import { WorkRoster, type WorkRosterMember } from './WorkRoster'
 import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
+import { LyricCommentsPanel } from './LyricCommentsPanel'
 import { LyricHistoryPanel } from './LyricHistoryPanel'
 import { HumCaptureButton } from './HumCaptureButton'
 import { HumFirstMoment } from './HumFirstMoment'
@@ -29,8 +30,10 @@ import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogu
 import type { WorkTier } from '@/lib/catalogue/membership'
 import type {
   LyricBlock,
+  LyricBlockCommentView,
   LyricBlockSnapshotView,
   LyricBlockType,
+  LyricCommentParticipant,
   PerformerRef,
   WorkVersion,
   WorkVocalState,
@@ -190,6 +193,17 @@ type LyricHistoryState = {
   loading: boolean
   error: string | null
   restoringId: string | null
+}
+
+type LyricCommentsState = {
+  blockId: string
+  label: string
+  comments: LyricBlockCommentView[]
+  participants: LyricCommentParticipant[]
+  loading: boolean
+  error: string | null
+  saving: boolean
+  resolvingId: string | null
 }
 
 function FlowOverlay({ children }: { children: React.ReactNode }) {
@@ -430,6 +444,7 @@ export function WorkPage({
   const [sectionLocks, setSectionLocks] = useState<Record<string, LyricSectionLock>>({})
   const [activeLockBlockId, setActiveLockBlockId] = useState<string | null>(null)
   const [lyricHistory, setLyricHistory] = useState<LyricHistoryState | null>(null)
+  const [lyricComments, setLyricComments] = useState<LyricCommentsState | null>(null)
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -463,14 +478,55 @@ export function WorkPage({
     [workId]
   )
 
+  const fetchLyricComments = useCallback(
+    async (blockId: string) => {
+      const res = await fetch(`/api/works/${workId}/blocks/${blockId}/comments`, {
+        cache: 'no-store',
+      })
+      const body = (await res.json().catch(() => ({}))) as {
+        data?: LyricBlockCommentView[]
+        participants?: LyricCommentParticipant[]
+        error?: string
+      }
+      return {
+        ok: res.ok,
+        comments: res.ok && Array.isArray(body.data) ? body.data : [],
+        participants: res.ok && Array.isArray(body.participants) ? body.participants : [],
+        error: res.ok ? null : (body.error ?? 'Could not load comments for this section.'),
+      }
+    },
+    [workId]
+  )
+
+  const refreshLyricComments = useCallback(
+    async (blockId: string) => {
+      const result = await fetchLyricComments(blockId)
+      setLyricComments(current => {
+        if (!current || current.blockId !== blockId) return current
+        return {
+          ...current,
+          comments: result.comments,
+          participants: result.participants,
+          loading: false,
+          error: result.error,
+        }
+      })
+    },
+    [fetchLyricComments]
+  )
+
   const handleLiveHint = useCallback(
-    (kind: 'lock_changed' | 'lyric_saved', payload: unknown) => {
+    (kind: 'lock_changed' | 'lyric_saved' | 'comment_changed', payload: unknown) => {
       const hint = normalizeCollaborationHint(kind, payload)
       if (!hint) return
       if (hint.kind === 'lock_changed') void refreshSectionLocks()
-      else void refreshLyricBlock(hint.blockId)
+      else if (hint.kind === 'lyric_saved') void refreshLyricBlock(hint.blockId)
+      else {
+        void refreshLyricComments(hint.blockId)
+        router.refresh()
+      }
     },
-    [refreshLyricBlock, refreshSectionLocks]
+    [refreshLyricBlock, refreshLyricComments, refreshSectionLocks, router]
   )
 
   const handleRoomResync = useCallback(() => {
@@ -759,6 +815,7 @@ export function WorkPage({
   }
 
   async function handleOpenLyricHistory(blockId: string, label: string, currentText: string) {
+    setLyricComments(null)
     setLyricHistory({
       blockId,
       label,
@@ -785,6 +842,98 @@ export function WorkPage({
         error: res.ok ? null : (body.error ?? 'Could not load this section’s recovery history.'),
       }
     })
+  }
+
+  async function handleOpenLyricComments(blockId: string, label: string) {
+    setLyricHistory(null)
+    setLyricComments({
+      blockId,
+      label,
+      comments: [],
+      participants: [],
+      loading: true,
+      error: null,
+      saving: false,
+      resolvingId: null,
+    })
+    await refreshLyricComments(blockId)
+  }
+
+  async function handleSubmitLyricComment(
+    body: string,
+    parentCommentId: string | null
+  ): Promise<boolean> {
+    const panel = lyricComments
+    if (!panel) return false
+    setLyricComments(current => current ? { ...current, saving: true, error: null } : current)
+    try {
+      const res = await fetch(`/api/works/${workId}/blocks/${panel.blockId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body, parentCommentId }),
+      })
+      const response = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setLyricComments(current => current ? {
+          ...current,
+          saving: false,
+          error: response.error ?? 'Could not post this comment.',
+        } : current)
+        return false
+      }
+      await refreshLyricComments(panel.blockId)
+      setLyricComments(current => current ? { ...current, saving: false } : current)
+      void liveRoomRef.current?.broadcast('comment_changed', { blockId: panel.blockId })
+      router.refresh()
+      return true
+    } catch {
+      setLyricComments(current => current ? {
+        ...current,
+        saving: false,
+        error: 'Could not post this comment. Try again.',
+      } : current)
+      return false
+    }
+  }
+
+  async function handleSetLyricCommentResolved(
+    commentId: string,
+    resolved: boolean
+  ): Promise<boolean> {
+    const panel = lyricComments
+    if (!panel) return false
+    setLyricComments(current => current ? { ...current, resolvingId: commentId, error: null } : current)
+    try {
+      const res = await fetch(
+        `/api/works/${workId}/blocks/${panel.blockId}/comments/${commentId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resolved }),
+        }
+      )
+      const response = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setLyricComments(current => current ? {
+          ...current,
+          resolvingId: null,
+          error: response.error ?? 'Could not update this comment thread.',
+        } : current)
+        return false
+      }
+      await refreshLyricComments(panel.blockId)
+      setLyricComments(current => current ? { ...current, resolvingId: null } : current)
+      void liveRoomRef.current?.broadcast('comment_changed', { blockId: panel.blockId })
+      router.refresh()
+      return true
+    } catch {
+      setLyricComments(current => current ? {
+        ...current,
+        resolvingId: null,
+        error: 'Could not update this comment thread. Try again.',
+      } : current)
+      return false
+    }
   }
 
   async function handleRestoreLyricSnapshot(snapshotId: string) {
@@ -1011,6 +1160,7 @@ export function WorkPage({
           onBeginEdit={handleBeginSectionEdit}
           onEndEdit={handleEndSectionEdit}
           onOpenHistory={(blockId, label, currentText) => void handleOpenLyricHistory(blockId, label, currentText)}
+          onOpenComments={(blockId, label) => void handleOpenLyricComments(blockId, label)}
           onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}
@@ -1257,6 +1407,23 @@ export function WorkPage({
             restoringId={lyricHistory.restoringId}
             onRestore={snapshotId => void handleRestoreLyricSnapshot(snapshotId)}
             onClose={() => setLyricHistory(null)}
+          />
+        </FlowOverlay>
+      )}
+
+      {lyricComments && (
+        <FlowOverlay>
+          <LyricCommentsPanel
+            label={lyricComments.label}
+            comments={lyricComments.comments}
+            participants={lyricComments.participants}
+            loading={lyricComments.loading}
+            error={lyricComments.error}
+            saving={lyricComments.saving}
+            resolvingId={lyricComments.resolvingId}
+            onSubmit={handleSubmitLyricComment}
+            onSetResolved={handleSetLyricCommentResolved}
+            onClose={() => setLyricComments(null)}
           />
         </FlowOverlay>
       )}

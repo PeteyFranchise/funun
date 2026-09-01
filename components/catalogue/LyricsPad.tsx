@@ -62,6 +62,7 @@ export type LyricsPadProps = {
   onBeginEdit: (blockId: string, takeover?: boolean) => Promise<boolean>
   onEndEdit: (blockId: string) => Promise<void>
   onOpenHistory: (blockId: string, label: string, currentText: string) => void
+  onOpenComments?: (blockId: string, label: string) => void
   onAddSinger: (blockId: string) => void
   onDetach: (blockId: string) => void
   /** Delete a section. The card confirms in place first when the block still holds words. */
@@ -223,6 +224,7 @@ function SortableLyricBlock({
   onTakeOver,
   onEndEdit,
   onOpenHistory,
+  onOpenComments,
   onAddSinger,
   onDetach,
   onRemove,
@@ -240,6 +242,7 @@ function SortableLyricBlock({
   onTakeOver: () => void
   onEndEdit: () => void
   onOpenHistory: () => void
+  onOpenComments?: () => void
   onAddSinger: () => void
   onDetach: () => void
   onRemove: () => void
@@ -263,6 +266,7 @@ function SortableLyricBlock({
       onTakeOver={onTakeOver}
       onEndEdit={onEndEdit}
       onOpenHistory={onOpenHistory}
+      onOpenComments={onOpenComments}
       onAddSinger={onAddSinger}
       onDetach={onDetach}
       onRemove={onRemove}
@@ -287,6 +291,7 @@ export function LyricsPad({
   onBeginEdit,
   onEndEdit,
   onOpenHistory,
+  onOpenComments,
   onAddSinger,
   onDetach,
   onRemoveBlock,
@@ -452,6 +457,26 @@ export function LyricsPad({
     [onEndEdit, onOpenHistory, saveBlockText, sectionLocks]
   )
 
+  const handleOpenBlockComments = useCallback(
+    async (blockId: string, label: string) => {
+      if (!onOpenComments) return
+      const timer = timersRef.current[blockId]
+      if (timer) {
+        clearTimeout(timer)
+        delete timersRef.current[blockId]
+      }
+
+      const pending = pendingTextRef.current[blockId]
+      if (pending !== undefined) {
+        const saved = await saveBlockText(blockId, pending)
+        if (!saved) return
+      }
+      if (sectionLocks[blockId]?.state === 'mine') await onEndEdit(blockId)
+      onOpenComments(blockId, label)
+    },
+    [onEndEdit, onOpenComments, saveBlockText, sectionLocks]
+  )
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -599,6 +624,7 @@ export function LyricsPad({
                         onTakeOver={() => void handleBeginEditing(block.id, true)}
                         onEndEdit={() => void handleEndEditing(block.id)}
                         onOpenHistory={() => void handleOpenBlockHistory(block.id, block.label, text)}
+                        onOpenComments={onOpenComments ? () => void handleOpenBlockComments(block.id, block.label) : undefined}
                         onAddSinger={() => onAddSinger(block.id)}
                         onDetach={() => onDetach(block.id)}
                         onRemove={() => onRemoveBlock(block.id)}

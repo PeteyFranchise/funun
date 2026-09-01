@@ -11,12 +11,12 @@
 // (true)`), its ActivityKind enum is closed at four values, and its
 // emitter is explicitly best-effort — allowed to swallow errors. None of
 // that matches work_diary_events: private (member-scoped RLS, 37-01),
-// nine typed kinds, and never-skipped (trigger-sourced, not
+// ten typed kinds, and never-skipped (trigger-sourced, not
 // discipline-sourced). What IS reused is the RENDER STRUCTURE of
 // components/profile/ActivityFeed.tsx (icon badge, body, timestamp) — and
 // that reuse happens in plan 10's DiaryFeed component, not here.
 //
-// CAT-Q1: eight of the nine kinds arrive from database triggers
+// CAT-Q1: nine of the ten kinds arrive from database triggers
 // (migration 138) and therefore cannot be skipped by a route that
 // forgets to call them. The ninth, `note`, is the deliberate exception —
 // a free-standing annotation with no underlying row to trigger from, so a
@@ -108,6 +108,7 @@ export const DIARY_KIND_ACCENT: Record<DiaryEventKind, DiaryAccent> = {
   rename: 'lavdim',
   reorder: 'lavdim',
   detach: 'lavdim',
+  comment: 'brandindigo',
   note: 'lavdim',
 }
 
@@ -155,7 +156,7 @@ const LYRIC_EDIT_CONSEQUENCE: Record<DiaryEventPayloadMap['lyric_edit']['operati
 
 // ─── isTriggerSourced (CAT-Q1 contract) ─────────────────────────────────
 
-/** True for all nine kinds except `note` — the one app-authored exception. See file header. */
+/** True for every kind except `note` — the one app-authored exception. See file header. */
 export function isTriggerSourced(kind: DiaryEventKind): boolean {
   return kind !== 'note'
 }
@@ -271,6 +272,36 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
         consequence: 'Now carries its own authorship.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.detach,
+      }
+    }
+
+    case 'comment': {
+      const payload = row.payload as DiaryEventPayloadMap['comment']
+      const section = blockLabel(payload.blockType, payload.customLabel)
+      if (payload.operation === 'resolved') {
+        return {
+          kind: 'comment',
+          headline: `${actor} resolved a ${section} comment`,
+          consequence: 'The discussion is closed, not deleted, and can be reopened.',
+          date: row.created_at,
+          accent: DIARY_KIND_ACCENT.comment,
+        }
+      }
+      if (payload.operation === 'reopened') {
+        return {
+          kind: 'comment',
+          headline: `${actor} reopened a ${section} comment`,
+          consequence: 'The creative discussion is active again.',
+          date: row.created_at,
+          accent: DIARY_KIND_ACCENT.comment,
+        }
+      }
+      return {
+        kind: 'comment',
+        headline: `${actor} opened a comment on ${section}`,
+        consequence: 'Creative discussion only — lyrics, splits and approvals stay unchanged.',
+        date: row.created_at,
+        accent: DIARY_KIND_ACCENT.comment,
       }
     }
 

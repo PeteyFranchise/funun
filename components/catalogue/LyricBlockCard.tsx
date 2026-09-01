@@ -80,6 +80,8 @@ export type LyricBlockCardProps = {
   onEndEdit?: () => void
   /** Opens immutable recovery points for this section. Linked repeats use their source's history instead. */
   onOpenHistory?: () => void
+  /** Opens the private creative discussion attached to this original section. */
+  onOpenComments?: () => void
   /** "＋🎤 who sings this?" — opens the singer picker. Owned entirely by the caller. */
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
@@ -175,6 +177,7 @@ export function LyricBlockCard({
   onTakeOver,
   onEndEdit,
   onOpenHistory,
+  onOpenComments,
   onAddSinger,
   onDetach,
   onRemove,
@@ -240,6 +243,17 @@ export function LyricBlockCard({
           </span>
         )}
         <span className="ml-auto flex items-center gap-[10px]">
+          {!isRepeat && onOpenComments && (
+            <button
+              type="button"
+              onMouseDown={event => event.preventDefault()}
+              onClick={onOpenComments}
+              aria-label={`Open comments for ${label}`}
+              className="whitespace-nowrap text-[10px] font-semibold text-lavdim hover:text-white"
+            >
+              💬 Comments
+            </button>
+          )}
           {!isRepeat && onOpenHistory && (
             <button
               type="button"
