@@ -172,13 +172,11 @@ export async function PATCH(
     // No diary write here: migration 138's trigger fires on the
     // repeat_of_block_id transition from non-null to null, which this
     // update is.
-    const { data: detached, error: detachError } = await supabase
-      .from('lyric_blocks')
-      .update(patch)
-      .eq('id', blockId)
-      .eq('work_id', workId)
-      .select()
-      .single()
+    const { data: detached, error: detachError } = await supabase.rpc('detach_lyric_block_with_text', {
+      p_work_id: workId,
+      p_block_id: blockId,
+      p_text: String(patch.text ?? ''),
+    })
 
     if (detachError || !detached) {
       return NextResponse.json(

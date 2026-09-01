@@ -143,12 +143,14 @@ const LYRIC_EDIT_VERB: Record<DiaryEventPayloadMap['lyric_edit']['operation'], s
   added: 'added',
   edited: 'edited',
   removed: 'removed',
+  restored: 'restored',
 }
 
 const LYRIC_EDIT_CONSEQUENCE: Record<DiaryEventPayloadMap['lyric_edit']['operation'], string> = {
   added: 'Added to the pad, timestamped.',
   edited: 'Edited in the pad, timestamped.',
   removed: 'Removed from the pad, timestamped.',
+  restored: 'An earlier version is back; the words it replaced remain recoverable.',
 }
 
 // ─── isTriggerSourced (CAT-Q1 contract) ─────────────────────────────────

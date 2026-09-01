@@ -60,6 +60,21 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.headline).toContain('Breakdown')
   })
 
+  it('lyric restore says the earlier section is back without implying the replaced words were lost', () => {
+    const entry = describeDiaryEvent(
+      row('lyric_edit', {
+        blockId: 'b-2',
+        blockType: 'verse',
+        customLabel: null,
+        operation: 'restored',
+        snapshotId: 'snapshot-1',
+      }),
+      { names: { 'u-1': 'Maya' }, versionNumerals: {} }
+    )
+    expect(entry.headline).toBe('Maya restored Verse')
+    expect(entry.consequence).toMatch(/remain recoverable/i)
+  })
+
   it('ai_entry consequence is the stored citation, character-identical, never recomposed', () => {
     const citation = 'AI reference vocal — demo only. Ownership fully preserved; the diary proves it.'
     const entry = describeDiaryEvent(

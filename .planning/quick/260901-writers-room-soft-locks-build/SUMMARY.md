@@ -90,6 +90,8 @@ Remaining:
    - a saved lyric appears in the other sessions without refresh;
    - splits, contracts, metadata and rights remain outside live editing.
 
-## Next GSD slice
+## Follow-on safety layer
 
-Recoverable lyric snapshots and version restoration are the next safety layer. Do not widen live editing into legal or release facts while implementing snapshots.
+Recoverable lyric snapshots and version restoration are now implemented in code. See `.planning/quick/260901-writers-room-lyric-snapshots/SUMMARY.md` for the build report, product boundary, verification and production activation gate. Migration 145 and signed-in production UAT remain before the snapshot feature can be described as live.
+
+After that activation gate, comments, suggestions and intentional alternate lyric versions are the next creative-collaboration slice. Do not widen live editing or recovery into legal or release facts.

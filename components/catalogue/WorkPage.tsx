@@ -8,6 +8,7 @@ import { DiaryFeed, type DiaryFeedEntry } from './DiaryFeed'
 import { WorkHeader } from './WorkHeader'
 import { WorkRoster, type WorkRosterMember } from './WorkRoster'
 import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
+import { LyricHistoryPanel } from './LyricHistoryPanel'
 import { HumCaptureButton } from './HumCaptureButton'
 import { HumFirstMoment } from './HumFirstMoment'
 import { ReauthorPrompt } from './ReauthorPrompt'
@@ -26,7 +27,14 @@ import {
 } from '@/lib/catalogue/room-collaboration'
 import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogue/ai-entries'
 import type { WorkTier } from '@/lib/catalogue/membership'
-import type { LyricBlock, LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '@/types/catalogue'
+import type {
+  LyricBlock,
+  LyricBlockSnapshotView,
+  LyricBlockType,
+  PerformerRef,
+  WorkVersion,
+  WorkVocalState,
+} from '@/types/catalogue'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -173,6 +181,16 @@ type Flow =
   | { kind: 'reauthor'; headline: string; component: AiEntryComponent }
   | { kind: 'note' }
   | { kind: 'add-singer'; blockId: string }
+
+type LyricHistoryState = {
+  blockId: string
+  label: string
+  currentText: string
+  snapshots: LyricBlockSnapshotView[]
+  loading: boolean
+  error: string | null
+  restoringId: string | null
+}
 
 function FlowOverlay({ children }: { children: React.ReactNode }) {
   return (
@@ -411,6 +429,7 @@ export function WorkPage({
   const [liveLyricsBlocks, setLiveLyricsBlocks] = useState<LyricsPadBlock[]>(lyricsBlocks)
   const [sectionLocks, setSectionLocks] = useState<Record<string, LyricSectionLock>>({})
   const [activeLockBlockId, setActiveLockBlockId] = useState<string | null>(null)
+  const [lyricHistory, setLyricHistory] = useState<LyricHistoryState | null>(null)
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -436,6 +455,9 @@ export function WorkPage({
       if (!body.data) return
       setLiveLyricsBlocks(current =>
         current.map(block => (block.id === blockId ? { ...block, ...body.data } : block))
+      )
+      setLyricHistory(current =>
+        current?.blockId === blockId ? { ...current, currentText: body.data!.text } : current
       )
     },
     [workId]
@@ -736,6 +758,99 @@ export function WorkPage({
     return true
   }
 
+  async function handleOpenLyricHistory(blockId: string, label: string, currentText: string) {
+    setLyricHistory({
+      blockId,
+      label,
+      currentText,
+      snapshots: [],
+      loading: true,
+      error: null,
+      restoringId: null,
+    })
+
+    const res = await fetch(`/api/works/${workId}/blocks/${blockId}/snapshots`, { cache: 'no-store' })
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: LyricBlockSnapshotView[]
+      currentText?: string
+      error?: string
+    }
+    setLyricHistory(current => {
+      if (!current || current.blockId !== blockId) return current
+      return {
+        ...current,
+        currentText: res.ok && typeof body.currentText === 'string' ? body.currentText : current.currentText,
+        snapshots: res.ok && Array.isArray(body.data) ? body.data : [],
+        loading: false,
+        error: res.ok ? null : (body.error ?? 'Could not load this section’s recovery history.'),
+      }
+    })
+  }
+
+  async function handleRestoreLyricSnapshot(snapshotId: string) {
+    const history = lyricHistory
+    if (!history) return
+
+    setLyricHistory(current => current ? { ...current, restoringId: snapshotId, error: null } : current)
+    const acquired = await handleBeginSectionEdit(history.blockId)
+    if (!acquired) {
+      setLyricHistory(current => current ? {
+        ...current,
+        restoringId: null,
+        error: 'Another writer is editing this section. Wait until it is free, then restore.',
+      } : current)
+      return
+    }
+
+    const sessionId = lockSessionRef.current
+    if (!sessionId) {
+      await handleEndSectionEdit(history.blockId).catch(() => undefined)
+      setLyricHistory(current => current ? {
+        ...current,
+        restoringId: null,
+        error: 'Could not reserve this section for the restore.',
+      } : current)
+      return
+    }
+
+    try {
+      const res = await fetch(
+        `/api/works/${workId}/blocks/${history.blockId}/snapshots/${snapshotId}/restore`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
+        }
+      )
+      const body = (await res.json().catch(() => ({}))) as { data?: LyricBlock; error?: string }
+      if (!res.ok || !body.data) {
+        setLyricHistory(current => current ? {
+          ...current,
+          restoringId: null,
+          error: body.error ?? 'Could not restore this lyric version.',
+        } : current)
+        return
+      }
+
+      const restored = body.data
+      setLiveLyricsBlocks(current =>
+        current.map(block => (block.id === history.blockId ? { ...block, ...restored } : block))
+      )
+      void liveRoomRef.current?.broadcast('lyric_saved', { blockId: history.blockId })
+      router.refresh()
+      setLyricHistory(null)
+      showToast(`${history.label} restored — the version it replaced is still in history`)
+    } catch {
+      setLyricHistory(current => current ? {
+        ...current,
+        restoringId: null,
+        error: 'Could not restore this lyric version. Your current words are unchanged.',
+      } : current)
+    } finally {
+      await handleEndSectionEdit(history.blockId).catch(() => undefined)
+    }
+  }
+
   async function handleDetach(blockId: string) {
     const res = await fetch(`/api/works/${workId}/blocks/${blockId}`, {
       method: 'PATCH',
@@ -895,6 +1010,7 @@ export function WorkPage({
           sectionLocks={lockViews}
           onBeginEdit={handleBeginSectionEdit}
           onEndEdit={handleEndSectionEdit}
+          onOpenHistory={(blockId, label, currentText) => void handleOpenLyricHistory(blockId, label, currentText)}
           onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}
@@ -1126,6 +1242,21 @@ export function WorkPage({
           <AddSingerPicker
             onPick={performer => void handleAddSingerPick(flow.blockId, performer)}
             onCancel={() => setFlow(null)}
+          />
+        </FlowOverlay>
+      )}
+
+      {lyricHistory && (
+        <FlowOverlay>
+          <LyricHistoryPanel
+            label={lyricHistory.label}
+            currentText={lyricHistory.currentText}
+            snapshots={lyricHistory.snapshots}
+            loading={lyricHistory.loading}
+            error={lyricHistory.error}
+            restoringId={lyricHistory.restoringId}
+            onRestore={snapshotId => void handleRestoreLyricSnapshot(snapshotId)}
+            onClose={() => setLyricHistory(null)}
           />
         </FlowOverlay>
       )}

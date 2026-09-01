@@ -131,6 +131,26 @@ describe('LyricBlockCard', () => {
     expect(markup).toContain('who sings this?')
   })
 
+  it('offers section history only when the caller provides the recovery action', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Verse 1"
+        text="lines"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenHistory={noop}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('Open recovery history for Verse 1')
+    expect(markup).toContain('↶ History')
+  })
+
   it('contains no raw hex colour and no inline style attribute carrying one', () => {
     const markup = renderToStaticMarkup(
       <LyricBlockCard

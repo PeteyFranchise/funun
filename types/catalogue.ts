@@ -113,6 +113,32 @@ export type LyricBlock = {
   // NO numeral column — see file header note 1.
 }
 
+export type LyricSnapshotReason = 'edit_session_start' | 'before_restore'
+
+/**
+ * An immutable section-level recovery point. `capture_key` deduplicates
+ * ordinary autosaves into one baseline per editing session; it is an
+ * implementation capability, not an authorship, rights, or consent fact.
+ */
+export type LyricBlockSnapshot = {
+  id: string
+  work_id: string
+  block_id: string
+  capture_key: string
+  reason: LyricSnapshotReason
+  text: string
+  captured_by_user_id: string | null
+  created_at: string
+}
+
+/** The API's member-safe presentation; internal capture keys and user ids stay server-side. */
+export type LyricBlockSnapshotView = Pick<
+  LyricBlockSnapshot,
+  'id' | 'block_id' | 'reason' | 'text' | 'created_at'
+> & {
+  actorName: string
+}
+
 // ─── work_members — collaborator access + tier (S-02) ─────────────────
 
 export type WorkMember = {
@@ -179,7 +205,8 @@ export type DiaryEventPayloadMap = {
     blockId: string
     blockType: LyricBlockType
     customLabel: string | null
-    operation: 'added' | 'edited' | 'removed'
+    operation: 'added' | 'edited' | 'removed' | 'restored'
+    snapshotId?: string
   }
   /**
    * capture_work_member_event() — AFTER INSERT ON work_members. `memberUserId`

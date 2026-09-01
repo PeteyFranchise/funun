@@ -39,6 +39,7 @@ const baseProps = {
   sectionLocks: {},
   onBeginEdit: saveAsync,
   onEndEdit: noopAsync,
+  onOpenHistory: noop,
   onAddSinger: noop,
   onDetach: noop,
   onRemoveBlock: noop,
@@ -125,5 +126,11 @@ describe('LyricsPad', () => {
     expect(markup).toContain('You can wait or intentionally take over')
     expect(markup).toContain('Take over editing')
     expect(markup).toContain('readonly=""')
+  })
+
+  it('offers recovery history on an editable section', () => {
+    const markup = renderToStaticMarkup(<LyricsPad {...baseProps} blocks={[block()]} />)
+    expect(markup).toContain('Open recovery history for Verse')
+    expect(markup).toContain('↶ History')
   })
 })

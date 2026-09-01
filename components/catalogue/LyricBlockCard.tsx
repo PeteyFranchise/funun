@@ -78,6 +78,8 @@ export type LyricBlockCardProps = {
   onTakeOver?: () => void
   /** LyricsPad flushes the pending save before releasing the lease. */
   onEndEdit?: () => void
+  /** Opens immutable recovery points for this section. Linked repeats use their source's history instead. */
+  onOpenHistory?: () => void
   /** "＋🎤 who sings this?" — opens the singer picker. Owned entirely by the caller. */
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
@@ -172,6 +174,7 @@ export function LyricBlockCard({
   onBeginEdit,
   onTakeOver,
   onEndEdit,
+  onOpenHistory,
   onAddSinger,
   onDetach,
   onRemove,
@@ -237,6 +240,17 @@ export function LyricBlockCard({
           </span>
         )}
         <span className="ml-auto flex items-center gap-[10px]">
+          {!isRepeat && onOpenHistory && (
+            <button
+              type="button"
+              onMouseDown={event => event.preventDefault()}
+              onClick={onOpenHistory}
+              aria-label={`Open recovery history for ${label}`}
+              className="whitespace-nowrap text-[10px] font-semibold text-lavdim hover:text-white"
+            >
+              ↶ History
+            </button>
+          )}
           {/* REPEAT RULE: attribution stays with the original writer — a
               repeat block never shows its own author affordance, which
               would otherwise read as a second, false authorship claim. */}
