@@ -12,8 +12,11 @@ import { HumCaptureButton } from './HumCaptureButton'
 import { HumFirstMoment } from './HumFirstMoment'
 import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
+import { WriterRoomPresence } from './WriterRoomPresence'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
+import { deriveBlockNumerals } from '@/lib/catalogue/blocks'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
+import type { RoomActivity, RoomActivityKind, RoomPresencePerson } from '@/lib/catalogue/room-presence'
 import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogue/ai-entries'
 import type { WorkTier } from '@/lib/catalogue/membership'
 import type { LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '@/types/catalogue'
@@ -78,6 +81,10 @@ export type WorkPageProps = {
     members: WorkRosterMember[]
     viewerTier: WorkTier | null
     viewerIsOwner: boolean
+  }
+  presence: {
+    viewer: RoomPresencePerson
+    people: RoomPresencePerson[]
   }
   /** resolveGuidingLine()'s own return — a single step or null, already resolved server-side. */
   guidingLineStep: GuidingLineStep | null
@@ -199,7 +206,13 @@ export function Toast({
   )
 }
 
-function VersionsList({ versions }: { versions: VersionCardData[] }) {
+function VersionsList({
+  versions,
+  onActivity,
+}: {
+  versions: VersionCardData[]
+  onActivity: (kind: RoomActivityKind, label?: string) => void
+}) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
   }
@@ -214,7 +227,14 @@ function VersionsList({ versions }: { versions: VersionCardData[] }) {
             {v.isAiTagged && <span className="text-[11px] text-blue-400">AI</span>}
           </div>
           {v.playbackUrl && (
-            <audio controls src={v.playbackUrl} className="mt-1.5 h-8 w-full" />
+            <audio
+              controls
+              src={v.playbackUrl}
+              className="mt-1.5 h-8 w-full"
+              onPlay={() => onActivity('listening', v.display)}
+              onPause={() => onActivity('recently_active')}
+              onEnded={() => onActivity('recently_active')}
+            />
           )}
         </div>
       ))}
@@ -351,6 +371,7 @@ export function WorkPage({
   isEmpty,
   header,
   roster,
+  presence,
   guidingLineStep,
   diaryEntries,
   versions,
@@ -363,6 +384,38 @@ export function WorkPage({
   const router = useRouter()
 
   const [flow, setFlow] = useState<Flow | null>(null)
+  const [roomActivity, setRoomActivity] = useState<RoomActivity>(() => ({
+    kind: 'in_room',
+    label: null,
+    updatedAt: new Date().toISOString(),
+  }))
+  const activityTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  function announceRoomActivity(kind: RoomActivityKind, label?: string) {
+    activityTimersRef.current.forEach(clearTimeout)
+    activityTimersRef.current = []
+    setRoomActivity({ kind, label: label ?? null, updatedAt: new Date().toISOString() })
+
+    if (kind === 'editing_lyrics' || kind === 'listening') {
+      activityTimersRef.current.push(
+        setTimeout(
+          () => setRoomActivity({ kind: 'recently_active', label: null, updatedAt: new Date().toISOString() }),
+          10_000
+        ),
+        setTimeout(
+          () => setRoomActivity({ kind: 'in_room', label: null, updatedAt: new Date().toISOString() }),
+          30_000
+        )
+      )
+    }
+  }
+
+  useEffect(
+    () => () => {
+      activityTimersRef.current.forEach(clearTimeout)
+    },
+    []
+  )
   const [humFirstFired, setHumFirstFiredState] = useState(hasHumFirstFired)
   // Capture support is asked of the platform (never the user agent) —
   // pickSupportedMimeType() (plan 09/lib/catalogue/hum-capture.ts). This
@@ -524,7 +577,11 @@ export function WorkPage({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     })
-    if (res.ok) router.refresh()
+    if (res.ok) {
+      const block = deriveBlockNumerals(lyricsBlocks).find(candidate => candidate.id === blockId)
+      announceRoomActivity('editing_lyrics', block?.label)
+      router.refresh()
+    }
   }
 
   async function handleDetach(blockId: string) {
@@ -622,6 +679,13 @@ export function WorkPage({
         onVocalStateChange={() => router.refresh()}
       />
 
+      <WriterRoomPresence
+        workId={workId}
+        viewer={presence.viewer}
+        people={presence.people}
+        activity={roomActivity}
+      />
+
       {/* Creation leads (005-C): the composer (or its empty-state pitch),
           then AT MOST one guiding line, then the diary. */}
       <div className="mt-4">
@@ -678,7 +742,7 @@ export function WorkPage({
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr] lg:items-start">
             <div className="lg:sticky lg:top-4">
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Versions</p>
-              <VersionsList versions={versions} />
+              <VersionsList versions={versions} onActivity={announceRoomActivity} />
             </div>
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Diary</p>
@@ -718,7 +782,7 @@ export function WorkPage({
             {mobileTab === 'diary' ? (
               <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
             ) : (
-              <VersionsList versions={versions} />
+              <VersionsList versions={versions} onActivity={announceRoomActivity} />
             )}
           </div>
         )}
@@ -873,6 +937,7 @@ export function WorkPage({
                 body: JSON.stringify({ text }),
               })
               if (res.ok) {
+                announceRoomActivity('recently_active')
                 router.refresh()
                 setFlow(null)
                 showToast('Saved to the diary')

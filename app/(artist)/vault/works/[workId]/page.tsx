@@ -16,6 +16,7 @@ import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
 import type { LyricsPadBlock } from '@/components/catalogue/LyricsPad'
 import type { LyricBlockAuthor, LyricBlockSinger } from '@/components/catalogue/LyricBlockCard'
 import type { DiaryFeedEntry } from '@/components/catalogue/DiaryFeed'
+import type { RoomPresencePerson } from '@/lib/catalogue/room-presence'
 import type {
   Work,
   WorkMember as WorkMemberRow,
@@ -393,6 +394,36 @@ export default async function WorkComposerPage({
     new Set(members.filter(m => m.collaborator_id).map(nameForMember))
   )
 
+  // Realtime payloads deliberately carry no identity details. This trusted,
+  // access-checked server roster is the only source of names and avatars in
+  // the live room panel. Pending invitees have no user session and therefore
+  // cannot be present yet.
+  const presenceByUserId = new Map<string, RoomPresencePerson>()
+  for (const member of members) {
+    if (!member.user_id) continue
+    presenceByUserId.set(member.user_id, {
+      userId: member.user_id,
+      name: nameForMember(member),
+      avatarUrl: avatarFor(member),
+      isViewer: member.user_id === user.id,
+    })
+  }
+  if (!presenceByUserId.has(work.user_id)) {
+    presenceByUserId.set(work.user_id, {
+      userId: work.user_id,
+      name: ownerDisplayName,
+      avatarUrl: ownerProfile?.avatar_url ?? null,
+      isViewer: work.user_id === user.id,
+    })
+  }
+  const presencePeople = Array.from(presenceByUserId.values())
+  const presenceViewer = presenceByUserId.get(user.id) ?? {
+    userId: user.id,
+    name: namesById[user.id] ?? 'Collaborator',
+    avatarUrl: memberAvatarById.get(user.id) ?? null,
+    isViewer: true,
+  }
+
   function labelForPerformerRef(ref: PerformerRef | null): string | null {
     if (!ref) return null
     if (ref.kind === 'self') return ownerHandle
@@ -439,6 +470,7 @@ export default async function WorkComposerPage({
             viewerTier: access.tier,
             viewerIsOwner: access.isOwner,
           }}
+          presence={{ viewer: presenceViewer, people: presencePeople }}
           guidingLineStep={guidingLineStep}
           diaryEntries={diaryEntries}
           versions={versionCards}

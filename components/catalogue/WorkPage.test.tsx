@@ -117,6 +117,13 @@ function makeProps(overrides: Partial<WorkPageProps> = {}): WorkPageProps {
     isEmpty: false,
     header: baseHeader,
     roster: administerRoster,
+    presence: {
+      viewer: { userId: 'user-1', name: 'peterzora', avatarUrl: null, isViewer: true },
+      people: [
+        { userId: 'user-1', name: 'peterzora', avatarUrl: null, isViewer: true },
+        { userId: 'user-2', name: 'Ben Cooke', avatarUrl: null, isViewer: false },
+      ],
+    },
     guidingLineStep: null,
     diaryEntries: baseDiary,
     versions: baseVersions,
