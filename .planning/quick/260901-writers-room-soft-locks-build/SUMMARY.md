@@ -4,7 +4,7 @@
 
 Stage 2 Writer's Room collaboration is implemented in code. Multiple writers can edit different lyric sections at the same time, while a collision on the same section becomes visible and intentional instead of silently overwriting someone else's work.
 
-Migration 144 must be applied before the feature is activated in production. Three-person production UAT remains the final activation gate.
+Migration 144 was applied on 2026-09-01. Automated production UAT against the live Supabase project passed every lease, authorization, attribution, canonical-data and private-broadcast check. A signed-in, three-session visual acceptance test remains the final UI gate.
 
 ## What shipped
 
@@ -52,11 +52,37 @@ Realtime is used as a fast notification layer only. Re-fetching the canonical lo
 - Production build: `npm run build` passed, including the new lock routes.
 - Full repository Jest: 3,668/3,671 passed. The only three failures are pre-existing stale `WorkPage` copy expectations for “Add to this song —” and “Next for this song:” while the current UI already renders changed copy. They are unrelated to section locking and were left untouched to preserve concurrent user/Claude work.
 
+### Production UAT — 2026-09-01
+
+Passed against the live Supabase project after migration 144:
+
+- migration/table availability;
+- two writers claiming different lyric sections;
+- same-section collision refusal with the current holder identified;
+- explicit takeover;
+- rejection of a displaced writer's stale save;
+- exact-user-and-tab release, including refusal of a wrong-session release;
+- automatic recovery after the 30-second lease expires;
+- non-member denial;
+- direct authenticated access to the server-only lock table denied;
+- authorized private `lock_changed` broadcast delivered between members;
+- outsider private-room subscription denied;
+- owner, collaborator and takeover edits attributed to the correct diary actor;
+- canonical final lyric text matched the accepted save order.
+
+The UAT used three temporary users and one temporary work. Final cleanup verification returned zero remaining test works, zero remaining test users and no cleanup failures.
+
 ## Activation gate
 
-1. Apply migration 144 with `npm run db:push` and confirm the migration list is current through 144.
-2. Let the deployment containing this commit complete.
-3. Run three-writer UAT:
+Completed:
+
+1. Migration 144 applied.
+2. Automated three-user database and private-channel UAT passed.
+
+Remaining:
+
+1. Confirm the deployment containing commit `985d589` is live.
+2. Run signed-in visual UAT in three browser sessions:
    - three users enter one Writer's Room;
    - two users edit different sections and both save;
    - two users collide on one section and verify wait/takeover;
