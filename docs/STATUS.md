@@ -110,6 +110,10 @@ Management tokens are **deleted**.
 5. Deepen Pete's framework: per-genre action libraries, threshold-specific playbooks.
 
 ### Lower-priority code follow-ups
+- [ ] **The Writer's Room — live collaboration.** Eventually evolve the room into a
+      collaborative space where multiple writers can work on the same song at the
+      same time. This is future scope; the current shared diary is not simultaneous
+      co-editing.
 - ERN: `TechnicalDetails` / `SoundRecordingEdition`, real DPIDs (PIE).
 - RDR-N: collection-mandate party + territory + partner routing (RDx / aggregator).
 - DSR: harden parser vs specific profiles; map ISRC→titles in the Earnings breakdown.

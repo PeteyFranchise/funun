@@ -1615,6 +1615,12 @@ watch the diary record every one of those without being asked to.
 **Requirements**: S-01 (hum + upload + AI-entry flow), S-02 (collaborators + shared diary +
 tiers + splits nudge), S-03 (two shelves, two doors, Releases untouched), S-04 (copy full
 lyric, tagged + plain)
+
+**Future Writer's Room direction (not current 37.1 scope):** Evolve this into a live
+collaborative space where multiple writers can work on the same song at the same time.
+The current shared diary and collaborator access are the foundation, not a claim of
+simultaneous co-editing.
+
 **Depends on:** Phase 36
 **Plans:** 11/13 plans executed
 

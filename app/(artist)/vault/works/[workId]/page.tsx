@@ -412,7 +412,7 @@ export default async function WorkComposerPage({
 
   return (
     <>
-      <Topbar title={work.title} subtitle="Unreleased work — the composer room">
+      <Topbar title={work.title} subtitle="Unreleased work — The Writer's Room">
         <Link href="/vault" className="text-sm text-white/60 transition hover:text-white">
           ← Sound Vault
         </Link>
