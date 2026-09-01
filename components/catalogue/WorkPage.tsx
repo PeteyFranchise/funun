@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ComposerCard, ComposerCardEmptyState } from './ComposerCard'
 import { GuidingLine } from './GuidingLine'
@@ -12,14 +12,21 @@ import { HumCaptureButton } from './HumCaptureButton'
 import { HumFirstMoment } from './HumFirstMoment'
 import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
-import { WriterRoomPresence } from './WriterRoomPresence'
+import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPresence'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { deriveBlockNumerals } from '@/lib/catalogue/blocks'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
 import type { RoomActivity, RoomActivityKind, RoomPresencePerson } from '@/lib/catalogue/room-presence'
+import {
+  activeLocksByBlock,
+  normalizeCollaborationHint,
+  normalizeLyricSectionLock,
+  sectionLockView,
+  type LyricSectionLock,
+} from '@/lib/catalogue/room-collaboration'
 import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogue/ai-entries'
 import type { WorkTier } from '@/lib/catalogue/membership'
-import type { LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '@/types/catalogue'
+import type { LyricBlock, LyricBlockType, PerformerRef, WorkVersion, WorkVocalState } from '@/types/catalogue'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -145,6 +152,15 @@ function appendCookieValue(name: string, value: string) {
 function setHumFirstCookie(workId: string) {
   if (typeof document === 'undefined') return
   document.cookie = `${humFirstCookieName(workId)}=1;path=/;max-age=31536000;samesite=lax`
+}
+
+function createLockSessionId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 // ─── The flow state machine — every hygiene moment lives here ──────────
@@ -390,6 +406,89 @@ export function WorkPage({
     updatedAt: new Date().toISOString(),
   }))
   const activityTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const liveRoomRef = useRef<WriterRoomLiveHandle | null>(null)
+  const lockSessionRef = useRef<string | null>(null)
+  const [liveLyricsBlocks, setLiveLyricsBlocks] = useState<LyricsPadBlock[]>(lyricsBlocks)
+  const [sectionLocks, setSectionLocks] = useState<Record<string, LyricSectionLock>>({})
+  const [activeLockBlockId, setActiveLockBlockId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLiveLyricsBlocks(lyricsBlocks)
+  }, [lyricsBlocks])
+
+  const lockSessionId = useCallback(() => {
+    lockSessionRef.current ??= createLockSessionId()
+    return lockSessionRef.current
+  }, [])
+
+  const refreshSectionLocks = useCallback(async () => {
+    const res = await fetch(`/api/works/${workId}/locks`, { cache: 'no-store' })
+    if (!res.ok) return
+    const body = (await res.json().catch(() => ({}))) as { data?: unknown[] }
+    setSectionLocks(activeLocksByBlock(body.data ?? []))
+  }, [workId])
+
+  const refreshLyricBlock = useCallback(
+    async (blockId: string) => {
+      const res = await fetch(`/api/works/${workId}/blocks/${blockId}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const body = (await res.json().catch(() => ({}))) as { data?: LyricBlock }
+      if (!body.data) return
+      setLiveLyricsBlocks(current =>
+        current.map(block => (block.id === blockId ? { ...block, ...body.data } : block))
+      )
+    },
+    [workId]
+  )
+
+  const handleLiveHint = useCallback(
+    (kind: 'lock_changed' | 'lyric_saved', payload: unknown) => {
+      const hint = normalizeCollaborationHint(kind, payload)
+      if (!hint) return
+      if (hint.kind === 'lock_changed') void refreshSectionLocks()
+      else void refreshLyricBlock(hint.blockId)
+    },
+    [refreshLyricBlock, refreshSectionLocks]
+  )
+
+  const handleRoomResync = useCallback(() => {
+    void refreshSectionLocks()
+    liveLyricsBlocks.forEach(block => void refreshLyricBlock(block.id))
+  }, [liveLyricsBlocks, refreshLyricBlock, refreshSectionLocks])
+
+  useEffect(() => {
+    void refreshSectionLocks()
+    const expirySweep = setInterval(() => {
+      setSectionLocks(current => activeLocksByBlock(Object.values(current)))
+    }, 5_000)
+    const canonicalReconciliation = setInterval(() => void refreshSectionLocks(), 10_000)
+    return () => {
+      clearInterval(expirySweep)
+      clearInterval(canonicalReconciliation)
+    }
+  }, [refreshSectionLocks])
+
+  useEffect(() => {
+    if (!activeLockBlockId) return
+    const renew = async () => {
+      if (document.visibilityState !== 'visible') return
+      const res = await fetch(`/api/works/${workId}/blocks/${activeLockBlockId}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: lockSessionId(), takeover: false }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { data?: { lock?: unknown } }
+      const lock = normalizeLyricSectionLock(body.data?.lock)
+      if (!res.ok || !lock) {
+        setActiveLockBlockId(current => (current === activeLockBlockId ? null : current))
+        void refreshSectionLocks()
+        return
+      }
+      setSectionLocks(current => ({ ...current, [activeLockBlockId]: lock }))
+    }
+    const renewal = setInterval(() => void renew(), 10_000)
+    return () => clearInterval(renewal)
+  }, [activeLockBlockId, lockSessionId, refreshSectionLocks, workId])
 
   function announceRoomActivity(kind: RoomActivityKind, label?: string) {
     activityTimersRef.current.forEach(clearTimeout)
@@ -562,7 +661,7 @@ export function WorkPage({
   }
 
   function handleInsertRepeat(sourceBlockId: string, index: number | undefined) {
-    const source = lyricsBlocks.find(b => b.id === sourceBlockId)
+    const source = liveLyricsBlocks.find(b => b.id === sourceBlockId)
     if (!source) return
     void postBlocks({ kind: 'repeat', block_type: source.block_type, source_block_id: sourceBlockId, index })
   }
@@ -571,17 +670,70 @@ export function WorkPage({
     void postBlocks({ kind: 'paste', text })
   }
 
-  async function handleTextChange(blockId: string, text: string) {
+  async function handleBeginSectionEdit(blockId: string, takeover = false): Promise<boolean> {
+    const res = await fetch(`/api/works/${workId}/blocks/${blockId}/lock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: lockSessionId(), takeover }),
+    })
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: { granted?: boolean; lock?: unknown }
+    }
+    const lock = normalizeLyricSectionLock(body.data?.lock)
+    if (lock) setSectionLocks(current => ({ ...current, [blockId]: lock }))
+    if (!res.ok || body.data?.granted !== true || !lock) return false
+
+    setActiveLockBlockId(blockId)
+    const block = deriveBlockNumerals(liveLyricsBlocks).find(candidate => candidate.id === blockId)
+    announceRoomActivity('editing_lyrics', block?.label)
+    void liveRoomRef.current?.broadcast('lock_changed', { blockId })
+    return true
+  }
+
+  async function handleEndSectionEdit(blockId: string): Promise<void> {
+    const sessionId = lockSessionRef.current
+    if (!sessionId) return
+    const res = await fetch(`/api/works/${workId}/blocks/${blockId}/lock`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId }),
+    })
+    if (!res.ok) return
+    setSectionLocks(current => {
+      if (current[blockId]?.sessionId !== sessionId) return current
+      const next = { ...current }
+      delete next[blockId]
+      return next
+    })
+    setActiveLockBlockId(current => (current === blockId ? null : current))
+    announceRoomActivity('recently_active')
+    void liveRoomRef.current?.broadcast('lock_changed', { blockId })
+  }
+
+  async function handleTextChange(blockId: string, text: string): Promise<boolean> {
+    const sessionId = lockSessionRef.current
+    if (!sessionId) return false
     const res = await fetch(`/api/works/${workId}/blocks/${blockId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, lock_session_id: sessionId }),
     })
-    if (res.ok) {
-      const block = deriveBlockNumerals(lyricsBlocks).find(candidate => candidate.id === blockId)
-      announceRoomActivity('editing_lyrics', block?.label)
-      router.refresh()
+    const body = (await res.json().catch(() => ({}))) as { data?: LyricBlock }
+    if (!res.ok || !body.data) {
+      if (res.status === 409) {
+        setActiveLockBlockId(current => (current === blockId ? null : current))
+        void refreshSectionLocks()
+      }
+      return false
     }
+    const updated = body.data
+    setLiveLyricsBlocks(current =>
+      current.map(block => (block.id === blockId ? { ...block, ...updated } : block))
+    )
+    const block = deriveBlockNumerals(liveLyricsBlocks).find(candidate => candidate.id === blockId)
+    announceRoomActivity('editing_lyrics', block?.label)
+    void liveRoomRef.current?.broadcast('lyric_saved', { blockId })
+    return true
   }
 
   async function handleDetach(blockId: string) {
@@ -628,7 +780,7 @@ export function WorkPage({
   }
 
   async function handleAddSingerPick(blockId: string, performer: PerformerRef) {
-    const block = lyricsBlocks.find(b => b.id === blockId)
+    const block = liveLyricsBlocks.find(b => b.id === blockId)
     setFlow(null)
     if (!block) return
     const nextPerformers = [...block.performers, performer]
@@ -659,6 +811,18 @@ export function WorkPage({
     router.refresh()
   }
 
+  const lockViews = Object.fromEntries(
+    liveLyricsBlocks.map(block => [
+      block.id,
+      sectionLockView(
+        sectionLocks[block.id],
+        presence.viewer.userId,
+        lockSessionRef.current,
+        presence.people
+      ),
+    ])
+  )
+
   return (
     <div>
       <WorkHeader
@@ -680,10 +844,13 @@ export function WorkPage({
       />
 
       <WriterRoomPresence
+        ref={liveRoomRef}
         workId={workId}
         viewer={presence.viewer}
         people={presence.people}
         activity={roomActivity}
+        onLiveHint={handleLiveHint}
+        onResync={handleRoomResync}
       />
 
       {/* Creation leads (005-C): the composer (or its empty-state pitch),
@@ -721,10 +888,13 @@ export function WorkPage({
       <div ref={lyricsRef} className="mt-6">
         <p className="mb-2 text-[13px] font-semibold text-white">Lyrics</p>
         <LyricsPad
-          blocks={lyricsBlocks}
+          blocks={liveLyricsBlocks}
           vocalState={vocalState}
           onHum={handleHum}
           onTextChange={handleTextChange}
+          sectionLocks={lockViews}
+          onBeginEdit={handleBeginSectionEdit}
+          onEndEdit={handleEndSectionEdit}
           onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}

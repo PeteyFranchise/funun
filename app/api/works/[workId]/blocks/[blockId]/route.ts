@@ -40,7 +40,8 @@ const PerformerRefSchema = z
   })
   .strict()
 
-// Four editable fields and nothing else — the debounced autosave target.
+// Four editable fields plus one scoped lock capability and nothing else —
+// the debounced autosave target.
 // Migration 138's edit trigger fires only on text/block_type/custom_label,
 // and only once per SAVE (the client debounces before it PATCHes), which is
 // what makes the diary read as section-level history rather than a wall of
@@ -51,6 +52,7 @@ const PatchFieldsSchema = z
     block_type: z.enum(BLOCK_TYPE_VALUES).optional(),
     custom_label: z.string().trim().max(80).nullable().optional(),
     performers: z.array(PerformerRefSchema).max(12).optional(),
+    lock_session_id: z.string().uuid().optional(),
   })
   .strict()
 
@@ -88,6 +90,26 @@ async function loadBlockInWork(
 
   if (error) return { block: null, error: error.message }
   return { block: (data as LyricBlock | null) ?? null, error: null }
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ workId: string; blockId: string }> }
+) {
+  const { workId, blockId } = await params
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const access = await resolveWorkAccess(createWorkAccessDeps(supabase), workId, user.id, 'contribute')
+  if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
+
+  const { block, error } = await loadBlockInWork(supabase, workId, blockId)
+  if (error) return NextResponse.json({ error }, { status: 500 })
+  if (!block) return NextResponse.json({ error: 'Block not found.' }, { status: 404 })
+  return NextResponse.json({ data: block })
 }
 
 export async function PATCH(
@@ -185,8 +207,48 @@ export async function PATCH(
     )
   }
 
+  if (fields.text !== undefined) {
+    if (!fields.lock_session_id) {
+      return NextResponse.json(
+        { error: 'Reserve this lyric section before saving.' },
+        { status: 409 }
+      )
+    }
+    if (
+      fields.block_type !== undefined ||
+      fields.custom_label !== undefined ||
+      fields.performers !== undefined
+    ) {
+      return NextResponse.json(
+        { error: 'Lyric text saves must be sent separately from section settings.' },
+        { status: 400 }
+      )
+    }
+
+    const { data: updated, error: saveError } = await supabase.rpc('save_locked_lyric_block_text', {
+      p_work_id: workId,
+      p_block_id: blockId,
+      p_session_id: fields.lock_session_id,
+      p_text: fields.text,
+    })
+    if (saveError || !updated) {
+      const lockConflict = saveError?.message.includes('lyric_lock_required')
+      return NextResponse.json(
+        { error: lockConflict ? 'This section is no longer reserved for this tab.' : saveError?.message ?? 'Could not save lyrics' },
+        { status: lockConflict ? 409 : 500 }
+      )
+    }
+    return NextResponse.json({ data: updated })
+  }
+
+  if (fields.lock_session_id !== undefined) {
+    return NextResponse.json(
+      { error: 'A lock session may only accompany a lyric text save.' },
+      { status: 400 }
+    )
+  }
+
   const update: Record<string, unknown> = {}
-  if (fields.text !== undefined) update.text = fields.text
   if (fields.block_type !== undefined) update.block_type = fields.block_type
   if (fields.custom_label !== undefined) update.custom_label = fields.custom_label
   if (fields.performers !== undefined) update.performers = fields.performers

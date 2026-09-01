@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
+import type { SectionLockView } from '@/lib/catalogue/room-collaboration'
 import type { WorkVocalState } from '@/types/catalogue'
 
 // ─── The section card (sketch 006-A) ───────────────────────────────────
@@ -45,6 +46,8 @@ export type LyricBlockSinger = {
   isOwner: boolean
 }
 
+export type LyricBlockLockState = SectionLockView | { state: 'acquiring' }
+
 export type LyricBlockCardProps = {
   /** The derived display label, e.g. "Verse 2", "Chorus" (lone), or a custom label — from `deriveBlockNumerals()`. Never computed here. */
   label: string
@@ -69,6 +72,12 @@ export type LyricBlockCardProps = {
   singers: LyricBlockSinger[]
   /** Fires on every keystroke in the (non-repeat) lyric body — LyricsPad debounces before it PATCHes. */
   onTextChange: (text: string) => void
+  /** Text editing opens only after the server grants this tab a short section lease. */
+  lockState?: LyricBlockLockState
+  onBeginEdit?: () => void
+  onTakeOver?: () => void
+  /** LyricsPad flushes the pending save before releasing the lease. */
+  onEndEdit?: () => void
   /** "＋🎤 who sings this?" — opens the singer picker. Owned entirely by the caller. */
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
@@ -159,6 +168,10 @@ export function LyricBlockCard({
   vocalState,
   singers,
   onTextChange,
+  lockState = { state: 'available' },
+  onBeginEdit,
+  onTakeOver,
+  onEndEdit,
   onAddSinger,
   onDetach,
   onRemove,
@@ -171,6 +184,11 @@ export function LyricBlockCard({
 }: LyricBlockCardProps) {
   const showSingerAffordance = vocalState !== 'instrumental'
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [confirmingTakeover, setConfirmingTakeover] = useState(false)
+
+  useEffect(() => {
+    if (lockState.state !== 'other') setConfirmingTakeover(false)
+  }, [lockState.state])
   // Confirm only when there are words to lose. An empty just-added block or
   // a repeat (its words live on the source) removes on a single click.
   const removeNeedsConfirm = !isRepeat && text.trim().length > 0
@@ -201,6 +219,21 @@ export function LyricBlockCard({
             className="rounded-full bg-brandindigo/10 px-[7px] py-[1px] text-[10px] font-semibold text-brandindigo"
           >
             ↺ repeat
+          </span>
+        )}
+        {!isRepeat && lockState.state === 'mine' && (
+          <span className="rounded-full bg-emerald-400/10 px-[7px] py-[1px] text-[10px] font-semibold text-emerald-300">
+            You&apos;re editing
+          </span>
+        )}
+        {!isRepeat && lockState.state === 'acquiring' && (
+          <span className="rounded-full bg-brandindigo/10 px-[7px] py-[1px] text-[10px] font-semibold text-brandindigo">
+            Reserving…
+          </span>
+        )}
+        {!isRepeat && lockState.state === 'other' && (
+          <span className="rounded-full bg-amber-400/10 px-[7px] py-[1px] text-[10px] font-semibold text-amber-200">
+            {lockState.holderName} is editing
           </span>
         )}
         <span className="ml-auto flex items-center gap-[10px]">
@@ -251,13 +284,61 @@ export function LyricBlockCard({
         // the sketch's repeat treatment.
         <div className="whitespace-pre-line px-[14px] py-[11px] text-[14px] leading-[1.85] text-lavdim">{text}</div>
       ) : (
-        <textarea
-          value={text}
-          onChange={event => onTextChange(event.target.value)}
-          rows={Math.max(2, text.split('\n').length)}
-          className="w-full resize-none whitespace-pre-line bg-transparent px-[14px] py-[11px] text-[14px] leading-[1.85] text-white/95 outline-none placeholder:text-lavdim"
-          placeholder="Start writing…"
-        />
+        <>
+          {lockState.state === 'other' && (
+            <div className="mx-[14px] mt-[10px] rounded-[9px] border border-amber-300/20 bg-amber-300/[.06] px-3 py-2">
+              <p className="text-[11px] text-amber-100">
+                {lockState.holderName} is editing {label}. You can wait or intentionally take over.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {confirmingTakeover ? (
+                  <>
+                    <span className="text-[10px] text-lavdim">This may interrupt their edit.</span>
+                    <button
+                      type="button"
+                      onClick={onTakeOver}
+                      className="text-[10px] font-semibold text-amber-200 hover:text-white"
+                    >
+                      Take over anyway
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingTakeover(false)}
+                      className="text-[10px] text-lavdim hover:text-lav"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingTakeover(true)}
+                    className="text-[10px] font-semibold text-amber-200 hover:text-white"
+                  >
+                    Take over editing
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          <textarea
+            value={text}
+            onChange={event => onTextChange(event.target.value)}
+            onFocus={() => {
+              if (lockState.state === 'available') onBeginEdit?.()
+            }}
+            onBlur={() => {
+              if (lockState.state === 'mine') onEndEdit?.()
+            }}
+            readOnly={lockState.state !== 'mine'}
+            aria-readonly={lockState.state !== 'mine'}
+            rows={Math.max(2, text.split('\n').length)}
+            className={`w-full resize-none whitespace-pre-line bg-transparent px-[14px] py-[11px] text-[14px] leading-[1.85] outline-none placeholder:text-lavdim ${
+              lockState.state === 'mine' ? 'text-white/95' : 'cursor-default text-lav'
+            }`}
+            placeholder="Start writing…"
+          />
+        </>
       )}
 
       {isRepeat && (

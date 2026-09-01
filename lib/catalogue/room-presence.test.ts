@@ -19,7 +19,8 @@ describe('Writer Room presence presentation', () => {
           { kind: 'editing_lyrics', label: 'Verse 1', updated_at: '2026-09-01T00:00:03Z' },
         ],
       },
-      people
+      people,
+      Date.parse('2026-09-01T00:00:10Z')
     )
 
     expect(views).toHaveLength(1)
@@ -30,7 +31,8 @@ describe('Writer Room presence presentation', () => {
   it('ignores unknown presence keys instead of trusting payload identity', () => {
     const views = buildRoomPresenceViews(
       { stranger: [{ kind: 'in_room', updated_at: '2026-09-01T00:00:00Z' }] },
-      people
+      people,
+      Date.parse('2026-09-01T00:00:10Z')
     )
     expect(views).toEqual([])
   })
@@ -48,5 +50,14 @@ describe('Writer Room presence presentation', () => {
     })
     expect(activity?.label?.startsWith('Take x')).toBe(true)
     expect(activity?.label).toHaveLength(80)
+  })
+
+  it('drops stale ghost presence after the heartbeat safety window', () => {
+    const views = buildRoomPresenceViews(
+      { peter: [{ kind: 'in_room', updated_at: '2026-09-01T00:00:00Z' }] },
+      people,
+      Date.parse('2026-09-01T00:00:46Z')
+    )
+    expect(views).toEqual([])
   })
 })

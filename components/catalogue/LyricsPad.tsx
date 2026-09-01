@@ -20,8 +20,14 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { BLOCK_TYPE_LABELS, BLOCK_TYPE_VALUES, deriveBlockNumerals, resolveRepeat } from '@/lib/catalogue/blocks'
+import type { SectionLockView } from '@/lib/catalogue/room-collaboration'
 import type { LyricBlock, LyricBlockType, WorkVocalState } from '@/types/catalogue'
-import { LyricBlockCard, type LyricBlockAuthor, type LyricBlockSinger } from './LyricBlockCard'
+import {
+  LyricBlockCard,
+  type LyricBlockAuthor,
+  type LyricBlockLockState,
+  type LyricBlockSinger,
+} from './LyricBlockCard'
 import { CopyLyricMenu } from './CopyLyricMenu'
 
 // ─── The lyrics pad — sortable container, header, insert-anywhere ──────
@@ -51,7 +57,10 @@ export type LyricsPadProps = {
   vocalState: WorkVocalState
   onHum: () => void
   /** Debounced internally — see AUTOSAVE_DEBOUNCE_MS below — before this fires. */
-  onTextChange: (blockId: string, text: string) => void
+  onTextChange: (blockId: string, text: string) => Promise<boolean>
+  sectionLocks: Record<string, SectionLockView>
+  onBeginEdit: (blockId: string, takeover?: boolean) => Promise<boolean>
+  onEndEdit: (blockId: string) => Promise<void>
   onAddSinger: (blockId: string) => void
   onDetach: (blockId: string) => void
   /** Delete a section. The card confirms in place first when the block still holds words. */
@@ -207,7 +216,11 @@ function SortableLyricBlock({
   author,
   vocalState,
   singers,
+  lockState,
   onTextChange,
+  onBeginEdit,
+  onTakeOver,
+  onEndEdit,
   onAddSinger,
   onDetach,
   onRemove,
@@ -219,7 +232,11 @@ function SortableLyricBlock({
   author: LyricBlockAuthor | null
   vocalState: WorkVocalState
   singers: LyricBlockSinger[]
+  lockState: LyricBlockLockState
   onTextChange: (text: string) => void
+  onBeginEdit: () => void
+  onTakeOver: () => void
+  onEndEdit: () => void
   onAddSinger: () => void
   onDetach: () => void
   onRemove: () => void
@@ -237,7 +254,11 @@ function SortableLyricBlock({
       author={author}
       vocalState={vocalState}
       singers={singers}
+      lockState={lockState}
       onTextChange={onTextChange}
+      onBeginEdit={onBeginEdit}
+      onTakeOver={onTakeOver}
+      onEndEdit={onEndEdit}
       onAddSinger={onAddSinger}
       onDetach={onDetach}
       onRemove={onRemove}
@@ -258,6 +279,9 @@ export function LyricsPad({
   vocalState,
   onHum,
   onTextChange,
+  sectionLocks,
+  onBeginEdit,
+  onEndEdit,
   onAddSinger,
   onDetach,
   onRemoveBlock,
@@ -273,6 +297,9 @@ export function LyricsPad({
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [openDivider, setOpenDivider] = useState<number | null>(null)
   const [pendingText, setPendingText] = useState<Record<string, string>>({})
+  const [acquiringBlockId, setAcquiringBlockId] = useState<string | null>(null)
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
+  const pendingTextRef = useRef<Record<string, string>>({})
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Resync the visual order whenever the SET of block ids actually
@@ -298,6 +325,7 @@ export function LyricsPad({
       for (const block of blocks) {
         if (next[block.id] !== undefined && next[block.id] === block.text) {
           delete next[block.id]
+          delete pendingTextRef.current[block.id]
           changed = true
         }
       }
@@ -312,16 +340,92 @@ export function LyricsPad({
     }
   }, [])
 
+  const saveBlockText = useCallback(
+    async (blockId: string, text: string): Promise<boolean> => {
+      try {
+        const saved = await onTextChange(blockId, text)
+        if (!saved) {
+          setSaveErrors(current => ({
+            ...current,
+            [blockId]: 'This section changed hands before the save completed. Your words are still visible here so you can copy them.',
+          }))
+          return false
+        }
+        if (pendingTextRef.current[blockId] === text) {
+          delete pendingTextRef.current[blockId]
+          setPendingText(current => {
+            if (current[blockId] !== text) return current
+            const next = { ...current }
+            delete next[blockId]
+            return next
+          })
+        }
+        setSaveErrors(current => {
+          if (!current[blockId]) return current
+          const next = { ...current }
+          delete next[blockId]
+          return next
+        })
+        return true
+      } catch {
+        setSaveErrors(current => ({
+          ...current,
+          [blockId]: 'Could not save this section. Your words are still visible here so you can copy them.',
+        }))
+        return false
+      }
+    },
+    [onTextChange]
+  )
+
   const handleBlockTextChange = useCallback(
     (blockId: string, text: string) => {
+      pendingTextRef.current[blockId] = text
       setPendingText(prev => ({ ...prev, [blockId]: text }))
+      setSaveErrors(current => {
+        if (!current[blockId]) return current
+        const next = { ...current }
+        delete next[blockId]
+        return next
+      })
       const existing = timersRef.current[blockId]
       if (existing) clearTimeout(existing)
       timersRef.current[blockId] = setTimeout(() => {
-        onTextChange(blockId, text)
+        void saveBlockText(blockId, text)
       }, AUTOSAVE_DEBOUNCE_MS)
     },
-    [onTextChange]
+    [saveBlockText]
+  )
+
+  const handleBeginEditing = useCallback(
+    async (blockId: string, takeover = false) => {
+      setAcquiringBlockId(blockId)
+      const granted = await onBeginEdit(blockId, takeover).catch(() => false)
+      setAcquiringBlockId(current => (current === blockId ? null : current))
+      if (!granted) {
+        setSaveErrors(current => ({
+          ...current,
+          [blockId]: takeover
+            ? 'Could not take over this section. Refresh and try again.'
+            : 'Another writer reserved this section first. You can wait or choose Take over.',
+        }))
+      }
+    },
+    [onBeginEdit]
+  )
+
+  const handleEndEditing = useCallback(
+    async (blockId: string) => {
+      const timer = timersRef.current[blockId]
+      if (timer) {
+        clearTimeout(timer)
+        delete timersRef.current[blockId]
+      }
+      const pending = pendingTextRef.current[blockId]
+      const saved = pending === undefined ? true : await saveBlockText(blockId, pending)
+      if (saved) await onEndEdit(blockId)
+    },
+    [onEndEdit, saveBlockText]
   )
 
   const sensors = useSensors(
@@ -412,6 +516,12 @@ export function LyricsPad({
         </p>
       )}
 
+      {Object.entries(saveErrors).map(([blockId, message]) => (
+        <p key={blockId} role="alert" className="mb-[8px] text-[11px] text-rose-300">
+          {message}
+        </p>
+      ))}
+
       {orderedBlocks.length === 0 ? (
         <div className="rounded-[12px] border border-hair bg-card px-4 py-4">
           <textarea
@@ -455,7 +565,15 @@ export function LyricsPad({
                         author={block.authorDisplay}
                         vocalState={vocalState}
                         singers={block.singerDisplays}
+                        lockState={
+                          acquiringBlockId === block.id
+                            ? { state: 'acquiring' }
+                            : (sectionLocks[block.id] ?? { state: 'available' })
+                        }
                         onTextChange={value => handleBlockTextChange(block.id, value)}
+                        onBeginEdit={() => void handleBeginEditing(block.id)}
+                        onTakeOver={() => void handleBeginEditing(block.id, true)}
+                        onEndEdit={() => void handleEndEditing(block.id)}
                         onAddSinger={() => onAddSinger(block.id)}
                         onDetach={() => onDetach(block.id)}
                         onRemove={() => onRemoveBlock(block.id)}

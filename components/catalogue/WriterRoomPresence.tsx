@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import {
   buildRoomPresenceViews,
+  PRESENCE_HEARTBEAT_MS,
   roomActivityLabel,
   type RoomActivity,
   type RoomPresencePerson,
@@ -12,6 +13,10 @@ import {
 } from '@/lib/catalogue/room-presence'
 
 type ConnectionState = 'connecting' | 'live' | 'offline'
+
+export type WriterRoomLiveHandle = {
+  broadcast: (event: 'lock_changed' | 'lyric_saved', payload: { blockId: string }) => Promise<boolean>
+}
 
 function initials(name: string): string {
   return name
@@ -21,21 +26,41 @@ function initials(name: string): string {
     .map(part => part[0]?.toUpperCase())
     .join('') || '?'
 }
-export function WriterRoomPresence({
-  workId,
-  viewer,
-  people,
-  activity,
-}: {
+export const WriterRoomPresence = forwardRef<WriterRoomLiveHandle, {
   workId: string
   viewer: RoomPresencePerson
   people: RoomPresencePerson[]
   activity: RoomActivity
-}) {
+  onLiveHint?: (event: 'lock_changed' | 'lyric_saved', payload: unknown) => void
+  onResync?: () => void
+}>(function WriterRoomPresence({
+  workId,
+  viewer,
+  people,
+  activity,
+  onLiveHint,
+  onResync,
+}, ref) {
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const [present, setPresent] = useState<RoomPresenceView[]>([{ ...viewer, activity }])
   const channelRef = useRef<RealtimeChannel | null>(null)
   const activityRef = useRef(activity)
+  const liveHintRef = useRef(onLiveHint)
+  const resyncRef = useRef(onResync)
+
+  useEffect(() => {
+    liveHintRef.current = onLiveHint
+    resyncRef.current = onResync
+  }, [onLiveHint, onResync])
+
+  useImperativeHandle(ref, () => ({
+    async broadcast(event, payload) {
+      const channel = channelRef.current
+      if (!channel) return false
+      const result = await channel.send({ type: 'broadcast', event, payload })
+      return result === 'ok'
+    },
+  }), [])
 
   useEffect(() => {
     activityRef.current = activity
@@ -43,7 +68,7 @@ export function WriterRoomPresence({
       void channelRef.current.track({
         kind: activity.kind,
         label: activity.label,
-        updated_at: activity.updatedAt,
+        updated_at: new Date().toISOString(),
       })
     }
   }, [activity])
@@ -51,7 +76,11 @@ export function WriterRoomPresence({
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase.channel(`writers-room:${workId}:presence`, {
-      config: { private: true, presence: { key: viewer.userId } },
+      config: {
+        private: true,
+        presence: { key: viewer.userId },
+        broadcast: { ack: true, self: false },
+      },
     })
     channelRef.current = channel
 
@@ -60,7 +89,7 @@ export function WriterRoomPresence({
       void channel.track({
         kind: current.kind,
         label: current.label,
-        updated_at: current.updatedAt,
+        updated_at: new Date().toISOString(),
       })
     }
     const sync = () => {
@@ -69,17 +98,24 @@ export function WriterRoomPresence({
     }
 
     channel.on('presence', { event: 'sync' }, sync)
+    channel.on('broadcast', { event: 'lock_changed' }, ({ payload }) => {
+      liveHintRef.current?.('lock_changed', payload)
+    })
+    channel.on('broadcast', { event: 'lyric_saved' }, ({ payload }) => {
+      liveHintRef.current?.('lyric_saved', payload)
+    })
 
-    void supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
         setConnection('offline')
         return
       }
-      supabase.realtime.setAuth(data.session.access_token)
+      await supabase.realtime.setAuth(data.session.access_token)
       channel.subscribe(status => {
         if (status === 'SUBSCRIBED') {
           setConnection('live')
           publish()
+          resyncRef.current?.()
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setConnection('offline')
         }
@@ -91,10 +127,16 @@ export function WriterRoomPresence({
       else void channel.untrack()
     }
     document.addEventListener('visibilitychange', onVisibility)
+    const heartbeatId = setInterval(() => {
+      if (document.visibilityState === 'visible') publish()
+    }, PRESENCE_HEARTBEAT_MS)
+    const staleSweepId = setInterval(sync, 5_000)
 
     return () => {
       channelRef.current = null
       document.removeEventListener('visibilitychange', onVisibility)
+      clearInterval(heartbeatId)
+      clearInterval(staleSweepId)
       void channel.untrack()
       void supabase.removeChannel(channel)
     }
@@ -134,4 +176,4 @@ export function WriterRoomPresence({
       </div>
     </section>
   )
-}
+})

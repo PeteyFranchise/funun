@@ -25,6 +25,8 @@ export type RoomPresenceView = RoomPresencePerson & {
 
 const ACTIVITY_SET = new Set<string>(ROOM_ACTIVITY_KINDS)
 const MAX_LABEL_LENGTH = 80
+export const PRESENCE_HEARTBEAT_MS = 20_000
+export const PRESENCE_STALE_AFTER_MS = 45_000
 
 function cleanLabel(value: unknown): string | null {
   if (typeof value !== 'string') return null
@@ -45,19 +47,14 @@ export function normalizeRoomActivity(value: unknown): RoomActivity | null {
   }
 }
 
-function newestActivity(metas: unknown[]): RoomActivity {
+function newestActivity(metas: unknown[], nowMs: number, staleAfterMs: number): RoomActivity | null {
   const activities = metas
     .map(normalizeRoomActivity)
     .filter((activity): activity is RoomActivity => activity !== null)
+    .filter(activity => Date.parse(activity.updatedAt) > nowMs - staleAfterMs)
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 
-  return (
-    activities[0] ?? {
-      kind: 'in_room',
-      label: null,
-      updatedAt: new Date(0).toISOString(),
-    }
-  )
+  return activities[0] ?? null
 }
 
 /**
@@ -67,7 +64,9 @@ function newestActivity(metas: unknown[]): RoomActivity {
  */
 export function buildRoomPresenceViews(
   state: Record<string, unknown[]>,
-  people: RoomPresencePerson[]
+  people: RoomPresencePerson[],
+  nowMs = Date.now(),
+  staleAfterMs = PRESENCE_STALE_AFTER_MS
 ): RoomPresenceView[] {
   const peopleById = new Map(people.map(person => [person.userId, person]))
   const views: RoomPresenceView[] = []
@@ -75,7 +74,8 @@ export function buildRoomPresenceViews(
   for (const [userId, metas] of Object.entries(state)) {
     const person = peopleById.get(userId)
     if (!person || !Array.isArray(metas) || metas.length === 0) continue
-    views.push({ ...person, activity: newestActivity(metas) })
+    const activity = newestActivity(metas, nowMs, staleAfterMs)
+    if (activity) views.push({ ...person, activity })
   }
 
   return views.sort((a, b) => Number(b.isViewer) - Number(a.isViewer) || a.name.localeCompare(b.name))

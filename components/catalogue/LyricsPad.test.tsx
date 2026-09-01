@@ -10,6 +10,7 @@ import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
 
 const noop = () => {}
 const noopAsync = async () => {}
+const saveAsync = async () => true
 
 function block(overrides: Partial<LyricsPadBlock> = {}): LyricsPadBlock {
   return {
@@ -34,7 +35,10 @@ function block(overrides: Partial<LyricsPadBlock> = {}): LyricsPadBlock {
 const baseProps = {
   vocalState: 'primary' as const,
   onHum: noop,
-  onTextChange: noop,
+  onTextChange: saveAsync,
+  sectionLocks: {},
+  onBeginEdit: saveAsync,
+  onEndEdit: noopAsync,
   onAddSinger: noop,
   onDetach: noop,
   onRemoveBlock: noop,
@@ -106,5 +110,20 @@ describe('LyricsPad', () => {
   it('renders no raw hex colour anywhere on the surface', () => {
     const markup = renderToStaticMarkup(<LyricsPad {...baseProps} blocks={[block()]} />)
     expect(markup).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+  })
+
+  it('shows who holds a section and requires an intentional takeover', () => {
+    const markup = renderToStaticMarkup(
+      <LyricsPad
+        {...baseProps}
+        blocks={[block()]}
+        sectionLocks={{ b1: { state: 'other', holderName: 'Maya' } }}
+      />
+    )
+
+    expect(markup).toContain('Maya is editing')
+    expect(markup).toContain('You can wait or intentionally take over')
+    expect(markup).toContain('Take over editing')
+    expect(markup).toContain('readonly=""')
   })
 })
