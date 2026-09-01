@@ -23,6 +23,7 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
     .from('collaborators')
     .select('*')
     .eq('user_id', user?.id ?? '')
+    .is('archived_at', null)
     .order('name', { ascending: true })
 
   const collaborators = (data ?? []) as CollaboratorProfile[]

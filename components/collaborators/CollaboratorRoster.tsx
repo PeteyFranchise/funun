@@ -48,7 +48,9 @@ export function CollaboratorRoster({
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [quickInviteOpen, setQuickInviteOpen] = useState(false)
-  const [list, setList] = useState<CollaboratorProfile[]>(collaborators)
+  const [list, setList] = useState<CollaboratorProfile[]>(
+    collaborators.filter(collaborator => !collaborator.archived_at)
+  )
   // Post-save invite nudge (D-08a) — set only when the just-saved row is a
   // NEW collaborator with a non-empty email; never gates the save itself.
   const [invitePromptFor, setInvitePromptFor] = useState<CollaboratorProfile | null>(null)
@@ -76,8 +78,8 @@ export function CollaboratorRoster({
   }
 
   // Archive a claimed collaborator — send a non-null marker; server forces the
-  // actual timestamp (Task 4 / CR-03). On success, mark the row archived in list
-  // state so it leaves the active roster without a round-trip refresh.
+  // actual timestamp (Task 4 / CR-03). On success, remove the row from active
+  // client state immediately; archived identities remain preserved server-side.
   async function handleArchive(id: string) {
     const res = await fetch('/api/collaborators/' + id, {
       method: 'PATCH',
@@ -85,9 +87,7 @@ export function CollaboratorRoster({
       body: JSON.stringify({ archived_at: new Date().toISOString() }),
     })
     if (res.ok) {
-      setList(prev =>
-        prev.map(c => c.id === id ? { ...c, archived_at: new Date().toISOString() } : c)
-      )
+      setList(prev => prev.filter(c => c.id !== id))
     }
   }
 

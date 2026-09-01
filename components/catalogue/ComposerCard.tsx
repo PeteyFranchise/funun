@@ -86,6 +86,7 @@ export function ComposerCard({ onHum, onWriteLyrics, onAddAudio, onNote, support
 export type ComposerCardEmptyStateProps = {
   onHumYourIdea: () => void
   onStartWithLyrics: () => void
+  onNote: () => void
   /**
    * Same degrade as ComposerCard's hum tile: when this browser cannot
    * record, the hero's primary action routes to the upload path instead
@@ -99,19 +100,20 @@ export type ComposerCardEmptyStateProps = {
 export function ComposerCardEmptyState({
   onHumYourIdea,
   onStartWithLyrics,
+  onNote,
   supportsCapture,
   onAddAudio,
 }: ComposerCardEmptyStateProps) {
-  const primaryLabel = supportsCapture ? '🎙 Hum your idea' : '⬆ Add your idea'
+  const primaryLabel = supportsCapture ? '🎙 Hum it' : '⬆ Upload it'
   const primaryAction = supportsCapture ? onHumYourIdea : onAddAudio
 
   return (
     <div className="rounded-[12px] border border-hair bg-card px-[22px] py-[22px] text-center">
-      <b className="text-[15px] text-white">Start with a hum</b>
+      <b className="text-[15px] text-white">Start your song</b>
       <p className="mx-auto mb-3 mt-[5px] max-w-[420px] text-[11px] text-lavdim">
-        Thirty seconds of melody makes it real — and provably yours.
+        Hum a melody, write a line, upload a take, or leave a note.
       </p>
-      <div className="flex items-center justify-center gap-2">
+      <div className="mx-auto grid max-w-[520px] grid-cols-2 gap-2">
         {/*
           BUDGET RULE: one gradient per screen, spent on the primary
           action. This is the only element on this surface that may carry
@@ -121,16 +123,30 @@ export function ComposerCardEmptyState({
         <button
           type="button"
           onClick={primaryAction}
-          className="rounded-[9px] bg-grad px-[13px] py-[7px] text-[12px] font-semibold text-white shadow-cta"
+          className="rounded-[9px] bg-grad px-[13px] py-[10px] text-[12px] font-semibold text-white shadow-cta"
         >
           {primaryLabel}
         </button>
         <button
           type="button"
           onClick={onStartWithLyrics}
-          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[7px] text-[12px] font-semibold text-lav hover:text-white"
+          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[10px] text-[12px] font-semibold text-lav hover:text-white"
         >
-          ✎ Start with lyrics
+          ✎ Write lyrics
+        </button>
+        <button
+          type="button"
+          onClick={onAddAudio}
+          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[10px] text-[12px] font-semibold text-lav hover:text-white"
+        >
+          ⬆ Add audio
+        </button>
+        <button
+          type="button"
+          onClick={onNote}
+          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[10px] text-[12px] font-semibold text-lav hover:text-white"
+        >
+          💬 Note
         </button>
       </div>
     </div>

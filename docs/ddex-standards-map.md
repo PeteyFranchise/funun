@@ -1,6 +1,6 @@
 # DDEX Standards Map — which standards Funūn needs
 
-> Status: Reference · Last updated: 2026-06-19
+> Status: Reference · Last updated: 2026-09-01
 > Sources: DDEX Knowledge Base — "Which standard do I need?"
 > (https://kb.ddex.net/about-ddex-standards/which-standard-do-i-need/) and the
 > Open-Source Software directory
@@ -11,7 +11,7 @@ so both DDEX audience tracks apply. Mapped to Funūn functions:
 
 | Standard | Full name | Funūn function | Status |
 |---|---|---|---|
-| **ERN** | Electronic Release Notification | Deliver release + resources + terms to distributors/DSPs | ⚠️ export improved → ERN 4.3-aligned (`buildDdexErn`); validate vs XSD |
+| **ERN** | Electronic Release Notification | Deliver release + resources + terms to distributors/DSPs | ⚠️ ERN 3.5.1 XSD-valid; placeholder DPIDs; no partner-validated production feed |
 | **RIN** | Recording Information Notification | Capture studio session: contributors, **roles, instrumentation** | 🟡 performer data captured (Metadata Studio); RIN message not emitted |
 | **RDR** | Recording Data & Rights | Claim **neighbouring rights** with MLCs (SoundExchange/PPL) | 🟡 data model + readiness done (`lib/metadata/rdr.ts`); partner-routed |
 | **MWDR** | Musical Work Data & Rights | Works + rights to publishers/PROs | ✅ ≈ our CWR lane (`lib/metadata/cwr.ts`) |
@@ -42,7 +42,7 @@ in `tracks.metadata` and feed all three.
   "route RDR submission through a partner, don't build a node" posture.
 
 ## ERN export — conformance status (`lib/metadata/export.ts` → `buildDdexErn`)
-**Fixed in this pass** (output now validates as well-formed XML):
+**Current implementation** (output validates as well-formed XML):
 - `ern/43` namespace + `MessageSchemaVersionId`.
 - `MessageHeader` (thread/id/sender/recipient/created-time) — was missing entirely.
 - `ResourceReference` (A1…) on each SoundRecording + `ReleaseResourceReferenceList`
@@ -53,11 +53,12 @@ in `tracks.metadata` and feed all three.
 - Performers as `ResourceContributor`; writers as `IndirectResourceContributor`.
 
 ### XSD validation — DONE ✅ (ERN 3.5.1, schema-valid)
-`buildDdexErn` now emits **ERN 3.5.1** and **validates clean against the
-normative DDEX XSD**. We targeted 3.5.1 (not 4.3) deliberately: 3.x uses
-**inline parties** (matching our structure) and is still the most widely
-accepted version across distributors; 4.x's `PartyList`/party-reference
-architecture is a larger rework, deferred.
+`buildDdexErn` emits **ERN 3.5.1** and **validates clean against the normative
+DDEX XSD**. It originally targeted 3.5.1 because 3.x uses **inline parties**
+(matching the current structure). This is schema validation, not partner acceptance.
+The Phase 37.4 plan researches the current ERN 4.3.x family first and implements the
+exact version/profile required by the named receiving partner; 4.x's
+`PartyList`/party-reference architecture is a material rework, not a copy change.
 
 Reproduce the validation locally with libxml's `xmllint`:
 ```
@@ -75,6 +76,10 @@ FeaturedArtist/AssociatedPerformer, `IndirectResourceContributorRole` Composer);
 - Replace placeholder DPIDs with registered DDEX Party IDs (PIE / registration).
 - `TechnicalDetails` (file refs, codecs, hashes) for actual audio delivery.
 - An ERN **4.x** variant (PartyList architecture) if a target DSP requires it.
+
+**Production-readiness plan:** `.planning/deliberations/ddex-production-readiness.md`.
+The target is a licensed DDEX implementer with a registered DPID and a
+partner-validated feed — never an unscoped "DDEX certified" claim.
 
 ### RDR-N export — also XSD-valid ✅
 `buildRdrN` (lib/metadata/rdr-export.ts) now **validates against the normative

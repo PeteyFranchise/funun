@@ -4,7 +4,15 @@
 // the module and is exercised by the versions route's own integration
 // path, not here.
 
-import { EXT_BY_MIME, MAX_BYTES, buildVersionPath, extensionForMime, storageContentType } from './audio'
+import {
+  AUDIO_FILE_ACCEPT,
+  EXT_BY_MIME,
+  MAX_BYTES,
+  buildVersionPath,
+  extensionForMime,
+  resolveAudioType,
+  storageContentType,
+} from './audio'
 
 describe('extensionForMime', () => {
   it('maps every bare allow-listed type to its extension', () => {
@@ -17,6 +25,8 @@ describe('extensionForMime', () => {
     expect(extensionForMime('audio/x-wav')).toBe('wav')
     expect(extensionForMime('audio/flac')).toBe('flac')
     expect(extensionForMime('audio/ogg')).toBe('ogg')
+    expect(extensionForMime('audio/x-m4a')).toBe('m4a')
+    expect(extensionForMime('audio/x-flac')).toBe('flac')
   })
 
   it('normalizes a codec-qualified MediaRecorder MIME type before lookup', () => {
@@ -34,7 +44,6 @@ describe('extensionForMime', () => {
 
   it('returns null for an unmapped type, including a plausible-looking one', () => {
     expect(extensionForMime('audio/opus')).toBeNull()
-    expect(extensionForMime('audio/wave')).toBeNull()
     expect(extensionForMime('video/webm')).toBeNull()
     expect(extensionForMime('application/octet-stream')).toBeNull()
     expect(extensionForMime('')).toBeNull()
@@ -72,14 +81,57 @@ describe('storageContentType', () => {
     expect(storageContentType('audio/wav')).toBe('audio/wav')
   })
 
+  it('normalizes browser aliases to a bucket-approved canonical type', () => {
+    expect(storageContentType('audio/x-m4a')).toBe('audio/mp4')
+    expect(storageContentType('audio/wave')).toBe('audio/wav')
+    expect(storageContentType('application/ogg')).toBe('audio/ogg')
+  })
+
   it('returns null for an unmapped type — never forwards an unvetted Content-Type to storage', () => {
     expect(storageContentType('audio/opus')).toBeNull()
   })
 
-  it('every value this function can return is itself a key the bucket allow-list recognizes', () => {
+  it('every value this function can return is one of the bucket canonical types', () => {
+    const canonical = new Set([
+      'audio/webm',
+      'audio/mp4',
+      'audio/aac',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/flac',
+      'audio/ogg',
+    ])
     for (const mime of Object.keys(EXT_BY_MIME)) {
-      expect(storageContentType(mime)).toBe(mime)
+      expect(canonical.has(storageContentType(mime)!)).toBe(true)
     }
+  })
+})
+
+describe('resolveAudioType', () => {
+  it('uses a recognized MIME type and returns its canonical storage type', () => {
+    expect(resolveAudioType('audio/x-m4a', 'voice memo.m4a')).toEqual({
+      ext: 'm4a',
+      contentType: 'audio/mp4',
+    })
+  })
+
+  it('falls back to a safe allow-listed extension for blank/generic mobile MIME values', () => {
+    expect(resolveAudioType('', 'take.MP3')).toEqual({ ext: 'mp3', contentType: 'audio/mpeg' })
+    expect(resolveAudioType('application/octet-stream', 'take.m4a')).toEqual({
+      ext: 'm4a',
+      contentType: 'audio/mp4',
+    })
+  })
+
+  it('does not let an unrelated explicit MIME type borrow an audio extension', () => {
+    expect(resolveAudioType('application/pdf', 'not-really-audio.mp3')).toBeNull()
+  })
+
+  it('advertises the extensions commonly exposed by desktop and iOS file pickers', () => {
+    expect(AUDIO_FILE_ACCEPT).toContain('.mp3')
+    expect(AUDIO_FILE_ACCEPT).toContain('.wav')
+    expect(AUDIO_FILE_ACCEPT).toContain('.m4a')
+    expect(AUDIO_FILE_ACCEPT).toContain('.aac')
   })
 })
 
@@ -103,7 +155,7 @@ describe('buildVersionPath', () => {
 })
 
 describe('MAX_BYTES', () => {
-  it('matches the track-audio bucket\'s own 50MB file_size_limit (migration 004)', () => {
+  it('keeps each Writer\'s Room take at the product\'s 50MB ceiling', () => {
     expect(MAX_BYTES).toBe(50 * 1024 * 1024)
     expect(MAX_BYTES).toBe(52428800)
   })

@@ -13,6 +13,26 @@ Everything else (destinations, Crate submission, DDEX export, playlists, collabo
 sharing, volume view) defers to 37.2+. Ship the writing room first; the owner tests it
 live.
 
+**NEXT PRIORITY (owner, 2026-09-01): Phase 37.2 is the Writer's Room live-collaboration
+slice.** The first shippable model is block-level presence + section-aware lyrics/notes
+editing + soft locks + recoverable snapshots, not a character-level Google Docs clone.
+This is approved direction; do not re-ask whether the room should become collaborative.
+After the 37.1 owner device gate, run `/gsd-discuss-phase 37.2` to settle architecture,
+security, snapshot cadence, stale-lock/offline behavior and UI states. Detailed locked
+scope and ship test: `.planning/todos/pending/2026-09-01-writers-room-live-collaboration.md`.
+The remaining destinations, Crate submission, DDEX export, playlists, volume view and
+graduation work moves to 37.4+ unless planning identifies a dependency conflict.
+
+**FOLLOWING PRIORITY (owner, 2026-09-01): Phase 37.3 is Song Passport.** Credits,
+rights, provenance and recording data follow the song from first demo through versions
+and graduation into the Release Report. The original file remains immutable; metadata
+is embedded only in generated delivery copies. The owner locked six decisions: Song
+Passport naming, immutable originals, propagate-until-confirmed behavior, delivery-safe
+embedding, a first phase limited to inheritance/provenance/confirmation/MP3+sidecars,
+and graduation as the end-to-end test. Run `/gsd-discuss-phase 37.3` after 37.2. Detailed
+scope and acceptance criteria:
+`.planning/todos/pending/2026-09-01-song-passport-metadata-continuity.md`.
+
 **Status:** Owner vision captured + three core decisions LOCKED (2026-08-30 discussion).
 Ready for `/gsd-discuss-phase` when scheduled. Decisions below are settled — do not re-ask.
 
@@ -98,6 +118,29 @@ completeness (identifiers, credits, AI-disclosure fields), nudges for gaps, and 
 EXPORT that hands over the answers (DDEX metadata bundle + copy-ready disclosure
 answers for distributor upload flows). Copy principle across the phase: **The Crate is
 offered, never assumed** — same guidance energy for the artist who never submits to it.
+
+**11. Live collaboration (owner-approved 2026-09-01).** Multiple writers can occupy the
+same Writer's Room and work concurrently on lyrics and notes. The first release uses
+section-level soft locks, visible activity, autosave, meaningful attributed diary
+events and recoverable snapshots. Presence shows creative context (in the room, editing
+a section, listening to a take, recently active), never keystrokes, idle-time metrics or
+productivity scores. Same-section takeover is explicit and warned; no contribution is
+silently overwritten. Publishing percentages, executed agreements, legal identity,
+approved metadata, final identifiers and audio-file bytes stay behind their existing
+approval/version boundaries. The acceptance test is three writers, separate sessions,
+one disconnect and one collision, ending with no lost work.
+
+**12. Song Passport (owner-approved 2026-09-01).** The work owns composition facts; each
+recording version owns its recording facts; contributor profiles supply permissioned
+identity facts; release-only identifiers arrive at graduation. Every field carries
+provenance and an inherited/draft/confirmed/locked/outdated state. Upstream changes may
+refresh inherited data but never silently overwrite confirmed, locked or previously
+delivered facts. Source audio is immutable evidence. Funūn generates tagged MP3 delivery
+copies, human-readable sidecars, JSON manifests and export receipts from one versioned
+metadata snapshot. Only delivery-safe fields enter audio tags by default; contact,
+payment, contract, signature, private split-negotiation and legal-document data do not.
+DDEX/CWR/RDR remain structured exports fed by the same passport, not audio-tag synonyms,
+and certified direct industry delivery is a later partner-dependent phase.
 
 **Sketch verdicts so far:** 001 DECIDED → desktop C (two-column); mobile A single-stream
 diary as default with a Diary|Versions toggle reaching B's cards.

@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef, useState, type FormEvent } from 'react'
+import { CollaboratorPicker } from '@/components/collaborators/CollaboratorPicker'
+import type { CollaboratorProfile } from '@/lib/collaborators'
 import {
   canManageMembership,
   WORK_TIER_LABELS,
@@ -38,6 +40,8 @@ import {
 export type WorkRosterMember = {
   /** work_members.id */
   id: string
+  /** Global My Roster identity; null only for the work owner. */
+  collaboratorId?: string | null
   name: string
   /** Profile avatar URL when this person is a User Account with one set, else null (initials fallback). Display only. */
   avatarUrl?: string | null
@@ -79,6 +83,7 @@ type AddMemberResponse = {
   data?: {
     member: { id: string; tier: WorkTier; user_id: string | null; collaborator_id: string | null }
     collaborator: { id: string; name: string; email: string | null }
+    admission: 'direct' | 'invite-required'
     inviteLink: string | null
     inviteError: string | null
     splits: { changed: boolean } | null
@@ -181,8 +186,11 @@ export function WorkRoster({
   const [firstName, setFirstName] = useState('')
   const [email, setEmail] = useState('')
   const [tier, setTier] = useState<WorkTier>('contribute')
+  const [selectedCollaborator, setSelectedCollaborator] = useState<CollaboratorProfile | null>(null)
   const [addError, setAddError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState('')
+  const [admission, setAdmission] = useState<'direct' | 'invite-required' | null>(null)
+  const [inviteError, setInviteError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
   const [promotionMessage, setPromotionMessage] = useState<string | null>(null)
@@ -203,8 +211,11 @@ export function WorkRoster({
     setFirstName('')
     setEmail('')
     setTier('contribute')
+    setSelectedCollaborator(null)
     setAddError(null)
     setInviteLink('')
+    setAdmission(null)
+    setInviteError(null)
     setCopied(false)
   }
 
@@ -224,8 +235,9 @@ export function WorkRoster({
         // are different decisions made at different moments; a combined
         // form makes the second one accidental.
         body: JSON.stringify({
-          first_name: firstName.trim(),
-          email: email.trim(),
+          ...(selectedCollaborator
+            ? { collaborator_id: selectedCollaborator.id }
+            : { first_name: firstName.trim(), email: email.trim() }),
           tier,
           is_writer: false,
         }),
@@ -238,9 +250,16 @@ export function WorkRoster({
         return
       }
 
-      const { member, collaborator, inviteLink: link } = json.data
+      const {
+        member,
+        collaborator,
+        admission: admissionKind,
+        inviteLink: link,
+        inviteError: deliveryError,
+      } = json.data
       const added: WorkRosterMember = {
         id: member.id,
+        collaboratorId: member.collaborator_id,
         name: collaborator.name,
         tier: member.tier,
         isOwner: false,
@@ -252,6 +271,8 @@ export function WorkRoster({
       setList(prev => [...prev, added])
       onMemberAdded?.(added)
       setInviteLink(link ?? '')
+      setAdmission(admissionKind)
+      setInviteError(deliveryError)
       setAddState('done')
     } catch {
       setAddError('Network error — try again')
@@ -457,49 +478,55 @@ export function WorkRoster({
         )}
       </div>
 
-      {/* ─── Add a collaborator — the field shape matches the existing
-          standalone quick-invite path (first name + email) so an artist
-          meets ONE invite form in this product, plus the tier choice this
-          route also requires. ──────────────────────────────────────── */}
+      {/* ─── Add a collaborator — My Roster is the first path. The manual
+          first-name + email fields remain the fallback for someone genuinely
+          new, matching the standalone quick-invite field shape. ───────── */}
       {canManage && (
         <div className="mt-4 border-t border-hair pt-3">
           <b className="text-[12px] text-white">Add a collaborator</b>
 
           {addState === 'done' ? (
             <div className="mt-2 space-y-3">
-              <p className="rounded-lg border border-hair bg-card2 p-3 text-[12.5px] text-lav">
-                {/*
-                  Shown, never assumed delivered. sendCollaboratorInvite()
-                  (reused verbatim by plan 05's route) returns a usable
-                  link even when email delivery fails — surfacing it here
-                  is what keeps a delivery outage from reading as a failed
-                  invite.
-                */}
-                Invite ready. Share this link if the email doesn&apos;t land.
-              </p>
-              <div>
-                <label htmlFor="work-roster-invite-link" className="mb-1 block text-[11px] font-semibold text-lavdim">
-                  Invite link
-                </label>
-                <input
-                  id="work-roster-invite-link"
-                  ref={linkInputRef}
-                  type="text"
-                  readOnly
-                  value={inviteLink}
-                  onFocus={e => e.currentTarget.select()}
-                  onClick={e => e.currentTarget.select()}
-                  className={INPUT_CLASS}
-                />
-              </div>
+              {admission === 'direct' ? (
+                <p className="rounded-lg border border-emerald-400/20 bg-emerald-400/10 p-3 text-[12.5px] text-emerald-200">
+                  Added to the Writer&apos;s Room. They can open this song now—no signup email needed.
+                </p>
+              ) : (
+                <>
+                  <p className="rounded-lg border border-hair bg-card2 p-3 text-[12.5px] text-lav">
+                    {inviteError
+                      ? `Added as pending, but the invite could not be sent: ${inviteError}`
+                      : 'Invite ready. Share this link if the email doesn’t land.'}
+                  </p>
+                  {inviteLink && (
+                    <div>
+                      <label htmlFor="work-roster-invite-link" className="mb-1 block text-[11px] font-semibold text-lavdim">
+                        Invite link
+                      </label>
+                      <input
+                        id="work-roster-invite-link"
+                        ref={linkInputRef}
+                        type="text"
+                        readOnly
+                        value={inviteLink}
+                        onFocus={e => e.currentTarget.select()}
+                        onClick={e => e.currentTarget.select()}
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="rounded-lg bg-grad px-3 py-1.5 text-[12px] font-semibold text-white shadow-cta"
-                >
-                  {copied ? 'Copied ✓' : 'Copy invite link'}
-                </button>
+                {inviteLink && (
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="rounded-lg bg-grad px-3 py-1.5 text-[12px] font-semibold text-white shadow-cta"
+                  >
+                    {copied ? 'Copied ✓' : 'Copy invite link'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={resetAddForm}
@@ -517,35 +544,74 @@ export function WorkRoster({
                 </p>
               )}
 
-              <div>
-                <label htmlFor="work-roster-first-name" className="mb-1 block text-[11px] font-semibold text-lavdim">
-                  First name
-                </label>
-                <input
-                  id="work-roster-first-name"
-                  type="text"
-                  required
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                  placeholder="e.g. Jordan"
-                  className={INPUT_CLASS}
-                />
+              <div className="rounded-lg border border-hair bg-card2 p-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-lavdim">
+                  Add from My Roster
+                </p>
+                {selectedCollaborator ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[13px] font-semibold text-white">{selectedCollaborator.name}</p>
+                      <p className="text-[11px] text-lavdim">
+                        {selectedCollaborator.claimed_by
+                          ? 'Funūn member — access will be immediate'
+                          : 'Not signed up yet — an invite will be sent'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCollaborator(null)}
+                      className="text-[11px] text-lavdim hover:text-white"
+                    >
+                      Choose someone else
+                    </button>
+                  </div>
+                ) : (
+                  <CollaboratorPicker
+                    onSelect={setSelectedCollaborator}
+                    excludeIds={list
+                      .map(member => member.collaboratorId)
+                      .filter((id): id is string => Boolean(id))}
+                  />
+                )}
               </div>
 
-              <div>
-                <label htmlFor="work-roster-email" className="mb-1 block text-[11px] font-semibold text-lavdim">
-                  Email
-                </label>
-                <input
-                  id="work-roster-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className={INPUT_CLASS}
-                />
-              </div>
+              {!selectedCollaborator && (
+                <>
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-lavdim">
+                    Or invite someone new
+                  </p>
+                  <div>
+                    <label htmlFor="work-roster-first-name" className="mb-1 block text-[11px] font-semibold text-lavdim">
+                      First name
+                    </label>
+                    <input
+                      id="work-roster-first-name"
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={e => setFirstName(e.target.value)}
+                      placeholder="e.g. Jordan"
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="work-roster-email" className="mb-1 block text-[11px] font-semibold text-lavdim">
+                      Email
+                    </label>
+                    <input
+                      id="work-roster-email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label htmlFor="work-roster-tier" className="mb-1 block text-[11px] font-semibold text-lavdim">
@@ -570,7 +636,11 @@ export function WorkRoster({
                 disabled={addState === 'sending'}
                 className="rounded-lg bg-grad px-3 py-1.5 text-[12px] font-semibold text-white shadow-cta disabled:opacity-40"
               >
-                {addState === 'sending' ? 'Sending…' : 'Send invite'}
+                {addState === 'sending'
+                  ? 'Adding…'
+                  : selectedCollaborator?.claimed_by
+                    ? "Add to Writer's Room"
+                    : 'Send invite'}
               </button>
             </form>
           )}

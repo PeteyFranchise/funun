@@ -3,9 +3,10 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isWaitlistSubmitDisabled } from './waitlist-gate'
+import { signupCompletionState } from './completion'
 import { handleFieldState } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
 
@@ -52,6 +53,7 @@ function normalizeEmail(value: string): string {
 
 function SignUpFlow() {
   const supabase = createClient()
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [gateState, setGateState] = useState<GateState>('form')
@@ -232,7 +234,7 @@ function SignUpFlow() {
     setSubmitting(true)
     setSignUpError(null)
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -259,6 +261,17 @@ function SignUpFlow() {
     if (error) {
       setSignUpError(error.message)
       setSubmitting(false)
+      return
+    }
+
+    // Confirmation is currently disabled in production, so Supabase returns
+    // an active session and no second email is sent. Keep this branch driven
+    // by the actual response so the same screen remains correct if email
+    // confirmation is enabled later.
+    if (signupCompletionState(data.session) === 'active-session') {
+      setSubmitting(false)
+      router.replace('/vault')
+      router.refresh()
       return
     }
 

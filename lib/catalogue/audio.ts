@@ -17,8 +17,10 @@ export {
   BUCKET,
   MAX_BYTES,
   EXT_BY_MIME,
+  AUDIO_FILE_ACCEPT,
   extensionForMime,
   storageContentType,
+  resolveAudioType,
   buildVersionPath,
 } from '@/lib/catalogue/audio-mime'
 

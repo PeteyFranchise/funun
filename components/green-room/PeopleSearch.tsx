@@ -151,7 +151,7 @@ export function PeopleSearch() {
           type="search"
           value={filters.q}
           onChange={e => setFilters(f => ({ ...f, q: e.target.value }))}
-          placeholder="Search by name, handle, role, or genre"
+          placeholder="Search by name, @handle, username, or exact email"
           aria-label="Search people by keyword"
           className="w-full rounded-[14px] border border-white/12 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:border-emerald-300/40 focus:outline-none"
         />

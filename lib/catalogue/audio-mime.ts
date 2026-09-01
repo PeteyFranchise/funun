@@ -8,7 +8,17 @@
 
 export const BUCKET = 'track-audio'
 
-export const MAX_BYTES = 50 * 1024 * 1024 // matches migration 004's file_size_limit exactly
+// Writer's Room per-take ceiling. The shared bucket is larger because it
+// also carries resumable stem archives (migration 041).
+export const MAX_BYTES = 50 * 1024 * 1024
+
+/**
+ * Explicit extensions matter on iOS: Files can leave otherwise valid audio
+ * disabled when an input advertises only `audio/*`, especially for M4A/AAC
+ * files whose provider did not attach a useful MIME type.
+ */
+export const AUDIO_FILE_ACCEPT =
+  'audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.webm'
 
 /**
  * Migration 004 already allow-lists exactly these bare MIME types on the
@@ -25,13 +35,32 @@ export const MAX_BYTES = 50 * 1024 * 1024 // matches migration 004's file_size_l
 export const EXT_BY_MIME: Record<string, string> = {
   'audio/webm': 'webm',
   'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/x-m4a': 'm4a',
   'audio/aac': 'aac',
+  'audio/x-aac': 'aac',
   'audio/mpeg': 'mp3',
   'audio/mp3': 'mp3',
+  'audio/x-mp3': 'mp3',
   'audio/wav': 'wav',
   'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/vnd.wave': 'wav',
+  'audio/x-pn-wav': 'wav',
   'audio/flac': 'flac',
+  'audio/x-flac': 'flac',
   'audio/ogg': 'ogg',
+  'application/ogg': 'ogg',
+}
+
+const CONTENT_TYPE_BY_EXT: Record<string, string> = {
+  webm: 'audio/webm',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  flac: 'audio/flac',
+  ogg: 'audio/ogg',
 }
 
 /** Strips a `;codecs=...` (or any other) MIME parameter and lowercases. */
@@ -57,8 +86,40 @@ export function extensionForMime(mime: string): string | null {
  * `extensionForMime()`.
  */
 export function storageContentType(mime: string): string | null {
+  const ext = extensionForMime(mime)
+  return ext ? CONTENT_TYPE_BY_EXT[ext] ?? null : null
+}
+
+function extensionFromName(name: string): string | null {
+  const clean = name.trim().toLowerCase()
+  const dot = clean.lastIndexOf('.')
+  if (dot < 0 || dot === clean.length - 1) return null
+  const ext = clean.slice(dot + 1)
+  return CONTENT_TYPE_BY_EXT[ext] ? ext : null
+}
+
+export type ResolvedAudioType = {
+  ext: string
+  contentType: string
+}
+
+/**
+ * Resolves browser-supplied audio metadata without trusting the filename as
+ * a storage path. A recognized MIME wins. Only a blank/generic MIME falls
+ * back to the extension, which is needed for iOS Files and cloud providers
+ * that expose an M4A/MP3 as `application/octet-stream`.
+ */
+export function resolveAudioType(mime: string, fileName: string): ResolvedAudioType | null {
+  const extFromMime = extensionForMime(mime)
+  if (extFromMime) {
+    return { ext: extFromMime, contentType: CONTENT_TYPE_BY_EXT[extFromMime]! }
+  }
+
   const base = baseMimeType(mime)
-  return EXT_BY_MIME[base] ? base : null
+  if (base && base !== 'application/octet-stream') return null
+
+  const ext = extensionFromName(fileName)
+  return ext ? { ext, contentType: CONTENT_TYPE_BY_EXT[ext]! } : null
 }
 
 /**

@@ -5,17 +5,16 @@ import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import * as collaboratorInvite from '@/lib/collaborators/invite'
 import { planWriterPromotion } from '@/lib/catalogue/splits'
 import { loadWorkSplits, applyWorkSplits } from '@/lib/catalogue/splits-io'
+import { planWorkMemberAdmission } from '@/lib/catalogue/member-admission'
 
 // ─── POST /api/works/[workId]/members — invite, tiers, and the separate
 // writer promotion (S-02) ─────────────────────────────────────────────
 //
-// Reuses the existing collaborator invite/claim machinery VERBATIM
-// (imported as a namespace, `collaboratorInvite`, so the one call site
-// below is the only line in this file naming the invite function it
-// calls) — it already handles the 60-second dedup cooldown, the escaping
-// of user-entered names, and the Resend-down fallback that returns a
-// copyable link even when delivery fails. No second invite flow is built
-// here.
+// Reuses the existing collaborator invite/claim machinery for an UNCLAIMED
+// roster person only. A claimed collaborator already has a verified Funūn
+// identity and is linked directly, with no signup email. The invite helper
+// still owns cooldown, escaping, and copyable-link fallback; no second email
+// flow is built here.
 //
 // Membership and splits are different facts (doctrine, verbatim). Adding
 // a member never touches the split sheet; a writer promotion, requested
@@ -104,7 +103,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   } else {
     const { first_name: firstName, email } = input
 
-    const { data: existingByEmail } = await supabase
+    const { data: existingByEmail, error: lookupError } = await supabase
       .from('collaborators')
       .select('id, name, email, claimed_by')
       .eq('user_id', userId as string)
@@ -113,6 +112,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
       .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle()
+
+    // A failed roster lookup is not “no match.” Treating it that way created
+    // duplicate unclaimed rows when production drifted away from the expected
+    // archived_at schema, then sent existing Funūn users signup invitations.
+    if (lookupError) {
+      return NextResponse.json({ error: 'Could not check your collaborator roster' }, { status: 500 })
+    }
 
     if (existingByEmail) {
       collaborator = existingByEmail as CollaboratorRow
@@ -137,16 +143,11 @@ export async function POST(request: Request, { params }: RouteCtx) {
     }
   }
 
-  // ── Send the invite through the existing machinery, unchanged. ───────
-  // Best-effort relative to adding the member: a missing email or an
-  // internal error here must never block adding the person as a member —
-  // "a failed or unconfigured email send must never read as a failed
-  // invite" (lib/collaborators/invite.ts's own doctrine, e.g. Resend being
-  // down in prod today).
-  const inviteResult = await collaboratorInvite.sendCollaboratorInvite(supabase, {
-    collaborator: { id: collaborator.id, name: collaborator.name, email: collaborator.email },
-    invitingUserId: userId as string,
-  })
+  // `claimed_by` is a verified Funūn identity, established by the account's
+  // authenticated email claim. Claimed members receive direct room access
+  // and must never get another "create your account" email. Only genuinely
+  // unclaimed roster rows enter the invite workflow.
+  const admission = planWorkMemberAdmission(collaborator.claimed_by)
 
   // ── Insert the work_members row through the service role. ────────────
   // Migration 136 revokes INSERT/UPDATE/DELETE on work_members from
@@ -159,13 +160,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .from('work_members')
     .insert({
       work_id: workId,
-      // Set only for an already-claimed collaborator; otherwise left null
-      // and backfilled by migration 136's bridge trigger the moment that
+      // Set immediately for an already-claimed collaborator; otherwise left
+      // null and backfilled by migration 136's bridge trigger the moment that
       // person signs up, keyed off collaborators.claimed_by — the only
       // verified-identity signal in this codebase.
       // split_sheet_parties.user_id (a dead column, written nowhere) is
       // never consulted for this.
-      user_id: collaborator.claimed_by ?? null,
+      user_id: admission.userId,
       collaborator_id: collaborator.id,
       tier,
       added_by: userId,
@@ -174,11 +175,32 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .single()
 
   if (memberError || !member) {
+    if (memberError?.code === '23505') {
+      return NextResponse.json(
+        { error: 'This collaborator is already on this song' },
+        { status: 409 }
+      )
+    }
     return NextResponse.json(
       { error: memberError?.message ?? 'Could not add member' },
       { status: 500 }
     )
   }
+
+  // Deliver only after membership succeeds. A duplicate/rejected membership
+  // must never send a misleading invitation for a room the person was not
+  // actually added to.
+  const inviteResult =
+    admission.kind === 'invite-required'
+      ? await collaboratorInvite.sendCollaboratorInvite(supabase, {
+          collaborator: {
+            id: collaborator.id,
+            name: collaborator.name,
+            email: collaborator.email,
+          },
+          invitingUserId: userId as string,
+        })
+      : null
 
   // ── Writer promotion — explicit, separate, and ONLY on request. ──────
   // PITFALL 3 (doctrine, verbatim): auto-adding every member to the sheet
@@ -219,8 +241,9 @@ export async function POST(request: Request, { params }: RouteCtx) {
     data: {
       member,
       collaborator,
-      inviteLink: inviteResult.ok ? inviteResult.inviteLink : null,
-      inviteError: inviteResult.ok ? null : inviteResult.error,
+      admission: admission.kind,
+      inviteLink: inviteResult?.ok ? inviteResult.inviteLink : null,
+      inviteError: inviteResult && !inviteResult.ok ? inviteResult.error : null,
       splits,
     },
   })

@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   // ── 3. Reuse an existing active roster row for this email, if any. ────
   // Prevents a second roster row every time the artist re-invites the same
   // person from the modal.
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('collaborators')
     .select('*')
     .eq('user_id', user.id)
@@ -55,6 +55,12 @@ export async function POST(request: Request) {
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+
+  // Never turn a failed identity lookup into a fresh roster row. That was the
+  // root cause of the production duplicates repaired by migration 148.
+  if (lookupError) {
+    return NextResponse.json({ error: 'Could not check the existing roster' }, { status: 500 })
+  }
 
   let collaborator = existing
   let reused = true
@@ -83,6 +89,21 @@ export async function POST(request: Request) {
       )
     }
     collaborator = inserted
+  }
+
+  // claimed_by is the verified account bridge. A claimed collaborator is
+  // already a Funūn member, so another signup token/email would be both
+  // confusing and incorrect.
+  if (collaborator.claimed_by) {
+    return NextResponse.json({
+      data: {
+        collaborator,
+        alreadyMember: true,
+        emailSent: false,
+        skipped: true,
+        reused,
+      },
+    })
   }
 
   // ── 4. Send the invite via the shared helper ───────────────────────────

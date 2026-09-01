@@ -132,15 +132,15 @@ export function Rail2({
       </div>
 
       {rooms.map(room => {
-        // The `rooms` prop is already visibility-filtered by the caller —
-        // any room that reaches this map() is renderable. Only the IT Team
-        // room has real content in v1 (D-06); every other room is still a
-        // "Coming soon" ghost regardless of its `coming_soon` DB flag,
-        // since no other room has a live page yet.
+        // The `rooms` prop is already visibility-filtered by the caller.
+        // IT keeps its bespoke sub-navigation; every other DB-activated
+        // room uses the generic authored-entry page. `coming_soon` remains
+        // the source of truth for inert ghost rooms.
         if (room.key === 'it-team') {
           return <ItRoomEntry key={room.id} room={room} pathname={pathname} active={itRoomActive} />
         }
-        return <GhostRoom key={room.id} room={room} />
+        if (room.coming_soon) return <GhostRoom key={room.id} room={room} />
+        return <LiveRoomEntry key={room.id} room={room} pathname={pathname} />
       })}
 
       {isLeadership && (
@@ -184,6 +184,36 @@ export function Rail2({
         </>
       )}
     </aside>
+  )
+}
+
+function LiveRoomEntry({ room, pathname }: { room: PlaybookRoom; pathname: string }) {
+  const href = `/admin/playbook/${room.key}`
+  const active = pathname === href || pathname.startsWith(href + '/')
+
+  return (
+    <Link
+      href={href}
+      className={[
+        ROOM_BASE_CLASS,
+        'relative transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+        active ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+      ].join(' ')}
+    >
+      {active && (
+        <span
+          className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-[3px]"
+          style={{ background: 'var(--grad)' }}
+        />
+      )}
+      <span
+        className={[
+          ROOM_DOT_CLASS,
+          active ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : '',
+        ].join(' ')}
+      />
+      {room.label}
+    </Link>
   )
 }
 

@@ -16,6 +16,8 @@ import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
 import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPresence'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
+import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
+import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
 import { deriveBlockNumerals } from '@/lib/catalogue/blocks'
 import type { GuidingLineStep } from '@/lib/catalogue/guiding-line'
 import type { RoomActivity, RoomActivityKind, RoomPresencePerson } from '@/lib/catalogue/room-presence'
@@ -35,7 +37,6 @@ import type {
   LyricBlockType,
   LyricCommentParticipant,
   PerformerRef,
-  WorkVersion,
   WorkVocalState,
 } from '@/types/catalogue'
 
@@ -626,6 +627,8 @@ export function WorkPage({
   const rosterRef = useRef<HTMLDivElement | null>(null)
   const diaryRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [audioUploadPhase, setAudioUploadPhase] = useState<'preparing' | 'uploading' | 'finalizing' | null>(null)
+  const [audioUploadError, setAudioUploadError] = useState<string | null>(null)
 
   // A brief, self-dismissing confirmation. A saved note lands in the diary,
   // which now sits below the pad and can be collapsed — without this it can
@@ -699,6 +702,7 @@ export function WorkPage({
   }
 
   function triggerAddAudio() {
+    setAudioUploadError(null)
     fileInputRef.current?.click()
   }
 
@@ -706,18 +710,23 @@ export function WorkPage({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    setAudioUploadError(null)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('source', 'upload')
-      const res = await fetch(`/api/works/${workId}/versions`, { method: 'POST', body: form })
-      const body = (await res.json().catch(() => ({}))) as { data?: WorkVersion; error?: string }
-      if (!res.ok || !body.data) return
+      const version = await uploadWorkVersion({
+        workId,
+        file,
+        fileName: file.name,
+        source: 'upload',
+        onPhase: setAudioUploadPhase,
+      })
       router.refresh()
-      requestAiQuestion(body.data.id)
-    } catch {
-      // Best effort — a failed upload just leaves the composer as it was;
-      // the artist can retry the same verb.
+      requestAiQuestion(version.id)
+    } catch (cause) {
+      setAudioUploadError(
+        cause instanceof Error && cause.message ? cause.message : 'Could not upload that audio file. Please try again.'
+      )
+    } finally {
+      setAudioUploadPhase(null)
     }
   }
 
@@ -1124,6 +1133,7 @@ export function WorkPage({
           <ComposerCardEmptyState
             onHumYourIdea={handleHum}
             onStartWithLyrics={scrollToLyrics}
+            onNote={() => setFlow({ kind: 'note' })}
             supportsCapture={supportsCapture}
             onAddAudio={triggerAddAudio}
           />
@@ -1142,6 +1152,20 @@ export function WorkPage({
               onDismiss={handleGuidingLineDismiss}
             />
           </>
+        )}
+        {audioUploadPhase && (
+          <p role="status" className="mt-2 text-[11px] text-lavdim">
+            {audioUploadPhase === 'preparing'
+              ? 'Preparing your upload…'
+              : audioUploadPhase === 'uploading'
+                ? 'Uploading audio…'
+                : 'Saving the take…'}
+          </p>
+        )}
+        {audioUploadError && (
+          <p role="alert" className="mt-2 text-[11px] text-red-300">
+            {audioUploadError}
+          </p>
         )}
       </div>
 
@@ -1256,8 +1280,9 @@ export function WorkPage({
       <input
         ref={fileInputRef}
         type="file"
-        accept="audio/*"
+        accept={AUDIO_FILE_ACCEPT}
         className="hidden"
+        disabled={audioUploadPhase !== null}
         onChange={e => void handleFileChosen(e)}
       />
 

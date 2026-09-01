@@ -43,7 +43,11 @@ export const DISCOVER_PUBLIC_COLUMNS =
 
 export const DISCOVER_PAGE_SIZE = 20
 export const DISCOVER_MAX_LIMIT = 40
-export const DISCOVER_MAX_QUERY_LENGTH = 120
+// 254 preserves the full standards-compliant email address for exact lookup;
+// public text search still caps itself to eight 48-character tokens below.
+export const DISCOVER_MAX_QUERY_LENGTH = 254
+const DISCOVER_MAX_TEXT_TOKENS = 8
+const DISCOVER_MAX_TOKEN_LENGTH = 48
 
 export const DISCOVER_RELATIONSHIP_VALUES = ['following', 'connected', 'outside_network'] as const
 export type DiscoverRelationship = (typeof DISCOVER_RELATIONSHIP_VALUES)[number]
@@ -129,6 +133,46 @@ export function clampDiscoverLimit(value: unknown): number {
   const parsed = typeof value === 'string' ? Number(value) : value
   if (typeof parsed !== 'number' || !Number.isFinite(parsed)) return DISCOVER_PAGE_SIZE
   return Math.max(1, Math.min(DISCOVER_MAX_LIMIT, Math.floor(parsed)))
+}
+
+/** Exact-email detection; email lookup is never fuzzy or part of public text search. */
+export function isDiscoverEmailQuery(value: string | null): value is string {
+  if (!value) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+/**
+ * Builds a safe raw tsquery with prefix matching. This makes `@shanemaux`,
+ * `shane`, and multi-token display names discoverable without interpolating
+ * punctuation/operators into Postgres query syntax.
+ */
+export function buildDiscoverTextQuery(value: string | null): string | null {
+  if (!value) return null
+
+  const tokens: string[] = []
+  let current = ''
+  const flush = () => {
+    if (!current) return
+    const hasLetterOrDigit = Array.from(current).some(char => {
+      const isAsciiDigit = char >= '0' && char <= '9'
+      const isLetter = char.toLowerCase() !== char.toUpperCase()
+      return isAsciiDigit || isLetter
+    })
+    if (hasLetterOrDigit) tokens.push(current.slice(0, DISCOVER_MAX_TOKEN_LENGTH))
+    current = ''
+  }
+
+  for (const char of value.normalize('NFKC').toLowerCase()) {
+    const isAsciiDigit = char >= '0' && char <= '9'
+    const isLetter = char.toLowerCase() !== char.toUpperCase()
+    if (isAsciiDigit || isLetter || char === '_') current += char
+    else flush()
+    if (tokens.length >= DISCOVER_MAX_TEXT_TOKENS) break
+  }
+  if (tokens.length < DISCOVER_MAX_TEXT_TOKENS) flush()
+
+  const unique = Array.from(new Set(tokens)).slice(0, DISCOVER_MAX_TEXT_TOKENS)
+  return unique.length > 0 ? unique.map(token => `${token}:*`).join(' & ') : null
 }
 
 // ─── Filter parsing (validates + normalizes; never throws) ───────────────
@@ -389,6 +433,17 @@ export async function loadBlockedIds(service: SupabaseClient, viewerId: string):
   return ids
 }
 
+async function resolveDiscoverEmailProfileId(
+  supabase: SupabaseClient,
+  email: string
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc('discover_profile_id_by_email', {
+    p_email: email.trim(),
+  })
+  if (error) throw new Error(`Failed to search people: ${error.message}`)
+  return typeof data === 'string' && UUID_RE.test(data) ? data : null
+}
+
 export async function loadDiscoverResults(
   supabase: SupabaseClient,
   service: SupabaseClient,
@@ -397,6 +452,15 @@ export async function loadDiscoverResults(
   cursor: DiscoverCursor | null,
   limit: number
 ): Promise<{ results: GreenRoomPersonResult[]; nextCursor: string | null }> {
+  const emailQuery = isDiscoverEmailQuery(filters.q)
+  const emailProfileId = emailQuery
+    ? await resolveDiscoverEmailProfileId(supabase, filters.q as string)
+    : null
+  if (emailQuery && !emailProfileId) return { results: [], nextCursor: null }
+
+  const textQuery = !emailQuery ? buildDiscoverTextQuery(filters.q) : null
+  if (filters.q && !emailQuery && !textQuery) return { results: [], nextCursor: null }
+
   const [relationships, blockedIds] = await Promise.all([
     loadRelationships(supabase, viewerId),
     loadBlockedIds(service, viewerId),
@@ -410,6 +474,16 @@ export async function loadDiscoverResults(
   } else if (filters.relationship === 'connected') {
     restrictIds = Array.from(relationships.connectedIds)
     if (restrictIds.length === 0) return { results: [], nextCursor: null }
+  }
+
+  // Exact-email resolution yields only one privacy-checked profile id. It
+  // still intersects every relationship filter and passes through the same
+  // public-safe projection and app-level visibility checks below.
+  if (emailProfileId) {
+    if (restrictIds && !restrictIds.includes(emailProfileId)) {
+      return { results: [], nextCursor: null }
+    }
+    restrictIds = [emailProfileId]
   }
 
   const queryLimit = filters.role ? Math.min(200, limit * 5 + 1) : limit + 1
@@ -435,7 +509,7 @@ export async function loadDiscoverResults(
     query = query.not('id', 'in', `(${Array.from(excludeIds).join(',')})`)
   }
 
-  if (filters.q) query = query.textSearch('search_vector', filters.q, { type: 'websearch', config: 'english' })
+  if (textQuery) query = query.textSearch('search_vector', textQuery, { config: 'english' })
   // open_to is a JSONB column (migration 034). Passing an array would emit the
   // PG array literal cs.{collabs}, which Postgres rejects as invalid JSON for a
   // jsonb @>. Pass a JSON string so PostgREST emits jsonb containment

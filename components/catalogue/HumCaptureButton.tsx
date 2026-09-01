@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { extensionForMime, pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
+import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
 import type { WorkVersion } from '@/types/catalogue'
 
 // ─── HumCaptureButton — the microphone (sketch 003-B's record circle) ──
@@ -131,7 +132,11 @@ export function HumCaptureButton({
         void finishRecording(recorder.mimeType || mimeType || '')
       }
 
-      recorder.start()
+      // Ask for regular chunks rather than waiting until stop for the only
+      // `dataavailable` event. Some real browser/device combinations were
+      // producing a zero-byte take when stopped, even though recording had
+      // visibly started.
+      recorder.start(250)
       startedAtRef.current = Date.now()
       setElapsedSeconds(0)
       setRecording(true)
@@ -175,25 +180,28 @@ export function HumCaptureButton({
     const blob = new Blob(chunksRef.current, { type: recordedMimeType })
     const ext = extensionForMime(recordedMimeType) ?? 'webm'
 
-    const form = new FormData()
-    form.append('file', blob, `hum.${ext}`)
-    form.append('source', 'hum')
-    form.append('duration', String(durationSeconds))
+    if (blob.size <= 0) {
+      setError('No audio was captured. Check your microphone input and try again, or upload a file instead.')
+      chunksRef.current = []
+      return
+    }
 
     setSaving(true)
     try {
-      const res = await fetch(`/api/works/${workId}/versions`, { method: 'POST', body: form })
-      const body = (await res.json().catch(() => ({}))) as { data?: WorkVersion; error?: string }
-      if (!res.ok || !body.data) {
-        // Exit path #3 (T-37-54) — an upload failure after the take is
-        // already stopped still must not leave the mic open; it already
-        // isn't, stopTracks() ran above regardless of outcome.
-        setError(body.error ?? 'Could not save the recording — you can upload a file instead.')
-        return
-      }
-      onCaptured(body.data)
-    } catch {
-      setError('Could not save the recording — you can upload a file instead.')
+      const version = await uploadWorkVersion({
+        workId,
+        file: blob,
+        fileName: `hum.${ext}`,
+        source: 'hum',
+        durationSeconds,
+      })
+      onCaptured(version)
+    } catch (cause) {
+      setError(
+        cause instanceof Error && cause.message
+          ? cause.message
+          : 'Could not save the recording — you can upload a file instead.'
+      )
     } finally {
       setSaving(false)
       chunksRef.current = []

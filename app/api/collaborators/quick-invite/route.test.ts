@@ -33,16 +33,21 @@ function postRequest(body: unknown) {
 function mockSupabase(
   options: {
     existing?: Record<string, unknown> | null
+    lookupError?: { message: string } | null
     insertResult?: { data: Record<string, unknown> | null; error: { message: string } | null }
   } = {}
 ) {
-  const { existing = null, insertResult = { data: null, error: null } } = options
+  const {
+    existing = null,
+    lookupError = null,
+    insertResult = { data: null, error: null },
+  } = options
 
   const singleSpy = jest.fn(async () => insertResult)
   const insertSelectSpy = jest.fn(() => ({ single: singleSpy }))
   const insertSpy = jest.fn(() => ({ select: insertSelectSpy }))
 
-  const maybeSingleSpy = jest.fn(async () => ({ data: existing, error: null }))
+  const maybeSingleSpy = jest.fn(async () => ({ data: existing, error: lookupError }))
   const limitSpy = jest.fn(() => ({ maybeSingle: maybeSingleSpy }))
   const orderSpy = jest.fn(() => ({ limit: limitSpy }))
   const isSpy = jest.fn(() => ({ order: orderSpy }))
@@ -179,6 +184,55 @@ describe('POST /api/collaborators/quick-invite', () => {
     expect(body.data.reused).toBe(true)
     expect(body.data.collaborator.id).toBe(EXISTING_ROW_ID)
     expect(supabase.insertSpy).not.toHaveBeenCalled()
+  })
+
+  it('recognizes a claimed roster row as an existing Funūn member and sends no signup invite', async () => {
+    const existingMember = {
+      id: EXISTING_ROW_ID,
+      user_id: USER_ID,
+      name: 'Jamie',
+      first_name: 'Jamie',
+      email: 'jamie@example.com',
+      claimed_by: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+      status: 'confirmed',
+      archived_at: null,
+    }
+    const supabase = mockSupabase({ existing: existingMember })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        collaborator: existingMember,
+        alreadyMember: true,
+        emailSent: false,
+        skipped: true,
+        reused: true,
+      })
+    )
+    expect(supabase.insertSpy).not.toHaveBeenCalled()
+    expect(sendCollaboratorInvite).not.toHaveBeenCalled()
+  })
+
+  it('returns 500 and refuses to insert when the existing-roster lookup fails', async () => {
+    const supabase = mockSupabase({ lookupError: { message: 'column unavailable' } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: USER_ID } } })) },
+      ...supabase,
+    })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: 'Could not check the existing roster' })
+    expect(supabase.insertSpy).not.toHaveBeenCalled()
+    expect(sendCollaboratorInvite).not.toHaveBeenCalled()
   })
 
   it('normalizes email to lowercase and trimmed before the lookup', async () => {

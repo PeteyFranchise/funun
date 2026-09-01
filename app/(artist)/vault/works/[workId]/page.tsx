@@ -379,6 +379,7 @@ export default async function WorkComposerPage({
     )
     return {
       id: m.id,
+      collaboratorId: m.collaborator_id,
       name: nameForMember(m),
       avatarUrl: avatarFor(m),
       tier: m.tier,

@@ -140,15 +140,15 @@ describe('WorkPage', () => {
   it('renders the header, the composer card, the diary and the versions list for a populated work', () => {
     const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
     expect(markup).toContain('aria-label="Song title"') // WorkHeader's live title input
-    expect(markup).toContain('Add to this song —') // ComposerCard
+    expect(markup).toContain('Add to this song') // ComposerCard
     expect(markup).toContain('Scratch hum') // the versions column
     expect(markup).toContain('v1 — hum recorded') // DiaryFeed
   })
 
   it('orders the page composer-first, guiding line second, diary after (005-C)', () => {
     const markup = renderToStaticMarkup(<WorkPage {...makeProps({ guidingLineStep: HUM_TO_CLAIM_STEP })} />)
-    const composerIndex = markup.indexOf('Add to this song —')
-    const guidingLineIndex = markup.indexOf('Next for this song:')
+    const composerIndex = markup.indexOf('Add to this song')
+    const guidingLineIndex = markup.indexOf(HUM_TO_CLAIM_STEP.headline)
     const diaryIndex = markup.indexOf('v1 — hum recorded')
     expect(composerIndex).toBeGreaterThan(-1)
     expect(guidingLineIndex).toBeGreaterThan(composerIndex)
@@ -157,11 +157,11 @@ describe('WorkPage', () => {
 
   it('renders exactly one guiding line when a step was supplied, and none when null was supplied', () => {
     const withStep = renderToStaticMarkup(<WorkPage {...makeProps({ guidingLineStep: HUM_TO_CLAIM_STEP })} />)
-    const matches = withStep.match(/Next for this song:/g) ?? []
+    const matches = withStep.match(/Protect your melody — hum it in/g) ?? []
     expect(matches).toHaveLength(1)
 
     const withoutStep = renderToStaticMarkup(<WorkPage {...makeProps({ guidingLineStep: null })} />)
-    expect(withoutStep).not.toContain('Next for this song:')
+    expect(withoutStep).not.toContain(HUM_TO_CLAIM_STEP.headline)
   })
 
   it('renders the empty-state hero and no guiding line for a work with no versions and no blocks', () => {
@@ -176,9 +176,15 @@ describe('WorkPage', () => {
         })}
       />
     )
-    expect(markup).toContain('Start with a hum')
-    expect(markup).toContain('Thirty seconds of melody')
-    expect(markup).not.toContain('Next for this song:')
+    expect(markup).toContain('Start your song')
+    // Node has no MediaRecorder, so the first tile truthfully degrades to
+    // upload in this static render; ComposerCard's own supported-browser
+    // test asserts that the same tile says “Hum it” in production.
+    expect(markup).toContain('Upload it')
+    expect(markup).toContain('Write lyrics')
+    expect(markup).toContain('Add audio')
+    expect(markup).toContain('Note')
+    expect(markup).not.toContain(HUM_TO_CLAIM_STEP.headline)
   })
 
   it('still spends exactly one gradient on the empty state, even for a canManage (administer) viewer', () => {

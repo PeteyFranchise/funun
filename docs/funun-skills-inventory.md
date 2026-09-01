@@ -14,6 +14,34 @@ Use this as an SOP reference for Codex workflows, not as a legal or engineering 
 
 ## Skill Index
 
+### `$funun-repo-audit`
+
+- Purpose: Perform a strict, evidence-based, read-only audit of Funūn across application security, authorization, Supabase/RLS, concurrency and data integrity, performance, generated-code risks, and edge cases.
+- Scope: Funūn only. This skill audits and reports by default; it does not remediate, migrate, commit, push, or deploy unless a separate request explicitly authorizes implementation.
+- Best for:
+  - full-repository security and architecture audits
+  - current-branch or all-available-branch reviews
+  - authentication, authorization, service-role, and RLS reviews
+  - webhook, background-job, billing, and serverless concurrency reviews
+  - performance, dead-code, hallucinated API, and state-management reviews
+  - copy/paste-ready audit reports for Claude or internal review
+- Skill path: `/Users/peterzora/Desktop/funun/.agents/skills/funun-repo-audit`
+- Key outputs:
+  - prioritized `Critical`, `Medium`, and `Low` findings
+  - file and line evidence with concrete attack or failure scenarios
+  - accepted-risk and explicit-trust-decision register
+  - needs-verification and owner-clarification sections
+  - coverage gaps, remediation order, and exact validation results
+- Important behavior:
+  - preserves user-owned and dirty worktree files
+  - checks routes together with shared auth, RLS, grants, migrations, and tests
+  - requires a concrete transaction interleaving for concurrency findings
+  - recognizes the approved TMS team-management authority instead of repeatedly reporting it as privilege escalation
+- Example prompts:
+  - `Use $funun-repo-audit to perform a read-only security and architecture audit of the current Funūn branch. Do not change code. Return the report in one copy/paste-ready Markdown block.`
+  - `Use $funun-repo-audit to audit the current branch and all available branch deltas for authorization, RLS, webhook, job, billing, and concurrency defects. Separate confirmed findings from items needing verification.`
+  - `Use $funun-repo-audit to review this Funūn pull request for security, performance, generated-code mistakes, and edge cases. Report findings with exact files and lines, but do not implement fixes.`
+
 ### `$funun-contract-template-intake`
 
 - Purpose: Review blank music contract templates for Funūn, separate legal substance from brandable presentation, recommend user-facing helper text, and prepare a Claude DocuSeal handoff prompt only after the structure is approved.
@@ -156,6 +184,13 @@ For Buffer or social-posting work:
 1. Start with `spike-findings-funun`.
 2. Confirm the proposed implementation matches the verified spike findings.
 3. Only then move into repo changes.
+
+For a repository audit:
+
+1. Start with `$funun-repo-audit` and state whether the scope is the current branch, a pull request, or all available branch deltas.
+2. Keep the audit read-only and review the prioritized findings, accepted risks, and coverage gaps.
+3. Authorize remediation separately so review findings do not silently become code or database changes.
+4. Re-run the skill after remediation when an independent verification pass is needed.
 
 For a new shared Funūn Codex skill:
 

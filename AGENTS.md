@@ -367,6 +367,7 @@ Three pillars:
 ## Project Skills
 
 - **Spike findings for funun** (Buffer integration — BYOK auth, calendar→post mapping, connect/push UX; implementation patterns, constraints, gotchas) → `Skill("spike-findings-funun")`
+- **Funūn repository audit** (read-only security, authorization, RLS, concurrency, performance, generated-code, and edge-case audits; prioritized copy/paste reports) → `Skill("funun-repo-audit")`
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->

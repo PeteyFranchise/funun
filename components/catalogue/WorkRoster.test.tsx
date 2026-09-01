@@ -22,10 +22,12 @@ describe('WorkRoster', () => {
     expect(markup).toContain('Being on the sheet means you own part of')
   })
 
-  it('renders the add form with exactly a name field, an email field and a tier choice, for an administer viewer', () => {
+  it('offers My Roster first, plus name/email invitation and a tier choice, for an administer viewer', () => {
     const markup = renderToStaticMarkup(
       <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
     )
+    expect(markup).toContain('Add from My Roster')
+    expect(markup).toContain('Or invite someone new')
     expect(markup).toContain('id="work-roster-first-name"')
     expect(markup).toContain('id="work-roster-email"')
     expect(markup).toContain('id="work-roster-tier"')

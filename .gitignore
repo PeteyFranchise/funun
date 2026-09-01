@@ -15,3 +15,22 @@ supabase/.temp
 .planning/research/.cache/
 scripts/load/last-run-summary.json
 public/sketches37/
+
+# ─── Morning Light brand film kit (INTERNAL ONLY — must never deploy) ───
+# Unreleased song + film props. Boards live here for the local pane only.
+public/assets/
+public/buyer-catalogue/morning-light.jpg
+public/maya-writer-flow.html
+public/maya-selects-desktop.html
+public/jonah-producer-flow.html
+public/downstream-flow.html
+public/morning-light-journey.html
+public/morning-light-treatment.html
+public/higgsfield-package.html
+
+# Local previews, generated deliverables, captures, and render scratch space.
+app/email-preview/
+output/
+public/_captures/
+public/morning-light-edit.html
+tmp/

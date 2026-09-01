@@ -30,13 +30,24 @@ export async function POST(
   // back to the user who just proved they own this row.
   const { data: collaborator, error: collabError } = await supabase
     .from('collaborators')
-    .select('id, user_id, name, email')
+    .select('id, user_id, name, email, claimed_by')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (collabError || !collaborator) {
     return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
+  }
+
+  // claimed_by is populated only through verified account-email claiming.
+  // Existing members need no signup capability and must not receive one.
+  if (collaborator.claimed_by) {
+    return NextResponse.json({
+      ok: true,
+      alreadyMember: true,
+      emailSent: false,
+      skipped: true,
+    })
   }
 
   // ── 3. Delegate to the shared invite mechanics ────────────────────────

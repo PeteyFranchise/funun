@@ -87,6 +87,19 @@ describe('buildCollaboratorInviteEmail', () => {
 
     expect(text).toContain(`Hi ${maliciousName},`)
   })
+
+  it('presents one clear claim-profile action that preserves the invite token', () => {
+    const { html, text } = buildCollaboratorInviteEmail({ name: 'Stephan', token: 'tok123' })
+
+    expect(html.match(/<a href=/g)).toHaveLength(1)
+    expect(html).toContain('Claim my Funūn profile')
+    expect(html).toContain('https://funun.studio/signup?invite=tok123')
+    expect(html).not.toContain('/join/tok123')
+    expect(text).toContain(
+      'Claim my Funūn profile: https://funun.studio/signup?invite=tok123'
+    )
+    expect(text).not.toContain('/join/tok123')
+  })
 })
 
 function mockSupabase(

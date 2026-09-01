@@ -21,10 +21,13 @@ import { PRO_LABELS } from '@/lib/metadata/schema'
 
 type Props = {
   onSelect: (collaborator: CollaboratorProfile) => void
+  /** Collaborators already attached to the current surface. */
+  excludeIds?: string[]
 }
 
-export function CollaboratorPicker({ onSelect }: Props) {
+export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
   const [roster, setRoster] = useState<CollaboratorProfile[]>([])
+  const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [addingNew, setAddingNew] = useState(false)
@@ -40,6 +43,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
       .catch(() => {
         // non-blocking — picker degrades to empty state
       })
+      .finally(() => setLoading(false))
   }, [])
 
   // Close on outside click
@@ -56,7 +60,8 @@ export function CollaboratorPicker({ onSelect }: Props) {
   }, [open])
 
   // Filter out archived rows — never appear in picker
-  const active = roster.filter(c => !c.archived_at)
+  const excluded = new Set(excludeIds)
+  const active = roster.filter(c => !c.archived_at && !excluded.has(c.id))
 
   // Build grouped lists (no search) or flat filtered list (search active)
   const searchQuery = search.toLowerCase()
@@ -91,7 +96,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
     handleSelect(collab)
   }
 
-  const isEmpty = roster.length === 0
+  const isEmpty = active.length === 0
 
   return (
     <div ref={containerRef} className="relative inline-block">
@@ -99,6 +104,7 @@ export function CollaboratorPicker({ onSelect }: Props) {
       <button
         type="button"
         onClick={() => {
+          if (loading) return
           if (isEmpty) {
             setAddingNew(true)
             setOpen(true)
@@ -109,9 +115,10 @@ export function CollaboratorPicker({ onSelect }: Props) {
         }}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={loading}
         className="rounded-lg border border-dashed border-white/15 px-2 py-1 text-xs text-white/50 transition hover:border-white/30 hover:text-white"
       >
-        {isEmpty ? 'Add collaborator' : 'Pick from roster'}
+        {loading ? 'Loading roster…' : isEmpty ? 'Add collaborator' : 'Pick from roster'}
       </button>
 
       {/* Dropdown panel */}
@@ -229,6 +236,7 @@ function PickerItem({
     collab.pro && collab.pro !== 'none'
       ? (PRO_LABELS[collab.pro as keyof typeof PRO_LABELS] ?? collab.pro)
       : 'No PRO'
+  const detail = collab.claimed_by ? `Funūn member · ${proLabel}` : proLabel
   return (
     <li role="option" aria-selected={false}>
       <button
@@ -237,7 +245,7 @@ function PickerItem({
         className="w-full px-4 py-2 text-left hover:bg-white/5"
       >
         <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
-        <span className="block text-xs text-lavdim">{proLabel}</span>
+        <span className="block text-xs text-lavdim">{detail}</span>
       </button>
     </li>
   )

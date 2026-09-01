@@ -10,6 +10,8 @@ import {
   loadDiscoverResults,
   profileMatchesRole,
   personActionFlags,
+  buildDiscoverTextQuery,
+  isDiscoverEmailQuery,
   type DiscoverFilters,
 } from '@/lib/green-room/discover'
 
@@ -135,6 +137,21 @@ describe('clampDiscoverLimit', () => {
   })
 })
 
+describe('discover text query normalization', () => {
+  it('supports @handles, partial names, and multi-token prefix matching', () => {
+    expect(buildDiscoverTextQuery('@JustifiedNoise')).toBe('justifiednoise:*')
+    expect(buildDiscoverTextQuery('  Shane MauX  ')).toBe('shane:* & maux:*')
+    expect(buildDiscoverTextQuery('Maya-Reyes')).toBe('maya:* & reyes:*')
+    expect(buildDiscoverTextQuery('@___')).toBeNull()
+  })
+
+  it('never treats an email as a fuzzy public-text query', () => {
+    expect(isDiscoverEmailQuery('person@example.com')).toBe(true)
+    expect(isDiscoverEmailQuery('@person')).toBe(false)
+    expect(isDiscoverEmailQuery('person')).toBe(false)
+  })
+})
+
 describe('cursor', () => {
   it('round-trips and rejects garbage', () => {
     const c = { createdAt: '2026-07-10T00:00:00.000Z', id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }
@@ -232,9 +249,18 @@ describe('toPersonResult', () => {
 })
 
 describe('loadDiscoverResults', () => {
-  function makeClients(mainRows: unknown[], opts: { follows?: unknown[]; connections?: unknown[]; blocks?: unknown[] } = {}) {
+  function makeClients(
+    mainRows: unknown[],
+    opts: {
+      follows?: unknown[]
+      connections?: unknown[]
+      blocks?: unknown[]
+      emailProfileId?: string | null
+    } = {}
+  ) {
     const main = tableBuilder(mainRows)
     const session = {
+      rpc: jest.fn(async () => ({ data: opts.emailProfileId ?? null, error: null })),
       from: jest.fn((table: string) => {
         if (table === 'follows') return tableBuilder(opts.follows ?? []).builder
         if (table === 'connections') return tableBuilder(opts.connections ?? []).builder
@@ -295,6 +321,62 @@ describe('loadDiscoverResults', () => {
     expect(main.calls.contains).toContainEqual(['open_to', '["collabs"]'])
     expect(main.calls.ilike).toContainEqual(['genre', '%house%'])
     expect(main.calls.ilike).toContainEqual(['location', '%berlin%'])
+  })
+
+  it('uses safe prefix matching for a name or @handle query', async () => {
+    const { session, service, main } = makeClients([profileRow()])
+    await loadDiscoverResults(
+      session as never,
+      service as never,
+      'me',
+      { ...BASE_FILTERS, q: '@Nova' },
+      null,
+      20
+    )
+
+    expect(main.calls.textSearch).toContainEqual([
+      'search_vector',
+      'nova:*',
+      { config: 'english' },
+    ])
+  })
+
+  it('resolves an exact email to one profile id without selecting or returning email', async () => {
+    const targetId = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+    const { session, service, main } = makeClients([profileRow({ id: targetId })], {
+      emailProfileId: targetId,
+    })
+    const out = await loadDiscoverResults(
+      session as never,
+      service as never,
+      'me',
+      { ...BASE_FILTERS, q: 'nova@example.com' },
+      null,
+      20
+    )
+
+    expect(session.rpc).toHaveBeenCalledWith('discover_profile_id_by_email', {
+      p_email: 'nova@example.com',
+    })
+    expect(main.calls.in).toContainEqual(['id', [targetId]])
+    expect(main.calls.textSearch).toBeUndefined()
+    expect(out.results).toHaveLength(1)
+    expect(out.results[0]).not.toHaveProperty('email')
+  })
+
+  it('returns no results when an exact email has no privacy-safe match', async () => {
+    const { session, service, main } = makeClients([profileRow()], { emailProfileId: null })
+    const out = await loadDiscoverResults(
+      session as never,
+      service as never,
+      'me',
+      { ...BASE_FILTERS, q: 'missing@example.com' },
+      null,
+      20
+    )
+
+    expect(out).toEqual({ results: [], nextCursor: null })
+    expect(main.calls.select).toBeUndefined()
   })
 
   it('returns members whose role lives only in the public profile roles JSON', async () => {

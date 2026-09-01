@@ -60,14 +60,16 @@ describe('ComposerCardEmptyState', () => {
       <ComposerCardEmptyState
         onHumYourIdea={noop}
         onStartWithLyrics={noop}
+        onNote={noop}
         onAddAudio={noop}
         supportsCapture
       />
     )
-    expect(markup).toContain('Start with a hum')
-    expect(markup).toContain('Thirty seconds of melody makes it real — and provably yours.')
-    expect(markup).toContain('Hum your idea')
-    expect(markup).toContain('Start with lyrics')
+    expect(markup).toContain('Start your song')
+    expect(markup).toContain('Hum it')
+    expect(markup).toContain('Write lyrics')
+    expect(markup).toContain('Add audio')
+    expect(markup).toContain('Note')
   })
 
   it('spends exactly one gradient, on the primary action', () => {
@@ -75,6 +77,7 @@ describe('ComposerCardEmptyState', () => {
       <ComposerCardEmptyState
         onHumYourIdea={noop}
         onStartWithLyrics={noop}
+        onNote={noop}
         onAddAudio={noop}
         supportsCapture
       />
@@ -88,6 +91,7 @@ describe('ComposerCardEmptyState', () => {
       <ComposerCardEmptyState
         onHumYourIdea={noop}
         onStartWithLyrics={noop}
+        onNote={noop}
         onAddAudio={noop}
         supportsCapture
       />
@@ -100,12 +104,14 @@ describe('ComposerCardEmptyState', () => {
       <ComposerCardEmptyState
         onHumYourIdea={noop}
         onStartWithLyrics={noop}
+        onNote={noop}
         onAddAudio={noop}
         supportsCapture={false}
       />
     )
-    expect(markup).not.toContain('Hum your idea')
-    expect(markup).toContain('Add your idea')
+    expect(markup).not.toContain('Hum it')
+    expect(markup).toContain('Upload it')
+    expect(markup).toContain('Add audio')
     const gradientMatches = markup.match(/bg-grad\b/g) ?? []
     expect(gradientMatches).toHaveLength(1)
   })

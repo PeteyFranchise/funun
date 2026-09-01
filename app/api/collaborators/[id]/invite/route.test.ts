@@ -27,7 +27,13 @@ function postRequest() {
 
 function mockSupabase(
   options: {
-    collaborator?: { id: string; user_id: string; name: string; email: string | null } | null
+    collaborator?: {
+      id: string
+      user_id: string
+      name: string
+      email: string | null
+      claimed_by?: string | null
+    } | null
     collabError?: { message: string } | null
     recentInvite?: { id: string; invite_token?: string } | null
     insertError?: { message: string } | null
@@ -159,6 +165,31 @@ describe('POST /api/collaborators/[id]/invite', () => {
     const res = await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
 
     expect(res.status).toBe(404)
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('does not create or send a signup invite for a claimed Funūn member', async () => {
+    const supabase = mockSupabase({
+      collaborator: {
+        id: COLLAB_ID,
+        user_id: USER_ID,
+        name: 'Jamie Rivera',
+        email: 'jamie@example.com',
+        claimed_by: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+      },
+    })
+    ;(createApiClient as jest.Mock).mockResolvedValue(supabase)
+
+    const res = await POST(postRequest(), { params: Promise.resolve({ id: COLLAB_ID }) })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      ok: true,
+      alreadyMember: true,
+      emailSent: false,
+      skipped: true,
+    })
+    expect(supabase.insertSpy).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
   })
 

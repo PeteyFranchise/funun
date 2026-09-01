@@ -8,6 +8,28 @@
 
 ---
 
+## Permanent contract-product doctrine (owner, 2026-09-01)
+
+Funūn provides lawyer-reviewed music-industry templates and guided workflows, but does
+not act as the user's attorney or provide legal advice. Users should retain independent
+counsel before signing.
+
+This deliberation now has counsel available and belongs to the near-term
+lawyer-reviewed contract foundation tracked in
+`.planning/todos/pending/2026-09-01-lawyer-reviewed-contract-product-foundation.md`.
+Resolving the representation model requires both the agreement language and the full
+product flow: immutable template versions, review provenance, protected clauses vs
+editable business terms, review invalidation after legal-language edits, disclosure
+acknowledgments and the Contract Locker/e-sign audit trail. Funūn's lawyer review does
+not create an attorney-client relationship between that lawyer and a platform user.
+
+This doctrine does **not** resolve the open blanket-vs-per-deal decision below and does
+not make the existing draft launch-ready. Counsel must still settle authority,
+approvals, economics, exclusions, revocation, term, accounting and governing law before
+sync representation ships.
+
+---
+
 ## The question
 
 How does a sync license get **signed** — per deal, or once up front?

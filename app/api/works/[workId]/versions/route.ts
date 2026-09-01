@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
-import { BUCKET, MAX_BYTES, buildVersionPath, extensionForMime, storageContentType } from '@/lib/catalogue/audio'
+import { BUCKET, MAX_BYTES, buildVersionPath, resolveAudioType } from '@/lib/catalogue/audio'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 import type { PerformerRef, WorkVersionSource } from '@/types/catalogue'
 
@@ -67,15 +67,17 @@ export async function POST(request: Request, { params }: RouteCtx) {
   if (!source) {
     return NextResponse.json({ error: 'source must be "hum" or "upload"' }, { status: 400 })
   }
+  if (file.size <= 0) {
+    return NextResponse.json({ error: 'No audio was captured.' }, { status: 400 })
+  }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
       { error: `Audio exceeds the ${MAX_BYTES / (1024 * 1024)}MB limit` },
       { status: 400 }
     )
   }
-  const ext = extensionForMime(file.type)
-  const contentType = storageContentType(file.type)
-  if (!ext || !contentType) {
+  const audioType = resolveAudioType(file.type, file.name)
+  if (!audioType) {
     return NextResponse.json(
       { error: 'Unsupported audio format — use WebM, MP4/AAC, MP3, WAV, FLAC or OGG' },
       { status: 400 }
@@ -110,7 +112,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // this route derived from the allow-list, never from the uploaded
   // filename.
   const versionId = randomUUID()
-  const path = buildVersionPath(workId, versionId, ext)
+  const path = buildVersionPath(workId, versionId, audioType.ext)
 
   // Uploads go through the service-role client (RESEARCH Pitfall 2):
   // migration 004's storage.objects policies are folder-owner-scoped to
@@ -121,7 +123,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const service = createServiceClient()
   const { error: uploadError } = await service.storage
     .from(BUCKET)
-    .upload(path, file, { contentType, upsert: false })
+    .upload(path, file, { contentType: audioType.contentType, upsert: false })
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 })
   }
@@ -134,7 +136,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       user_id: user.id, // whoever created THIS version — may differ from the work's owner
       source,
       audio_path: path,
-      audio_ext: ext,
+      audio_ext: audioType.ext,
       audio_size: file.size,
       duration_seconds: duration,
       label,

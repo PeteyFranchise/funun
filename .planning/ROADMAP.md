@@ -9,6 +9,23 @@
 - ✅ **v1.2 — Account Capability Model** — Phase 15 (shipped 2026-07-12; cross-cutting identity change, tracked alongside v1.2 for scheduling only — not part of the Green Room feature set)
 - 📝 **v1.3-pre — Split-Sheet E-Sign** — Phase 17 (decided 2026-07-19; EXECUTES BEFORE Phase 16 — free embedded mobile-first e-signed split sheets for all artists, DocuSeal hosted; access model per `.planning/deliberations/esign-split-sheet-economics.md` AM-1..AM-5)
 - 📝 **v1.3-pre — Split-Sheet Home** — Phase 18 (planned 2026-07-20; the living draft, Contract Locker as workspace, and song-level attachment — follows Phase 17, still ahead of Phase 16)
+- 📝 **Near-term discussion — Lawyer-Reviewed Contract Product Foundation** — resolve ten GSD/counsel questions; create common agreements in the approved order; ship versioned templates, protected legal language, disclosures, e-signature and Contract Locker lifecycle before sync representation)
+- 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
+- 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
+- 📝 **Near-term — Phase 37.3: Song Passport** — contributor, composition, version and release metadata continuity; provenance and confirmation states; immutable source audio; generated tagged MP3s and sidecars; graduation into the Release Report without re-entry; owner-approved for GSD discussion after Phase 37.2)
+- 📝 **ASAP parallel — DDEX Licence, DPID & Partner Discovery** — owner obtains the free commercial Implementation Licence/DPID and selects one real receiving partner while Phases 37.2/37.3 proceed; no external application or partner contact by agents without owner authority)
+- 📝 **Near-term — Phase 37.4: DDEX Production Readiness** — current partner-approved ERN implementation, real DPIDs, audio/artwork technical details, schema + semantic validation, update/takedown generation and an evidence-backed sandbox handoff package)
+- 📝 **Near-term — Phase 37.5: Partner-Validated Direct Delivery** — one named recipient, secure transport, acknowledgments, retries, corrections, updates/takedowns, sandbox UAT and a controlled production pilot before generalizing)
+- 📝 **Near-term team discussion — Sync Library Operating Model Completion** — complete the curated catalogue lifecycle from invitation/submission through readiness, cultural review, buyer access, matching, artist approval, deals, contracts, delivery, payment and reporting; assign a dedicated phase only after team/counsel decisions)
+- 🔒 **Permanent doctrine — Sound Vault Master Custody COMPLETE** — the owner approved D-01 through D-10 on 2026-09-01: private custody, non-destructive versions/ownership evidence, hashes/provenance, least-authority access, expiring access, accountable downloads, immutable receipts, pre-delivery revocation, clean-master isolation and immutable-source/controlled-delivery lifecycle)
+- 📝 **Near-term GSD program — Sound Vault Custody Implementation** — reconcile the ten locked doctrines and their linked TODOs into sequenced phases beginning with a platform-wide storage/access/retention audit; ship the shared asset/provenance and access-control foundations before delivery, receipts, enforcement or partner integrations)
+- 📝 **Near-term planning — Expiring Access Lifecycle** — unify protected shares, renewable Crate preview sessions, watermarked downloads, clean-master deliveries and Contract Locker/signing invitations behind hashed tokens, parent access grants, short-lived storage credentials, central revocation and leaks-nothing expired states. Continuous Crate discoverability never creates permanent file access; signing invitations expire while legal records persist)
+- 📝 **Near-term planning — Accountable Download History** — add download-session state, range/retry reconciliation, asset/grant/recipient/deal binding, privacy-tiered audit records, artist-facing history and review-only security alerts across protected downloads, clean-master deliveries and sensitive documents)
+- 📝 **Near-term planning — Immutable Delivery Receipts** — create pre-dispatch manifests and final receipts binding exact files, hashes, Song Passport/rights snapshots, agreements, purpose, authorization, transmission and acknowledgments; expose one tamper-evident record through Contract Locker, deals and provenance, with corrections as linked successor receipts and real partner/DDEX acknowledgments preserved separately)
+- 📝 **Near-term planning — Pre-Delivery Revocation** — define a commit point per delivery method; add authorized reason-coded revocation, atomic grant/credential checks, interruption-capable clean-master delivery, contract/payment obligation gates, neutral recipient states and immutable before/during/after-transmission evidence)
+- 📝 **Near-term planning — Clean-Master Isolation & Distributor Delivery** — audit every player, share, export, admin, AI and partner path; isolate original, preview/evaluation and delivery asset classes; fail closed when derivatives are unavailable; route owner retrieval and clean delivery through dedicated services; let The Release Report authorize clean distributor packages with truthful manual-export versus partner-acknowledged outcomes)
+- 📝 **Near-term planning — Immutable Source & Controlled Delivery** — preserve uploaded bytes unchanged while retained; distinguish original, designated master, use-approved master and delivery asset; generate controlled human-recipient copies; permit verified direct machine transmission without exposing storage; version metadata corrections; and implement counsel-approved deletion, tombstones, backup aging and corruption recovery)
+- 📝 **Near-term planning — Recipient Attribution & Licensed-Use Enforcement** — build the Funūn custody/delivery/licence ledger, then validate partners for recipient-specific forensic audio watermarking, acoustic matching, Content ID administration and platform enforcement. Claims require artist authorization, eligible rights, licence-ledger checks and human review; Funūn does not currently claim these partner capabilities)
 - 📝 **v1.3 — GTM Beta Launch & Buyer Portal** — Phase 16 (planned 2026-07-18; integrated sync-buyer portal, license-request workflow, deal room, and GTM metrics)
 
 ## Reconciled status — 2026-08-10 (Phases 16–29)
@@ -429,7 +446,20 @@ Plans:
 
 ### Contract Template Library (split sheets are instance #1)
 
-**Status: DIRECTION NOTED 2026-07-20 — not yet planned. Phase 17 ships the first template; this records what must generalize when the second arrives.**
+**Status: NEAR-TERM SHIPPABLE FOUNDATION — promoted 2026-09-01. Counsel is available; create a dedicated phase plan after the first counsel product-flow session. Phase 17 shipped the first template, and template #2 must prove the generalized system. Track the complete ship definition in `.planning/todos/pending/2026-09-01-lawyer-reviewed-contract-product-foundation.md`.**
+
+**Permanent product doctrine:** Funūn provides lawyer-reviewed music-industry templates and guided workflows, but does not act as the user's attorney or provide legal advice. Users should retain independent counsel before signing. Every template plan must preserve immutable versions, record review provenance, distinguish protected legal language from editable business terms, invalidate the reviewed designation after protected-language edits, and record each party's acknowledgment. Contract generation, Contract Locker, e-signature and sync representation share this foundation.
+
+**Required GSD discussion:** Answer the ten product/legal questions in
+`.planning/deliberations/contract-locker-generation-and-legal-services.md` before
+assigning the implementation phase: agreement priority; user-editable terms; protected
+language; counsel/versioning; negotiation/e-signature; Contract Locker execution;
+blanket/per-deal/hybrid sync authority; pitch-to-payment gates; outside-counsel access;
+and Funūn's responsibility boundary.
+
+**Counsel drafting order (owner-approved 2026-09-01):** split sheet → producer agreement
+→ work-for-hire agreement → featured-artist agreement → sample-clearance agreement →
+sync representation agreement → individual sync licence.
 
 Funūn will offer a library of contract templates artists can send to collaborators — split sheets first, then work-for-hire, producer agreements, sample clearances, and others. `vault_documents.type` already anticipates this (`split_sheet`, `copyright_registration`, `hire_right`, `sample_clearance`, `distribution_agreement`), and the repo-local `.agents/skills/funun-contract-template-intake/` skill is already written for the general case (source contract → audit → approved spec → renderer). `17-SPLIT-SHEET-TEMPLATE-SPEC.md` is instance #1 of a repeatable artifact type.
 
@@ -440,6 +470,21 @@ Funūn will offer a library of contract templates artists can send to collaborat
 **Must stay type-agnostic as Phase 17 builds them (cheap now, expensive later):** the completion webhook (dispatch on envelope, never assume split-sheet shape), the Funūn Certificate of Completion renderer (17-10 — takes document title/parties/timestamps, not split-specific fields), the AM-2 monthly cap and AM-3 telemetry (count envelopes across ALL template types, not per-type quotas), and the Resend invite email (parameterized template, not hardcoded split-sheet copy).
 
 **Per-template work when adding one:** run the intake skill against the source contract → approved spec → a renderer + its field/role mapping → a `vault_documents.type` value → readiness-gate mapping if the type affects release readiness.
+
+**Later self-service iteration:** once counsel narrows the safe editable fields for each
+agreement, users may configure basic business terms through bounded structured inputs.
+Free-form changes to protected clauses are outside the reviewed template and reset its
+reviewed designation.
+
+**Final destination — independent legal services:** Contract Locker can become the
+front door for complex legal requests routed to qualified partner law firms. The firm,
+not Funūn, performs conflicts, accepts the engagement, represents the user and sets
+a la carte scope/pricing. Funūn supplies permissioned intake, routing, status, secure
+document workflow and authorized return to Contract Locker. This requires real law-firm
+business development plus internal product/code work, and remains blocked on counsel's
+approval of jurisdiction, referral/advertising, fee/payment, privilege, data-access and
+professional-responsibility rules. Full destination:
+`.planning/deliberations/contract-locker-generation-and-legal-services.md`.
 
 ### Embedded License-ID Metadata & Licensed-File Provenance
 
@@ -1183,6 +1228,33 @@ Wave 3 (surfaces, depends on Wave 2):
 - [x] 30-08-PLAN.md — Role-aware Crate on the SAME /sync/catalog surface: server-resolved staff layers, no fork, light-theme chrome. [CRATE-07, CRATE-08]
 - [x] 30-09-PLAN.md — Sync Library backstage UI: Sync Readiness worklist + leadership-only curation UX. [CRATE-03, CRATE-05]
 
+#### Next Sync Library roadmap candidate - Operating Model Completion
+
+**Status:** READY FOR TEAM DISCUSSION (owner, 2026-09-01). Do not assign or implement a
+new phase until the team completes the decision workshop in
+`.planning/todos/pending/2026-09-01-sync-library-operating-model-team-discussion.md`.
+
+**Goal:** Connect the already-built inclusion/readiness/curation engine to the complete
+operating lifecycle: (1) invite/submit, (2) readiness, (3) quality + cultural review,
+(4) admit/revise/reject, (5) controlled buyer visibility, (6) matching/pitching,
+(7) artist approval, (8) negotiation/economics, (9) contract/license/delivery and
+(10) payment/commission/reporting.
+
+**First action:** Complete Phase 30's staff-session UAT with a real workflow walkthrough.
+Then bring founder/product, A&R, AE/sync sales, artist operations, engineering, counsel,
+finance, artist and buyer perspectives into one operating-model session.
+
+**Recommended implementation slices after decisions:**
+
+1. Curated supply operations: revision requests, rubric, decision log, exclusions and queue ownership
+2. Opportunity movement: brief matching, AE shortlist/pitch, protected buyer access and artist approval
+3. Transaction completion: counsel-approved contracts, signed-and-paid delivery, partner/DDEX attachment, payment, commission and statements
+
+Slice 3 remains blocked on counsel, signing-model, payment and delivery dependencies.
+The phase number is assigned after discussion so it does not collide with the approved
+37.2-37.5 sequence or hide unfinished Phase 16/29 work. Source deliberation:
+`.planning/deliberations/sync-library-operating-model.md`.
+
 ### Phase 31: AE Client Workspace + Selects (My Client Partners / Client Partners)
 
 **Goal:** Build the AE sales engine as working rooms. **My Client Partners** = an AE's own-clients workspace: a
@@ -1616,10 +1688,31 @@ watch the diary record every one of those without being asked to.
 tiers + splits nudge), S-03 (two shelves, two doors, Releases untouched), S-04 (copy full
 lyric, tagged + plain)
 
-**Future Writer's Room direction (not current 37.1 scope):** Evolve this into a live
-collaborative space where multiple writers can work on the same song at the same time.
-The current shared diary and collaborator access are the foundation, not a claim of
-simultaneous co-editing.
+**NEXT NEAR-TERM CANDIDATE — Phase 37.2 "Writer's Room Live Collaboration" (owner-approved
+2026-09-01):** Evolve the shipped shared diary and collaborator access into block-level
+live collaboration. Three writers can see one another in the room, work in separate
+lyric sections and notes without refresh, autosave attributed changes, recover after a
+disconnect, resolve same-section collisions through visible soft locks/warned takeover,
+restore snapshots and finish without silent overwrite. Presence communicates creative
+context, never productivity surveillance. Rights, executed agreements, legal identity,
+approved metadata, final identifiers and audio-file bytes stay outside the live-edit
+channel. Run `/gsd-discuss-phase 37.2` after the 37.1 owner device gate; treat
+`.planning/todos/pending/2026-09-01-writers-room-live-collaboration.md` as the owner-approved
+scope and ship test. The remaining catalogue destinations/volume/graduation work moves
+to 37.4+ unless the discussion produces a safer sequencing reason.
+
+**FOLLOWING NEAR-TERM CANDIDATE — Phase 37.3 "Song Passport" (owner-approved
+2026-09-01):** Credits, rights, provenance and recording information follow a song from
+first demo through every version and graduation into the Release Report. Original audio
+is immutable; Funūn embeds delivery-safe fields only into generated delivery copies.
+Contributor, composition, recording-version and release layers stay distinct. Fields
+carry inherited/draft/confirmed/locked/outdated states, and profile changes never silently
+rewrite confirmed, locked or previously delivered facts. Phase 37.3 ships metadata
+inheritance, provenance, confirmation, tagged MP3 delivery copies, human/machine sidecars
+and the graduation handoff. Format expansion and certified direct industry delivery are
+explicitly deferred. Run `/gsd-discuss-phase 37.3` after Phase 37.2; treat
+`.planning/todos/pending/2026-09-01-song-passport-metadata-continuity.md` as the locked
+product input and ship test.
 
 **Depends on:** Phase 36
 **Plans:** 11/13 plans executed
@@ -1642,6 +1735,55 @@ Plans:
       *(code complete — tasks 1–2 committed, gates green; Task 3 is the owner's
       device test: hum record/playback across Chrome desktop ↔ iPhone Safari.
       Phase closes when the owner reports the result.)*
+
+**Phase 37.2 planning input (not yet discussed or planned):**
+
+- Stage 1: room presence, activity states and reconnect cleanup
+- Stage 2: section-aware lyrics/notes editing, soft locks and autosave
+- Stage 3: snapshots, restoration, stale-lock recovery and conflict safety
+- Stage 4: comments, suggestions, alternate versions, mentions and session summaries
+- Definition of done: three separate writer sessions complete a shared song-editing
+  exercise, including disconnect recovery and a same-section collision, with no lost or
+  silently overwritten contribution
+
+**Phase 37.3 planning input (owner-approved; not yet discussed or planned):**
+
+- Stage 1: four-layer Song Passport model with field provenance and privacy classification
+- Stage 2: inherited/draft/confirmed/locked/outdated states and review-safe propagation
+- Stage 3: tagged MP3 delivery copy, human-readable sidecar, JSON manifest and export receipt
+- Stage 4: select a release master and graduate confirmed work/version facts into the
+  Release Report without re-entry
+- Definition of done: one work, two contributors, three recording versions and one
+  graduation produce stable, privacy-safe delivery artifacts without changing the source
+  audio or silently rewriting confirmed/delivered facts
+
+**Immediate DDEX parallel track (owner action + discovery; start now):**
+
+- Apply for the free DDEX Implementation Licence and DPID using Funūn's legal entity
+- Store the DPID in deployment secrets; never commit registry credentials
+- Select one receiving partner and obtain its ERN version/profile, choreography,
+  packaging, acknowledgment and UAT requirements
+- Track completion in
+  `.planning/todos/pending/2026-09-01-ddex-license-dpid-and-partner-discovery.md`
+
+**Phase 37.4 — DDEX Production Readiness (owner-directed ASAP; not yet discussed/planned):**
+
+- Build a standards/version/profile registry and fail closed on placeholder DPIDs
+- Implement the exact partner-approved ERN profile, researching current ERN 4.3.x first
+- Add audio/artwork technical details, file references, codecs, sizes and hashes
+- Validate normative XSD/AVS plus semantic/business rules and adversarial fixtures
+- Generate deterministic initial, update and takedown messages from Song Passport snapshots
+- Produce a sandbox handoff package with exact validation evidence
+- Run `/gsd-discuss-phase 37.4` after 37.3 and the partner-discovery input
+
+**Phase 37.5 — Partner-Validated Direct Delivery (externally dependent):**
+
+- Implement one named partner adapter and approved secure transport
+- Correlate acknowledgments; handle errors, retries, redelivery and duplicate prevention
+- Pass partner sandbox/UAT, then run a controlled ten-release production pilot
+- Prove one accepted correction/update and one withdrawal/takedown
+- Use only evidence-scoped claims; membership is reviewed after the first production feed
+- Full strategy and gates: `.planning/deliberations/ddex-production-readiness.md`
 
 ---
 

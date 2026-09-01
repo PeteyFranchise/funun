@@ -10,7 +10,8 @@ import type { CollaboratorProfile } from '@/lib/collaborators'
 // unconfigured email send is described honestly and a copyable
 // /signup?invite=<token> link is ALWAYS surfaced, whether or not the
 // email actually sent. A dead email provider must never produce a dead
-// invite.
+// invite. When the roster identity is already linked to a Funūn member,
+// the modal shows that fact instead and deliberately exposes no signup link.
 
 type Props = {
   onClose: () => void
@@ -26,6 +27,7 @@ type QuickInviteResponse = {
     emailSent?: boolean
     skipped?: boolean
     reused?: boolean
+    alreadyMember?: boolean
   }
   error?: string
 }
@@ -40,6 +42,7 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState('')
   const [emailSent, setEmailSent] = useState(false)
+  const [alreadyMember, setAlreadyMember] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState<string | null>(null)
 
@@ -67,6 +70,7 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
     setError(null)
     setInviteLink('')
     setEmailSent(false)
+    setAlreadyMember(false)
     setCopied(false)
     setCopyError(null)
   }
@@ -96,6 +100,7 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
       if (json.data?.collaborator) onInvited(json.data.collaborator)
       setInviteLink(json.data?.inviteLink ?? '')
       setEmailSent(Boolean(json.data?.emailSent))
+      setAlreadyMember(Boolean(json.data?.alreadyMember))
       setState('done')
     } catch {
       setError('Network error — try again')
@@ -138,7 +143,12 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
 
         {state === 'done' ? (
           <div className="mt-4 space-y-4">
-            {emailSent ? (
+            {alreadyMember ? (
+              <p className="rounded-lg border border-brandindigo/30 bg-brandindigo/10 p-3 text-[13.5px] text-lav">
+                <span className="font-semibold text-white">{firstName}</span> is already a Funūn
+                member and is already in your collaborator roster. No signup invite was sent.
+              </p>
+            ) : emailSent ? (
               <p className="rounded-lg border border-hair bg-card2 p-3 text-[13.5px] text-lav">
                 The invite was emailed to <span className="font-semibold text-white">{email}</span>.
               </p>
@@ -150,40 +160,44 @@ export function QuickInviteModal({ onClose, onInvited }: Props) {
               </p>
             )}
 
-            <div>
-              <label htmlFor="quick-invite-link" className="mb-1.5 block text-[12px] font-semibold text-lavdim">
-                Invite link
-              </label>
-              <input
-                id="quick-invite-link"
-                ref={linkInputRef}
-                type="text"
-                readOnly
-                value={inviteLink}
-                onFocus={e => e.currentTarget.select()}
-                onClick={e => e.currentTarget.select()}
-                className={INPUT_CLASS}
-              />
-            </div>
+            {!alreadyMember && (
+              <>
+                <div>
+                  <label htmlFor="quick-invite-link" className="mb-1.5 block text-[12px] font-semibold text-lavdim">
+                    Invite link
+                  </label>
+                  <input
+                    id="quick-invite-link"
+                    ref={linkInputRef}
+                    type="text"
+                    readOnly
+                    value={inviteLink}
+                    onFocus={e => e.currentTarget.select()}
+                    onClick={e => e.currentTarget.select()}
+                    className={INPUT_CLASS}
+                  />
+                </div>
 
-            {copyError && <p className="text-[12.5px] text-rose-300">{copyError}</p>}
+                {copyError && <p className="text-[12.5px] text-rose-300">{copyError}</p>}
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
-              >
-                {copied ? 'Copied ✓' : 'Copy invite link'}
-              </button>
-              <button
-                type="button"
-                onClick={resetToForm}
-                className="text-sm text-white/60 hover:text-white"
-              >
-                Invite another
-              </button>
-            </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="rounded-lg bg-grad px-4 py-2 text-sm font-semibold text-white shadow-cta"
+                  >
+                    {copied ? 'Copied ✓' : 'Copy invite link'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetToForm}
+                    className="text-sm text-white/60 hover:text-white"
+                  >
+                    Invite another
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className="border-t border-hair pt-3">
               <button

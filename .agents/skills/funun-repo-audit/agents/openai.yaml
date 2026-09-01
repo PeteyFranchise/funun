@@ -1,0 +1,4 @@
+interface:
+  display_name: "Funūn Repository Audit"
+  short_description: "Audit Funūn security, integrity, and architecture"
+  default_prompt: "Use $funun-repo-audit to perform a read-only, evidence-based audit of the Funūn repository."
