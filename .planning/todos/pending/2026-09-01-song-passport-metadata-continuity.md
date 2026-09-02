@@ -3,7 +3,7 @@ created: 2026-09-01T02:30:00-04:00
 title: Plan and ship the Song Passport metadata-continuity foundation
 area: catalogue
 priority: near-term
-status: ready-for-gsd-discussion
+status: code-and-migrations-complete-awaiting-deploy-and-pilot-uat
 depends_on:
   - Phase 37.2 Writer's Room Live Collaboration
 files:
@@ -14,6 +14,10 @@ files:
   - app/api/vault/[projectId]/tracks/[trackId]/metadata/embed/route.ts
   - app/api/vault/[projectId]/tracks/[trackId]/metadata/sidecar/route.ts
   - supabase/migrations/135_works_core.sql
+  - .planning/deliberations/song-passport-doctrine.md
+  - .planning/phases/37.3-song-passport/37.3-CONTEXT.md
+  - .planning/phases/37.3-song-passport/37.3-ARCHITECTURE.md
+  - .planning/phases/37.3-song-passport/37.3-IMPLEMENTATION-PLAN.md
 ---
 
 ## Owner-approved capability
@@ -22,8 +26,39 @@ The feature is called **Song Passport**: credits, rights, provenance and recordi
 information that follows a song from its first demo through every version, graduation,
 release and delivery artifact.
 
-This is approved as a near-term Phase 37.3 candidate. Run `/gsd-discuss-phase 37.3`
-after Phase 37.2 is complete, then research and plan before implementation.
+This is approved as near-term Phase 37.3. The doctrine, architecture and all seven code
+slices are complete behind fail-closed server/cohort controls. Migrations 150–156 are
+applied; deployment, activation and pilot UAT remain human-gated. Phases 37.4/37.5 stay
+separate.
+
+## Approved consolidation and implementation-planning sequence
+
+1. Update the existing Song Passport decision record with every owner-approved doctrine.
+2. Expand Phase 37.3 into the seven approved implementation mini-phases: architecture
+   and schema, legacy backfill, Passport UI, confirmation and approval, versions and
+   graduation, exports and portability, and pilot rollout.
+3. Keep standards-message exports and validation in Phase 37.4.
+4. Keep partner-validated direct delivery and recipient acknowledgments in Phase 37.5.
+5. Audit the current work, collaborator, split-sheet, contract, metadata, audio and
+   Release Report schemas before proposing new storage.
+6. Produce the database model, authorization matrix, migration/backfill strategy,
+   red-test plan and rollback plan.
+7. Only after those artifacts are approved, begin the Song Passport foundation build.
+8. Introduce a durable **Song Passport** entry in **The Playbook** that gives internal
+   team members one authoritative reference for the feature's definitions, role,
+   concept and complete approved doctrine. The entry must clearly label what is shipped,
+   planned or partner-dependent and remain versioned as the product evolves. Detailed
+   publication requirements live in
+   `.planning/todos/pending/2026-09-01-song-passport-playbook-entry.md`.
+
+### Consolidation completion state
+
+- Steps 1–6: complete in `.planning/deliberations/song-passport-doctrine.md` and the
+  Phase 37.3 context, architecture and implementation-plan records.
+- Step 7: complete in code across Slices 1–7; migrations 150–156 are applied and
+  production activation remains gated by deployment and pilot UAT.
+- Step 8: the v1.0 doctrine and v1.1 operating SOP are published through applied
+  migrations 150 and 156.
 
 ## Six locked product decisions
 
@@ -128,37 +163,48 @@ contract language, internal notes, private split negotiations or legal-document 
 Authorized sidecars or delivery packages may include approved professional contact data
 only through an explicit export choice.
 
-## Phase 37.3 first-release scope
+## Phase 37.3 seven-slice implementation scope
 
-### Stage 1 - Passport model
+### Slice 1 - Architecture and schema
 
-- Structured composition and version metadata on My Catalogue works
-- Source record, source field, actor, timestamp and state provenance
-- Privacy/delivery classification for embeddable vs permissioned data
+- Add one Passport per work, append-only field revisions, immutable snapshots, actions,
+  tasks and least-authority RLS behind feature flags.
+- Define the field vocabulary, source registry, privacy classes and authorization helpers.
 
-### Stage 2 - Inheritance and approval
+### Slice 2 - Legacy backfill and reconciliation
 
-- Contributor identity flows into a work with consent
-- Work facts flow into new versions
-- Version-specific recording credits remain independent
-- Confirmation, locking, outdated warnings and review flows
-- No silent overwrite of confirmed or delivered facts
+- Dry-run current works, collaborators, splits, contracts, versions, release projects and
+  track metadata; create inherited/draft revisions conservatively.
+- Report ambiguous duplicates and conflicts for human review instead of guessing.
 
-### Stage 3 - Delivery artifacts
+### Slice 3 - Passport UI
 
-- Tagged MP3 generated from a selected version and metadata snapshot
-- Human-readable credits/metadata sidecar
-- Machine-readable JSON manifest
-- Export receipt identifying work, version, snapshot, exporter and timestamp
-- Original audio hash/path remains unchanged
+- Add the four-layer Passport view inside Sound Vault with provenance, trust/privacy
+  states, tasks, conflicts and readiness explanations.
+- Preserve the Writer's Room as the default creative view and the current site structure.
 
-### Stage 4 - Graduation
+### Slice 4 - Confirmation, approval and permissions
 
-- Select one version as the release master
-- Carry confirmed composition and selected version facts into the Release Report
-- Add release-only identifiers and commercial fields there
-- Preserve the work/version/metadata history and source links
-- Prevent duplicate re-entry while requiring review of unresolved or outdated fields
+- Add authority-scoped confirmation, immutable approval snapshots, conflict/outdated
+  review, notification routing and server/database enforcement.
+- Keep tasks operational: readiness changes only from qualifying facts and approvals.
+
+### Slice 5 - Versions, master selection and graduation
+
+- Carry composition facts across versions while preserving version-specific recording
+  credits; support a final mix uploaded outside the Writer's Room.
+- Select an exact master and graduate it into the Release Report without duplicate entry.
+
+### Slice 6 - Exports, portability and custody history
+
+- Generate tagged MP3s, sidecars, JSON manifests and receipts from immutable snapshots
+  without changing source audio.
+- Add portable custody packages, chain-of-title events and retention/deletion controls.
+
+### Slice 7 - Pilot rollout
+
+- Prove the full workflow with solo, multi-writer and legacy/released works.
+- Add observability, support procedures, production verification and evidence-scoped claims.
 
 ## Explicit deferrals
 
@@ -183,9 +229,17 @@ privacy filtering and byte/hash preservation of original audio.
 
 ## Claude / GSD instruction
 
-Treat the six decisions, four-layer model, five field states, immutable-original rule,
-delivery-safe boundary and graduation acceptance test as owner-approved. Use the
-discussion/research pass to decide normalized-vs-JSONB storage, provenance granularity,
-snapshot schema, consent mechanics, export receipt structure, migration/backfill and UI
-states. Plan red tests for privacy leakage, silent overwrite, authorization failure,
-snapshot drift and accidental source-file mutation before execution.
+Treat `.planning/deliberations/song-passport-doctrine.md` as the canonical owner-approved
+record. Use the normalized-provenance-plus-immutable-JSON-snapshot architecture and the
+authorization, migration/backfill, red-test and rollback strategies in
+`.planning/phases/37.3-song-passport/37.3-ARCHITECTURE.md`. Execute the seven slices in
+`.planning/phases/37.3-song-passport/37.3-IMPLEMENTATION-PLAN.md` in order; do not re-open
+locked product decisions during planning unless new evidence creates a real contradiction.
+
+The phase handoff is incomplete until Consolidation Step 8 is satisfied: publish the
+internal Song Passport doctrine in The Playbook from the approved decision record, using
+truthful current/planned/partner-dependent capability labels.
+
+Slice evidence lives in `37.3-01-SUMMARY.md` through `37.3-07-SUMMARY.md`. Migrations
+150–156 are applied. Deploy, then follow `37.3-PILOT-UAT.md`; do not expand beyond the pilot
+until the acceptance and stop-condition review is complete.

@@ -15,6 +15,7 @@ import { HumFirstMoment } from './HumFirstMoment'
 import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
 import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPresence'
+import { SongPassportPanel } from './SongPassportPanel'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -39,6 +40,7 @@ import type {
   PerformerRef,
   WorkVocalState,
 } from '@/types/catalogue'
+import type { SongPassportView } from '@/lib/song-passport/view'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -115,6 +117,8 @@ export type WorkPageProps = {
   priorAiEntryCount: number
   /** True once the hum-first moment has already run for THIS song (cookie, or this work already has an AI entry on record). */
   hasHumFirstFired: boolean
+  /** undefined keeps the feature entirely absent; null renders the owner-start state. */
+  songPassport?: SongPassportView | null
   /**
    * Test seam only — forces the breakpoint treatment for a deterministic,
    * single-pass render with no jsdom/matchMedia in this repo's Jest
@@ -428,6 +432,7 @@ export function WorkPage({
   vocalState,
   priorAiEntryCount,
   hasHumFirstFired,
+  songPassport,
   initialViewport,
 }: WorkPageProps) {
   const router = useRouter()
@@ -1125,6 +1130,16 @@ export function WorkPage({
         onLiveHint={handleLiveHint}
         onResync={handleRoomResync}
       />
+
+      {songPassport !== undefined && (
+        <SongPassportPanel
+          workId={workId}
+          passport={songPassport}
+          viewerIsOwner={roster.viewerIsOwner}
+          recordingVersions={versions.map(version => ({ id: version.id, label: `${version.display} ${version.description}`.trim() }))}
+          songTitle={songTitle}
+        />
+      )}
 
       {/* Creation leads (005-C): the composer (or its empty-state pitch),
           then AT MOST one guiding line, then the diary. */}

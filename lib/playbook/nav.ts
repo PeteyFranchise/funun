@@ -30,6 +30,7 @@ export type ItSubpageSlug =
   | 'dashboard'
   | 'vendor-directory'
   | 'vendor-health'
+  | 'song-passport'
   | 'runbook'
   | 'operating-rhythm'
   | 'thresholds'
@@ -40,7 +41,7 @@ export type ItSubpage = {
   href: string
 }
 
-// The 6 IT sub-pages, in order — dashboard is the room's index page
+// IT sub-pages, in order — dashboard is the room's index page
 // (33-CONTEXT.md D-06). Route segments live under /admin/playbook/it/*.
 // vendor-health (260826-2qm) sits directly after vendor-directory — the
 // static directory and its live per-vendor credential-check counterpart
@@ -49,6 +50,7 @@ export const IT_SUBPAGES: ItSubpage[] = [
   { slug: 'dashboard', label: 'Monitoring Dashboard', href: '/admin/playbook/it/dashboard' },
   { slug: 'vendor-directory', label: 'Vendor Directory', href: '/admin/playbook/it/vendor-directory' },
   { slug: 'vendor-health', label: 'Vendor Health', href: '/admin/playbook/it/vendor-health' },
+  { slug: 'song-passport', label: 'Song Passport Pilot', href: '/admin/playbook/it/song-passport' },
   { slug: 'runbook', label: 'Incident Runbook', href: '/admin/playbook/it/runbook' },
   { slug: 'operating-rhythm', label: 'Operating Rhythm', href: '/admin/playbook/it/operating-rhythm' },
   { slug: 'thresholds', label: 'Thresholds & Severity', href: '/admin/playbook/it/thresholds' },
@@ -58,7 +60,7 @@ export const IT_SUBPAGES: ItSubpage[] = [
 // (260826-2qm) are bespoke React (not a markdown render) so neither has an
 // entry here — only the 4 doc pages map to their docs/observability/*.md
 // single source of truth.
-export const DOC_PAGE_FILE: Record<Exclude<ItSubpageSlug, 'dashboard' | 'vendor-health'>, string> = {
+export const DOC_PAGE_FILE: Record<Exclude<ItSubpageSlug, 'dashboard' | 'vendor-health' | 'song-passport'>, string> = {
   'vendor-directory': 'VENDOR-DIRECTORY.md',
   runbook: 'RUNBOOK.md',
   'operating-rhythm': 'OPERATING-RHYTHM.md',

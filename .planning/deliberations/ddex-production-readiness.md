@@ -48,6 +48,76 @@ Owner actions are tracked in
 This track may run alongside 37.2 and 37.3 because it is administrative/discovery work,
 not implementation against an unfinished Song Passport model.
 
+## Distributor and infrastructure partner candidate ladder
+
+The detailed evaluation plan lives in
+`.planning/todos/pending/2026-09-01-distributor-api-partner-evaluation.md`.
+This shortlist records researched options, not selected or contracted partners.
+
+### First paired evaluation
+
+1. **Too Lost - fastest documented pilot candidate.** Its official developer surface
+   advertises a REST API for catalog and release management, distribution, royalties,
+   permissions and webhooks, plus developer accounts and API keys. Ask for sandbox and
+   commercial-production eligibility before writing a production connector.
+2. **Revelator - strongest API-first strategic comparison.** Its API covers release,
+   metadata and rights creation, validation, DSP delivery, delivery status, webhooks,
+   royalties and payments. Sandbox credentials and integration support require a
+   representative, so business qualification and technical discovery happen together.
+
+Evaluate both in parallel. Too Lost is the default speed hypothesis; Revelator is the
+default depth hypothesis. Actual sandbox access, economics, compliance obligations and
+partner responsiveness decide the pilot - not the public feature list.
+
+### Later strategic candidates
+
+3. **FUGA - enterprise destination.** FUGA supports remote automated ingestion,
+   distribution and API-fed client platforms and describes preferred-partner status at
+   major DSPs. Revisit when Funūn can show catalogue volume, operating controls and a
+   credible commercial case.
+4. **SonoSuite - white-label alternative.** SonoSuite offers branded distribution and
+   access to more than 220 DSPs, but its public material currently describes a starting
+   scale of 5,000 tracks and 500 user accounts and labels the API path as an "API
+   workaround." Revalidate scope, true API capabilities and minimums before considering it.
+
+### Relationship-led intake paths
+
+- **DistroKid, TuneCore and CD Baby:** do not design against an assumed third-party
+  release-submission API. Pursue business development only if one offers Funūn an
+  authorized partner intake specification, sandbox and commercial terms.
+- **Spotify and Apple Music:** ordinary developer APIs are not master-ingestion APIs.
+  Production delivery requires an accepted distributor/label supply-chain relationship.
+- **Secretly:** treat as a named operational relationship. Discover whether its accepted
+  intake is a portal, spreadsheet, cloud transfer, SFTP, DDEX feed or another controlled
+  process; prepare to map Funūn's approved package to that actual workflow.
+
+### Provider-neutral architecture rule
+
+Song Passport, Release Report and Sound Vault custody remain canonical. A provider
+adapter translates one immutable approved release snapshot into that provider's accepted
+model. No provider owns Funūn's source metadata, provenance or custody ledger, and no
+provider-specific field becomes canonical unless the field represents a genuine release
+fact. Manual validated package export remains available until a named integration passes
+sandbox and controlled production UAT.
+
+### Long-term owned-distributor option
+
+Funūn may eventually operate distribution under its own brand and, later, hold selected
+DSP relationships directly. That path is documented in
+`.planning/todos/pending/2026-09-01-funun-owned-distributor-option.md`.
+
+Directness is contractual and operational, not a claim that Funūn wrote every delivery
+component itself. A direct rights holder or distributor may still use a professional
+delivery platform while retaining its DSP agreements, catalogue authority and financial
+responsibility. Conversely, a white-label interface does not make Funūn a direct DSP
+partner when an upstream company supplies the agreement, delivery and settlement rails.
+
+The recommended progression is partner-powered branded service -> managed hybrid
+operations -> one selective direct DSP relationship -> additional direct relationships
+only after the first one is stable. DDEX readiness supports that progression but does not
+replace DSP contracting, catalogue qualification, fraud controls, royalty accounting or
+support operations.
+
 ## Phase 37.4 - DDEX Production Readiness
 
 **Purpose:** Turn standards-aware exports into a licensed, current, validated message
@@ -199,6 +269,10 @@ certification whose scope is named in the claim.
 - Message validation: https://kb.ddex.net/general-implementation-guidance/validating-ddex-messages/
 - Current standards: https://kb.ddex.net/reference-material/standards-specifications/
 - Membership: https://ddex.net/membership/
+- Too Lost developer platform: https://toolost.com/developers
+- Revelator API: https://revelator.com/product/revelator-api
+- FUGA distribution: https://fuga.com/products-services/music-distribution/
+- SonoSuite platform and current scale: https://www.sonosuite.com/
 
 ## Claude / GSD instruction
 

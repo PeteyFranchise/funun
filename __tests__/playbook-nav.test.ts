@@ -22,12 +22,13 @@ describe('lib/playbook/nav', () => {
     expect(itGated[0].comingSoon).toBe(false)
   })
 
-  it('has 6 IT sub-pages in the exact order, dashboard first', () => {
-    expect(IT_SUBPAGES).toHaveLength(6)
+  it('has the IT sub-pages in the exact order, dashboard first', () => {
+    expect(IT_SUBPAGES).toHaveLength(7)
     expect(IT_SUBPAGES.map(p => p.slug)).toEqual([
       'dashboard',
       'vendor-directory',
       'vendor-health',
+      'song-passport',
       'runbook',
       'operating-rhythm',
       'thresholds',

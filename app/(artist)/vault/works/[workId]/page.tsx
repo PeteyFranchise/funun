@@ -4,6 +4,8 @@ import { cookies } from 'next/headers'
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/Topbar'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
+import { isSongPassportAvailableForWork, type SongPassportCohortClient } from '@/lib/song-passport/feature'
+import { loadSongPassportView } from '@/lib/song-passport/repository'
 import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import * as CatalogueAudio from '@/lib/catalogue/audio'
 import { deriveVersionNumerals, presentVersion } from '@/lib/catalogue/versions'
@@ -220,6 +222,15 @@ export default async function WorkComposerPage({
   // 137's own header records why.
   const service = createServiceClient()
   const splitsSheet = await loadWorkSplits(service, workId)
+  const songPassportAvailable = await isSongPassportAvailableForWork(service as unknown as SongPassportCohortClient, workId, user.id)
+  const songPassport = songPassportAvailable
+    ? await loadSongPassportView(service, {
+        workId,
+        viewerUserId: user.id,
+        viewerTier: access.tier,
+        viewerIsOwner: access.isOwner,
+      })
+    : undefined
   const sheetParties: PartyIdentity[] =
     splitsSheet?.parties.map(p => ({ collaboratorId: p.collaboratorId, userId: p.userId, name: p.name })) ?? []
 
@@ -479,6 +490,7 @@ export default async function WorkComposerPage({
           vocalState={work.vocal_state}
           priorAiEntryCount={priorAiEntryCount}
           hasHumFirstFired={humFirstFiredCookie || aiEntries.length > 0}
+          songPassport={songPassport}
         />
       </div>
     </>

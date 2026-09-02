@@ -12,8 +12,10 @@
 - 📝 **Near-term discussion — Lawyer-Reviewed Contract Product Foundation** — resolve ten GSD/counsel questions; create common agreements in the approved order; ship versioned templates, protected legal language, disclosures, e-signature and Contract Locker lifecycle before sync representation)
 - 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
 - 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
-- 📝 **Near-term — Phase 37.3: Song Passport** — contributor, composition, version and release metadata continuity; provenance and confirmation states; immutable source audio; generated tagged MP3s and sidecars; graduation into the Release Report without re-entry; owner-approved for GSD discussion after Phase 37.2)
+- 🧪 **Pilot activation — Phase 37.3: Song Passport** — Slices 1–7 code complete behind global/pilot/emergency server controls; migrations 150–156 applied; deploy and complete pilot UAT before any general-release claim.
 - 📝 **ASAP parallel — DDEX Licence, DPID & Partner Discovery** — owner obtains the free commercial Implementation Licence/DPID and selects one real receiving partner while Phases 37.2/37.3 proceed; no external application or partner contact by agents without owner authority)
+- 📝 **ASAP partner evaluation — Embedded Distributor API** — compare Too Lost (fastest documented public-API pilot), Revelator (strongest API-first strategic comparison), FUGA (enterprise destination) and SonoSuite (scale-dependent white-label alternative); treat DistroKid, TuneCore, CD Baby, Spotify, Apple Music and Secretly as named business-development paths unless they grant an accepted intake contract; select nothing until commercial, compliance, sandbox and delivery-acknowledgment evidence is reviewed)
+- 🧭 **Long-term strategic option — Funūn Distribution** — begin with a clearly disclosed partner-powered branded service, mature into a managed hybrid with Funūn-owned catalogue/QC/support/royalty operations, then pursue selective direct DSP agreements only after Funūn proves catalogue scale, clean rights and fraud performance, partner-grade DDEX delivery, reconciled royalty accounting, reliable payouts and staffed operations; exact distributor-of-record language follows the contracts, and direct distribution is never implied before named DSP acceptance)
 - 📝 **Near-term — Phase 37.4: DDEX Production Readiness** — current partner-approved ERN implementation, real DPIDs, audio/artwork technical details, schema + semantic validation, update/takedown generation and an evidence-backed sandbox handoff package)
 - 📝 **Near-term — Phase 37.5: Partner-Validated Direct Delivery** — one named recipient, secure transport, acknowledgments, retries, corrections, updates/takedowns, sandbox UAT and a controlled production pilot before generalizing)
 - 📝 **Near-term team discussion — Sync Library Operating Model Completion** — complete the curated catalogue lifecycle from invitation/submission through readiness, cultural review, buyer access, matching, artist approval, deals, contracts, delivery, payment and reporting; assign a dedicated phase only after team/counsel decisions)
@@ -1710,9 +1712,14 @@ carry inherited/draft/confirmed/locked/outdated states, and profile changes neve
 rewrite confirmed, locked or previously delivered facts. Phase 37.3 ships metadata
 inheritance, provenance, confirmation, tagged MP3 delivery copies, human/machine sidecars
 and the graduation handoff. Format expansion and certified direct industry delivery are
-explicitly deferred. Run `/gsd-discuss-phase 37.3` after Phase 37.2; treat
+explicitly deferred. The owner-approved discussion/consolidation pack is complete; after
+Phase 37.2, execute the seven slices in order. Treat
 `.planning/todos/pending/2026-09-01-song-passport-metadata-continuity.md` as the locked
-product input and ship test.
+product input and ship test. **Consolidation Step 8** is a required internal handoff:
+publish the Song Passport definitions, role, concept and complete approved doctrine in
+The Playbook, with shipped, planned and partner-dependent capabilities clearly separated.
+Use `.planning/todos/pending/2026-09-01-song-passport-playbook-entry.md` as the publication
+brief.
 
 **Depends on:** Phase 36
 **Plans:** 11/13 plans executed
@@ -1746,16 +1753,23 @@ Plans:
   exercise, including disconnect recovery and a same-section collision, with no lost or
   silently overwritten contribution
 
-**Phase 37.3 planning input (owner-approved; not yet discussed or planned):**
+**Phase 37.3 implementation pack (owner-approved; code complete, pilot activation pending):**
 
-- Stage 1: four-layer Song Passport model with field provenance and privacy classification
-- Stage 2: inherited/draft/confirmed/locked/outdated states and review-safe propagation
-- Stage 3: tagged MP3 delivery copy, human-readable sidecar, JSON manifest and export receipt
-- Stage 4: select a release master and graduate confirmed work/version facts into the
-  Release Report without re-entry
+- Planning pack complete:
+  `.planning/phases/37.3-song-passport/37.3-CONTEXT.md`,
+  `37.3-ARCHITECTURE.md` and `37.3-IMPLEMENTATION-PLAN.md`
+- Slices 1–7: implemented with migrations 151–156, server APIs, Writer's Room Passport UI,
+  trust workflows, master/Release Report graduation, exports/custody and pilot operations.
+- Migrations 150–156 are applied. Deployment and `37.3-PILOT-UAT.md` remain human-gated.
+  General release and public claims wait for pilot evidence (`37.3-01-SUMMARY.md` through
+  `37.3-07-SUMMARY.md`).
 - Definition of done: one work, two contributors, three recording versions and one
   graduation produce stable, privacy-safe delivery artifacts without changing the source
   audio or silently rewriting confirmed/delivered facts
+- Internal handoff: publish a versioned Song Passport doctrine entry in The Playbook so
+  team members have one authoritative reference for definitions, system role, approved
+  rules, operating boundaries and current-versus-planned capability status. Doctrine v1.0
+  is published by migration 150; pilot/support/claims SOP v1.1 is authored in migration 156.
 
 **Immediate DDEX parallel track (owner action + discovery; start now):**
 
