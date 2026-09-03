@@ -2,6 +2,10 @@ export type RecordingClip = {
   id: string
   serverId?: string
   position?: number
+  trimStartMs?: number
+  trimEndMs?: number
+  muted?: boolean
+  removed?: boolean
   blob: Blob
   url: string
   startMs: number
@@ -9,13 +13,59 @@ export type RecordingClip = {
   buffer: AudioBuffer
 }
 
-export function clipEndMs(clip: Pick<RecordingClip, 'startMs' | 'durationMs'>, timingOffsetMs = 0): number {
-  return Math.max(0, clip.startMs + timingOffsetMs + clip.durationMs)
+export function clipTimelineWindow(
+  clip: Pick<RecordingClip, 'startMs' | 'durationMs' | 'trimStartMs' | 'trimEndMs'>,
+  timingOffsetMs = 0
+) {
+  const trimStartMs = Math.max(0, clip.trimStartMs ?? 0)
+  const trimEndMs = Math.max(0, clip.trimEndMs ?? 0)
+  const rawStartMs = clip.startMs + timingOffsetMs + trimStartMs
+  const beforeTimelineMs = Math.max(0, -rawStartMs)
+  const sourceOffsetMs = trimStartMs + beforeTimelineMs
+  const playableDurationMs = Math.max(0, clip.durationMs - sourceOffsetMs - trimEndMs)
+  const timelineStartMs = Math.max(0, rawStartMs)
+  return { timelineStartMs, sourceOffsetMs, playableDurationMs, timelineEndMs: timelineStartMs + playableDurationMs }
+}
+
+export function clipEndMs(clip: Pick<RecordingClip, 'startMs' | 'durationMs' | 'trimStartMs' | 'trimEndMs'>, timingOffsetMs = 0): number {
+  return clipTimelineWindow(clip, timingOffsetMs).timelineEndMs
+}
+
+export function clipOverlapsRange(
+  clip: Pick<RecordingClip, 'startMs' | 'durationMs' | 'trimStartMs' | 'trimEndMs'>,
+  rangeStartMs: number,
+  rangeEndMs: number,
+  timingOffsetMs = 0
+): boolean {
+  const window = clipTimelineWindow(clip, timingOffsetMs)
+  return window.timelineStartMs < rangeEndMs && window.timelineEndMs > rangeStartMs
+}
+
+export function waveformPeaks(
+  buffer: Pick<AudioBuffer, 'length' | 'numberOfChannels' | 'getChannelData'>,
+  barCount: number
+): number[] {
+  if (barCount <= 0 || buffer.length <= 0 || buffer.numberOfChannels <= 0) return []
+  const bars: number[] = []
+  for (let bar = 0; bar < barCount; bar += 1) {
+    const from = Math.floor((bar / barCount) * buffer.length)
+    const to = Math.max(from + 1, Math.floor(((bar + 1) / barCount) * buffer.length))
+    let peak = 0
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const samples = buffer.getChannelData(channel)
+      for (let index = from; index < to && index < samples.length; index += 1) {
+        peak = Math.max(peak, Math.abs(samples[index] ?? 0))
+      }
+    }
+    bars.push(peak)
+  }
+  const maximum = Math.max(...bars, 0.001)
+  return bars.map(peak => Math.max(0.08, peak / maximum))
 }
 
 export function sessionDurationMs(
   backingDurationMs: number,
-  clips: Pick<RecordingClip, 'startMs' | 'durationMs'>[],
+  clips: Pick<RecordingClip, 'startMs' | 'durationMs' | 'trimStartMs' | 'trimEndMs'>[],
   timingOffsetMs = 0
 ): number {
   return Math.max(backingDurationMs, ...clips.map(clip => clipEndMs(clip, timingOffsetMs)), 1)
@@ -77,7 +127,7 @@ export async function renderRoughMix(input: {
 }): Promise<AudioBuffer> {
   const durationMs = sessionDurationMs(
     Math.round(input.backing.duration * 1000),
-    input.clips,
+    input.clips.filter(clip => !clip.muted && !clip.removed),
     input.timingOffsetMs
   )
   const sampleRate = Math.min(48000, Math.max(22050, input.backing.sampleRate))
@@ -92,13 +142,15 @@ export async function renderRoughMix(input: {
   beat.start(0)
 
   for (const clip of input.clips) {
+    if (clip.muted || clip.removed) continue
+    const window = clipTimelineWindow(clip, input.timingOffsetMs)
+    if (window.playableDurationMs <= 0) continue
     const source = context.createBufferSource()
     const level = context.createGain()
     source.buffer = clip.buffer
     level.gain.value = input.vocalGain
     source.connect(level).connect(context.destination)
-    const rawStartSeconds = (clip.startMs + input.timingOffsetMs) / 1000
-    source.start(Math.max(0, rawStartSeconds), Math.max(0, -rawStartSeconds))
+    source.start(window.timelineStartMs / 1000, window.sourceOffsetMs / 1000, window.playableDurationMs / 1000)
   }
 
   return context.startRendering()

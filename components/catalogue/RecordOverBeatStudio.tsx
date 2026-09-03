@@ -6,9 +6,12 @@ import { extensionForMime, pickSupportedMimeType } from '@/lib/catalogue/hum-cap
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
 import {
   encodeWav,
+  clipOverlapsRange,
+  clipTimelineWindow,
   formatRecorderTime,
   renderRoughMix,
   sessionDurationMs,
+  waveformPeaks,
   type RecordingClip,
 } from '@/lib/catalogue/record-over-beat'
 import type { WorkVersion } from '@/types/catalogue'
@@ -31,10 +34,11 @@ type RecoveredSession = {
   vocalGain: number
   timingOffsetMs: number
   base: { id: string; label: string | null; source: string; playbackUrl: string | null; durationSeconds: number | null }
-  clips: { id: string; playbackUrl: string; startMs: number; durationMs: number; position: number }[]
+  clips: {
+    id: string; playbackUrl: string; startMs: number; durationMs: number; position: number
+    trimStartMs: number; trimEndMs: number; muted: boolean; removed: boolean
+  }[]
 }
-
-const WAVE_BARS = [42, 71, 53, 88, 46, 64, 92, 57, 76, 39, 84, 61, 48, 95, 67, 44, 79, 55, 89, 51, 73, 41, 86, 62, 47, 91, 58, 77, 43, 82, 65, 49]
 
 function randomId(): string {
   return typeof crypto.randomUUID === 'function'
@@ -74,6 +78,11 @@ export function RecordOverBeatStudio({
   const [sessionStatus, setSessionStatus] = useState<'draft' | 'saved'>('draft')
   const [activeBaseVersionId, setActiveBaseVersionId] = useState(baseVersionId)
   const [activeBaseLabel, setActiveBaseLabel] = useState(baseDisplay)
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
+  const [soloClipId, setSoloClipId] = useState<string | null>(null)
+  const [rangeStartMs, setRangeStartMs] = useState(0)
+  const [rangeEndMs, setRangeEndMs] = useState(0)
+  const [editHistory, setEditHistory] = useState<RecordingClip[][]>([])
 
   const contextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -92,9 +101,11 @@ export function RecordOverBeatStudio({
   const sessionStatusRef = useRef<'draft' | 'saved'>('draft')
   const nextClipPositionRef = useRef(0)
   const lastSyncedSettingsRef = useRef('')
+  const recordEndMsRef = useRef<number | null>(null)
+  const replacementClipIdsRef = useRef<string[]>([])
 
   const backingDurationMs = Math.round((backing?.duration ?? 0) * 1000)
-  const durationMs = sessionDurationMs(backingDurationMs, clips, timingOffsetMs)
+  const durationMs = sessionDurationMs(backingDurationMs, clips.filter(clip => !clip.removed), timingOffsetMs)
 
   useEffect(() => { positionRef.current = positionMs }, [positionMs])
   useEffect(() => { clipsRef.current = clips }, [clips])
@@ -124,7 +135,12 @@ export function RecordOverBeatStudio({
               if (!response.ok) throw new Error('Could not restore a vocal section.')
               const blob = await response.blob()
               const buffer = await context.decodeAudioData(await blob.arrayBuffer())
-              return { id: clip.id, serverId: clip.id, position: clip.position, blob, url: URL.createObjectURL(blob), buffer, startMs: clip.startMs, durationMs: clip.durationMs }
+              return {
+                id: clip.id, serverId: clip.id, position: clip.position, blob,
+                url: URL.createObjectURL(blob), buffer, startMs: clip.startMs, durationMs: clip.durationMs,
+                trimStartMs: clip.trimStartMs, trimEndMs: clip.trimEndMs,
+                muted: clip.muted, removed: clip.removed,
+              }
             }))
           : []
         if (!cancelled) {
@@ -141,7 +157,12 @@ export function RecordOverBeatStudio({
             setTimingOffsetMs(recovered.timingOffsetMs)
             lastSyncedSettingsRef.current = `${recovered.beatGain}:${recovered.vocalGain}:${recovered.timingOffsetMs}`
             setClips(recoveredClips)
+            const audible = recoveredClips.filter(clip => !clip.removed)
+            const initialEnd = Math.min(decoded.duration * 1000, audible[0] ? clipTimelineWindow(audible[0]).timelineEndMs : 15000)
+            setRangeEndMs(Math.max(1000, initialEnd))
             nextClipPositionRef.current = recovered.clips.reduce((maximum, clip) => Math.max(maximum, clip.position + 1), 0)
+          } else {
+            setRangeEndMs(Math.min(15000, Math.round(decoded.duration * 1000)))
           }
           setSyncState('saved')
         }
@@ -213,6 +234,14 @@ export function RecordOverBeatStudio({
       playbackOffsetRef.current,
       playbackOffsetRef.current + (context.currentTime - playbackStartedAtRef.current) * 1000
     )
+    if (recordEndMsRef.current !== null && next >= recordEndMsRef.current && recorderRef.current?.state === 'recording') {
+      setPositionMs(recordEndMsRef.current)
+      positionRef.current = recordEndMsRef.current
+      recorderRef.current.stop()
+      recordEndMsRef.current = null
+      setRecording(false)
+      return
+    }
     if (next >= durationMs) {
       setPositionMs(durationMs)
       positionRef.current = durationMs
@@ -247,18 +276,19 @@ export function RecordOverBeatStudio({
 
     const vocalGains: GainNode[] = []
     for (const clip of clipsRef.current) {
-      const rawClipStart = clip.startMs + timingOffsetMs
-      const clipStart = Math.max(0, rawClipStart)
-      const sourceOffsetMs = Math.max(0, -rawClipStart)
-      const clipEnd = clipStart + Math.max(0, clip.durationMs - sourceOffsetMs)
+      if (clip.removed || clip.muted || (soloClipId && clip.id !== soloClipId)) continue
+      const window = clipTimelineWindow(clip, timingOffsetMs)
+      const clipStart = window.timelineStartMs
+      const sourceOffsetMs = window.sourceOffsetMs
+      const clipEnd = window.timelineEndMs
       if (clipEnd <= start) continue
       const source = context.createBufferSource()
       const gain = context.createGain()
       source.buffer = clip.buffer
       gain.gain.value = vocalGain
       source.connect(gain).connect(context.destination)
-      if (clipStart >= start) source.start(when + (clipStart - start) / 1000, sourceOffsetMs / 1000)
-      else source.start(when, (sourceOffsetMs + start - clipStart) / 1000)
+      if (clipStart >= start) source.start(when + (clipStart - start) / 1000, sourceOffsetMs / 1000, window.playableDurationMs / 1000)
+      else source.start(when, (sourceOffsetMs + start - clipStart) / 1000, (clipEnd - start) / 1000)
       created.push(source)
       vocalGains.push(gain)
     }
@@ -329,13 +359,21 @@ export function RecordOverBeatStudio({
         id: randomId(), blob, url: URL.createObjectURL(blob), buffer,
         startMs: Math.round(clipStartMsRef.current), durationMs: duration,
         position: nextClipPositionRef.current++,
+        trimStartMs: 0, trimEndMs: 0, muted: false, removed: false,
       }
       setClips(current => [...current, clip])
+      setSelectedClipId(clip.id)
       setSyncState('saving')
       try {
         const durableSessionId = await ensureSessionForWrite()
         const serverId = await persistClip(durableSessionId, clip, clip.position ?? 0)
         setClips(current => current.map(item => item.id === clip.id ? { ...item, serverId } : item))
+        if (replacementClipIdsRef.current.length > 0) {
+          const replacedIds = replacementClipIdsRef.current
+          replacementClipIdsRef.current = []
+          for (const id of replacedIds) await persistClipEdit(id, { muted: true })
+          setClips(current => current.map(item => replacedIds.includes(item.id) ? { ...item, muted: true } : item))
+        }
         setSyncState('saved')
       } catch {
         setSyncState('offline')
@@ -387,22 +425,105 @@ export function RecordOverBeatStudio({
     positionRef.current = next
   }
 
-  function removeClip(id: string) {
-    const target = clipsRef.current.find(clip => clip.id === id)
-    setClips(current => {
-      const removed = current.find(clip => clip.id === id)
-      if (removed) URL.revokeObjectURL(removed.url)
-      return current.filter(clip => clip.id !== id)
+  function rememberEdit() {
+    setEditHistory(current => [...current.slice(-9), clipsRef.current.map(clip => ({ ...clip }))])
+  }
+
+  async function persistClipEdit(id: string, patch: { removed?: boolean; muted?: boolean; startMs?: number; trimStartMs?: number; trimEndMs?: number }) {
+    const clip = clipsRef.current.find(item => item.id === id)
+    if (!clip?.serverId) return
+    const durableSessionId = await ensureSessionForWrite()
+    const response = await fetch(`/api/works/${workId}/recording-sessions/${durableSessionId}/clips/${clip.serverId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
     })
-    const durableSessionId = sessionIdRef.current
-    if (target?.serverId && durableSessionId) {
-      setSyncState('saving')
-      void ensureSessionForWrite().then(currentSessionId => fetch(`/api/works/${workId}/recording-sessions/${currentSessionId}/clips/${target.serverId}`, {
-          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ removed: true }),
-        }))
-        .then(response => setSyncState(response.ok ? 'saved' : 'offline'))
-        .catch(() => setSyncState('offline'))
+    if (!response.ok) throw new Error(await errorMessage(response, 'Could not save that vocal edit.'))
+  }
+
+  async function editClip(id: string, patch: Partial<Pick<RecordingClip, 'startMs' | 'trimStartMs' | 'trimEndMs' | 'muted' | 'removed'>>, remember = true) {
+    if (remember) rememberEdit()
+    stopSources()
+    setClips(current => current.map(clip => clip.id === id ? { ...clip, ...patch } : clip))
+    setSyncState('saving')
+    try {
+      await persistClipEdit(id, patch)
+      setSyncState('saved')
+    } catch (cause) {
+      setSyncState('offline')
+      setError(cause instanceof Error ? cause.message : 'That vocal edit is waiting to sync.')
     }
+  }
+
+  function updateClipLocal(id: string, patch: Partial<Pick<RecordingClip, 'startMs' | 'trimStartMs' | 'trimEndMs'>>) {
+    stopSources()
+    setClips(current => current.map(clip => clip.id === id ? { ...clip, ...patch } : clip))
+    setSyncState('saving')
+  }
+
+  async function commitClipShape(id: string) {
+    const clip = clipsRef.current.find(item => item.id === id)
+    if (!clip) return
+    try {
+      await persistClipEdit(id, {
+        startMs: Math.round(clip.startMs),
+        trimStartMs: Math.round(clip.trimStartMs ?? 0),
+        trimEndMs: Math.round(clip.trimEndMs ?? 0),
+      })
+      setSyncState(clip.serverId ? 'saved' : 'offline')
+    } catch (cause) {
+      setSyncState('offline')
+      setError(cause instanceof Error ? cause.message : 'That vocal edit is waiting to sync.')
+    }
+  }
+
+  function removeClip(id: string) {
+    void editClip(id, { removed: true })
+    if (selectedClipId === id) setSelectedClipId(null)
+    if (soloClipId === id) setSoloClipId(null)
+  }
+
+  async function undoEdit() {
+    const prior = editHistory[editHistory.length - 1]
+    if (!prior) return
+    const current = clipsRef.current
+    setEditHistory(history => history.slice(0, -1))
+    setClips(prior)
+    setSyncState('saving')
+    try {
+      for (const clip of current) {
+        const old = prior.find(item => item.id === clip.id)
+        if (!old) await persistClipEdit(clip.id, { removed: true })
+      }
+      for (const clip of prior) {
+        await persistClipEdit(clip.id, {
+          removed: Boolean(clip.removed), muted: Boolean(clip.muted), startMs: clip.startMs,
+          trimStartMs: clip.trimStartMs ?? 0, trimEndMs: clip.trimEndMs ?? 0,
+        })
+      }
+      setSyncState('saved')
+    } catch {
+      setSyncState('offline')
+      setError('Undo is visible here but still waiting to sync.')
+    }
+  }
+
+  async function rerecordRange() {
+    if (rangeEndMs - rangeStartMs < 250) {
+      setError('Select at least a quarter-second to re-record.')
+      return
+    }
+    rememberEdit()
+    replacementClipIdsRef.current = clipsRef.current
+      .filter(clip => !clip.removed && !clip.muted && clipOverlapsRange(clip, rangeStartMs, rangeEndMs, timingOffsetMs))
+      .map(clip => clip.id)
+    recordEndMsRef.current = rangeEndMs
+    seek(rangeStartMs)
+    await beginPunch()
+  }
+
+  async function startNewPunch() {
+    recordEndMsRef.current = null
+    replacementClipIdsRef.current = []
+    await beginPunch()
   }
 
   async function persistClip(sessionId: string, clip: RecordingClip, position: number): Promise<string> {
@@ -437,6 +558,12 @@ export function RecordOverBeatStudio({
         const serverId = await persistClip(durableSessionId, clip, clip.position ?? 0)
         setClips(current => current.map(item => item.id === clip.id ? { ...item, serverId } : item))
       }
+      if (replacementClipIdsRef.current.length > 0) {
+        const replacedIds = replacementClipIdsRef.current
+        for (const id of replacedIds) await persistClipEdit(id, { muted: true })
+        setClips(current => current.map(item => replacedIds.includes(item.id) ? { ...item, muted: true } : item))
+        replacementClipIdsRef.current = []
+      }
       setSyncState('saved')
     } catch (cause) {
       setSyncState('offline')
@@ -445,7 +572,7 @@ export function RecordOverBeatStudio({
   }
 
   async function saveRoughTake() {
-    if (!backing || clips.length === 0 || saving || recording) return
+    if (!backing || !clips.some(clip => !clip.removed && !clip.muted) || saving || recording) return
     setSaving(true)
     setError(null)
     stopSources()
@@ -489,7 +616,15 @@ export function RecordOverBeatStudio({
     }
   }
 
-  const sortedClips = useMemo(() => [...clips].sort((a, b) => a.startMs - b.startMs), [clips])
+  const activeClips = useMemo(() => clips.filter(clip => !clip.removed).sort((a, b) => a.startMs - b.startMs), [clips])
+  const removedClips = useMemo(() => clips.filter(clip => clip.removed), [clips])
+  const selectedClip = clips.find(clip => clip.id === selectedClipId) ?? null
+  const beatPeaks = useMemo(() => backing ? waveformPeaks(backing, 64) : [], [backing])
+  const timelineDurationMs = Math.max(durationMs, 1)
+  const selectionLeft = (Math.min(rangeStartMs, timelineDurationMs) / timelineDurationMs) * 100
+  const selectionWidth = (Math.max(0, Math.min(rangeEndMs, timelineDurationMs) - Math.min(rangeStartMs, timelineDurationMs)) / timelineDurationMs) * 100
+  const selectedWindow = selectedClip ? clipTimelineWindow(selectedClip, timingOffsetMs) : null
+  const audibleClips = activeClips.filter(clip => !clip.muted)
 
   return (
     <div className="w-full max-w-[760px] rounded-[14px] border border-hairstrong bg-card p-4 shadow-2xl sm:p-6">
@@ -506,33 +641,97 @@ export function RecordOverBeatStudio({
         {countdown !== null && <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-ink/80 text-[64px] font-bold text-white">{countdown}</div>}
         <div className="flex items-center gap-3">
           <button type="button" disabled={!backing || recording} onClick={() => playing ? stopSources() : void playFrom()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-hairstrong text-[13px] text-white disabled:opacity-40">{playing ? 'Ⅱ' : '▶'}</button>
-          <button type="button" disabled={!backing || !mimeType || saving || (!recording && syncState !== 'saved') || countdown !== null} onClick={recording ? stopPunch : () => void beginPunch()} className={`h-10 rounded-full px-4 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40 ${recording ? 'bg-red-500' : 'bg-grad'}`}>{recording ? '■ Stop section' : '● Record'}</button>
+          <button type="button" disabled={!backing || !mimeType || saving || (!recording && syncState !== 'saved') || countdown !== null} onClick={recording ? stopPunch : () => void startNewPunch()} className={`h-10 rounded-full px-4 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40 ${recording ? 'bg-red-500' : 'bg-grad'}`}>{recording ? '■ Stop section' : '● Record'}</button>
+          <button type="button" disabled={!backing || !mimeType || saving || recording || countdown !== null || syncState !== 'saved' || rangeEndMs - rangeStartMs < 250} onClick={() => void rerecordRange()} className="h-10 rounded-full border border-brandfuchsia/50 px-4 text-[11px] font-semibold text-white hover:bg-brandfuchsia/15 disabled:opacity-40">↺ Re-record selection</button>
+          <button type="button" disabled={editHistory.length === 0 || recording || syncState === 'saving'} onClick={() => void undoEdit()} className="text-[10px] font-semibold text-lavdim hover:text-white disabled:opacity-35">Undo</button>
           <span className="ml-auto font-mono text-[13px] text-white">{formatRecorderTime(positionMs)} <span className="text-lavdim">/ {formatRecorderTime(durationMs)}</span></span>
         </div>
 
         <div className="mt-4 space-y-2">
           <div className="grid grid-cols-[46px_1fr] items-center gap-2">
             <span className="text-[9px] font-semibold uppercase text-lavdim">Beat</span>
-            <div className="flex h-10 items-center gap-px overflow-hidden rounded-[7px] bg-ink/50 px-2">
-              {WAVE_BARS.map((height, index) => <span key={index} className="min-w-px flex-1 rounded-full bg-brandindigo/55" style={{ height: `${height}%` }} />)}
+            <div className="relative flex h-12 items-center gap-px overflow-hidden rounded-[7px] bg-ink/50 px-2">
+              {beatPeaks.map((peak, index) => <span key={index} className="min-w-px flex-1 rounded-full bg-brandindigo/60" style={{ height: `${Math.max(7, peak * 100)}%` }} />)}
+              <span className="pointer-events-none absolute inset-y-0 border-x border-white/70 bg-white/10" style={{ left: `${selectionLeft}%`, width: `${selectionWidth}%` }} />
+              <span className="pointer-events-none absolute inset-y-0 w-px bg-white/80" style={{ left: `${(Math.min(positionMs, timelineDurationMs) / timelineDurationMs) * 100}%` }} />
             </div>
           </div>
           <div className="grid grid-cols-[46px_1fr] items-center gap-2">
             <span className="text-[9px] font-semibold uppercase text-lavdim">Vocal</span>
-            <div className="relative h-10 overflow-hidden rounded-[7px] border border-hair bg-ink/50">
-              {sortedClips.map((clip, index) => {
-                const left = (Math.max(0, clip.startMs + timingOffsetMs) / durationMs) * 100
-                const width = Math.max(1.5, (clip.durationMs / durationMs) * 100)
-                return <button key={clip.id} type="button" onClick={() => removeClip(clip.id)} title="Remove this punch-in" className="absolute inset-y-1 overflow-hidden rounded-[5px] border border-brandfuchsia/50 bg-brandfuchsia/25 px-1 text-left text-[8px] text-white hover:bg-red-500/30" style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }}>Take {index + 1} ×</button>
+            <div className="relative h-14 overflow-hidden rounded-[7px] border border-hair bg-ink/50">
+              <span className="pointer-events-none absolute inset-y-0 z-10 border-x border-white/70 bg-white/10" style={{ left: `${selectionLeft}%`, width: `${selectionWidth}%` }} />
+              {activeClips.map((clip, index) => {
+                const window = clipTimelineWindow(clip, timingOffsetMs)
+                const left = (Math.max(0, window.timelineStartMs) / timelineDurationMs) * 100
+                const width = Math.max(1.5, (window.playableDurationMs / timelineDurationMs) * 100)
+                const peaks = waveformPeaks(clip.buffer, 20)
+                const selected = selectedClipId === clip.id
+                return (
+                  <button
+                    key={clip.id}
+                    type="button"
+                    onClick={() => setSelectedClipId(clip.id)}
+                    title={`Select vocal ${index + 1}`}
+                    className={`absolute inset-y-1 flex items-center gap-px overflow-hidden rounded-[5px] border px-1 transition ${selected ? 'z-20 border-white bg-brandfuchsia/45' : 'border-brandfuchsia/50 bg-brandfuchsia/25 hover:bg-brandfuchsia/35'} ${clip.muted ? 'opacity-35' : ''} ${soloClipId === clip.id ? 'ring-1 ring-amber-300' : ''}`}
+                    style={{ left: `${left}%`, width: `${Math.min(width, Math.max(1.5, 100 - left))}%` }}
+                  >
+                    {peaks.map((peak, peakIndex) => <span key={peakIndex} className="min-w-px flex-1 rounded-full bg-white/80" style={{ height: `${Math.max(8, peak * 100)}%` }} />)}
+                    <span className="absolute bottom-0.5 left-1 text-[7px] font-semibold text-white">{index + 1}{clip.muted ? ' · muted' : ''}</span>
+                  </button>
+                )
               })}
-              {clips.length === 0 && <span className="absolute inset-0 grid place-items-center text-[9px] text-lavdim">Your punch-ins will appear here</span>}
+              <span className="pointer-events-none absolute inset-y-0 z-30 w-px bg-white/80" style={{ left: `${(Math.min(positionMs, timelineDurationMs) / timelineDurationMs) * 100}%` }} />
+              {activeClips.length === 0 && <span className="absolute inset-0 grid place-items-center text-[9px] text-lavdim">Your punch-ins will appear here</span>}
             </div>
           </div>
           <div className="relative ml-[54px] h-5">
-            <input type="range" min={0} max={durationMs} step={50} value={Math.min(positionMs, durationMs)} onChange={event => seek(Number(event.target.value))} aria-label="Recording timeline" className="absolute inset-x-0 top-0 w-full accent-indigo-400" />
+            <input type="range" min={0} max={timelineDurationMs} step={50} value={Math.min(positionMs, timelineDurationMs)} onChange={event => seek(Number(event.target.value))} aria-label="Recording timeline" className="absolute inset-x-0 top-0 w-full accent-indigo-400" />
           </div>
         </div>
+
+        <div className="mt-3 rounded-[8px] border border-hair bg-ink/30 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-lavdim">Re-record range</p>
+            <p className="font-mono text-[10px] text-white">{formatRecorderTime(rangeStartMs)} — {formatRecorderTime(rangeEndMs)}</p>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <label className="text-[9px] text-lavdim">In<input type="range" min={0} max={timelineDurationMs} step={50} value={Math.min(rangeStartMs, timelineDurationMs)} onChange={event => setRangeStartMs(Math.min(Number(event.target.value), Math.max(0, rangeEndMs - 250)))} className="ml-2 w-[calc(100%-28px)] accent-indigo-400" /></label>
+            <label className="text-[9px] text-lavdim">Out<input type="range" min={0} max={timelineDurationMs} step={50} value={Math.min(rangeEndMs, timelineDurationMs)} onChange={event => setRangeEndMs(Math.max(Number(event.target.value), Math.min(timelineDurationMs, rangeStartMs + 250)))} className="ml-2 w-[calc(100%-34px)] accent-fuchsia-400" /></label>
+          </div>
+          <p className="mt-1 text-[9px] leading-4 text-lavdim">Choose a section, then re-record it. The earlier performance stays in the session as a muted alternate.</p>
+        </div>
       </div>
+
+      {selectedClip && !selectedClip.removed && selectedWindow && (
+        <div className="mt-4 rounded-[11px] border border-brandfuchsia/30 bg-card2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-brandfuchsia">Selected vocal</p>
+              <p className="mt-1 text-[11px] text-white">{formatRecorderTime(selectedWindow.timelineStartMs)} — {formatRecorderTime(selectedWindow.timelineEndMs)} · {formatRecorderTime(selectedWindow.playableDurationMs)}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => void editClip(selectedClip.id, { startMs: Math.max(0, selectedClip.startMs - 100) })} className="rounded-md border border-hairstrong px-2 py-1 text-[9px] text-white hover:bg-white/5">−100 ms</button>
+              <button type="button" onClick={() => void editClip(selectedClip.id, { startMs: selectedClip.startMs + 100 })} className="rounded-md border border-hairstrong px-2 py-1 text-[9px] text-white hover:bg-white/5">+100 ms</button>
+              <button type="button" onClick={() => void editClip(selectedClip.id, { muted: !selectedClip.muted })} className="rounded-md border border-hairstrong px-2 py-1 text-[9px] text-white hover:bg-white/5">{selectedClip.muted ? 'Unmute' : 'Mute'}</button>
+              <button type="button" onClick={() => { stopSources(); setSoloClipId(current => current === selectedClip.id ? null : selectedClip.id) }} className="rounded-md border border-hairstrong px-2 py-1 text-[9px] text-white hover:bg-white/5">{soloClipId === selectedClip.id ? 'Clear solo' : 'Solo'}</button>
+              <button type="button" onClick={() => removeClip(selectedClip.id)} className="rounded-md border border-red-400/30 px-2 py-1 text-[9px] text-red-200 hover:bg-red-500/10">Remove</button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-[9px] text-lavdim">Trim start <span className="float-right font-mono text-white">{selectedClip.trimStartMs ?? 0} ms</span><input type="range" min={0} max={Math.max(0, selectedClip.durationMs - (selectedClip.trimEndMs ?? 0) - 50)} step={10} value={selectedClip.trimStartMs ?? 0} onPointerDown={rememberEdit} onChange={event => updateClipLocal(selectedClip.id, { trimStartMs: Number(event.target.value) })} onPointerUp={() => void commitClipShape(selectedClip.id)} onBlur={() => void commitClipShape(selectedClip.id)} className="mt-2 w-full accent-fuchsia-400" /></label>
+            <label className="text-[9px] text-lavdim">Trim end <span className="float-right font-mono text-white">{selectedClip.trimEndMs ?? 0} ms</span><input type="range" min={0} max={Math.max(0, selectedClip.durationMs - (selectedClip.trimStartMs ?? 0) - 50)} step={10} value={selectedClip.trimEndMs ?? 0} onPointerDown={rememberEdit} onChange={event => updateClipLocal(selectedClip.id, { trimEndMs: Number(event.target.value) })} onPointerUp={() => void commitClipShape(selectedClip.id)} onBlur={() => void commitClipShape(selectedClip.id)} className="mt-2 w-full accent-fuchsia-400" /></label>
+          </div>
+        </div>
+      )}
+
+      {removedClips.length > 0 && (
+        <details className="mt-3 rounded-[9px] border border-hair bg-card2 px-3 py-2">
+          <summary className="cursor-pointer text-[10px] text-lavdim">Removed vocals ({removedClips.length})</summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {removedClips.map((clip, index) => <button key={clip.id} type="button" onClick={() => void editClip(clip.id, { removed: false })} className="rounded-md border border-hairstrong px-2 py-1 text-[9px] text-white hover:bg-white/5">Restore vocal {clip.position !== undefined ? clip.position + 1 : index + 1}</button>)}
+          </div>
+        </details>
+      )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-[10px] text-lavdim">Beat level <span className="float-right text-white">{Math.round(beatGain * 100)}%</span><input type="range" min={0} max={1.5} step={0.05} value={beatGain} onChange={event => { setBeatGain(Number(event.target.value)); if (sessionIdRef.current) setSyncState('saving') }} className="mt-2 w-full accent-indigo-400" /></label>
@@ -545,12 +744,12 @@ export function RecordOverBeatStudio({
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-hair pt-4">
         <p className="text-[10px] text-lavdim">
           {syncState === 'loading' ? 'Loading session…' : syncState === 'saving' ? 'Saving…' : syncState === 'offline' ? 'Offline — vocal waiting to sync' : 'Saved'}
-          {' · '}{clips.length} {clips.length === 1 ? 'section' : 'sections'}
+          {' · '}{activeClips.length} {activeClips.length === 1 ? 'section' : 'sections'}
           {syncState === 'offline' && <button type="button" onClick={() => void retrySync()} className="ml-2 font-semibold text-brandindigo hover:text-white">Retry sync</button>}
         </p>
         <div className="flex items-center gap-3">
-          <button type="button" disabled={saving || syncState === 'saving' || syncState === 'offline'} onClick={closeStudio} className="text-[11px] text-lavdim hover:text-white disabled:opacity-40">{clips.length > 0 ? 'Save draft & leave' : 'Cancel'}</button>
-          <button type="button" disabled={clips.length === 0 || saving || recording} onClick={() => void saveRoughTake()} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : 'Save rough take'}</button>
+          <button type="button" disabled={saving || syncState === 'saving' || syncState === 'offline'} onClick={closeStudio} className="text-[11px] text-lavdim hover:text-white disabled:opacity-40">{activeClips.length > 0 ? 'Save draft & leave' : 'Cancel'}</button>
+          <button type="button" disabled={audibleClips.length === 0 || saving || recording || syncState !== 'saved'} onClick={() => void saveRoughTake()} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : 'Save rough take'}</button>
         </div>
       </div>
     </div>

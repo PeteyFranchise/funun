@@ -43,7 +43,7 @@ export async function GET(request: Request, { params }: RouteCtx) {
 
   const [{ data: base }, { data: clips }] = await Promise.all([
     supabase.from('work_versions').select('id, label, source, audio_path, duration_seconds').eq('id', session.base_version_id).eq('work_id', workId).maybeSingle(),
-    supabase.from('work_recording_clips').select('id, audio_path, start_ms, duration_ms, position').eq('session_id', session.id).is('removed_at', null).order('position'),
+    supabase.from('work_recording_clips').select('id, audio_path, start_ms, duration_ms, position, trim_start_ms, trim_end_ms, muted, removed_at').eq('session_id', session.id).order('position'),
   ])
   if (!base) return NextResponse.json({ data: null })
   const paths = [base.audio_path, ...(clips ?? []).map(clip => clip.audio_path)]
@@ -59,6 +59,8 @@ export async function GET(request: Request, { params }: RouteCtx) {
       clips: (clips ?? []).flatMap(clip => urls[clip.audio_path] ? [{
         id: clip.id, playbackUrl: urls[clip.audio_path], startMs: clip.start_ms,
         durationMs: clip.duration_ms, position: clip.position,
+        trimStartMs: clip.trim_start_ms, trimEndMs: clip.trim_end_ms,
+        muted: clip.muted, removed: clip.removed_at !== null,
       }] : []),
     },
   })
