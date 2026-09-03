@@ -16,6 +16,7 @@ import { ReauthorPrompt } from './ReauthorPrompt'
 import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
 import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPresence'
 import { SongPassportPanel } from './SongPassportPanel'
+import { SingerPicker } from './SingerPicker'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -41,6 +42,7 @@ import type {
   WorkVocalState,
 } from '@/types/catalogue'
 import type { SongPassportView } from '@/lib/song-passport/view'
+import type { SingerCandidate } from '@/lib/catalogue/singer-options'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -103,6 +105,8 @@ export type WorkPageProps = {
     viewerTier: WorkTier | null
     viewerIsOwner: boolean
   }
+  /** Specific people available to the vocal-plan picker; does not grant any access or credit by itself. */
+  singerCandidates: SingerCandidate[]
   presence: {
     viewer: RoomPresencePerson
     people: RoomPresencePerson[]
@@ -377,53 +381,13 @@ function NoteComposer({
   )
 }
 
-function AddSingerPicker({
-  onPick,
-  onCancel,
-}: {
-  onPick: (performer: PerformerRef) => void
-  onCancel: () => void
-}) {
-  const [name, setName] = useState('')
-  return (
-    <div className="w-full max-w-[360px] rounded-[12px] border border-hair bg-card px-6 py-6">
-      <p className="mb-1 text-[13px] font-semibold text-white">Who sings this?</p>
-      <p className="mb-4 text-[11px] text-lavdim">
-        Declares a credit — it moves who&apos;s shown, never the splits.
-      </p>
-      <input
-        value={name}
-        onChange={e => setName(e.target.value)}
-        placeholder="Name"
-        className="w-full rounded-lg border border-hairstrong bg-card2 px-3 py-2 text-[13px] text-white outline-none placeholder:text-lavdim/60"
-      />
-      <div className="mt-3 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[7px] text-[12px] font-semibold text-lav hover:text-white"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={!name.trim()}
-          onClick={() => onPick({ kind: 'guest', name: name.trim() })}
-          className="rounded-[9px] bg-grad px-[13px] py-[7px] text-[12px] font-semibold text-white shadow-cta disabled:opacity-40"
-        >
-          Add
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function WorkPage({
   workId,
   songTitle,
   isEmpty,
   header,
   roster,
+  singerCandidates,
   presence,
   guidingLineStep,
   diaryEntries,
@@ -1057,17 +1021,18 @@ export function WorkPage({
     router.refresh()
   }
 
-  async function handleAddSingerPick(blockId: string, performer: PerformerRef) {
-    const block = liveLyricsBlocks.find(b => b.id === blockId)
-    setFlow(null)
-    if (!block) return
-    const nextPerformers = [...block.performers, performer]
+  async function patchVocalPlan(blockId: string, patch: { performers?: PerformerRef[]; vocal_direction?: string | null }) {
     const res = await fetch(`/api/works/${workId}/blocks/${blockId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ performers: nextPerformers }),
+      body: JSON.stringify(patch),
     })
-    if (res.ok) router.refresh()
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error ?? 'Could not save the vocal plan.')
+    }
+    setFlow(null)
+    router.refresh()
   }
 
   // ─── Guiding line ───────────────────────────────────────────────────
@@ -1100,6 +1065,10 @@ export function WorkPage({
       ),
     ])
   )
+  const activeSingerBlock =
+    flow?.kind === 'add-singer'
+      ? liveLyricsBlocks.find(block => block.id === flow.blockId) ?? null
+      : null
 
   return (
     <div>
@@ -1427,10 +1396,19 @@ export function WorkPage({
         </FlowOverlay>
       )}
 
-      {flow?.kind === 'add-singer' && (
+      {activeSingerBlock && (
         <FlowOverlay>
-          <AddSingerPicker
-            onPick={performer => void handleAddSingerPick(flow.blockId, performer)}
+          <SingerPicker
+            candidates={singerCandidates}
+            currentPerformers={activeSingerBlock.performers}
+            currentDirection={activeSingerBlock.vocal_direction ?? null}
+            initialMode={
+              activeSingerBlock.vocal_direction && activeSingerBlock.performers.length === 0
+                ? 'direction'
+                : 'person'
+            }
+            onSavePerformers={performers => patchVocalPlan(activeSingerBlock.id, { performers })}
+            onSaveDirection={direction => patchVocalPlan(activeSingerBlock.id, { vocal_direction: direction })}
             onCancel={() => setFlow(null)}
           />
         </FlowOverlay>

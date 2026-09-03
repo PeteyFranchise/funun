@@ -218,6 +218,7 @@ function SortableLyricBlock({
   author,
   vocalState,
   singers,
+  vocalDirection,
   lockState,
   onTextChange,
   onBeginEdit,
@@ -236,6 +237,7 @@ function SortableLyricBlock({
   author: LyricBlockAuthor | null
   vocalState: WorkVocalState
   singers: LyricBlockSinger[]
+  vocalDirection: string | null
   lockState: LyricBlockLockState
   onTextChange: (text: string) => void
   onBeginEdit: () => void
@@ -260,6 +262,7 @@ function SortableLyricBlock({
       author={author}
       vocalState={vocalState}
       singers={singers}
+      vocalDirection={vocalDirection}
       lockState={lockState}
       onTextChange={onTextChange}
       onBeginEdit={onBeginEdit}
@@ -614,6 +617,7 @@ export function LyricsPad({
                         author={block.authorDisplay}
                         vocalState={vocalState}
                         singers={block.singerDisplays}
+                        vocalDirection={block.vocal_direction ?? null}
                         lockState={
                           acquiringBlockId === block.id
                             ? { state: 'acquiring' }

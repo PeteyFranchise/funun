@@ -131,6 +131,29 @@ describe('LyricBlockCard', () => {
     expect(markup).toContain('who sings this?')
   })
 
+  it('shows uncast vocal direction without presenting it as a singer avatar', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus 1"
+        text="Lift"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="varies"
+        singers={[]}
+        vocalDirection="A gospel choir"
+        onTextChange={noop}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+
+    expect(markup).toContain('Voice: A gospel choir')
+    expect(markup).toContain('Edit this section&#x27;s vocal plan')
+    const avatarMatches = markup.match(/rounded-full border border-card/g) ?? []
+    expect(avatarMatches).toHaveLength(1) // the writer badge only
+  })
+
   it('offers section history only when the caller provides the recovery action', () => {
     const markup = renderToStaticMarkup(
       <LyricBlockCard

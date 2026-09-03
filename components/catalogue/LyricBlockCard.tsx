@@ -70,6 +70,8 @@ export type LyricBlockCardProps = {
   vocalState: WorkVocalState
   /** The 🎤 declared singer cluster. Empty means "inherits the work's primary performer" for display — this component does not resolve that inheritance itself, it is handed the resolved list (or an empty one) by its caller. */
   singers: LyricBlockSinger[]
+  /** Uncast creative direction, distinct from every named singer and credit. */
+  vocalDirection?: string | null
   /** Fires on every keystroke in the (non-repeat) lyric body — LyricsPad debounces before it PATCHes. */
   onTextChange: (text: string) => void
   /** Text editing opens only after the server grants this tab a short section lease. */
@@ -138,12 +140,14 @@ function WriterBadge({ author }: { author: LyricBlockAuthor }) {
 
 function SingerCluster({
   singers,
+  vocalDirection,
   onAddSinger,
 }: {
   singers: LyricBlockSinger[]
+  vocalDirection: string | null
   onAddSinger: () => void
 }) {
-  if (singers.length === 0) {
+  if (singers.length === 0 && !vocalDirection) {
     return (
       <button
         type="button"
@@ -156,11 +160,21 @@ function SingerCluster({
   }
 
   return (
-    <span className="flex items-center -space-x-1.5">
-      {singers.map(singer => (
-        <AvatarDot key={singer.key} initial={singer.initial} name={singer.name} isOwner={singer.isOwner} />
-      ))}
-    </span>
+    <button
+      type="button"
+      onClick={onAddSinger}
+      aria-label="Edit this section's vocal plan"
+      className="flex max-w-[210px] items-center gap-2 text-left text-[10.5px] text-lavdim hover:text-white"
+    >
+      {singers.length > 0 && (
+        <span className="flex shrink-0 items-center -space-x-1.5">
+          {singers.map(singer => (
+            <AvatarDot key={singer.key} initial={singer.initial} name={singer.name} isOwner={singer.isOwner} />
+          ))}
+        </span>
+      )}
+      {vocalDirection && <span className="truncate">Voice: {vocalDirection}</span>}
+    </button>
   )
 }
 
@@ -171,6 +185,7 @@ export function LyricBlockCard({
   author,
   vocalState,
   singers,
+  vocalDirection = null,
   onTextChange,
   lockState = { state: 'available' },
   onBeginEdit,
@@ -269,7 +284,13 @@ export function LyricBlockCard({
               repeat block never shows its own author affordance, which
               would otherwise read as a second, false authorship claim. */}
           {!isRepeat && author && <WriterBadge author={author} />}
-          {showSingerAffordance && <SingerCluster singers={singers} onAddSinger={onAddSinger} />}
+          {showSingerAffordance && (
+            <SingerCluster
+              singers={singers}
+              vocalDirection={vocalDirection}
+              onAddSinger={onAddSinger}
+            />
+          )}
         </span>
         {/* Remove — far right, kept apart from the identity badges. The
             two-step confirm below only appears for a block that still

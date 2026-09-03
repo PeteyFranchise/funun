@@ -12,6 +12,7 @@ import { deriveVersionNumerals, presentVersion } from '@/lib/catalogue/versions'
 import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } from '@/lib/catalogue/diary'
 import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
+import { buildSingerCandidates } from '@/lib/catalogue/singer-options'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -110,7 +111,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -144,6 +145,14 @@ export default async function WorkComposerPage({
       // decision, not a per-song one — a veteran's second song still gets
       // the fast form on their very first entry there.
       supabase.from('ai_entries').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
+      // My Roster is broader than this room. A singer may be cast without
+      // ever receiving room access or becoming a writer on this work.
+      supabase
+        .from('collaborators')
+        .select('id, name, claimed_by')
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .order('name', { ascending: true }),
     ])
 
   const workRow = workRes.data as Work | null
@@ -160,6 +169,11 @@ export default async function WorkComposerPage({
   const aiEntries = (aiEntriesRes.data ?? []) as AiEntry[]
   const diaryRows = (diaryRes.data ?? []) as WorkDiaryEvent[]
   const priorAiEntryCount = aiAccountCountRes.count ?? 0
+  const singerRoster = (singerRosterRes.data ?? []) as {
+    id: string
+    name: string
+    claimed_by: string | null
+  }[]
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
   const collaboratorIds = Array.from(
@@ -435,6 +449,19 @@ export default async function WorkComposerPage({
     avatarUrl: memberAvatarById.get(user.id) ?? null,
     isViewer: true,
   }
+  const singerCandidates = buildSingerCandidates({
+    viewer: { userId: user.id, name: presenceViewer.name },
+    room: members.map(member => ({
+      userId: member.user_id,
+      collaboratorId: member.collaborator_id,
+      name: nameForMember(member),
+    })),
+    roster: singerRoster.map(person => ({
+      userId: person.claimed_by,
+      collaboratorId: person.id,
+      name: person.name,
+    })),
+  })
 
   function labelForPerformerRef(ref: PerformerRef | null): string | null {
     if (!ref) return null
@@ -482,6 +509,7 @@ export default async function WorkComposerPage({
             viewerTier: access.tier,
             viewerIsOwner: access.isOwner,
           }}
+          singerCandidates={singerCandidates}
           presence={{ viewer: presenceViewer, people: presencePeople }}
           guidingLineStep={guidingLineStep}
           diaryEntries={diaryEntries}

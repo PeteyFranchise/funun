@@ -40,7 +40,7 @@ const PerformerRefSchema = z
   })
   .strict()
 
-// Four editable fields plus one scoped lock capability and nothing else —
+// Five editable fields plus one scoped lock capability and nothing else —
 // the debounced autosave target.
 // Migration 138's edit trigger fires only on text/block_type/custom_label,
 // and only once per SAVE (the client debounces before it PATCHes), which is
@@ -52,6 +52,7 @@ const PatchFieldsSchema = z
     block_type: z.enum(BLOCK_TYPE_VALUES).optional(),
     custom_label: z.string().trim().max(80).nullable().optional(),
     performers: z.array(PerformerRefSchema).max(12).optional(),
+    vocal_direction: z.string().trim().min(1).max(160).nullable().optional(),
     lock_session_id: z.string().uuid().optional(),
   })
   .strict()
@@ -215,7 +216,8 @@ export async function PATCH(
     if (
       fields.block_type !== undefined ||
       fields.custom_label !== undefined ||
-      fields.performers !== undefined
+      fields.performers !== undefined ||
+      fields.vocal_direction !== undefined
     ) {
       return NextResponse.json(
         { error: 'Lyric text saves must be sent separately from section settings.' },
@@ -250,6 +252,7 @@ export async function PATCH(
   if (fields.block_type !== undefined) update.block_type = fields.block_type
   if (fields.custom_label !== undefined) update.custom_label = fields.custom_label
   if (fields.performers !== undefined) update.performers = fields.performers
+  if (fields.vocal_direction !== undefined) update.vocal_direction = fields.vocal_direction
 
   // No numeral is ever written here or anywhere else in this route file —
   // "Verse 2" is derived at read time from position among same-type

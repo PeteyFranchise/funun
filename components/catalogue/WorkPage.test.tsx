@@ -117,6 +117,20 @@ function makeProps(overrides: Partial<WorkPageProps> = {}): WorkPageProps {
     isEmpty: false,
     header: baseHeader,
     roster: administerRoster,
+    singerCandidates: [
+      {
+        key: 'user:user-1',
+        name: 'peterzora',
+        source: 'self',
+        performer: { kind: 'self', userId: 'user-1', name: 'peterzora' },
+      },
+      {
+        key: 'user:user-2',
+        name: 'Ben Cooke',
+        source: 'room',
+        performer: { kind: 'collaborator', userId: 'user-2', name: 'Ben Cooke' },
+      },
+    ],
     presence: {
       viewer: { userId: 'user-1', name: 'peterzora', avatarUrl: null, isViewer: true },
       people: [

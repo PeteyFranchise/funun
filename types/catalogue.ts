@@ -107,6 +107,7 @@ export type LyricBlock = {
   author_kind: LyricBlockAuthorKind
   author_user_id: string | null // ✍ badge — the automatic writer credit; required when author_kind === 'human'
   performers: PerformerRef[] // 🎤 badges — declared singer cluster; moves credits, never splits
+  vocal_direction?: string | null // uncast creative intent — never a person, credit, membership, or split fact
   repeat_of_block_id: string | null // linked repeat (REPEAT RULE) — detach (copy-on-write) clears this
   created_at: string
   updated_at: string
