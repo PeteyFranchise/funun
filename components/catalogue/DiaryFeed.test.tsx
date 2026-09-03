@@ -104,6 +104,22 @@ const ROWS: DiaryEventRowLike[] = [
     created_at: '2026-08-25T10:00:00Z',
   },
   {
+    id: 'e-handoff-received',
+    work_id: 'w1',
+    kind: 'producer_handoff_received',
+    actor_user_id: 'u2',
+    payload: { handoffId: 'h1' },
+    created_at: '2026-08-25T10:30:00Z',
+  },
+  {
+    id: 'e-mix-returned',
+    work_id: 'w1',
+    kind: 'producer_mix_returned',
+    actor_user_id: 'u2',
+    payload: { handoffId: 'h1', versionId: 'v2', note: 'Drums are up.' },
+    created_at: '2026-08-26T10:30:00Z',
+  },
+  {
     id: 'e-note',
     work_id: 'w1',
     kind: 'note',
@@ -152,6 +168,8 @@ describe('DiaryFeed', () => {
     expect(markup).toContain('Ben Cooke detached')
     expect(markup).toContain('Thinking about a bridge here.')
     expect(markup).toContain('Ben Cooke sent v2 to Peter Zora')
+    expect(markup).toContain('Peter Zora received the producer handoff')
+    expect(markup).toContain('Peter Zora returned v2 to the Writer’s Room')
   })
 
   it('renders both private producer-handoff downloads and the handoff note', () => {
@@ -236,7 +254,7 @@ describe('DiaryFeed', () => {
     expect(markup).toContain('Ben Cooke added Verse')
     // …and a later one is hidden behind the toggle.
     expect(markup).not.toContain('Thinking about a bridge here.')
-    expect(markup).toContain('Show all 11 updates')
+    expect(markup).toContain('Show all 13 updates')
     expect(markup).toContain('Search the diary')
   })
 

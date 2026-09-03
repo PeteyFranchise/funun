@@ -19,6 +19,22 @@ export function normalizeHandoffNote(value: string): string | null {
   return note ? note.slice(0, PRODUCER_HANDOFF_NOTE_MAX) : null
 }
 
+export function producerReturnLabel(fileName: string): string {
+  const base = fileName
+    .trim()
+    .replace(/\.[^.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 175)
+    .trim()
+  return `Producer mix — ${base || 'new return'}`.slice(0, 200)
+}
+
+export function producerInboxStatus(input: { acknowledgedAt: string | null; returnCount: number }): string {
+  if (input.returnCount > 0) return input.returnCount === 1 ? '1 mix returned' : `${input.returnCount} mixes returned`
+  return input.acknowledgedAt ? 'Received' : 'Needs your reply'
+}
+
 export function safeAudioDownloadName(songTitle: string, suffix: string): string {
   const base = songTitle
     .normalize('NFKD')

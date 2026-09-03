@@ -11,12 +11,12 @@
 // (true)`), its ActivityKind enum is closed at four values, and its
 // emitter is explicitly best-effort — allowed to swallow errors. None of
 // that matches work_diary_events: private (member-scoped RLS, 37-01),
-// ten typed kinds, and never-skipped (trigger-sourced, not
+// typed kinds, and never-skipped (trigger-sourced, not
 // discipline-sourced). What IS reused is the RENDER STRUCTURE of
 // components/profile/ActivityFeed.tsx (icon badge, body, timestamp) — and
 // that reuse happens in plan 10's DiaryFeed component, not here.
 //
-// CAT-Q1: nine of the ten kinds arrive from database triggers
+// CAT-Q1: every kind except `note` arrives from database triggers
 // (migration 138) and therefore cannot be skipped by a route that
 // forgets to call them. The ninth, `note`, is the deliberate exception —
 // a free-standing annotation with no underlying row to trigger from, so a
@@ -110,6 +110,8 @@ export const DIARY_KIND_ACCENT: Record<DiaryEventKind, DiaryAccent> = {
   detach: 'lavdim',
   comment: 'brandindigo',
   producer_handoff: 'brandindigo',
+  producer_handoff_received: 'emerald-400',
+  producer_mix_returned: 'brandindigo',
   note: 'lavdim',
 }
 
@@ -337,6 +339,31 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
         consequence: 'The rough mix and its aligned dry vocal are ready for production.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.producer_handoff,
+      }
+    }
+
+    case 'producer_handoff_received': {
+      return {
+        kind: 'producer_handoff_received',
+        headline: `${actor} received the producer handoff`,
+        consequence: 'The files are in hand; receipt is not master, split, or rights approval.',
+        date: row.created_at,
+        accent: DIARY_KIND_ACCENT.producer_handoff_received,
+      }
+    }
+
+    case 'producer_mix_returned': {
+      const payload = row.payload as DiaryEventPayloadMap['producer_mix_returned']
+      const numeral = context.versionNumerals[payload.versionId]
+      const version = numeral ? `v${numeral}` : 'a new mix'
+      return {
+        kind: 'producer_mix_returned',
+        headline: `${actor} returned ${version} to the Writer’s Room`,
+        consequence: payload.note
+          ? `${payload.note} · The new take stays linked to its producer handoff.`
+          : 'The new take stays linked to its producer handoff and is ready for room notes.',
+        date: row.created_at,
+        accent: DIARY_KIND_ACCENT.producer_mix_returned,
       }
     }
 

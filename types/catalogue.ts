@@ -402,6 +402,16 @@ export type DiaryEventPayloadMap = {
     recipientUserId: string
     note?: string | null
   }
+  /** Trigger-sourced, recipient-authored confirmation that the private handoff files arrived. */
+  producer_handoff_received: {
+    handoffId: string
+  }
+  /** Trigger-sourced link between the originating handoff and a new producer-uploaded room take. */
+  producer_mix_returned: {
+    handoffId: string
+    versionId: string
+    note?: string | null
+  }
   /** App-authored — the one exception to trigger-sourced capture. Written directly by a service-role route, never a trigger. */
   note: {
     text: string

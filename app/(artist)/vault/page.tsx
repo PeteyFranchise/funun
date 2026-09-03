@@ -511,6 +511,12 @@ export default async function VaultPage() {
       <Topbar title="Your Sound Vault" subtitle={sub}>
         <TopbarSearch placeholder="Search releases" />
         <Link
+          href="/vault/producer-inbox"
+          className="rounded-[10px] border border-hairstrong bg-lav/[.05] px-4 py-3 text-[13px] font-semibold text-lav hover:text-white"
+        >
+          Producer inbox
+        </Link>
+        <Link
           href="/vault/new"
           className="inline-flex items-center gap-[9px] rounded-[10px] bg-grad px-5 py-3 text-[15px] font-bold text-white shadow-cta"
         >

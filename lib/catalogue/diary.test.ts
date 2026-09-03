@@ -185,6 +185,25 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(`${entry.headline} ${entry.consequence}`.toLowerCase()).not.toContain('master')
   })
 
+  it('producer receipt records arrival without implying creative or rights approval', () => {
+    const entry = describeDiaryEvent(
+      row('producer_handoff_received', { handoffId: 'h-1' }),
+      { names: { 'u-1': 'Peter' }, versionNumerals: {} }
+    )
+    expect(entry.headline).toBe('Peter received the producer handoff')
+    expect(entry.consequence).toMatch(/not master, split, or rights approval/i)
+  })
+
+  it('producer return names the new room take and preserves its handoff link', () => {
+    const entry = describeDiaryEvent(
+      row('producer_mix_returned', { handoffId: 'h-1', versionId: 'v-5', note: 'Drums are up.' }),
+      { names: { 'u-1': 'Peter' }, versionNumerals: { 'v-5': 5 } }
+    )
+    expect(entry.headline).toBe('Peter returned v5 to the Writer’s Room')
+    expect(entry.consequence).toMatch(/linked to its producer handoff/i)
+    expect(entry.consequence).toContain('Drums are up.')
+  })
+
   it('degrades an unknown or future kind to a neutral entry rather than throwing', () => {
     expect(() => describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)).not.toThrow()
     const entry = describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)
@@ -205,6 +224,8 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
       { kind: 'detach', payload: { blockId: 'b-2', blockType: 'bridge', detachedFromBlockId: 'b-1' } },
       { kind: 'comment', payload: { commentId: 'c-1', blockId: 'b-2', blockType: 'bridge', customLabel: null, operation: 'opened' } },
       { kind: 'producer_handoff', payload: { handoffId: 'h-1', roughVersionId: 'v-1', recipientUserId: 'u-2' } },
+      { kind: 'producer_handoff_received', payload: { handoffId: 'h-1' } },
+      { kind: 'producer_mix_returned', payload: { handoffId: 'h-1', versionId: 'v-2' } },
       { kind: 'note', payload: { text: 'hi' } },
     ]
     for (const { kind, payload } of fixtures) {
@@ -229,6 +250,8 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
     'detach',
     'comment',
     'producer_handoff',
+    'producer_handoff_received',
+    'producer_mix_returned',
     'note',
   ]
 
@@ -241,6 +264,6 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
   it('note is the single app-authored exception', () => {
     expect(isTriggerSourced('note')).toBe(false)
     const triggerSourced = ALL_KINDS.filter(k => isTriggerSourced(k))
-    expect(triggerSourced).toHaveLength(10)
+    expect(triggerSourced).toHaveLength(12)
   })
 })

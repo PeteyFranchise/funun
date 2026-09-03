@@ -139,6 +139,8 @@ function railChipLabel(entry: DiaryFeedEntry): string {
   if (entry.kind === 'sheet') return '§'
   if (entry.kind === 'ai_entry') return 'AI'
   if (entry.kind === 'producer_handoff') return '⇢'
+  if (entry.kind === 'producer_handoff_received') return '✓'
+  if (entry.kind === 'producer_mix_returned') return '↩'
   return '•'
 }
 
