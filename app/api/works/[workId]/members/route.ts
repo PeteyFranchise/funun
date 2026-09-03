@@ -199,6 +199,10 @@ export async function POST(request: Request, { params }: RouteCtx) {
             email: collaborator.email,
           },
           invitingUserId: userId as string,
+          // Writer's Room invitations preserve creative momentum: after the
+          // signup transaction creates the profile and claims membership, the
+          // new member enters this room before seeing broader onboarding.
+          nextPath: `/vault/works/${workId}`,
         })
       : null
 

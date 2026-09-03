@@ -40,6 +40,31 @@ describe('lib/catalogue/access — decideWorkAccess (pure)', () => {
     expect(result).toEqual({ granted: true, tier: 'contribute', isOwner: false })
   })
 
+  it('lets a brand-new member write without profile, PRO, IPI, publishing, split, registration, or rights completion', () => {
+    // Extra facts intentionally model an incomplete new-member account. The
+    // creative-access contract has no fields for them and bases its verdict
+    // only on authenticated membership.
+    const brandNewMember = {
+      userId: 'u-new-collaborator',
+      isOwner: false,
+      tier: 'contribute' as const,
+      requiredTier: 'contribute' as const,
+      profileComplete: false,
+      pro: null,
+      ipi: null,
+      publisher: null,
+      splitsComplete: false,
+      registrationsComplete: false,
+      rightsReady: false,
+    }
+
+    expect(decideWorkAccess(brandNewMember)).toEqual({
+      granted: true,
+      tier: 'contribute',
+      isOwner: false,
+    })
+  })
+
   it('refuses with 404 (never 403) for a signed-in user with no ownership and no membership row', () => {
     const result = decideWorkAccess({
       userId: 'u-stranger',

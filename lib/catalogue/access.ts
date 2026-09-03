@@ -1,6 +1,10 @@
 // ─── Work access decision — one function for every /api/works route ───
 // `decideWorkAccess` is the ONLY implementation of "may this person write
-// into this song?" in this codebase (T-37-20). Every wave-2 route calls
+// into this song?" in this codebase (T-37-20). Creative access is an
+// identity-and-membership decision only: profile completeness, PRO/IPI,
+// publishing, splits, registrations, and rights readiness are deliberately
+// absent from this contract. Those facts guide later release workflows; they
+// must never prevent a member from entering the room or writing. Every wave-2 route calls
 // `resolveWorkAccess` as the first statement of its body — never its own
 // hand-rolled ownership or tier check.
 //

@@ -1,5 +1,25 @@
 # First-sign-in experience for artists and invited collaborators
 
+**Status:** Built locally on 2026-09-02; migration 157, deployment, and signed-in UAT remain.
+
+## Implementation status
+
+- [x] Existing accounts are backfilled as complete; only accounts created after migration 157 receive the experience.
+- [x] Collaborator context is derived from the server-verified `claimed_by` identity bridge.
+- [x] Collaborator invitees lead with “Review my profile” and receive a shared Writer's Room link when one exists.
+- [x] Writer's Room invitations create and claim the member profile, mark the invitation accepted, and enter the invited song first.
+- [x] The rest-of-site welcome stays pending until that member later leaves the Writer's Room for Sound Vault.
+- [x] Other newly admitted artists lead with “Start my first song” and can choose “Set up my rights” to get down to business first.
+- [x] “Enter my vault” permanently dismisses the welcome without trapping the person in a tour.
+- [x] Buyer and staff routing remain untouched.
+- [ ] Apply `157_first_sign_in_experience.sql` through the human-gated production migration process.
+- [ ] Deploy the application after migration 157 is confirmed.
+- [ ] Test one new Writer's Room invite end to end: email → signup → created/claimed profile → exact room landing → later Vault welcome.
+- [ ] Test one collaborator invite without a linked work and one ordinary artist invite.
+- [ ] Confirm returning visits no longer show the welcome after any action is chosen.
+
+Implementation report: `.planning/quick/260902-first-sign-in-experience/SUMMARY.md`.
+
 ## Objective
 
 Create a first session that confirms the person is in the right place,

@@ -9,6 +9,7 @@ import { isWaitlistSubmitDisabled } from './waitlist-gate'
 import { signupCompletionState } from './completion'
 import { handleFieldState } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
+import { postSignInPath } from '@/lib/auth/postSignInPath'
 
 // Debounce delay for the live availability check (D-14, courtesy only) and
 // the shape of a resolved GET /api/handles/available verdict.
@@ -55,6 +56,7 @@ function SignUpFlow() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const next = searchParams.get('next')
 
   const [gateState, setGateState] = useState<GateState>('form')
   const [email, setEmail] = useState('')
@@ -234,11 +236,20 @@ function SignUpFlow() {
     setSubmitting(true)
     setSignUpError(null)
 
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    const inviteStillMatches =
+      deepLink && normalizeEmail(email) === normalizeEmail(deepLink.email)
+    const destination = postSignInPath({
+      user: { app_metadata: {} },
+      next: inviteStillMatches ? next : null,
+    })
+    callbackUrl.searchParams.set('next', destination)
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl.toString(),
         // D-03: user_metadata IS visible to handle_new_user() at INSERT on
         // this Supabase instance, while app_metadata and email_confirmed_at
         // are NOT — the same asymmetry documented in
@@ -270,7 +281,7 @@ function SignUpFlow() {
     // confirmation is enabled later.
     if (signupCompletionState(data.session) === 'active-session') {
       setSubmitting(false)
-      router.replace('/vault')
+      router.replace(destination)
       router.refresh()
       return
     }
@@ -428,6 +439,8 @@ function SignUpFlow() {
       {gateState === 'allowed' &&
         (() => {
           const viaDeepLink = Boolean(deepLink && normalizeEmail(email) === normalizeEmail(deepLink.email))
+          const writerRoomInvite =
+            viaDeepLink && /^\/vault\/works\/[^/?#]+$/.test(next ?? '')
           return (
             <>
               <p className="text-sm font-medium text-white">
@@ -437,8 +450,14 @@ function SignUpFlow() {
                     : 'You’ve been invited to Funūn'
                   : "You're invited ✓"}
               </p>
-              <h1 className="mt-1 text-xl font-semibold text-white">Create your account</h1>
-              <p className="mt-1 text-sm text-white/50">Start building your Sound Vault.</p>
+              <h1 className="mt-1 text-xl font-semibold text-white">
+                {writerRoomInvite ? 'Create your account to join the song' : 'Create your account'}
+              </h1>
+              <p className="mt-1 text-sm text-white/50">
+                {writerRoomInvite
+                  ? 'You can fill in your profile and rights details later—we’ll help you stay on top of it. For now, let’s write.'
+                  : 'Start building your Sound Vault.'}
+              </p>
 
               <form onSubmit={handleSignUpSubmit} className="mt-6 space-y-4">
                 <div>

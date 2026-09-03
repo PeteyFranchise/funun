@@ -13,6 +13,8 @@ import type { CatalogueCard, CatalogueWorkCard, CatalogueWorkContributor } from 
 import { profileDisplayTitle } from '@/lib/profile/display-name'
 import { latestVersion, type WorkVersionRecord } from '@/lib/catalogue/versions'
 import type { Work } from '@/types/catalogue'
+import { FirstSignInWelcome } from '@/components/onboarding/FirstSignInWelcome'
+import { buildFirstSignInWelcome } from '@/lib/onboarding/first-sign-in'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,6 +127,12 @@ export default async function VaultPage() {
   // The viewer's own @handle — Phase 36's fallback identity, so a contributor
   // dot on the viewer's own work never renders '?' when no artist name is set.
   let viewerHandle: string | null = null
+  // Private, server-owned onboarding state. The non-null sentinel keeps demo
+  // mode and a failed profile read from accidentally rendering onboarding.
+  let firstSignInCompletedAt: string | null = 'not-eligible'
+  let firstSignInEligible = false
+  let claimedCollaborator: { id: string; user_id: string } | null = null
+  let onboardingInviterName: string | null = null
   let error: { message: string } | null = null
   // "Shared with me" lane (③) — populated only in the live (non-demo) path
   // below. Kept as a wholly separate array from `projects`/`cards`; never
@@ -158,13 +166,21 @@ export default async function VaultPage() {
       data: { user },
     } = await supabase.auth.getUser()
     viewerId = user?.id ?? null
+    const service = createServiceClient()
 
     // NOTE: this owned query stays exactly `.eq('user_id', me)` — it must
     // keep excluding shared rows by construction so ③'s scoreboard
     // exclusion is satisfied "for free". Do not widen it for the shared
     // lane below; that is a wholly separate, parallel query.
-    const [{ data: profile }, res, membershipRes, ownedWorksRes, workMembershipRes] = await Promise.all([
-      supabase.from('user_profiles').select('artist_name, handle').eq('id', user?.id ?? '').maybeSingle(),
+    const [profileRes, res, membershipRes, ownedWorksRes, workMembershipRes, claimedCollaboratorRes] = await Promise.all([
+      // first_sign_in_completed_at is intentionally absent from browser
+      // column grants. Auth is verified above, then the service read is
+      // explicitly scoped to that user id.
+      service
+        .from('user_profiles')
+        .select('artist_name, handle, member_type, first_sign_in_completed_at')
+        .eq('id', user?.id ?? '')
+        .maybeSingle(),
       supabase
         .from('vault_projects')
         .select(
@@ -193,10 +209,30 @@ export default async function VaultPage() {
       // full rows in a second pass below (S-03's second new query),
       // mirroring the shared-vault-project pattern two queries down.
       supabase.from('work_members').select('work_id').eq('user_id', user?.id ?? ''),
+      // claimed_by is the verified collaborator-account bridge. It is the
+      // only signal used to choose the collaborator welcome lane.
+      service
+        .from('collaborators')
+        .select('id, user_id')
+        .eq('claimed_by', user?.id ?? '')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ])
 
+    const profile = profileRes.data as {
+      artist_name: string | null
+      handle: string | null
+      member_type: string
+      first_sign_in_completed_at: string | null
+    } | null
     artist = profile?.artist_name ?? null
-    viewerHandle = (profile as { handle?: string | null } | null)?.handle ?? null
+    viewerHandle = profile?.handle ?? null
+    if (profile) {
+      firstSignInCompletedAt = profile.first_sign_in_completed_at
+      firstSignInEligible = profile.member_type === 'artist'
+    }
+    claimedCollaborator = (claimedCollaboratorRes.data as { id: string; user_id: string } | null) ?? null
     projects = (res.data ?? []) as VaultProjectRow[]
     error = res.error
     ownedWorks = (ownedWorksRes.data ?? []) as unknown as WorkRow[]
@@ -273,7 +309,6 @@ export default async function VaultPage() {
     // service-role, scoped to exactly the work ids this page already
     // decided the viewer may see. ──────────────────────────────────────
     if (allWorkIds.length > 0) {
-      const service = createServiceClient()
       const { data: sheetRows } = await service
         .from('split_sheets')
         .select('work_id, status, split_sheet_parties (id)')
@@ -323,6 +358,22 @@ export default async function VaultPage() {
     workOwnerNameById = new Map(
       ((workOwnerProfiles ?? []) as { id: string; artist_name: string | null }[]).map(p => [p.id, p.artist_name])
     )
+
+    if (claimedCollaborator?.user_id) {
+      const { data: inviterProfile } = await service
+        .from('user_profiles')
+        .select('artist_name, display_name, handle')
+        .eq('id', claimedCollaborator.user_id)
+        .maybeSingle()
+      const inviter = inviterProfile as {
+        artist_name: string | null
+        display_name: string | null
+        handle: string | null
+      } | null
+      onboardingInviterName = inviter
+        ? profileDisplayTitle({ artistName: inviter.artist_name || inviter.display_name, handle: inviter.handle }) || null
+        : null
+    }
   }
 
   // ─── My Catalogue — the merge (RESEARCH Pitfall 4) ───────────────────
@@ -347,6 +398,15 @@ export default async function VaultPage() {
     ...memberWorks.map(w => buildWorkCard(w, workCardContext)),
     ...legacyWorkCards,
   ].sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : -1))
+
+  const firstSignInWelcome = buildFirstSignInWelcome({
+    eligible: firstSignInEligible,
+    completedAt: firstSignInCompletedAt,
+    handle: viewerHandle,
+    inviterName: onboardingInviterName,
+    hasClaimedCollaboratorProfile: claimedCollaborator !== null,
+    sharedWork: memberWorks[0] ? { id: memberWorks[0].id, title: memberWorks[0].title } : null,
+  })
 
   // ─── Releases — UNCHANGED cards/derivation, minus one exclusion ──────
   // The only permitted change to this existing code path (S-03's own
@@ -435,6 +495,8 @@ export default async function VaultPage() {
       </Topbar>
 
       <div className="flex-1 px-9 py-[30px]">
+        {firstSignInWelcome && <FirstSignInWelcome welcome={firstSignInWelcome} />}
+
         {/*
           The catalogue shelf, then the Releases grid — one roof, two
           shelves (S-03). Everything from here down (the error branch, the

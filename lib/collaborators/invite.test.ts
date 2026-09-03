@@ -48,6 +48,13 @@ describe('buildCollaboratorInviteUrl', () => {
     expect(url).toBe('/signup?invite=abc')
     expect(url).not.toContain('undefined')
   })
+
+  it('carries an encoded same-app destination for a Writer\'s Room invitation', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://funun.studio'
+    expect(buildCollaboratorInviteUrl('abc', '/vault/works/work-1')).toBe(
+      'https://funun.studio/signup?invite=abc&next=%2Fvault%2Fworks%2Fwork-1'
+    )
+  })
 })
 
 describe('buildCollaboratorJoinUrl', () => {
@@ -99,6 +106,19 @@ describe('buildCollaboratorInviteEmail', () => {
       'Claim my Funūn profile: https://funun.studio/signup?invite=tok123'
     )
     expect(text).not.toContain('/join/tok123')
+  })
+
+  it('preserves creative momentum for an invite sent from a Writer\'s Room', () => {
+    const { subject, html, text } = buildCollaboratorInviteEmail({
+      name: 'Stephan',
+      token: 'tok123',
+      nextPath: '/vault/works/work-1',
+    })
+
+    expect(subject).toContain("Writer's Room")
+    expect(html).toContain('Claim my profile and open the song')
+    expect(text).toContain('Claim my profile and open the song')
+    expect(text).toContain('next=%2Fvault%2Fworks%2Fwork-1')
   })
 })
 
@@ -214,5 +234,22 @@ describe('sendCollaboratorInvite', () => {
       expect(result.skipped).toBe(false)
       expect(result.inviteLink).toContain('/signup?invite=')
     }
+  })
+
+  it('carries a Writer\'s Room destination through the invite link and email', async () => {
+    const supabase = mockSupabase()
+    const result = await sendCollaboratorInvite(supabase as never, {
+      collaborator: { id: COLLAB_ID, name: 'Jamie Rivera', email: 'jamie@example.com' },
+      invitingUserId: USER_ID,
+      nextPath: '/vault/works/work-1',
+    })
+
+    expect(result.ok && result.inviteLink).toContain('next=%2Fvault%2Fworks%2Fwork-1')
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: expect.stringContaining("Writer's Room"),
+        text: expect.stringContaining('Claim my profile and open the song'),
+      })
+    )
   })
 })

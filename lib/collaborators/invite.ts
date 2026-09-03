@@ -34,8 +34,10 @@ function appBase(): string {
 }
 
 /** Builds the artist-facing signup link a collaborator uses to claim their profile. */
-export function buildCollaboratorInviteUrl(token: string): string {
-  return `${appBase()}/signup?invite=${token}`
+export function buildCollaboratorInviteUrl(token: string, nextPath?: string): string {
+  const params = new URLSearchParams({ invite: token })
+  if (nextPath) params.set('next', nextPath)
+  return `${appBase()}/signup?${params.toString()}`
 }
 
 /** Builds the read-only "view my collaborator profile" link. */
@@ -56,8 +58,9 @@ export type CollaboratorInviteEmail = { subject: string; html: string; text: str
 export function buildCollaboratorInviteEmail(input: {
   name: string
   token: string
+  nextPath?: string
 }): CollaboratorInviteEmail {
-  const inviteUrl = buildCollaboratorInviteUrl(input.token)
+  const inviteUrl = buildCollaboratorInviteUrl(input.token, input.nextPath)
 
   // M6: escape every interpolated value before it lands in the HTML body —
   // collaborator.name is artist-entered free text; inviteUrl embeds a
@@ -65,15 +68,26 @@ export function buildCollaboratorInviteEmail(input: {
   // already-safe input).
   const safeName = esc(input.name)
   const safeInviteUrl = esc(inviteUrl)
+  const entersWriterRoom = input.nextPath?.startsWith('/vault/works/') === true
+  const subject = entersWriterRoom
+    ? `You've been invited into a Writer's Room on Funūn`
+    : `You've been added as a collaborator on Funūn — claim your profile`
+  const invitationLine = entersWriterRoom
+    ? 'An artist has invited you to write with them in a <strong>Writer\'s Room</strong> on <strong>Funūn</strong>.'
+    : 'An artist has added you as a collaborator on <strong>Funūn</strong>.'
+  const textInvitationLine = entersWriterRoom
+    ? "An artist has invited you to write with them in a Writer's Room on Funūn."
+    : 'An artist has added you as a collaborator on Funūn.'
+  const actionLabel = entersWriterRoom ? 'Claim my profile and open the song' : 'Claim my Funūn profile'
 
   return {
-    subject: `You've been added as a collaborator on Funūn — claim your profile`,
+    subject,
     html: `
       <h2>Hi ${safeName},</h2>
-      <p>An artist has added you as a collaborator on <strong>Funūn</strong>.</p>
+      <p>${invitationLine}</p>
       <p>Claim your profile to review your credits, keep your rights information accurate, and collaborate on songs in one place.</p>
 
-      <p><a href="${safeInviteUrl}" style="display:inline-block;padding:12px 22px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Claim my Funūn profile</a></p>
+      <p><a href="${safeInviteUrl}" style="display:inline-block;padding:12px 22px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">${actionLabel}</a></p>
 
       <p><strong>Why your profile matters:</strong> Your legal name, PRO, and IPI/CAE number help connect your credits and royalties to the right person. You can add or update those details after signing in.</p>
 
@@ -82,11 +96,11 @@ export function buildCollaboratorInviteEmail(input: {
     text: [
       `Hi ${input.name},`,
       '',
-      'An artist has added you as a collaborator on Funūn.',
+      textInvitationLine,
       '',
       'Claim your profile to review your credits, keep your rights information accurate, and collaborate on songs in one place.',
       '',
-      `Claim my Funūn profile: ${inviteUrl}`,
+      `${actionLabel}: ${inviteUrl}`,
       '',
       'Your legal name, PRO, and IPI/CAE number help connect your credits and royalties to the right person. You can add or update those details after signing in.',
       '',
@@ -119,6 +133,7 @@ export async function sendCollaboratorInvite(
   input: {
     collaborator: { id: string; name: string; email: string | null }
     invitingUserId: string
+    nextPath?: string
   }
 ): Promise<CollaboratorInviteResult> {
   const { collaborator, invitingUserId } = input
@@ -151,7 +166,8 @@ export async function sendCollaboratorInvite(
       skipped: true,
       emailSent: false,
       inviteLink: buildCollaboratorInviteUrl(
-        (recentInvite as { invite_token: string }).invite_token
+        (recentInvite as { invite_token: string }).invite_token,
+        input.nextPath
       ),
     }
   }
@@ -174,10 +190,14 @@ export async function sendCollaboratorInvite(
     return { ok: false, status: 500, error: insertError.message }
   }
 
-  const inviteLink = buildCollaboratorInviteUrl(inviteToken)
+  const inviteLink = buildCollaboratorInviteUrl(inviteToken, input.nextPath)
 
   // ── 4. Send educational IPI invite email (D-04, D-08) — best-effort. ──
-  const email = buildCollaboratorInviteEmail({ name: collaborator.name, token: inviteToken })
+  const email = buildCollaboratorInviteEmail({
+    name: collaborator.name,
+    token: inviteToken,
+    nextPath: input.nextPath,
+  })
   const result = await sendEmail({ to: collaborator.email, ...email })
 
   // A sendEmail failure lowers emailSent and nothing else — it is never
