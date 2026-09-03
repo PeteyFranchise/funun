@@ -16,12 +16,14 @@ describe('TimedTrackPlayer', () => {
         refreshToken={0}
         onActivity={() => undefined}
         onCommentChanged={() => undefined}
+        onArchive={async () => undefined}
       />
     )
     expect(markup).toContain('<audio')
     expect(markup).toContain('type="range"')
     expect(markup).toContain('Comment at 0:00')
     expect(markup).toContain('Record over this beat')
+    expect(markup).toContain('Archive')
     expect(markup).toContain('3:18')
     expect(markup).toContain('Studio bounce')
   })

@@ -111,7 +111,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -159,6 +159,11 @@ export default async function WorkComposerPage({
         .eq('work_id', workId)
         .eq('status', 'pending')
         .limit(1000),
+      supabase
+        .from('work_recording_sessions')
+        .select('base_version_id, rendered_version_id, status')
+        .eq('work_id', workId)
+        .eq('created_by', user.id),
     ])
 
   const workRow = workRes.data as Work | null
@@ -184,6 +189,11 @@ export default async function WorkComposerPage({
   for (const row of ((suggestionCountsRes.data ?? []) as { block_id: string }[])) {
     suggestionCounts[row.block_id] = (suggestionCounts[row.block_id] ?? 0) + 1
   }
+  const recordingSessions = (recordingSessionsRes.data ?? []) as {
+    base_version_id: string
+    rendered_version_id: string | null
+    status: 'draft' | 'saved'
+  }[]
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
   const collaboratorIds = Array.from(
@@ -343,6 +353,9 @@ export default async function WorkComposerPage({
   const versionCards: VersionCardData[] = [...versionsWithNumerals].reverse().map(v => {
     const presentation = presentVersion(v)
     const isAiTagged = aiEntries.some(e => e.level === 'version' && e.version_id === v.id)
+    const recordingSession = recordingSessions.find(session =>
+      session.rendered_version_id === v.id || (session.status === 'draft' && session.base_version_id === v.id)
+    )
     return {
       id: v.id,
       display: presentation.display,
@@ -351,6 +364,10 @@ export default async function WorkComposerPage({
       playbackUrl: signedByPath[v.audio_path] ?? null,
       durationSeconds: v.duration_seconds,
       createdAt: v.created_at,
+      source: v.source,
+      archivedAt: v.archived_at ?? null,
+      canManage: access.isOwner || v.user_id === user.id,
+      recordingSessionStatus: recordingSession?.status ?? null,
     }
   })
 

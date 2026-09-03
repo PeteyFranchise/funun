@@ -50,6 +50,7 @@ import type {
 } from '@/types/catalogue'
 import type { SongPassportView } from '@/lib/song-passport/view'
 import type { SingerCandidate } from '@/lib/catalogue/singer-options'
+import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -92,6 +93,10 @@ export type VersionCardData = {
   playbackUrl: string | null
   durationSeconds: number | null
   createdAt: string
+  source?: 'hum' | 'upload' | 'recording'
+  archivedAt?: string | null
+  canManage?: boolean
+  recordingSessionStatus?: 'draft' | 'saved' | null
 }
 
 export type WorkPageProps = {
@@ -294,6 +299,8 @@ function VersionsList({
   onCommentChanged,
   onCompare,
   onRecordOver,
+  onTakeManaged,
+  draftOwnerId,
 }: {
   workId: string
   versions: VersionCardData[]
@@ -302,13 +309,17 @@ function VersionsList({
   onCommentChanged: (versionId: string) => void
   onCompare: () => void
   onRecordOver: (version: VersionCardData & { playbackUrl: string }) => void
+  onTakeManaged: (versionId: string, archived: boolean) => Promise<void>
+  draftOwnerId: string
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
   }
+  const activeVersions = versions.filter(version => !version.archivedAt)
+  const archivedVersions = versions.filter(version => version.archivedAt)
   return (
     <div className="flex flex-col gap-2">
-      {versions.filter(version => version.playbackUrl).length >= 2 && (
+      {activeVersions.filter(version => version.playbackUrl).length >= 2 && (
         <button
           type="button"
           onClick={onCompare}
@@ -317,7 +328,7 @@ function VersionsList({
           ⇄ Compare two takes
         </button>
       )}
-      {versions.map((v, index) => v.playbackUrl ? (
+      {activeVersions.map((v, index) => v.playbackUrl ? (
         <TimedTrackPlayer
           key={v.id}
           workId={workId}
@@ -332,6 +343,13 @@ function VersionsList({
           onActivity={playing => onActivity(playing ? 'listening' : 'recently_active', playing ? v.display : undefined)}
           onCommentChanged={() => onCommentChanged(v.id)}
           onRecordOver={() => onRecordOver({ ...v, playbackUrl: v.playbackUrl! })}
+          onArchive={v.canManage ? () => onTakeManaged(v.id, true) : undefined}
+          recordOverLabel={v.recordingSessionStatus === 'draft'
+            ? '↻ Resume vocal draft'
+            : v.recordingSessionStatus === 'saved'
+              ? '✎ Edit vocal session'
+              : '● Record over this beat'}
+          draftOwnerId={draftOwnerId}
         />
       ) : (
         <div key={v.id} className="rounded-[10px] border border-hair bg-card px-3 py-2.5">
@@ -342,6 +360,19 @@ function VersionsList({
           <p className="mt-1 text-[10px] text-lavdim">Playback is unavailable for this take.</p>
         </div>
       ))}
+      {archivedVersions.length > 0 && (
+        <details className="mt-2 rounded-[10px] border border-hair bg-card/60 px-3 py-2">
+          <summary className="cursor-pointer text-[10px] font-semibold text-lavdim">Archived takes ({archivedVersions.length})</summary>
+          <div className="mt-2 space-y-2 border-t border-hair pt-2">
+            {archivedVersions.map(version => (
+              <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-card2 px-3 py-2">
+                <span className="min-w-0 truncate text-[10px] text-lav"><b className="text-white">{version.display}</b> {version.description}</span>
+                {version.canManage && <button type="button" onClick={() => void onTakeManaged(version.id, false)} className="shrink-0 text-[10px] font-semibold text-brandindigo hover:text-white">Restore</button>}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   )
 }
@@ -376,15 +407,22 @@ function AiInvolvedPrompt({ onYes, onNo }: { onYes: () => void; onNo: () => void
 }
 
 function NoteComposer({
+  draftKey,
   onSubmit,
   onCancel,
 }: {
+  draftKey: string
   onSubmit: (text: string) => Promise<{ ok: boolean; error?: string }>
   onCancel: () => void
 }) {
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const recovered = readTextDraft(draftKey)
+    if (recovered?.text) setText(recovered.text)
+  }, [draftKey])
 
   async function submit() {
     const trimmed = text.trim()
@@ -394,6 +432,7 @@ function NoteComposer({
     const result = await onSubmit(trimmed)
     setSaving(false)
     if (!result.ok) setError(result.error ?? 'Could not save the note')
+    else clearTextDraft(draftKey)
   }
 
   return (
@@ -401,7 +440,10 @@ function NoteComposer({
       <p className="mb-3 text-[13px] font-semibold text-white">Add a note</p>
       <textarea
         value={text}
-        onChange={e => setText(e.target.value)}
+        onChange={e => {
+          setText(e.target.value)
+          writeTextDraft(draftKey, e.target.value)
+        }}
         rows={4}
         placeholder="Anything worth remembering about this song"
         className="w-full resize-none rounded-[10px] border border-hair bg-transparent px-3 py-2 text-[13px] text-white outline-none placeholder:text-lavdim"
@@ -814,6 +856,21 @@ export function WorkPage({
     } finally {
       setAudioUploadPhase(null)
     }
+  }
+
+  async function handleTakeManaged(versionId: string, archived: boolean) {
+    const response = await fetch(`/api/works/${workId}/versions/${versionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived }),
+    })
+    const body = (await response.json().catch(() => ({}))) as { error?: string }
+    if (!response.ok) {
+      showToast(body.error ?? `Could not ${archived ? 'archive' : 'restore'} that take.`)
+      return
+    }
+    router.refresh()
+    showToast(archived ? 'Take archived — its history is still safe' : 'Take restored')
   }
 
   // ─── The pad's mutations — every one PATCHes/POSTs plan 07's routes,
@@ -1287,7 +1344,7 @@ export function WorkPage({
     flow?.kind === 'add-singer'
       ? liveLyricsBlocks.find(block => block.id === flow.blockId) ?? null
       : null
-  const comparableVersions: ComparableVersion[] = versions.flatMap(version => version.playbackUrl
+  const comparableVersions: ComparableVersion[] = versions.flatMap(version => version.playbackUrl && !version.archivedAt
     ? [{
         id: version.id,
         display: version.display,
@@ -1389,6 +1446,7 @@ export function WorkPage({
         <p className="mb-2 text-[13px] font-semibold text-white">Lyrics</p>
         <LyricsPad
           blocks={liveLyricsBlocks}
+          draftOwnerId={presence.viewer.userId}
           vocalState={vocalState}
           onHum={handleHum}
           onTextChange={handleTextChange}
@@ -1424,6 +1482,8 @@ export function WorkPage({
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
+                onTakeManaged={handleTakeManaged}
+                draftOwnerId={presence.viewer.userId}
               />
             </div>
             <div>
@@ -1472,6 +1532,8 @@ export function WorkPage({
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
+                onTakeManaged={handleTakeManaged}
+                draftOwnerId={presence.viewer.userId}
               />
             )}
           </div>
@@ -1638,6 +1700,7 @@ export function WorkPage({
       {flow?.kind === 'note' && (
         <FlowOverlay>
           <NoteComposer
+            draftKey={`funun:user:${presence.viewer.userId}:work:${workId}:note-draft`}
             onSubmit={async text => {
               const res = await fetch(`/api/works/${workId}/notes`, {
                 method: 'POST',
@@ -1705,7 +1768,10 @@ export function WorkPage({
               setFlow(null)
               router.refresh()
             }}
-            onClose={() => setFlow(null)}
+            onClose={() => {
+              setFlow(null)
+              router.refresh()
+            }}
           />
         </FlowOverlay>
       )}

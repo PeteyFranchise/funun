@@ -24,6 +24,15 @@ type Props = {
 }
 
 type ClipUploadIntent = { clipId: string; path: string; token: string; contentType: string }
+type RecoveredSession = {
+  id: string
+  status: 'draft' | 'saved'
+  beatGain: number
+  vocalGain: number
+  timingOffsetMs: number
+  base: { id: string; label: string | null; source: string; playbackUrl: string | null; durationSeconds: number | null }
+  clips: { id: string; playbackUrl: string; startMs: number; durationMs: number; position: number }[]
+}
 
 const WAVE_BARS = [42, 71, 53, 88, 46, 64, 92, 57, 76, 39, 84, 61, 48, 95, 67, 44, 79, 55, 89, 51, 73, 41, 86, 62, 47, 91, 58, 77, 43, 82, 65, 49]
 
@@ -60,6 +69,11 @@ export function RecordOverBeatStudio({
   const [saving, setSaving] = useState(false)
   const [saveStage, setSaveStage] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [syncState, setSyncState] = useState<'loading' | 'saved' | 'saving' | 'offline'>('loading')
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionStatus, setSessionStatus] = useState<'draft' | 'saved'>('draft')
+  const [activeBaseVersionId, setActiveBaseVersionId] = useState(baseVersionId)
+  const [activeBaseLabel, setActiveBaseLabel] = useState(baseDisplay)
 
   const contextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -73,6 +87,11 @@ export function RecordOverBeatStudio({
   const positionRef = useRef(0)
   const animationRef = useRef<number | null>(null)
   const clipsRef = useRef<RecordingClip[]>([])
+  const sessionPromiseRef = useRef<Promise<string> | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
+  const sessionStatusRef = useRef<'draft' | 'saved'>('draft')
+  const nextClipPositionRef = useRef(0)
+  const lastSyncedSettingsRef = useRef('')
 
   const backingDurationMs = Math.round((backing?.duration ?? 0) * 1000)
   const durationMs = sessionDurationMs(backingDurationMs, clips, timingOffsetMs)
@@ -84,16 +103,53 @@ export function RecordOverBeatStudio({
 
   useEffect(() => {
     let cancelled = false
+    async function decode(url: string, context: AudioContext) {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Could not load recording audio.')
+      return context.decodeAudioData(await response.arrayBuffer())
+    }
     async function loadBacking() {
       try {
         const context = new AudioContext()
         contextRef.current = context
-        const response = await fetch(playbackUrl)
-        if (!response.ok) throw new Error('Could not load the backing take.')
-        const decoded = await context.decodeAudioData(await response.arrayBuffer())
-        if (!cancelled) setBacking(decoded)
+        const sessionResponse = await fetch(`/api/works/${workId}/recording-sessions?versionId=${encodeURIComponent(baseVersionId)}`, { cache: 'no-store' })
+        const recovered = sessionResponse.ok
+          ? ((await sessionResponse.json()) as { data?: RecoveredSession | null }).data ?? null
+          : null
+        const backingUrl = recovered?.base.playbackUrl ?? playbackUrl
+        const decoded = await decode(backingUrl, context)
+        const recoveredClips = recovered
+          ? await Promise.all(recovered.clips.map(async clip => {
+              const response = await fetch(clip.playbackUrl)
+              if (!response.ok) throw new Error('Could not restore a vocal section.')
+              const blob = await response.blob()
+              const buffer = await context.decodeAudioData(await blob.arrayBuffer())
+              return { id: clip.id, serverId: clip.id, position: clip.position, blob, url: URL.createObjectURL(blob), buffer, startMs: clip.startMs, durationMs: clip.durationMs }
+            }))
+          : []
+        if (!cancelled) {
+          setBacking(decoded)
+          if (recovered) {
+            setSessionId(recovered.id)
+            sessionIdRef.current = recovered.id
+            setSessionStatus(recovered.status)
+            sessionStatusRef.current = recovered.status
+            setActiveBaseVersionId(recovered.base.id)
+            setActiveBaseLabel(recovered.base.label?.trim() || 'backing take')
+            setBeatGain(recovered.beatGain)
+            setVocalGain(recovered.vocalGain)
+            setTimingOffsetMs(recovered.timingOffsetMs)
+            lastSyncedSettingsRef.current = `${recovered.beatGain}:${recovered.vocalGain}:${recovered.timingOffsetMs}`
+            setClips(recoveredClips)
+            nextClipPositionRef.current = recovered.clips.reduce((maximum, clip) => Math.max(maximum, clip.position + 1), 0)
+          }
+          setSyncState('saved')
+        }
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Could not load the backing take.')
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : 'Could not load the backing take.')
+          setSyncState('offline')
+        }
       }
     }
     void loadBacking()
@@ -105,7 +161,29 @@ export function RecordOverBeatStudio({
       clipsRef.current.forEach(clip => URL.revokeObjectURL(clip.url))
       void contextRef.current?.close()
     }
-  }, [playbackUrl])
+  }, [baseVersionId, playbackUrl, workId])
+
+  useEffect(() => {
+    if (!sessionId) return
+    const signature = `${beatGain}:${vocalGain}:${timingOffsetMs}`
+    if (signature === lastSyncedSettingsRef.current) return
+    const timer = setTimeout(async () => {
+      setSyncState('saving')
+      const response = await fetch(`/api/works/${workId}/recording-sessions/${sessionId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'settings', beatGain, vocalGain, timingOffsetMs }),
+      }).catch(() => null)
+      if (response?.ok) {
+        lastSyncedSettingsRef.current = signature
+        setSessionStatus('draft')
+        sessionStatusRef.current = 'draft'
+        setSyncState('saved')
+      } else {
+        setSyncState('offline')
+      }
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [beatGain, sessionId, timingOffsetMs, vocalGain, workId])
 
   function stopSources() {
     sourcesRef.current.forEach(source => { try { source.stop() } catch {} })
@@ -250,10 +328,55 @@ export function RecordOverBeatStudio({
       const clip: RecordingClip = {
         id: randomId(), blob, url: URL.createObjectURL(blob), buffer,
         startMs: Math.round(clipStartMsRef.current), durationMs: duration,
+        position: nextClipPositionRef.current++,
       }
       setClips(current => [...current, clip])
+      setSyncState('saving')
+      try {
+        const durableSessionId = await ensureSessionForWrite()
+        const serverId = await persistClip(durableSessionId, clip, clip.position ?? 0)
+        setClips(current => current.map(item => item.id === clip.id ? { ...item, serverId } : item))
+        setSyncState('saved')
+      } catch {
+        setSyncState('offline')
+        setError('This vocal is safe on this device but has not synced yet. Keep this window open and tap Retry sync.')
+      }
     } catch {
       setError('That vocal section could not be decoded. Please record it again.')
+    }
+  }
+
+  async function ensureSessionForWrite(): Promise<string> {
+    if (sessionPromiseRef.current) return sessionPromiseRef.current
+    const pending = (async () => {
+      const currentSessionId = sessionIdRef.current
+      if (currentSessionId) {
+        if (sessionStatusRef.current === 'saved') {
+          const response = await fetch(`/api/works/${workId}/recording-sessions/${currentSessionId}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reopen' }),
+          })
+          if (!response.ok) throw new Error(await errorMessage(response, 'Could not reopen the vocal session.'))
+          setSessionStatus('draft')
+          sessionStatusRef.current = 'draft'
+        }
+        return currentSessionId
+      }
+      const response = await fetch(`/api/works/${workId}/recording-sessions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ baseVersionId: activeBaseVersionId }),
+      })
+      if (!response.ok) throw new Error(await errorMessage(response, 'Could not create the recording session.'))
+      const id = ((await response.json()) as { data: { id: string } }).data.id
+      setSessionId(id)
+      sessionIdRef.current = id
+      setSessionStatus('draft')
+      sessionStatusRef.current = 'draft'
+      return id
+    })()
+    sessionPromiseRef.current = pending
+    try {
+      return await pending
+    } finally {
+      sessionPromiseRef.current = null
     }
   }
 
@@ -265,14 +388,24 @@ export function RecordOverBeatStudio({
   }
 
   function removeClip(id: string) {
+    const target = clipsRef.current.find(clip => clip.id === id)
     setClips(current => {
       const removed = current.find(clip => clip.id === id)
       if (removed) URL.revokeObjectURL(removed.url)
       return current.filter(clip => clip.id !== id)
     })
+    const durableSessionId = sessionIdRef.current
+    if (target?.serverId && durableSessionId) {
+      setSyncState('saving')
+      void ensureSessionForWrite().then(currentSessionId => fetch(`/api/works/${workId}/recording-sessions/${currentSessionId}/clips/${target.serverId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ removed: true }),
+        }))
+        .then(response => setSyncState(response.ok ? 'saved' : 'offline'))
+        .catch(() => setSyncState('offline'))
+    }
   }
 
-  async function persistClip(sessionId: string, clip: RecordingClip, position: number) {
+  async function persistClip(sessionId: string, clip: RecordingClip, position: number): Promise<string> {
     const ext = extensionForMime(clip.blob.type) ?? 'webm'
     const intentResponse = await fetch(`/api/works/${workId}/recording-sessions/${sessionId}/clips/upload-intent`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -290,6 +423,25 @@ export function RecordOverBeatStudio({
       body: JSON.stringify({ clipId: intent.clipId, path: intent.path, startMs: Math.round(clip.startMs), durationMs: clip.durationMs, position }),
     })
     if (!completeResponse.ok) throw new Error(await errorMessage(completeResponse, 'Could not retain a vocal clip.'))
+    const complete = (await completeResponse.json()) as { data?: { id?: string } }
+    return complete.data?.id ?? intent.clipId
+  }
+
+  async function retrySync() {
+    setSyncState('saving')
+    setError(null)
+    try {
+      const durableSessionId = await ensureSessionForWrite()
+      const unsynced = clipsRef.current.filter(clip => !clip.serverId)
+      for (const clip of unsynced) {
+        const serverId = await persistClip(durableSessionId, clip, clip.position ?? 0)
+        setClips(current => current.map(item => item.id === clip.id ? { ...item, serverId } : item))
+      }
+      setSyncState('saved')
+    } catch (cause) {
+      setSyncState('offline')
+      setError(cause instanceof Error ? cause.message : 'The recording is still waiting to sync.')
+    }
   }
 
   async function saveRoughTake() {
@@ -303,13 +455,13 @@ export function RecordOverBeatStudio({
       const mix = encodeWav(rendered)
 
       setSaveStage('Keeping the raw vocal clips…')
-      const sessionResponse = await fetch(`/api/works/${workId}/recording-sessions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseVersionId }),
-      })
-      if (!sessionResponse.ok) throw new Error(await errorMessage(sessionResponse, 'Could not create the recording session.'))
-      const sessionId = ((await sessionResponse.json()) as { data: { id: string } }).data.id
-      for (let index = 0; index < clips.length; index += 1) await persistClip(sessionId, clips[index]!, index)
+      const durableSessionId = await ensureSessionForWrite()
+      for (let index = 0; index < clips.length; index += 1) {
+        const clip = clips[index]!
+        if (clip.serverId) continue
+        const serverId = await persistClip(durableSessionId, clip, clip.position ?? index)
+        setClips(current => current.map(item => item.id === clip.id ? { ...item, serverId } : item))
+      }
 
       setSaveStage('Saving the rough take…')
       const version = await uploadWorkVersion({
@@ -318,13 +470,16 @@ export function RecordOverBeatStudio({
         fileName: 'rough-vocal-take.wav',
         source: 'recording',
         durationSeconds: rendered.duration,
-        label: `Rough vocal over ${baseDisplay}`,
+        label: sessionStatus === 'saved' ? 'Rough vocal revision' : `Rough vocal over ${activeBaseLabel}`,
       })
-      const finishResponse = await fetch(`/api/works/${workId}/recording-sessions/${sessionId}`, {
+      const finishResponse = await fetch(`/api/works/${workId}/recording-sessions/${durableSessionId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ renderedVersionId: version.id, beatGain, vocalGain, timingOffsetMs }),
       })
       if (!finishResponse.ok) throw new Error(await errorMessage(finishResponse, 'The take saved, but its editing session could not be linked.'))
+      setSessionStatus('saved')
+      sessionStatusRef.current = 'saved'
+      setSyncState('saved')
       onSaved(version)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save this rough take.')
@@ -344,14 +499,14 @@ export function RecordOverBeatStudio({
           <h2 className="mt-1 text-[16px] font-semibold text-white">{baseDisplay} · {baseDescription}</h2>
           <p className="mt-1 text-[11px] leading-5 text-lavdim">Use headphones for a cleaner take. Tap record on and off to punch sections into one vocal lane.</p>
         </div>
-        <button type="button" disabled={saving} onClick={closeStudio} aria-label="Close recorder" className="text-[15px] text-lavdim hover:text-white disabled:opacity-40">✕</button>
+        <button type="button" disabled={saving || syncState === 'saving' || syncState === 'offline'} onClick={closeStudio} aria-label="Close recorder" className="text-[15px] text-lavdim hover:text-white disabled:opacity-40">✕</button>
       </div>
 
       <div className="relative mt-5 rounded-[11px] border border-hair bg-card2 p-3">
         {countdown !== null && <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-ink/80 text-[64px] font-bold text-white">{countdown}</div>}
         <div className="flex items-center gap-3">
           <button type="button" disabled={!backing || recording} onClick={() => playing ? stopSources() : void playFrom()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-hairstrong text-[13px] text-white disabled:opacity-40">{playing ? 'Ⅱ' : '▶'}</button>
-          <button type="button" disabled={!backing || !mimeType || saving || countdown !== null} onClick={recording ? stopPunch : () => void beginPunch()} className={`h-10 rounded-full px-4 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40 ${recording ? 'bg-red-500' : 'bg-grad'}`}>{recording ? '■ Stop section' : '● Record'}</button>
+          <button type="button" disabled={!backing || !mimeType || saving || (!recording && syncState !== 'saved') || countdown !== null} onClick={recording ? stopPunch : () => void beginPunch()} className={`h-10 rounded-full px-4 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40 ${recording ? 'bg-red-500' : 'bg-grad'}`}>{recording ? '■ Stop section' : '● Record'}</button>
           <span className="ml-auto font-mono text-[13px] text-white">{formatRecorderTime(positionMs)} <span className="text-lavdim">/ {formatRecorderTime(durationMs)}</span></span>
         </div>
 
@@ -380,17 +535,21 @@ export function RecordOverBeatStudio({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <label className="text-[10px] text-lavdim">Beat level <span className="float-right text-white">{Math.round(beatGain * 100)}%</span><input type="range" min={0} max={1.5} step={0.05} value={beatGain} onChange={event => setBeatGain(Number(event.target.value))} className="mt-2 w-full accent-indigo-400" /></label>
-        <label className="text-[10px] text-lavdim">Vocal level <span className="float-right text-white">{Math.round(vocalGain * 100)}%</span><input type="range" min={0} max={1.5} step={0.05} value={vocalGain} onChange={event => setVocalGain(Number(event.target.value))} className="mt-2 w-full accent-fuchsia-400" /></label>
-        <label className="text-[10px] text-lavdim">Vocal timing <span className="float-right text-white">{timingOffsetMs > 0 ? '+' : ''}{timingOffsetMs} ms</span><input type="range" min={-500} max={500} step={10} value={timingOffsetMs} onChange={event => { stopSources(); setTimingOffsetMs(Number(event.target.value)) }} className="mt-2 w-full accent-fuchsia-400" /></label>
+        <label className="text-[10px] text-lavdim">Beat level <span className="float-right text-white">{Math.round(beatGain * 100)}%</span><input type="range" min={0} max={1.5} step={0.05} value={beatGain} onChange={event => { setBeatGain(Number(event.target.value)); if (sessionIdRef.current) setSyncState('saving') }} className="mt-2 w-full accent-indigo-400" /></label>
+        <label className="text-[10px] text-lavdim">Vocal level <span className="float-right text-white">{Math.round(vocalGain * 100)}%</span><input type="range" min={0} max={1.5} step={0.05} value={vocalGain} onChange={event => { setVocalGain(Number(event.target.value)); if (sessionIdRef.current) setSyncState('saving') }} className="mt-2 w-full accent-fuchsia-400" /></label>
+        <label className="text-[10px] text-lavdim">Vocal timing <span className="float-right text-white">{timingOffsetMs > 0 ? '+' : ''}{timingOffsetMs} ms</span><input type="range" min={-500} max={500} step={10} value={timingOffsetMs} onChange={event => { stopSources(); setTimingOffsetMs(Number(event.target.value)); if (sessionIdRef.current) setSyncState('saving') }} className="mt-2 w-full accent-fuchsia-400" /></label>
       </div>
 
       {!mimeType && <p className="mt-3 text-[11px] text-amber-200">This browser cannot record a supported audio format. You can still upload a take from the main room.</p>}
       {error && <p role="alert" className="mt-3 text-[11px] leading-5 text-red-300">{error}</p>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-hair pt-4">
-        <p className="text-[10px] text-lavdim">{clips.length} {clips.length === 1 ? 'section' : 'sections'} · raw vocals kept for later editing</p>
+        <p className="text-[10px] text-lavdim">
+          {syncState === 'loading' ? 'Loading session…' : syncState === 'saving' ? 'Saving…' : syncState === 'offline' ? 'Offline — vocal waiting to sync' : 'Saved'}
+          {' · '}{clips.length} {clips.length === 1 ? 'section' : 'sections'}
+          {syncState === 'offline' && <button type="button" onClick={() => void retrySync()} className="ml-2 font-semibold text-brandindigo hover:text-white">Retry sync</button>}
+        </p>
         <div className="flex items-center gap-3">
-          <button type="button" disabled={saving} onClick={closeStudio} className="text-[11px] text-lavdim hover:text-white disabled:opacity-40">Discard draft</button>
+          <button type="button" disabled={saving || syncState === 'saving' || syncState === 'offline'} onClick={closeStudio} className="text-[11px] text-lavdim hover:text-white disabled:opacity-40">{clips.length > 0 ? 'Save draft & leave' : 'Cancel'}</button>
           <button type="button" disabled={clips.length === 0 || saving || recording} onClick={() => void saveRoughTake()} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : 'Save rough take'}</button>
         </div>
       </div>

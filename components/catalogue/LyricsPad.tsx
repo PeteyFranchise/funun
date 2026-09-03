@@ -29,6 +29,7 @@ import {
   type LyricBlockSinger,
 } from './LyricBlockCard'
 import { CopyLyricMenu } from './CopyLyricMenu'
+import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 
 // ─── The lyrics pad — sortable container, header, insert-anywhere ──────
 // (sketch 006-A)
@@ -54,6 +55,7 @@ export type LyricsPadBlock = LyricBlock & {
 
 export type LyricsPadProps = {
   blocks: LyricsPadBlock[]
+  draftOwnerId?: string
   vocalState: WorkVocalState
   onHum: () => void
   /** Debounced internally — see AUTOSAVE_DEBOUNCE_MS below — before this fires. */
@@ -83,6 +85,10 @@ export type LyricsPadProps = {
 // ("Chorus edited by @peterzora · just now") instead of a wall of
 // "lyrics changed" entries for every letter typed.
 const AUTOSAVE_DEBOUNCE_MS = 600
+
+function lyricDraftKey(ownerId: string, blockId: string): string {
+  return `funun:user:${ownerId}:lyric-block:${blockId}:draft`
+}
 
 const ADD_SECTION_TYPES = BLOCK_TYPE_VALUES // sketch 006-A's own order: Verse, Pre-Chorus, Chorus, Bridge, Intro, Outro, Hook, Custom
 
@@ -295,6 +301,7 @@ function SortableLyricBlock({
 
 export function LyricsPad({
   blocks,
+  draftOwnerId = 'viewer',
   vocalState,
   onHum,
   onTextChange,
@@ -334,7 +341,22 @@ export function LyricsPad({
     // labeled is derived from blocks on every render; blockIdsKey is the
     // intentionally narrower dependency — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockIdsKey])
+  }, [blockIdsKey, draftOwnerId])
+
+  useEffect(() => {
+    const recovered: Record<string, string> = {}
+    for (const block of blocks) {
+      const draft = readTextDraft(lyricDraftKey(draftOwnerId, block.id))
+      if (draft && draft.text !== block.text && draft.baseText === block.text) {
+        recovered[block.id] = draft.text
+        pendingTextRef.current[block.id] = draft.text
+      }
+    }
+    if (Object.keys(recovered).length > 0) setPendingText(current => ({ ...current, ...recovered }))
+    // Recovery is intentionally keyed to the set of sections, not every
+    // server refresh; a stale local draft must not overwrite newer words.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockIdsKey, draftOwnerId])
 
   // Drop a pending (debounced-but-not-yet-confirmed) text override once
   // the caller's own `blocks` prop catches up to it — keeps a slow
@@ -349,12 +371,13 @@ export function LyricsPad({
         if (next[block.id] !== undefined && next[block.id] === block.text) {
           delete next[block.id]
           delete pendingTextRef.current[block.id]
+          clearTextDraft(lyricDraftKey(draftOwnerId, block.id))
           changed = true
         }
       }
       return changed ? next : prev
     })
-  }, [blocks])
+  }, [blocks, draftOwnerId])
 
   useEffect(() => {
     const timers = timersRef.current
@@ -376,6 +399,7 @@ export function LyricsPad({
         }
         if (pendingTextRef.current[blockId] === text) {
           delete pendingTextRef.current[blockId]
+          clearTextDraft(lyricDraftKey(draftOwnerId, blockId))
           setPendingText(current => {
             if (current[blockId] !== text) return current
             const next = { ...current }
@@ -398,12 +422,14 @@ export function LyricsPad({
         return false
       }
     },
-    [onTextChange]
+    [draftOwnerId, onTextChange]
   )
 
   const handleBlockTextChange = useCallback(
     (blockId: string, text: string) => {
       pendingTextRef.current[blockId] = text
+      const baseText = blocks.find(block => block.id === blockId)?.text ?? ''
+      writeTextDraft(lyricDraftKey(draftOwnerId, blockId), text, baseText)
       setPendingText(prev => ({ ...prev, [blockId]: text }))
       setSaveErrors(current => {
         if (!current[blockId]) return current
@@ -417,7 +443,7 @@ export function LyricsPad({
         void saveBlockText(blockId, text)
       }, AUTOSAVE_DEBOUNCE_MS)
     },
-    [saveBlockText]
+    [blocks, draftOwnerId, saveBlockText]
   )
 
   const handleBeginEditing = useCallback(

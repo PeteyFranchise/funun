@@ -1,5 +1,7 @@
 export type RecordingClip = {
   id: string
+  serverId?: string
+  position?: number
   blob: Blob
   url: string
   startMs: number

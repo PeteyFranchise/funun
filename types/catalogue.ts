@@ -79,6 +79,8 @@ export type WorkVersion = {
   duration_seconds: number | null
   label: string | null // optional artist free text, e.g. "acoustic take" — never the vN numeral
   performers: PerformerRef[] // declared per-recording credits (PERFORMER RULE) — feeds DDEX + the human-take registry
+  archived_at?: string | null
+  archived_by?: string | null
   created_at: string
   // NO numeral column — see file header note 1.
 }

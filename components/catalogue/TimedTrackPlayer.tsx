@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
+import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import type {
   LyricCommentParticipant,
   WorkVersionCommentCarryOffer,
@@ -21,6 +22,9 @@ type TimedTrackPlayerProps = {
   onActivity: (playing: boolean) => void
   onCommentChanged: () => void
   onRecordOver?: () => void
+  onArchive?: () => Promise<void>
+  recordOverLabel?: string
+  draftOwnerId?: string
 }
 
 type CommentsResponse = {
@@ -75,6 +79,9 @@ export function TimedTrackPlayer({
   onActivity,
   onCommentChanged,
   onRecordOver,
+  onArchive,
+  recordOverLabel = '● Record over this beat',
+  draftOwnerId = 'viewer',
 }: TimedTrackPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -92,6 +99,12 @@ export function TimedTrackPlayer({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
+
+  useEffect(() => {
+    const recovered = readTextDraft(commentDraftKey)
+    if (recovered?.text) setDraft(recovered.text)
+  }, [commentDraftKey])
 
   const loadComments = useCallback(async () => {
     const response = await fetch(`/api/works/${workId}/versions/${versionId}/comments`, { cache: 'no-store' })
@@ -184,6 +197,7 @@ export function TimedTrackPlayer({
       return
     }
     setDraft('')
+    clearTextDraft(commentDraftKey)
     setReplyingToId(null)
     await loadComments()
     if (result.data?.id) setSelectedRootId(replyingToId ?? result.data.id)
@@ -314,8 +328,9 @@ export function TimedTrackPlayer({
             {open ? 'Hide comments' : `Comment at ${formatTrackTimestamp(positionMs)}`}
           </button>
           <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
-            ● Record over this beat
+            {recordOverLabel}
           </button>
+          {onArchive && <button type="button" onClick={() => void onArchive()} className="text-[10px] text-lavdim hover:text-white">Archive</button>}
         </div>
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
@@ -415,7 +430,10 @@ export function TimedTrackPlayer({
           )}
           <textarea
             value={draft}
-            onChange={event => setDraft(event.target.value)}
+            onChange={event => {
+              setDraft(event.target.value)
+              writeTextDraft(commentDraftKey, event.target.value)
+            }}
             rows={2}
             maxLength={2000}
             placeholder={replyingToId ? 'Reply to this thread' : `Leave a note at ${formatTrackTimestamp(positionMs)}`}

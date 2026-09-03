@@ -61,6 +61,18 @@ export async function POST(request: Request, { params }: RouteCtx) {
     position,
   }).select('id').single()
   if (error || !data) {
+    if (error?.code === '23505') {
+      const { data: existing } = await supabase
+        .from('work_recording_clips')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('position', position)
+        .maybeSingle()
+      if (existing) {
+        await service.storage.from(BUCKET).remove([path])
+        return NextResponse.json({ data: existing })
+      }
+    }
     await service.storage.from(BUCKET).remove([path])
     return NextResponse.json({ error: error?.message ?? 'Could not retain the vocal clip.' }, { status: 500 })
   }

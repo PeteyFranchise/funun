@@ -19,24 +19,32 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     beatGain?: unknown
     vocalGain?: unknown
     timingOffsetMs?: unknown
+    action?: unknown
   } | null
   const renderedVersionId = typeof body?.renderedVersionId === 'string' ? body.renderedVersionId : ''
+  const action = body?.action === 'reopen' ? 'reopen' : body?.action === 'settings' ? 'settings' : 'finalize'
   const beatGain = Number(body?.beatGain)
   const vocalGain = Number(body?.vocalGain)
   const timingOffsetMs = Number(body?.timingOffsetMs)
-  if (!UUID.test(renderedVersionId) || !Number.isFinite(beatGain) || beatGain < 0 || beatGain > 1.5
+  if ((action === 'finalize' && !UUID.test(renderedVersionId))
+    || (action !== 'reopen' && (!Number.isFinite(beatGain) || beatGain < 0 || beatGain > 1.5
     || !Number.isFinite(vocalGain) || vocalGain < 0 || vocalGain > 1.5
-    || !Number.isInteger(timingOffsetMs) || timingOffsetMs < -2000 || timingOffsetMs > 2000) {
+    || !Number.isInteger(timingOffsetMs) || timingOffsetMs < -2000 || timingOffsetMs > 2000))) {
     return NextResponse.json({ error: 'Invalid recording settings.' }, { status: 400 })
   }
 
+  const update = action === 'reopen'
+    ? { status: 'draft' }
+    : action === 'settings'
+      ? { beat_gain: beatGain, vocal_gain: vocalGain, timing_offset_ms: timingOffsetMs, status: 'draft' }
+      : { rendered_version_id: renderedVersionId, beat_gain: beatGain, vocal_gain: vocalGain, timing_offset_ms: timingOffsetMs, status: 'saved' }
+
   const { data, error } = await supabase
     .from('work_recording_sessions')
-    .update({ rendered_version_id: renderedVersionId, beat_gain: beatGain, vocal_gain: vocalGain, timing_offset_ms: timingOffsetMs, status: 'saved' })
+    .update(update)
     .eq('id', sessionId)
     .eq('work_id', workId)
     .eq('created_by', user.id)
-    .eq('status', 'draft')
     .select('id')
     .maybeSingle()
   if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not finish the recording session.' }, { status: 409 })
