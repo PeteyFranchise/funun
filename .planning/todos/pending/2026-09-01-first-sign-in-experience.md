@@ -1,6 +1,6 @@
 # First-sign-in experience for artists and invited collaborators
 
-**Status:** Built locally on 2026-09-02; migration 157, deployment, and signed-in UAT remain.
+**Status:** Built and migration 157 operator-verified live on 2026-09-02; deployment confirmation and signed-in UAT remain.
 
 ## Implementation status
 
@@ -12,7 +12,7 @@
 - [x] Other newly admitted artists lead with “Start my first song” and can choose “Set up my rights” to get down to business first.
 - [x] “Enter my vault” permanently dismisses the welcome without trapping the person in a tour.
 - [x] Buyer and staff routing remain untouched.
-- [ ] Apply `157_first_sign_in_experience.sql` through the human-gated production migration process.
+- [x] Apply `157_first_sign_in_experience.sql` through the human-gated production migration process — operator verified on 2026-09-02.
 - [ ] Deploy the application after migration 157 is confirmed.
 - [ ] Test one new Writer's Room invite end to end: email → signup → created/claimed profile → exact room landing → later Vault welcome.
 - [ ] Test one collaborator invite without a linked work and one ordinary artist invite.

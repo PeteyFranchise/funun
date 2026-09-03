@@ -31,6 +31,6 @@
 
 ## Remaining Risks / Follow-Ups
 
-- Migration 157 must be applied before deploying the application code because `/vault` reads the new private column.
+- Migration 157 was applied and verified by the operator on 2026-09-02.
 - Production UAT needs newly created accounts; existing accounts are intentionally ineligible after the migration backfill.
 - Verify email → signup → profile claim → exact Writer's Room landing → later Vault welcome with a real collaborator invite before calling the experience live.
