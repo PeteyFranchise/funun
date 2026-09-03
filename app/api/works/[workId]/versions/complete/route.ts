@@ -10,7 +10,7 @@ type RouteCtx = { params: Promise<{ workId: string }> }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function sourceOf(value: unknown): WorkVersionSource | null {
-  return value === 'hum' || value === 'upload' ? value : null
+  return value === 'hum' || value === 'upload' || value === 'recording' ? value : null
 }
 
 export async function POST(request: Request, { params }: RouteCtx) {

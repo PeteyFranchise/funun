@@ -21,6 +21,7 @@ import { SingerPicker } from './SingerPicker'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { ExistingTakePicker } from './ExistingTakePicker'
 import { VersionComparisonPanel, type ComparableVersion } from './VersionComparisonPanel'
+import { RecordOverBeatStudio } from './RecordOverBeatStudio'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -203,6 +204,7 @@ type Flow =
   | { kind: 'add-singer'; blockId: string }
   | { kind: 'existing-take'; targetVersionId: string | null }
   | { kind: 'compare-versions' }
+  | { kind: 'record-over'; version: VersionCardData & { playbackUrl: string } }
 
 type LyricHistoryState = {
   blockId: string
@@ -291,6 +293,7 @@ function VersionsList({
   commentRefreshes,
   onCommentChanged,
   onCompare,
+  onRecordOver,
 }: {
   workId: string
   versions: VersionCardData[]
@@ -298,6 +301,7 @@ function VersionsList({
   commentRefreshes: Record<string, number>
   onCommentChanged: (versionId: string) => void
   onCompare: () => void
+  onRecordOver: (version: VersionCardData & { playbackUrl: string }) => void
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
@@ -327,6 +331,7 @@ function VersionsList({
           refreshToken={commentRefreshes[v.id] ?? 0}
           onActivity={playing => onActivity(playing ? 'listening' : 'recently_active', playing ? v.display : undefined)}
           onCommentChanged={() => onCommentChanged(v.id)}
+          onRecordOver={() => onRecordOver({ ...v, playbackUrl: v.playbackUrl! })}
         />
       ) : (
         <div key={v.id} className="rounded-[10px] border border-hair bg-card px-3 py-2.5">
@@ -1418,6 +1423,7 @@ export function WorkPage({
                 commentRefreshes={trackCommentRefreshes}
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
+                onRecordOver={version => setFlow({ kind: 'record-over', version })}
               />
             </div>
             <div>
@@ -1465,6 +1471,7 @@ export function WorkPage({
                 commentRefreshes={trackCommentRefreshes}
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
+                onRecordOver={version => setFlow({ kind: 'record-over', version })}
               />
             )}
           </div>
@@ -1682,6 +1689,23 @@ export function WorkPage({
             )}
             onCommentChanged={announceTrackCommentChanged}
             refreshToken={Object.values(trackCommentRefreshes).reduce((total, value) => total + value, 0)}
+          />
+        </FlowOverlay>
+      )}
+
+      {flow?.kind === 'record-over' && (
+        <FlowOverlay>
+          <RecordOverBeatStudio
+            workId={workId}
+            baseVersionId={flow.version.id}
+            baseDisplay={flow.version.display}
+            baseDescription={flow.version.description}
+            playbackUrl={flow.version.playbackUrl}
+            onSaved={() => {
+              setFlow(null)
+              router.refresh()
+            }}
+            onClose={() => setFlow(null)}
           />
         </FlowOverlay>
       )}

@@ -21,6 +21,7 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('<audio')
     expect(markup).toContain('type="range"')
     expect(markup).toContain('Comment at 0:00')
+    expect(markup).toContain('Record over this beat')
     expect(markup).toContain('3:18')
     expect(markup).toContain('Studio bounce')
   })

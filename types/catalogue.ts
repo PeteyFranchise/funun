@@ -66,7 +66,7 @@ export type Work = {
 
 // ─── work_versions — the "recording" side (hum / upload / re-record) ──
 
-export type WorkVersionSource = 'hum' | 'upload'
+export type WorkVersionSource = 'hum' | 'upload' | 'recording'
 
 export type WorkVersion = {
   id: string

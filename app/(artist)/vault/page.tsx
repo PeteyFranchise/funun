@@ -49,7 +49,7 @@ const WORKS_EMBED = `
   work_members (id, user_id, collaborator_id, tier)
 `
 
-type WorkVersionEmbed = { id: string; source: 'hum' | 'upload'; created_at: string }
+type WorkVersionEmbed = { id: string; source: 'hum' | 'upload' | 'recording'; created_at: string }
 type LyricBlockEmbed = { id: string; updated_at: string }
 type WorkMemberEmbed = { id: string; user_id: string | null; collaborator_id: string | null; tier: string }
 type WorkRow = Work & {

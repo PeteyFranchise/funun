@@ -23,7 +23,7 @@ import type { PerformerRef, WorkVersionSource } from '@/types/catalogue'
 type RouteCtx = { params: Promise<{ workId: string }> }
 
 function sourceOf(value: FormDataEntryValue | null): WorkVersionSource | null {
-  return value === 'hum' || value === 'upload' ? value : null
+  return value === 'hum' || value === 'upload' || value === 'recording' ? value : null
 }
 
 export async function POST(request: Request, { params }: RouteCtx) {
@@ -65,7 +65,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
   if (!source) {
-    return NextResponse.json({ error: 'source must be "hum" or "upload"' }, { status: 400 })
+    return NextResponse.json({ error: 'source must be "hum", "upload", or "recording"' }, { status: 400 })
   }
   if (file.size <= 0) {
     return NextResponse.json({ error: 'No audio was captured.' }, { status: 400 })

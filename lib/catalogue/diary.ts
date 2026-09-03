@@ -178,13 +178,21 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
       const payload = row.payload as DiaryEventPayloadMap['version']
       const numeral = context.versionNumerals[payload.versionId]
       const vLabel = numeral ? `v${numeral}` : 'A version'
-      const isHum: boolean = (payload.source as WorkVersionSource) === 'hum'
+      const source = payload.source as WorkVersionSource
+      const isHum = source === 'hum'
+      const isRecording = source === 'recording'
       return {
         kind: 'version',
-        headline: isHum ? `${vLabel} — hum recorded` : `${vLabel} — audio uploaded`,
+        headline: isHum
+          ? `${vLabel} — hum recorded`
+          : isRecording
+            ? `${vLabel} — rough vocal take recorded`
+            : `${vLabel} — audio uploaded`,
         consequence: isHum
           ? "A hum's timestamp is the authorship evidence."
-          : 'Uploaded audio, timestamped as authorship evidence.',
+          : isRecording
+            ? 'The beat, vocal mix, and raw punch-ins remain linked as creative evidence.'
+            : 'Uploaded audio, timestamped as authorship evidence.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.version,
       }

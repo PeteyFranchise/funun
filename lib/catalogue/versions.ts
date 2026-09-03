@@ -12,7 +12,7 @@
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-export type VersionSource = 'hum' | 'upload'
+export type VersionSource = 'hum' | 'upload' | 'recording'
 
 /**
  * A version-shaped input record. Declared locally so this module has no
@@ -90,6 +90,7 @@ export function latestVersion<T extends WorkVersionRecord>(
 const SOURCE_DESCRIPTIONS: Record<VersionSource, string> = {
   hum: 'Hummed take',
   upload: 'Uploaded file',
+  recording: 'Rough vocal take',
 }
 
 export type VersionPresentation = {

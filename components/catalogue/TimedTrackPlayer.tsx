@@ -20,6 +20,7 @@ type TimedTrackPlayerProps = {
   refreshToken: number
   onActivity: (playing: boolean) => void
   onCommentChanged: () => void
+  onRecordOver?: () => void
 }
 
 type CommentsResponse = {
@@ -73,6 +74,7 @@ export function TimedTrackPlayer({
   refreshToken,
   onActivity,
   onCommentChanged,
+  onRecordOver,
 }: TimedTrackPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -303,13 +305,18 @@ export function TimedTrackPlayer({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hair pt-2">
-        <button
-          type="button"
-          onClick={() => setOpen(current => !current)}
-          className="text-[10px] font-semibold text-brandindigo hover:text-white"
-        >
-          {open ? 'Hide comments' : `Comment at ${formatTrackTimestamp(positionMs)}`}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setOpen(current => !current)}
+            className="text-[10px] font-semibold text-brandindigo hover:text-white"
+          >
+            {open ? 'Hide comments' : `Comment at ${formatTrackTimestamp(positionMs)}`}
+          </button>
+          <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
+            ● Record over this beat
+          </button>
+        </div>
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
 
