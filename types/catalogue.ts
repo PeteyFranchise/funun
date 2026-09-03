@@ -114,7 +114,7 @@ export type LyricBlock = {
   // NO numeral column — see file header note 1.
 }
 
-export type LyricSnapshotReason = 'edit_session_start' | 'before_restore'
+export type LyricSnapshotReason = 'edit_session_start' | 'before_restore' | 'before_suggestion_accept'
 
 /**
  * An immutable section-level recovery point. `capture_key` deduplicates
@@ -174,6 +174,44 @@ export type LyricBlockCommentView = {
   resolvedByName: string | null
   createdAt: string
   canResolve: boolean
+}
+
+// ─── lyric-section suggestions — non-destructive alternate words ─────
+
+export type LyricSuggestionStatus = 'pending' | 'accepted' | 'declined'
+
+export type LyricBlockSuggestion = {
+  id: string
+  work_id: string
+  block_id: string
+  author_user_id: string | null
+  base_text: string
+  proposed_text: string
+  note: string | null
+  mentioned_user_ids: string[]
+  status: LyricSuggestionStatus
+  decided_by_user_id: string | null
+  decided_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Member-safe suggestion presentation. Decision authority is always resolved server-side. */
+export type LyricBlockSuggestionView = {
+  id: string
+  blockId: string
+  baseText: string
+  proposedText: string
+  note: string | null
+  author: LyricCommentParticipant
+  mentioned: LyricCommentParticipant[]
+  status: LyricSuggestionStatus
+  decidedByName: string | null
+  decidedAt: string | null
+  createdAt: string
+  canAccept: boolean
+  canDecline: boolean
+  isStale: boolean
 }
 
 // ─── recording-version comments — timestamped mix discussion ────────
@@ -282,8 +320,10 @@ export type DiaryEventPayloadMap = {
     blockId: string
     blockType: LyricBlockType
     customLabel: string | null
-    operation: 'added' | 'edited' | 'removed' | 'restored'
+    operation: 'added' | 'edited' | 'removed' | 'restored' | 'suggestion_accepted'
     snapshotId?: string
+    suggestionId?: string
+    suggestionAuthorId?: string
   }
   /**
    * capture_work_member_event() — AFTER INSERT ON work_members. `memberUserId`

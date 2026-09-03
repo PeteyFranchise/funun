@@ -66,5 +66,9 @@ describe("Writer's Room section collaboration", () => {
       versionId: blockId,
     })
     expect(normalizeCollaborationHint('track_comment_changed', { versionId: 'bad' })).toBeNull()
+    expect(normalizeCollaborationHint('suggestion_changed', { blockId, proposedText: 'untrusted lyric' })).toEqual({
+      kind: 'suggestion_changed',
+      blockId,
+    })
   })
 })

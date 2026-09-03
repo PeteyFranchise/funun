@@ -75,6 +75,22 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.consequence).toMatch(/remain recoverable/i)
   })
 
+  it('an accepted alternate names both the decision maker and proposing writer', () => {
+    const entry = describeDiaryEvent(
+      row('lyric_edit', {
+        blockId: 'b-2',
+        blockType: 'verse',
+        customLabel: null,
+        operation: 'suggestion_accepted',
+        suggestionId: 'suggestion-1',
+        suggestionAuthorId: 'u-2',
+      }),
+      { names: { 'u-1': 'Peter', 'u-2': 'Maya' }, versionNumerals: {} }
+    )
+    expect(entry.headline).toBe("Peter accepted Maya's alternate for Verse")
+    expect(entry.consequence).toMatch(/prior lyric remains recoverable/i)
+  })
+
   it('ai_entry consequence is the stored citation, character-identical, never recomposed', () => {
     const citation = 'AI reference vocal — demo only. Ownership fully preserved; the diary proves it.'
     const entry = describeDiaryEvent(

@@ -63,6 +63,8 @@ export type LyricsPadProps = {
   onEndEdit: (blockId: string) => Promise<void>
   onOpenHistory: (blockId: string, label: string, currentText: string) => void
   onOpenComments?: (blockId: string, label: string) => void
+  onOpenSuggestions?: (blockId: string, label: string, currentText: string) => void
+  suggestionCounts?: Record<string, number>
   onAddSinger: (blockId: string) => void
   onDetach: (blockId: string) => void
   /** Delete a section. The card confirms in place first when the block still holds words. */
@@ -226,6 +228,8 @@ function SortableLyricBlock({
   onEndEdit,
   onOpenHistory,
   onOpenComments,
+  onOpenSuggestions,
+  suggestionCount,
   onAddSinger,
   onDetach,
   onRemove,
@@ -245,6 +249,8 @@ function SortableLyricBlock({
   onEndEdit: () => void
   onOpenHistory: () => void
   onOpenComments?: () => void
+  onOpenSuggestions?: () => void
+  suggestionCount: number
   onAddSinger: () => void
   onDetach: () => void
   onRemove: () => void
@@ -270,6 +276,8 @@ function SortableLyricBlock({
       onEndEdit={onEndEdit}
       onOpenHistory={onOpenHistory}
       onOpenComments={onOpenComments}
+      onOpenSuggestions={onOpenSuggestions}
+      suggestionCount={suggestionCount}
       onAddSinger={onAddSinger}
       onDetach={onDetach}
       onRemove={onRemove}
@@ -295,6 +303,8 @@ export function LyricsPad({
   onEndEdit,
   onOpenHistory,
   onOpenComments,
+  onOpenSuggestions,
+  suggestionCounts = {},
   onAddSinger,
   onDetach,
   onRemoveBlock,
@@ -480,6 +490,26 @@ export function LyricsPad({
     [onEndEdit, onOpenComments, saveBlockText, sectionLocks]
   )
 
+  const handleOpenBlockSuggestions = useCallback(
+    async (blockId: string, label: string, currentText: string) => {
+      if (!onOpenSuggestions) return
+      const timer = timersRef.current[blockId]
+      if (timer) {
+        clearTimeout(timer)
+        delete timersRef.current[blockId]
+      }
+
+      const pending = pendingTextRef.current[blockId]
+      if (pending !== undefined) {
+        const saved = await saveBlockText(blockId, pending)
+        if (!saved) return
+      }
+      if (sectionLocks[blockId]?.state === 'mine') await onEndEdit(blockId)
+      onOpenSuggestions(blockId, label, pending ?? currentText)
+    },
+    [onEndEdit, onOpenSuggestions, saveBlockText, sectionLocks]
+  )
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -629,6 +659,8 @@ export function LyricsPad({
                         onEndEdit={() => void handleEndEditing(block.id)}
                         onOpenHistory={() => void handleOpenBlockHistory(block.id, block.label, text)}
                         onOpenComments={onOpenComments ? () => void handleOpenBlockComments(block.id, block.label) : undefined}
+                        onOpenSuggestions={onOpenSuggestions ? () => void handleOpenBlockSuggestions(block.id, block.label, text) : undefined}
+                        suggestionCount={suggestionCounts[block.id] ?? 0}
                         onAddSinger={() => onAddSinger(block.id)}
                         onDetach={() => onDetach(block.id)}
                         onRemove={() => onRemoveBlock(block.id)}

@@ -111,7 +111,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -153,6 +153,12 @@ export default async function WorkComposerPage({
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('name', { ascending: true }),
+      supabase
+        .from('work_lyric_block_suggestions')
+        .select('block_id')
+        .eq('work_id', workId)
+        .eq('status', 'pending')
+        .limit(1000),
     ])
 
   const workRow = workRes.data as Work | null
@@ -174,6 +180,10 @@ export default async function WorkComposerPage({
     name: string
     claimed_by: string | null
   }[]
+  const suggestionCounts: Record<string, number> = {}
+  for (const row of ((suggestionCountsRes.data ?? []) as { block_id: string }[])) {
+    suggestionCounts[row.block_id] = (suggestionCounts[row.block_id] ?? 0) + 1
+  }
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
   const collaboratorIds = Array.from(
@@ -516,6 +526,7 @@ export default async function WorkComposerPage({
           diaryEntries={diaryEntries}
           versions={versionCards}
           lyricsBlocks={lyricsPadBlocks}
+          suggestionCounts={suggestionCounts}
           vocalState={work.vocal_state}
           priorAiEntryCount={priorAiEntryCount}
           hasHumFirstFired={humFirstFiredCookie || aiEntries.length > 0}

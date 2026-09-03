@@ -252,6 +252,14 @@ describe('WorkPage', () => {
     expect(onePlayable).not.toContain('Compare two takes')
   })
 
+  it('surfaces alternate lyric suggestions on original sections', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage {...makeProps({ suggestionCounts: { b1: 2 } })} />
+    )
+    expect(markup).toContain('Suggest alternate lyrics for Verse')
+    expect(markup).toContain('Alternates (2)')
+  })
+
   it('renders the Diary|Versions toggle on the mobile treatment and not on the desktop treatment', () => {
     const mobile = renderToStaticMarkup(<WorkPage {...makeProps({ initialViewport: 'mobile' })} />)
     expect(mobile).toContain('role="tablist"')

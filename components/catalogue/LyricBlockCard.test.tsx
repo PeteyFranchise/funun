@@ -195,6 +195,27 @@ describe('LyricBlockCard', () => {
     expect(markup).toContain('Comments')
   })
 
+  it('offers alternate lyrics with the pending count only on an original section', () => {
+    const markup = renderToStaticMarkup(
+      <LyricBlockCard
+        label="Chorus"
+        text="Hold on"
+        isRepeat={false}
+        author={{ initial: 'P', name: null, isOwner: true }}
+        vocalState="primary"
+        singers={[]}
+        onTextChange={noop}
+        onOpenSuggestions={noop}
+        suggestionCount={2}
+        onAddSinger={noop}
+        onDetach={noop}
+        onRemove={noop}
+      />
+    )
+    expect(markup).toContain('Suggest alternate lyrics for Chorus')
+    expect(markup).toContain('Alternates (2)')
+  })
+
   it('contains no raw hex colour and no inline style attribute carrying one', () => {
     const markup = renderToStaticMarkup(
       <LyricBlockCard

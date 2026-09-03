@@ -145,6 +145,7 @@ const LYRIC_EDIT_VERB: Record<DiaryEventPayloadMap['lyric_edit']['operation'], s
   edited: 'edited',
   removed: 'removed',
   restored: 'restored',
+  suggestion_accepted: 'accepted alternate lyrics for',
 }
 
 const LYRIC_EDIT_CONSEQUENCE: Record<DiaryEventPayloadMap['lyric_edit']['operation'], string> = {
@@ -152,6 +153,7 @@ const LYRIC_EDIT_CONSEQUENCE: Record<DiaryEventPayloadMap['lyric_edit']['operati
   edited: 'Edited in the pad, timestamped.',
   removed: 'Removed from the pad, timestamped.',
   restored: 'An earlier version is back; the words it replaced remain recoverable.',
+  suggestion_accepted: 'The prior lyric remains recoverable in section History.',
 }
 
 // ─── isTriggerSourced (CAT-Q1 contract) ─────────────────────────────────
@@ -191,6 +193,16 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
     case 'lyric_edit': {
       const payload = row.payload as DiaryEventPayloadMap['lyric_edit']
       const section = blockLabel(payload.blockType, payload.customLabel)
+      if (payload.operation === 'suggestion_accepted') {
+        const suggestionAuthor = displayName(context, payload.suggestionAuthorId, 'a writer')
+        return {
+          kind: 'lyric_edit',
+          headline: `${actor} accepted ${suggestionAuthor}'s alternate for ${section}`,
+          consequence: LYRIC_EDIT_CONSEQUENCE.suggestion_accepted,
+          date: row.created_at,
+          accent: DIARY_KIND_ACCENT.lyric_edit,
+        }
+      }
       const verb = LYRIC_EDIT_VERB[payload.operation] ?? 'changed'
       return {
         kind: 'lyric_edit',

@@ -15,7 +15,7 @@ export type SectionLockView =
   | { state: 'other'; holderName: string }
 
 export type CollaborationHint =
-  | { kind: 'lock_changed' | 'lyric_saved' | 'comment_changed'; blockId: string }
+  | { kind: 'lock_changed' | 'lyric_saved' | 'comment_changed' | 'suggestion_changed'; blockId: string }
   | { kind: 'track_comment_changed'; versionId: string }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -45,7 +45,7 @@ export function normalizeCollaborationHint(kind: unknown, payload: unknown): Col
     const versionId = (payload as Record<string, unknown>).versionId
     return isUuid(versionId) ? { kind, versionId } : null
   }
-  if (kind !== 'lock_changed' && kind !== 'lyric_saved' && kind !== 'comment_changed') return null
+  if (kind !== 'lock_changed' && kind !== 'lyric_saved' && kind !== 'comment_changed' && kind !== 'suggestion_changed') return null
   const blockId = (payload as Record<string, unknown>).blockId
   return isUuid(blockId) ? { kind, blockId } : null
 }

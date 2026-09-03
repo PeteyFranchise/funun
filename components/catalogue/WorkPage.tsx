@@ -9,6 +9,7 @@ import { WorkHeader } from './WorkHeader'
 import { WorkRoster, type WorkRosterMember } from './WorkRoster'
 import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
 import { LyricCommentsPanel } from './LyricCommentsPanel'
+import { LyricSuggestionPanel } from './LyricSuggestionPanel'
 import { LyricHistoryPanel } from './LyricHistoryPanel'
 import { HumCaptureButton } from './HumCaptureButton'
 import { HumFirstMoment } from './HumFirstMoment'
@@ -40,6 +41,7 @@ import type {
   LyricBlock,
   LyricBlockCommentView,
   LyricBlockSnapshotView,
+  LyricBlockSuggestionView,
   LyricBlockType,
   LyricCommentParticipant,
   PerformerRef,
@@ -121,6 +123,7 @@ export type WorkPageProps = {
   diaryEntries: DiaryFeedEntry[]
   versions: VersionCardData[]
   lyricsBlocks: LyricsPadBlock[]
+  suggestionCounts?: Record<string, number>
   vocalState: WorkVocalState
   /** Account-wide — isFirstEverAiEntry()'s own input, fed straight through to AiEntryFlow. */
   priorAiEntryCount: number
@@ -220,6 +223,17 @@ type LyricCommentsState = {
   error: string | null
   saving: boolean
   resolvingId: string | null
+}
+
+type LyricSuggestionsState = {
+  blockId: string
+  label: string
+  currentText: string
+  suggestions: LyricBlockSuggestionView[]
+  participants: LyricCommentParticipant[]
+  loading: boolean
+  saving: boolean
+  error: string | null
 }
 
 function FlowOverlay({ children }: { children: React.ReactNode }) {
@@ -421,6 +435,7 @@ export function WorkPage({
   diaryEntries,
   versions,
   lyricsBlocks,
+  suggestionCounts = {},
   vocalState,
   priorAiEntryCount,
   hasHumFirstFired,
@@ -443,11 +458,17 @@ export function WorkPage({
   const [activeLockBlockId, setActiveLockBlockId] = useState<string | null>(null)
   const [lyricHistory, setLyricHistory] = useState<LyricHistoryState | null>(null)
   const [lyricComments, setLyricComments] = useState<LyricCommentsState | null>(null)
+  const [lyricSuggestions, setLyricSuggestions] = useState<LyricSuggestionsState | null>(null)
+  const [liveSuggestionCounts, setLiveSuggestionCounts] = useState<Record<string, number>>(suggestionCounts)
   const [trackCommentRefreshes, setTrackCommentRefreshes] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
   }, [lyricsBlocks])
+
+  useEffect(() => {
+    setLiveSuggestionCounts(suggestionCounts)
+  }, [suggestionCounts])
 
   const lockSessionId = useCallback(() => {
     lockSessionRef.current ??= createLockSessionId()
@@ -473,6 +494,14 @@ export function WorkPage({
       setLyricHistory(current =>
         current?.blockId === blockId ? { ...current, currentText: body.data!.text } : current
       )
+      setLyricSuggestions(current => current?.blockId === blockId ? {
+        ...current,
+        currentText: body.data!.text,
+        suggestions: current.suggestions.map(suggestion => ({
+          ...suggestion,
+          isStale: suggestion.status === 'pending' && suggestion.baseText !== body.data!.text,
+        })),
+      } : current)
     },
     [workId]
   )
@@ -514,14 +543,56 @@ export function WorkPage({
     [fetchLyricComments]
   )
 
+  const fetchLyricSuggestions = useCallback(async (blockId: string) => {
+    const res = await fetch(`/api/works/${workId}/blocks/${blockId}/suggestions`, { cache: 'no-store' })
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: LyricBlockSuggestionView[]
+      participants?: LyricCommentParticipant[]
+      currentText?: string
+      error?: string
+    }
+    return {
+      ok: res.ok,
+      suggestions: res.ok && Array.isArray(body.data) ? body.data : [],
+      participants: res.ok && Array.isArray(body.participants) ? body.participants : [],
+      currentText: res.ok && typeof body.currentText === 'string' ? body.currentText : null,
+      error: res.ok ? null : (body.error ?? 'Could not load alternate lyrics.'),
+    }
+  }, [workId])
+
+  const refreshLyricSuggestions = useCallback(async (blockId: string) => {
+    const result = await fetchLyricSuggestions(blockId)
+    if (result.ok) {
+      setLiveSuggestionCounts(current => ({
+        ...current,
+        [blockId]: result.suggestions.filter(suggestion => suggestion.status === 'pending').length,
+      }))
+    }
+    setLyricSuggestions(current => {
+      if (!current || current.blockId !== blockId) return current
+      return {
+        ...current,
+        currentText: result.currentText ?? current.currentText,
+        suggestions: result.suggestions,
+        participants: result.participants,
+        loading: false,
+        error: result.error,
+      }
+    })
+  }, [fetchLyricSuggestions])
+
   const handleLiveHint = useCallback(
-    (kind: 'lock_changed' | 'lyric_saved' | 'comment_changed' | 'track_comment_changed', payload: unknown) => {
+    (kind: 'lock_changed' | 'lyric_saved' | 'comment_changed' | 'suggestion_changed' | 'track_comment_changed', payload: unknown) => {
       const hint = normalizeCollaborationHint(kind, payload)
       if (!hint) return
       if (hint.kind === 'lock_changed') void refreshSectionLocks()
       else if (hint.kind === 'lyric_saved') void refreshLyricBlock(hint.blockId)
       else if (hint.kind === 'comment_changed') {
         void refreshLyricComments(hint.blockId)
+        router.refresh()
+      } else if (hint.kind === 'suggestion_changed') {
+        void refreshLyricSuggestions(hint.blockId)
+        void refreshLyricBlock(hint.blockId)
         router.refresh()
       } else if (hint.kind === 'track_comment_changed') {
         setTrackCommentRefreshes(current => ({
@@ -530,7 +601,7 @@ export function WorkPage({
         }))
       }
     },
-    [refreshLyricBlock, refreshLyricComments, refreshSectionLocks, router]
+    [refreshLyricBlock, refreshLyricComments, refreshLyricSuggestions, refreshSectionLocks, router]
   )
 
   const handleRoomResync = useCallback(() => {
@@ -835,6 +906,7 @@ export function WorkPage({
 
   async function handleOpenLyricHistory(blockId: string, label: string, currentText: string) {
     setLyricComments(null)
+    setLyricSuggestions(null)
     setLyricHistory({
       blockId,
       label,
@@ -865,6 +937,7 @@ export function WorkPage({
 
   async function handleOpenLyricComments(blockId: string, label: string) {
     setLyricHistory(null)
+    setLyricSuggestions(null)
     setLyricComments({
       blockId,
       label,
@@ -876,6 +949,105 @@ export function WorkPage({
       resolvingId: null,
     })
     await refreshLyricComments(blockId)
+  }
+
+  async function handleOpenLyricSuggestions(blockId: string, label: string, currentText: string) {
+    setLyricHistory(null)
+    setLyricComments(null)
+    setLyricSuggestions({
+      blockId,
+      label,
+      currentText,
+      suggestions: [],
+      participants: [],
+      loading: true,
+      saving: false,
+      error: null,
+    })
+    await refreshLyricSuggestions(blockId)
+  }
+
+  async function handleCreateLyricSuggestion(proposedText: string, note: string | null): Promise<boolean> {
+    const panel = lyricSuggestions
+    if (!panel) return false
+    setLyricSuggestions(current => current ? { ...current, saving: true, error: null } : current)
+    try {
+      const res = await fetch(`/api/works/${workId}/blocks/${panel.blockId}/suggestions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposedText, note }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setLyricSuggestions(current => current ? {
+          ...current,
+          saving: false,
+          error: body.error ?? 'Could not share alternate lyrics.',
+        } : current)
+        return false
+      }
+      await refreshLyricSuggestions(panel.blockId)
+      setLyricSuggestions(current => current ? { ...current, saving: false } : current)
+      void liveRoomRef.current?.broadcast('suggestion_changed', { blockId: panel.blockId })
+      showToast(`${panel.label} alternate shared`)
+      return true
+    } catch {
+      setLyricSuggestions(current => current ? {
+        ...current,
+        saving: false,
+        error: 'Could not share alternate lyrics. Try again.',
+      } : current)
+      return false
+    }
+  }
+
+  async function handleLyricSuggestionDecision(
+    suggestionId: string,
+    action: 'accept' | 'decline'
+  ): Promise<boolean> {
+    const panel = lyricSuggestions
+    if (!panel) return false
+    setLyricSuggestions(current => current ? { ...current, saving: true, error: null } : current)
+    try {
+      const res = await fetch(
+        `/api/works/${workId}/blocks/${panel.blockId}/suggestions/${suggestionId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+        }
+      )
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        const friendlyError = res.status === 409 && body.error?.includes('lyric_block_busy')
+          ? 'Someone is editing this section. Wait until they finish, then accept the alternate.'
+          : res.status === 409 && body.error?.includes('suggestion_stale')
+            ? 'The lyric changed after this suggestion was made. Keep it for reference or create a fresh alternate.'
+            : res.status === 409 && body.error?.includes('suggestion_author_unavailable')
+              ? 'The writer who made this suggestion is no longer available, so it cannot be assigned as the canonical lyric.'
+            : body.error ?? 'Could not update this alternate.'
+        setLyricSuggestions(current => current ? { ...current, saving: false, error: friendlyError } : current)
+        return false
+      }
+
+      await refreshLyricSuggestions(panel.blockId)
+      if (action === 'accept') await refreshLyricBlock(panel.blockId)
+      setLyricSuggestions(current => current ? { ...current, saving: false } : current)
+      void liveRoomRef.current?.broadcast('suggestion_changed', { blockId: panel.blockId })
+      if (action === 'accept') void liveRoomRef.current?.broadcast('lyric_saved', { blockId: panel.blockId })
+      router.refresh()
+      showToast(action === 'accept'
+        ? `${panel.label} updated — the previous lyric is safe in History`
+        : 'Alternate kept in the record and marked not used')
+      return true
+    } catch {
+      setLyricSuggestions(current => current ? {
+        ...current,
+        saving: false,
+        error: 'Could not update this alternate. Your current lyric is unchanged.',
+      } : current)
+      return false
+    }
   }
 
   async function handleSubmitLyricComment(
@@ -1220,6 +1392,8 @@ export function WorkPage({
           onEndEdit={handleEndSectionEdit}
           onOpenHistory={(blockId, label, currentText) => void handleOpenLyricHistory(blockId, label, currentText)}
           onOpenComments={(blockId, label) => void handleOpenLyricComments(blockId, label)}
+          onOpenSuggestions={(blockId, label, currentText) => void handleOpenLyricSuggestions(blockId, label, currentText)}
+          suggestionCounts={liveSuggestionCounts}
           onRemoveBlock={blockId => void handleRemoveBlock(blockId)}
           onAddSinger={blockId => setFlow({ kind: 'add-singer', blockId })}
           onDetach={blockId => void handleDetach(blockId)}
@@ -1540,6 +1714,23 @@ export function WorkPage({
             onSubmit={handleSubmitLyricComment}
             onSetResolved={handleSetLyricCommentResolved}
             onClose={() => setLyricComments(null)}
+          />
+        </FlowOverlay>
+      )}
+
+      {lyricSuggestions && (
+        <FlowOverlay>
+          <LyricSuggestionPanel
+            label={lyricSuggestions.label}
+            currentText={lyricSuggestions.currentText}
+            suggestions={lyricSuggestions.suggestions}
+            participants={lyricSuggestions.participants}
+            loading={lyricSuggestions.loading}
+            saving={lyricSuggestions.saving}
+            error={lyricSuggestions.error}
+            onCreate={handleCreateLyricSuggestion}
+            onDecision={handleLyricSuggestionDecision}
+            onClose={() => setLyricSuggestions(null)}
           />
         </FlowOverlay>
       )}

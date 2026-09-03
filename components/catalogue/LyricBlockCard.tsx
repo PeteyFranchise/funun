@@ -84,6 +84,10 @@ export type LyricBlockCardProps = {
   onOpenHistory?: () => void
   /** Opens the private creative discussion attached to this original section. */
   onOpenComments?: () => void
+  /** Opens non-destructive alternate lyric proposals for this original section. */
+  onOpenSuggestions?: () => void
+  /** Pending proposals only; historical accepted/declined suggestions stay inside the panel. */
+  suggestionCount?: number
   /** "＋🎤 who sings this?" — opens the singer picker. Owned entirely by the caller. */
   onAddSinger: () => void
   /** "Detach to vary" — copy-on-write, only ever shown on a repeat. */
@@ -209,6 +213,8 @@ export function LyricBlockCard({
   onEndEdit,
   onOpenHistory,
   onOpenComments,
+  onOpenSuggestions,
+  suggestionCount = 0,
   onAddSinger,
   onDetach,
   onRemove,
@@ -274,6 +280,17 @@ export function LyricBlockCard({
           </span>
         )}
         <span className="ml-auto flex items-center gap-[10px]">
+          {!isRepeat && onOpenSuggestions && (
+            <button
+              type="button"
+              onMouseDown={event => event.preventDefault()}
+              onClick={onOpenSuggestions}
+              aria-label={`Suggest alternate lyrics for ${label}`}
+              className="whitespace-nowrap text-[10px] font-semibold text-brandindigo hover:text-white"
+            >
+              ⇄ Alternates{suggestionCount > 0 ? ` (${suggestionCount})` : ''}
+            </button>
+          )}
           {!isRepeat && onOpenComments && (
             <button
               type="button"
@@ -353,9 +370,20 @@ export function LyricBlockCard({
           {lockState.state === 'other' && (
             <div className="mx-[14px] mt-[10px] rounded-[9px] border border-amber-300/20 bg-amber-300/[.06] px-3 py-2">
               <p className="text-[11px] text-amber-100">
-                {lockState.holderName} is editing {label}. You can wait or intentionally take over.
+                {lockState.holderName} is editing {label}. {onOpenSuggestions
+                  ? 'You can wait, suggest an alternate, or intentionally take over.'
+                  : 'You can wait or intentionally take over.'}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
+                {onOpenSuggestions && (
+                  <button
+                    type="button"
+                    onClick={onOpenSuggestions}
+                    className="text-[10px] font-semibold text-brandindigo hover:text-white"
+                  >
+                    Suggest an alternate
+                  </button>
+                )}
                 {confirmingTakeover ? (
                   <>
                     <span className="text-[10px] text-lavdim">This may interrupt their edit.</span>
