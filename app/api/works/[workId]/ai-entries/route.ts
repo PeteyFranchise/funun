@@ -79,14 +79,17 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // when-in-doubt rule enforceable rather than decorative. The safe
   // citation is only true if it points at a take that actually exists in
   // THIS song's diary, so the pointer is verified, never merely accepted.
+  let targetVersion: { id: string; created_at: string } | null = null
   if (versionId) {
-    const { data: v } = await supabase
+    const { data: v, error: versionError } = await supabase
       .from('work_versions')
-      .select('id')
+      .select('id, created_at')
       .eq('id', versionId)
       .eq('work_id', workId)
       .maybeSingle()
+    if (versionError) return NextResponse.json({ error: versionError.message }, { status: 500 })
     if (!v) return NextResponse.json({ error: 'versionId does not belong to this work' }, { status: 400 })
+    targetVersion = v as { id: string; created_at: string }
   }
   if (blockId) {
     const { data: b } = await supabase
@@ -100,17 +103,56 @@ export async function POST(request: Request, { params }: RouteCtx) {
 
   let hasHumanSource = false
   if (humanSourceVersionId) {
-    const { data: hv } = await supabase
+    if (mode !== 'performance') {
+      return NextResponse.json(
+        { error: 'humanSourceVersionId is only valid for a performed human-written part' },
+        { status: 400 }
+      )
+    }
+    const { data: hv, error: humanSourceError } = await supabase
       .from('work_versions')
-      .select('id')
+      .select('id, created_at')
       .eq('id', humanSourceVersionId)
       .eq('work_id', workId)
       .maybeSingle()
+    if (humanSourceError) return NextResponse.json({ error: humanSourceError.message }, { status: 500 })
     if (!hv) {
       return NextResponse.json(
         { error: 'humanSourceVersionId does not belong to this work' },
         { status: 400 }
       )
+    }
+
+    const { data: sourceAiEntry, error: sourceAiError } = await supabase
+      .from('ai_entries')
+      .select('id')
+      .eq('work_id', workId)
+      .eq('level', 'version')
+      .eq('version_id', humanSourceVersionId)
+      .limit(1)
+      .maybeSingle()
+    if (sourceAiError) return NextResponse.json({ error: sourceAiError.message }, { status: 500 })
+    if (sourceAiEntry) {
+      return NextResponse.json(
+        { error: 'The human source must be an earlier take without an AI entry.' },
+        { status: 400 }
+      )
+    }
+
+    if (targetVersion) {
+      const sourceCreatedAt = Date.parse(hv.created_at)
+      const targetCreatedAt = Date.parse(targetVersion.created_at)
+      if (
+        hv.id === targetVersion.id ||
+        !Number.isFinite(sourceCreatedAt) ||
+        !Number.isFinite(targetCreatedAt) ||
+        sourceCreatedAt >= targetCreatedAt
+      ) {
+        return NextResponse.json(
+          { error: 'The human source must have been recorded before the AI-assisted take.' },
+          { status: 400 }
+        )
+      }
     }
     hasHumanSource = true
   }

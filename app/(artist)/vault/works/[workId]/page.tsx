@@ -340,6 +340,7 @@ export default async function WorkComposerPage({
       isAiTagged,
       playbackUrl: signedByPath[v.audio_path] ?? null,
       durationSeconds: v.duration_seconds,
+      createdAt: v.created_at,
     }
   })
 

@@ -11,7 +11,9 @@ import {
   type Receipt,
 } from '@/lib/catalogue/ai-entries'
 import { HumFirstMoment } from './HumFirstMoment'
+import { ExistingTakePicker } from './ExistingTakePicker'
 import type { HumCaptureButtonProps } from './HumCaptureButton'
+import { eligibleEarlierTakes, type ExistingTakeOption } from '@/lib/catalogue/human-source-takes'
 import type { AiEntry, WorkVersion } from '@/types/catalogue'
 
 // ─── AiEntryFlow — conversational first, two doors after (002-B then A) ─
@@ -71,11 +73,11 @@ export type AiEntryFlowProps = {
    * the citation, it only makes it possible.
    */
   humanSourceVersionId?: string | null
+  /** Signed, server-presented takes from this song; filtered again against the target before selection. */
+  existingTakes?: ExistingTakeOption[]
   onFiled?: (result: AiEntryFlowResult) => void
   /** Bubbled up when the hum-evidence check (task 2) produces a new take. */
   onHumCaptured?: (version: WorkVersion) => void
-  /** Forwarded to HumFirstMoment's "attach an existing take" path — owned by the parent, this flow does not implement uploading. */
-  onAttachExisting?: () => void
   onCancel?: () => void
   /** Passed straight through to HumCaptureButton/HumFirstMoment — see those components' own doc comments for why this seam exists. */
   isTypeSupported?: HumCaptureButtonProps['isTypeSupported']
@@ -316,15 +318,16 @@ export function AiEntryFlow({
   versionId = null,
   blockId = null,
   humanSourceVersionId = null,
+  existingTakes = [],
   onFiled,
   onHumCaptured,
-  onAttachExisting,
   onCancel,
   isTypeSupported,
   initialResult = null,
 }: AiEntryFlowProps) {
   const [conversational, setConversational] = useState(isFirstEverAiEntry(priorAiEntryCount))
   const [showHumEvidence, setShowHumEvidence] = useState(false)
+  const [showExistingTakes, setShowExistingTakes] = useState(false)
   const [component, setComponent] = useState<AiEntryComponent>(defaultComponent)
   const [mode, setMode] = useState<AiEntryMode | null>(null)
   const [result, setResult] = useState<AiEntryFlowResult | null>(initialResult)
@@ -367,11 +370,28 @@ export function AiEntryFlow({
     return <ReceiptBlock receipt={result.receipt} guidance={result.guidance} />
   }
 
+  if (showExistingTakes) {
+    return (
+      <ExistingTakePicker
+        takes={eligibleEarlierTakes(existingTakes, versionId)}
+        onSelect={selectedVersionId => {
+          setShowExistingTakes(false)
+          void submit('performance', component, selectedVersionId)
+        }}
+        onBack={() => {
+          setShowExistingTakes(false)
+          setShowHumEvidence(true)
+        }}
+      />
+    )
+  }
+
   // "Not sure" (conversational) routes here instead of a softer label —
   // the when-in-doubt rule's UI expression (T-37-57). Capturing a hum
   // becomes the human source for a performance citation; attaching an
-  // existing take or skipping both return to the question without
-  // resolving it, never blocking the artist either way (T-37-58).
+  // existing take opens a real, playable selector and files against the
+  // chosen source; skipping returns to the question without blocking the
+  // artist (T-37-58).
   if (showHumEvidence) {
     return (
       <HumFirstMoment
@@ -385,7 +405,7 @@ export function AiEntryFlow({
         }}
         onAttachExisting={() => {
           setShowHumEvidence(false)
-          onAttachExisting?.()
+          setShowExistingTakes(true)
         }}
         onSkip={() => setShowHumEvidence(false)}
       />

@@ -67,6 +67,7 @@ const baseVersions: VersionCardData[] = [
     isAiTagged: false,
     playbackUrl: 'https://signed.example/v1.webm',
     durationSeconds: 42,
+    createdAt: '2026-01-01T00:00:00Z',
   },
 ]
 

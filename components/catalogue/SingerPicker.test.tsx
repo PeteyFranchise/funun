@@ -62,4 +62,20 @@ describe('SingerPicker', () => {
     expect(markup).toContain('Female vocalist')
     expect(markup).toContain('Creative direction only—not a person, credit, collaborator, or invitation')
   })
+
+  it('makes clear that casting someone preserves the saved direction', () => {
+    const markup = renderToStaticMarkup(
+      <SingerPicker
+        candidates={candidates}
+        currentPerformers={[]}
+        currentDirection="A gospel choir"
+        onSavePerformers={noop}
+        onSaveDirection={noop}
+        onCancel={() => undefined}
+      />
+    )
+
+    expect(markup).toContain('The direction “A gospel choir” stays with this section')
+    expect(markup).toContain('Save performers')
+  })
 })

@@ -18,6 +18,7 @@ import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPrese
 import { SongPassportPanel } from './SongPassportPanel'
 import { SingerPicker } from './SingerPicker'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
+import { ExistingTakePicker } from './ExistingTakePicker'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -32,6 +33,7 @@ import {
   type LyricSectionLock,
 } from '@/lib/catalogue/room-collaboration'
 import { AI_ENTRY_COMPONENT_LABELS, type AiEntryComponent } from '@/lib/catalogue/ai-entries'
+import { eligibleEarlierTakes } from '@/lib/catalogue/human-source-takes'
 import type { WorkTier } from '@/lib/catalogue/membership'
 import type {
   LyricBlock,
@@ -85,6 +87,7 @@ export type VersionCardData = {
   /** Signed server-side (plan 06) — this component never constructs one. */
   playbackUrl: string | null
   durationSeconds: number | null
+  createdAt: string
 }
 
 export type WorkPageProps = {
@@ -194,6 +197,7 @@ type Flow =
   | { kind: 'reauthor'; headline: string; component: AiEntryComponent }
   | { kind: 'note' }
   | { kind: 'add-singer'; blockId: string }
+  | { kind: 'existing-take'; targetVersionId: string | null }
 
 type LyricHistoryState = {
   blockId: string
@@ -1347,14 +1351,30 @@ export function WorkPage({
             setFlow({ kind: 'ai-entry', versionId: flow.pendingVersionId, humanSourceVersionId: version.id })
           }}
           onAttachExisting={() => {
-            markHumFirstFired()
-            setFlow({ kind: 'ai-entry', versionId: flow.pendingVersionId, humanSourceVersionId: null })
+            setFlow({ kind: 'existing-take', targetVersionId: flow.pendingVersionId })
           }}
           onSkip={() => {
             markHumFirstFired()
             setFlow({ kind: 'ai-entry', versionId: flow.pendingVersionId, humanSourceVersionId: null })
           }}
         />
+      )}
+
+      {flow?.kind === 'existing-take' && (
+        <FlowOverlay>
+          <ExistingTakePicker
+            takes={eligibleEarlierTakes(versions, flow.targetVersionId)}
+            onSelect={humanSourceVersionId => {
+              markHumFirstFired()
+              setFlow({
+                kind: 'ai-entry',
+                versionId: flow.targetVersionId,
+                humanSourceVersionId,
+              })
+            }}
+            onBack={() => setFlow({ kind: 'hum-first', pendingVersionId: flow.targetVersionId })}
+          />
+        </FlowOverlay>
       )}
 
       {flow?.kind === 'ai-entry' && (
@@ -1366,6 +1386,7 @@ export function WorkPage({
               priorAiEntryCount={priorAiEntryCount}
               versionId={flow.versionId}
               humanSourceVersionId={flow.humanSourceVersionId}
+              existingTakes={versions}
               onFiled={(result: AiEntryFlowResult) => {
                 router.refresh()
                 if (result.guidance) {

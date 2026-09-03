@@ -149,7 +149,8 @@ describe('LyricBlockCard', () => {
     )
 
     expect(markup).toContain('Voice: A gospel choir')
-    expect(markup).toContain('Edit this section&#x27;s vocal plan')
+    expect(markup).toContain('Assign performer')
+    expect(markup).toContain('without replacing the direction')
     const avatarMatches = markup.match(/rounded-full border border-card/g) ?? []
     expect(avatarMatches).toHaveLength(1) // the writer badge only
   })

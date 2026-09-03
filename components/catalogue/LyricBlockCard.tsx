@@ -159,6 +159,22 @@ function SingerCluster({
     )
   }
 
+  if (singers.length === 0 && vocalDirection) {
+    return (
+      <span className="flex max-w-[250px] items-center gap-2">
+        <span className="truncate text-[10.5px] text-lavdim">Voice: {vocalDirection}</span>
+        <button
+          type="button"
+          onClick={onAddSinger}
+          aria-label={`Assign a performer without replacing the direction: ${vocalDirection}`}
+          className="shrink-0 whitespace-nowrap text-[10px] font-semibold text-brandindigo hover:text-white"
+        >
+          Assign performer
+        </button>
+      </span>
+    )
+  }
+
   return (
     <button
       type="button"

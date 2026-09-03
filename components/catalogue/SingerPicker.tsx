@@ -169,6 +169,11 @@ export function SingerPicker({
           <p className="mt-2 text-[10.5px] leading-4 text-lavdim">
             Performance plan only—no Writer&apos;s Room access, invitation, ownership, or split is added.
           </p>
+          {currentDirection && (
+            <p className="mt-2 text-[10.5px] leading-4 text-brandindigo">
+              The direction “{currentDirection}” stays with this section after you assign someone.
+            </p>
+          )}
         </div>
       ) : (
         <div id="singer-picker-direction-panel" role="tabpanel" className="mt-4">
