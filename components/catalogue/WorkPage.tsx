@@ -17,6 +17,7 @@ import { AiEntryFlow, type AiEntryFlowResult } from './AiEntryFlow'
 import { WriterRoomPresence, type WriterRoomLiveHandle } from './WriterRoomPresence'
 import { SongPassportPanel } from './SongPassportPanel'
 import { SingerPicker } from './SingerPicker'
+import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -264,35 +265,45 @@ export function Toast({
 }
 
 function VersionsList({
+  workId,
   versions,
   onActivity,
+  commentRefreshes,
+  onCommentChanged,
 }: {
+  workId: string
   versions: VersionCardData[]
   onActivity: (kind: RoomActivityKind, label?: string) => void
+  commentRefreshes: Record<string, number>
+  onCommentChanged: (versionId: string) => void
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
   }
   return (
     <div className="flex flex-col gap-2">
-      {versions.map(v => (
+      {versions.map((v, index) => v.playbackUrl ? (
+        <TimedTrackPlayer
+          key={v.id}
+          workId={workId}
+          versionId={v.id}
+          display={v.display}
+          description={v.description}
+          playbackUrl={v.playbackUrl}
+          durationSeconds={v.durationSeconds}
+          isLatest={index === 0}
+          isAiTagged={v.isAiTagged}
+          refreshToken={commentRefreshes[v.id] ?? 0}
+          onActivity={playing => onActivity(playing ? 'listening' : 'recently_active', playing ? v.display : undefined)}
+          onCommentChanged={() => onCommentChanged(v.id)}
+        />
+      ) : (
         <div key={v.id} className="rounded-[10px] border border-hair bg-card px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-2">
-            <b className="text-[12px] text-white">
-              {v.display} {v.description}
-            </b>
+            <b className="text-[12px] text-white">{v.display} {v.description}</b>
             {v.isAiTagged && <span className="text-[11px] text-blue-400">AI</span>}
           </div>
-          {v.playbackUrl && (
-            <audio
-              controls
-              src={v.playbackUrl}
-              className="mt-1.5 h-8 w-full"
-              onPlay={() => onActivity('listening', v.display)}
-              onPause={() => onActivity('recently_active')}
-              onEnded={() => onActivity('recently_active')}
-            />
-          )}
+          <p className="mt-1 text-[10px] text-lavdim">Playback is unavailable for this take.</p>
         </div>
       ))}
     </div>
@@ -415,6 +426,7 @@ export function WorkPage({
   const [activeLockBlockId, setActiveLockBlockId] = useState<string | null>(null)
   const [lyricHistory, setLyricHistory] = useState<LyricHistoryState | null>(null)
   const [lyricComments, setLyricComments] = useState<LyricCommentsState | null>(null)
+  const [trackCommentRefreshes, setTrackCommentRefreshes] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -486,14 +498,19 @@ export function WorkPage({
   )
 
   const handleLiveHint = useCallback(
-    (kind: 'lock_changed' | 'lyric_saved' | 'comment_changed', payload: unknown) => {
+    (kind: 'lock_changed' | 'lyric_saved' | 'comment_changed' | 'track_comment_changed', payload: unknown) => {
       const hint = normalizeCollaborationHint(kind, payload)
       if (!hint) return
       if (hint.kind === 'lock_changed') void refreshSectionLocks()
       else if (hint.kind === 'lyric_saved') void refreshLyricBlock(hint.blockId)
-      else {
+      else if (hint.kind === 'comment_changed') {
         void refreshLyricComments(hint.blockId)
         router.refresh()
+      } else if (hint.kind === 'track_comment_changed') {
+        setTrackCommentRefreshes(current => ({
+          ...current,
+          [hint.versionId]: (current[hint.versionId] ?? 0) + 1,
+        }))
       }
     },
     [refreshLyricBlock, refreshLyricComments, refreshSectionLocks, router]
@@ -502,7 +519,14 @@ export function WorkPage({
   const handleRoomResync = useCallback(() => {
     void refreshSectionLocks()
     liveLyricsBlocks.forEach(block => void refreshLyricBlock(block.id))
-  }, [liveLyricsBlocks, refreshLyricBlock, refreshSectionLocks])
+    setTrackCommentRefreshes(current => Object.fromEntries(
+      versions.map(version => [version.id, (current[version.id] ?? 0) + 1])
+    ))
+  }, [liveLyricsBlocks, refreshLyricBlock, refreshSectionLocks, versions])
+
+  function announceTrackCommentChanged(versionId: string) {
+    void liveRoomRef.current?.broadcast('track_comment_changed', { versionId })
+  }
 
   useEffect(() => {
     void refreshSectionLocks()
@@ -1183,10 +1207,16 @@ export function WorkPage({
           stream with a Diary|Versions toggle (mobile). */}
       <div ref={diaryRef} className="mt-8">
         {viewport === 'desktop' ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr] lg:items-start">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
             <div className="lg:sticky lg:top-4">
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Versions</p>
-              <VersionsList versions={versions} onActivity={announceRoomActivity} />
+              <VersionsList
+                workId={workId}
+                versions={versions}
+                onActivity={announceRoomActivity}
+                commentRefreshes={trackCommentRefreshes}
+                onCommentChanged={announceTrackCommentChanged}
+              />
             </div>
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Diary</p>
@@ -1226,7 +1256,13 @@ export function WorkPage({
             {mobileTab === 'diary' ? (
               <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
             ) : (
-              <VersionsList versions={versions} onActivity={announceRoomActivity} />
+              <VersionsList
+                workId={workId}
+                versions={versions}
+                onActivity={announceRoomActivity}
+                commentRefreshes={trackCommentRefreshes}
+                onCommentChanged={announceTrackCommentChanged}
+              />
             )}
           </div>
         )}

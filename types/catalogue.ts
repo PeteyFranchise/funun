@@ -176,6 +176,46 @@ export type LyricBlockCommentView = {
   canResolve: boolean
 }
 
+// ─── recording-version comments — timestamped mix discussion ────────
+
+export type WorkVersionComment = {
+  id: string
+  work_id: string
+  version_id: string
+  parent_comment_id: string | null
+  author_user_id: string | null
+  body: string
+  timestamp_ms: number
+  mentioned_user_ids: string[]
+  resolved_at: string | null
+  resolved_by_user_id: string | null
+  carried_from_version_id: string | null
+  carried_from_comment_id: string | null
+  created_at: string
+}
+
+export type WorkVersionCommentView = {
+  id: string
+  versionId: string
+  parentCommentId: string | null
+  body: string
+  timestampMs: number
+  author: LyricCommentParticipant | null
+  mentioned: LyricCommentParticipant[]
+  resolvedAt: string | null
+  resolvedByName: string | null
+  carriedFromVersionId: string | null
+  carriedFromVersionDisplay: string | null
+  createdAt: string
+  canResolve: boolean
+}
+
+export type WorkVersionCommentCarryOffer = {
+  sourceVersionId: string
+  sourceVersionDisplay: string
+  comments: WorkVersionCommentView[]
+}
+
 // ─── work_members — collaborator access + tier (S-02) ─────────────────
 
 export type WorkMember = {
