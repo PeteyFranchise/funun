@@ -10,11 +10,13 @@ import {
   clipTimelineWindow,
   formatRecorderTime,
   renderRoughMix,
+  renderDryVocalStem,
   sessionDurationMs,
   waveformPeaks,
   type RecordingClip,
 } from '@/lib/catalogue/record-over-beat'
-import type { WorkVersion } from '@/types/catalogue'
+import { uploadProducerHandoff } from '@/lib/catalogue/producer-handoff-upload-client'
+import { PRODUCER_HANDOFF_NOTE_MAX, type ProducerHandoffRecipient } from '@/lib/catalogue/producer-handoff'
 
 type Props = {
   workId: string
@@ -22,7 +24,8 @@ type Props = {
   baseDisplay: string
   baseDescription: string
   playbackUrl: string
-  onSaved: (version: WorkVersion) => void
+  handoffRecipients: ProducerHandoffRecipient[]
+  onSaved: () => void
   onClose: () => void
 }
 
@@ -30,6 +33,7 @@ type ClipUploadIntent = { clipId: string; path: string; token: string; contentTy
 type RecoveredSession = {
   id: string
   status: 'draft' | 'saved'
+  renderedVersionId: string | null
   beatGain: number
   vocalGain: number
   timingOffsetMs: number
@@ -57,6 +61,7 @@ export function RecordOverBeatStudio({
   baseDisplay,
   baseDescription,
   playbackUrl,
+  handoffRecipients,
   onSaved,
   onClose,
 }: Props) {
@@ -83,6 +88,10 @@ export function RecordOverBeatStudio({
   const [rangeStartMs, setRangeStartMs] = useState(0)
   const [rangeEndMs, setRangeEndMs] = useState(0)
   const [editHistory, setEditHistory] = useState<RecordingClip[][]>([])
+  const [lastRenderedVersionId, setLastRenderedVersionId] = useState<string | null>(null)
+  const [handoffOpen, setHandoffOpen] = useState(false)
+  const [handoffRecipientId, setHandoffRecipientId] = useState(handoffRecipients[0]?.userId ?? '')
+  const [handoffNote, setHandoffNote] = useState('')
 
   const contextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -150,6 +159,7 @@ export function RecordOverBeatStudio({
             sessionIdRef.current = recovered.id
             setSessionStatus(recovered.status)
             sessionStatusRef.current = recovered.status
+            setLastRenderedVersionId(recovered.renderedVersionId)
             setActiveBaseVersionId(recovered.base.id)
             setActiveBaseLabel(recovered.base.label?.trim() || 'backing take')
             setBeatGain(recovered.beatGain)
@@ -571,12 +581,33 @@ export function RecordOverBeatStudio({
     }
   }
 
-  async function saveRoughTake() {
+  async function sendProducerHandoff(roughVersionId: string, durableSessionId: string) {
+    if (!backing || !handoffRecipientId) throw new Error('Choose a room member to receive the producer handoff.')
+    setSaveStage('Rendering the aligned dry vocal…')
+    const renderedVocal = await renderDryVocalStem({ backing, clips: clipsRef.current, timingOffsetMs })
+    const vocalStem = encodeWav(renderedVocal)
+    setSaveStage('Sending the producer handoff…')
+    await uploadProducerHandoff({
+      workId,
+      sessionId: durableSessionId,
+      roughVersionId,
+      recipientUserId: handoffRecipientId,
+      note: handoffNote,
+      vocalStem,
+    })
+  }
+
+  async function saveRoughTake(sendHandoff = false) {
     if (!backing || !clips.some(clip => !clip.removed && !clip.muted) || saving || recording) return
     setSaving(true)
     setError(null)
     stopSources()
     try {
+      if (sendHandoff && sessionStatusRef.current === 'saved' && lastRenderedVersionId && sessionIdRef.current) {
+        await sendProducerHandoff(lastRenderedVersionId, sessionIdRef.current)
+        onSaved()
+        return
+      }
       setSaveStage('Mixing your take…')
       const rendered = await renderRoughMix({ backing, clips, beatGain, vocalGain, timingOffsetMs })
       const mix = encodeWav(rendered)
@@ -606,8 +637,10 @@ export function RecordOverBeatStudio({
       if (!finishResponse.ok) throw new Error(await errorMessage(finishResponse, 'The take saved, but its editing session could not be linked.'))
       setSessionStatus('saved')
       sessionStatusRef.current = 'saved'
+      setLastRenderedVersionId(version.id)
       setSyncState('saved')
-      onSaved(version)
+      if (sendHandoff) await sendProducerHandoff(version.id, durableSessionId)
+      onSaved()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save this rough take.')
     } finally {
@@ -740,6 +773,28 @@ export function RecordOverBeatStudio({
       </div>
 
       {!mimeType && <p className="mt-3 text-[11px] text-amber-200">This browser cannot record a supported audio format. You can still upload a take from the main room.</p>}
+      {handoffOpen && (
+        <div className="mt-4 rounded-[11px] border border-brandindigo/35 bg-card2 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-brandindigo">Producer handoff</p>
+              <p className="mt-1 text-[10px] leading-4 text-lavdim">Send this rough mix with a dry vocal WAV aligned from 0:00. It does not mark a master or approve any rights.</p>
+            </div>
+            <button type="button" disabled={saving} onClick={() => setHandoffOpen(false)} className="text-[12px] text-lavdim hover:text-white disabled:opacity-40">✕</button>
+          </div>
+          {handoffRecipients.length > 0 ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]">
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Send to<select value={handoffRecipientId} onChange={event => setHandoffRecipientId(event.target.value)} className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] normal-case tracking-normal text-white outline-none focus:border-brandindigo">{handoffRecipients.map(person => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Note (optional)<textarea value={handoffNote} maxLength={PRODUCER_HANDOFF_NOTE_MAX} onChange={event => setHandoffNote(event.target.value)} rows={2} placeholder="What should they listen for?" className="mt-1.5 w-full resize-none rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <div className="sm:col-span-2 flex justify-end">
+                <button type="button" disabled={saving || syncState !== 'saved' || !handoffRecipientId} onClick={() => void saveRoughTake(true)} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : sessionStatus === 'saved' ? 'Send producer pack' : 'Save & send producer pack'}</button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-[10px] text-lavdim">Invite or connect another member to this Writer’s Room before sending a producer handoff.</p>
+          )}
+        </div>
+      )}
       {error && <p role="alert" className="mt-3 text-[11px] leading-5 text-red-300">{error}</p>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-hair pt-4">
         <p className="text-[10px] text-lavdim">
@@ -748,8 +803,9 @@ export function RecordOverBeatStudio({
           {syncState === 'offline' && <button type="button" onClick={() => void retrySync()} className="ml-2 font-semibold text-brandindigo hover:text-white">Retry sync</button>}
         </p>
         <div className="flex items-center gap-3">
+          <button type="button" disabled={saving || recording || audibleClips.length === 0} onClick={() => setHandoffOpen(current => !current)} className="text-[11px] font-semibold text-brandindigo hover:text-white disabled:opacity-40">Send to producer</button>
           <button type="button" disabled={saving || syncState === 'saving' || syncState === 'offline'} onClick={closeStudio} className="text-[11px] text-lavdim hover:text-white disabled:opacity-40">{activeClips.length > 0 ? 'Save draft & leave' : 'Cancel'}</button>
-          <button type="button" disabled={audibleClips.length === 0 || saving || recording || syncState !== 'saved'} onClick={() => void saveRoughTake()} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : 'Save rough take'}</button>
+          <button type="button" disabled={audibleClips.length === 0 || saving || recording || syncState !== 'saved'} onClick={() => void saveRoughTake(false)} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : 'Save rough take'}</button>
         </div>
       </div>
     </div>

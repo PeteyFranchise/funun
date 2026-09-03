@@ -10,6 +10,7 @@ const newer = { id: 'v5-id', display: 'v5', createdAt: '2026-09-01T11:00:00Z', d
 describe('Writer\'s Room version comparison', () => {
   it('defaults side A to the prior take and side B to the newest take', () => {
     expect(defaultComparisonIds([newer, older])).toEqual({ sideAId: older.id, sideBId: newer.id })
+    expect(defaultComparisonIds([newer, older], older.id)).toEqual({ sideAId: newer.id, sideBId: older.id })
     expect(defaultComparisonIds([newer])).toBeNull()
   })
 

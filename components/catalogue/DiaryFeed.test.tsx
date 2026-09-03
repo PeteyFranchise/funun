@@ -11,7 +11,7 @@ import { DiaryFeed, diaryMatchesQuery, type DiaryFeedEntry } from './DiaryFeed'
 // show up here first.
 
 const CONTEXT: DiaryEventContext = {
-  names: { u1: 'Ben Cooke', c1: 'Dana Whitfield' },
+  names: { u1: 'Ben Cooke', u2: 'Peter Zora', c1: 'Dana Whitfield' },
   versionNumerals: { v1: 1, v2: 2 },
 }
 
@@ -96,6 +96,14 @@ const ROWS: DiaryEventRowLike[] = [
     created_at: '2026-08-23T10:00:00Z',
   },
   {
+    id: 'e-handoff',
+    work_id: 'w1',
+    kind: 'producer_handoff',
+    actor_user_id: 'u1',
+    payload: { handoffId: 'h1', roughVersionId: 'v2', recipientUserId: 'u2', note: 'Bring the drums forward.' },
+    created_at: '2026-08-25T10:00:00Z',
+  },
+  {
     id: 'e-note',
     work_id: 'w1',
     kind: 'note',
@@ -118,6 +126,14 @@ function buildEntries(): DiaryFeedEntry[] {
       }
       // e-version-1 deliberately carries no playbackUrl.
     }
+    if (row.kind === 'producer_handoff') {
+      entry.handoff = {
+        recipientName: 'Peter Zora',
+        note: 'Bring the drums forward.',
+        roughUrl: 'https://signed.example.com/rough.wav?download=rough.wav',
+        vocalUrl: 'https://signed.example.com/vocal.wav?download=vocal.wav',
+      }
+    }
     return entry
   })
 }
@@ -135,6 +151,15 @@ describe('DiaryFeed', () => {
     expect(markup).toContain('Ben Cooke reordered 3 sections')
     expect(markup).toContain('Ben Cooke detached')
     expect(markup).toContain('Thinking about a bridge here.')
+    expect(markup).toContain('Ben Cooke sent v2 to Peter Zora')
+  })
+
+  it('renders both private producer-handoff downloads and the handoff note', () => {
+    const handoff = buildEntries().filter(entry => entry.kind === 'producer_handoff')
+    const markup = renderToStaticMarkup(<DiaryFeed entries={handoff} />)
+    expect(markup).toContain('Rough mix')
+    expect(markup).toContain('Dry vocal · starts at 0:00')
+    expect(markup).toContain('Bring the drums forward.')
   })
 
   it('renders a play control only for the version entry that carries a playbackUrl', () => {
@@ -211,7 +236,7 @@ describe('DiaryFeed', () => {
     expect(markup).toContain('Ben Cooke added Verse')
     // …and a later one is hidden behind the toggle.
     expect(markup).not.toContain('Thinking about a bridge here.')
-    expect(markup).toContain('Show all 10 updates')
+    expect(markup).toContain('Show all 11 updates')
     expect(markup).toContain('Search the diary')
   })
 

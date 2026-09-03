@@ -13,6 +13,8 @@ export type RecordingClip = {
   buffer: AudioBuffer
 }
 
+export const DRY_VOCAL_STEM_LEVELS = { beatGain: 0, vocalGain: 1 } as const
+
 export function clipTimelineWindow(
   clip: Pick<RecordingClip, 'startMs' | 'durationMs' | 'trimStartMs' | 'trimEndMs'>,
   timingOffsetMs = 0
@@ -154,4 +156,18 @@ export async function renderRoughMix(input: {
   }
 
   return context.startRendering()
+}
+
+/** Renders the approved comp at unity vocal gain on a zero-aligned silent backing timeline. */
+export async function renderDryVocalStem(input: {
+  backing: AudioBuffer
+  clips: RecordingClip[]
+  timingOffsetMs: number
+}): Promise<AudioBuffer> {
+  return renderRoughMix({
+    backing: input.backing,
+    clips: input.clips,
+    ...DRY_VOCAL_STEM_LEVELS,
+    timingOffsetMs: input.timingOffsetMs,
+  })
 }

@@ -17,6 +17,8 @@ describe('TimedTrackPlayer', () => {
         onActivity={() => undefined}
         onCommentChanged={() => undefined}
         onArchive={async () => undefined}
+        onRename={async () => ({ ok: true })}
+        onMakeWorking={async () => ({ ok: true })}
       />
     )
     expect(markup).toContain('<audio')
@@ -24,8 +26,33 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('Comment at 0:00')
     expect(markup).toContain('Record over this beat')
     expect(markup).toContain('Archive')
+    expect(markup).toContain('Name')
+    expect(markup).toContain('Make working')
     expect(markup).toContain('3:18')
     expect(markup).toContain('Studio bounce')
+  })
+
+  it('marks a working take as creative context without another make-working action', () => {
+    const markup = renderToStaticMarkup(
+      <TimedTrackPlayer
+        workId="work-1"
+        versionId="version-1"
+        display="v2"
+        description="Hook idea"
+        label="Hook idea"
+        playbackUrl="https://signed.example/hook.wav"
+        durationSeconds={30}
+        isLatest
+        isAiTagged={false}
+        isWorking
+        refreshToken={0}
+        onActivity={() => undefined}
+        onCommentChanged={() => undefined}
+        onMakeWorking={async () => ({ ok: true })}
+      />
+    )
+    expect(markup).toContain('Working take')
+    expect(markup).not.toContain('Make working')
   })
 
   it('does not use a native controls-only player', () => {

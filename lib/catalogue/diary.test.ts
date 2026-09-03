@@ -175,6 +175,16 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(resolved.consequence).toMatch(/can be reopened/i)
   })
 
+  it('producer handoff names the rough and recipient without implying master approval', () => {
+    const entry = describeDiaryEvent(
+      row('producer_handoff', { handoffId: 'h-1', roughVersionId: 'v-4', recipientUserId: 'u-2', note: 'Build the drums.' }),
+      { names: { 'u-1': 'Maya', 'u-2': 'Peter' }, versionNumerals: { 'v-4': 4 } }
+    )
+    expect(entry.headline).toBe('Maya sent v4 to Peter')
+    expect(entry.consequence).toMatch(/aligned dry vocal/i)
+    expect(`${entry.headline} ${entry.consequence}`.toLowerCase()).not.toContain('master')
+  })
+
   it('degrades an unknown or future kind to a neutral entry rather than throwing', () => {
     expect(() => describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)).not.toThrow()
     const entry = describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)
@@ -194,6 +204,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
       { kind: 'reorder', payload: { blockCount: 3 } },
       { kind: 'detach', payload: { blockId: 'b-2', blockType: 'bridge', detachedFromBlockId: 'b-1' } },
       { kind: 'comment', payload: { commentId: 'c-1', blockId: 'b-2', blockType: 'bridge', customLabel: null, operation: 'opened' } },
+      { kind: 'producer_handoff', payload: { handoffId: 'h-1', roughVersionId: 'v-1', recipientUserId: 'u-2' } },
       { kind: 'note', payload: { text: 'hi' } },
     ]
     for (const { kind, payload } of fixtures) {
@@ -217,6 +228,7 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
     'reorder',
     'detach',
     'comment',
+    'producer_handoff',
     'note',
   ]
 
@@ -229,6 +241,6 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
   it('note is the single app-authored exception', () => {
     expect(isTriggerSourced('note')).toBe(false)
     const triggerSourced = ALL_KINDS.filter(k => isTriggerSourced(k))
-    expect(triggerSourced).toHaveLength(9)
+    expect(triggerSourced).toHaveLength(10)
   })
 })

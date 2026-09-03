@@ -63,6 +63,13 @@ export type DiaryFeedEntry = DiaryEntryView & {
   playbackUrl?: string | null
   /** `version` kind only. Seconds, rendered as m:ss beside the play control. */
   playbackDurationSeconds?: number | null
+  /** `producer_handoff` kind only. URLs are short-lived and minted after work access is resolved. */
+  handoff?: {
+    recipientName: string
+    note: string | null
+    roughUrl: string | null
+    vocalUrl: string | null
+  }
   /**
    * True only for a `note` the viewer authored — the one hand-written kind,
    * and only one's own. Set by the page, which knows both the row's actor
@@ -131,6 +138,7 @@ function railChipLabel(entry: DiaryFeedEntry): string {
   if (entry.kind === 'version') return entry.versionNumeral ? `v${entry.versionNumeral}` : 'v·'
   if (entry.kind === 'sheet') return '§'
   if (entry.kind === 'ai_entry') return 'AI'
+  if (entry.kind === 'producer_handoff') return '⇢'
   return '•'
 }
 
@@ -146,6 +154,19 @@ function VersionPlayback({ entry }: { entry: DiaryFeedEntry }) {
       >
         ▶ {formatDuration(entry.playbackDurationSeconds)}
       </button>
+    </div>
+  )
+}
+
+function ProducerHandoffDownloads({ entry }: { entry: DiaryFeedEntry }) {
+  if (entry.kind !== 'producer_handoff' || !entry.handoff) return null
+  return (
+    <div className="mt-[7px] rounded-[9px] border border-brandindigo/25 bg-brandindigo/[.04] p-2.5">
+      {entry.handoff.note && <p className="mb-2 whitespace-pre-wrap text-[11px] leading-5 text-lav">“{entry.handoff.note}”</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        {entry.handoff.roughUrl && <a href={entry.handoff.roughUrl} className="rounded-[8px] border border-hairstrong bg-card2 px-2.5 py-1.5 text-[10px] font-semibold text-white hover:border-brandindigo">↓ Rough mix</a>}
+        {entry.handoff.vocalUrl && <a href={entry.handoff.vocalUrl} className="rounded-[8px] border border-brandindigo/40 bg-brandindigo/10 px-2.5 py-1.5 text-[10px] font-semibold text-brandindigo hover:text-white">↓ Dry vocal · starts at 0:00</a>}
+      </div>
     </div>
   )
 }
@@ -195,6 +216,7 @@ function CompactRow({ entry, onRemoveNote }: { entry: DiaryFeedEntry; onRemoveNo
       </div>
       {entry.consequence && <p className="mt-[2px] text-[11px] text-lavdim">{entry.consequence}</p>}
       <VersionPlayback entry={entry} />
+      <ProducerHandoffDownloads entry={entry} />
       {entry.canRemove && onRemoveNote && <NoteRemoveControl onRemove={() => onRemoveNote(entry.id)} />}
     </div>
   )
@@ -227,6 +249,7 @@ function RailRow({
         </div>
         {entry.consequence && <p className="mt-[4px] text-[11px] text-lavdim">{entry.consequence}</p>}
         <VersionPlayback entry={entry} />
+        <ProducerHandoffDownloads entry={entry} />
         {entry.canRemove && onRemoveNote && <NoteRemoveControl onRemove={() => onRemoveNote(entry.id)} />}
       </div>
     </div>

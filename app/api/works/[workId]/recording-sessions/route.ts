@@ -52,6 +52,7 @@ export async function GET(request: Request, { params }: RouteCtx) {
     data: {
       id: session.id,
       status: session.status,
+      renderedVersionId: session.rendered_version_id,
       beatGain: Number(session.beat_gain),
       vocalGain: Number(session.vocal_gain),
       timingOffsetMs: session.timing_offset_ms,

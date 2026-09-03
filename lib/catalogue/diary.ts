@@ -109,6 +109,7 @@ export const DIARY_KIND_ACCENT: Record<DiaryEventKind, DiaryAccent> = {
   reorder: 'lavdim',
   detach: 'lavdim',
   comment: 'brandindigo',
+  producer_handoff: 'brandindigo',
   note: 'lavdim',
 }
 
@@ -322,6 +323,20 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
         consequence: 'Creative discussion only — lyrics, splits and approvals stay unchanged.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.comment,
+      }
+    }
+
+    case 'producer_handoff': {
+      const payload = row.payload as DiaryEventPayloadMap['producer_handoff']
+      const numeral = context.versionNumerals[payload.roughVersionId]
+      const version = numeral ? `v${numeral}` : 'a rough take'
+      const recipient = displayName(context, payload.recipientUserId, 'a room member')
+      return {
+        kind: 'producer_handoff',
+        headline: `${actor} sent ${version} to ${recipient}`,
+        consequence: 'The rough mix and its aligned dry vocal are ready for production.',
+        date: row.created_at,
+        accent: DIARY_KIND_ACCENT.producer_handoff,
       }
     }
 

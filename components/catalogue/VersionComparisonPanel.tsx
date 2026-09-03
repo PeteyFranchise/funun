@@ -22,6 +22,7 @@ type VersionComparisonPanelProps = {
   onActivity: (playing: boolean, display: string) => void
   onCommentChanged: (versionId: string) => void
   refreshToken?: number
+  workingVersionId?: string | null
   /** Static-render test seam; production loads canonical comments through the existing version routes. */
   initialComments?: Record<string, WorkVersionCommentView[]>
 }
@@ -46,9 +47,10 @@ export function VersionComparisonPanel({
   onActivity,
   onCommentChanged,
   refreshToken = 0,
+  workingVersionId = null,
   initialComments,
 }: VersionComparisonPanelProps) {
-  const defaults = defaultComparisonIds(versions)
+  const defaults = defaultComparisonIds(versions, workingVersionId)
   const [sideAId, setSideAId] = useState(defaults?.sideAId ?? versions[0]?.id ?? '')
   const [sideBId, setSideBId] = useState(defaults?.sideBId ?? versions[1]?.id ?? '')
   const [activeSide, setActiveSide] = useState<'a' | 'b'>('a')

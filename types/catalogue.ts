@@ -60,6 +60,7 @@ export type Work = {
   vocal_state: WorkVocalState
   primary_performer: PerformerRef | null // null when vocal_state !== 'primary'
   graduated_project_id: string | null // 37.2 graduation seam — unwritten by anything in 37.1
+  working_version_id?: string | null // creative room preference only — never a formal master designation
   created_at: string
   updated_at: string
 }
@@ -393,6 +394,13 @@ export type DiaryEventPayloadMap = {
     blockType: LyricBlockType
     customLabel: string | null
     operation: 'opened' | 'resolved' | 'reopened'
+  }
+  /** Trigger-sourced immutable delivery of a rough mix plus an aligned dry vocal to a room member. */
+  producer_handoff: {
+    handoffId: string
+    roughVersionId: string
+    recipientUserId: string
+    note?: string | null
   }
   /** App-authored — the one exception to trigger-sourced capture. Written directly by a service-role route, never a trigger. */
   note: {

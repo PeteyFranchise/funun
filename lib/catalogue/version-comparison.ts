@@ -6,9 +6,17 @@ export type ComparisonVersionFacts = {
 }
 
 export function defaultComparisonIds(
-  versionsNewestFirst: ComparisonVersionFacts[]
+  versionsNewestFirst: ComparisonVersionFacts[],
+  workingVersionId: string | null = null
 ): { sideAId: string; sideBId: string } | null {
   if (versionsNewestFirst.length < 2) return null
+  const working = workingVersionId
+    ? versionsNewestFirst.find(version => version.id === workingVersionId)
+    : null
+  if (working) {
+    const comparison = versionsNewestFirst.find(version => version.id !== working.id)!
+    return { sideAId: comparison.id, sideBId: working.id }
+  }
   return {
     sideAId: versionsNewestFirst[1]!.id,
     sideBId: versionsNewestFirst[0]!.id,

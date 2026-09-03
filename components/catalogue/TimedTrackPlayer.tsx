@@ -14,15 +14,19 @@ type TimedTrackPlayerProps = {
   versionId: string
   display: string
   description: string
+  label?: string | null
   playbackUrl: string
   durationSeconds: number | null
   isLatest: boolean
   isAiTagged: boolean
+  isWorking?: boolean
   refreshToken: number
   onActivity: (playing: boolean) => void
   onCommentChanged: () => void
   onRecordOver?: () => void
   onArchive?: () => Promise<void>
+  onRename?: (label: string) => Promise<{ ok: boolean; error?: string }>
+  onMakeWorking?: () => Promise<{ ok: boolean; error?: string }>
   recordOverLabel?: string
   draftOwnerId?: string
 }
@@ -71,15 +75,19 @@ export function TimedTrackPlayer({
   versionId,
   display,
   description,
+  label = null,
   playbackUrl,
   durationSeconds,
   isLatest,
   isAiTagged,
+  isWorking = false,
   refreshToken,
   onActivity,
   onCommentChanged,
   onRecordOver,
   onArchive,
+  onRename,
+  onMakeWorking,
   recordOverLabel = '● Record over this beat',
   draftOwnerId = 'viewer',
 }: TimedTrackPlayerProps) {
@@ -99,12 +107,37 @@ export function TimedTrackPlayer({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState(false)
+  const [labelDraft, setLabelDraft] = useState(label ?? '')
+  const [takeSaving, setTakeSaving] = useState(false)
+  const [takeError, setTakeError] = useState<string | null>(null)
   const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
 
   useEffect(() => {
     const recovered = readTextDraft(commentDraftKey)
     if (recovered?.text) setDraft(recovered.text)
   }, [commentDraftKey])
+
+  useEffect(() => setLabelDraft(label ?? ''), [label])
+
+  async function saveTakeName() {
+    if (!onRename || takeSaving) return
+    setTakeSaving(true)
+    setTakeError(null)
+    const result = await onRename(labelDraft)
+    setTakeSaving(false)
+    if (!result.ok) setTakeError(result.error ?? 'Could not rename that take.')
+    else setRenaming(false)
+  }
+
+  async function makeWorkingTake() {
+    if (!onMakeWorking || takeSaving || isWorking) return
+    setTakeSaving(true)
+    setTakeError(null)
+    const result = await onMakeWorking()
+    setTakeSaving(false)
+    if (!result.ok) setTakeError(result.error ?? 'Could not choose that working take.')
+  }
 
   const loadComments = useCallback(async () => {
     const response = await fetch(`/api/works/${workId}/versions/${versionId}/comments`, { cache: 'no-store' })
@@ -265,7 +298,10 @@ export function TimedTrackPlayer({
       />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-semibold text-white">{display} {description}</p>
+          <p className="flex flex-wrap items-center gap-1.5 text-[12px] font-semibold text-white">
+            <span className="truncate">{display} {description}</span>
+            {isWorking && <span className="rounded-full border border-brandindigo/50 bg-brandindigo/10 px-2 py-0.5 text-[8px] uppercase tracking-[.1em] text-brandindigo">Working take</span>}
+          </p>
           <p className="mt-0.5 text-[9px] text-lavdim">
             {isAiTagged ? 'AI noted · ' : ''}{unresolvedCount} unresolved {unresolvedCount === 1 ? 'note' : 'notes'}
           </p>
@@ -279,6 +315,16 @@ export function TimedTrackPlayer({
           {playing ? 'Ⅱ' : '▶'}
         </button>
       </div>
+
+      {renaming && onRename && (
+        <div className="mt-3 rounded-[8px] border border-hair bg-card2 p-2.5">
+          <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Take name<input autoFocus type="text" value={labelDraft} maxLength={200} placeholder="Hook idea, Maya’s favorite…" onChange={event => setLabelDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void saveTakeName(); if (event.key === 'Escape') setRenaming(false) }} className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+          <div className="mt-2 flex items-center justify-end gap-3">
+            <button type="button" disabled={takeSaving} onClick={() => { setLabelDraft(label ?? ''); setRenaming(false) }} className="text-[9px] text-lavdim hover:text-white disabled:opacity-40">Cancel</button>
+            <button type="button" disabled={takeSaving} onClick={() => void saveTakeName()} className="text-[9px] font-semibold text-brandindigo hover:text-white disabled:opacity-40">{takeSaving ? 'Saving…' : labelDraft.trim() ? 'Save name' : 'Clear name'}</button>
+          </div>
+        </div>
+      )}
 
       <div className="relative mt-3 h-[58px]" aria-label={`Timeline for ${display}`}>
         <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-9 items-center gap-px overflow-hidden">
@@ -330,10 +376,13 @@ export function TimedTrackPlayer({
           <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
             {recordOverLabel}
           </button>
+          {onRename && <button type="button" disabled={takeSaving} onClick={() => { setTakeError(null); setRenaming(current => !current) }} className="text-[10px] text-lavdim hover:text-white disabled:opacity-40">Name</button>}
+          {!isWorking && onMakeWorking && <button type="button" disabled={takeSaving} onClick={() => void makeWorkingTake()} className="text-[10px] text-lavdim hover:text-brandindigo disabled:opacity-40">Make working</button>}
           {onArchive && <button type="button" onClick={() => void onArchive()} className="text-[10px] text-lavdim hover:text-white">Archive</button>}
         </div>
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
+      {takeError && <p role="alert" className="mt-2 text-[10px] text-red-300">{takeError}</p>}
 
       {isLatest && carryOffer && (
         <div className="mt-3 border-t border-hair pt-3">

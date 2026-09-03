@@ -252,6 +252,21 @@ describe('WorkPage', () => {
     expect(onePlayable).not.toContain('Compare two takes')
   })
 
+  it('puts the shared working take first without renumbering the versions', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [
+            { ...baseVersions[0]!, id: 'v3', display: 'v3', description: 'Newest take', createdAt: '2026-01-03T00:00:00Z' },
+            { ...baseVersions[0]!, id: 'v2', display: 'v2', description: 'Working hook', createdAt: '2026-01-02T00:00:00Z', isWorking: true },
+          ],
+        })}
+      />
+    )
+    expect(markup).toContain('Working take')
+    expect(markup.indexOf('v2 Working hook')).toBeLessThan(markup.indexOf('v3 Newest take'))
+  })
+
   it('surfaces alternate lyric suggestions on original sections', () => {
     const markup = renderToStaticMarkup(
       <WorkPage {...makeProps({ suggestionCounts: { b1: 2 } })} />

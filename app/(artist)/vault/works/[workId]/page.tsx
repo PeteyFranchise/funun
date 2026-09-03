@@ -13,6 +13,7 @@ import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } fr
 import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
 import { buildSingerCandidates } from '@/lib/catalogue/singer-options'
+import { safeAudioDownloadName } from '@/lib/catalogue/producer-handoff'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -111,7 +112,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -164,6 +165,12 @@ export default async function WorkComposerPage({
         .select('base_version_id, rendered_version_id, status')
         .eq('work_id', workId)
         .eq('created_by', user.id),
+      supabase
+        .from('work_recording_handoffs')
+        .select('id, rough_version_id, recipient_user_id, vocal_path, note, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: false })
+        .limit(25),
     ])
 
   const workRow = workRes.data as Work | null
@@ -193,6 +200,14 @@ export default async function WorkComposerPage({
     base_version_id: string
     rendered_version_id: string | null
     status: 'draft' | 'saved'
+  }[]
+  const handoffs = (handoffsRes.data ?? []) as {
+    id: string
+    rough_version_id: string
+    recipient_user_id: string | null
+    vocal_path: string
+    note: string | null
+    created_at: string
   }[]
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
@@ -273,8 +288,28 @@ export default async function WorkComposerPage({
   // storage calls; plan 06's batch URL signer (imported as a namespace so
   // its name appears exactly once in this file, at the call site below)
   // mints every URL this page and its diary need in a single request.
-  const paths = versions.map(v => v.audio_path)
+  const paths = [...versions.map(v => v.audio_path), ...handoffs.map(handoff => handoff.vocal_path)]
   const signedByPath = await CatalogueAudio.signVersionUrls(paths)
+  const versionsById = new Map(versions.map(version => [version.id, version]))
+  const handoffDownloads = new Map<string, { roughUrl: string | null; vocalUrl: string | null }>()
+  function asDownload(url: string | null | undefined, fileName: string): string | null {
+    if (!url) return null
+    try {
+      const download = new URL(url)
+      download.searchParams.set('download', fileName)
+      return download.toString()
+    } catch {
+      return null
+    }
+  }
+  handoffs.forEach(handoff => {
+    const rough = versionsById.get(handoff.rough_version_id)
+    if (!rough) return
+    handoffDownloads.set(handoff.id, {
+      roughUrl: asDownload(signedByPath[rough.audio_path], safeAudioDownloadName(work.title, 'rough-mix')),
+      vocalUrl: asDownload(signedByPath[handoff.vocal_path], safeAudioDownloadName(work.title, 'dry-vocal')),
+    })
+  })
 
   // ─── Derived presentation — server-side, so the numbers a component
   // renders are byte-identical to what an export would produce ─────────
@@ -334,6 +369,22 @@ export default async function WorkComposerPage({
     // Only a hand-authored note, and only the viewer's own, may be removed
     // — the delete route enforces the same two facts server-side.
     const canRemove = view.kind === 'note' && typed.actor_user_id === user.id
+    if (view.kind === 'producer_handoff') {
+      const payload = (row as { payload: { handoffId?: string; recipientUserId?: string; note?: string | null } }).payload
+      const handoff = payload.handoffId ? handoffs.find(item => item.id === payload.handoffId) : undefined
+      const downloads = payload.handoffId ? handoffDownloads.get(payload.handoffId) : undefined
+      return {
+        ...view,
+        id: row.id,
+        canRemove: false,
+        handoff: handoff ? {
+          recipientName: payload.recipientUserId ? namesById[payload.recipientUserId] ?? 'Room member' : 'Room member',
+          note: handoff.note,
+          roughUrl: downloads?.roughUrl ?? null,
+          vocalUrl: downloads?.vocalUrl ?? null,
+        } : undefined,
+      }
+    }
     if (view.kind === 'version') {
       const payload = (row as { payload: { versionId?: string } }).payload
       const version = payload.versionId ? versions.find(v => v.id === payload.versionId) : undefined
@@ -360,6 +411,7 @@ export default async function WorkComposerPage({
       id: v.id,
       display: presentation.display,
       description: presentation.description,
+      label: v.label,
       isAiTagged,
       playbackUrl: signedByPath[v.audio_path] ?? null,
       durationSeconds: v.duration_seconds,
@@ -368,6 +420,7 @@ export default async function WorkComposerPage({
       archivedAt: v.archived_at ?? null,
       canManage: access.isOwner || v.user_id === user.id,
       recordingSessionStatus: recordingSession?.status ?? null,
+      isWorking: work.working_version_id === v.id,
     }
   })
 

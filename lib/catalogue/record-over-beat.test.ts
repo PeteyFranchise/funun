@@ -1,4 +1,4 @@
-import { clipEndMs, clipOverlapsRange, clipTimelineWindow, formatRecorderTime, sessionDurationMs, waveformPeaks } from './record-over-beat'
+import { clipEndMs, clipOverlapsRange, clipTimelineWindow, DRY_VOCAL_STEM_LEVELS, formatRecorderTime, sessionDurationMs, waveformPeaks } from './record-over-beat'
 
 describe('record-over-beat timeline helpers', () => {
   it('formats recorder time without rounding ahead', () => {
@@ -29,5 +29,9 @@ describe('record-over-beat timeline helpers', () => {
     const samples = new Float32Array([0, 0.25, -0.5, 1])
     const peaks = waveformPeaks({ length: samples.length, numberOfChannels: 1, getChannelData: () => samples }, 2)
     expect(peaks).toEqual([0.25, 1])
+  })
+
+  it('renders producer stems with no beat and unity dry-vocal gain', () => {
+    expect(DRY_VOCAL_STEM_LEVELS).toEqual({ beatGain: 0, vocalGain: 1 })
   })
 })

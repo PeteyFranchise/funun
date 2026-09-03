@@ -51,6 +51,7 @@ import type {
 import type { SongPassportView } from '@/lib/song-passport/view'
 import type { SingerCandidate } from '@/lib/catalogue/singer-options'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import { workingTakeFirst } from '@/lib/catalogue/take-workflow'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -87,6 +88,7 @@ export type VersionCardData = {
   /** "v4" — deriveVersionNumerals()'s own display string, from the server. */
   display: string
   description: string
+  label?: string | null
   /** An ai_entries row exists at level='version' pointing at this take. */
   isAiTagged: boolean
   /** Signed server-side (plan 06) — this component never constructs one. */
@@ -97,6 +99,7 @@ export type VersionCardData = {
   archivedAt?: string | null
   canManage?: boolean
   recordingSessionStatus?: 'draft' | 'saved' | null
+  isWorking?: boolean
 }
 
 export type WorkPageProps = {
@@ -300,6 +303,8 @@ function VersionsList({
   onCompare,
   onRecordOver,
   onTakeManaged,
+  onTakeRenamed,
+  onWorkingTake,
   draftOwnerId,
 }: {
   workId: string
@@ -310,12 +315,16 @@ function VersionsList({
   onCompare: () => void
   onRecordOver: (version: VersionCardData & { playbackUrl: string }) => void
   onTakeManaged: (versionId: string, archived: boolean) => Promise<void>
+  onTakeRenamed: (versionId: string, label: string) => Promise<{ ok: boolean; error?: string }>
+  onWorkingTake: (versionId: string) => Promise<{ ok: boolean; error?: string }>
   draftOwnerId: string
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
   }
-  const activeVersions = versions.filter(version => !version.archivedAt)
+  const chronologicalActiveVersions = versions.filter(version => !version.archivedAt)
+  const activeVersions = workingTakeFirst(chronologicalActiveVersions, versions.find(version => version.isWorking)?.id ?? null)
+  const latestVersionId = chronologicalActiveVersions[0]?.id ?? null
   const archivedVersions = versions.filter(version => version.archivedAt)
   return (
     <div className="flex flex-col gap-2">
@@ -328,22 +337,26 @@ function VersionsList({
           ⇄ Compare two takes
         </button>
       )}
-      {activeVersions.map((v, index) => v.playbackUrl ? (
+      {activeVersions.map(v => v.playbackUrl ? (
         <TimedTrackPlayer
           key={v.id}
           workId={workId}
           versionId={v.id}
           display={v.display}
           description={v.description}
+          label={v.label ?? null}
           playbackUrl={v.playbackUrl}
           durationSeconds={v.durationSeconds}
-          isLatest={index === 0}
+          isLatest={v.id === latestVersionId}
+          isWorking={Boolean(v.isWorking)}
           isAiTagged={v.isAiTagged}
           refreshToken={commentRefreshes[v.id] ?? 0}
           onActivity={playing => onActivity(playing ? 'listening' : 'recently_active', playing ? v.display : undefined)}
           onCommentChanged={() => onCommentChanged(v.id)}
           onRecordOver={() => onRecordOver({ ...v, playbackUrl: v.playbackUrl! })}
           onArchive={v.canManage ? () => onTakeManaged(v.id, true) : undefined}
+          onRename={label => onTakeRenamed(v.id, label)}
+          onMakeWorking={() => onWorkingTake(v.id)}
           recordOverLabel={v.recordingSessionStatus === 'draft'
             ? '↻ Resume vocal draft'
             : v.recordingSessionStatus === 'saved'
@@ -871,6 +884,28 @@ export function WorkPage({
     }
     router.refresh()
     showToast(archived ? 'Take archived — its history is still safe' : 'Take restored')
+  }
+
+  async function handleTakeRenamed(versionId: string, label: string): Promise<{ ok: boolean; error?: string }> {
+    const response = await fetch(`/api/works/${workId}/versions/${versionId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }),
+    })
+    const body = (await response.json().catch(() => ({}))) as { error?: string }
+    if (!response.ok) return { ok: false, error: body.error ?? 'Could not rename that take.' }
+    showToast(label.trim() ? 'Take renamed' : 'Take name cleared')
+    router.refresh()
+    return { ok: true }
+  }
+
+  async function handleWorkingTake(versionId: string): Promise<{ ok: boolean; error?: string }> {
+    const response = await fetch(`/api/works/${workId}/versions/${versionId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ working: true }),
+    })
+    const body = (await response.json().catch(() => ({}))) as { error?: string }
+    if (!response.ok) return { ok: false, error: body.error ?? 'Could not choose that working take.' }
+    showToast('Working take updated — this is a creative choice, not a master approval')
+    router.refresh()
+    return { ok: true }
   }
 
   // ─── The pad's mutations — every one PATCHes/POSTs plan 07's routes,
@@ -1483,6 +1518,8 @@ export function WorkPage({
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
                 onTakeManaged={handleTakeManaged}
+                onTakeRenamed={handleTakeRenamed}
+                onWorkingTake={handleWorkingTake}
                 draftOwnerId={presence.viewer.userId}
               />
             </div>
@@ -1533,6 +1570,8 @@ export function WorkPage({
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
                 onTakeManaged={handleTakeManaged}
+                onTakeRenamed={handleTakeRenamed}
+                onWorkingTake={handleWorkingTake}
                 draftOwnerId={presence.viewer.userId}
               />
             )}
@@ -1745,6 +1784,7 @@ export function WorkPage({
           <VersionComparisonPanel
             workId={workId}
             versions={comparableVersions}
+            workingVersionId={versions.find(version => version.isWorking)?.id ?? null}
             onClose={() => setFlow(null)}
             onActivity={(playing, display) => announceRoomActivity(
               playing ? 'listening' : 'recently_active',
@@ -1764,6 +1804,9 @@ export function WorkPage({
             baseDisplay={flow.version.display}
             baseDescription={flow.version.description}
             playbackUrl={flow.version.playbackUrl}
+            handoffRecipients={presence.people
+              .filter(person => person.userId !== presence.viewer.userId)
+              .map(person => ({ userId: person.userId, name: person.name }))}
             onSaved={() => {
               setFlow(null)
               router.refresh()
