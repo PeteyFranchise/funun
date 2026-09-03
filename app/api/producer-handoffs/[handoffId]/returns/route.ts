@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
-import { normalizeHandoffNote, PRODUCER_HANDOFF_NOTE_MAX } from '@/lib/catalogue/producer-handoff'
+import {
+  normalizeHandoffNote,
+  normalizeHandoffRoundLabel,
+  PRODUCER_HANDOFF_NOTE_MAX,
+  PRODUCER_HANDOFF_ROUND_LABEL_MAX,
+  type ProducerFeedbackResponse,
+  type ProducerFeedbackSnapshot,
+} from '@/lib/catalogue/producer-handoff'
 import { createNotification } from '@/lib/notifications'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 
@@ -11,6 +18,11 @@ type RouteCtx = { params: Promise<{ handoffId: string }> }
 const ReturnSchema = z.object({
   versionId: z.string().uuid(),
   note: z.string().max(PRODUCER_HANDOFF_NOTE_MAX).nullable(),
+  roundLabel: z.string().max(PRODUCER_HANDOFF_ROUND_LABEL_MAX).nullable().optional(),
+  feedbackResponses: z.array(z.object({
+    feedbackId: z.string().uuid(),
+    status: z.enum(['done', 'tried', 'discuss']),
+  }).strict()).max(25).default([]),
 }).strict()
 
 export async function POST(request: Request, { params }: RouteCtx) {
@@ -28,7 +40,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const service = createServiceClient()
   const { data: handoff } = await service
     .from('work_recording_handoffs')
-    .select('id, work_id, created_by, recipient_user_id, created_at')
+    .select('id, work_id, created_by, recipient_user_id, created_at, feedback_snapshot')
     .eq('id', handoffId)
     .eq('recipient_user_id', user.id)
     .maybeSingle()
@@ -64,6 +76,19 @@ export async function POST(request: Request, { params }: RouteCtx) {
   }
 
   const note = input.note === null ? null : normalizeHandoffNote(input.note)
+  const roundLabel = normalizeHandoffRoundLabel(input.roundLabel ?? '')
+  const feedbackSnapshot = Array.isArray(handoff.feedback_snapshot)
+    ? handoff.feedback_snapshot as ProducerFeedbackSnapshot[]
+    : []
+  const validFeedbackIds = new Set(feedbackSnapshot.map(feedback => feedback.feedbackId))
+  const responseById = new Map<string, ProducerFeedbackResponse>()
+  for (const response of input.feedbackResponses) {
+    if (!validFeedbackIds.has(response.feedbackId)) {
+      return NextResponse.json({ error: 'One of those feedback items is not part of this producer handoff.' }, { status: 400 })
+    }
+    responseById.set(response.feedbackId, response)
+  }
+  const feedbackResponses = Array.from(responseById.values())
   const { error: receiptError } = await service
     .from('work_recording_handoff_receipts')
     .upsert(
@@ -74,7 +99,15 @@ export async function POST(request: Request, { params }: RouteCtx) {
 
   const { data, error } = await service
     .from('work_recording_handoff_returns')
-    .insert({ handoff_id: handoffId, work_id: handoff.work_id, version_id: input.versionId, created_by: user.id, note })
+    .insert({
+      handoff_id: handoffId,
+      work_id: handoff.work_id,
+      version_id: input.versionId,
+      created_by: user.id,
+      note,
+      round_label: roundLabel,
+      feedback_responses: feedbackResponses,
+    })
     .select('id, version_id')
     .single()
   if (error || !data) return NextResponse.json({ error: error?.message ?? 'The mix saved, but could not be linked to the handoff.' }, { status: 409 })
@@ -89,7 +122,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     type: 'writer_room_producer_mix_returned',
     title: `${actorName} returned a new mix`,
     body: `${work?.title ?? 'Your song'}: the mix is back in the Writer’s Room as a new take.`,
-    link: `/vault/works/${handoff.work_id}?version=${input.versionId}`,
+    link: `/vault/works/${handoff.work_id}?handoff=${handoffId}&version=${input.versionId}`,
     data: { workId: handoff.work_id, handoffId, versionId: input.versionId },
     actorId: user.id,
     actorName,

@@ -93,6 +93,7 @@ export function TimedTrackPlayer({
   recordOverLabel = '● Record over this beat',
   draftOwnerId = 'viewer',
 }: TimedTrackPlayerProps) {
+  const playerRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [durationMs, setDurationMs] = useState(Math.max(0, Math.round((durationSeconds ?? 0) * 1000)))
@@ -167,6 +168,7 @@ export function TimedTrackPlayer({
         if (Number.isFinite(linkedPosition) && linkedPosition >= 0) setPositionMs(linkedPosition)
         if (linkedRootId) setSelectedRootId(linkedRootId)
         setOpen(true)
+        window.requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
       }
     }
   }, [isLatest, versionId, workId])
@@ -283,7 +285,7 @@ export function TimedTrackPlayer({
   }
 
   return (
-    <div className="rounded-[11px] border border-hair bg-card px-3 py-3">
+    <div ref={playerRef} className="rounded-[11px] border border-hair bg-card px-3 py-3">
       <audio
         ref={audioRef}
         src={playbackUrl}

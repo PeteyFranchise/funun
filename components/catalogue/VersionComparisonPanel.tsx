@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
+import { analyzePlaybackLevels } from '@/lib/catalogue/level-match'
 import {
   clampComparisonPosition,
   comparisonResolutionLabel,
@@ -65,6 +66,8 @@ export function VersionComparisonPanel({
   const [selectedComment, setSelectedComment] = useState<{ versionId: string; commentId: string } | null>(null)
   const [loading, setLoading] = useState(initialComments === undefined)
   const [saving, setSaving] = useState(false)
+  const [levelMatch, setLevelMatch] = useState<'off' | 'analyzing' | 'on'>('off')
+  const [levelVolumes, setLevelVolumes] = useState({ a: 1, b: 1 })
   const [error, setError] = useState<string | null>(null)
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({})
 
@@ -106,6 +109,13 @@ export function VersionComparisonPanel({
   useEffect(() => () => {
     Object.values(audioRefs.current).forEach(audio => audio?.pause())
   }, [])
+
+  useEffect(() => {
+    const sideAAudio = audioRefs.current[sideA.id]
+    const sideBAudio = audioRefs.current[sideB.id]
+    if (sideAAudio) sideAAudio.volume = levelMatch === 'on' ? levelVolumes.a : 1
+    if (sideBAudio) sideBAudio.volume = levelMatch === 'on' ? levelVolumes.b : 1
+  }, [levelMatch, levelVolumes, sideA.id, sideB.id])
 
   function applyPosition(nextMs: number) {
     const next = clampComparisonPosition(nextMs, activeDurationMs / 1000)
@@ -154,10 +164,32 @@ export function VersionComparisonPanel({
     if (selectedComment?.versionId === oldVersion.id) setSelectedComment(null)
     if (side === 'a') setSideAId(versionId)
     else setSideBId(versionId)
+    setLevelMatch('off')
+    setLevelVolumes({ a: 1, b: 1 })
     if (wasActive) {
       setPlaying(false)
       const next = versions.find(version => version.id === versionId)
       setPositionMs(clampComparisonPosition(positionMs, next?.durationSeconds ?? null))
+    }
+  }
+
+  async function toggleLevelMatch() {
+    if (levelMatch === 'analyzing') return
+    if (levelMatch === 'on') {
+      setLevelMatch('off')
+      setLevelVolumes({ a: 1, b: 1 })
+      return
+    }
+    setLevelMatch('analyzing')
+    setError(null)
+    try {
+      const volumes = await analyzePlaybackLevels(sideA.playbackUrl, sideB.playbackUrl)
+      setLevelVolumes(volumes)
+      setLevelMatch('on')
+    } catch {
+      setLevelMatch('off')
+      setLevelVolumes({ a: 1, b: 1 })
+      setError('Level matching is unavailable for these takes. You can still compare them normally.')
     }
   }
 
@@ -291,7 +323,17 @@ export function VersionComparisonPanel({
           <p className="truncate text-[13px] font-semibold text-white">Listening to {activeVersion.display} · {activeVersion.description}</p>
           <p className="text-[10px] text-lavdim">{formatTrackTimestamp(positionMs)} / {formatTrackTimestamp(activeDurationMs)}</p>
         </div>
+        <button
+          type="button"
+          disabled={levelMatch === 'analyzing'}
+          onClick={() => void toggleLevelMatch()}
+          aria-pressed={levelMatch === 'on'}
+          className="ml-auto shrink-0 rounded-[8px] border border-hairstrong bg-card2 px-3 py-2 text-[10px] font-semibold text-lav hover:border-brandindigo hover:text-white disabled:opacity-40"
+        >
+          {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
+        </button>
       </div>
+      <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file.</p>
 
       <div className="relative mt-4 h-[76px]" aria-label={`Comparison timeline for ${activeVersion.display}`}>
         <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-11 items-center gap-px overflow-hidden">

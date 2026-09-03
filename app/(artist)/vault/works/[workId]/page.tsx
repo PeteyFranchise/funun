@@ -13,7 +13,11 @@ import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } fr
 import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
 import { buildSingerCandidates } from '@/lib/catalogue/singer-options'
-import { safeAudioDownloadName } from '@/lib/catalogue/producer-handoff'
+import {
+  safeAudioDownloadName,
+  type ProducerFeedbackResponse,
+  type ProducerFeedbackSnapshot,
+} from '@/lib/catalogue/producer-handoff'
 import { safeTakeDownloadName } from '@/lib/catalogue/take-workflow'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
@@ -22,6 +26,10 @@ import type { LyricsPadBlock } from '@/components/catalogue/LyricsPad'
 import type { LyricBlockAuthor, LyricBlockSinger } from '@/components/catalogue/LyricBlockCard'
 import type { DiaryFeedEntry } from '@/components/catalogue/DiaryFeed'
 import type { ReturnedMixReviewItem } from '@/components/catalogue/ReturnedMixReviewCard'
+import type {
+  ProducerHandoffTimelineItem,
+  ProducerHandoffTimelineReturn,
+} from '@/components/catalogue/ProducerHandoffTimeline'
 import type { RoomPresencePerson } from '@/lib/catalogue/room-presence'
 import type {
   Work,
@@ -87,10 +95,13 @@ function initialOf(name: string | null | undefined): string {
 
 export default async function WorkComposerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workId: string }>
+  searchParams: Promise<{ handoff?: string }>
 }) {
   const { workId } = await params
+  const { handoff: highlightedHandoffId } = await searchParams
 
   const supabase = await createServerClient()
   const {
@@ -114,7 +125,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes, receiptsRes, handoffProgressRes, handoffNudgesRes, handoffActivityRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -169,20 +180,42 @@ export default async function WorkComposerPage({
         .eq('created_by', user.id),
       supabase
         .from('work_recording_handoffs')
-        .select('id, rough_version_id, recipient_user_id, vocal_path, note, created_at')
+        .select('id, rough_version_id, recipient_user_id, created_by, vocal_path, vocal_size, note, round_label, bpm, musical_key, reference_url, feedback_snapshot, created_at')
         .eq('work_id', workId)
         .order('created_at', { ascending: false })
         .limit(25),
       supabase
         .from('work_recording_handoff_returns')
-        .select('id, version_id, created_by, note, created_at')
+        .select('id, handoff_id, version_id, created_by, note, round_label, feedback_responses, created_at')
         .eq('work_id', workId)
         .order('created_at', { ascending: false })
         .limit(25),
       supabase
         .from('work_recording_handoff_return_reviews')
-        .select('return_id')
+        .select('return_id, outcome, reviewed_at')
         .eq('work_id', workId)
+        .limit(100),
+      supabase
+        .from('work_recording_handoff_receipts')
+        .select('handoff_id, acknowledged_at')
+        .eq('work_id', workId)
+        .limit(100),
+      supabase
+        .from('work_recording_handoff_progress')
+        .select('handoff_id, working_at')
+        .eq('work_id', workId)
+        .limit(100),
+      supabase
+        .from('work_recording_handoff_nudges')
+        .select('handoff_id, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase
+        .from('work_recording_handoff_activity')
+        .select('handoff_id, actor_user_id, kind, version_id, last_at')
+        .eq('work_id', workId)
+        .order('last_at', { ascending: false })
         .limit(100),
     ])
 
@@ -218,20 +251,43 @@ export default async function WorkComposerPage({
     id: string
     rough_version_id: string
     recipient_user_id: string | null
+    created_by: string
     vocal_path: string
+    vocal_size: number | null
     note: string | null
+    round_label: string | null
+    bpm: number | null
+    musical_key: string | null
+    reference_url: string | null
+    feedback_snapshot: ProducerFeedbackSnapshot[]
     created_at: string
   }[]
   const returnedMixes = (returnsRes.data ?? []) as {
     id: string
+    handoff_id: string
     version_id: string
     created_by: string | null
     note: string | null
+    round_label: string | null
+    feedback_responses: ProducerFeedbackResponse[]
     created_at: string
   }[]
-  const reviewedReturnIds = new Set(
-    ((returnReviewsRes.data ?? []) as { return_id: string }[]).map(review => review.return_id)
-  )
+  const returnReviews = (returnReviewsRes.data ?? []) as {
+    return_id: string
+    outcome: 'made_working' | 'kept_current'
+    reviewed_at: string
+  }[]
+  const reviewedReturnIds = new Set(returnReviews.map(review => review.return_id))
+  const receipts = (receiptsRes.data ?? []) as { handoff_id: string; acknowledged_at: string }[]
+  const handoffProgress = (handoffProgressRes.data ?? []) as { handoff_id: string; working_at: string }[]
+  const handoffNudges = (handoffNudgesRes.data ?? []) as { handoff_id: string; created_at: string }[]
+  const handoffActivity = (handoffActivityRes.data ?? []) as {
+    handoff_id: string
+    actor_user_id: string
+    kind: 'listened' | 'compared'
+    version_id: string | null
+    last_at: string
+  }[]
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
   const collaboratorIds = Array.from(
@@ -453,6 +509,98 @@ export default async function WorkComposerPage({
     }
   })
   const versionCardsById = new Map(versionCards.map(version => [version.id, version]))
+  const receiptByHandoff = new Map(receipts.map(receipt => [receipt.handoff_id, receipt.acknowledged_at]))
+  const progressByHandoff = new Map(handoffProgress.map(progress => [progress.handoff_id, progress.working_at]))
+  const latestNudgeByHandoff = new Map<string, string>()
+  for (const nudge of handoffNudges) {
+    if (!latestNudgeByHandoff.has(nudge.handoff_id)) latestNudgeByHandoff.set(nudge.handoff_id, nudge.created_at)
+  }
+  const reviewByReturn = new Map(returnReviews.map(review => [review.return_id, review]))
+  const returnsByHandoff = new Map<string, typeof returnedMixes>()
+  for (const returned of returnedMixes) {
+    const current = returnsByHandoff.get(returned.handoff_id) ?? []
+    current.push(returned)
+    returnsByHandoff.set(returned.handoff_id, current)
+  }
+  const activityByHandoff = new Map<string, typeof handoffActivity>()
+  for (const activity of handoffActivity) {
+    const current = activityByHandoff.get(activity.handoff_id) ?? []
+    current.push(activity)
+    activityByHandoff.set(activity.handoff_id, current)
+  }
+
+  const producerHandoffItems: ProducerHandoffTimelineItem[] = handoffs.flatMap(handoff => {
+    const roughVersion = versionsById.get(handoff.rough_version_id)
+    const roughCard = versionCardsById.get(handoff.rough_version_id)
+    if (!roughVersion || !roughCard) return []
+    const timelineReturns: ProducerHandoffTimelineReturn[] = (returnsByHandoff.get(handoff.id) ?? []).flatMap(returned => {
+      const returnVersion = versionsById.get(returned.version_id)
+      const returnCard = versionCardsById.get(returned.version_id)
+      if (!returnVersion || !returnCard) return []
+      const review = reviewByReturn.get(returned.id)
+      return [{
+        returnId: returned.id,
+        versionId: returned.version_id,
+        versionDisplay: returnCard.display,
+        label: returnCard.description,
+        roundLabel: returned.round_label,
+        note: returned.note,
+        returnedAt: returned.created_at,
+        playbackUrl: returnCard.playbackUrl,
+        downloadUrl: returnCard.downloadUrl ?? null,
+        audioExt: returnVersion.audio_ext,
+        audioSize: returnVersion.audio_size,
+        durationSeconds: returnVersion.duration_seconds,
+        feedbackResponses: Array.isArray(returned.feedback_responses) ? returned.feedback_responses : [],
+        review: review ? { outcome: review.outcome, reviewedAt: review.reviewed_at } : null,
+      }]
+    })
+    const lastNudgeAt = latestNudgeByHandoff.get(handoff.id)
+    const canNudge = timelineReturns.length === 0 && (
+      !lastNudgeAt || Date.now() - new Date(lastNudgeAt).getTime() >= 24 * 60 * 60 * 1000
+    )
+    const activities = (activityByHandoff.get(handoff.id) ?? []).map(activity => ({
+      actorName: namesById[activity.actor_user_id] ?? 'Room member',
+      kind: activity.kind,
+      versionDisplay: activity.version_id ? versionCardsById.get(activity.version_id)?.display ?? null : null,
+      lastAt: activity.last_at,
+    }))
+    return [{
+      id: handoff.id,
+      workId: work.id,
+      songTitle: work.title,
+      senderId: handoff.created_by,
+      senderName: namesById[handoff.created_by] ?? 'Room member',
+      recipientId: handoff.recipient_user_id,
+      recipientName: handoff.recipient_user_id ? namesById[handoff.recipient_user_id] ?? 'Room member' : 'Room member',
+      viewerIsSender: handoff.created_by === user.id,
+      viewerIsRecipient: handoff.recipient_user_id === user.id,
+      sentAt: handoff.created_at,
+      acknowledgedAt: receiptByHandoff.get(handoff.id) ?? null,
+      workingAt: progressByHandoff.get(handoff.id) ?? null,
+      canNudge,
+      roundLabel: handoff.round_label,
+      bpm: handoff.bpm,
+      musicalKey: handoff.musical_key,
+      referenceUrl: handoff.reference_url,
+      direction: handoff.note,
+      feedback: Array.isArray(handoff.feedback_snapshot) ? handoff.feedback_snapshot : [],
+      rough: {
+        versionId: roughVersion.id,
+        versionDisplay: roughCard.display,
+        label: roughCard.description,
+        playbackUrl: roughCard.playbackUrl,
+        downloadUrl: roughCard.downloadUrl ?? null,
+        audioExt: roughVersion.audio_ext,
+        audioSize: roughVersion.audio_size,
+        durationSeconds: roughVersion.duration_seconds,
+      },
+      vocalDownloadUrl: handoffDownloads.get(handoff.id)?.vocalUrl ?? null,
+      vocalSize: handoff.vocal_size,
+      returns: timelineReturns,
+      activities,
+    }]
+  })
   const returnedMixReviewItems: ReturnedMixReviewItem[] = returnedMixes.flatMap(returned => {
     if (reviewedReturnIds.has(returned.id)) return []
     const version = versionCardsById.get(returned.version_id)
@@ -641,6 +789,8 @@ export default async function WorkComposerPage({
           diaryEntries={diaryEntries}
           versions={versionCards}
           returnedMixReviews={returnedMixReviewItems}
+          producerHandoffs={producerHandoffItems}
+          highlightedHandoffId={highlightedHandoffId ?? null}
           lyricsBlocks={lyricsPadBlocks}
           suggestionCounts={suggestionCounts}
           vocalState={work.vocal_state}

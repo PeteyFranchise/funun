@@ -23,6 +23,7 @@ import { ExistingTakePicker } from './ExistingTakePicker'
 import { VersionComparisonPanel, type ComparableVersion } from './VersionComparisonPanel'
 import { RecordOverBeatStudio } from './RecordOverBeatStudio'
 import { ReturnedMixReviewCard, type ReturnedMixReviewItem } from './ReturnedMixReviewCard'
+import { ProducerHandoffTimeline, type ProducerHandoffTimelineItem } from './ProducerHandoffTimeline'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -137,6 +138,9 @@ export type WorkPageProps = {
   versions: VersionCardData[]
   /** Unreviewed producer returns only. Review is optional and never gates the room. */
   returnedMixReviews?: ReturnedMixReviewItem[]
+  /** Current and prior production rounds, newest first. Every action remains optional. */
+  producerHandoffs?: ProducerHandoffTimelineItem[]
+  highlightedHandoffId?: string | null
   lyricsBlocks: LyricsPadBlock[]
   suggestionCounts?: Record<string, number>
   vocalState: WorkVocalState
@@ -505,6 +509,8 @@ export function WorkPage({
   diaryEntries,
   versions,
   returnedMixReviews = [],
+  producerHandoffs = [],
+  highlightedHandoffId = null,
   lyricsBlocks,
   suggestionCounts = {},
   vocalState,
@@ -765,6 +771,10 @@ export function WorkPage({
   // fully deterministic with no jsdom in this repo's Jest environment.
   const [viewport, setViewport] = useState<'mobile' | 'desktop'>(initialViewport ?? 'desktop')
   const [mobileTab, setMobileTab] = useState<'diary' | 'versions'>('diary')
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).has('version')) setMobileTab('versions')
+  }, [])
   useEffect(() => {
     if (initialViewport) return
     if (typeof window === 'undefined' || !window.matchMedia) return
@@ -1506,6 +1516,11 @@ export function WorkPage({
           hasWorkingTake={versions.some(version => version.isWorking && !version.archivedAt)}
           onCompare={versionId => setFlow({ kind: 'compare-versions', preferredVersionId: versionId })}
           onReview={handleReturnedMixReview}
+        />
+        <ProducerHandoffTimeline
+          items={producerHandoffs}
+          highlightedHandoffId={highlightedHandoffId}
+          onCompare={(_handoffId, versionId) => setFlow({ kind: 'compare-versions', preferredVersionId: versionId })}
         />
       </div>
 

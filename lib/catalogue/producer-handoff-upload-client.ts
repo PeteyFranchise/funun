@@ -2,7 +2,13 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { BUCKET, MAX_BYTES } from '@/lib/catalogue/audio-mime'
-import { normalizeHandoffNote } from '@/lib/catalogue/producer-handoff'
+import {
+  normalizeHandoffNote,
+  normalizeHandoffRoundLabel,
+  normalizeMusicalKey,
+  normalizeProducerBpm,
+  normalizeReferenceUrl,
+} from '@/lib/catalogue/producer-handoff'
 
 type HandoffIntent = {
   handoffId: string
@@ -22,10 +28,19 @@ export async function uploadProducerHandoff(input: {
   roughVersionId: string
   recipientUserId: string
   note: string
+  roundLabel: string
+  bpm: string
+  musicalKey: string
+  referenceUrl: string
+  feedbackIds: string[]
   vocalStem: Blob
 }): Promise<{ id: string }> {
   if (input.vocalStem.size <= 0) throw new Error('The dry vocal stem is empty.')
   if (input.vocalStem.size > MAX_BYTES) throw new Error(`The dry vocal stem must be under ${MAX_BYTES / (1024 * 1024)} MB.`)
+  const roundLabel = normalizeHandoffRoundLabel(input.roundLabel)
+  const bpm = normalizeProducerBpm(input.bpm)
+  const musicalKey = normalizeMusicalKey(input.musicalKey)
+  const referenceUrl = normalizeReferenceUrl(input.referenceUrl)
 
   const base = `/api/works/${input.workId}/recording-sessions/${input.sessionId}/handoffs`
   const intentResponse = await fetch(`${base}/upload-intent`, {
@@ -56,6 +71,11 @@ export async function uploadProducerHandoff(input: {
       roughVersionId: input.roughVersionId,
       recipientUserId: input.recipientUserId,
       note: normalizeHandoffNote(input.note),
+      roundLabel,
+      bpm,
+      musicalKey,
+      referenceUrl,
+      feedbackIds: Array.from(new Set(input.feedbackIds)).slice(0, 25),
     }),
   })
   if (!completeResponse.ok) throw new Error(await responseError(completeResponse, 'The stem uploaded, but the handoff could not be saved.'))

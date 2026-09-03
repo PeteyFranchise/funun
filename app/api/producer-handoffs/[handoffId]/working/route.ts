@@ -11,12 +11,11 @@ export async function POST(_request: Request, { params }: RouteCtx) {
   const supabase = await createApiClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (await checkRateLimit(`producer-handoff-acknowledge:${user.id}`, { maxAttempts: 30, windowMs: 15 * 60 * 1000 })) {
-    return NextResponse.json({ error: 'Too many acknowledgement attempts. Please slow down.' }, { status: 429 })
+  if (await checkRateLimit(`producer-handoff-working:${user.id}`, { maxAttempts: 30, windowMs: 15 * 60 * 1000 })) {
+    return NextResponse.json({ error: 'Too many progress updates. Please slow down.' }, { status: 429 })
   }
 
-  const service = createServiceClient()
-  const { data: handoff } = await service
+  const { data: handoff } = await supabase
     .from('work_recording_handoffs')
     .select('id, work_id, created_by, recipient_user_id')
     .eq('id', handoffId)
@@ -27,33 +26,25 @@ export async function POST(_request: Request, { params }: RouteCtx) {
   const access = await resolveWorkAccess(createWorkAccessDeps(supabase), handoff.work_id, user.id, 'contribute')
   if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
 
-  const { data: inserted, error } = await service
-    .from('work_recording_handoff_receipts')
-    .upsert(
-      { handoff_id: handoffId, work_id: handoff.work_id, recipient_user_id: user.id },
-      { onConflict: 'handoff_id', ignoreDuplicates: true }
-    )
-    .select('handoff_id, acknowledged_at')
-    .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 })
-  const data = inserted ?? (await service
-    .from('work_recording_handoff_receipts')
-    .select('handoff_id, acknowledged_at')
-    .eq('handoff_id', handoffId)
-    .single()).data
-  if (!data) return NextResponse.json({ error: 'Could not load the handoff acknowledgement.' }, { status: 500 })
+  const service = createServiceClient()
+  const { data, error } = await service.rpc('mark_producer_handoff_working', {
+    p_handoff_id: handoffId,
+    p_producer: user.id,
+  })
+  const progress = Array.isArray(data) ? data[0] : data
+  if (error || !progress) return NextResponse.json({ error: error?.message ?? 'Could not save that progress update.' }, { status: 409 })
 
-  if (inserted) {
+  if (progress.inserted) {
     const [{ data: actor }, { data: work }] = await Promise.all([
       service.from('user_profiles').select('artist_name, handle, avatar_url').eq('id', user.id).maybeSingle(),
       service.from('works').select('title').eq('id', handoff.work_id).maybeSingle(),
     ])
-    const actorName = actor?.artist_name || actor?.handle || 'Your collaborator'
+    const actorName = actor?.artist_name || actor?.handle || 'Your producer'
     await createNotification(service, {
       userId: handoff.created_by,
-      type: 'writer_room_producer_handoff_received',
-      title: `${actorName} received your producer handoff`,
-      body: `${work?.title ?? 'Your song'}: they have the rough mix and aligned dry vocal.`,
+      type: 'writer_room_producer_working',
+      title: `${actorName} is working on your song`,
+      body: `${work?.title ?? 'Your song'}: the producer pack is in motion. No deadline or approval was created.`,
       link: `/vault/works/${handoff.work_id}?handoff=${handoffId}`,
       data: { workId: handoff.work_id, handoffId },
       actorId: user.id,
@@ -62,5 +53,5 @@ export async function POST(_request: Request, { params }: RouteCtx) {
     })
   }
 
-  return NextResponse.json({ data })
+  return NextResponse.json({ data: progress })
 }

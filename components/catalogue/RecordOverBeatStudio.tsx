@@ -17,6 +17,8 @@ import {
 } from '@/lib/catalogue/record-over-beat'
 import { uploadProducerHandoff } from '@/lib/catalogue/producer-handoff-upload-client'
 import { PRODUCER_HANDOFF_NOTE_MAX, type ProducerHandoffRecipient } from '@/lib/catalogue/producer-handoff'
+import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
+import type { WorkVersionCommentView } from '@/types/catalogue'
 
 type Props = {
   workId: string
@@ -92,6 +94,13 @@ export function RecordOverBeatStudio({
   const [handoffOpen, setHandoffOpen] = useState(false)
   const [handoffRecipientId, setHandoffRecipientId] = useState(handoffRecipients[0]?.userId ?? '')
   const [handoffNote, setHandoffNote] = useState('')
+  const [handoffRoundLabel, setHandoffRoundLabel] = useState('')
+  const [handoffBpm, setHandoffBpm] = useState('')
+  const [handoffMusicalKey, setHandoffMusicalKey] = useState('')
+  const [handoffReferenceUrl, setHandoffReferenceUrl] = useState('')
+  const [handoffFeedback, setHandoffFeedback] = useState<WorkVersionCommentView[]>([])
+  const [selectedHandoffFeedbackIds, setSelectedHandoffFeedbackIds] = useState<string[]>([])
+  const [handoffFeedbackLoading, setHandoffFeedbackLoading] = useState(false)
 
   const contextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -120,6 +129,28 @@ export function RecordOverBeatStudio({
   useEffect(() => { clipsRef.current = clips }, [clips])
   useEffect(() => { if (gainsRef.current.beat) gainsRef.current.beat.gain.value = beatGain }, [beatGain])
   useEffect(() => { gainsRef.current.vocals.forEach(gain => { gain.gain.value = vocalGain }) }, [vocalGain])
+
+  useEffect(() => {
+    if (!handoffOpen) return
+    let cancelled = false
+    setHandoffFeedbackLoading(true)
+    void fetch(`/api/works/${workId}/versions/${activeBaseVersionId}/comments`, { cache: 'no-store' })
+      .then(async response => response.ok ? response.json() : { data: [] })
+      .then((body: { data?: WorkVersionCommentView[] }) => {
+        if (cancelled) return
+        const available = (body.data ?? []).filter(comment => comment.parentCommentId === null && comment.resolvedAt === null)
+        setHandoffFeedback(available)
+        setSelectedHandoffFeedbackIds(available.map(comment => comment.id))
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHandoffFeedback([])
+          setSelectedHandoffFeedbackIds([])
+        }
+      })
+      .finally(() => { if (!cancelled) setHandoffFeedbackLoading(false) })
+    return () => { cancelled = true }
+  }, [activeBaseVersionId, handoffOpen, workId])
 
   useEffect(() => {
     let cancelled = false
@@ -593,6 +624,11 @@ export function RecordOverBeatStudio({
       roughVersionId,
       recipientUserId: handoffRecipientId,
       note: handoffNote,
+      roundLabel: handoffRoundLabel,
+      bpm: handoffBpm,
+      musicalKey: handoffMusicalKey,
+      referenceUrl: handoffReferenceUrl,
+      feedbackIds: selectedHandoffFeedbackIds,
       vocalStem,
     })
   }
@@ -783,9 +819,26 @@ export function RecordOverBeatStudio({
             <button type="button" disabled={saving} onClick={() => setHandoffOpen(false)} className="text-[12px] text-lavdim hover:text-white disabled:opacity-40">✕</button>
           </div>
           {handoffRecipients.length > 0 ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Send to<select value={handoffRecipientId} onChange={event => setHandoffRecipientId(event.target.value)} className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] normal-case tracking-normal text-white outline-none focus:border-brandindigo">{handoffRecipients.map(person => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select></label>
-              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Note (optional)<textarea value={handoffNote} maxLength={PRODUCER_HANDOFF_NOTE_MAX} onChange={event => setHandoffNote(event.target.value)} rows={2} placeholder="What should they listen for?" className="mt-1.5 w-full resize-none rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Round name (optional)<input type="text" value={handoffRoundLabel} maxLength={80} onChange={event => setHandoffRoundLabel(event.target.value)} placeholder="First pass, vocal-up revision…" className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">BPM (optional)<input type="number" min={20} max={300} step={1} value={handoffBpm} onChange={event => setHandoffBpm(event.target.value)} placeholder="92" className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Key (optional)<input type="text" value={handoffMusicalKey} maxLength={24} onChange={event => setHandoffMusicalKey(event.target.value)} placeholder="F# minor" className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim sm:col-span-2">Reference link (optional)<input type="url" value={handoffReferenceUrl} maxLength={500} onChange={event => setHandoffReferenceUrl(event.target.value)} placeholder="Spotify, Apple Music, YouTube, or another https:// link" className="mt-1.5 w-full rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim sm:col-span-2">What are we changing? (optional)<textarea value={handoffNote} maxLength={PRODUCER_HANDOFF_NOTE_MAX} onChange={event => setHandoffNote(event.target.value)} rows={2} placeholder="Bring the drums forward in the hook; keep the vocal intimate." className="mt-1.5 w-full resize-none rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
+              <fieldset className="rounded-[9px] border border-hair bg-card p-3 sm:col-span-2">
+                <legend className="px-1 text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Timed feedback to include (optional)</legend>
+                {handoffFeedbackLoading ? <p className="text-[10px] text-lavdim">Loading open timed notes…</p> : handoffFeedback.length > 0 ? (
+                  <div className="space-y-2">
+                    {handoffFeedback.map(comment => (
+                      <label key={comment.id} className="flex items-start gap-2 text-[10px] leading-4 text-lav">
+                        <input type="checkbox" checked={selectedHandoffFeedbackIds.includes(comment.id)} onChange={event => setSelectedHandoffFeedbackIds(current => event.target.checked ? [...current, comment.id] : current.filter(id => id !== comment.id))} className="mt-0.5 accent-indigo-400" />
+                        <span><b className="text-white">{formatTrackTimestamp(comment.timestampMs)}</b> · {comment.body}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : <p className="text-[10px] text-lavdim">No open timed notes on the backing take. You can still send the pack.</p>}
+              </fieldset>
               <div className="sm:col-span-2 flex justify-end">
                 <button type="button" disabled={saving || syncState !== 'saved' || !handoffRecipientId} onClick={() => void saveRoughTake(true)} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : sessionStatus === 'saved' ? 'Send producer pack' : 'Save & send producer pack'}</button>
               </div>

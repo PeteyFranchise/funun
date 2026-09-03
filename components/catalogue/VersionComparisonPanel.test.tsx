@@ -36,6 +36,9 @@ describe('VersionComparisonPanel', () => {
     expect(markup).toContain('v5 · New mix')
     expect(markup).toContain('type="range"')
     expect(markup.match(/<audio/g)).toHaveLength(2)
+    expect(markup).toContain('≈ Level match')
+    expect(markup).toContain('without changing either file')
+    expect(markup).toContain('aria-pressed="false"')
   })
 
   it('opens a producer return beside the current working take', () => {

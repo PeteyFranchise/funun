@@ -1,6 +1,13 @@
 import {
+  buildProducerHandoffRecap,
   buildProducerVocalPath,
   normalizeHandoffNote,
+  normalizeHandoffRoundLabel,
+  normalizeMusicalKey,
+  normalizeProducerBpm,
+  normalizeReferenceUrl,
+  producerHandoffAttention,
+  producerHandoffStage,
   producerInboxStatus,
   producerReturnLabel,
   safeAudioDownloadName,
@@ -35,5 +42,35 @@ describe('producer handoff helpers', () => {
     expect(producerInboxStatus({ acknowledgedAt: null, returnCount: 0 })).toBe('Needs your reply')
     expect(producerInboxStatus({ acknowledgedAt: '2026-09-03T12:00:00Z', returnCount: 0 })).toBe('Received')
     expect(producerInboxStatus({ acknowledgedAt: null, returnCount: 2 })).toBe('2 mixes returned')
+  })
+
+  it('normalizes an entirely optional production brief', () => {
+    expect(normalizeHandoffRoundLabel('  Vocal-up revision  ')).toBe('Vocal-up revision')
+    expect(normalizeMusicalKey('  F#   minor ')).toBe('F# minor')
+    expect(normalizeProducerBpm('92')).toBe(92)
+    expect(normalizeProducerBpm('')).toBeNull()
+    expect(normalizeReferenceUrl(' https://open.spotify.com/track/example ')).toBe('https://open.spotify.com/track/example')
+    expect(() => normalizeProducerBpm(301)).toThrow('between 20 and 300')
+    expect(() => normalizeReferenceUrl('javascript:alert(1)')).toThrow('http or https')
+  })
+
+  it('derives the flexible handoff stage and a useful next action', () => {
+    expect(producerHandoffStage({ acknowledgedAt: null, workingAt: null, returnCount: 0, reviewCount: 0 })).toBe('sent')
+    expect(producerHandoffStage({ acknowledgedAt: 'now', workingAt: 'now', returnCount: 1, reviewCount: 0 })).toBe('returned')
+    expect(producerHandoffStage({ acknowledgedAt: 'now', workingAt: 'now', returnCount: 1, reviewCount: 1 })).toBe('reviewed')
+    expect(producerHandoffAttention({ isRecipient: false, stage: 'sent', unreviewedReturnCount: 0, recipientName: 'Marcus' })).toBe('Waiting for Marcus to receive the files')
+    expect(producerHandoffAttention({ isRecipient: false, stage: 'returned', unreviewedReturnCount: 2, recipientName: 'Marcus' })).toBe('2 mixes are ready to review')
+  })
+
+  it('creates a plain-text recap without introducing a formal decision', () => {
+    const recap = buildProducerHandoffRecap({
+      songTitle: 'Midnight', senderName: 'Maya', recipientName: 'Marcus', stage: 'working',
+      roundLabel: 'First pass', bpm: 92, musicalKey: 'F# minor',
+      referenceUrl: 'https://example.com/reference', direction: 'Open the hook up.', feedbackCount: 2,
+    })
+    expect(recap).toContain('Midnight — producer handoff (First pass)')
+    expect(recap).toContain('92 BPM · F# minor')
+    expect(recap).toContain('2 timed production notes attached')
+    expect(recap).toContain('not master, rights, split or release approval')
   })
 })
