@@ -226,6 +226,32 @@ describe('WorkPage', () => {
     expect(withoutUrl).not.toContain('<audio')
   })
 
+  it('offers version comparison only when two takes are playable', () => {
+    const oneTake = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(oneTake).not.toContain('Compare two takes')
+
+    const twoTakes = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [
+            { ...baseVersions[0]!, id: 'v2', display: 'v2', description: 'New mix', createdAt: '2026-01-02T00:00:00Z' },
+            baseVersions[0]!,
+          ],
+        })}
+      />
+    )
+    expect(twoTakes).toContain('Compare two takes')
+
+    const onePlayable = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [baseVersions[0]!, { ...baseVersions[0]!, id: 'v0', playbackUrl: null }],
+        })}
+      />
+    )
+    expect(onePlayable).not.toContain('Compare two takes')
+  })
+
   it('renders the Diary|Versions toggle on the mobile treatment and not on the desktop treatment', () => {
     const mobile = renderToStaticMarkup(<WorkPage {...makeProps({ initialViewport: 'mobile' })} />)
     expect(mobile).toContain('role="tablist"')

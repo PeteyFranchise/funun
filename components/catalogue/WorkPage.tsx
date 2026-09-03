@@ -19,6 +19,7 @@ import { SongPassportPanel } from './SongPassportPanel'
 import { SingerPicker } from './SingerPicker'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { ExistingTakePicker } from './ExistingTakePicker'
+import { VersionComparisonPanel, type ComparableVersion } from './VersionComparisonPanel'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -198,6 +199,7 @@ type Flow =
   | { kind: 'note' }
   | { kind: 'add-singer'; blockId: string }
   | { kind: 'existing-take'; targetVersionId: string | null }
+  | { kind: 'compare-versions' }
 
 type LyricHistoryState = {
   blockId: string
@@ -274,18 +276,29 @@ function VersionsList({
   onActivity,
   commentRefreshes,
   onCommentChanged,
+  onCompare,
 }: {
   workId: string
   versions: VersionCardData[]
   onActivity: (kind: RoomActivityKind, label?: string) => void
   commentRefreshes: Record<string, number>
   onCommentChanged: (versionId: string) => void
+  onCompare: () => void
 }) {
   if (versions.length === 0) {
     return <p className="text-[11px] text-lavdim">No takes yet.</p>
   }
   return (
     <div className="flex flex-col gap-2">
+      {versions.filter(version => version.playbackUrl).length >= 2 && (
+        <button
+          type="button"
+          onClick={onCompare}
+          className="mb-1 rounded-[9px] border border-hairstrong bg-card2 px-3 py-2 text-[11px] font-semibold text-brandindigo hover:border-brandindigo hover:text-white"
+        >
+          ⇄ Compare two takes
+        </button>
+      )}
       {versions.map((v, index) => v.playbackUrl ? (
         <TimedTrackPlayer
           key={v.id}
@@ -1097,6 +1110,16 @@ export function WorkPage({
     flow?.kind === 'add-singer'
       ? liveLyricsBlocks.find(block => block.id === flow.blockId) ?? null
       : null
+  const comparableVersions: ComparableVersion[] = versions.flatMap(version => version.playbackUrl
+    ? [{
+        id: version.id,
+        display: version.display,
+        description: version.description,
+        playbackUrl: version.playbackUrl,
+        durationSeconds: version.durationSeconds,
+        createdAt: version.createdAt,
+      }]
+    : [])
 
   return (
     <div>
@@ -1220,6 +1243,7 @@ export function WorkPage({
                 onActivity={announceRoomActivity}
                 commentRefreshes={trackCommentRefreshes}
                 onCommentChanged={announceTrackCommentChanged}
+                onCompare={() => setFlow({ kind: 'compare-versions' })}
               />
             </div>
             <div>
@@ -1266,6 +1290,7 @@ export function WorkPage({
                 onActivity={announceRoomActivity}
                 commentRefreshes={trackCommentRefreshes}
                 onCommentChanged={announceTrackCommentChanged}
+                onCompare={() => setFlow({ kind: 'compare-versions' })}
               />
             )}
           </div>
@@ -1467,6 +1492,22 @@ export function WorkPage({
             onSavePerformers={performers => patchVocalPlan(activeSingerBlock.id, { performers })}
             onSaveDirection={direction => patchVocalPlan(activeSingerBlock.id, { vocal_direction: direction })}
             onCancel={() => setFlow(null)}
+          />
+        </FlowOverlay>
+      )}
+
+      {flow?.kind === 'compare-versions' && comparableVersions.length >= 2 && (
+        <FlowOverlay>
+          <VersionComparisonPanel
+            workId={workId}
+            versions={comparableVersions}
+            onClose={() => setFlow(null)}
+            onActivity={(playing, display) => announceRoomActivity(
+              playing ? 'listening' : 'recently_active',
+              playing ? `${display} comparison` : undefined
+            )}
+            onCommentChanged={announceTrackCommentChanged}
+            refreshToken={Object.values(trackCommentRefreshes).reduce((total, value) => total + value, 0)}
           />
         </FlowOverlay>
       )}
