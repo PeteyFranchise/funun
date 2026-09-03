@@ -66,6 +66,7 @@ const baseVersions: VersionCardData[] = [
     description: 'Scratch hum',
     isAiTagged: false,
     playbackUrl: 'https://signed.example/v1.webm',
+    downloadUrl: 'https://signed.example/v1.webm?download=Midnight-v1.webm',
     durationSeconds: 42,
     createdAt: '2026-01-01T00:00:00Z',
   },
@@ -221,9 +222,34 @@ describe('WorkPage', () => {
     expect(withUrl).toContain('<audio')
 
     const withoutUrl = renderToStaticMarkup(
-      <WorkPage {...makeProps({ versions: [{ ...baseVersions[0]!, playbackUrl: null }] })} />
+      <WorkPage {...makeProps({ versions: [{ ...baseVersions[0]!, playbackUrl: null, downloadUrl: null }] })} />
     )
     expect(withoutUrl).not.toContain('<audio')
+  })
+
+  it('offers private downloads for active and archived takes without changing archive authority', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          versions: [
+            baseVersions[0]!,
+            {
+              ...baseVersions[0]!,
+              id: 'v0',
+              display: 'v0',
+              description: 'Old demo',
+              archivedAt: '2026-01-02T00:00:00Z',
+              canManage: false,
+              downloadUrl: 'https://signed.example/v0.wav?download=Midnight-v0-Old-demo.wav',
+            },
+          ],
+        })}
+      />
+    )
+    expect(markup).toContain('aria-label="Download v1 Scratch hum"')
+    expect(markup).toContain('aria-label="Download archived v0 Old demo"')
+    expect(markup).toContain('Archived takes (1)')
+    expect(markup).not.toContain('>Restore<')
   })
 
   it('offers version comparison only when two takes are playable', () => {

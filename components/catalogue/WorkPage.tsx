@@ -95,6 +95,8 @@ export type VersionCardData = {
   isAiTagged: boolean
   /** Signed server-side (plan 06) — this component never constructs one. */
   playbackUrl: string | null
+  /** Same private signed object with a safe Content-Disposition filename. */
+  downloadUrl?: string | null
   durationSeconds: number | null
   createdAt: string
   source?: 'hum' | 'upload' | 'recording'
@@ -350,6 +352,7 @@ function VersionsList({
           description={v.description}
           label={v.label ?? null}
           playbackUrl={v.playbackUrl}
+          downloadUrl={v.downloadUrl ?? null}
           durationSeconds={v.durationSeconds}
           isLatest={v.id === latestVersionId}
           isWorking={Boolean(v.isWorking)}
@@ -384,7 +387,10 @@ function VersionsList({
             {archivedVersions.map(version => (
               <div key={version.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-card2 px-3 py-2">
                 <span className="min-w-0 truncate text-[10px] text-lav"><b className="text-white">{version.display}</b> {version.description}</span>
-                {version.canManage && <button type="button" onClick={() => void onTakeManaged(version.id, false)} className="shrink-0 text-[10px] font-semibold text-brandindigo hover:text-white">Restore</button>}
+                <span className="flex shrink-0 items-center gap-3">
+                  {version.downloadUrl && <a href={version.downloadUrl} download aria-label={`Download archived ${version.display} ${version.description}`} className="text-[10px] text-lavdim hover:text-white">Download</a>}
+                  {version.canManage && <button type="button" onClick={() => void onTakeManaged(version.id, false)} className="text-[10px] font-semibold text-brandindigo hover:text-white">Restore</button>}
+                </span>
               </div>
             ))}
           </div>

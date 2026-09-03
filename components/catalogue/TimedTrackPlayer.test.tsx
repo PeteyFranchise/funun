@@ -10,6 +10,7 @@ describe('TimedTrackPlayer', () => {
         display="v4"
         description="Studio bounce"
         playbackUrl="https://signed.example/studio-bounce.mp3"
+        downloadUrl="https://signed.example/studio-bounce.mp3?download=Midnight-v4-Studio-bounce.mp3"
         durationSeconds={198}
         isLatest
         isAiTagged={false}
@@ -28,6 +29,9 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('Archive')
     expect(markup).toContain('Name')
     expect(markup).toContain('Make working')
+    expect(markup).toContain('>Download<')
+    expect(markup).toContain('aria-label="Download v4 Studio bounce"')
+    expect(markup).toContain('download=""')
     expect(markup).toContain('3:18')
     expect(markup).toContain('Studio bounce')
   })
@@ -73,5 +77,6 @@ describe('TimedTrackPlayer', () => {
     )
     expect(markup).not.toContain(' controls=""')
     expect(markup).toContain('AI noted')
+    expect(markup).not.toContain('>Download<')
   })
 })

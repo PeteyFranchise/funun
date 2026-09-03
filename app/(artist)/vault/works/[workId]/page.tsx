@@ -14,6 +14,7 @@ import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
 import { buildSingerCandidates } from '@/lib/catalogue/singer-options'
 import { safeAudioDownloadName } from '@/lib/catalogue/producer-handoff'
+import { safeTakeDownloadName } from '@/lib/catalogue/take-workflow'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -436,6 +437,12 @@ export default async function WorkComposerPage({
       label: v.label,
       isAiTagged,
       playbackUrl: signedByPath[v.audio_path] ?? null,
+      downloadUrl: asDownload(signedByPath[v.audio_path], safeTakeDownloadName({
+        songTitle: work.title,
+        versionDisplay: presentation.display,
+        label: v.label,
+        audioPath: v.audio_path,
+      })),
       durationSeconds: v.duration_seconds,
       createdAt: v.created_at,
       source: v.source,
