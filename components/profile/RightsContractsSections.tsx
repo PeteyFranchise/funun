@@ -23,7 +23,9 @@ import { LearnWhy } from '@/components/ui/LearnWhy'
 import { SUPPORT_EMAIL } from '@/components/nav/ReportProblemLink'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
 import type { ClaimPrefillEntry } from '@/lib/profile/claim-prefill'
+import { buildRightsSetupState } from '@/lib/profile/rights-setup'
 import { inputClass, labelClass } from '@/lib/profile/settings-form'
+import { RightsSetupCompanion } from '@/components/settings/RightsSetupCompanion'
 import {
   useSettingsForm,
   type ClaimPrefillField,
@@ -153,6 +155,18 @@ export function RightsContractsSections() {
     legal_last_name: form.legal_last_name,
     legal_name_suffix: form.legal_name_suffix,
   })
+  const rightsSetup = buildRightsSetupState({
+    legalNameLockedAt: profile.legal_name_locked_at,
+    pro: form.pro,
+    ipi: form.ipi,
+    publisher: form.publisher,
+  })
+
+  function jumpTo(targetId: string) {
+    const target = document.getElementById(targetId)
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target?.querySelector<HTMLElement>('input, select, button')?.focus({ preventScroll: true })
+  }
 
   function handleAddressChange(display: string, structured: Record<string, string> | null) {
     updateForm(f => ({
@@ -181,8 +195,21 @@ export function RightsContractsSections() {
         </p>
       </div>
 
+      <RightsSetupCompanion
+        state={rightsSetup}
+        onJumpTo={jumpTo}
+        onMarkUnaffiliated={() => {
+          set('pro', 'none')
+          jumpTo('rights-pro-affiliation')
+        }}
+        onMarkSelfPublished={() => {
+          set('publisher', 'Self-published')
+          jumpTo('rights-publisher')
+        }}
+      />
+
       {/* ── Legal Identity ──────────────────────────────────────── */}
-      <section className="space-y-4">
+      <section id="rights-legal-identity" className="space-y-4 scroll-mt-8">
         <div>
           <h2 className="text-sm font-semibold text-white">Legal Identity</h2>
           <p className="mt-1 text-xs text-white/40">
@@ -411,7 +438,7 @@ export function RightsContractsSections() {
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
+          <div id="rights-pro-affiliation" className="scroll-mt-8">
             <label className={labelClass}>PRO affiliation</label>
             <select
               value={form.pro}
@@ -435,7 +462,7 @@ export function RightsContractsSections() {
               />
             )}
           </div>
-          <div>
+          <div id="rights-ipi" className="scroll-mt-8">
             <label className={labelClass}>IPI / CAE number</label>
             <input
               value={form.ipi}
@@ -454,7 +481,7 @@ export function RightsContractsSections() {
               />
             )}
           </div>
-          <div>
+          <div id="rights-publisher" className="scroll-mt-8">
             <label className={labelClass}>Publisher</label>
             <input
               value={form.publisher}

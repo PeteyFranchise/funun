@@ -14,7 +14,13 @@ import { profileDisplayTitle } from '@/lib/profile/display-name'
 import { latestVersion, type WorkVersionRecord } from '@/lib/catalogue/versions'
 import type { Work } from '@/types/catalogue'
 import { FirstSignInWelcome } from '@/components/onboarding/FirstSignInWelcome'
+import { RightsSetupReminder } from '@/components/onboarding/RightsSetupReminder'
 import { buildFirstSignInWelcome } from '@/lib/onboarding/first-sign-in'
+import {
+  buildRightsSetupState,
+  isRightsSetupReminderDue,
+  type RightsSetupInput,
+} from '@/lib/profile/rights-setup'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,6 +137,7 @@ export default async function VaultPage() {
   // mode and a failed profile read from accidentally rendering onboarding.
   let firstSignInCompletedAt: string | null = 'not-eligible'
   let firstSignInEligible = false
+  let rightsSetupProfile: RightsSetupInput & { remindAt: string | null } | null = null
   let claimedCollaborator: { id: string; user_id: string } | null = null
   let onboardingInviterName: string | null = null
   let error: { message: string } | null = null
@@ -178,7 +185,9 @@ export default async function VaultPage() {
       // explicitly scoped to that user id.
       service
         .from('user_profiles')
-        .select('artist_name, handle, member_type, first_sign_in_completed_at')
+        .select(
+          'artist_name, handle, member_type, first_sign_in_completed_at, legal_name_locked_at, pro, ipi, publisher, rights_setup_remind_at'
+        )
         .eq('id', user?.id ?? '')
         .maybeSingle(),
       supabase
@@ -225,12 +234,24 @@ export default async function VaultPage() {
       handle: string | null
       member_type: string
       first_sign_in_completed_at: string | null
+      legal_name_locked_at: string | null
+      pro: string | null
+      ipi: string | null
+      publisher: string | null
+      rights_setup_remind_at: string | null
     } | null
     artist = profile?.artist_name ?? null
     viewerHandle = profile?.handle ?? null
     if (profile) {
       firstSignInCompletedAt = profile.first_sign_in_completed_at
       firstSignInEligible = profile.member_type === 'artist'
+      rightsSetupProfile = {
+        legalNameLockedAt: profile.legal_name_locked_at,
+        pro: profile.pro,
+        ipi: profile.ipi,
+        publisher: profile.publisher,
+        remindAt: profile.rights_setup_remind_at,
+      }
     }
     claimedCollaborator = (claimedCollaboratorRes.data as { id: string; user_id: string } | null) ?? null
     projects = (res.data ?? []) as VaultProjectRow[]
@@ -407,6 +428,12 @@ export default async function VaultPage() {
     hasClaimedCollaboratorProfile: claimedCollaborator !== null,
     sharedWork: memberWorks[0] ? { id: memberWorks[0].id, title: memberWorks[0].title } : null,
   })
+  const rightsSetup = rightsSetupProfile ? buildRightsSetupState(rightsSetupProfile) : null
+  const showRightsSetupReminder =
+    firstSignInWelcome === null &&
+    rightsSetup !== null &&
+    !rightsSetup.complete &&
+    isRightsSetupReminderDue(rightsSetupProfile?.remindAt)
 
   // ─── Releases — UNCHANGED cards/derivation, minus one exclusion ──────
   // The only permitted change to this existing code path (S-03's own
@@ -496,6 +523,9 @@ export default async function VaultPage() {
 
       <div className="flex-1 px-9 py-[30px]">
         {firstSignInWelcome && <FirstSignInWelcome welcome={firstSignInWelcome} />}
+        {showRightsSetupReminder && rightsSetup && (
+          <RightsSetupReminder remainingCount={rightsSetup.remainingCount} />
+        )}
 
         {/*
           The catalogue shelf, then the Releases grid — one roof, two

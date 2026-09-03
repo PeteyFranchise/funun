@@ -420,6 +420,9 @@ export type UserProfile = {
   administrator: string | null
   mlc_id: string | null
   soundexchange_id: string | null
+  // Private advisory reminder for the profile-level Rights Setup Companion
+  // (migration 158). Never participates in creative access or readiness.
+  rights_setup_remind_at?: string | null
   // ─── DDEX identifiers + generation prefixes (migration 082, 16-11) ────
   // Party-level ISNI for the primary recording artist — PRIVATE column
   // (migration 040 doctrine); see 082's grant-decision comment for why
