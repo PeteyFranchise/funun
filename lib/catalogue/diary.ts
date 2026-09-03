@@ -112,6 +112,7 @@ export const DIARY_KIND_ACCENT: Record<DiaryEventKind, DiaryAccent> = {
   producer_handoff: 'brandindigo',
   producer_handoff_received: 'emerald-400',
   producer_mix_returned: 'brandindigo',
+  producer_mix_reviewed: 'emerald-400',
   note: 'lavdim',
 }
 
@@ -364,6 +365,24 @@ export function describeDiaryEvent(row: DiaryEventRowLike, context: DiaryEventCo
           : 'The new take stays linked to its producer handoff and is ready for room notes.',
         date: row.created_at,
         accent: DIARY_KIND_ACCENT.producer_mix_returned,
+      }
+    }
+
+    case 'producer_mix_reviewed': {
+      const payload = row.payload as DiaryEventPayloadMap['producer_mix_reviewed']
+      const numeral = context.versionNumerals[payload.versionId]
+      const version = numeral ? `v${numeral}` : 'the returned mix'
+      const madeWorking = payload.outcome === 'made_working'
+      return {
+        kind: 'producer_mix_reviewed',
+        headline: madeWorking
+          ? `${actor} made ${version} the working take`
+          : `${actor} reviewed ${version} and kept the current working take`,
+        consequence: madeWorking
+          ? 'Creative direction only — this does not approve or designate a master.'
+          : 'The producer return remains available, unarchived and ready for future comparison.',
+        date: row.created_at,
+        accent: DIARY_KIND_ACCENT.producer_mix_reviewed,
       }
     }
 

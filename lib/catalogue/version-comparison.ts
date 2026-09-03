@@ -7,12 +7,25 @@ export type ComparisonVersionFacts = {
 
 export function defaultComparisonIds(
   versionsNewestFirst: ComparisonVersionFacts[],
-  workingVersionId: string | null = null
+  workingVersionId: string | null = null,
+  preferredVersionId: string | null = null
 ): { sideAId: string; sideBId: string } | null {
   if (versionsNewestFirst.length < 2) return null
   const working = workingVersionId
     ? versionsNewestFirst.find(version => version.id === workingVersionId)
     : null
+  const preferred = preferredVersionId
+    ? versionsNewestFirst.find(version => version.id === preferredVersionId)
+    : null
+  if (preferred) {
+    if (working && working.id !== preferred.id) {
+      return { sideAId: preferred.id, sideBId: working.id }
+    }
+    const other = versionsNewestFirst.find(version => version.id !== preferred.id)!
+    return working
+      ? { sideAId: other.id, sideBId: preferred.id }
+      : { sideAId: preferred.id, sideBId: other.id }
+  }
   if (working) {
     const comparison = versionsNewestFirst.find(version => version.id !== working.id)!
     return { sideAId: comparison.id, sideBId: working.id }

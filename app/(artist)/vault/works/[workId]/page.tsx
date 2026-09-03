@@ -20,6 +20,7 @@ import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
 import type { LyricsPadBlock } from '@/components/catalogue/LyricsPad'
 import type { LyricBlockAuthor, LyricBlockSinger } from '@/components/catalogue/LyricBlockCard'
 import type { DiaryFeedEntry } from '@/components/catalogue/DiaryFeed'
+import type { ReturnedMixReviewItem } from '@/components/catalogue/ReturnedMixReviewCard'
 import type { RoomPresencePerson } from '@/lib/catalogue/room-presence'
 import type {
   Work,
@@ -112,7 +113,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -171,6 +172,17 @@ export default async function WorkComposerPage({
         .eq('work_id', workId)
         .order('created_at', { ascending: false })
         .limit(25),
+      supabase
+        .from('work_recording_handoff_returns')
+        .select('id, version_id, created_by, note, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: false })
+        .limit(25),
+      supabase
+        .from('work_recording_handoff_return_reviews')
+        .select('return_id')
+        .eq('work_id', workId)
+        .limit(100),
     ])
 
   const workRow = workRes.data as Work | null
@@ -209,6 +221,16 @@ export default async function WorkComposerPage({
     note: string | null
     created_at: string
   }[]
+  const returnedMixes = (returnsRes.data ?? []) as {
+    id: string
+    version_id: string
+    created_by: string | null
+    note: string | null
+    created_at: string
+  }[]
+  const reviewedReturnIds = new Set(
+    ((returnReviewsRes.data ?? []) as { return_id: string }[]).map(review => review.return_id)
+  )
 
   // ─── Display names — collaborator rows + the owner's own profile ─────
   const collaboratorIds = Array.from(
@@ -423,6 +445,22 @@ export default async function WorkComposerPage({
       isWorking: work.working_version_id === v.id,
     }
   })
+  const versionCardsById = new Map(versionCards.map(version => [version.id, version]))
+  const returnedMixReviewItems: ReturnedMixReviewItem[] = returnedMixes.flatMap(returned => {
+    if (reviewedReturnIds.has(returned.id)) return []
+    const version = versionCardsById.get(returned.version_id)
+    if (!version || version.archivedAt) return []
+    return [{
+      returnId: returned.id,
+      versionId: returned.version_id,
+      versionDisplay: version.display,
+      versionLabel: version.description,
+      producerName: returned.created_by ? namesById[returned.created_by] ?? 'Producer' : 'Producer',
+      note: returned.note,
+      returnedAt: returned.created_at,
+      isWorking: Boolean(version.isWorking),
+    }]
+  })
 
   // ─── The guiding line's snapshot — assembled from data already fetched
   // above; the resolver itself performs no I/O of its own ──────────────
@@ -595,6 +633,7 @@ export default async function WorkComposerPage({
           guidingLineStep={guidingLineStep}
           diaryEntries={diaryEntries}
           versions={versionCards}
+          returnedMixReviews={returnedMixReviewItems}
           lyricsBlocks={lyricsPadBlocks}
           suggestionCounts={suggestionCounts}
           vocalState={work.vocal_state}

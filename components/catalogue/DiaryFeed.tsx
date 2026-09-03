@@ -141,6 +141,7 @@ function railChipLabel(entry: DiaryFeedEntry): string {
   if (entry.kind === 'producer_handoff') return '⇢'
   if (entry.kind === 'producer_handoff_received') return '✓'
   if (entry.kind === 'producer_mix_returned') return '↩'
+  if (entry.kind === 'producer_mix_reviewed') return '✓'
   return '•'
 }
 

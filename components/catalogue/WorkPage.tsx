@@ -22,6 +22,7 @@ import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { ExistingTakePicker } from './ExistingTakePicker'
 import { VersionComparisonPanel, type ComparableVersion } from './VersionComparisonPanel'
 import { RecordOverBeatStudio } from './RecordOverBeatStudio'
+import { ReturnedMixReviewCard, type ReturnedMixReviewItem } from './ReturnedMixReviewCard'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -52,6 +53,7 @@ import type { SongPassportView } from '@/lib/song-passport/view'
 import type { SingerCandidate } from '@/lib/catalogue/singer-options'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { workingTakeFirst } from '@/lib/catalogue/take-workflow'
+import type { ReturnedMixReviewOutcome } from '@/lib/catalogue/returned-mix-review'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -131,6 +133,8 @@ export type WorkPageProps = {
   guidingLineStep: GuidingLineStep | null
   diaryEntries: DiaryFeedEntry[]
   versions: VersionCardData[]
+  /** Unreviewed producer returns only. Review is optional and never gates the room. */
+  returnedMixReviews?: ReturnedMixReviewItem[]
   lyricsBlocks: LyricsPadBlock[]
   suggestionCounts?: Record<string, number>
   vocalState: WorkVocalState
@@ -211,7 +215,7 @@ type Flow =
   | { kind: 'note' }
   | { kind: 'add-singer'; blockId: string }
   | { kind: 'existing-take'; targetVersionId: string | null }
-  | { kind: 'compare-versions' }
+  | { kind: 'compare-versions'; preferredVersionId?: string }
   | { kind: 'record-over'; version: VersionCardData & { playbackUrl: string } }
 
 type LyricHistoryState = {
@@ -494,6 +498,7 @@ export function WorkPage({
   guidingLineStep,
   diaryEntries,
   versions,
+  returnedMixReviews = [],
   lyricsBlocks,
   suggestionCounts = {},
   vocalState,
@@ -904,6 +909,24 @@ export function WorkPage({
     const body = (await response.json().catch(() => ({}))) as { error?: string }
     if (!response.ok) return { ok: false, error: body.error ?? 'Could not choose that working take.' }
     showToast('Working take updated — this is a creative choice, not a master approval')
+    router.refresh()
+    return { ok: true }
+  }
+
+  async function handleReturnedMixReview(
+    returnId: string,
+    outcome: ReturnedMixReviewOutcome
+  ): Promise<{ ok: boolean; error?: string }> {
+    const response = await fetch(`/api/producer-returns/${returnId}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome }),
+    })
+    const body = (await response.json().catch(() => ({}))) as { error?: string }
+    if (!response.ok) return { ok: false, error: body.error ?? 'Could not save this returned-mix review.' }
+    showToast(outcome === 'made_working'
+      ? 'Returned mix is now the working take — not a master approval'
+      : 'Review saved — the returned take remains available')
     router.refresh()
     return { ok: true }
   }
@@ -1471,6 +1494,13 @@ export function WorkPage({
             {audioUploadError}
           </p>
         )}
+        <ReturnedMixReviewCard
+          items={returnedMixReviews}
+          canCompare={comparableVersions.length >= 2}
+          hasWorkingTake={versions.some(version => version.isWorking && !version.archivedAt)}
+          onCompare={versionId => setFlow({ kind: 'compare-versions', preferredVersionId: versionId })}
+          onReview={handleReturnedMixReview}
+        />
       </div>
 
       {/* The pad — the other half of what an artist owns. Creation leads
@@ -1785,6 +1815,7 @@ export function WorkPage({
             workId={workId}
             versions={comparableVersions}
             workingVersionId={versions.find(version => version.isWorking)?.id ?? null}
+            preferredVersionId={flow.preferredVersionId ?? null}
             onClose={() => setFlow(null)}
             onActivity={(playing, display) => announceRoomActivity(
               playing ? 'listening' : 'recently_active',

@@ -38,6 +38,23 @@ describe('VersionComparisonPanel', () => {
     expect(markup.match(/<audio/g)).toHaveLength(2)
   })
 
+  it('opens a producer return beside the current working take', () => {
+    const markup = renderToStaticMarkup(
+      <VersionComparisonPanel
+        workId="work-1"
+        versions={versions.map(version => ({ ...version, isWorking: version.id === 'v4-id' }))}
+        preferredVersionId="v5-id"
+        initialComments={{}}
+        onClose={() => undefined}
+        onActivity={() => undefined}
+        onCommentChanged={() => undefined}
+        refreshToken={0}
+      />
+    )
+    expect(markup).toContain('value="v5-id" selected=""')
+    expect(markup).toContain('value="v4-id" selected=""')
+  })
+
   it('renders the active version marker without mixing the other version into its timeline', () => {
     const markup = renderToStaticMarkup(
       <VersionComparisonPanel

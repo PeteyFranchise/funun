@@ -204,6 +204,23 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
     expect(entry.consequence).toContain('Drums are up.')
   })
 
+  it('producer return review records creative preference without master or rejection language', () => {
+    const madeWorking = describeDiaryEvent(
+      row('producer_mix_reviewed', { returnId: 'r-1', versionId: 'v-5', outcome: 'made_working' }),
+      { names: { 'u-1': 'Maya' }, versionNumerals: { 'v-5': 5 } }
+    )
+    expect(madeWorking.headline).toBe('Maya made v5 the working take')
+    expect(madeWorking.consequence).toMatch(/does not approve or designate a master/i)
+
+    const kept = describeDiaryEvent(
+      row('producer_mix_reviewed', { returnId: 'r-1', versionId: 'v-5', outcome: 'kept_current' }),
+      { names: { 'u-1': 'Maya' }, versionNumerals: { 'v-5': 5 } }
+    )
+    expect(kept.headline).toBe('Maya reviewed v5 and kept the current working take')
+    expect(kept.consequence).toMatch(/remains available, unarchived/i)
+    expect(`${kept.headline} ${kept.consequence}`.toLowerCase()).not.toContain('reject')
+  })
+
   it('degrades an unknown or future kind to a neutral entry rather than throwing', () => {
     expect(() => describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)).not.toThrow()
     const entry = describeDiaryEvent(row('some_future_kind', { anything: true }), EMPTY_CONTEXT)
@@ -226,6 +243,7 @@ describe('lib/catalogue/diary — describeDiaryEvent', () => {
       { kind: 'producer_handoff', payload: { handoffId: 'h-1', roughVersionId: 'v-1', recipientUserId: 'u-2' } },
       { kind: 'producer_handoff_received', payload: { handoffId: 'h-1' } },
       { kind: 'producer_mix_returned', payload: { handoffId: 'h-1', versionId: 'v-2' } },
+      { kind: 'producer_mix_reviewed', payload: { returnId: 'r-1', versionId: 'v-2', outcome: 'kept_current' } },
       { kind: 'note', payload: { text: 'hi' } },
     ]
     for (const { kind, payload } of fixtures) {
@@ -252,6 +270,7 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
     'producer_handoff',
     'producer_handoff_received',
     'producer_mix_returned',
+    'producer_mix_reviewed',
     'note',
   ]
 
@@ -264,6 +283,6 @@ describe('lib/catalogue/diary — isTriggerSourced (CAT-Q1)', () => {
   it('note is the single app-authored exception', () => {
     expect(isTriggerSourced('note')).toBe(false)
     const triggerSourced = ALL_KINDS.filter(k => isTriggerSourced(k))
-    expect(triggerSourced).toHaveLength(12)
+    expect(triggerSourced).toHaveLength(13)
   })
 })

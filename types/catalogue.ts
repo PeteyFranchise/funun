@@ -412,6 +412,12 @@ export type DiaryEventPayloadMap = {
     versionId: string
     note?: string | null
   }
+  /** Trigger-sourced optional room decision about a producer return. */
+  producer_mix_reviewed: {
+    returnId: string
+    versionId: string
+    outcome: 'made_working' | 'kept_current'
+  }
   /** App-authored — the one exception to trigger-sourced capture. Written directly by a service-role route, never a trigger. */
   note: {
     text: string

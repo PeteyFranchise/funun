@@ -267,6 +267,35 @@ describe('WorkPage', () => {
     expect(markup.indexOf('v2 Working hook')).toBeLessThan(markup.indexOf('v3 Newest take'))
   })
 
+  it('offers a returned-mix decision without turning it into a gate', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          returnedMixReviews: [{
+            returnId: 'return-1',
+            versionId: 'v2',
+            versionDisplay: 'v2',
+            versionLabel: 'Drums up mix',
+            producerName: 'Ben Cooke',
+            note: 'Try the hook against this one.',
+            returnedAt: '2026-09-03T10:00:00Z',
+            isWorking: false,
+          }],
+          versions: [
+            { ...baseVersions[0]!, id: 'v2', display: 'v2', description: 'Drums up mix', createdAt: '2026-01-02T00:00:00Z' },
+            { ...baseVersions[0]!, isWorking: true },
+          ],
+        })}
+      />
+    )
+    expect(markup).toContain('Ben Cooke brought back “Drums up mix”')
+    expect(markup).toContain('Compare with working take')
+    expect(markup).toContain('Make this the working take')
+    expect(markup).toContain('Keep current working take')
+    expect(markup).toContain('>Later<')
+    expect(markup).toContain('never blocks writing, recording, comments, or another upload')
+  })
+
   it('surfaces alternate lyric suggestions on original sections', () => {
     const markup = renderToStaticMarkup(
       <WorkPage {...makeProps({ suggestionCounts: { b1: 2 } })} />
