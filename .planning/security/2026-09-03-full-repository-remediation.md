@@ -115,8 +115,8 @@ legacy rows is a separate operational decision.
 
 ### M-12 — Vulnerable production dependency graph: fixed
 
-- Compatible lockfile overrides install patched `browserslist`, `fast-uri`,
-  version-scoped `brace-expansion`, and `sharp` releases without a blind major
+- Compatible lockfile resolutions install patched `browserslist`, `fast-uri`,
+  `brace-expansion`, and `sharp` releases without a blind major
   framework upgrade.
 - Next.js is resolved to 15.5.23.
 - Both the full and production-only offline npm audits report zero known
@@ -250,6 +250,7 @@ analytics/privacy policy.
 - `npm run build` — pass, Next.js 15.5.23, 122 pages generated
 - `npm audit --offline --omit=dev --json` — pass, 0 vulnerabilities
 - `npm audit --offline --json` — pass, 0 vulnerabilities
+- npm 10 and npm 11 clean-install lockfile validation — pass
 - `git diff --check` — pass
 
 Database migration tests in this repository are structural contract tests. The

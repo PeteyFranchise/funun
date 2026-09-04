@@ -65,9 +65,6 @@
     "minimatch@9.0.9": {
       "brace-expansion": "2.1.2"
     },
-    "minimatch@10.2.5": {
-      "brace-expansion": "5.0.9"
-    },
     "next": {
       "sharp": "0.35.3"
     }

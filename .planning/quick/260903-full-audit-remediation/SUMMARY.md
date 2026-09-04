@@ -24,6 +24,7 @@
 - Jest: 424 suites / 4,077 tests pass
 - Production build: pass; Next.js 15.5.23 generated 122 pages
 - Full and production-only offline npm audit: zero vulnerabilities
+- npm 10 and npm 11 clean-install lockfile validation: pass
 - Git whitespace validation: pass
 
 ## Deployment Notes
@@ -33,5 +34,8 @@
   the application release.
 - Follow the post-deployment reconciliation and staging smoke-test checklist in
   `.planning/security/2026-09-03-full-repository-remediation.md`.
+- A post-push npm 10 CI compatibility failure was corrected by removing an
+  unnecessary exact-version transitive override and regenerating the lockfile;
+  patched dependency resolutions remain intact.
 - The manual GSD planning fallback was used because the checkout does not expose
   a native `/gsd-quick` execution surface.
