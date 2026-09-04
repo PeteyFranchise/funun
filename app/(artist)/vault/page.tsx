@@ -44,7 +44,7 @@ function laneFor(status: VaultProjectStatus, releaseDate: string | null): VaultC
 // was never allowed to see. This is RLS working as designed, not a bug.
 const WORKS_EMBED = `
   *,
-  work_versions (id, source, created_at),
+  work_versions:work_versions!work_versions_work_id_fkey (id, source, created_at),
   lyric_blocks (id, updated_at),
   work_members (id, user_id, collaborator_id, tier)
 `
@@ -255,7 +255,10 @@ export default async function VaultPage() {
     }
     claimedCollaborator = (claimedCollaboratorRes.data as { id: string; user_id: string } | null) ?? null
     projects = (res.data ?? []) as VaultProjectRow[]
-    error = res.error
+    // `works.working_version_id` adds a second works ↔ work_versions
+    // relationship. If the qualified collection embed above ever regresses,
+    // do not turn the PostgREST error into a false "Your vault is empty" state.
+    error = res.error ?? ownedWorksRes.error ?? workMembershipRes.error
     ownedWorks = (ownedWorksRes.data ?? []) as unknown as WorkRow[]
 
     const ownedProjectIds = new Set(projects.map(p => p.id))
@@ -308,11 +311,12 @@ export default async function VaultPage() {
     )
 
     if (memberWorkIds.length > 0) {
-      const { data: memberWorksData } = await supabase
+      const { data: memberWorksData, error: memberWorksError } = await supabase
         .from('works')
         .select(WORKS_EMBED)
         .in('id', memberWorkIds)
         .order('created_at', { ascending: false })
+      error ??= memberWorksError
       memberWorks = (memberWorksData ?? []) as unknown as WorkRow[]
     }
 
