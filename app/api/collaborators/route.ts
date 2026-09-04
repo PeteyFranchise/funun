@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { sanitizeCollaborator } from '@/lib/collaborators'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 
 // ─── GET /api/collaborators ───────────────────────────────────
 // Returns the authenticated user's full collaborator roster,
 // ordered alphabetically by name.
 export async function GET() {
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const member = await requireMemberApiAccount(supabase, authUser)
+  if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
+  const { user } = member
 
   const { data, error } = await supabase
     .from('collaborators')
@@ -29,10 +30,10 @@ export async function GET() {
 // allowlist — unknown keys are silently dropped (T-01-02).
 export async function POST(request: Request) {
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const member = await requireMemberApiAccount(supabase, authUser)
+  if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
+  const { user } = member
 
   const body = (await request.json()) as Record<string, unknown>
   const update = sanitizeCollaborator(body)

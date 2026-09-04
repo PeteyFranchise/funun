@@ -1,5 +1,6 @@
 import { createApiClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
+import { MEMBER_ACCOUNT_REQUIRED, requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { POST } from './route'
 
 // ─── POST /api/collaborators/quick-invite ──────────────────────────────────
@@ -14,6 +15,11 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/collaborators/invite', () => ({
   sendCollaboratorInvite: jest.fn(),
+}))
+
+jest.mock('@/lib/accounts/member-api-gate', () => ({
+  MEMBER_ACCOUNT_REQUIRED: 'This action requires a Member account. Sign in with your personal Member account.',
+  requireMemberApiAccount: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -67,6 +73,11 @@ function mockSupabase(
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
+    user
+      ? { ok: true, user }
+      : { ok: false, status: 401, error: 'Unauthorized' }
+  )
   ;(sendCollaboratorInvite as jest.Mock).mockResolvedValue({
     ok: true,
     skipped: false,
@@ -85,6 +96,30 @@ describe('POST /api/collaborators/quick-invite', () => {
     const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
 
     expect(res.status).toBe(401)
+    expect(sendCollaboratorInvite).not.toHaveBeenCalled()
+  })
+
+  it('rejects a Team Member before any roster lookup, insert, or email', async () => {
+    const from = jest.fn()
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: {
+        getUser: jest.fn(async () => ({
+          data: { user: { id: USER_ID, app_metadata: { staff_role: 'leadership' } } },
+        })),
+      },
+      from,
+    })
+    ;(requireMemberApiAccount as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: MEMBER_ACCOUNT_REQUIRED,
+    })
+
+    const res = await POST(postRequest({ first_name: 'Jamie', email: 'jamie@example.com' }))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toEqual({ error: MEMBER_ACCOUNT_REQUIRED })
+    expect(from).not.toHaveBeenCalled()
     expect(sendCollaboratorInvite).not.toHaveBeenCalled()
   })
 

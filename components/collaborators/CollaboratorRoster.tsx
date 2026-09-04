@@ -20,6 +20,7 @@ type SplitSheetRef = {
 }
 
 type SplitSheetParty = {
+  id?: string
   split_percentage: number
   role: string | null
   split_sheets: SplitSheetRef | SplitSheetRef[] | null
@@ -54,6 +55,15 @@ export function CollaboratorRoster({
   // Post-save invite nudge (D-08a) — set only when the just-saved row is a
   // NEW collaborator with a non-empty email; never gates the save itself.
   const [invitePromptFor, setInvitePromptFor] = useState<CollaboratorProfile | null>(null)
+  // Claimed collaborator rows prove identity, not authorship. Flatten only
+  // real split-sheet relationships so a bare email/name match can never be
+  // presented as a song credit, even if a future server query regresses.
+  const creditEntries = credits.flatMap(credit =>
+    (credit.split_sheet_parties ?? []).map((party, index) => ({
+      key: party.id ?? `${credit.id}-${index}`,
+      party,
+    }))
+  )
 
   function handleSaved(saved: CollaboratorProfile) {
     // Determine new-vs-edit from the pre-save list (closure state), before
@@ -321,7 +331,7 @@ export function CollaboratorRoster({
 
       {/* ─── My Credits tab ─────────────────────────────────── */}
       <div role="tabpanel" hidden={activeTab !== 'credits'}>
-        {credits.length === 0 ? (
+        {creditEntries.length === 0 ? (
           /* Empty state — no claimed credits found */
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             {/* Music note icon — 40×40 */}
@@ -348,61 +358,47 @@ export function CollaboratorRoster({
         ) : (
           /* Credits list */
           <ul className="flex flex-col gap-2">
-            {credits.map(credit => {
-              // Flatten split_sheet_parties to individual credit entries
-              const parties = credit.split_sheet_parties ?? []
-              if (parties.length === 0) {
-                return (
-                  <li
-                    key={credit.id}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    <span className="text-sm text-white">{credit.name}</span>
-                  </li>
-                )
-              }
-              return parties.map((party, idx) => {
-                const sheet = Array.isArray(party.split_sheets)
-                  ? party.split_sheets[0]
-                  : party.split_sheets
-                const songName = sheet?.song_name ?? 'Untitled'
-                const projectId = sheet?.vault_project_id
+            {creditEntries.map(({ key, party }) => {
+              const sheet = Array.isArray(party.split_sheets)
+                ? party.split_sheets[0]
+                : party.split_sheets
+              const songName = sheet?.song_name ?? 'Untitled'
+              const projectId = sheet?.vault_project_id
 
-                return (
-                  <li
-                    key={`${credit.id}-${idx}`}
-                    className="flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    {/* Song / project name */}
-                    <span className="text-sm text-white">{songName}</span>
+              return (
+                <li
+                  key={key}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3"
+                >
+                  {/* Song / project name */}
+                  <span className="text-sm text-white">{songName}</span>
 
-                    {/* Role chip */}
-                    {party.role && (
-                      <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/70">
-                        {party.role}
-                      </span>
-                    )}
+                  {/* Role chip */}
+                  {party.role && (
+                    <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/70">
+                      {party.role}
+                    </span>
+                  )}
 
-                    {/* Split percentage */}
-                    {party.split_percentage != null && (
-                      <span className="tabular-nums text-xs text-white/60">
-                        {party.split_percentage}%
-                      </span>
-                    )}
+                  {/* Split percentage */}
+                  {party.split_percentage != null && (
+                    <span className="tabular-nums text-xs text-white/60">
+                      {party.split_percentage}%
+                    </span>
+                  )}
 
-                    {/* Split sheet link */}
-                    {projectId && (
-                      <Link
-                        href={`/split-sheets?project=${projectId}`}
-                        className="ml-auto text-xs text-brandindigo hover:underline"
-                        aria-label={`View split sheet for ${songName}`}
-                      >
-                        View split sheet
-                      </Link>
-                    )}
-                  </li>
-                )
-              })
+                  {/* Split sheet link */}
+                  {projectId && (
+                    <Link
+                      href={`/split-sheets?project=${projectId}`}
+                      className="ml-auto text-xs text-brandindigo hover:underline"
+                      aria-label={`View split sheet for ${songName}`}
+                    >
+                      View split sheet
+                    </Link>
+                  )}
+                </li>
+              )
             })}
           </ul>
         )}

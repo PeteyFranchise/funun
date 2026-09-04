@@ -19,6 +19,13 @@ describe("Writer's Room invitation destination", () => {
     expect(memberRoute).toContain('nextPath: `/vault/works/${workId}`')
   })
 
+  it('requires a genuine Member account before checking Writer\'s Room access', () => {
+    const memberGate = memberRoute.indexOf('requireMemberApiAccount(supabase, authUser)')
+    const workAccess = memberRoute.indexOf('resolveWorkAccess(')
+    expect(memberGate).toBeGreaterThan(-1)
+    expect(workAccess).toBeGreaterThan(memberGate)
+  })
+
   it('uses the guarded destination for both active-session and email-confirmation signup paths', () => {
     expect(signupPage).toContain('const destination = postSignInPath')
     expect(signupPage).toContain('next: inviteStillMatches ? next : null')

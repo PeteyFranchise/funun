@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { sanitizeCollaborator } from '@/lib/collaborators'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 
 // ─── PATCH /api/collaborators/[id] ───────────────────────────
 // Updates a collaborator the authenticated user owns.
@@ -10,10 +11,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const member = await requireMemberApiAccount(supabase, authUser)
+  if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
+  const { user } = member
 
   const { id } = await params
   const body = (await request.json()) as Record<string, unknown>
@@ -44,10 +45,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const member = await requireMemberApiAccount(supabase, authUser)
+  if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
+  const { user } = member
 
   const { id } = await params
 

@@ -1,8 +1,13 @@
 import { createApiClient } from '@/lib/supabase/server'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { GET, POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
+}))
+
+jest.mock('@/lib/accounts/member-api-gate', () => ({
+  requireMemberApiAccount: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -21,6 +26,11 @@ function auth() {
 describe('/api/collaborators active roster identity', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
+      user
+        ? { ok: true, user }
+        : { ok: false, status: 401, error: 'Unauthorized' }
+    )
   })
 
   it('GET returns only active rows by filtering archived_at before ordering', async () => {

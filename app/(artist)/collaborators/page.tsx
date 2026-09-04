@@ -70,8 +70,8 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
     .from('collaborators')
     .select(
       `id, name, pro, ipi, claimed_by, user_id,
-      split_sheet_parties (
-        split_percentage, role,
+      split_sheet_parties!inner (
+        id, split_percentage, role,
         split_sheets (
           song_name, vault_project_id
         )
@@ -82,9 +82,9 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  // Cast through unknown — the credits rows are a subset of CollaboratorProfile
-  // joined with split_sheet_parties. The missing created_at/updated_at fields
-  // are not needed in the Credits tab render.
+  // `!inner` is intentional: claimed collaborator rows are identity links,
+  // not credits by themselves. A row enters My Credits only when it has an
+  // actual split-sheet party visible to the signed-in Member.
   const credits = (creditsData ?? []) as unknown as CollaboratorProfile[]
 
   return (

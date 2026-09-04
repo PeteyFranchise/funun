@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 
 // ─── POST /api/collaborators/[id]/invite ─────────────────────────────────
 // Sends an educational IPI-invite email to the collaborator with a tokenized
@@ -17,10 +18,10 @@ export async function POST(
 ) {
   // ── 1. Auth gate ─────────────────────────────────────────────────────
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const member = await requireMemberApiAccount(supabase, authUser)
+  if (!member.ok) return NextResponse.json({ error: member.error }, { status: member.status })
+  const { user } = member
 
   const { id } = await params
 

@@ -6,6 +6,7 @@ import * as collaboratorInvite from '@/lib/collaborators/invite'
 import { planWriterPromotion } from '@/lib/catalogue/splits'
 import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import { planWorkMemberAdmission } from '@/lib/catalogue/member-admission'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 
 // ─── POST /api/works/[workId]/members — invite, tiers, and the separate
 // writer promotion (S-02) ─────────────────────────────────────────────
@@ -60,10 +61,12 @@ type CollaboratorRow = {
 export async function POST(request: Request, { params }: RouteCtx) {
   const { workId } = await params
   const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const userId = user?.id ?? null
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const memberAccount = await requireMemberApiAccount(supabase, authUser)
+  if (!memberAccount.ok) {
+    return NextResponse.json({ error: memberAccount.error }, { status: memberAccount.status })
+  }
+  const userId = memberAccount.user.id
 
   // Membership changes are an administer capability (doctrine scope item
   // 9) — canManageMembership's rule, enforced here through
@@ -93,7 +96,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       .from('collaborators')
       .select('id, name, email, claimed_by')
       .eq('id', input.collaborator_id)
-      .eq('user_id', userId as string)
+      .eq('user_id', userId)
       .maybeSingle()
 
     if (error || !existing) {
@@ -106,7 +109,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     const { data: existingByEmail, error: lookupError } = await supabase
       .from('collaborators')
       .select('id, name, email, claimed_by')
-      .eq('user_id', userId as string)
+      .eq('user_id', userId)
       .ilike('email', email)
       .is('archived_at', null)
       .order('created_at', { ascending: true })
@@ -234,7 +237,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
             name: collaborator.name,
             email: collaborator.email,
           },
-          invitingUserId: userId as string,
+          invitingUserId: userId,
           // Writer's Room invitations preserve creative momentum: after the
           // signup transaction creates the profile and claims membership, the
           // new member enters this room before seeing broader onboarding.

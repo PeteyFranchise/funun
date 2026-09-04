@@ -1,5 +1,6 @@
 import { createApiClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { POST } from './route'
 
 // ─── POST /api/collaborators/[id]/invite (M6 fix 27-CODEX-REVIEW.md) ──────
@@ -16,6 +17,10 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/email', () => ({
   sendEmail: jest.fn(),
+}))
+
+jest.mock('@/lib/accounts/member-api-gate', () => ({
+  requireMemberApiAccount: jest.fn(),
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -86,6 +91,11 @@ function mockSupabase(
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
+    user
+      ? { ok: true, user }
+      : { ok: false, status: 401, error: 'Unauthorized' }
+  )
   process.env.NEXT_PUBLIC_APP_URL = 'https://funun.studio'
   ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
 })
