@@ -781,9 +781,9 @@ Deferred (not planned): real preview audio (no preview URLs yet), logo adoption,
 
 ## Buyer & Sales Infrastructure Cluster (owner decisions 2026-08-05)
 
-A cluster of phases stood up together from the buyer-onboarding discussion. They introduce
-**two new account types** — **Client Partners** (the buyer/client-company account) and **Funūn Team
-Members** (internal employee accounts, typed by role) — an **AE-driven sales motion**, and the
+A cluster of phases stood up together from the buyer-onboarding discussion. In the current
+account doctrine, they introduce a **Client Partner organization context** and the separate
+**Funūn Team Member account class** (internal employees, typed by role), plus an **AE-driven sales motion**, and the
 **sync-library inclusion model** (how songs get into the buyer catalogue). Numbered 23–26,
 but **numeric order ≠ build order** — see the sequencing note at the end of the cluster.
 
@@ -824,7 +824,7 @@ This **resolves** the earlier open "instant vs request-and-approve" decision as 
 new-buyer interest into a **buyer company account** — captured light-touch at register, **assigned an AE**,
 and **AE-shepherded to full onboarding**. Establishes the **buyer company account model**: company-scoped
 accounts with **cross-company purchase visibility** and a **spend-approver** role, fully **Funūn-manageable**,
-and **distinct from artist (user) accounts**.
+with organization records kept distinct from a person's Member workspace.
 
 **Requirements**: see `.planning/phases/23-buyer-onboarding-login-register/23-CONTEXT.md`
 **Depends on:** Phase 16 (buyer orgs/`buyer_members`), Phase 22 (light buyer UI + the browse the modal lives on), **Phase 25 (AE assignment needs Funūn employee accounts — may stub initially)**
@@ -833,7 +833,7 @@ and **distinct from artist (user) accounts**.
 
 - **Onboarding model:** light-touch **Register creates a buyer company account** (both "Register" and "Talk to a sales rep" doors do this — minimum viable info is email + phone). Not a bare lead, and not full self-serve: the account is created, then an **AE completes onboarding**. Funūn can fully **manage/edit** these accounts.
 - **AE assignment:** every buyer company is assigned **one Account Executive** (a Funūn employee) by leadership → relationship-driven sales. (Needs Phase 25.)
-- **Buyer company account model:** company-scoped; **members** can see **what's happening across their company** (who's purchasing) — critical for the person **green-lighting spend**. Implies a **spend-approver / company-admin role** + a company-purchases view. **Very different from artist accounts** (own account type/shape, own admin tooling).
+- **Buyer company account model:** company-scoped; **members** can see **what's happening across their company** (who's purchasing) — critical for the person **green-lighting spend**. Implies a **spend-approver / company-admin role** + a company-purchases view. It has its own organization relationship/data shape and admin tooling; the same human may also retain a separate personal Member workspace.
 - **Public browse:** the catalogue becomes browsable logged-out; a logged-out visitor can **browse + play previews**, but any **engagement** (shortlist / License) pops the modal → "create an account" (email + phone is enough to create one). The modal's **Login** button lives here.
 - **Lead/notification routing:** a new-buyer signup lands in an **admin queue** AND (once Phase 25 exists) in the assigned **AE's / BD's in-app account**, plus a **Resend email** — so it becomes part of their daily human systems.
 - **Design:** Funūn light `.fnbl` modal mirroring the Marmoset layout, Funūn-branded, adds "Talk to a sales rep". Opens over the browse (scrim, like the existing License modal).
@@ -897,7 +897,7 @@ Sequenced after Model A (Phase 23, shipped). Original self-serve context in 24-C
 
 ### Phase 25: Funūn Team Member Accounts & AE Assignment + Role Permissions
 
-**Goal:** A **new account type — Funūn Team Members** — **typed by role** (**Leadership/Executive**,
+**Goal:** A separate privileged **account class — Funūn Team Members** — **typed by role** (**Leadership/Executive**,
 **Account Executive**, **BD** now; **A&R, IT, Operations, HR / Team Member Services, Legal** added later, one at a time) so the people who
 run the business operate **inside the product**, governed by a **role permission model**. Delivers:
 
@@ -1799,6 +1799,32 @@ Plans:
 - Prove one accepted correction/update and one withdrawal/takedown
 - Use only evidence-scoped claims; membership is reviewed after the first production feed
 - Full strategy and gates: `.planning/deliberations/ddex-production-readiness.md`
+
+### Cross-cutting Account Foundation: One Identity, Many Roles (owner-approved 2026-09-04)
+
+**Goal:** replace artist-versus-industry account lanes with one Member umbrella while
+preserving separate Client Partner organization and Funūn Team Member security contexts.
+Professional roles describe the person; relationships grant workspace access; project
+permissions and rights records establish authority and ownership.
+
+**Built:** canonical account-context resolver with staff fail-closed behavior; universal
+Member navigation; Contract Locker available to every Member with Split Sheets consolidated
+as a tab; legacy Split Sheet list redirect with detail/create deep links preserved; existing
+Member identities can receive one authorized Client Partner organization relationship without
+losing personal profile/subscription/catalogue data; The Crate access is membership-derived;
+dual-context workspace switches; profile copy renamed to Professional Roles; canonical
+architecture/Claude handoff updated; Playbook doctrine authored as published migration 178.
+
+**Activation status:** migrations 177–178 were applied and remotely verified on 2026-09-04.
+Migration 177 is the service-role-only normalized identity lookup; migration 178 publishes the
+approved doctrine to Company-wide → Standards & Doctrine. Code commit/deployment remains the
+application activation step.
+
+**Deliberately deferred security work:** verified corporate-to-personal credential continuity
+(secondary verified email or passkey, recovery and conflict rules, auditable removal) and true
+multi-Client-Partner organization switching (explicit active organization, route-by-route
+authorization audit). See
+`.planning/todos/pending/2026-09-04-member-client-partner-identity-continuity.md`.
 
 ---
 

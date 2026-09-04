@@ -21,7 +21,6 @@ import {
   SyncLibraryIcon,
   SettingsIcon,
 } from './icons'
-import { CapabilityCta } from './CapabilityCta'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 import { ReportProblemLink } from '@/components/nav/ReportProblemLink'
 import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
@@ -30,11 +29,8 @@ type Item = {
   href: string
   label: string
   match: string
+  alsoMatches?: string[]
   Icon: (p: { gradient?: boolean; className?: string }) => React.ReactNode
-  // D-08: rooms tagged here are hidden entirely (not grayed out) when the
-  // account's capability set doesn't include this value. Untagged items
-  // (Antenna, Settings) are universal — Antenna is dual-use per D-07.
-  requiresCapability?: 'artist' | 'industry'
   // Data-driven gate (≥1 admitted sync-library listing) — NOT a static
   // capability. Resolved server-side in app/(artist)/layout.tsx and passed
   // down as hasSyncLibraryAccess, mirroring how capabilities is already
@@ -44,16 +40,16 @@ type Item = {
 }
 
 const ITEMS: Item[] = [
-  { href: '/ideas', label: 'Ideas', match: '/ideas', Icon: IdeasIcon, requiresCapability: 'artist' },
-  { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
-  { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
-  // No requiresCapability — split sheets are open to industry accounts by
-  // design (D-20); gating this on 'artist' would re-orphan the route for
-  // exactly the producers/writers who create sheets most (18-01 finding 1).
-  // Sits directly under Contract Locker (26-CONTEXT.md nav-order lock,
-  // 2026-08-07 — "it is part of the Contract Locker").
-  { href: '/split-sheets', label: 'Split Sheets', match: '/split-sheets', Icon: LockerIcon },
-  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon, requiresCapability: 'artist' },
+  { href: '/ideas', label: 'Ideas', match: '/ideas', Icon: IdeasIcon },
+  { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon },
+  {
+    href: '/contracts',
+    label: 'Contract Locker',
+    match: '/contracts',
+    alsoMatches: ['/split-sheets'],
+    Icon: LockerIcon,
+  },
+  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon },
   // Sync Library — appears directly under Deals ONLY once the artist has
   // ≥1 admitted song (progressive disclosure; earned, not given).
   {
@@ -63,16 +59,16 @@ const ITEMS: Item[] = [
     Icon: SyncLibraryIcon,
     requiresSyncLibraryAccess: true,
   },
-  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon, requiresCapability: 'artist' },
+  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon },
   { href: '/green-room', label: 'The Green Room', match: '/green-room', Icon: GreenRoomIcon },
   { href: '/network', label: 'Network', match: '/network', Icon: NetworkIcon },
   { href: '/messages', label: 'Messages', match: '/messages', Icon: MessagesNavIcon },
   { href: '/antenna', label: 'Antenna', match: '/antenna', Icon: AntennaIcon },
-  { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon, requiresCapability: 'artist' },
-  { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon, requiresCapability: 'artist' },
-  { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon, requiresCapability: 'artist' },
-  { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon, requiresCapability: 'artist' },
-  { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon, requiresCapability: 'artist' },
+  { href: '/tools/pitchplug', label: 'PitchPlug', match: '/tools/pitchplug', Icon: PitchPlugIcon },
+  { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon },
+  { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon },
+  { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon },
+  { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },
   { href: '/settings', label: 'Settings', match: '/settings', Icon: SettingsIcon },
 ]
 
@@ -87,20 +83,16 @@ type NavUser = { name?: string; plan?: string; initials?: string }
 
 export function ArtistNav({
   user,
-  capabilities = ['artist'],
   hasSyncLibraryAccess = false,
+  clientPartner,
   userId,
 }: {
   user?: NavUser
-  // Default ['artist'] preserves existing behavior for any caller that
-  // hasn't been updated to pass the real set yet (backward-compat during
-  // rollout). The real value always comes from a server-side read of
-  // capability_grants (app/(artist)/layout.tsx) — never fetched client-side.
-  capabilities?: string[]
   // ≥1 admitted sync-library listing, resolved server-side in
   // app/(artist)/layout.tsx (hasAdmittedSyncListing) — never client-fetched.
   // Gates the Sync Library nav item independently of `capabilities` (26-09).
   hasSyncLibraryAccess?: boolean
+  clientPartner?: { organizationName: string }
   // The signed-in user's id — used only to scope the Sync Library "New"
   // dot's per-user localStorage seen-flag (T-26-33, cosmetic only, no
   // access-control meaning). Optional so this component still renders
@@ -123,11 +115,10 @@ export function ArtistNav({
       .join('')
       .toUpperCase()
 
-  // D-08: hide rooms outside the account's capability set entirely — never
-  // render a disabled/grayed dead-end control. Sync Library's gate is a
-  // second, independent predicate (data-driven, not a static capability).
+  // Member tools are universal. Professional roles personalize the person;
+  // they never grant or hide the core workspace. Sync Library remains a
+  // separate data-driven gate because admission is tied to catalogue records.
   const visibleItems = ITEMS.filter(item => {
-    if (item.requiresCapability && !capabilities.includes(item.requiresCapability)) return false
     if (item.requiresSyncLibraryAccess && !hasSyncLibraryAccess) return false
     return true
   })
@@ -290,8 +281,11 @@ export function ArtistNav({
       )}
 
       {/* Nav items */}
-      {visibleItems.map(({ href, label, match, Icon, requiresSyncLibraryAccess }) => {
-        const active = pathname === match || pathname.startsWith(match + '/')
+      {visibleItems.map(({ href, label, match, alsoMatches, Icon, requiresSyncLibraryAccess }) => {
+        const active =
+          pathname === match ||
+          pathname.startsWith(match + '/') ||
+          (alsoMatches ?? []).some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'))
         const showDot = requiresSyncLibraryAccess && showSyncLibraryDot
         return (
           <Link
@@ -362,7 +356,26 @@ export function ArtistNav({
         {!collapsed && <span className="text-[13px] font-medium">Collapse</span>}
       </button>
 
-      {!collapsed && <CapabilityCta capabilities={capabilities} />}
+      {clientPartner && (
+        <Link
+          href="/sync/catalog"
+          title={collapsed ? `The Crate — ${clientPartner.organizationName}` : undefined}
+          className={[
+            'mb-2 flex items-center rounded-[11px] border border-hair bg-white/[.03] text-lav transition hover:border-hairstrong hover:bg-white/[.06]',
+            collapsed ? 'justify-center px-[10px] py-[11px]' : 'gap-3 px-3 py-2.5',
+          ].join(' ')}
+        >
+          <SyncLibraryIcon className="h-[20px] w-[20px]" />
+          {!collapsed && (
+            <span className="min-w-0 leading-tight">
+              <span className="block text-[12px] font-bold text-white">Open The Crate</span>
+              <span className="block truncate text-[11px] text-lavdim">
+                {clientPartner.organizationName}
+              </span>
+            </span>
+          )}
+        </Link>
+      )}
 
       {/* User footer */}
       <Link

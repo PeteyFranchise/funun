@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { getDemoProjects } from '@/lib/vault/demo-store'
 import { Topbar } from '@/components/layout/Topbar'
@@ -7,6 +8,7 @@ import { ContractUpload } from '@/components/contracts/ContractUpload'
 // export a fixed set of names — exporting these from here fails the build.
 import { fetchContractRows, rowsFromProjects, type Proj } from '@/lib/contracts/locker-rows'
 import { fetchSplitSheetsForUser, type SplitSheetRow } from '@/lib/split-sheets/list'
+import { SplitSheetList, type SplitSheetListItem } from '@/components/split-sheets/SplitSheetList'
 import {
   buildAttentionSections,
   type AttentionSheetInput,
@@ -72,9 +74,21 @@ function toAttentionProjects(projects: Proj[]): AttentionProjectInput[] {
   }))
 }
 
-export default async function ContractsPage() {
+type LockerView = 'overview' | 'split-sheets' | 'documents'
+
+function readLockerView(value: string | undefined): LockerView {
+  return value === 'split-sheets' || value === 'documents' ? value : 'overview'
+}
+
+export default async function ContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>
+}) {
+  const view = readLockerView((await searchParams).view)
   let projects: Proj[] = []
   let rows: ReturnType<typeof rowsFromProjects> = []
+  let splitSheetRows: SplitSheetRow[] = []
   let attentionSheets: AttentionSheetInput[] = []
   let viewerUserId = ''
   let hiddenDocumentIds: string[] = []
@@ -102,8 +116,8 @@ export default async function ContractsPage() {
     // — the query change that makes the Locker attention-first (18-CONTEXT
     // finding 3): drafts and pending sheets live in split_sheets, a table
     // the Locker had never read before this plan.
-    const sheets = await fetchSplitSheetsForUser(supabase, viewerUserId)
-    attentionSheets = toAttentionSheets(sheets)
+    splitSheetRows = await fetchSplitSheetsForUser(supabase, viewerUserId)
+    attentionSheets = toAttentionSheets(splitSheetRows)
 
     // A flat, non-nested read of the caller's OWN vault_documents rows
     // (covers both project-nested and standalone documents, since every
@@ -168,6 +182,24 @@ export default async function ContractsPage() {
 
   const verified = visibleRows.filter(r => r.status === 'verified' && !r.needsFixing).length
   const projectOptions = projects.map(p => ({ id: p.id, title: p.title }))
+  const splitSheets: SplitSheetListItem[] = splitSheetRows.map(row => ({
+    id: row.id,
+    song_name: row.song_name,
+    status: row.status as SplitSheetListItem['status'],
+    created_at: row.created_at,
+    canDelete: row.initiator_user_id === viewerUserId,
+    parties: (row.split_sheet_parties ?? []).map(party => ({
+      id: party.id,
+      name: party.name,
+      approval_status: party.approval_status,
+    })),
+  }))
+  const documentRows = visibleRows.filter(row => row.type !== 'split_sheet')
+  const tabs: { view: LockerView; label: string; count?: number }[] = [
+    { view: 'overview', label: 'Overview' },
+    { view: 'split-sheets', label: 'Split Sheets', count: splitSheets.length },
+    { view: 'documents', label: 'Documents', count: documentRows.length },
+  ]
 
   return (
     <>
@@ -175,10 +207,62 @@ export default async function ContractsPage() {
         title="Contract Locker"
         subtitle={`${visibleRows.length} document${visibleRows.length === 1 ? '' : 's'} · ${verified} verified — the paperwork behind your money`}
       >
-        <ContractUpload projects={projectOptions} />
+        {view !== 'split-sheets' && <ContractUpload projects={projectOptions} />}
       </Topbar>
       <div className="flex-1 px-9 py-[30px]">
-        <ContractLocker rows={visibleRows} projects={projectOptions} attention={attention} />
+        <div className="mb-7 flex flex-wrap gap-2 border-b border-hair pb-4" aria-label="Contract Locker sections">
+          {tabs.map(tab => {
+            const active = tab.view === view
+            return (
+              <Link
+                key={tab.view}
+                href={tab.view === 'overview' ? '/contracts' : `/contracts?view=${tab.view}`}
+                aria-current={active ? 'page' : undefined}
+                className={[
+                  'rounded-[10px] border px-4 py-2 text-[13.5px] font-bold transition',
+                  active
+                    ? 'border-brandindigo/60 bg-brandindigo/15 text-white'
+                    : 'border-hair bg-card text-lav hover:border-hairstrong hover:text-white',
+                ].join(' ')}
+              >
+                {tab.label}
+                {tab.count != null && (
+                  <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-lavdim">
+                    {tab.count}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
+
+        {view === 'split-sheets' ? (
+          <div className="mx-auto max-w-3xl">
+            <header className="mb-8">
+              <h2 className="text-[22px] font-extrabold text-white">Split Sheets</h2>
+              <p className="mt-1 text-sm text-lavdim">
+                Every split sheet you&rsquo;ve started, sent, or signed — song by song.
+              </p>
+            </header>
+            <SplitSheetList sheets={splitSheets} />
+          </div>
+        ) : view === 'documents' ? (
+          <ContractLocker
+            key="documents"
+            rows={documentRows}
+            projects={projectOptions}
+            showCreate={false}
+            showAsk={false}
+            emptyMessage="No other agreements yet — upload a contract when you’re ready."
+          />
+        ) : (
+          <ContractLocker
+            key="overview"
+            rows={visibleRows}
+            projects={projectOptions}
+            attention={attention}
+          />
+        )}
       </div>
     </>
   )

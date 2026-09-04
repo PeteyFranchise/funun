@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyAdmin } from '@/lib/admin/gate'
-import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
+import {
+  addClientPartnerMember,
+  IncompatibleClientPartnerIdentityError,
+} from '@/lib/buyers/addClientPartnerMember'
+import { DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
 import { normalizeBuyerRole } from '@/lib/buyers/org'
 import { logStaffAction } from '@/lib/staff/audit'
 
@@ -67,14 +71,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const isOrgAdmin = body.is_org_admin === true
 
   const service = createServiceClient()
+  const { data: organization, error: organizationError } = await service
+    .from('buyer_orgs')
+    .select('name')
+    .eq('id', orgId)
+    .maybeSingle()
+  if (organizationError) {
+    return NextResponse.json({ error: organizationError.message }, { status: 500 })
+  }
+  if (!organization) {
+    return NextResponse.json({ error: 'Client Partner organization not found.' }, { status: 404 })
+  }
+
   try {
-    const { userId, emailSent } = await createBuyerAccount({
+    const { userId, emailSent, existingAccount } = await addClientPartnerMember({
       email,
       displayName,
+      organizationName: organization.name,
       orgId,
       buyerRole,
       isOrgAdmin,
       invitedBy: auth.user.id,
+      service,
     })
 
     // review #9: this staff mutation was previously unaudited — record it (D-04).
@@ -98,12 +116,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           email,
         },
         emailSent,
+        existingAccount,
       },
       { status: 201 }
     )
   } catch (err) {
     if (err instanceof DuplicateBuyerAccountError) {
       return NextResponse.json({ error: 'This email has already been invited.' }, { status: 409 })
+    }
+    if (err instanceof IncompatibleClientPartnerIdentityError) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
     }
     return NextResponse.json(
       { error: 'Something went wrong — please try again.' },

@@ -4,11 +4,12 @@ import { sendEmail } from '@/lib/email'
 import { buyerInviteEmail } from '@/lib/email/buyerInvite'
 import type { BuyerRole } from './schema'
 
-/** Thrown when the invite email already belongs to an existing auth.users row (mirrors createIndustryMember's WR-03 discipline). */
+/** Thrown when the buyer-only provisioning path receives an existing auth identity. */
 export class DuplicateBuyerAccountError extends Error {}
 
 // ─── createBuyerAccount (D-11/D-12/D-13) ───────────────────────────────────
-// Standalone, reusable helper modelled line-for-line on
+// Compatibility helper for a genuinely new Client Partner-only identity,
+// modelled line-for-line on
 // lib/industry/createIndustryMember.ts. Buyers get NO user_profiles row, but on
 // THIS Supabase app_metadata is applied AFTER the auth.users INSERT (migration
 // 104), so handle_new_user()'s buyer branch does NOT fire at INSERT — the
@@ -18,7 +19,7 @@ export class DuplicateBuyerAccountError extends Error {}
 // createUserWithProvisionIntent writes, NOT the buyer
 // branch.
 //
-// app_metadata.role='buyer' is still set atomically inside createUser() (never
+// app_metadata.role='buyer' remains a legacy bootstrap hint set atomically inside createUser() (never
 // a post-insert UPDATE) as defense in depth; the org id, buyer tier, and
 // display_name ride along in user_metadata for downstream display.
 export async function createBuyerAccount(input: {

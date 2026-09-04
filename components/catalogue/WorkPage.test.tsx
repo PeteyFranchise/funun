@@ -6,8 +6,7 @@ import type { DiaryFeedEntry } from './DiaryFeed'
 
 // No jsdom in this repo (testEnvironment: 'node') — asserted as static
 // markup, same treatment as every other components/catalogue/*.test.tsx
-// suite in this phase. `initialViewport` is the test-only seam WorkPage.tsx
-// documents on its own props type — a production caller never sets it.
+// suite in this phase.
 //
 // WorkPage calls next/navigation's useRouter() (it originates writes —
 // same "component owns its own mutation" shape as WorkHeader/WorkRoster),
@@ -148,7 +147,6 @@ function makeProps(overrides: Partial<WorkPageProps> = {}): WorkPageProps {
     vocalState: 'primary',
     priorAiEntryCount: 3,
     hasHumFirstFired: true,
-    initialViewport: 'desktop',
     ...overrides,
   }
 }
@@ -370,14 +368,14 @@ describe('WorkPage', () => {
     expect(markup).toContain('Alternates (2)')
   })
 
-  it('renders the Diary|Versions toggle on the mobile treatment and not on the desktop treatment', () => {
-    const mobile = renderToStaticMarkup(<WorkPage {...makeProps({ initialViewport: 'mobile' })} />)
-    expect(mobile).toContain('role="tablist"')
-    expect(mobile).toContain('>Diary<')
-    expect(mobile).toContain('>Versions<')
-
-    const desktop = renderToStaticMarkup(<WorkPage {...makeProps({ initialViewport: 'desktop' })} />)
-    expect(desktop).not.toContain('role="tablist"')
+  it('renders Versions, Diary, and lyrics in one responsive hybrid grid', () => {
+    const markup = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    expect(markup).toContain('data-writer-room-grid="true"')
+    expect(markup).toContain('lg:grid-cols-2')
+    expect(markup).toContain('aria-label="Drag to move Versions"')
+    expect(markup).toContain('aria-label="Drag to move Diary"')
+    expect(markup).toContain('Snap lyrics together')
+    expect(markup).not.toContain('aria-label="Diary or versions"')
   })
 
   it('spends exactly one gradient on the default render', () => {

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
+import type { WriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
 
 // No jsdom in this repo (testEnvironment: 'node') — asserted as static
 // markup, same treatment as ComposerCard.test.tsx and DiaryFeed.test.tsx.
@@ -132,5 +133,51 @@ describe('LyricsPad', () => {
     const markup = renderToStaticMarkup(<LyricsPad {...baseProps} blocks={[block()]} />)
     expect(markup).toContain('Open recovery history for Verse')
     expect(markup).toContain('↶ History')
+  })
+
+  it('renders lyrics and fixed modules in one two-column hybrid grid', () => {
+    const roomLayout: WriterRoomLayout = {
+      version: 1,
+      items: [
+        { key: 'module:versions', width: 'half' },
+        { key: 'lyric:b1', width: 'half' },
+        { key: 'module:diary', width: 'full' },
+      ],
+    }
+    const markup = renderToStaticMarkup(
+      <LyricsPad
+        {...baseProps}
+        blocks={[block()]}
+        roomLayout={roomLayout}
+        roomModules={[
+          { key: 'module:versions', label: 'Versions', description: '1 active take', content: <p>Audio player</p> },
+          { key: 'module:diary', label: 'Diary', description: 'Chronological song history', content: <p>Latest event</p> },
+        ]}
+      />
+    )
+
+    expect(markup).toContain('data-writer-room-grid="true"')
+    expect(markup).toContain('lg:grid-cols-2')
+    expect(markup).toContain('aria-label="Make Versions full width"')
+    expect(markup).toContain('aria-label="Make Verse full width"')
+    expect(markup.indexOf('Audio player')).toBeLessThan(markup.indexOf('City lights are burning'))
+    expect(markup.indexOf('City lights are burning')).toBeLessThan(markup.indexOf('Latest event'))
+  })
+
+  it('keeps Versions and Diary available when an audio-first song has no lyric blocks', () => {
+    const markup = renderToStaticMarkup(
+      <LyricsPad
+        {...baseProps}
+        blocks={[]}
+        roomModules={[
+          { key: 'module:versions', label: 'Versions', description: '1 active take', content: <p>Uploaded instrumental</p> },
+          { key: 'module:diary', label: 'Diary', description: 'Chronological song history', content: <p>Upload recorded</p> },
+        ]}
+      />
+    )
+
+    expect(markup).toContain('Uploaded instrumental')
+    expect(markup).toContain('Upload recorded')
+    expect(markup).toContain('Paste a full lyric here')
   })
 })

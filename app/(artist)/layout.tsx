@@ -11,38 +11,47 @@ import { hasAdmittedSyncListing } from '@/lib/sync-library/hub-access'
 import { resolveHandleGate } from '@/lib/handles/gate'
 import { profileDisplayTitle } from '@/lib/profile/display-name'
 import { GlobalCaptureHeaderButton } from '@/components/ideas/GlobalQuickCapture'
+import { redirect } from 'next/navigation'
+import { getStaffRoles } from '@/lib/admin/staff-role'
+import { resolveAccountContext } from '@/lib/accounts/account-context'
 
-// Reads the account's approved capability set server-side and passes it to
-// ArtistNav as a prop (D-08). Never fetched client-side — capability_grants
-// carries the same column-lockdown doctrine as every other privileged table
-// (RESEARCH anti-pattern guard).
 export default async function ArtistLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let capabilities: string[] = []
   // Sync Library nav visibility is a DATA-DRIVEN gate (≥1 admitted song),
-  // not a static capability — resolved server-side here, alongside
-  // capabilities, and passed down as a prop (never client-fetched),
-  // mirroring the capabilities read immediately above (26-CONTEXT.md).
+  // resolved server-side and passed down as a prop (never client-fetched).
   let hasSyncLibraryAccess = false
   let navUser: { name: string } | undefined
-  let isUserAccount = false
+  let isMemberAccount = false
+  let clientPartner: { organizationName: string } | undefined
 
   if (user) {
     const service = createServiceClient()
-    const { data: grants } = await service
-      .from('capability_grants')
-      .select('capability')
-      .eq('profile_id', user.id)
-      .eq('status', 'approved')
-    capabilities = (grants ?? []).map(g => g.capability)
-    hasSyncLibraryAccess = await hasAdmittedSyncListing(service, user.id)
+    // Client Partner access is a relationship, not a separate login or a
+    // permanent user type. An existing Member can therefore switch into The
+    // Crate without losing or replacing their personal workspace.
+    const { data: buyerMembership } = await service
+      .from('buyer_members')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle()
+    if (buyerMembership) {
+      const { data: buyerOrganization } = await service
+        .from('buyer_orgs')
+        .select('name')
+        .eq('id', buyerMembership.org_id)
+        .maybeSingle()
+      if (buyerOrganization?.name) {
+        clientPartner = { organizationName: buyerOrganization.name }
+      }
+    }
 
     // ─── D-09's hard gate ────────────────────────────────────────────────
-    // A signed-in User Account with a profile row and no handle gets the
+    // A signed-in Member Account with a profile row and no handle gets the
     // choose-a-handle screen INSTEAD of the app, until it picks one. This is
     // what drains the handle-less accounts, and therefore what plan 07's
     // NOT NULL constraint depends on.
@@ -53,16 +62,15 @@ export default async function ArtistLayout({ children }: { children: React.React
     //     it would need a database round trip per request just to learn
     //     whether a profile row exists. It also gates /admin in the same
     //     isProtected expression as /vault — which is exactly the context
-    //     where "is authenticated" gets used as a proxy for "is a User
+    //     where "is authenticated" gets used as a proxy for "is a Member
     //     Account" and Team Members get locked out of the admin console.
     //   • Being in this route group is cheaper and keeps the check off the
     //     admin tree entirely. But it is NOT a guarantee on its own:
     //     middleware's isProtected check tests only for a signed-in user and
     //     never checks role, so a signed-in Client Partner navigating
     //     directly to /vault DOES render this layout. Route groups separate
-    //     where pages live, not who can reach them. The absent-profile-row
-    //     branch inside resolveHandleGate is what actually protects them
-    //     (D-10b), and lib/handles/gate.test.ts is what proves it.
+    //     where pages live, not who can reach them. resolveAccountContext()
+    //     now performs the actual staff/member/buyer-context redirect above.
     //
     // The handle read is a NET-NEW query — this layout had no user_profiles
     // lookup at all. What rides along is the pattern (a server-side round trip
@@ -80,10 +88,19 @@ export default async function ArtistLayout({ children }: { children: React.React
       .select('handle, artist_name')
       .eq('id', user.id)
       .maybeSingle()
-    // A user_profiles row is the structural User Account signal. Team
-    // Members, buyers, and client partners authenticate too, but Global
-    // Capture must never mount for those account types.
-    isUserAccount = profileRow !== null
+
+    const accountContext = resolveAccountContext({
+      hasMemberProfile: profileRow !== null,
+      clientPartnerMembershipCount: buyerMembership ? 1 : 0,
+      staffRoles: getStaffRoles(user),
+    })
+    if (accountContext.isFununTeamMember) redirect('/admin')
+    if (!accountContext.hasMemberWorkspace) {
+      redirect(accountContext.hasClientPartnerWorkspace ? '/sync/catalog' : '/sync/access')
+    }
+
+    hasSyncLibraryAccess = await hasAdmittedSyncListing(service, user.id)
+    isMemberAccount = accountContext.hasMemberWorkspace
     const navName = profileRow
       ? profileDisplayTitle({
           artistName: (profileRow.artist_name as string | null) ?? null,
@@ -107,8 +124,8 @@ export default async function ArtistLayout({ children }: { children: React.React
   const body = (
     <div className="flex min-h-screen bg-ink text-white">
       <ArtistNav
-        capabilities={capabilities}
         hasSyncLibraryAccess={hasSyncLibraryAccess}
+        clientPartner={clientPartner}
         userId={user?.id}
         user={navUser}
       />
@@ -129,5 +146,5 @@ export default async function ArtistLayout({ children }: { children: React.React
   // above) — render children directly when unauthenticated.
   if (!user) return body
 
-  return <ArtistLayoutClient userId={user.id} enableGlobalCapture={isUserAccount}>{body}</ArtistLayoutClient>
+  return <ArtistLayoutClient userId={user.id} enableGlobalCapture={isMemberAccount}>{body}</ArtistLayoutClient>
 }

@@ -20,12 +20,11 @@ export interface HandleGateProfile {
  * True only when a signed-in identity OWNS a `user_profiles` row and that
  * row has no usable handle.
  *
- * The `profile !== null` test is LOAD-BEARING, not a defensive nicety. Only
- * a User Account (Artist or Industry) has a `user_profiles` row: a Team
- * Member's identity lives in `funun_staff`, and `handle_new_user()` returns
- * early for `app_metadata.role = 'buyer'` before any profile insert, so a
- * Client Partner has no row either (docs/architecture/ACCOUNT-TYPES.md).
- * `null` is therefore the STRUCTURAL signal for "not a User Account".
+ * The `profile !== null` test is LOAD-BEARING, not a defensive nicety. A
+ * `user_profiles` row is the current structural Member signal. Buyer-only
+ * compatibility identities and Funūn Team Member identities do not retain
+ * one (docs/architecture/ACCOUNT-TYPES.md). `null` therefore means this
+ * identity has no Member profile for the gate to complete.
  *
  * Anything that reduces this to a truthiness check on the user — gating on
  * "is authenticated" — is the D-10 trap: it locks staff out of the admin

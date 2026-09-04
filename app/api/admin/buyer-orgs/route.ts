@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
-import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
+import {
+  addClientPartnerMember,
+  IncompatibleClientPartnerIdentityError,
+} from '@/lib/buyers/addClientPartnerMember'
+import { DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
 import { logStaffAction } from '@/lib/staff/audit'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -126,13 +130,15 @@ export async function POST(request: Request) {
   })
 
   try {
-    const { userId, emailSent } = await createBuyerAccount({
+    const { userId, emailSent, existingAccount } = await addClientPartnerMember({
       email: adminEmail,
       displayName: adminDisplayName,
+      organizationName: orgName,
       orgId: org.id,
       buyerRole: 'approver',
       isOrgAdmin: true,
       invitedBy: auth.user.id,
+      service,
     })
 
     await logStaffAction(service, {
@@ -146,6 +152,7 @@ export async function POST(request: Request) {
       {
         data: { org: { ...org, memberCount: 1 }, adminUserId: userId, adminEmail },
         emailSent,
+        existingAccount,
       },
       { status: 201 }
     )
@@ -158,6 +165,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'This email has already been invited.',
+          data: { org: { ...org, memberCount: 0 } },
+        },
+        { status: 409 }
+      )
+    }
+    if (err instanceof IncompatibleClientPartnerIdentityError) {
+      return NextResponse.json(
+        {
+          error: err.message,
           data: { org: { ...org, memberCount: 0 } },
         },
         { status: 409 }

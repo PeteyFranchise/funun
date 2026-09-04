@@ -37,6 +37,24 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
+### UPDATE 2026-09-04 — One Identity, Many Roles foundation built
+
+Owner-approved account doctrine is now implemented in the working tree: Member is the full
+creative/professional umbrella; verified Client Partner organization access may coexist on the
+same auth identity; Funūn Team Member identities remain separate and fail closed. Core Member
+navigation no longer depends on artist/industry capability labels. Contract Locker is universal
+and contains the preserved Split Sheets list as a tab; the former list URL redirects while
+detail/create links remain stable. Existing-member Client Partner invitations preserve the
+personal profile/subscription/catalogue and refuse staff or a second buyer organization.
+
+Migrations 177–178 were applied by the owner and remotely verified `local = remote` through 178:
+service-only existing-email reconciliation plus the published Company-wide Playbook doctrine.
+Corporate-to-personal
+verified credential linking and multi-organization active-context switching are deliberately
+deferred and recorded in the pending todo. Validation: strict TypeScript, ESLint, full Jest,
+diff check, and production Next build all pass. The Writer's Room hybrid layout work is
+preserved and included in the same owner-requested production release.
+
 ### UPDATE 2026-08-30 (later, same day) — Phase 37.1 "The Songwriter" EXECUTED
 
 **All 13 plans ran on `feat/phase-37-songwriter` (NOT yet merged to main — merging IS

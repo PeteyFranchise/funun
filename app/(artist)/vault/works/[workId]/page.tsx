@@ -20,6 +20,7 @@ import {
 } from '@/lib/catalogue/producer-handoff'
 import { safeTakeDownloadName } from '@/lib/catalogue/take-workflow'
 import { loadOpenLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
+import { parseWriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -126,7 +127,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes, receiptsRes, handoffProgressRes, handoffNudgesRes, handoffActivityRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes, receiptsRes, handoffProgressRes, handoffNudgesRes, handoffActivityRes, roomLayoutRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -218,6 +219,12 @@ export default async function WorkComposerPage({
         .eq('work_id', workId)
         .order('last_at', { ascending: false })
         .limit(100),
+      supabase
+        .from('work_room_layouts')
+        .select('layout')
+        .eq('work_id', workId)
+        .eq('user_id', user.id)
+        .maybeSingle(),
     ])
 
   const workRow = workRes.data as Work | null
@@ -233,6 +240,7 @@ export default async function WorkComposerPage({
   const members = (membersRes.data ?? []) as WorkMemberRow[]
   const aiEntries = (aiEntriesRes.data ?? []) as AiEntry[]
   const diaryRows = (diaryRes.data ?? []) as WorkDiaryEvent[]
+  const roomLayout = parseWriterRoomLayout((roomLayoutRes.data as { layout?: unknown } | null)?.layout)
   const priorAiEntryCount = aiAccountCountRes.count ?? 0
   const singerRoster = (singerRosterRes.data ?? []) as {
     id: string
@@ -824,6 +832,7 @@ export default async function WorkComposerPage({
           hasHumFirstFired={humFirstFiredCookie || aiEntries.length > 0}
           songPassport={songPassport}
           lyricLift={lyricLift}
+          roomLayout={roomLayout}
         />
       </div>
     </>

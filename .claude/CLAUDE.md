@@ -373,29 +373,27 @@ Three pillars:
 
 ## Account Vocabulary
 
-**A "User Account" is an account that owns a `user_profiles` row — exactly Artist and
-Industry, nothing else.** Team Members and Client Partners are NOT User Accounts.
+**Funūn has three account classes: Member, Client Partner, and Funūn Team Member.**
 
-| Term | Identified by | Owns a `user_profiles` row? |
-|---|---|---|
-| Artist | *no* `app_metadata.role` (default branch) | yes, `member_type='artist'` |
-| Industry | `app_metadata.role = 'industry'` | yes, `member_type='industry'` |
-| Client Partner (buyer) | `app_metadata.role = 'buyer'` | **no** |
-| Team Member (staff) | `app_metadata.staff_roles[]`, table `funun_staff` | **no** |
-| Curator | provisioned as **Industry** | yes — the `role='curator'` branch is dead code |
+- Member is the full-user umbrella for artists, writers, producers, managers,
+  publishers, attorneys, engineers, label executives, curators, and other creative
+  professionals. A `user_profiles` row is the current structural Member signal.
+- Client Partner access comes from an explicit `buyer_members` relationship to a
+  verified `buyer_orgs` organization. It may coexist with a Member workspace on the
+  same auth identity. Never infer it from a “Music Supervisor” profile role or require
+  `app_metadata.role='buyer'` when a valid membership exists.
+- Funūn Team Member access comes from `funun_staff` and server-verified staff roles.
+  Staff identities stay separate and fail closed out of Member/Client Partner contexts.
+- Guests and signature recipients are limited invitation contexts, not account classes.
 
-`handle_new_user()` (migration 098) decides this once at signup and returns early for
-`buyer` and `curator` before any profile insert. That is why `member_type` is
-`'artist' | 'industry'` and has no other values — no other account type has a row to
-put one on.
+Professional roles describe a person and may prefill forms; they never grant workspace
+access, authorship, ownership, signing authority, licensing power, or payment rights.
+Relationships grant workspace access. Project permissions and authoritative rights
+records decide what a person can do and owns.
 
-Consequence worth relying on: scoping work to User Accounts is **structural, not a
-convention** — profile-shaped features cannot reach a Team Member or Client Partner
-because there is no row to write to. The inverse also holds: staff-shaped code must
-never assume a profile row exists (a Team Member's name comes from
-`funun_staff.display_name`).
-
-Full reference, including the two traps and the unresolved Curator question:
+Legacy `member_type`, `capability_grants`, buyer metadata, and old URLs remain only for
+compatibility until a later audited removal. Core Member navigation must not be hidden by
+artist/industry capability labels. Full reference:
 `docs/architecture/ACCOUNT-TYPES.md`.
 
 ## GSD Workflow Enforcement

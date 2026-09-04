@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
-import { createBuyerAccount } from '@/lib/buyers/createBuyerAccount'
+import { addClientPartnerMember } from '@/lib/buyers/addClientPartnerMember'
 import { PATCH as orgPATCH } from '@/app/api/admin/buyer-orgs/[id]/route'
 import { PATCH as aePATCH } from '@/app/api/admin/buyer-orgs/[id]/ae/route'
 import { GET as orgsGET, POST as orgsPOST } from '@/app/api/admin/buyer-orgs/route'
@@ -30,8 +30,12 @@ jest.mock('@/lib/notifications', () => ({
   createNotification: jest.fn(),
 }))
 
+jest.mock('@/lib/buyers/addClientPartnerMember', () => ({
+  addClientPartnerMember: jest.fn(),
+  IncompatibleClientPartnerIdentityError: class IncompatibleClientPartnerIdentityError extends Error {},
+}))
+
 jest.mock('@/lib/buyers/createBuyerAccount', () => ({
-  createBuyerAccount: jest.fn(),
   DuplicateBuyerAccountError: class DuplicateBuyerAccountError extends Error {},
 }))
 
@@ -563,7 +567,11 @@ describe('POST /api/admin/buyer-orgs — widened staff-create gate', () => {
     })
     const service = mockCreateOrgService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
-    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: 'new-admin-id', emailSent: true })
+    ;(addClientPartnerMember as jest.Mock).mockResolvedValue({
+      userId: 'new-admin-id',
+      emailSent: true,
+      existingAccount: false,
+    })
 
     const res = await orgsPOST(
       jsonRequest(
@@ -600,7 +608,11 @@ describe('POST /api/admin/buyer-orgs — widened staff-create gate', () => {
     })
     const service = mockCreateOrgService()
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
-    ;(createBuyerAccount as jest.Mock).mockResolvedValue({ userId: 'new-admin-id', emailSent: true })
+    ;(addClientPartnerMember as jest.Mock).mockResolvedValue({
+      userId: 'new-admin-id',
+      emailSent: true,
+      existingAccount: false,
+    })
 
     const res = await orgsPOST(
       jsonRequest(

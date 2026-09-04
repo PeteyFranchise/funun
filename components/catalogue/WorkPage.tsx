@@ -7,7 +7,7 @@ import { GuidingLine } from './GuidingLine'
 import { DiaryFeed, type DiaryFeedEntry } from './DiaryFeed'
 import { WorkHeader } from './WorkHeader'
 import { WorkRoster, type WorkRosterMember } from './WorkRoster'
-import { LyricsPad, type LyricsPadBlock } from './LyricsPad'
+import { LyricsPad, type LyricsPadBlock, type WriterRoomModule } from './LyricsPad'
 import { LyricCommentsPanel } from './LyricCommentsPanel'
 import { LyricSuggestionPanel } from './LyricSuggestionPanel'
 import { LyricHistoryPanel } from './LyricHistoryPanel'
@@ -57,6 +57,7 @@ import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/l
 import { workingTakeFirst } from '@/lib/catalogue/take-workflow'
 import type { ReturnedMixReviewOutcome } from '@/lib/catalogue/returned-mix-review'
 import type { LyricLiftView } from '@/lib/catalogue/lyric-lift'
+import type { WriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -69,19 +70,16 @@ import type { LyricLiftView } from '@/lib/catalogue/lyric-lift'
 // already established in plan 11, not a violation of the page/component
 // fetch boundary, which is about READS.
 //
-// LAYOUT (locked, do not "simplify" later): desktop is sketch 001-C — a
-// two-column grid, versions sticky left, diary right, the header
-// spanning above both. Mobile is 001-A — a single stream defaulting to
-// the diary, reached alongside the version cards through a Diary|
-// Versions toggle (001-B survives ONLY as this toggle's second tab, per
-// catalogue-hygiene-ui.md's own "what was tried and rejected" note).
+// LAYOUT (approved 2026-09-04): the writing surface is a private hybrid
+// grid. Lyric blocks, Versions, and Diary may be reordered and may take a
+// full or half desktop row; phones always stack one column. That layout is
+// presentation only. Canonical lyric positions still use the reorder RPC,
+// version numbering remains chronological, and Diary events never reorder.
 //
-// ORDER (005-C's rule, structural): WorkHeader, then the composer, then
-// AT MOST one GuidingLine, then the WRITING SURFACE (the lyrics pad),
-// then the versions + diary ledger. Creation leads — the composer opens
-// it, the pad is where it happens — and the ledger follows clean. (The
-// pad sat below the ledger until 2026-08-30, when the owner moved it up
-// so the writing surface is never behind the history.)
+// ORDER (005-C's rule, structural): WorkHeader, presence + compact people
+// controls, then the composer, then AT MOST one GuidingLine, then the hybrid
+// writing surface. Creation still leads; reference modules move only inside
+// that surface and never become gates in front of writing.
 //
 // HYGIENE MOMENTS fire INSIDE the add flows (005-C), never beside them —
 // the small state machine below (`Flow`) is what makes that true: there
@@ -154,13 +152,8 @@ export type WorkPageProps = {
   songPassport?: SongPassportView | null
   /** Latest queued, review-ready, or failed transcription draft for this room. */
   lyricLift?: LyricLiftView | null
-  /**
-   * Test seam only — forces the breakpoint treatment for a deterministic,
-   * single-pass render with no jsdom/matchMedia in this repo's Jest
-   * environment. A production caller never sets this; the real viewport
-   * is detected client-side after mount (see the effect below).
-   */
-  initialViewport?: 'mobile' | 'desktop'
+  /** Private per-viewer presentation state; never authoritative song data. */
+  roomLayout?: WriterRoomLayout | null
 }
 
 // ─── Guiding-line / hum-first cookies — the WRITE side ──────────────────
@@ -526,7 +519,7 @@ export function WorkPage({
   hasHumFirstFired,
   songPassport,
   lyricLift = null,
-  initialViewport,
+  roomLayout = null,
 }: WorkPageProps) {
   const router = useRouter()
 
@@ -550,10 +543,31 @@ export function WorkPage({
   const [activeLyricLift, setActiveLyricLift] = useState<LyricLiftView | null>(lyricLift)
   const [lyricLiftStartError, setLyricLiftStartError] = useState<string | null>(null)
   const [lyricLiftStartingVersionId, setLyricLiftStartingVersionId] = useState<string | null>(null)
+  const roomLayoutSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const handleLyricLiftChange = useCallback((next: LyricLiftView) => {
     setActiveLyricLift(next)
   }, [])
+
+  const handleRoomLayoutChange = useCallback((next: WriterRoomLayout): Promise<void> => {
+    const save = async () => {
+      const response = await fetch(`/api/works/${workId}/layout`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      })
+      if (response.ok) return
+      const body = (await response.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error ?? "Couldn't save your room layout — try again.")
+    }
+
+    // A quick drag followed by a width change must land in the same order the
+    // viewer made them. Serializing these tiny JSON writes prevents a slower
+    // older response from overwriting the newest layout.
+    const queued = roomLayoutSaveQueueRef.current.catch(() => undefined).then(save)
+    roomLayoutSaveQueueRef.current = queued
+    return queued
+  }, [workId])
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -784,27 +798,6 @@ export function WorkPage({
     setSupportsCapture(pickSupportedMimeType() !== null)
   }, [])
 
-  // Desktop is 001-C, mobile is 001-A — decided treatments, not a guess.
-  // `initialViewport` is a test-only seam (mirrors this codebase's
-  // existing isTypeSupported/initialResult convention): when set, the
-  // real matchMedia detection below never runs, so a single render is
-  // fully deterministic with no jsdom in this repo's Jest environment.
-  const [viewport, setViewport] = useState<'mobile' | 'desktop'>(initialViewport ?? 'desktop')
-  const [mobileTab, setMobileTab] = useState<'diary' | 'versions'>('diary')
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (new URLSearchParams(window.location.search).has('version')) setMobileTab('versions')
-  }, [])
-  useEffect(() => {
-    if (initialViewport) return
-    if (typeof window === 'undefined' || !window.matchMedia) return
-    const mql = window.matchMedia('(min-width: 1024px)')
-    const update = () => setViewport(mql.matches ? 'desktop' : 'mobile')
-    update()
-    mql.addEventListener('change', update)
-    return () => mql.removeEventListener('change', update)
-  }, [initialViewport])
-
   const lyricsRef = useRef<HTMLDivElement | null>(null)
   const lyricLiftRef = useRef<HTMLDivElement | null>(null)
   const rosterRef = useRef<HTMLDivElement | null>(null)
@@ -858,9 +851,6 @@ export function WorkPage({
   }
 
   function scrollToDiary() {
-    // On mobile the diary lives behind a tab — select it first so the entry
-    // the toast points at is actually on screen when we scroll there.
-    setMobileTab('diary')
     diaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -1412,7 +1402,11 @@ export function WorkPage({
       const body = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(body.error ?? "Couldn't save the new order — try again.")
     }
-    router.refresh()
+    const byId = new Map(liveLyricsBlocks.map(block => [block.id, block] as const))
+    setLiveLyricsBlocks(order.flatMap(({ id, position }) => {
+      const block = byId.get(id)
+      return block ? [{ ...block, position }] : []
+    }))
   }
 
   async function patchVocalPlan(blockId: string, patch: { performers?: PerformerRef[]; vocal_direction?: string | null }) {
@@ -1473,6 +1467,45 @@ export function WorkPage({
         createdAt: version.createdAt,
       }]
     : [])
+  const activeVersionCount = versions.filter(version => !version.archivedAt).length
+  const roomModules: WriterRoomModule[] = [
+    {
+      key: 'module:versions',
+      label: 'Versions',
+      description: `${activeVersionCount} active ${activeVersionCount === 1 ? 'take' : 'takes'}`,
+      content: (
+        <VersionsList
+          workId={workId}
+          versions={versions}
+          onActivity={announceRoomActivity}
+          commentRefreshes={trackCommentRefreshes}
+          onCommentChanged={announceTrackCommentChanged}
+          onCompare={() => setFlow({ kind: 'compare-versions' })}
+          onRecordOver={version => setFlow({ kind: 'record-over', version })}
+          onPullLyrics={versionId => void startLyricLift(versionId)}
+          onTakeManaged={handleTakeManaged}
+          onTakeRenamed={handleTakeRenamed}
+          onWorkingTake={handleWorkingTake}
+          draftOwnerId={presence.viewer.userId}
+        />
+      ),
+    },
+    {
+      key: 'module:diary',
+      label: 'Diary',
+      description: 'Chronological song history',
+      content: (
+        <div ref={diaryRef}>
+          <DiaryFeed
+            entries={diaryEntries}
+            layout="compact"
+            collapseAfter={6}
+            onRemoveNote={eventId => void handleRemoveNote(eventId)}
+          />
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div>
@@ -1503,6 +1536,22 @@ export function WorkPage({
         onLiveHint={handleLiveHint}
         onResync={handleRoomResync}
       />
+
+      {/* Compact by default and close to live presence: room access,
+          ownership, and invitations are available without occupying the
+          whole creative surface. Only one section expands at a time. */}
+      {!isEmpty && (
+        <div ref={rosterRef} className="mt-4">
+          <WorkRoster
+            workId={workId}
+            members={roster.members}
+            viewerTier={roster.viewerTier}
+            viewerIsOwner={roster.viewerIsOwner}
+            onMemberAdded={() => router.refresh()}
+            onWriterPromoted={() => router.refresh()}
+          />
+        </div>
+      )}
 
       {songPassport !== undefined && (
         <SongPassportPanel
@@ -1595,12 +1644,12 @@ export function WorkPage({
         </div>
       )}
 
-      {/* The pad — the other half of what an artist owns. Creation leads
-          (005-C): the writing surface sits directly under the composer,
-          ABOVE the versions + diary ledger, so writing is not behind the
-          history. */}
+      {/* Approved hybrid room: lyric blocks and the two reference modules
+          share one personal grid. Their arrangement is presentation only;
+          lyric reorder, take order, and Diary chronology keep their own
+          authoritative persistence paths. */}
       <div ref={lyricsRef} className="mt-6">
-        <p className="mb-2 text-[13px] font-semibold text-white">Lyrics</p>
+        <p className="mb-2 text-[13px] font-semibold text-white">Writing surface</p>
         <LyricsPad
           blocks={liveLyricsBlocks}
           draftOwnerId={presence.viewer.userId}
@@ -1621,116 +1670,11 @@ export function WorkPage({
           onInsertRepeat={handleInsertRepeat}
           onReorder={handleReorder}
           onPasteImport={handlePasteImport}
+          roomModules={roomModules}
+          roomLayout={roomLayout}
+          onRoomLayoutChange={handleRoomLayoutChange}
         />
       </div>
-
-      {/* Versions + diary — 001-C two columns (desktop) / 001-A single
-          stream with a Diary|Versions toggle (mobile). */}
-      <div ref={diaryRef} className="mt-8">
-        {viewport === 'desktop' ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
-            <div className="lg:sticky lg:top-4">
-              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Versions</p>
-              <VersionsList
-                workId={workId}
-                versions={versions}
-                onActivity={announceRoomActivity}
-                commentRefreshes={trackCommentRefreshes}
-                onCommentChanged={announceTrackCommentChanged}
-                onCompare={() => setFlow({ kind: 'compare-versions' })}
-                onRecordOver={version => setFlow({ kind: 'record-over', version })}
-                onPullLyrics={versionId => void startLyricLift(versionId)}
-                onTakeManaged={handleTakeManaged}
-                onTakeRenamed={handleTakeRenamed}
-                onWorkingTake={handleWorkingTake}
-                draftOwnerId={presence.viewer.userId}
-              />
-            </div>
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-lavdim">Diary</p>
-              <DiaryFeed entries={diaryEntries} layout="compact" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div
-              role="tablist"
-              aria-label="Diary or versions"
-              className="mb-3 inline-flex rounded-[10px] border border-hair bg-card2 p-1"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mobileTab === 'diary'}
-                onClick={() => setMobileTab('diary')}
-                className={`rounded-[8px] px-3 py-1.5 text-[12px] font-semibold ${
-                  mobileTab === 'diary' ? 'bg-card text-white' : 'text-lavdim'
-                }`}
-              >
-                Diary
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mobileTab === 'versions'}
-                onClick={() => setMobileTab('versions')}
-                className={`rounded-[8px] px-3 py-1.5 text-[12px] font-semibold ${
-                  mobileTab === 'versions' ? 'bg-card text-white' : 'text-lavdim'
-                }`}
-              >
-                Versions
-              </button>
-            </div>
-            {mobileTab === 'diary' ? (
-              <DiaryFeed entries={diaryEntries} layout="rail" collapseAfter={6} onRemoveNote={eventId => void handleRemoveNote(eventId)} />
-            ) : (
-              <VersionsList
-                workId={workId}
-                versions={versions}
-                onActivity={announceRoomActivity}
-                commentRefreshes={trackCommentRefreshes}
-                onCommentChanged={announceTrackCommentChanged}
-                onCompare={() => setFlow({ kind: 'compare-versions' })}
-                onRecordOver={version => setFlow({ kind: 'record-over', version })}
-                onPullLyrics={versionId => void startLyricLift(versionId)}
-                onTakeManaged={handleTakeManaged}
-                onTakeRenamed={handleTakeRenamed}
-                onWorkingTake={handleWorkingTake}
-                draftOwnerId={presence.viewer.userId}
-              />
-            )}
-          </div>
-        )}
-      </div>
-
-      {/*
-        ── Who's on this song — membership + the living split sheet. ──
-        Suppressed on the empty state on purpose: ComposerCardEmptyState's
-        hero already spends this page's one gradient (the "🎙 Hum your
-        idea" button), and a canManage viewer's WorkRoster spends its own
-        ("Send invite") the moment it renders. The empty state IS the
-        pitch (ComposerCard.tsx's own header comment) — a brand-new song's
-        very first screen should not simultaneously present a membership
-        panel competing with it, and mounting WorkRoster only once the
-        song has content keeps this page's single-gradient budget true in
-        every reachable state, not just the steady one.
-      */}
-      {!isEmpty && (
-        <div ref={rosterRef} className="mt-8">
-          <WorkRoster
-            workId={workId}
-            members={roster.members}
-            viewerTier={roster.viewerTier}
-            viewerIsOwner={roster.viewerIsOwner}
-            // A new member or a writer promotion both move facts the
-            // guiding line's own snapshot depends on
-            // (writersMissingFromSheet, the splits chip) — refresh rather
-            // than hand-patch.
-            onMemberAdded={() => router.refresh()}
-            onWriterPromoted={() => router.refresh()}
-          />
-        </div>
-      )}
 
       <input
         ref={fileInputRef}

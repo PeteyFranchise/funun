@@ -1,195 +1,128 @@
-# Account types — the official vocabulary
+# One Identity, Many Roles — the Funūn account, workspace, and access model
 
-**Status:** canonical. When anyone says "User Account" on this project, this is what
-they mean. Last verified against the live schema and production data 2026-08-26.
-
----
+**Status:** canonical product and engineering doctrine. Owner-approved September 4, 2026.
 
 ## The one-line version
 
-> A **User Account** is an account that owns a `user_profiles` row.
-> That is exactly **Artist** and **Industry**, and nothing else.
+> A person has one Funūn identity. Professional roles describe the person; workspace relationships grant access; project records establish authority and ownership.
 
-Team Members and Client Partners are *not* User Accounts. They are separate account
-types with their own tables and their own surfaces.
+Artist, songwriter, producer, manager, publisher, attorney, engineer, label executive,
+music supervisor, and similar labels are **professional roles**, not account types and not
+permissions.
 
----
+## The three account classes
 
-## The five account types
-
-| Term we use | Identified by | Owns a `user_profiles` row? | Lands on |
+| Account class | Purpose | Structural signal | Product context |
 |---|---|---|---|
-| **Artist** | *no* `app_metadata.role` — the default branch | yes, `member_type = 'artist'` | `/vault` |
-| **Industry** | `app_metadata.role = 'industry'` | yes, `member_type = 'industry'` | `/vault` |
-| **Client Partner** (buyer) | `app_metadata.role = 'buyer'` | **no** | buyer catalogue |
-| **Team Member** (staff) | `app_metadata.staff_roles[]` | **no** — lives in `funun_staff` | `/admin/*` |
-| **Curator** | provisioned as **Industry** | yes, `member_type = 'industry'` | `/vault` |
+| **Member Account** | Personal and professional creative work | `user_profiles` row | Member workspace: Ideas, Sound Vault, Writer's Room, Contract Locker, network, tools |
+| **Client Partner Account** | Verified organization access for licensing music through The Crate | approved `buyer_members` relationship to `buyer_orgs` | Client Partner organization workspace |
+| **Funūn Team Member Account** | Operating the Funūn business | `funun_staff` row plus server-verified `staff_roles[]` | Internal staff/admin surfaces |
 
-"User Account" is the umbrella for the first two rows. It is not a database value —
-there is no `account_type` column. It is a *derived* category, and the derivation is
-the presence of a profile row.
+Limited guests and signature recipients are **not a fourth account class**. They receive a
+narrow, expiring invitation or signing context. If they later join Funūn, they become a
+Member without losing the evidence attached to the earlier invitation.
 
----
+## One Member umbrella
 
-## Why the profile row is the definition
+Every full creative/professional user is a Member. A Member may wear any number of
+professional roles and may use different roles on different works. Completing a profile is
+never required before capturing an idea, entering a Writer's Room, uploading a take, writing
+lyrics, or leaving a note.
 
-Everything is decided once, at signup, by the `handle_new_user()` trigger
-(`supabase/migrations/098_artist_signup_gate.sql`). It reads
-`NEW.raw_app_meta_data->>'role'` and returns early — creating **no** profile — for
-`curator` and `buyer`. Only the `industry` branch and the fall-through `artist`
-default insert into `public.user_profiles`.
+The existing `member_type = 'artist' | 'industry'`, `industry_roles`, and
+`capability_grants` fields remain transitional compatibility data. They must not be treated as
+the canonical account taxonomy or used to hide the core Member workspace. Remove them only
+after every dependent route and production record has been migrated and audited.
 
-That is why the `member_type` union in `types/index.ts` is:
+## Roles, relationships, and rights are separate
 
-```ts
-member_type: 'artist' | 'industry'
-```
+- **Professional role:** who a person is or what hats they wear. It may personalize copy or
+  prefill a form. It grants nothing by itself.
+- **Workspace relationship:** where a person may act, such as membership in a Client Partner
+  organization or invitation to a Writer's Room.
+- **Project authority:** what a person may do in a specific context, such as invite, approve,
+  sign, download, license, or administer.
+- **Rights record:** what a split sheet, contract, registration, or other evidence says about
+  authorship, ownership, control, or payment.
 
-Exactly two values, no others — because no other account type has a row to put a
-`member_type` on. **The type system already encodes "User Account."** If you need to
-ask "is this a User Account?", the honest check is "does it have a profile row?",
-and `member_type` is its label.
+Declaring “Music Supervisor” does not unlock The Crate. Being in a Writer's Room does not put
+someone on a split sheet. Managing a project does not establish ownership or signature
+authority. No actor may grant more authority than they hold.
 
-Production data confirms the separation holds: 11 auth users = 9 `user_profiles`
-+ 2 `funun_staff`, with **zero overlap**. `pete@funun.studio` and
-`soko@funun.studio` have no profile row at all.
+## Member plus Client Partner
 
----
+A person may simultaneously be a Member and belong to a verified Client Partner
+organization under the same authenticated identity. Example: Jordan can write and produce in
+a personal Member workspace while acting as a music supervisor in Netflix's Client Partner
+workspace.
 
-## Important caveat — the early returns do NOT fire at INSERT on this instance
+These contexts remain separate:
 
-The section above describes the trigger's *source*. At runtime on this Supabase instance the
-behaviour is different, and the difference matters.
+- Personal songs, collaborators, creative agreements, and rights records stay in the Member
+  workspace.
+- Shortlists, requests, company activity, and licensing agreements stay in the Client Partner
+  organization workspace.
+- The UI provides an explicit workspace switch. Data never merges merely because the same
+  person can reach both contexts.
+- Client Partner access is added or revoked through `buyer_members`; it must not depend on an
+  exclusive `app_metadata.role = 'buyer'` check.
 
-`app_metadata` is applied **after** the `auth.users` INSERT here (the Phase 27 finding, see
-`lib/accounts/provisionIntent.ts`). `handle_new_user()` reads
-`NEW.raw_app_meta_data->>'role'`, which is therefore **NULL for every account at INSERT time**.
-So the `curator`, `buyer`, and `industry` branches never fire during creation — **every single
-account creation path falls through to the default artist branch and gets a `user_profiles`
-row.**
+Current transactional code supports one Client Partner organization relationship per person.
+Supporting several organizations requires an explicit active-organization selector and a
+route-by-route audit; do not silently add a second membership before that phase ships.
 
-Staff and buyer accounts end up with no profile row because their provisioning helpers
-**delete it afterwards**:
+## Corporate-email continuity
 
-- `lib/staff/createStaffAccount.ts:94` — `.from('user_profiles').delete().eq('id', userId)`
-- `lib/buyers/createBuyerAccount.ts:87` — same
+Organization access and personal identity continuity are different concerns. Before a person
+relies on a corporate email as the only credential for a personal Member workspace, Funūn
+must offer a verified personal login/recovery method (such as a secondary verified email or
+passkey). When employment ends, the organization revokes only the Client Partner
+relationship. The personal Member workspace and its records remain with the person.
 
-**The end state is still exactly what this document says** — a Team Member or Client Partner
-has no profile row, so profile-shaped features genuinely cannot reach them. Scoping work to
-User Accounts remains sound. But the mechanism is *created-then-deleted*, not *never created*,
-and two consequences follow:
+This verified credential-linking flow is a dedicated authentication build. Until it exists,
+the product must not claim that changing an email or typing a recovery address safely links
+two identities.
 
-1. **Anything enforced at INSERT sees every account type**, briefly, as an artist row. This is
-   what blocks Phase 36's `NOT NULL` constraint on `handle`: `SET NOT NULL` would reject the
-   profile insert for staff, buyer, industry, and curator provisioning — before the delete that
-   would have cleaned it up ever runs.
-2. **A transaction that fails mid-provisioning can leave an orphan profile row** for an account
-   type that should not have one. Worth checking if account types ever look wrong.
+## Funūn Team Member separation
 
-Do not read "structural" as "cannot happen at any moment". Read it as "cannot persist".
+Funūn Team Member identities remain privileged and structurally separate. Staff permissions
+come from server-verified staff roles, are purpose-specific, and are audited. A staff identity
+must not double as a Member or Client Partner identity. If a staff person also makes music,
+they should use a separate personal Member login.
 
----
+The account-context resolver fails closed to staff-only context if legacy data contains an
+unexpected staff/member or staff/buyer overlap.
 
-## What this buys you
+## Contract and licensing homes
 
-Scoping a feature to User Accounts is **structural, not a convention**. Profile-shaped
-work physically cannot reach a Team Member or a Client Partner, because there is no row
-to write to. That is a much stronger guarantee than "remember to exclude staff", and it
-is why Phase 36 (mandatory `@handle`) can state its scope in one line.
+- Contract Locker is available to every Member, including managers who are not writers.
+- Split Sheets are a section inside Contract Locker. Existing `/split-sheets/new` and
+  `/split-sheets/[id]` workflow links remain valid; the standalone list URL redirects to the
+  Contract Locker section.
+- Client Partner licensing documents belong with The Crate's Licenses/Agreements context,
+  not in the person's Member Contract Locker.
 
-The inverse is also true and worth remembering: **staff-shaped work must not assume a
-profile row exists.** A Team Member has no `artist_name`, no `handle`, no `avatar_url`
-— their display name comes from `funun_staff.display_name`.
+## Provisioning and authorization rules
 
----
+1. Self-serve or invited full users receive a Member profile.
+2. An authorized organization administrator may attach an existing Member identity to one
+   Client Partner organization; this must preserve the Member profile, subscription, vault,
+   and login.
+3. A genuinely new Client Partner-only recipient may continue through the legacy buyer
+   provisioning path until unified onboarding replaces it.
+4. Public registration must never attach an arbitrary existing email to an organization.
+   Existing-identity reconciliation is service-only and follows an authorized invitation.
+5. Staff remains provisioned through the staff-only path.
+6. Every sensitive action is authorized server-side and through RLS where applicable. UI
+   visibility is never the security boundary.
 
-## How does someone BECOME each type?
+## Engineering decision rule
 
-`app_metadata.role` is set **at account creation and never again**. Nothing a person
-fills in later changes their account type — filling in an artist name does NOT make an
-Artist account, because the account was already Artist from the moment of signup.
+When adding a feature, ask in this order:
 
-There are exactly two creation paths:
+1. Which authenticated person is acting?
+2. Which account context and workspace relationship are active?
+3. What project-specific permission or legal authority is required?
+4. Which record is authoritative for the claimed right?
 
-**1. Self-serve signup** — `supabase.auth.signUp()` (anon key). Sets no role, so it
-falls through to the default branch. **Every self-serve account is an Artist.** There is
-no way to self-serve into any other type. (Signup is still invite-gated by migrations
-098/099 — an invite controls *whether* you get in, not *what* you become.)
-
-**2. Admin provisioning** — `service.auth.admin.createUser()` via
-`lib/accounts/provisionIntent.ts`. This is how every Buyer, Team Member, Industry, and
-Curator account is made: staff create it explicitly with the role attached. Note the
-instance-specific quirk documented in that file — `app_metadata` is applied AFTER the
-`auth.users` INSERT, so the trigger cannot see the role at insert time; a single-use
-intent id in `user_metadata` is what exempts the account from the invite gate.
-
-### There is no onboarding flow
-
-Nothing ever asks a new user what they do or what they want to build. Signup is email
-and password, then straight into the app as an Artist. No `/onboarding` or `/welcome`
-route exists.
-
-The only self-directed way to change lane afterwards is the **"+ Add industry access"**
-CTA in the nav footer (`components/nav/CapabilityCta.tsx`) — a deliberately subtle
-entry into the capability request flow. The decision is server-side
-(`POST /api/capabilities/request`): **artist capability is granted instantly, industry
-goes to `pending` review.**
-
-**This is the root of the "Unnamed artist" problem.** The product never asks who anyone
-is, so it defaults everyone into the one lane that assumes a stage name — and then
-displays the absence of that name as an identity. Phase 36 is the first point where
-signup asks anything about the person at all, which makes it the natural place to also
-ask what they do.
-
----
-
-## Two traps
-
-**1. Artist is the *absence* of a role, not a value.**
-There is no `role = 'artist'`. You are an Artist if none of the other branches matched.
-This works, but a typo'd or unrecognised role value silently produces an Artist account
-rather than failing. Worth knowing when debugging a wrong-account-type report.
-
-**2. Team Member roles are a second, independent axis.**
-A Team Member is not one thing — they carry a `staff_roles[]` array with any of nine
-values: `leadership`, `ae`, `bd`, `anr`, `it`, `legal`, `tms`, `accounting`,
-`marketing`. One person can hold several. `it` is deliberately excluded from the general
-staff default (it is read-only) and is admitted only where a route names it explicitly.
-
----
-
-## Capabilities are not account types
-
-Separately from account type, `capability_grants` lets **one profile** hold both artist
-and industry capability (`lib/capabilities/grant.ts`). So Artist vs Industry is a
-starting lane rather than a wall — a single User Account can do both.
-
-Client Partner and Team Member are genuinely separate account types, not capabilities.
-Do not model them as grants on a profile.
-
----
-
-## Resolved — Curator (2026-08-27)
-
-**Curators ARE User Accounts.** They are provisioned as **Industry** and get a
-`user_profiles` row like any other Industry member.
-
-This was an open question because `handle_new_user()` has a `role = 'curator'` branch
-that returns early and creates no profile — which looked like it contradicted the
-standing decision. It does not. **That branch is dead code.** Evidence, gathered against
-production during the Phase 36 discussion:
-
-- **0** auth users carry `app_metadata.role = 'curator'`
-- the `curators` table has **0 rows**
-- nothing in the codebase *sets* that role — exactly one place reads it
-  (`app/api/curators/[id]/route.ts`)
-- `app/api/curators/claim/[token]/route.ts` states in its own header that it
-  **"NEVER mints app_metadata.role='curator'"**; it provisions via
-  `provisionIndustryAccount()`
-
-So no current code path can reach that branch. It is a leftover guard from before
-curators were folded into Industry. Removing it is safe cleanup, but nothing depends on
-it happening.
-
-**Consequence:** curators are in scope for every User Account feature, `@handle`
-included. See `.planning/phases/36-account-identity-mandatory-handle-for-user-accounts-artist-d/36-CONTEXT.md` D-01.
+Never answer any later question from a professional-role label alone.

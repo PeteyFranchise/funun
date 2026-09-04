@@ -230,7 +230,7 @@ export function PublicProfileSections() {
       {/* ── Profile Badges & Availability ──────────────────────────
           Public profile role badges (PROFILE-02), "Open to" chips
           (PROFILE-04), and the resharing toggle (D-07). Distinct from
-          the "Industry Roles" section below, which powers split
+          the "Professional Roles" section below, which helps prefill split
           sheets/contracts — these badges are what visitors see on
           /u/[handle].
       ─────────────────────────────────────────────────────────────── */}
@@ -404,14 +404,14 @@ export function PublicProfileSections() {
         </div>
       </section>
 
-      {/* ── Industry Roles ─────────────────────────────────────── */}
+      {/* ── Professional Roles ─────────────────────────────────── */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-white">Industry Roles</h2>
+          <h2 className="text-sm font-semibold text-white">Professional Roles</h2>
           <p className="mt-1 text-xs text-white/40">
-            Select every hat you wear in the industry. When you appear on a split sheet
-            or contract, you'll choose which roles apply to that specific collaboration
-            from this list — no re-entry needed.
+            Select every hat you wear. These roles describe you and can prefill future
+            forms; they never grant access, authorship, ownership, or signing authority.
+            You&rsquo;ll confirm what applies to each collaboration.
           </p>
         </div>
 

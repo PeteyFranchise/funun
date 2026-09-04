@@ -4,6 +4,8 @@ import { FNBL_CSS } from '@/components/buyer/fnbl-theme'
 import { BuyerTopNav } from '@/components/buyer/BuyerTopNav'
 import { BUYER_THEME_COOKIE, readBuyerTheme } from '@/lib/buyers/theme'
 import type { BuyerRole } from '@/lib/buyers/schema'
+import { getStaffRoles } from '@/lib/admin/staff-role'
+import { resolveAccountContext } from '@/lib/accounts/account-context'
 
 // ─── /sync layout ───────────────────────────────────────────────────────
 // 23-02: renamed from app/(buyer-portal)/layout.tsx to a real /sync path
@@ -39,15 +41,32 @@ export default async function SyncLayout({ children }: { children: React.ReactNo
   type BuyerMembership = { org_id: string; buyer_role: BuyerRole; is_org_admin: boolean }
   let member: BuyerMembership | null = null
   let orgName = ''
+  let hasMemberWorkspace = false
 
-  const isBuyer = user != null && (user.app_metadata as { role?: string })?.role === 'buyer'
-  if (isBuyer) {
+  if (user) {
+    // Workspace admission comes from the organization relationship, never
+    // from a mutually-exclusive auth metadata label. This permits one person
+    // to be both a Funūn Member and a verified Client Partner.
     const { data: memberRow } = await supabase
       .from('buyer_members')
       .select('org_id, buyer_role, is_org_admin')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
+      .limit(1)
       .maybeSingle()
     member = memberRow as BuyerMembership | null
+
+    const { data: memberProfile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+    const accountContext = resolveAccountContext({
+      hasMemberProfile: memberProfile !== null,
+      clientPartnerMembershipCount: member ? 1 : 0,
+      staffRoles: getStaffRoles(user),
+    })
+    hasMemberWorkspace = accountContext.hasMemberWorkspace
+    if (!accountContext.hasClientPartnerWorkspace) member = null
 
     if (member) {
       const { data: org } = await supabase
@@ -70,6 +89,7 @@ export default async function SyncLayout({ children }: { children: React.ReactNo
           companyName={orgName}
           buyerRole={member.buyer_role}
           isOrgAdmin={member.is_org_admin}
+          hasMemberWorkspace={hasMemberWorkspace}
           theme={theme}
         />
       )}

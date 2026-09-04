@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { createBuyerAccount, DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
+import {
+  addClientPartnerMember,
+  IncompatibleClientPartnerIdentityError,
+} from '@/lib/buyers/addClientPartnerMember'
+import { DuplicateBuyerAccountError } from '@/lib/buyers/createBuyerAccount'
 import { canManageMembers } from '@/lib/buyers/permissions'
 import { normalizeBuyerRole } from '@/lib/buyers/org'
 
@@ -11,7 +15,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // admin: resolves the caller's own buyer_members row via the session client
 // (RLS's buyer_members_select_own_org policy permits a caller to read their
 // own row) and requires canManageMembers() (lib/buyers/permissions.ts) to be
-// true before calling createBuyerAccount. org_id is forced to the caller's
+// true before adding the Client Partner relationship. org_id is forced to the caller's
 // own membership row — never read from the request body — so an org admin
 // cannot inject members into a different company (T-16-09). The requested
 // tier is coerced through normalizeBuyerRole, failing closed to requester;
@@ -49,11 +53,23 @@ export async function POST(request: Request) {
 
   const buyerRole = normalizeBuyerRole(body.buyer_role)
   const orgId = member.org_id
+  const { data: organization, error: organizationError } = await supabase
+    .from('buyer_orgs')
+    .select('name')
+    .eq('id', orgId)
+    .maybeSingle()
+  if (organizationError) {
+    return NextResponse.json({ error: organizationError.message }, { status: 500 })
+  }
+  if (!organization) {
+    return NextResponse.json({ error: 'Client Partner organization not found.' }, { status: 404 })
+  }
 
   try {
-    const { userId, emailSent } = await createBuyerAccount({
+    const { userId, emailSent, existingAccount } = await addClientPartnerMember({
       email,
       displayName,
+      organizationName: organization.name,
       orgId,
       buyerRole,
       isOrgAdmin: false,
@@ -72,12 +88,16 @@ export async function POST(request: Request) {
           email,
         },
         emailSent,
+        existingAccount,
       },
       { status: 201 }
     )
   } catch (err) {
     if (err instanceof DuplicateBuyerAccountError) {
       return NextResponse.json({ error: 'This email has already been invited.' }, { status: 409 })
+    }
+    if (err instanceof IncompatibleClientPartnerIdentityError) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
     }
     return NextResponse.json(
       { error: 'Something went wrong — please try again.' },

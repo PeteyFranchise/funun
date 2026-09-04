@@ -22,6 +22,19 @@ describe('WorkRoster', () => {
     expect(markup).toContain('Being on the sheet means you own part of')
   })
 
+  it('keeps all three controls compact and collapsed on first render', () => {
+    const markup = renderToStaticMarkup(
+      <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />
+    )
+    expect(markup).toContain('aria-controls="work-roster-members"')
+    expect(markup).toContain('aria-controls="work-roster-splits"')
+    expect(markup).toContain('aria-controls="work-roster-add"')
+    expect(markup.match(/aria-expanded="false"/g)).toHaveLength(4)
+    expect(markup).toContain('id="work-roster-members" hidden=""')
+    expect(markup).toContain('id="work-roster-splits" hidden=""')
+    expect(markup).toContain('id="work-roster-add" hidden=""')
+  })
+
   it('offers My Roster first, plus name/email invitation and a tier choice, for an administer viewer', () => {
     const markup = renderToStaticMarkup(
       <WorkRoster workId="work-1" members={members} viewerTier="administer" viewerIsOwner />

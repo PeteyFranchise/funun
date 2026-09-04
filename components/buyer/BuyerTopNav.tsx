@@ -15,11 +15,13 @@ export function BuyerTopNav({
   companyName,
   buyerRole,
   isOrgAdmin,
+  hasMemberWorkspace,
   theme,
 }: {
   companyName: string
   buyerRole: BuyerRole
   isOrgAdmin: boolean
+  hasMemberWorkspace: boolean
   theme: 'light' | 'dark'
 }) {
   return (
@@ -53,6 +55,11 @@ export function BuyerTopNav({
           <span className="brandsub">THE ARTS</span>
         </div>
         <div className="r">
+          {hasMemberWorkspace && (
+            <Link className="workspace-switch" href="/vault">
+              My workspace
+            </Link>
+          )}
           <div className="org">
             <p className="orgname">{companyName}</p>
             <p className="orgtier">
@@ -82,6 +89,8 @@ const TOPNAV_CSS = `
 .fnbl .brandmark{font-size:34px;font-weight:900;letter-spacing:.01em;line-height:1;}
 .fnbl .brandsub{display:block;text-align:center;font-size:9.5px;letter-spacing:.4em;font-weight:700;color:var(--ink-3);margin-top:5px;}
 .fnbl .org{text-align:right;}
+.fnbl .workspace-switch{color:var(--indigo);font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;white-space:nowrap;}
+.fnbl .workspace-switch:hover{color:var(--fuchsia);}
 .fnbl .org .orgname{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;}
 .fnbl .org .orgtier{font-size:11.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;}
 .fnbl .themetoggle{width:38px;height:38px;border-radius:10px;border:1.5px solid var(--line-2);background:#fff;color:var(--indigo);display:flex;align-items:center;justify-content:center;flex:none;}

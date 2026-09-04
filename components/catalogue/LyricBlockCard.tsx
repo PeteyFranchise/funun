@@ -115,6 +115,9 @@ export type LyricBlockCardProps = {
   dragHandleAttributes?: object
   dragHandleListeners?: object
   isDragging?: boolean
+  /** Personal presentation width in the hybrid room; never changes lyric content or song order. */
+  layoutWidth?: 'full' | 'half'
+  onToggleLayoutWidth?: () => void
 }
 
 const OWNER_GRADIENT = 'bg-gradient-to-br from-brandindigo to-brandfuchsia'
@@ -224,6 +227,8 @@ export function LyricBlockCard({
   dragHandleAttributes,
   dragHandleListeners,
   isDragging,
+  layoutWidth = 'full',
+  onToggleLayoutWidth,
 }: LyricBlockCardProps) {
   const showSingerAffordance = vocalState !== 'instrumental'
   const [confirmingRemove, setConfirmingRemove] = useState(false)
@@ -256,6 +261,17 @@ export function LyricBlockCard({
           ⠿
         </button>
         <span className="text-[11px] font-bold uppercase tracking-[.08em] text-brandindigo">{label}</span>
+        {onToggleLayoutWidth && (
+          <button
+            type="button"
+            onClick={onToggleLayoutWidth}
+            aria-label={layoutWidth === 'full' ? `Make ${label} half width` : `Make ${label} full width`}
+            title={layoutWidth === 'full' ? 'Place beside another item' : 'Make full width'}
+            className="rounded-full border border-hair px-2 py-0.5 text-[9px] font-semibold text-lavdim hover:border-brandindigo hover:text-white"
+          >
+            {layoutWidth === 'full' ? '½ width' : '↔ full'}
+          </button>
+        )}
         {isRepeat && (
           <span
             title="A linked repeat — editing the source updates every repeat"

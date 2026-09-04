@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ClipboardEvent } from 'react'
+import type { ClipboardEvent, ReactNode } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -13,8 +13,8 @@ import {
 } from '@dnd-kit/core'
 import {
   SortableContext,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
   useSortable,
   arrayMove,
 } from '@dnd-kit/sortable'
@@ -30,6 +30,18 @@ import {
 } from './LyricBlockCard'
 import { CopyLyricMenu } from './CopyLyricMenu'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import {
+  WRITER_ROOM_LAYOUT_VERSION,
+  lyricIdFromLayoutKey,
+  lyricOrderFromWriterRoomLayout,
+  reconcileWriterRoomLayout,
+  setWriterRoomItemWidth,
+  snapWriterRoomLyrics,
+  type WriterRoomLayout,
+  type WriterRoomLayoutKey,
+  type WriterRoomLayoutWidth,
+  type WriterRoomModuleKey,
+} from '@/lib/catalogue/writer-room-layout'
 
 // ─── The lyrics pad — sortable container, header, insert-anywhere ──────
 // (sketch 006-A)
@@ -51,6 +63,14 @@ export type LyricsPadBlock = LyricBlock & {
   authorDisplay: LyricBlockAuthor | null
   /** The 🎤 declared singer cluster's display info, resolved from `performers` upstream. */
   singerDisplays: LyricBlockSinger[]
+}
+
+export type WriterRoomModule = {
+  key: WriterRoomModuleKey
+  label: string
+  description: string
+  content: ReactNode
+  empty?: boolean
 }
 
 export type LyricsPadProps = {
@@ -78,6 +98,12 @@ export type LyricsPadProps = {
   onReorder: (order: { id: string; position: number }[]) => Promise<void>
   /** Bulk paste on an empty pad — plan 07's `paste` creation shape, never one giant block. */
   onPasteImport: (text: string) => void
+  /** Fixed room modules that may be placed between lyric blocks. */
+  roomModules?: WriterRoomModule[]
+  /** The authenticated viewer's private presentation state. */
+  roomLayout?: WriterRoomLayout | null
+  /** Persists presentation only; it must never write lyric/version/Diary facts. */
+  onRoomLayoutChange?: (layout: WriterRoomLayout) => Promise<void>
 }
 
 // Migration 138's edit trigger fires once per SAVE, not per keystroke —
@@ -219,7 +245,7 @@ function InsertDivider({
 // Same sensor/strategy shape as components/admin/ChecklistAdmin.tsx.
 
 function SortableLyricBlock({
-  id,
+  sortableId,
   label,
   text,
   isRepeat,
@@ -239,8 +265,10 @@ function SortableLyricBlock({
   onAddSinger,
   onDetach,
   onRemove,
+  layoutWidth,
+  onToggleLayoutWidth,
 }: {
-  id: string
+  sortableId: string
   label: string
   text: string
   isRepeat: boolean
@@ -260,9 +288,11 @@ function SortableLyricBlock({
   onAddSinger: () => void
   onDetach: () => void
   onRemove: () => void
+  layoutWidth?: WriterRoomLayoutWidth
+  onToggleLayoutWidth?: () => void
 }) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
-    id,
+    id: sortableId,
   })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
@@ -293,7 +323,74 @@ function SortableLyricBlock({
       dragHandleAttributes={attributes}
       dragHandleListeners={listeners}
       isDragging={isDragging}
+      layoutWidth={layoutWidth}
+      onToggleLayoutWidth={onToggleLayoutWidth}
     />
+  )
+}
+
+// A room module is movable presentation around authoritative content. The
+// Versions child still owns playback/take mutations and DiaryFeed still owns
+// chronological history; this wrapper only supplies drag, width, and collapse.
+function SortableRoomModule({
+  roomModule,
+  width,
+  onToggleWidth,
+}: {
+  roomModule: WriterRoomModule
+  width: WriterRoomLayoutWidth
+  onToggleWidth: () => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: roomModule.key,
+  })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
+  return (
+    <section
+      ref={setNodeRef}
+      style={style}
+      aria-label={roomModule.label}
+      className={`overflow-hidden rounded-[11px] border bg-card transition-shadow ${
+        isDragging ? 'border-brandindigo/60 shadow-2xl' : 'border-hair'
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-2 border-b border-hair px-3 py-2">
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          type="button"
+          aria-label={`Drag to move ${roomModule.label}`}
+          className="cursor-grab text-[13px] text-lavdim hover:text-lav active:cursor-grabbing"
+        >
+          ⠿
+        </button>
+        <span className="text-[11px] font-bold uppercase tracking-[.08em] text-brandindigo">{roomModule.label}</span>
+        <span className="text-[10px] text-lavdim">{roomModule.description}</span>
+        <span className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleWidth}
+            aria-label={width === 'full' ? `Make ${roomModule.label} half width` : `Make ${roomModule.label} full width`}
+            title={width === 'full' ? 'Place beside another item' : 'Make full width'}
+            className="rounded-full border border-hair px-2 py-0.5 text-[9px] font-semibold text-lavdim hover:border-brandindigo hover:text-white"
+          >
+            {width === 'full' ? '½ width' : '↔ full'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed(current => !current)}
+            aria-expanded={!collapsed}
+            className="text-[10px] font-semibold text-lavdim hover:text-white"
+          >
+            {collapsed ? 'Expand' : 'Collapse'}
+          </button>
+        </span>
+      </div>
+      {!collapsed && <div className="p-3">{roomModule.content}</div>}
+    </section>
   )
 }
 
@@ -319,11 +416,20 @@ export function LyricsPad({
   onInsertRepeat,
   onReorder,
   onPasteImport,
+  roomModules = [],
+  roomLayout = null,
+  onRoomLayoutChange,
 }: LyricsPadProps) {
   const labeled = deriveBlockNumerals(blocks)
   const byId = new Map(blocks.map(block => [block.id, block]))
+  const moduleByKey = new Map(roomModules.map(module => [module.key, module] as const))
+  const hybridEnabled = roomModules.length > 0
 
   const [order, setOrder] = useState<string[]>(() => labeled.map(block => block.id))
+  const [layout, setLayout] = useState<WriterRoomLayout>(() =>
+    reconcileWriterRoomLayout(roomLayout, labeled.map(block => block.id))
+  )
+  const [layoutError, setLayoutError] = useState<string | null>(null)
   const [reorderError, setReorderError] = useState<string | null>(null)
   const [openDivider, setOpenDivider] = useState<number | null>(null)
   const [pendingText, setPendingText] = useState<Record<string, string>>({})
@@ -336,12 +442,22 @@ export function LyricsPad({
   // changes (an add, a delete, or an externally-applied reorder) — never
   // on every render, which would clobber an in-flight optimistic drag.
   const blockIdsKey = blocks.map(block => block.id).join(',')
+  const moduleKeysKey = roomModules.map(module => module.key).join(',')
+  const savedLayoutKey = JSON.stringify(roomLayout)
   useEffect(() => {
     setOrder(labeled.map(block => block.id))
     // labeled is derived from blocks on every render; blockIdsKey is the
     // intentionally narrower dependency — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockIdsKey, draftOwnerId])
+
+  useEffect(() => {
+    setLayout(reconcileWriterRoomLayout(roomLayout, labeled.map(block => block.id)))
+    setLayoutError(null)
+    // `labeled` and roomLayout are re-created as props change. These stable
+    // keys intentionally resync only for server layout/content changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockIdsKey, moduleKeysKey, savedLayoutKey, draftOwnerId])
 
   useEffect(() => {
     const recovered: Record<string, string> = {}
@@ -544,36 +660,104 @@ export function LyricsPad({
   const orderedBlocks = order
     .map(id => labeled.find(block => block.id === id))
     .filter((block): block is (typeof labeled)[number] => Boolean(block))
+  const visibleLayoutItems = layout.items.filter(item => {
+    const lyricId = lyricIdFromLayoutKey(item.key)
+    return lyricId ? byId.has(lyricId) : moduleByKey.has(item.key as WriterRoomModuleKey)
+  })
 
   const hasChorus = blocks.some(block => block.block_type === 'chorus')
   const chorusBlocksInOrder = labeled.filter(block => block.block_type === 'chorus')
   const latestChorusId =
     chorusBlocksInOrder.length > 0 ? chorusBlocksInOrder[chorusBlocksInOrder.length - 1].id : null
 
+  const persistRoomLayout = useCallback(
+    async (next: WriterRoomLayout) => {
+      setLayout(next)
+      setLayoutError(null)
+      if (!onRoomLayoutChange) return
+      try {
+        await onRoomLayoutChange(next)
+      } catch (error) {
+        setLayoutError(error instanceof Error ? error.message : "Couldn't save your room layout — try again.")
+      }
+    },
+    [onRoomLayoutChange]
+  )
+
+  const handleRoomWidthToggle = useCallback(
+    (key: WriterRoomLayoutKey) => {
+      const item = layout.items.find(candidate => candidate.key === key)
+      if (!item) return
+      const nextWidth: WriterRoomLayoutWidth = item.width === 'full' ? 'half' : 'full'
+      void persistRoomLayout(setWriterRoomItemWidth(layout, key, nextWidth))
+    },
+    [layout, persistRoomLayout]
+  )
+
+  const handleSnapLyrics = useCallback(() => {
+    void persistRoomLayout(snapWriterRoomLyrics(layout, order))
+  }, [layout, order, persistRoomLayout])
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event
       if (!over || active.id === over.id) return
-      const oldIndex = order.indexOf(String(active.id))
-      const newIndex = order.indexOf(String(over.id))
+
+      if (!hybridEnabled) {
+        const oldIndex = order.indexOf(String(active.id))
+        const newIndex = order.indexOf(String(over.id))
+        if (oldIndex === -1 || newIndex === -1) return
+
+        const snapshot = order
+        const reordered = arrayMove(order, oldIndex, newIndex)
+        setOrder(reordered)
+        setReorderError(null)
+        try {
+          await onReorder(reordered.map((id, position) => ({ id, position })))
+        } catch (err) {
+          setOrder(snapshot)
+          setReorderError(err instanceof Error ? err.message : "Couldn't save the new order — try again.")
+        }
+        return
+      }
+
+      const activeKey = String(active.id)
+      const overKey = String(over.id)
+      const oldIndex = layout.items.findIndex(item => item.key === activeKey)
+      const newIndex = layout.items.findIndex(item => item.key === overKey)
       if (oldIndex === -1 || newIndex === -1) return
 
-      const snapshot = order
-      const reordered = arrayMove(order, oldIndex, newIndex)
-      setOrder(reordered)
-      setReorderError(null)
-      try {
-        await onReorder(reordered.map((id, position) => ({ id, position })))
-      } catch (err) {
-        // A concurrent edit in a shared pad is expected, not exceptional
-        // — plan 07's reorder route returns 409 exactly for this case.
-        // Revert to the last known server order rather than leave the
-        // pad showing a sequence the server never accepted.
-        setOrder(snapshot)
-        setReorderError(err instanceof Error ? err.message : "Couldn't save the new order — try again.")
+      const snapshotLayout = layout
+      const snapshotOrder = order
+      const reorderedItems = arrayMove(layout.items, oldIndex, newIndex)
+      const reorderedLayout: WriterRoomLayout = {
+        version: WRITER_ROOM_LAYOUT_VERSION,
+        items: reorderedItems,
       }
+      const nextLyricOrder = lyricOrderFromWriterRoomLayout(reorderedLayout)
+      const lyricOrderChanged = nextLyricOrder.some((id, index) => id !== order[index])
+
+      setLayout(reorderedLayout)
+      setLayoutError(null)
+      setReorderError(null)
+
+      if (lyricOrderChanged) {
+        setOrder(nextLyricOrder)
+        try {
+          await onReorder(nextLyricOrder.map((id, position) => ({ id, position })))
+        } catch (err) {
+          // A presentation move must never leave the canonical song order
+          // lying about a rejected collaborative reorder.
+          setLayout(snapshotLayout)
+          setOrder(snapshotOrder)
+          setReorderError(err instanceof Error ? err.message : "Couldn't save the new order — try again.")
+          return
+        }
+      }
+
+      await persistRoomLayout(reorderedLayout)
     },
-    [order, onReorder]
+    [hybridEnabled, layout, onReorder, order, persistRoomLayout]
   )
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -596,15 +780,134 @@ export function LyricsPad({
 
   const bottomChips = addSectionAt(undefined)
 
+  function renderLyricItem({
+    block,
+    canonicalIndex,
+    sortableId,
+    width,
+    layoutKey,
+  }: {
+    block: (typeof labeled)[number]
+    canonicalIndex: number
+    sortableId: string
+    width?: WriterRoomLayoutWidth
+    layoutKey?: WriterRoomLayoutKey
+  }) {
+    const resolved = resolveRepeat(block, byId)
+    const dividerChips = addSectionAt(canonicalIndex)
+    const text = resolved.isRepeat ? resolved.text : (pendingText[block.id] ?? resolved.text)
+
+    return (
+      <div
+        key={sortableId}
+        className={hybridEnabled ? (width === 'half' ? 'min-w-0 lg:col-span-1' : 'min-w-0 lg:col-span-2') : undefined}
+      >
+        <InsertDivider
+          index={canonicalIndex}
+          hasChorus={hasChorus}
+          isOpen={openDivider === canonicalIndex}
+          onToggle={() => setOpenDivider(current => (current === canonicalIndex ? null : canonicalIndex))}
+          onInsertRepeat={() => {
+            if (latestChorusId) onInsertRepeat(latestChorusId, canonicalIndex)
+            setOpenDivider(null)
+          }}
+          onInsertSingle={dividerChips.onPick}
+          onInsertCustom={dividerChips.onPickCustom}
+        />
+        <SortableLyricBlock
+          sortableId={sortableId}
+          label={block.label}
+          text={text}
+          isRepeat={resolved.isRepeat}
+          author={block.authorDisplay}
+          vocalState={vocalState}
+          singers={block.singerDisplays}
+          vocalDirection={block.vocal_direction ?? null}
+          lockState={
+            acquiringBlockId === block.id
+              ? { state: 'acquiring' }
+              : (sectionLocks[block.id] ?? { state: 'available' })
+          }
+          onTextChange={value => handleBlockTextChange(block.id, value)}
+          onBeginEdit={() => void handleBeginEditing(block.id)}
+          onTakeOver={() => void handleBeginEditing(block.id, true)}
+          onEndEdit={() => void handleEndEditing(block.id)}
+          onOpenHistory={() => void handleOpenBlockHistory(block.id, block.label, text)}
+          onOpenComments={onOpenComments ? () => void handleOpenBlockComments(block.id, block.label) : undefined}
+          onOpenSuggestions={onOpenSuggestions ? () => void handleOpenBlockSuggestions(block.id, block.label, text) : undefined}
+          suggestionCount={suggestionCounts[block.id] ?? 0}
+          onAddSinger={() => onAddSinger(block.id)}
+          onDetach={() => onDetach(block.id)}
+          onRemove={() => onRemoveBlock(block.id)}
+          layoutWidth={width}
+          onToggleLayoutWidth={layoutKey ? () => handleRoomWidthToggle(layoutKey) : undefined}
+        />
+      </div>
+    )
+  }
+
+  function renderHybridGrid() {
+    return (
+      <SortableContext items={visibleLayoutItems.map(item => item.key)} strategy={rectSortingStrategy}>
+        <div data-writer-room-grid className="grid grid-cols-1 gap-x-4 lg:grid-cols-2">
+          {visibleLayoutItems.map(item => {
+            const lyricId = lyricIdFromLayoutKey(item.key)
+            if (lyricId) {
+              const block = labeled.find(candidate => candidate.id === lyricId)
+              if (!block) return null
+              const canonicalIndex = order.indexOf(lyricId)
+              return renderLyricItem({
+                block,
+                canonicalIndex: canonicalIndex === -1 ? 0 : canonicalIndex,
+                sortableId: item.key,
+                width: item.width,
+                layoutKey: item.key,
+              })
+            }
+
+            const roomModule = moduleByKey.get(item.key as WriterRoomModuleKey)
+            if (!roomModule) return null
+            return (
+              <div
+                key={item.key}
+                className={item.width === 'half' ? 'mb-[9px] min-w-0 lg:col-span-1' : 'mb-[9px] min-w-0 lg:col-span-2'}
+              >
+                <SortableRoomModule
+                  roomModule={roomModule}
+                  width={item.width}
+                  onToggleWidth={() => handleRoomWidthToggle(item.key)}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </SortableContext>
+    )
+  }
+
   return (
     <div>
       {/* Header — autosave status + the melody button. The work's TITLE
           input is deliberately NOT here: it lives once, in plan 11's
           WorkHeader, so a live rename input never exists twice on the
           same page. */}
-      <div className="mb-[10px] flex items-center justify-between gap-3 rounded-[12px] border border-hair bg-card px-4 py-[14px]">
-        <p className="text-[11px] text-lavdim">lyrics saving automatically · every edit timestamped</p>
+      <div className="mb-[10px] flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-hair bg-card px-4 py-[14px]">
+        <div>
+          <p className="text-[11px] text-lavdim">lyrics saving automatically · every edit timestamped</p>
+          {hybridEnabled && (
+            <p className="mt-1 text-[10px] text-lavdim">Your arrangement is private. Half-width items placed next to each other share a row.</p>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-2">
+          {hybridEnabled && (
+            <button
+              type="button"
+              onClick={handleSnapLyrics}
+              className="whitespace-nowrap rounded-[9px] border border-brandindigo/50 bg-brandindigo/10 px-[11px] py-[7px] text-[11px] font-semibold text-brandindigo hover:text-white"
+            >
+              ⇥ Snap lyrics together
+            </button>
+          )}
           <CopyLyricMenu blocks={blocks} />
           {/* The hum stays one tap from the words — lyrics and melody
               are the two halves of what an artist owns. */}
@@ -624,6 +927,12 @@ export function LyricsPad({
         </p>
       )}
 
+      {layoutError && (
+        <p role="alert" className="mb-[8px] text-[11px] text-rose-400">
+          {layoutError}
+        </p>
+      )}
+
       {Object.entries(saveErrors).map(([blockId, message]) => (
         <p key={blockId} role="alert" className="mb-[8px] text-[11px] text-rose-300">
           {message}
@@ -631,71 +940,39 @@ export function LyricsPad({
       ))}
 
       {orderedBlocks.length === 0 ? (
-        <div className="rounded-[12px] border border-hair bg-card px-4 py-4">
-          <textarea
-            onPaste={handlePaste}
-            placeholder="Paste a full lyric here to auto-split it into sections, or add one below —"
-            rows={3}
-            className="mb-3 w-full resize-none rounded-[10px] border border-hair bg-transparent px-3 py-2 text-[13px] text-white/95 outline-none placeholder:text-lavdim"
-          />
-          <p className="mb-[7px] text-[11px] text-lavdim">Add a section —</p>
-          <AddSectionChips onPick={bottomChips.onPick} onPickCustom={bottomChips.onPickCustom} />
-        </div>
+        <>
+          <div className="mb-[9px] rounded-[12px] border border-hair bg-card px-4 py-4">
+            <textarea
+              onPaste={handlePaste}
+              placeholder="Paste a full lyric here to auto-split it into sections, or add one below —"
+              rows={3}
+              className="mb-3 w-full resize-none rounded-[10px] border border-hair bg-transparent px-3 py-2 text-[13px] text-white/95 outline-none placeholder:text-lavdim"
+            />
+            <p className="mb-[7px] text-[11px] text-lavdim">Add a section —</p>
+            <AddSectionChips onPick={bottomChips.onPick} onPickCustom={bottomChips.onPickCustom} />
+          </div>
+          {hybridEnabled && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              {renderHybridGrid()}
+            </DndContext>
+          )}
+        </>
       ) : (
         <>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={order} strategy={verticalListSortingStrategy}>
-              <div>
-                {orderedBlocks.map((block, index) => {
-                  const resolved = resolveRepeat(block, byId)
-                  const dividerChips = addSectionAt(index)
-                  const text = resolved.isRepeat ? resolved.text : (pendingText[block.id] ?? resolved.text)
-
-                  return (
-                    <div key={block.id}>
-                      <InsertDivider
-                        index={index}
-                        hasChorus={hasChorus}
-                        isOpen={openDivider === index}
-                        onToggle={() => setOpenDivider(current => (current === index ? null : index))}
-                        onInsertRepeat={() => {
-                          if (latestChorusId) onInsertRepeat(latestChorusId, index)
-                          setOpenDivider(null)
-                        }}
-                        onInsertSingle={dividerChips.onPick}
-                        onInsertCustom={dividerChips.onPickCustom}
-                      />
-                      <SortableLyricBlock
-                        id={block.id}
-                        label={block.label}
-                        text={text}
-                        isRepeat={resolved.isRepeat}
-                        author={block.authorDisplay}
-                        vocalState={vocalState}
-                        singers={block.singerDisplays}
-                        vocalDirection={block.vocal_direction ?? null}
-                        lockState={
-                          acquiringBlockId === block.id
-                            ? { state: 'acquiring' }
-                            : (sectionLocks[block.id] ?? { state: 'available' })
-                        }
-                        onTextChange={value => handleBlockTextChange(block.id, value)}
-                        onBeginEdit={() => void handleBeginEditing(block.id)}
-                        onTakeOver={() => void handleBeginEditing(block.id, true)}
-                        onEndEdit={() => void handleEndEditing(block.id)}
-                        onOpenHistory={() => void handleOpenBlockHistory(block.id, block.label, text)}
-                        onOpenComments={onOpenComments ? () => void handleOpenBlockComments(block.id, block.label) : undefined}
-                        onOpenSuggestions={onOpenSuggestions ? () => void handleOpenBlockSuggestions(block.id, block.label, text) : undefined}
-                        suggestionCount={suggestionCounts[block.id] ?? 0}
-                        onAddSinger={() => onAddSinger(block.id)}
-                        onDetach={() => onDetach(block.id)}
-                        onRemove={() => onRemoveBlock(block.id)}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            </SortableContext>
+            {hybridEnabled ? (
+              renderHybridGrid()
+            ) : (
+              <SortableContext items={order} strategy={rectSortingStrategy}>
+                <div>
+                  {orderedBlocks.map((block, index) => renderLyricItem({
+                    block,
+                    canonicalIndex: index,
+                    sortableId: block.id,
+                  }))}
+                </div>
+              </SortableContext>
+            )}
           </DndContext>
 
           <p className="mb-[7px] mt-1 text-[11px] text-lavdim">Add a section —</p>

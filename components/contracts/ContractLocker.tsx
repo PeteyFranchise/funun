@@ -561,10 +561,16 @@ export function ContractLocker({
   rows,
   projects = [],
   attention,
+  showCreate = true,
+  showAsk = true,
+  emptyMessage = 'No contracts yet — generate one from a release, or upload an existing agreement.',
 }: {
   rows: ContractRow[]
   projects?: { id: string; title: string }[]
   attention?: AttentionSections
+  showCreate?: boolean
+  showAsk?: boolean
+  emptyMessage?: string
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(rows[0]?.id ?? null)
   const selected = rows.find(r => r.id === selectedId) ?? null
@@ -588,7 +594,7 @@ export function ContractLocker({
         </div>
       )}
 
-      <CreateSection />
+      {showCreate && <CreateSection />}
 
       {/* ── Browse complete (the pre-existing archive, unchanged shape) ── */}
       <div className="grid gap-7 lg:grid-cols-[1fr_360px]">
@@ -600,7 +606,7 @@ export function ContractLocker({
           </div>
 
           {rows.length === 0 ? (
-            <p className="px-5 text-[14px] text-lavdim">No contracts yet — generate one from a release, or upload an existing agreement.</p>
+            <p className="px-5 text-[14px] text-lavdim">{emptyMessage}</p>
           ) : (
             rows.map(r => {
               const badge = badgeFor(r)
@@ -661,7 +667,7 @@ export function ContractLocker({
         <VerifyPanel row={selected} projects={projects} />
       </div>
 
-      <AskSlot />
+      {showAsk && <AskSlot />}
     </div>
   )
 }

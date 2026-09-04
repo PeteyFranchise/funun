@@ -197,6 +197,7 @@ export function WorkRoster({
   // The member currently choosing their DDEX/PRO designation before the
   // promotion completes (member id, or null when no picker is open).
   const [choosingWriterFor, setChoosingWriterFor] = useState<string | null>(null)
+  const [openSection, setOpenSection] = useState<'members' | 'splits' | 'add' | null>(null)
 
   const linkInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -205,6 +206,10 @@ export function WorkRoster({
   // button (that control is for promoting collaborators). When the owner
   // isn't yet on the sheet, the split-sheet section offers them a self-add.
   const ownerMember = list.find(m => m.isOwner)
+
+  function toggleSection(section: 'members' | 'splits' | 'add') {
+    setOpenSection(current => (current === section ? null : section))
+  }
 
   function resetAddForm() {
     setAddState('form')
@@ -334,16 +339,60 @@ export function WorkRoster({
   }
 
   return (
-    <div className="rounded-[12px] border border-hair bg-card px-5 py-[18px]">
-      <b className="text-[13px] text-white">Who&apos;s on this song</b>
+    <div className="rounded-[12px] border border-hair bg-card px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="People and ownership">
+        <button
+          type="button"
+          aria-expanded={openSection === 'members'}
+          aria-controls="work-roster-members"
+          onClick={() => toggleSection('members')}
+          className={`rounded-[9px] border px-3 py-2 text-[11.5px] font-semibold transition-colors ${
+            openSection === 'members'
+              ? 'border-brandindigo bg-brandindigo/10 text-white'
+              : 'border-hairstrong bg-lav/[.04] text-lav hover:text-white'
+          }`}
+        >
+          Who&apos;s on this song · {list.length} {openSection === 'members' ? '⌃' : '⌄'}
+        </button>
+        <button
+          type="button"
+          aria-expanded={openSection === 'splits'}
+          aria-controls="work-roster-splits"
+          onClick={() => toggleSection('splits')}
+          className={`rounded-[9px] border px-3 py-2 text-[11.5px] font-semibold transition-colors ${
+            openSection === 'splits'
+              ? 'border-brandindigo bg-brandindigo/10 text-white'
+              : 'border-hairstrong bg-lav/[.04] text-lav hover:text-white'
+          }`}
+        >
+          Split sheet · {writersOnSheet.length === 0 ? 'Draft' : `${writersOnSheet.length} ${writersOnSheet.length === 1 ? 'writer' : 'writers'}`} {openSection === 'splits' ? '⌃' : '⌄'}
+        </button>
+        {canManage && (
+          <button
+            type="button"
+            aria-expanded={openSection === 'add'}
+            aria-controls="work-roster-add"
+            onClick={() => toggleSection('add')}
+            className={`rounded-[9px] border px-3 py-2 text-[11.5px] font-semibold transition-colors ${
+              openSection === 'add'
+                ? 'border-brandindigo bg-brandindigo/10 text-white'
+                : 'border-hairstrong bg-lav/[.04] text-lav hover:text-white'
+            }`}
+          >
+            Add a collaborator {openSection === 'add' ? '−' : '＋'}
+          </button>
+        )}
+        <span className="ml-auto text-[10px] text-lavdim">Room access and song ownership stay separate.</span>
+      </div>
 
       {/* ─── Grouping 1: membership — tier + status per person. ────────── */}
-      <ul className="mt-3 flex flex-col gap-2">
-        {list.map(member => (
-          <li
-            key={member.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-hair bg-card2 px-3 py-2"
-          >
+      <section id="work-roster-members" hidden={openSection !== 'members'} className="mt-3 border-t border-hair pt-3">
+        <ul className="flex flex-col gap-2">
+          {list.map(member => (
+            <li
+              key={member.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-hair bg-card2 px-3 py-2"
+            >
             <div className="flex min-w-0 items-center gap-2">
               <span
                 className="grid h-7 w-7 flex-none place-items-center overflow-hidden rounded-full bg-lav/[.14] bg-cover bg-center text-[10px] font-bold text-lav"
@@ -402,14 +451,15 @@ export function WorkRoster({
                 />
               </div>
             )}
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
 
-      {promotionMessage && <p className="mt-2 text-[11.5px] text-emerald-300">{promotionMessage}</p>}
+        {promotionMessage && <p className="mt-2 text-[11.5px] text-emerald-300">{promotionMessage}</p>}
+      </section>
 
       {/* ─── Grouping 2: the living split sheet — a separate fact. ─────── */}
-      <div className="mt-4 border-t border-hair pt-3">
+      <section id="work-roster-splits" hidden={openSection !== 'splits'} className="mt-3 border-t border-hair pt-3">
         <b className="text-[12px] text-white">On the split sheet</b>
         <p className="mt-1 text-[11px] text-lavdim">
           Being on the work means you can add to it. Being on the sheet means you own part of
@@ -476,13 +526,13 @@ export function WorkRoster({
             )}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ─── Add a collaborator — My Roster is the first path. The manual
           first-name + email fields remain the fallback for someone genuinely
           new, matching the standalone quick-invite field shape. ───────── */}
       {canManage && (
-        <div className="mt-4 border-t border-hair pt-3">
+        <section id="work-roster-add" hidden={openSection !== 'add'} className="mt-3 border-t border-hair pt-3">
           <b className="text-[12px] text-white">Add a collaborator</b>
 
           {addState === 'done' ? (
@@ -644,7 +694,7 @@ export function WorkRoster({
               </button>
             </form>
           )}
-        </div>
+        </section>
       )}
     </div>
   )
