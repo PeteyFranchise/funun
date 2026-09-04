@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   clampDiscoverLimit,
@@ -24,6 +25,10 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const principal = await loadGreenRoomPrincipal(supabase, user.id)
+  const gate = greenRoomViewerGate(principal)
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const searchParams = new URL(request.url).searchParams
 

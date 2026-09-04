@@ -7,7 +7,6 @@ import {
   GreenRoomComposer,
 } from '@/components/green-room/GreenRoomComposer'
 import { FeedCard } from '@/components/green-room/FeedCard'
-import { PeopleSearch } from '@/components/green-room/PeopleSearch'
 import { subscribeToGreenRoomFeedUpdates } from '@/lib/green-room/realtime'
 import { createClient } from '@/lib/supabase/client'
 import type { GreenRoomFeedCard } from '@/lib/green-room/feed-query'
@@ -20,7 +19,7 @@ const TABS: Array<{ value: GreenRoomTab; label: string; hint: string }> = [
   { value: 'opportunities', label: 'Opportunities', hint: 'Collabs, needs, and open calls' },
 ]
 
-export function GreenRoomFeed() {
+export function GreenRoomFeed({ onFindPeople }: { onFindPeople: () => void }) {
   const [tab, setTab] = useState<GreenRoomTab>('for_you')
   const [cards, setCards] = useState<GreenRoomFeedCard[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,32 +75,9 @@ export function GreenRoomFeed() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <section className="min-w-0">
-        <header className="overflow-hidden rounded-[28px] border border-white/10 bg-black/30 p-6 shadow-[0_24px_90px_rgba(0,0,0,.35)] backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-5">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.24em] text-emerald-300/80">The Green Room</p>
-              <h1 className="mt-3 text-4xl font-black tracking-[-.04em] text-white md:text-5xl">
-                Find the room where your next connection is already talking.
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/55">
-                Follow releases, ask questions, post opportunities, and discover the people shaping your next move.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={refresh}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:border-emerald-300/40 hover:bg-emerald-300/10"
-            >
-              Refresh feed
-            </button>
-          </div>
-        </header>
-
-        <div className="mt-5">
-          <GreenRoomComposer onPosted={refresh} />
-        </div>
+        <GreenRoomComposer onPosted={refresh} />
 
         <div className="mt-5 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-2">
           {TABS.map(item => (
@@ -122,6 +98,13 @@ export function GreenRoomFeed() {
               </span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={refresh}
+            className="ml-auto min-w-fit rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-white/65 transition hover:border-emerald-300/40 hover:bg-emerald-300/10 hover:text-white"
+          >
+            Refresh
+          </button>
         </div>
 
         {pendingActivityCount > 0 && (
@@ -162,7 +145,19 @@ export function GreenRoomFeed() {
       </section>
 
       <aside className="space-y-4">
-        <PeopleSearch />
+        <div className="rounded-[24px] border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
+          <p className="text-sm font-black text-white">Looking for someone?</p>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            Search the full member community by role, genre, location, or what they&apos;re open to.
+          </p>
+          <button
+            type="button"
+            onClick={onFindPeople}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-black text-emerald-200 transition hover:border-emerald-300/60 hover:text-white"
+          >
+            Find people <span aria-hidden>→</span>
+          </button>
+        </div>
         <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs font-bold uppercase tracking-[.18em] text-lavdim">Room Rules</p>
           <ul className="mt-3 space-y-2 text-sm text-white/60">

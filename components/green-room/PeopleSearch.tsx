@@ -79,7 +79,7 @@ function buildQuery(filters: Filters, cursor: string | null): string {
   return params.toString()
 }
 
-export function PeopleSearch() {
+export function PeopleSearch({ fullWidth = false }: { fullWidth?: boolean }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS)
   const [results, setResults] = useState<GreenRoomPersonResult[]>([])
@@ -131,7 +131,10 @@ export function PeopleSearch() {
   return (
     <section
       aria-label="People search"
-      className="rounded-[26px] border border-white/10 bg-white/[0.03] p-5"
+      className={[
+        'rounded-[26px] border border-white/10 bg-white/[0.03]',
+        fullWidth ? 'p-6 md:p-8' : 'p-5',
+      ].join(' ')}
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-black text-white">Find people</h2>
@@ -156,7 +159,7 @@ export function PeopleSearch() {
           className="w-full rounded-[14px] border border-white/12 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/35 focus:border-emerald-300/40 focus:outline-none"
         />
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className={['grid grid-cols-1 gap-2 sm:grid-cols-2', fullWidth ? 'lg:grid-cols-3' : ''].join(' ')}>
           <FilterSelect
             label="Role"
             value={filters.role}
@@ -275,9 +278,11 @@ function FilterSelect({
 }
 
 function PersonCard({ person }: { person: GreenRoomPersonResult }) {
-  const { canMessage, canFollow, alreadyFollowing } = personActionFlags(person.relationship)
+  const { canMessage, canFollow, canConnect, alreadyFollowing } = personActionFlags(person.relationship)
   const [following, setFollowing] = useState(alreadyFollowing)
   const [followBusy, setFollowBusy] = useState(false)
+  const [connectionState, setConnectionState] = useState<'idle' | 'busy' | 'sent'>('idle')
+  const [connectionError, setConnectionError] = useState<string | null>(null)
 
   async function follow() {
     if (followBusy || following) return
@@ -290,6 +295,25 @@ function PersonCard({ person }: { person: GreenRoomPersonResult }) {
     })
     setFollowBusy(false)
     if (!res.ok) setFollowing(false) // revert
+  }
+
+  async function connect() {
+    if (connectionState !== 'idle') return
+    setConnectionState('busy')
+    setConnectionError(null)
+    try {
+      const res = await fetch('/api/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addresseeId: person.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Could not send connection request')
+      setConnectionState('sent')
+    } catch (error) {
+      setConnectionState('idle')
+      setConnectionError(error instanceof Error ? error.message : 'Could not send connection request')
+    }
   }
 
   return (
@@ -357,7 +381,18 @@ function PersonCard({ person }: { person: GreenRoomPersonResult }) {
                 {following ? 'Following' : 'Follow'}
               </button>
             )}
+            {canConnect && (
+              <button
+                type="button"
+                onClick={connect}
+                disabled={connectionState !== 'idle'}
+                className="rounded-full border border-emerald-300/35 bg-emerald-300/10 px-3 py-1.5 text-xs font-black text-emerald-200 transition hover:border-emerald-300/60 hover:text-white disabled:opacity-60"
+              >
+                {connectionState === 'busy' ? 'Sending…' : connectionState === 'sent' ? 'Request sent' : 'Connect'}
+              </button>
+            )}
           </div>
+          {connectionError ? <p className="mt-2 text-xs text-rose-200">{connectionError}</p> : null}
         </div>
       </div>
     </article>

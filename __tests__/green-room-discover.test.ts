@@ -176,6 +176,7 @@ describe('personActionFlags (UAT#1 action gating)', () => {
     expect(personActionFlags('self')).toEqual({
       canMessage: false,
       canFollow: false,
+      canConnect: false,
       alreadyFollowing: false,
     })
   })
@@ -184,6 +185,7 @@ describe('personActionFlags (UAT#1 action gating)', () => {
     expect(personActionFlags('outside_network')).toEqual({
       canMessage: true,
       canFollow: true,
+      canConnect: true,
       alreadyFollowing: false,
     })
   })
@@ -192,11 +194,13 @@ describe('personActionFlags (UAT#1 action gating)', () => {
     expect(personActionFlags('following')).toEqual({
       canMessage: true,
       canFollow: false,
+      canConnect: true,
       alreadyFollowing: true,
     })
     expect(personActionFlags('connected')).toEqual({
       canMessage: true,
       canFollow: false,
+      canConnect: false,
       alreadyFollowing: false,
     })
   })

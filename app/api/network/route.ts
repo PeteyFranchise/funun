@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 import { loadNetworkData } from '@/lib/network/query'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
@@ -30,6 +31,10 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const principal = await loadGreenRoomPrincipal(supabase, user.id)
+  const gate = greenRoomViewerGate(principal)
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   try {
     const data = await loadNetworkData(supabase, user.id)

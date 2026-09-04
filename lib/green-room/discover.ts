@@ -248,13 +248,13 @@ export function deriveRelationship(
 }
 
 // Which actions a viewer may take on a result card, derived purely from the
-// relationship. Message is offered for everyone except your own card; Follow
-// is offered only for people outside your graph (you already follow/connect
-// with the others, and you cannot follow yourself). Extracted here so the
-// gating is unit-verifiable rather than buried inline in the component.
+// relationship. Message is offered for everyone except self; Follow is for
+// people outside the graph; Connect is available until the pair is connected.
+// Extracted here so the gating is unit-verifiable rather than buried inline.
 export type PersonActionFlags = {
   canMessage: boolean
   canFollow: boolean
+  canConnect: boolean
   alreadyFollowing: boolean
 }
 
@@ -264,6 +264,7 @@ export function personActionFlags(
   return {
     canMessage: relationship !== 'self',
     canFollow: relationship === 'outside_network',
+    canConnect: relationship === 'outside_network' || relationship === 'following',
     alreadyFollowing: relationship === 'following',
   }
 }

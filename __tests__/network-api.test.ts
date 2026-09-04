@@ -2,6 +2,7 @@ import { GET } from '@/app/api/network/route'
 import { POST as blockPOST, DELETE as blockDELETE } from '@/app/api/network/blocks/route'
 import { createApiClient } from '@/lib/supabase/server'
 import { loadNetworkData } from '@/lib/network/query'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
@@ -10,6 +11,11 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('@/lib/network/query', () => ({
   loadNetworkData: jest.fn(),
+}))
+
+jest.mock('@/lib/green-room/access', () => ({
+  loadGreenRoomPrincipal: jest.fn(async () => ({ memberType: 'artist', email: null })),
+  greenRoomViewerGate: jest.fn(() => ({ ok: true })),
 }))
 
 function blockRequest(method: 'POST' | 'DELETE', body: unknown) {
@@ -32,6 +38,19 @@ describe('GET /api/network', () => {
 
     const res = await GET()
     expect(res.status).toBe(401)
+    expect(loadNetworkData).not.toHaveBeenCalled()
+    expect(loadGreenRoomPrincipal).not.toHaveBeenCalled()
+  })
+
+  it('rejects a principal outside The Green Room before loading network data', async () => {
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'buyer-1' } } })) },
+    })
+    ;(greenRoomViewerGate as jest.Mock).mockReturnValueOnce({ ok: false, status: 403, error: 'Members only' })
+
+    const res = await GET()
+
+    expect(res.status).toBe(403)
     expect(loadNetworkData).not.toHaveBeenCalled()
   })
 
@@ -96,6 +115,17 @@ describe('POST /api/network/blocks', () => {
 
     const res = await blockPOST(blockRequest('POST', { blockedProfileId: 'target-1' }))
     expect(res.status).toBe(401)
+  })
+
+  it('rejects a principal outside The Green Room before parsing or mutating', async () => {
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'buyer-1' } } })) },
+    })
+    ;(greenRoomViewerGate as jest.Mock).mockReturnValueOnce({ ok: false, status: 403, error: 'Members only' })
+
+    const res = await blockPOST(blockRequest('POST', { blockedProfileId: 'target-1' }))
+
+    expect(res.status).toBe(403)
   })
 
   it('rejects a missing blockedProfileId', async () => {

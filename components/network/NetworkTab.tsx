@@ -18,7 +18,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'following', label: 'Following' },
   { key: 'followers', label: 'Followers' },
   { key: 'pending', label: 'Pending' },
-  { key: 'blocked', label: 'Blocked' },
+  { key: 'blocked', label: 'Safety' },
 ]
 
 const EMPTY_DATA: NetworkData = {
@@ -30,7 +30,7 @@ const EMPTY_DATA: NetworkData = {
   blocked: [],
 }
 
-export function NetworkTab() {
+export function NetworkTab({ embedded = false }: { embedded?: boolean }) {
   const [tab, setTab] = useState<TabKey>('connections')
   const [data, setData] = useState<NetworkData>(EMPTY_DATA)
   const [loading, setLoading] = useState(true)
@@ -71,16 +71,26 @@ export function NetworkTab() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 lg:px-8">
-      <header className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[.24em] text-emerald-300/80">Your Network</p>
-        <h1 className="mt-3 text-3xl font-black tracking-[-.03em] text-white md:text-4xl">
-          Who you follow, who follows you, and who you trust.
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
-          Manage connections, review pending requests, and control who can reach you.
-        </p>
-      </header>
+    <div className={embedded ? 'mx-auto max-w-5xl' : 'mx-auto max-w-4xl px-5 py-8 lg:px-8'}>
+      {embedded ? (
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-300/75">Relationship manager</p>
+          <h2 className="mt-2 text-3xl font-black tracking-[-.03em] text-white">Keep your people close.</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+            Manage connections, respond to requests, and control who can reach you.
+          </p>
+        </div>
+      ) : (
+        <header className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-[.24em] text-emerald-300/80">Your Network</p>
+          <h1 className="mt-3 text-3xl font-black tracking-[-.03em] text-white md:text-4xl">
+            Who you follow, who follows you, and who you trust.
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+            Manage connections, review pending requests, and control who can reach you.
+          </p>
+        </header>
+      )}
 
       <div className="flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-2">
         {TABS.map(item => (

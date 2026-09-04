@@ -1,6 +1,7 @@
 import { GET } from '@/app/api/green-room/discover/route'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { loadDiscoverResults } from '@/lib/green-room/discover'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
@@ -11,6 +12,11 @@ jest.mock('@/lib/green-room/discover', () => {
   const actual = jest.requireActual('@/lib/green-room/discover')
   return { ...actual, loadDiscoverResults: jest.fn() }
 })
+
+jest.mock('@/lib/green-room/access', () => ({
+  loadGreenRoomPrincipal: jest.fn(async () => ({ memberType: 'artist', email: null })),
+  greenRoomViewerGate: jest.fn(() => ({ ok: true })),
+}))
 
 function request(url: string) {
   return new Request(url)
@@ -26,6 +32,20 @@ describe('GET /api/green-room/discover', () => {
     const res = await GET(request('http://t.local/api/green-room/discover'))
     expect(res.status).toBe(401)
     expect(loadDiscoverResults).not.toHaveBeenCalled()
+    expect(loadGreenRoomPrincipal).not.toHaveBeenCalled()
+  })
+
+  it('rejects a principal outside The Green Room before discovery runs', async () => {
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'buyer-1' } } })) },
+    })
+    ;(greenRoomViewerGate as jest.Mock).mockReturnValueOnce({ ok: false, status: 403, error: 'Members only' })
+
+    const res = await GET(request('http://t.local/api/green-room/discover'))
+
+    expect(res.status).toBe(403)
+    expect(loadDiscoverResults).not.toHaveBeenCalled()
+    expect(createServiceClient).not.toHaveBeenCalled()
   })
 
   it('rejects a malformed cursor before querying', async () => {

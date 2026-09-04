@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { greenRoomViewerGate, loadGreenRoomPrincipal } from '@/lib/green-room/access'
 import { createApiClient } from '@/lib/supabase/server'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
@@ -19,14 +20,18 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 async function mutate(request: Request, action: 'block' | 'unblock') {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
-  const { blockedProfileId } = (await request.json().catch(() => ({}))) as { blockedProfileId?: string }
-  if (!blockedProfileId) return NextResponse.json({ error: 'Missing blockedProfileId' }, { status: 400 })
-
   const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const principal = await loadGreenRoomPrincipal(supabase, user.id)
+  const gate = greenRoomViewerGate(principal)
+  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const { blockedProfileId } = (await request.json().catch(() => ({}))) as { blockedProfileId?: string }
+  if (!blockedProfileId) return NextResponse.json({ error: 'Missing blockedProfileId' }, { status: 400 })
   if (user.id === blockedProfileId) {
     return NextResponse.json({ error: 'You cannot block yourself' }, { status: 400 })
   }
