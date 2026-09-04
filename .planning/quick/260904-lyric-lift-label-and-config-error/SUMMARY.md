@@ -21,4 +21,5 @@
 ## Operational follow-up
 
 - Add `OPENAI_API_KEY` to the Vercel Production environment and create a fresh production deployment before retrying Lyric Lift.
+- Lyric Lift uses Funūn's server-side OpenAI credential for all eligible User Accounts; users never bring their own key. Funūn owns the resulting API cost, so plan/credit allowances and spend monitoring are the scaling follow-up.
 - No database migration is required.
