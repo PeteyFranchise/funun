@@ -3,8 +3,12 @@
 // signed-in request proceeds.
 
 const mockGetUser = jest.fn()
+const mockRpc = jest.fn()
 jest.mock('@/lib/supabase/server', () => ({
-  createApiClient: async () => ({ auth: { getUser: (...a: unknown[]) => mockGetUser(...a) } }),
+  createApiClient: async () => ({
+    auth: { getUser: (...a: unknown[]) => mockGetUser(...a) },
+    rpc: (...a: unknown[]) => mockRpc(...a),
+  }),
 }))
 
 const mockDraft = jest.fn()
@@ -24,7 +28,7 @@ import { POST as draftPOST } from '@/app/api/buyer/brief-draft/route'
 import { POST as rerankPOST } from '@/app/api/buyer/brief-rerank/route'
 
 function req(body: unknown) {
-  return { json: async () => body } as unknown as Request
+  return { json: async () => body, headers: new Headers() } as unknown as Request
 }
 
 const asAnon = () => mockGetUser.mockResolvedValue({ data: { user: null } })
@@ -32,6 +36,13 @@ const asUser = () => mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } 
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockRpc.mockImplementation((name: string) =>
+    Promise.resolve(
+      name === 'claim_ai_usage'
+        ? { data: { allowed: true, claimId: '11111111-1111-4111-8111-111111111111' }, error: null }
+        : { data: true, error: null }
+    )
+  )
 })
 
 describe('brief-draft — auth gate (#2)', () => {

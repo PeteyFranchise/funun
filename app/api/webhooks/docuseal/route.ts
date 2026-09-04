@@ -10,7 +10,6 @@ import { buildFanoutRows } from '@/lib/split-sheets/distribution'
 import { renderCompletionCertificate } from '@/lib/vault/pdf/completion-certificate'
 import { buildSplitSheetExecutedNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
-import { isValidTransition, nextStatusOnAgreementSigned } from '@/lib/sync-library/submission'
 
 // ─── POST /api/webhooks/docuseal ──────────────────────────────────────
 // The completion half of Funūn's first live e-sign integration (ESIGN-07).
@@ -115,6 +114,17 @@ type BlanketAgreementDocRow = {
   document_data: Record<string, unknown> | null
 }
 
+async function releaseBlanketCompletionClaim(
+  service: ReturnType<typeof createServiceClient>,
+  documentId: string,
+  claimToken: string
+) {
+  await service.rpc('release_blanket_agreement_completion', {
+    p_document_id: documentId,
+    p_claim_token: claimToken,
+  })
+}
+
 /**
  * Completes a blanket-agreement vault_documents row. Mirrors the split-sheet
  * completion's shape (idempotency guard first, re-host the executed PDF
@@ -126,9 +136,34 @@ async function handleBlanketAgreementCompletion(
   doc: BlanketAgreementDocRow,
   event: EsignWebhookEvent
 ) {
-  // ── THE IDEMPOTENCY GUARD — mirrors envelope.status === 'completed' ──
+  // A redelivery also acts as reconciliation for any completion processed
+  // before migration 172 made the document/listing transition atomic.
   if (doc.status === 'signed') {
-    return NextResponse.json({ ok: true, idempotent: true })
+    const { data: reconciled, error } = await service.rpc(
+      'reconcile_blanket_agreement_listings',
+      { p_document_id: doc.id }
+    )
+    if (error) {
+      return NextResponse.json({ error: 'Could not reconcile the signed agreement' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, idempotent: true, advancedListings: reconciled ?? 0 })
+  }
+
+  const claimToken = randomUUID()
+  const { data: claimed, error: claimError } = await service.rpc(
+    'claim_blanket_agreement_completion',
+    {
+      p_document_id: doc.id,
+      p_submission_id: event.requestId,
+      p_claim_token: claimToken,
+      p_lease_seconds: 900,
+    }
+  )
+  if (claimError) {
+    return NextResponse.json({ error: 'Could not claim the agreement completion' }, { status: 500 })
+  }
+  if (claimed !== true) {
+    return NextResponse.json({ ok: true, idempotent: true, processing: true })
   }
 
   // ── Re-host the executed PDF, promptly (T-17-22's ~40-minute URL window) ─
@@ -136,6 +171,7 @@ async function handleBlanketAgreementCompletion(
   try {
     artifacts = await docusealProvider.fetchCompletionArtifacts(event.requestId)
   } catch (e) {
+    await releaseBlanketCompletionClaim(service, doc.id, claimToken)
     return NextResponse.json(
       {
         error: `Could not fetch the executed agreement: ${e instanceof Error ? e.message : 'unknown error'}`,
@@ -152,6 +188,7 @@ async function handleBlanketAgreementCompletion(
       contentType: 'application/pdf',
     })
   if (uploadError) {
+    await releaseBlanketCompletionClaim(service, doc.id, claimToken)
     return NextResponse.json(
       { error: `Could not store the signed agreement: ${uploadError.message}` },
       { status: 500 }
@@ -176,46 +213,36 @@ async function handleBlanketAgreementCompletion(
   // Satisfies vault_documents_status_requires_evidence_chk (migration
   // 045/049): status='signed' requires signed_at AND (file_url OR
   // document_data.esign.completedAt) — completedAt above covers it.
-  const { error: docUpdateError } = await service
-    .from('vault_documents')
-    .update({
-      status: 'signed',
-      signed_at: completedAt,
-      document_data: { ...(doc.document_data ?? {}), esign: updatedEsign },
-    })
-    .eq('id', doc.id)
+  const { data: completionData, error: docUpdateError } = await service.rpc(
+    'complete_blanket_agreement_completion',
+    {
+      p_document_id: doc.id,
+      p_claim_token: claimToken,
+      p_completed_at: completedAt,
+      p_document_data: { ...(doc.document_data ?? {}), esign: updatedEsign },
+    }
+  )
 
   if (docUpdateError) {
+    await releaseBlanketCompletionClaim(service, doc.id, claimToken)
     return NextResponse.json(
-      { error: `Could not record the completion: ${docUpdateError.message}` },
+      { error: 'Could not record the agreement completion' },
       { status: 500 }
     )
   }
 
-  // ── Advance the pre-signed cohort (sign-once covers every listing) ──
-  const { data: listingsRaw } = await service
-    .from('sync_listings')
-    .select('id, status')
-    .eq('artist_user_id', doc.user_id)
-    .in('status', ['applied', 'invited', 'agreement_pending'])
-
-  const listings = (listingsRaw ?? []) as { id: string; status: string }[]
-  let advanced = 0
-  for (const listing of listings) {
-    const next = nextStatusOnAgreementSigned(listing.status)
-    if (!next || !isValidTransition(listing.status, next)) continue
-    await service
-      .from('sync_listings')
-      .update({ status: next, blanket_agreement_document_id: doc.id })
-      .eq('id', listing.id)
-    advanced += 1
+  const completion = completionData as { completed?: boolean; advanced?: number } | null
+  if (completion?.completed !== true) {
+    // Another lease holder may still be finishing. A non-2xx keeps the
+    // provider retry available; a later delivery will hit reconciliation.
+    return NextResponse.json({ error: 'Agreement completion claim was lost' }, { status: 503 })
   }
 
   return NextResponse.json({
     ok: true,
     blanketAgreementId: doc.id,
     signedFileUrl: signedPath,
-    advancedListings: advanced,
+    advancedListings: completion.advanced ?? 0,
   })
 }
 
@@ -354,17 +381,26 @@ export async function POST(request: Request) {
   try {
     payload = JSON.parse(rawBody)
   } catch {
-    // Signed but unparseable: a retry produces the same bytes, so 200.
-    return NextResponse.json({ ok: true, ignored: 'unparseable' })
+    // A verified-but-invalid provider event must remain visible in the
+    // delivery log. DocuSeal retries non-2xx responses, giving operators a
+    // chance to inspect/replay it instead of silently losing legal state.
+    return NextResponse.json({ error: 'Webhook payload is not valid JSON' }, { status: 400 })
   }
 
   const event = parseDocusealEvent(payload)
+
+  if (event.type === 'all_signed' && !event.requestId) {
+    return NextResponse.json(
+      { error: 'Completed submission is missing its submission id' },
+      { status: 422 }
+    )
+  }
 
   // Funūn acts only on full completion. Every other event type — viewed,
   // started, declined, archived — is acknowledged so the provider stops
   // redelivering it. (Per-signer progress is 17-04's nudge surface, not
   // this route's concern.)
-  if (event.type !== 'all_signed' || !event.requestId) {
+  if (event.type !== 'all_signed') {
     return NextResponse.json({ ok: true, ignored: event.type })
   }
 

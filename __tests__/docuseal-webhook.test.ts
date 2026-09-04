@@ -123,6 +123,59 @@ function makeService(
   return { client: { from, storage, rpc }, recorded }
 }
 
+function makeBlanketService(opts?: {
+  status?: 'pending' | 'signed'
+  claimResults?: boolean[]
+  completionError?: boolean
+}) {
+  const recorded: Recorded = {
+    updates: [], inserts: [], uploads: [], selectedTables: [], rpcs: [],
+  }
+  const agreement = {
+    id: 'blanket-doc-1',
+    user_id: 'artist-1',
+    status: opts?.status ?? 'pending',
+    document_data: {
+      esign: { requestId: SUBMISSION_ID, signers: [{ email: 'artist@test.local', status: 'pending' }] },
+    },
+  }
+  const from = jest.fn((table: string) => {
+    recorded.selectedTables.push(table)
+    const q: Record<string, unknown> = {}
+    for (const method of ['select', 'eq', 'in']) q[method] = jest.fn(() => q)
+    q.maybeSingle = jest.fn().mockResolvedValue({
+      data: table === 'vault_documents' ? agreement : null,
+      error: null,
+    })
+    return q
+  })
+  const storage = {
+    from: jest.fn((bucket: string) => ({
+      upload: jest.fn((path: string, _body: unknown, uploadOpts?: { contentType?: string }) => {
+        recorded.uploads.push({ bucket, path, contentType: uploadOpts?.contentType })
+        return Promise.resolve({ data: { path }, error: null })
+      }),
+    })),
+  }
+  const claims = [...(opts?.claimResults ?? [true])]
+  const rpc = jest.fn((name: string, args: Record<string, unknown>) => {
+    recorded.rpcs.push({ name, args })
+    if (name === 'claim_blanket_agreement_completion') {
+      return Promise.resolve({ data: claims.shift() ?? false, error: null })
+    }
+    if (name === 'complete_blanket_agreement_completion') {
+      return Promise.resolve(opts?.completionError
+        ? { data: null, error: { message: 'injected completion failure' } }
+        : { data: { completed: true, advanced: 3 }, error: null })
+    }
+    if (name === 'reconcile_blanket_agreement_listings') {
+      return Promise.resolve({ data: 2, error: null })
+    }
+    return Promise.resolve({ data: true, error: null })
+  })
+  return { client: { from, storage, rpc }, recorded }
+}
+
 // ─── Fixtures ─────────────────────────────────────────────────────────
 
 const SUBMISSION_ID = '9477999'
@@ -180,7 +233,8 @@ function completionPayload() {
     event_type: 'submission.completed',
     timestamp: '2026-07-20T12:00:00Z',
     data: {
-      id: SUBMISSION_ID,
+      // DocuSeal's documented submission payload uses a numeric id.
+      id: Number(SUBMISSION_ID),
       audit_log_url: 'https://docuseal.test/audit.pdf',
       submitters: [
         { id: 'sub-1', email: 'ada@test.local', name: 'Ada', completed_at: '2026-07-20T11:00:00Z' },
@@ -332,6 +386,25 @@ describe('POST /api/webhooks/docuseal — event routing', () => {
 
     expect(res.status).toBe(200)
     expect(mockFetchCompletionArtifacts).not.toHaveBeenCalled()
+  })
+
+  it('returns a retryable error for a completed event with no submission id', async () => {
+    const body = JSON.stringify({ event_type: 'submission.completed', data: {} })
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBe(422)
+    expect(mockCreateServiceClient).not.toHaveBeenCalled()
+    expect(mockFetchCompletionArtifacts).not.toHaveBeenCalled()
+  })
+
+  it('does not acknowledge a signed but invalid JSON payload', async () => {
+    const body = '{not-valid-json'
+
+    const res = await POST(request(body, sign(body)))
+
+    expect(res.status).toBe(400)
+    expect(mockCreateServiceClient).not.toHaveBeenCalled()
   })
 })
 
@@ -626,5 +699,65 @@ describe('POST /api/webhooks/docuseal — idempotency', () => {
     expect(recorded.updates).toHaveLength(0)
     expect(recorded.inserts).toHaveLength(0)
     expect(recorded.rpcs).toHaveLength(0)
+  })
+})
+
+describe('POST /api/webhooks/docuseal — blanket agreement completion', () => {
+  it('claims and atomically completes the document plus listing cohort', async () => {
+    const { client, recorded } = makeBlanketService()
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const response = await POST(request(body, sign(body)))
+    const result = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(result.advancedListings).toBe(3)
+    expect(recorded.rpcs.map(call => call.name)).toEqual(expect.arrayContaining([
+      'claim_blanket_agreement_completion',
+      'complete_blanket_agreement_completion',
+    ]))
+    expect(recorded.uploads).toHaveLength(1)
+  })
+
+  it('lets only one concurrent delivery fetch and store the signed agreement', async () => {
+    const { client, recorded } = makeBlanketService({ claimResults: [true, false] })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const responses = await Promise.all([
+      POST(request(body, sign(body))),
+      POST(request(body, sign(body))),
+    ])
+
+    expect(responses.map(response => response.status)).toEqual([200, 200])
+    expect(recorded.rpcs.filter(call => call.name === 'claim_blanket_agreement_completion')).toHaveLength(2)
+    expect(mockFetchCompletionArtifacts).toHaveBeenCalledTimes(1)
+    expect(recorded.uploads).toHaveLength(1)
+  })
+
+  it('releases the claim and returns 5xx when the atomic completion fails', async () => {
+    const { client, recorded } = makeBlanketService({ completionError: true })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const response = await POST(request(body, sign(body)))
+
+    expect(response.status).toBe(500)
+    expect(recorded.rpcs.some(call => call.name === 'release_blanket_agreement_completion')).toBe(true)
+  })
+
+  it('reconciles signed documents without downloading the artifact again', async () => {
+    const { client, recorded } = makeBlanketService({ status: 'signed' })
+    mockCreateServiceClient.mockReturnValue(client)
+    const body = JSON.stringify(completionPayload())
+
+    const response = await POST(request(body, sign(body)))
+    const result = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(result).toMatchObject({ idempotent: true, advancedListings: 2 })
+    expect(recorded.rpcs.some(call => call.name === 'reconcile_blanket_agreement_listings')).toBe(true)
+    expect(mockFetchCompletionArtifacts).not.toHaveBeenCalled()
   })
 })

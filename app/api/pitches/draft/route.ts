@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createApiClient } from '@/lib/supabase/server'
 import { buildPitchNotePrompt } from '@/lib/curators/pitch-copy'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const MODEL = 'claude-sonnet-4-6'
@@ -88,22 +89,35 @@ export async function POST(request: Request) {
     playlistName: curator.playlist_name,
   })
 
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'pitch:draft',
+    units: 2,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let parsed: Record<string, unknown> | null
+  let generationSucceeded = false
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
-    })
+    }, { signal: aiProviderSignal() })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
       .join('')
     parsed = extractJson(text)
+    generationSucceeded = parsed !== null
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Generation failed'
     return NextResponse.json({ error: msg }, { status: 502 })
+  } finally {
+    await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
 
   const note = parsed && typeof parsed.note === 'string' ? parsed.note : null

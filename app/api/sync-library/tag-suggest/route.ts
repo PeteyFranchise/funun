@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { suggestTrackTags } from '@/lib/tagging/ai-tag'
 import { mergeAiSuggestion } from '@/lib/tagging/tag-merge'
 import { readDescriptors, readLyrics, type TrackDescriptors } from '@/lib/metadata/schema'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 // ─── POST /api/sync-library/tag-suggest ─────────────────────────────────
 // Staff-triggered AI tag suggestion (30-CONTEXT.md "Tagging... layered, all
@@ -60,10 +61,21 @@ export async function POST(request: Request) {
   }
 
   const lyrics = readLyrics(track.metadata)
+  const sessionClient = await createApiClient()
+  const admission = await claimAiUsage(sessionClient, request, {
+    operation: 'sync-library:tag-suggest',
+    units: 1,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   const result = await suggestTrackTags({
     title: track.title ?? '',
     text: lyrics?.text ?? '',
-  })
+  }, aiProviderSignal())
+  await finishAiUsage(sessionClient, admission.claimId, result.ok)
 
   if (!result.ok) {
     // Graceful, non-500 result the UI can show ("AI tagging is offline").

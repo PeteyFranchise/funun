@@ -88,16 +88,29 @@ describe('verifyDocusealSignature', () => {
 
 describe('parseDocusealEvent', () => {
   it('maps submission.completed to all_signed with the requestId', () => {
-    const event = parseDocusealEvent({ event_type: 'submission.completed', data: { id: 'sub_123' } })
-    expect(event).toEqual({ type: 'all_signed', requestId: 'sub_123' })
+    const event = parseDocusealEvent({ event_type: 'submission.completed', data: { id: 123 } })
+    expect(event).toEqual({ type: 'all_signed', requestId: '123' })
   })
 
   it('maps form.completed (per-signer completion) to signed with requestId + signerEmail', () => {
     const event = parseDocusealEvent({
       event_type: 'form.completed',
-      data: { submission_id: 'sub_123', email: 'party@example.com' },
+      data: {
+        id: 999,
+        submission: { id: 123 },
+        email: 'party@example.com',
+      },
     })
-    expect(event).toEqual({ type: 'signed', requestId: 'sub_123', signerEmail: 'party@example.com' })
+    expect(event).toEqual({ type: 'signed', requestId: '123', signerEmail: 'party@example.com' })
+  })
+
+  it('rejects non-integral and unsafe numeric provider ids', () => {
+    expect(
+      parseDocusealEvent({ event_type: 'submission.completed', data: { id: 1.5 } })
+    ).toEqual({ type: 'all_signed', requestId: '' })
+    expect(
+      parseDocusealEvent({ event_type: 'submission.completed', data: { id: Number.MAX_VALUE } })
+    ).toEqual({ type: 'all_signed', requestId: '' })
   })
 
   it('maps form.declined to declined', () => {

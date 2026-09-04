@@ -132,7 +132,8 @@ Rules:
 // draft Selects the caller already created.
 export async function draftSelectsFromBrief(
   brief: Brief,
-  candidatePool: AiDraftCandidate[]
+  candidatePool: AiDraftCandidate[],
+  signal?: AbortSignal
 ): Promise<SelectsDraftResult> {
   if (candidatePool.length === 0) {
     return { ok: false, error: 'No candidate tracks are available for this brief yet.' }
@@ -157,7 +158,7 @@ export async function draftSelectsFromBrief(
       model: MODEL,
       max_tokens: 1400,
       messages: [{ role: 'user', content: buildPrompt(brief, ordered) }],
-    })
+    }, { signal })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)

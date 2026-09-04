@@ -69,6 +69,7 @@ const baseVersions: VersionCardData[] = [
     downloadUrl: 'https://signed.example/v1.webm?download=Midnight-v1.webm',
     durationSeconds: 42,
     createdAt: '2026-01-01T00:00:00Z',
+    source: 'upload',
   },
 ]
 
@@ -225,6 +226,45 @@ describe('WorkPage', () => {
       <WorkPage {...makeProps({ versions: [{ ...baseVersions[0]!, playbackUrl: null, downloadUrl: null }] })} />
     )
     expect(withoutUrl).not.toContain('<audio')
+  })
+
+  it('offers Lyric Lift on uploaded audio and renders a review draft beside the pad', () => {
+    const markup = renderToStaticMarkup(
+      <WorkPage
+        {...makeProps({
+          lyricLift: {
+            id: 'lift-1',
+            workId: 'work-1',
+            versionId: 'v1',
+            status: 'review',
+            language: 'en',
+            errorMessage: null,
+            createdAt: '2026-01-01T00:00:00Z',
+            completedAt: '2026-01-01T00:01:00Z',
+            appliedAt: null,
+            sections: [{
+              id: '11111111-1111-4111-8111-111111111111',
+              position: 0,
+              blockType: 'verse',
+              customLabel: null,
+              text: 'I came in through the side door',
+              startMs: 15000,
+              endMs: 31000,
+              confidence: 0.51,
+              needsReview: true,
+              included: true,
+              repeatOfSectionId: null,
+            }],
+          },
+        })}
+      />
+    )
+    expect(markup).toContain('Pull lyrics')
+    expect(markup).toContain('Your lyric draft is ready to review')
+    expect(markup).toContain('▶ 0:15')
+    expect(markup).toContain('Check this')
+    expect(markup).toContain('current lyrics stay exactly where they are')
+    expect(markup).toContain('Add 1 section to Lyric Blocks')
   })
 
   it('offers private downloads for active and archived takes without changing archive authority', () => {

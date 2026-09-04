@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
+import {
+  TRACK_AUDIO_BUCKET as BUCKET,
+  TRACK_AUDIO_MAX_BYTES as MAX_BYTES,
+  buildTrackAudioPath,
+  resolveTrackAudioType,
+  trackAudioRole,
+} from '@/lib/vault/track-audio'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
-const BUCKET = 'track-audio'
-const MAX_BYTES = 50 * 1024 * 1024
-
-const EXT_BY_MIME: Record<string, string> = {
-  'audio/mpeg': 'mp3',
-  'audio/mp3': 'mp3',
-  'audio/wav': 'wav',
-  'audio/x-wav': 'wav',
-  'audio/mp4': 'm4a',
-  'audio/aac': 'aac',
-  'audio/flac': 'flac',
-  'audio/ogg': 'ogg',
-  'audio/webm': 'webm',
-}
-
-type Role = 'master' | 'share'
-const roleOf = (v: unknown): Role => (v === 'master' ? 'master' : 'share')
-
 type RouteCtx = { params: Promise<{ projectId: string; trackId: string }> }
 
 // POST — upload (or replace) a track's audio. multipart/form-data:
@@ -35,9 +26,24 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'Audio upload is not available in demo mode' }, { status: 400 })
   }
 
-  const form = await request.formData()
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const parsedUpload = await parseAdmittedFormData(supabase, request, {
+    operation: 'vault:track-audio',
+    maxBodyBytes: MAX_BYTES + 1024 * 1024,
+    dailyCountLimit: 20,
+    dailyByteLimit: 1024 * 1024 * 1024,
+  })
+  if (!parsedUpload.ok) {
+    return NextResponse.json({ error: parsedUpload.error }, { status: parsedUpload.status })
+  }
+  const form = parsedUpload.form
   const file = form.get('file')
-  const role = roleOf(form.get('role'))
+  const role = trackAudioRole(form.get('role'))
   const durationRaw = form.get('duration')
 
   if (!(file instanceof File)) {
@@ -46,16 +52,10 @@ export async function POST(request: Request, { params }: RouteCtx) {
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: 'Audio exceeds 50MB limit' }, { status: 400 })
   }
-  const ext = EXT_BY_MIME[file.type]
-  if (!ext) {
+  const audioType = resolveTrackAudioType(file.type, file.name)
+  if (!audioType) {
     return NextResponse.json({ error: 'Unsupported audio format' }, { status: 400 })
   }
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Confirm the track belongs to this user (and project).
   const { data: track } = await supabase
@@ -71,28 +71,30 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
   const existingMaster = (metadata.master as { path?: string } | undefined)?.path ?? null
 
-  // Stable, role-specific path so re-uploads overwrite rather than orphan.
-  const path =
-    role === 'master'
-      ? `${user.id}/${projectId}/${trackId}.master.${ext}`
-      : `${user.id}/${projectId}/${trackId}.${ext}`
+  // Upload to a new immutable path. The database pointer moves first; only
+  // then is the previous object eligible for cleanup.
+  const objectId = randomUUID()
+  const path = buildTrackAudioPath(
+    user.id,
+    projectId,
+    trackId,
+    role,
+    objectId,
+    audioType.ext
+  )
 
-  // If the extension changed, drop the previous object so it doesn't linger.
   const prev = role === 'master' ? existingMaster : track.audio_file_url
-  if (prev && prev !== path) {
-    await service.storage.from(BUCKET).remove([prev])
-  }
 
   const { error: uploadError } = await service.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: true })
+    .upload(path, file, { contentType: file.type, upsert: false })
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 })
   }
 
   let update: Record<string, unknown>
   if (role === 'master') {
-    update = { metadata: { ...metadata, master: { path, size: file.size, ext } } }
+    update = { metadata: { ...metadata, master: { path, size: file.size, ext: audioType.ext } } }
   } else {
     const duration =
       durationRaw != null && !Number.isNaN(Number(durationRaw))
@@ -117,6 +119,10 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
+  if (prev && prev !== path) {
+    await service.storage.from(BUCKET).remove([prev])
+  }
+
   return NextResponse.json({ data: updated })
 }
 
@@ -129,7 +135,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'Audio upload is not available in demo mode' }, { status: 400 })
   }
 
-  const role: Role = new URL(request.url).searchParams.get('role') === 'master' ? 'master' : 'share'
+  const role = trackAudioRole(new URL(request.url).searchParams.get('role'))
 
   const supabase = await createApiClient()
   const {
@@ -151,23 +157,31 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
 
   if (role === 'master') {
     const masterPath = (metadata.master as { path?: string } | undefined)?.path ?? null
-    if (masterPath) await service.storage.from(BUCKET).remove([masterPath])
     const nextMeta: Record<string, unknown> = { ...metadata }
     delete nextMeta.master
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('tracks')
       .update({ metadata: nextMeta })
       .eq('id', trackId)
       .eq('user_id', user.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      .select('id')
+      .maybeSingle()
+    if (error || !updated) {
+      return NextResponse.json({ error: error?.message ?? 'Track no longer exists' }, { status: 500 })
+    }
+    if (masterPath) await service.storage.from(BUCKET).remove([masterPath])
   } else {
-    if (track.audio_file_url) await service.storage.from(BUCKET).remove([track.audio_file_url])
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('tracks')
       .update({ audio_file_url: null, audio_file_size: null })
       .eq('id', trackId)
       .eq('user_id', user.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      .select('id')
+      .maybeSingle()
+    if (error || !updated) {
+      return NextResponse.json({ error: error?.message ?? 'Track no longer exists' }, { status: 500 })
+    }
+    if (track.audio_file_url) await service.storage.from(BUCKET).remove([track.audio_file_url])
   }
 
   return NextResponse.json({ data: { ok: true } })

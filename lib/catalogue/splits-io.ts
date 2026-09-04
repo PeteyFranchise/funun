@@ -57,7 +57,7 @@ export async function loadWorkSplits(
   client: SupabaseClient,
   workId: string
 ): Promise<WorkSplitsSheet | null> {
-  const { data: sheet } = await client
+  const { data: sheet, error: sheetError } = await client
     .from('split_sheets')
     .select('id, status')
     .eq('work_id', workId)
@@ -65,14 +65,16 @@ export async function loadWorkSplits(
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+  if (sheetError) throw new Error(`Could not load work split sheet: ${sheetError.message}`)
 
   if (!sheet) return null
   const sheetRow = sheet as SplitSheetRow
 
-  const { data: partyRows } = await client
+  const { data: partyRows, error: partyError } = await client
     .from('split_sheet_parties')
     .select('id, collaborator_id, user_id, name, split_percentage, writer_designation')
     .eq('split_sheet_id', sheetRow.id)
+  if (partyError) throw new Error(`Could not load work split parties: ${partyError.message}`)
 
   const parties: LivingDraftParty[] = ((partyRows ?? []) as SplitSheetPartyRow[]).map((p) => ({
     collaboratorId: p.collaborator_id,
@@ -88,9 +90,8 @@ export async function loadWorkSplits(
 export type ApplyWorkSplitsResult = { ok: true } | { ok: false; reason: string }
 
 /**
- * Writes a redrafted party set to a living-draft sheet — delete-and-
- * reinsert, the same pattern app/api/split-sheets/[id]/route.ts already
- * uses for a party-set replacement. Refuses, without writing anything, when
+ * Writes a redrafted party set through the database's row-locked,
+ * transactional replacement function. Refuses, without writing anything, when
  * the incoming percentages do not sum to exactly 100.000% (reusing
  * validateApprovalTotal — lib/split-sheets/approval.ts). This is a
  * defensive runtime check at this module's own I/O boundary: every caller
@@ -116,17 +117,7 @@ export async function applyWorkSplits(
     return { ok: false, reason: 'Split percentages must total exactly 100%.' }
   }
 
-  const { error: deleteError } = await client
-    .from('split_sheet_parties')
-    .delete()
-    .eq('split_sheet_id', sheetId)
-
-  if (deleteError) return { ok: false, reason: deleteError.message }
-
-  if (parties.length === 0) return { ok: true }
-
   const rows = parties.map((p) => ({
-    split_sheet_id: sheetId,
     collaborator_id: p.collaboratorId ?? null,
     user_id: p.userId ?? null,
     name: p.name,
@@ -134,8 +125,12 @@ export async function applyWorkSplits(
     writer_designation: p.writerDesignation ?? null,
   }))
 
-  const { error: insertError } = await client.from('split_sheet_parties').insert(rows)
-  if (insertError) return { ok: false, reason: insertError.message }
+  const { error } = await client.rpc('replace_split_sheet_parties_transactional', {
+    p_sheet_id: sheetId,
+    p_parties: rows,
+    p_sheet_updates: {},
+  })
+  if (error) return { ok: false, reason: error.message }
 
   return { ok: true }
 }

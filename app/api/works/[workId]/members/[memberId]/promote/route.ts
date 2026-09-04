@@ -97,7 +97,12 @@ export async function POST(request: Request, { params }: RouteCtx) {
     )
   }
 
-  const sheet = await loadWorkSplits(service, workId)
+  let sheet
+  try {
+    sheet = await loadWorkSplits(service, workId)
+  } catch {
+    return NextResponse.json({ error: 'Could not load this work’s split sheet' }, { status: 500 })
+  }
   if (!sheet) {
     return NextResponse.json(
       { error: 'This work has no living-draft split sheet to promote a writer onto' },

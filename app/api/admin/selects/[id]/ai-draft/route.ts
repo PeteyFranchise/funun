@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import { computeStage3 } from '@/lib/vault/stage3'
@@ -10,6 +10,7 @@ import {
   AI_DRAFT_CANDIDATE_CAP,
   type AiDraftCandidate,
 } from '@/lib/selects/ai-draft'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 // ─── POST /api/admin/selects/[id]/ai-draft (D-11) ──────────────────────────
 // "AI drafts, AE curates": populates a rights-ready-first ~10-track starter
@@ -80,11 +81,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const { id } = await params
   const service = createServiceClient()
 
-  const { data: selectsRow } = await service
+  const { data: selectsRow, error: selectsError } = await service
     .from('selects')
     .select('id, buyer_org_id, brief_id, cover_note')
     .eq('id', id)
     .maybeSingle()
+  if (selectsError) {
+    return NextResponse.json({ error: 'Could not load this Selects.' }, { status: 500 })
+  }
   if (!selectsRow) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -92,11 +96,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // Own-book re-check (T-31-10) — leadership bypasses, every other staff
   // role must be the assigned AE for this Selects' buyer_org. 404, never
   // 403 (no existence leak) — mirrors every other /api/admin/selects/* route.
-  const { data: orgRow } = await service
+  const { data: orgRow, error: orgError } = await service
     .from('buyer_orgs')
     .select('ae_user_id')
     .eq('id', selectsRow.buyer_org_id)
     .maybeSingle()
+  if (orgError) {
+    return NextResponse.json({ error: 'Could not verify staff scope.' }, { status: 500 })
+  }
   if (auth.staffRole !== 'leadership' && !isAssignedToOrg(orgRow, auth.user.id)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -111,11 +118,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     )
   }
 
-  const { data: briefRow } = await service
+  const { data: briefRow, error: briefError } = await service
     .from('buyer_briefs')
     .select('brief')
     .eq('id', selectsRow.brief_id)
     .maybeSingle()
+  if (briefError) {
+    return NextResponse.json({ error: 'Could not load the linked brief.' }, { status: 500 })
+  }
   if (!briefRow) {
     return NextResponse.json({ error: 'The linked brief could not be found.' }, { status: 404 })
   }
@@ -123,18 +133,21 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   // ── Candidate pool (rights-ready-first ordered by lib/selects/ai-draft.ts,
   // never hard-filtered — D-11) ──
-  const { data: projectRows } = await service
+  const { data: projectRows, error: projectsError } = await service
     .from('vault_projects')
     .select(CANDIDATE_PROJECT_COLUMNS)
     .order('created_at', { ascending: false })
     .limit(CANDIDATE_PROJECT_CAP)
+  if (projectsError) {
+    return NextResponse.json({ error: 'Could not load the catalogue.' }, { status: 500 })
+  }
 
   const projects = (projectRows ?? []) as unknown as CandidateProjectRow[]
   if (projects.length === 0) {
     return NextResponse.json({ error: 'The catalogue has no tracks yet to draft from.' }, { status: 400 })
   }
 
-  const { data: admittedRows } = await service
+  const { data: admittedRows, error: admittedError } = await service
     .from('sync_listings')
     .select('vault_project_id')
     .eq('status', 'admitted')
@@ -142,15 +155,21 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       'vault_project_id',
       projects.map(p => p.id)
     )
+  if (admittedError) {
+    return NextResponse.json({ error: 'Could not load catalogue readiness.' }, { status: 500 })
+  }
   const admittedProjectIds = new Set(
     ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
   )
 
   const ownerIds = Array.from(new Set(projects.map(p => p.user_id)))
-  const { data: ownerRows } =
+  const { data: ownerRows, error: ownerError } =
     ownerIds.length > 0
       ? await service.from('user_profiles').select('id, artist_name').in('id', ownerIds)
-      : { data: [] as { id: string; artist_name: string | null }[] }
+      : { data: [] as { id: string; artist_name: string | null }[], error: null }
+  if (ownerError) {
+    return NextResponse.json({ error: 'Could not load artist credits.' }, { status: 500 })
+  }
   const artistNameByOwner = new Map(
     ((ownerRows ?? []) as { id: string; artist_name: string | null }[]).map(o => [
       o.id,
@@ -193,61 +212,40 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'The catalogue has no tracks yet to draft from.' }, { status: 400 })
   }
 
-  const result = await draftSelectsFromBrief(brief, candidates)
+  const sessionClient = await createApiClient()
+  const admission = await claimAiUsage(sessionClient, _request, {
+    operation: 'selects:ai-draft',
+    units: 2,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
+  const result = await draftSelectsFromBrief(brief, candidates, aiProviderSignal())
+  await finishAiUsage(sessionClient, admission.claimId, result.ok)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 })
   }
 
-  // Persist the starter tracks into selects_tracks — idempotent add (same
-  // co-edit contract the tracks route owns): a non-removed row for
-  // (selects_id, track_id) is reused, never duplicated; a soft-removed row
-  // is revived instead of inserting a second.
-  const { data: existingRows } = await service
-    .from('selects_tracks')
-    .select('id, track_id, removed_at, position')
-    .eq('selects_id', id)
-
-  const existingList = (existingRows ?? []) as {
-    id: string
-    track_id: string
-    removed_at: string | null
-    position: number
-  }[]
-  const existingByTrack = new Map(existingList.map(r => [r.track_id, r]))
-  let nextPosition = existingList.length > 0 ? Math.max(...existingList.map(r => r.position)) + 1 : 0
-
-  const persisted: { trackId: string; reason: string; rightsReady: boolean }[] = []
-  for (const t of result.draft.tracks) {
-    const existing = existingByTrack.get(t.trackId)
-    if (existing && !existing.removed_at) {
-      persisted.push(t)
-      continue
+  const { data: persistedData, error: persistError } = await service.rpc(
+    'persist_selects_ai_draft',
+    {
+      p_selects_id: id,
+      p_staff_id: auth.user.id,
+      p_cover_note: result.draft.coverNote,
+      p_tracks: result.draft.tracks,
     }
-    if (existing && existing.removed_at) {
-      await service
-        .from('selects_tracks')
-        .update({ removed_at: null, removed_by: null, note: t.reason || null })
-        .eq('id', existing.id)
-      persisted.push(t)
-      continue
-    }
-    await service.from('selects_tracks').insert({
-      selects_id: id,
-      track_id: t.trackId,
-      note: t.reason || null,
-      position: nextPosition++,
-      added_by: auth.user.id,
-      source: 'crate',
-    })
-    persisted.push(t)
+  )
+  if (persistError) {
+    return NextResponse.json({ error: 'Could not save the AI starter.' }, { status: 500 })
   }
 
-  // Only fill an empty cover_note — the AI draft never overwrites an AE's
-  // own words.
-  const coverNote = selectsRow.cover_note || result.draft.coverNote
-  if (!selectsRow.cover_note && result.draft.coverNote) {
-    await service.from('selects').update({ cover_note: result.draft.coverNote }).eq('id', id)
-  }
-
-  return NextResponse.json({ data: { coverNote, tracks: persisted } })
+  const persisted = (persistedData ?? {}) as { coverNote?: unknown; tracks?: unknown }
+  return NextResponse.json({
+    data: {
+      coverNote: typeof persisted.coverNote === 'string' ? persisted.coverNote : '',
+      tracks: Array.isArray(persisted.tracks) ? persisted.tracks : [],
+    },
+  })
 }

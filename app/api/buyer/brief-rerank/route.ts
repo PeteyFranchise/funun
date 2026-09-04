@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { coerceBrief, coerceCandidates } from '@/lib/buyer/brief'
 import { rerankCandidates } from '@/lib/buyer/brief-ai'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 // POST /api/buyer/brief-rerank — order a filtered candidate set by fit to the
 // whole brief (Brief Builder v1.1). Both `brief` and `candidates` arrive from
@@ -30,7 +31,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: { ranked: [] } })
   }
 
-  const result = await rerankCandidates(brief, candidates)
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'buyer:brief-rerank',
+    units: 2,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
+  const result = await rerankCandidates(brief, candidates, aiProviderSignal())
+  await finishAiUsage(supabase, admission.claimId, result.ok)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 })
   }

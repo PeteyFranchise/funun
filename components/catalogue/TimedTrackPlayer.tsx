@@ -25,6 +25,7 @@ type TimedTrackPlayerProps = {
   onActivity: (playing: boolean) => void
   onCommentChanged: () => void
   onRecordOver?: () => void
+  onPullLyrics?: () => void
   onArchive?: () => Promise<void>
   onRename?: (label: string) => Promise<{ ok: boolean; error?: string }>
   onMakeWorking?: () => Promise<{ ok: boolean; error?: string }>
@@ -87,6 +88,7 @@ export function TimedTrackPlayer({
   onActivity,
   onCommentChanged,
   onRecordOver,
+  onPullLyrics,
   onArchive,
   onRename,
   onMakeWorking,
@@ -380,6 +382,11 @@ export function TimedTrackPlayer({
           <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
             {recordOverLabel}
           </button>
+          {onPullLyrics && (
+            <button type="button" onClick={onPullLyrics} className="text-[10px] font-semibold text-brandindigo hover:text-white">
+              Pull lyrics
+            </button>
+          )}
           {downloadUrl && <a href={downloadUrl} download aria-label={`Download ${display} ${description}`} className="text-[10px] text-lavdim hover:text-white">Download</a>}
           {onRename && <button type="button" disabled={takeSaving} onClick={() => { setTakeError(null); setRenaming(current => !current) }} className="text-[10px] text-lavdim hover:text-white disabled:opacity-40">Name</button>}
           {!isWorking && onMakeWorking && <button type="button" disabled={takeSaving} onClick={() => void makeWorkingTake()} className="text-[10px] text-lavdim hover:text-brandindigo disabled:opacity-40">Make working</button>}

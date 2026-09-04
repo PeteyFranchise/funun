@@ -41,14 +41,14 @@ const DeltaBodySchema = z
     selectsTrackId: z.string().uuid(),
     deltaSeconds: z.number().finite(),
     event: z.enum(DELTA_EVENT_VALUES),
-    viewerKey: z.string().trim().min(8).max(200).optional(),
+    viewerKey: z.string().trim().min(8).max(200),
   })
   .strict()
 
 const OpenBodySchema = z
   .object({
     event: z.literal('open'),
-    viewerKey: z.string().trim().min(8).max(200).optional(),
+    viewerKey: z.string().trim().min(8).max(200),
   })
   .strict()
 
@@ -81,11 +81,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request.' }, { status: 400 })
     }
-    const { error } = await service.from('selects_opens').insert({
-      selects_id: selects.id,
-      viewer_key: parsed.data.viewerKey ?? null,
+    const { error } = await service.rpc('record_selects_engagement_event', {
+      p_selects_id: selects.id,
+      p_selects_track_id: null,
+      p_viewer_key: parsed.data.viewerKey,
+      p_delta_seconds: null,
+      p_event: 'open',
     })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      const status = error.code === '23514' ? 429 : 500
+      return NextResponse.json(
+        { error: status === 429 ? 'This listening link has reached its telemetry limit.' : 'Could not record engagement.' },
+        { status }
+      )
+    }
     return NextResponse.json({ data: { ok: true } })
   }
 
@@ -111,14 +120,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'deltaSeconds must be a positive number of seconds.' }, { status: 400 })
   }
 
-  const { error } = await service.from('selects_track_engagement').insert({
-    selects_id: selects.id,
-    selects_track_id: track.id,
-    viewer_key: parsed.data.viewerKey ?? null,
-    delta_seconds: deltaSeconds,
-    event: parsed.data.event,
+  const { error } = await service.rpc('record_selects_engagement_event', {
+    p_selects_id: selects.id,
+    p_selects_track_id: track.id,
+    p_viewer_key: parsed.data.viewerKey,
+    p_delta_seconds: deltaSeconds,
+    p_event: parsed.data.event,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    const status = error.code === '23514' ? 429 : 500
+    return NextResponse.json(
+      { error: status === 429 ? 'This listening link has reached its telemetry limit.' : 'Could not record engagement.' },
+      { status }
+    )
+  }
 
   return NextResponse.json({ data: { ok: true } })
 }

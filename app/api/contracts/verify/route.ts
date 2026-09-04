@@ -3,6 +3,8 @@ import { createApiClient } from '@/lib/supabase/server'
 import type { DocumentType } from '@/types'
 import { readComposers } from '@/lib/metadata/schema'
 import { verifyContractPdf, type VerifyContext } from '@/lib/contracts/verify'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
 
 export const maxDuration = 60
 
@@ -36,7 +38,22 @@ export async function POST(request: Request) {
     })
   }
 
-  const form = await request.formData()
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const parsedUpload = await parseAdmittedFormData(supabase, request, {
+    operation: 'contract:verify',
+    maxBodyBytes: 21 * 1024 * 1024,
+    dailyCountLimit: 10,
+    dailyByteLimit: 200 * 1024 * 1024,
+  })
+  if (!parsedUpload.ok) {
+    return NextResponse.json({ error: parsedUpload.error }, { status: parsedUpload.status })
+  }
+  const form = parsedUpload.form
   const file = form.get('file')
   const projectId = String(form.get('projectId') ?? '')
   const type = String(form.get('type') ?? '') as DocumentType
@@ -45,12 +62,6 @@ export async function POST(request: Request) {
   if (file.type !== 'application/pdf') return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
   if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: 'File exceeds 20 MB' }, { status: 400 })
   if (!VALID_TYPES.includes(type)) return NextResponse.json({ error: 'Unknown contract type' }, { status: 400 })
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Project ownership + verification context.
   const { data: project } = await supabase
@@ -67,6 +78,15 @@ export async function POST(request: Request) {
   for (const t of tracks) for (const c of readComposers(t.metadata)) if (!writerMap.has(c.name)) writerMap.set(c.name, c.split)
   const expectedWriters = Array.from(writerMap, ([name, split]) => ({ name, split }))
 
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'contract:verify',
+    units: 4,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   // Upload the PDF to the private bucket.
   const bytes = Buffer.from(await file.arrayBuffer())
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80)
@@ -75,11 +95,24 @@ export async function POST(request: Request) {
     contentType: 'application/pdf',
     upsert: false,
   })
-  if (upErr) return NextResponse.json({ error: `Upload failed: ${upErr.message}` }, { status: 500 })
+  if (upErr) {
+    await finishAiUsage(supabase, admission.claimId, false)
+    return NextResponse.json({ error: `Upload failed: ${upErr.message}` }, { status: 500 })
+  }
 
   // Run AI verification.
   const ctx: VerifyContext = { docType: type, releaseTitle: project.title, isrcs, expectedWriters }
-  const result = await verifyContractPdf(bytes.toString('base64'), ctx)
+  let result
+  let generationSucceeded = false
+  try {
+    result = await verifyContractPdf(bytes.toString('base64'), ctx, aiProviderSignal())
+    generationSucceeded = true
+  } catch {
+    await supabase.storage.from('vault-contracts').remove([path])
+    return NextResponse.json({ error: 'Contract verification failed' }, { status: 502 })
+  } finally {
+    await finishAiUsage(supabase, admission.claimId, generationSucceeded)
+  }
 
   // Persist as an uploaded, verified document.
   const { data: doc, error } = await supabase
@@ -100,6 +133,9 @@ export async function POST(request: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    await supabase.storage.from('vault-contracts').remove([path])
+    return NextResponse.json({ error: 'Could not save the verified contract' }, { status: 500 })
+  }
   return NextResponse.json({ data: { document: doc, result } })
 }

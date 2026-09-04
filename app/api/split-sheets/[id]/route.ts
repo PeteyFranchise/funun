@@ -6,7 +6,7 @@ import {
   partiesActuallyChanged,
   type SplitSheetStatus,
 } from '@/lib/split-sheets/lifecycle'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { validateApprovalTotal } from '@/lib/split-sheets/approval'
 import type { SplitSheetParty } from '@/lib/split-sheets/approval'
 import { summarizePartyChanges } from '@/lib/split-sheets/change-summary'
@@ -146,6 +146,7 @@ export async function PATCH(
 
   // Build allowed update fields
   const update: Record<string, unknown> = {}
+  let transactionResult: Record<string, unknown> | null = null
 
   if ('song_name' in body && typeof body.song_name === 'string') {
     const trimmed = body.song_name.trim()
@@ -224,28 +225,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Splits must total 100%' }, { status: 400 })
     }
 
-    // Verify initiator ownership before modifying parties
-    const { data: existing, error: fetchError } = await supabase
-      .from('split_sheets')
-      .select('id')
-      .eq('id', id)
-      .eq('initiator_user_id', user.id)
-      .single()
-
-    if (fetchError || !existing) {
-      return NextResponse.json({ error: 'Not found or not authorized' }, { status: 404 })
-    }
-
-    // Delete existing parties then reinsert
-    const { error: deleteError } = await supabase
-      .from('split_sheet_parties')
-      .delete()
-      .eq('split_sheet_id', id)
-
-    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
-
     const partyRows = parties.map(p => ({
-      split_sheet_id: id,
       collaborator_id: p.collaborator_id ?? null,
       name: p.name,
       email: p.email ?? null,
@@ -258,8 +238,22 @@ export async function PATCH(
       administrator: p.administrator ?? null,
     }))
 
-    const { error: insertError } = await supabase.from('split_sheet_parties').insert(partyRows)
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+    const service = createServiceClient()
+    const { data: saved, error: transactionError } = await service.rpc(
+      'replace_split_sheet_parties_transactional',
+      {
+        p_sheet_id: id,
+        p_parties: partyRows,
+        p_sheet_updates: update,
+      }
+    )
+    if (transactionError || !saved) {
+      return NextResponse.json(
+        { error: transactionError?.message ?? 'Could not save the split sheet' },
+        { status: 500 }
+      )
+    }
+    transactionResult = saved as Record<string, unknown>
 
     // ─── Forward sync: sheet parties → linked project's track composers ──
     // (sheet-project-sync decision) — reuses the editsParties diff already
@@ -309,6 +303,10 @@ export async function PATCH(
   }
 
   // Update split_sheets row (scoped to initiator, T-01-08)
+  if (transactionResult) {
+    return NextResponse.json({ data: transactionResult })
+  }
+
   if (Object.keys(update).length > 0) {
     const { data, error } = await supabase
       .from('split_sheets')

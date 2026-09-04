@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { suggestTrackTags } from '@/lib/tagging/ai-tag'
@@ -11,6 +11,7 @@ import { POST } from './route'
 // preserve sibling metadata keys and never touch confirmed descriptors.
 
 jest.mock('@/lib/supabase/server', () => ({
+  createApiClient: jest.fn(),
   createServiceClient: jest.fn(),
 }))
 
@@ -87,6 +88,15 @@ const AI_SUGGESTION = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(createApiClient as jest.Mock).mockResolvedValue({
+    rpc: jest.fn((name: string) =>
+      Promise.resolve(
+        name === 'claim_ai_usage'
+          ? { data: { allowed: true, claimId: '11111111-1111-4111-8111-111111111111' }, error: null }
+          : { data: true, error: null }
+      )
+    ),
+  })
   ;(logStaffAction as jest.Mock).mockResolvedValue({ ok: true })
 })
 

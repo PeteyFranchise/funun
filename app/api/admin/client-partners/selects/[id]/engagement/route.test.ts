@@ -31,18 +31,23 @@ function paramsFor(id = SELECTS_ID) {
   return { params: Promise.resolve({ id }) }
 }
 
-type EngagementFixtureRow = { selects_track_id: string; viewer_key: string | null; delta_seconds: number; event: string }
-
 function mockService(options: {
   trackRows?: { id: string; track_id: string }[]
   titleRows?: { id: string; title: string | null }[]
-  engagementRows?: EngagementFixtureRow[]
+  summaryRows?: {
+    selects_id: string
+    selects_track_id: string | null
+    audible_seconds: number
+    qualified_listens: number
+    replay_count: number
+    opens: number
+  }[]
   opensCount?: number
 } = {}) {
   const {
     trackRows = [{ id: TRACK_ROW_ID, track_id: TRACK_ID }],
     titleRows = [{ id: TRACK_ID, title: 'Test Track' }],
-    engagementRows = [],
+    summaryRows = [],
     opensCount = 0,
   } = options
 
@@ -63,24 +68,15 @@ function mockService(options: {
         }),
       }
     }
-    if (table === 'selects_track_engagement') {
-      return {
-        select: () => ({
-          in: async () => ({ data: engagementRows, error: null }),
-        }),
-      }
-    }
-    if (table === 'selects_opens') {
-      return {
-        select: () => ({
-          eq: async () => ({ count: opensCount, error: null }),
-        }),
-      }
-    }
     throw new Error(`Unexpected table: ${table}`)
   })
 
-  return { from }
+  const rpc = jest.fn().mockResolvedValue({
+    data: summaryRows.map(row => ({ ...row, opens: row.opens || opensCount })),
+    error: null,
+  })
+
+  return { from, rpc }
 }
 
 beforeEach(() => {
@@ -102,13 +98,17 @@ describe('GET /api/admin/client-partners/selects/[id]/engagement', () => {
 
   it('aggregates >=30s audible seconds into exactly one qualified listen, with replays counted distinctly', async () => {
     ;(loadSelectsInScope as jest.Mock).mockResolvedValue({ id: SELECTS_ID, buyer_org_id: 'org-1' })
-    const engagementRows: EngagementFixtureRow[] = [
-      { selects_track_id: TRACK_ROW_ID, viewer_key: 'viewer-a', delta_seconds: 15, event: 'heartbeat' },
-      { selects_track_id: TRACK_ROW_ID, viewer_key: 'viewer-a', delta_seconds: 15, event: 'heartbeat' },
-      { selects_track_id: TRACK_ROW_ID, viewer_key: 'viewer-a', delta_seconds: 5, event: 'ended' },
-      { selects_track_id: TRACK_ROW_ID, viewer_key: 'viewer-a', delta_seconds: 10, event: 'ended' },
+    const summaryRows = [
+      {
+        selects_id: SELECTS_ID,
+        selects_track_id: TRACK_ROW_ID,
+        audible_seconds: 45,
+        qualified_listens: 1,
+        replay_count: 2,
+        opens: 0,
+      },
     ]
-    const service = mockService({ engagementRows })
+    const service = mockService({ summaryRows })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await GET(new Request('http://t.local'), paramsFor())
@@ -136,7 +136,14 @@ describe('GET /api/admin/client-partners/selects/[id]/engagement', () => {
   it('is staff-shaped — the response never leaks a viewer_key', async () => {
     ;(loadSelectsInScope as jest.Mock).mockResolvedValue({ id: SELECTS_ID, buyer_org_id: 'org-1' })
     const service = mockService({
-      engagementRows: [{ selects_track_id: TRACK_ROW_ID, viewer_key: 'secret-viewer', delta_seconds: 5, event: 'heartbeat' }],
+      summaryRows: [{
+        selects_id: SELECTS_ID,
+        selects_track_id: TRACK_ROW_ID,
+        audible_seconds: 5,
+        qualified_listens: 0,
+        replay_count: 0,
+        opens: 3,
+      }],
       opensCount: 3,
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)

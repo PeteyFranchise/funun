@@ -46,7 +46,7 @@ async function resolveScopedOrg(service: ReturnType<typeof createServiceClient>,
 const PutSchema = z.object({ topics: GamePlanTopicsSchema }).strict()
 const PostSchema = z.object({ topics: GamePlanTopicsSchema }).strict()
 
-export async function GET(request: Request, { params }: { params: Promise<{ orgId: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const auth = await requireStaff()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 

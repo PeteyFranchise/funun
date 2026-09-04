@@ -10,6 +10,7 @@ import {
   type Platform,
   type SocialCampaign,
 } from '@/lib/launchpad/campaigns'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 const MODEL = 'claude-sonnet-4-6'
 
@@ -123,23 +124,36 @@ export async function POST(
     const existingPosts = readPosts(existingCampaign.posts)
     const retainedPosts = existingPosts.filter(p => p.platform !== regenPlatform)
 
+    const admission = await claimAiUsage(supabase, request, {
+      operation: 'launchpad:campaign-regenerate',
+      units: 8,
+    })
+    if (!admission.allowed) {
+      const denied = aiAdmissionError(admission)
+      return NextResponse.json({ error: denied.error }, { status: denied.status })
+    }
+
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     let output: Record<string, unknown> | null
+    let generationSucceeded = false
     try {
       const prompt = buildCalendarPrompt(profile, ctx, collaboratorNames, [regenPlatform])
       const message = await anthropic.messages.create({
         model: MODEL,
         max_tokens: 8000,
         messages: [{ role: 'user', content: prompt }],
-      })
+      }, { signal: aiProviderSignal() })
       const text = message.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map(b => b.text)
         .join('')
       output = extractJson(text)
+      generationSucceeded = output !== null
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed'
       return NextResponse.json({ error: msg }, { status: 502 })
+    } finally {
+      await finishAiUsage(supabase, admission.claimId, generationSucceeded)
     }
 
     if (!output) {
@@ -177,23 +191,36 @@ export async function POST(
   }
 
   // Fresh generation
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'launchpad:campaign-create',
+    units: 8,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let output: Record<string, unknown> | null
+  let generationSucceeded = false
   try {
     const prompt = buildCalendarPrompt(profile, ctx, collaboratorNames, platforms)
     const message = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
-    })
+    }, { signal: aiProviderSignal() })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
       .join('')
     output = extractJson(text)
+    generationSucceeded = output !== null
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Generation failed'
     return NextResponse.json({ error: msg }, { status: 502 })
+  } finally {
+    await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
 
   if (!output) {

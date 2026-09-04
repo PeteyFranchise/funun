@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { aggregateTrack, aggregateSelectsRollup, type SelectsTrackEngagementRow } from './engagement'
 
 // ─── buildEngagementRollup — leadership-wide aggregate across the team's ───
 // book (R13, D-31.2-13/14). Extracted into lib/ (rather than living inline
@@ -8,26 +7,29 @@ import { aggregateTrack, aggregateSelectsRollup, type SelectsTrackEngagementRow 
 // app/(admin)/admin/client-partners/page.tsx's loadClientPartnersRoomData
 // (the RSC leadership tower's server-side load) call the SAME
 // implementation — a Next.js route module may only export HTTP method
-// handlers (mirrors lib/selects/tracks-query.ts's resolveTracksWithRightsReady
-// doc comment), so this function cannot live in route.ts itself.
+// handlers, so this function cannot live in route.ts itself.
 //
-// Mirrors lib/client-partners/signals.ts's loadWholeBookWithCoverage
-// batched-read shape: one query per source table via .in(), never a
-// per-org/per-Selects round trip (T-31.2-27, no N+1). Every audible-second/
-// qualified-listen/replay total is SUMmed at read time from the raw
-// selects_track_engagement rows via lib/selects/engagement.ts's aggregation
-// (plan 02) — never a stored running total (D-06). Callers MUST only invoke
-// this for a verified leadership caller (T-31.2-27) — this module performs
-// no role check itself; verifyAdmin() (the route) and the isLeadership
+// Mirrors lib/client-partners/signals.ts's batched-read shape: one query per
+// source plus one service-only SQL summary call, never a per-org/per-Selects
+// round trip (T-31.2-27, no N+1). The database reads bounded daily
+// aggregates, avoiding an unbounded raw-event scan in application memory.
+// Callers MUST only invoke this for a verified leadership caller
+// (T-31.2-27) — this module performs no role check itself; verifyAdmin()
+// (the route) and the isLeadership
 // branch (the RSC page, mirroring D-31.1-01's hide-not-filter discipline
 // for loadWholeBookWithCoverage) are the sole gates.
 
 type SelectsRow = { id: string; buyer_org_id: string; name: string }
 type OrgRow = { id: string; name: string; ae_user_id: string | null }
-type SelectsTrackRow = { id: string; selects_id: string }
-type RawEngagementRow = Pick<SelectsTrackEngagementRow, 'selects_track_id' | 'viewer_key' | 'delta_seconds' | 'event'>
-type OpenRow = { selects_id: string }
 type StaffRow = { user_id: string; display_name: string }
+type EngagementSummaryRow = {
+  selects_id: string
+  selects_track_id: string | null
+  audible_seconds: number | string
+  qualified_listens: number | string
+  replay_count: number | string
+  opens: number | string
+}
 
 export type EngagementRollupSelectsEntry = {
   selectsId: string
@@ -69,48 +71,18 @@ export async function buildEngagementRollup(service: SupabaseClient): Promise<En
   const orgById = new Map(((orgData ?? []) as OrgRow[]).map(o => [o.id, o]))
 
   const selectsIds = selectsRows.map(r => r.id)
-  const { data: trackRowsData, error: trackError } = await service
-    .from('selects_tracks')
-    .select('id, selects_id')
-    .in('selects_id', selectsIds)
-  if (trackError) throw new Error(`Failed to load Selects tracks for engagement rollup: ${trackError.message}`)
-  const trackRows = (trackRowsData ?? []) as SelectsTrackRow[]
+  const { data: summaryData, error: summaryError } = await service.rpc(
+    'selects_engagement_summaries',
+    { p_selects_ids: selectsIds }
+  )
+  if (summaryError) throw new Error(`Failed to load engagement summaries: ${summaryError.message}`)
+  const summaryRows = (summaryData ?? []) as EngagementSummaryRow[]
 
-  const selectsTrackIds = trackRows.map(r => r.id)
-  const { data: engagementRowsData, error: engagementError } =
-    selectsTrackIds.length > 0
-      ? await service
-          .from('selects_track_engagement')
-          .select('selects_track_id, viewer_key, delta_seconds, event')
-          .in('selects_track_id', selectsTrackIds)
-      : { data: [] as RawEngagementRow[], error: null }
-  if (engagementError) throw new Error(`Failed to load engagement deltas for rollup: ${engagementError.message}`)
-  const engagementRows = (engagementRowsData ?? []) as RawEngagementRow[]
-
-  const { data: opensRowsData, error: opensError } = await service
-    .from('selects_opens')
-    .select('selects_id')
-    .in('selects_id', selectsIds)
-  if (opensError) throw new Error(`Failed to load opens for engagement rollup: ${opensError.message}`)
-  const opensRows = (opensRowsData ?? []) as OpenRow[]
-
-  const opensBySelects = new Map<string, number>()
-  for (const row of opensRows) {
-    opensBySelects.set(row.selects_id, (opensBySelects.get(row.selects_id) ?? 0) + 1)
-  }
-
-  const engagementByTrack = new Map<string, RawEngagementRow[]>()
-  for (const row of engagementRows) {
-    const bucket = engagementByTrack.get(row.selects_track_id)
+  const summariesBySelects = new Map<string, EngagementSummaryRow[]>()
+  for (const row of summaryRows) {
+    const bucket = summariesBySelects.get(row.selects_id)
     if (bucket) bucket.push(row)
-    else engagementByTrack.set(row.selects_track_id, [row])
-  }
-
-  const tracksBySelects = new Map<string, SelectsTrackRow[]>()
-  for (const row of trackRows) {
-    const bucket = tracksBySelects.get(row.selects_id)
-    if (bucket) bucket.push(row)
-    else tracksBySelects.set(row.selects_id, [row])
+    else summariesBySelects.set(row.selects_id, [row])
   }
 
   const aeIds = Array.from(
@@ -133,19 +105,22 @@ export async function buildEngagementRollup(service: SupabaseClient): Promise<En
     // lib/client-partners/coverage.ts, which only buckets assigned rows).
     if (!aeId) continue
 
-    const tracksForSelects = tracksBySelects.get(selects.id) ?? []
-    const trackAggs = tracksForSelects.map(t => aggregateTrack(t.id, engagementByTrack.get(t.id) ?? []))
-    const rollup = aggregateSelectsRollup(trackAggs)
-    const opens = opensBySelects.get(selects.id) ?? 0
+    const summaries = summariesBySelects.get(selects.id) ?? []
+    const audibleSeconds = summaries.reduce((sum, row) => sum + Number(row.audible_seconds), 0)
+    const qualifiedListens = summaries.reduce((sum, row) => sum + Number(row.qualified_listens), 0)
+    const replayCount = summaries.reduce((sum, row) => sum + Number(row.replay_count), 0)
+    // The SQL summary repeats the Selects-level open count on each track row;
+    // use the maximum once rather than multiplying it by the track count.
+    const opens = summaries.reduce((max, row) => Math.max(max, Number(row.opens)), 0)
 
     const entry: EngagementRollupSelectsEntry = {
       selectsId: selects.id,
       selectsName: selects.name,
       orgId: selects.buyer_org_id,
       orgName: org?.name ?? 'Unknown client',
-      audibleSeconds: rollup.audibleSeconds,
-      qualifiedListens: rollup.qualifiedListens,
-      replayCount: rollup.replayCount,
+      audibleSeconds,
+      qualifiedListens,
+      replayCount,
       opens,
     }
 

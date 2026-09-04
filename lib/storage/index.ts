@@ -6,8 +6,6 @@ const DOC_BUCKET    = 'release-documents'
 
 const MAX_AUDIO_SIZE = 250 * 1024 * 1024  // 250MB per track
 const MAX_IMAGE_SIZE =  10 * 1024 * 1024  // 10MB
-const MAX_DOC_SIZE   =   5 * 1024 * 1024  // 5MB
-
 const ALLOWED_AUDIO_TYPES = ['audio/wav', 'audio/x-wav', 'audio/flac', 'audio/mpeg', 'audio/aac']
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 

@@ -2,12 +2,9 @@ import { loadWorkSplits, applyWorkSplits } from './splits-io'
 import type { LivingDraftParty } from './splits'
 
 // ─── lib/catalogue/splits-io.ts — the single service-role split-sheet
-// accessor for Phase 37.1. Exercised entirely through an injected fake
-// client with no `.rpc` and no `.auth` property at all (see makeClient
-// below) — if either function under test ever reached for one, the fake
-// would throw "not a function" and every test in this file would fail,
-// which is what proves structurally that neither function reasons about
-// access. No Supabase import anywhere in this file.
+// accessor for Phase 37.1. Reads use table builders; writes use the
+// service-only transactional RPC added by migration 172. Neither helper
+// performs authentication or access reasoning of its own.
 
 function tableBuilder(resolved: { data: unknown; error?: unknown }) {
   const builder: Record<string, unknown> = {}
@@ -32,17 +29,23 @@ type FakePartyRow = {
   writer_designation: string | null
 }
 
-function makeClient(opts: { sheet?: FakeSheetRow; parties?: FakePartyRow[] } = {}) {
-  const sheetBuilder = tableBuilder({ data: opts.sheet ?? null })
-  const partiesBuilder = tableBuilder({ data: opts.parties ?? [] })
+function makeClient(opts: {
+  sheet?: FakeSheetRow
+  parties?: FakePartyRow[]
+  sheetError?: { message: string }
+  partyError?: { message: string }
+  rpcError?: { message: string }
+} = {}) {
+  const sheetBuilder = tableBuilder({ data: opts.sheet ?? null, error: opts.sheetError })
+  const partiesBuilder = tableBuilder({ data: opts.parties ?? [], error: opts.partyError })
   const from = jest.fn((table: string) => {
     if (table === 'split_sheets') return sheetBuilder
     if (table === 'split_sheet_parties') return partiesBuilder
     throw new Error(`Unexpected table: ${table}`)
   })
-  // Deliberately NO .rpc and NO .auth — see file header.
-  const client = { from } as unknown as Parameters<typeof loadWorkSplits>[0]
-  return { client, sheetBuilder, partiesBuilder }
+  const rpc = jest.fn().mockResolvedValue({ data: {}, error: opts.rpcError ?? null })
+  const client = { from, rpc } as unknown as Parameters<typeof loadWorkSplits>[0]
+  return { client, sheetBuilder, partiesBuilder, rpc }
 }
 
 describe('loadWorkSplits', () => {
@@ -75,6 +78,19 @@ describe('loadWorkSplits', () => {
     const result = await loadWorkSplits(client, 'work-none')
     expect(result).toBeNull()
   })
+
+  it('does not turn a database read failure into a missing split sheet', async () => {
+    const { client } = makeClient({ sheetError: { message: 'database unavailable' } })
+    await expect(loadWorkSplits(client, 'work-1')).rejects.toThrow('Could not load work split sheet')
+  })
+
+  it('does not acknowledge a partial party read', async () => {
+    const { client } = makeClient({
+      sheet: { id: 'sheet-1', status: 'draft' },
+      partyError: { message: 'database unavailable' },
+    })
+    await expect(loadWorkSplits(client, 'work-1')).rejects.toThrow('Could not load work split parties')
+  })
 })
 
 describe('applyWorkSplits', () => {
@@ -83,21 +99,24 @@ describe('applyWorkSplits', () => {
     { collaboratorId: 'collab-2', name: 'Ben', splitPercentage: 50 },
   ]
 
-  it('deletes the existing parties and reinserts the redrafted set', async () => {
-    const { client, partiesBuilder } = makeClient()
+  it('replaces the redrafted set through one transactional RPC', async () => {
+    const { client, rpc } = makeClient()
 
     const result = await applyWorkSplits(client, 'sheet-1', parties)
 
     expect(result).toEqual({ ok: true })
-    expect(partiesBuilder.delete).toHaveBeenCalled()
-    expect(partiesBuilder.insert).toHaveBeenCalledWith([
-      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50, writer_designation: 'lyricist' },
-      { split_sheet_id: 'sheet-1', collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50, writer_designation: null },
-    ])
+    expect(rpc).toHaveBeenCalledWith('replace_split_sheet_parties_transactional', {
+      p_sheet_id: 'sheet-1',
+      p_parties: [
+        { collaborator_id: 'collab-1', user_id: null, name: 'Alice', split_percentage: 50, writer_designation: 'lyricist' },
+        { collaborator_id: 'collab-2', user_id: null, name: 'Ben', split_percentage: 50, writer_designation: null },
+      ],
+      p_sheet_updates: {},
+    })
   })
 
   it('refuses a party set whose percentages do not sum to 100, writing nothing', async () => {
-    const { client, partiesBuilder } = makeClient()
+    const { client, rpc } = makeClient()
     const badParties: LivingDraftParty[] = [
       { collaboratorId: 'collab-1', name: 'Alice', splitPercentage: 40 },
       { collaboratorId: 'collab-2', name: 'Ben', splitPercentage: 40 },
@@ -106,17 +125,25 @@ describe('applyWorkSplits', () => {
     const result = await applyWorkSplits(client, 'sheet-1', badParties)
 
     expect(result).toEqual({ ok: false, reason: expect.any(String) })
-    expect(partiesBuilder.delete).not.toHaveBeenCalled()
-    expect(partiesBuilder.insert).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
   })
 
-  it('deletes and writes nothing further when the redraft empties the sheet', async () => {
-    const { client, partiesBuilder } = makeClient()
+  it('atomically replaces the sheet with an empty party set', async () => {
+    const { client, rpc } = makeClient()
 
     const result = await applyWorkSplits(client, 'sheet-1', [])
 
     expect(result).toEqual({ ok: true })
-    expect(partiesBuilder.delete).toHaveBeenCalled()
-    expect(partiesBuilder.insert).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalledWith('replace_split_sheet_parties_transactional', {
+      p_sheet_id: 'sheet-1', p_parties: [], p_sheet_updates: {},
+    })
+  })
+
+  it('reports a transactional replacement failure', async () => {
+    const { client } = makeClient({ rpcError: { message: 'injected failure' } })
+
+    await expect(applyWorkSplits(client, 'sheet-1', parties)).resolves.toEqual({
+      ok: false, reason: 'injected failure',
+    })
   })
 })

@@ -24,6 +24,7 @@ import { VersionComparisonPanel, type ComparableVersion } from './VersionCompari
 import { RecordOverBeatStudio } from './RecordOverBeatStudio'
 import { ReturnedMixReviewCard, type ReturnedMixReviewItem } from './ReturnedMixReviewCard'
 import { ProducerHandoffTimeline, type ProducerHandoffTimelineItem } from './ProducerHandoffTimeline'
+import { LyricLiftPanel } from './LyricLiftPanel'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -55,6 +56,7 @@ import type { SingerCandidate } from '@/lib/catalogue/singer-options'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { workingTakeFirst } from '@/lib/catalogue/take-workflow'
 import type { ReturnedMixReviewOutcome } from '@/lib/catalogue/returned-mix-review'
+import type { LyricLiftView } from '@/lib/catalogue/lyric-lift'
 
 // ─── WorkPage — the composer room, assembled (37-12) ───────────────────
 // The client shell every plan-08-through-11 component mounts into, and
@@ -150,6 +152,8 @@ export type WorkPageProps = {
   hasHumFirstFired: boolean
   /** undefined keeps the feature entirely absent; null renders the owner-start state. */
   songPassport?: SongPassportView | null
+  /** Latest queued, review-ready, or failed transcription draft for this room. */
+  lyricLift?: LyricLiftView | null
   /**
    * Test seam only — forces the breakpoint treatment for a deterministic,
    * single-pass render with no jsdom/matchMedia in this repo's Jest
@@ -223,6 +227,7 @@ type Flow =
   | { kind: 'existing-take'; targetVersionId: string | null }
   | { kind: 'compare-versions'; preferredVersionId?: string }
   | { kind: 'record-over'; version: VersionCardData & { playbackUrl: string } }
+  | { kind: 'lyric-lift-offer'; versionId: string }
 
 type LyricHistoryState = {
   blockId: string
@@ -312,6 +317,7 @@ function VersionsList({
   onCommentChanged,
   onCompare,
   onRecordOver,
+  onPullLyrics,
   onTakeManaged,
   onTakeRenamed,
   onWorkingTake,
@@ -324,6 +330,7 @@ function VersionsList({
   onCommentChanged: (versionId: string) => void
   onCompare: () => void
   onRecordOver: (version: VersionCardData & { playbackUrl: string }) => void
+  onPullLyrics: (versionId: string) => void
   onTakeManaged: (versionId: string, archived: boolean) => Promise<void>
   onTakeRenamed: (versionId: string, label: string) => Promise<{ ok: boolean; error?: string }>
   onWorkingTake: (versionId: string) => Promise<{ ok: boolean; error?: string }>
@@ -365,6 +372,7 @@ function VersionsList({
           onActivity={playing => onActivity(playing ? 'listening' : 'recently_active', playing ? v.display : undefined)}
           onCommentChanged={() => onCommentChanged(v.id)}
           onRecordOver={() => onRecordOver({ ...v, playbackUrl: v.playbackUrl! })}
+          onPullLyrics={v.source === 'upload' ? () => onPullLyrics(v.id) : undefined}
           onArchive={v.canManage ? () => onTakeManaged(v.id, true) : undefined}
           onRename={label => onTakeRenamed(v.id, label)}
           onMakeWorking={() => onWorkingTake(v.id)}
@@ -517,6 +525,7 @@ export function WorkPage({
   priorAiEntryCount,
   hasHumFirstFired,
   songPassport,
+  lyricLift = null,
   initialViewport,
 }: WorkPageProps) {
   const router = useRouter()
@@ -538,6 +547,13 @@ export function WorkPage({
   const [lyricSuggestions, setLyricSuggestions] = useState<LyricSuggestionsState | null>(null)
   const [liveSuggestionCounts, setLiveSuggestionCounts] = useState<Record<string, number>>(suggestionCounts)
   const [trackCommentRefreshes, setTrackCommentRefreshes] = useState<Record<string, number>>({})
+  const [activeLyricLift, setActiveLyricLift] = useState<LyricLiftView | null>(lyricLift)
+  const [lyricLiftStartError, setLyricLiftStartError] = useState<string | null>(null)
+  const [lyricLiftStartingVersionId, setLyricLiftStartingVersionId] = useState<string | null>(null)
+
+  const handleLyricLiftChange = useCallback((next: LyricLiftView) => {
+    setActiveLyricLift(next)
+  }, [])
 
   useEffect(() => {
     setLiveLyricsBlocks(lyricsBlocks)
@@ -546,6 +562,10 @@ export function WorkPage({
   useEffect(() => {
     setLiveSuggestionCounts(suggestionCounts)
   }, [suggestionCounts])
+
+  useEffect(() => {
+    setActiveLyricLift(lyricLift)
+  }, [lyricLift])
 
   const lockSessionId = useCallback(() => {
     lockSessionRef.current ??= createLockSessionId()
@@ -786,6 +806,7 @@ export function WorkPage({
   }, [initialViewport])
 
   const lyricsRef = useRef<HTMLDivElement | null>(null)
+  const lyricLiftRef = useRef<HTMLDivElement | null>(null)
   const rosterRef = useRef<HTMLDivElement | null>(null)
   const diaryRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -868,6 +889,30 @@ export function WorkPage({
     fileInputRef.current?.click()
   }
 
+  async function startLyricLift(versionId: string): Promise<boolean> {
+    if (lyricLiftStartingVersionId) return false
+    setLyricLiftStartingVersionId(versionId)
+    setLyricLiftStartError(null)
+    try {
+      const response = await fetch(`/api/works/${workId}/versions/${versionId}/lyric-lift`, {
+        method: 'POST',
+      })
+      const body = (await response.json().catch(() => ({}))) as { data?: LyricLiftView; error?: string }
+      if (!response.ok || !body.data) {
+        setLyricLiftStartError(body.error ?? 'Could not start Lyric Lift.')
+        return false
+      }
+      setActiveLyricLift(body.data)
+      window.requestAnimationFrame(() => lyricLiftRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+      return true
+    } catch {
+      setLyricLiftStartError('Could not reach Lyric Lift. Check your connection and try again.')
+      return false
+    } finally {
+      setLyricLiftStartingVersionId(null)
+    }
+  }
+
   async function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -882,7 +927,7 @@ export function WorkPage({
         onPhase: setAudioUploadPhase,
       })
       router.refresh()
-      requestAiQuestion(version.id)
+      setFlow({ kind: 'lyric-lift-offer', versionId: version.id })
     } catch (cause) {
       setAudioUploadError(
         cause instanceof Error && cause.message ? cause.message : 'Could not upload that audio file. Please try again.'
@@ -1510,6 +1555,11 @@ export function WorkPage({
             {audioUploadError}
           </p>
         )}
+        {lyricLiftStartError && (
+          <p role="alert" className="mt-2 text-[11px] text-red-300">
+            {lyricLiftStartError}
+          </p>
+        )}
         <ReturnedMixReviewCard
           items={returnedMixReviews}
           canCompare={comparableVersions.length >= 2}
@@ -1523,6 +1573,27 @@ export function WorkPage({
           onCompare={(_handoffId, versionId) => setFlow({ kind: 'compare-versions', preferredVersionId: versionId })}
         />
       </div>
+
+      {activeLyricLift && (
+        <div ref={lyricLiftRef}>
+          <LyricLiftPanel
+            workId={workId}
+            lift={activeLyricLift}
+            sourceVersion={versions.find(version => version.id === activeLyricLift.versionId) ?? null}
+            hasExistingLyrics={liveLyricsBlocks.length > 0}
+            onChange={handleLyricLiftChange}
+            onApplied={(applied, importedCount) => {
+              setActiveLyricLift(applied)
+              router.refresh()
+              showToast(`${importedCount} ${importedCount === 1 ? 'section' : 'sections'} added — review writer credits when you’re ready`)
+            }}
+            onDiscarded={() => {
+              setActiveLyricLift(null)
+              showToast('Lyric draft discarded — the recording is still here')
+            }}
+          />
+        </div>
+      )}
 
       {/* The pad — the other half of what an artist owns. Creation leads
           (005-C): the writing surface sits directly under the composer,
@@ -1568,6 +1639,7 @@ export function WorkPage({
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
+                onPullLyrics={versionId => void startLyricLift(versionId)}
                 onTakeManaged={handleTakeManaged}
                 onTakeRenamed={handleTakeRenamed}
                 onWorkingTake={handleWorkingTake}
@@ -1620,6 +1692,7 @@ export function WorkPage({
                 onCommentChanged={announceTrackCommentChanged}
                 onCompare={() => setFlow({ kind: 'compare-versions' })}
                 onRecordOver={version => setFlow({ kind: 'record-over', version })}
+                onPullLyrics={versionId => void startLyricLift(versionId)}
                 onTakeManaged={handleTakeManaged}
                 onTakeRenamed={handleTakeRenamed}
                 onWorkingTake={handleWorkingTake}
@@ -1688,6 +1761,34 @@ export function WorkPage({
             >
               Cancel
             </button>
+          </div>
+        </FlowOverlay>
+      )}
+
+      {flow?.kind === 'lyric-lift-offer' && (
+        <FlowOverlay>
+          <div className="w-full max-w-[430px] rounded-[12px] border border-hair bg-card px-6 py-6">
+            <p className="text-[10px] font-bold uppercase tracking-[.14em] text-brandindigo">Lyric Lift</p>
+            <p className="mt-2 text-[14px] font-semibold text-white">Pull the lyrics from this recording?</p>
+            <p className="mt-2 text-[11px] leading-5 text-lavdim">
+              I&apos;ll transcribe them, organize the likely sections, and place a draft beside your Lyric Blocks for you to review. Nothing is added or credited until you approve it.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={lyricLiftStartingVersionId === flow.versionId}
+                onClick={() => void (async () => {
+                  await startLyricLift(flow.versionId)
+                  requestAiQuestion(flow.versionId)
+                })()}
+                className="rounded-[9px] border border-brandindigo/60 bg-brandindigo/15 px-4 py-2 text-[11px] font-semibold text-white hover:bg-brandindigo/25 disabled:opacity-40"
+              >
+                {lyricLiftStartingVersionId === flow.versionId ? 'Starting…' : 'Pull the lyrics'}
+              </button>
+              <button type="button" onClick={() => requestAiQuestion(flow.versionId)} className="text-[11px] text-lavdim hover:text-white">
+                Not now
+              </button>
+            </div>
           </div>
         </FlowOverlay>
       )}

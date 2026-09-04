@@ -8,6 +8,7 @@ import {
   type ToolProjectContext,
 } from '@/lib/tools/registry'
 import { readPosts } from '@/lib/launchpad/campaigns'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 const MODEL = 'claude-sonnet-4-6'
 
@@ -28,7 +29,7 @@ function extractJson(text: string): Record<string, unknown> | null {
 // D-10 preview-then-accept: generates a slot caption or hook from Claude and returns it
 // WITHOUT writing to the DB. The write happens via the separate slot PATCH on "Use this" click.
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ projectId: string; campaignId: string; slotId: string }> }
 ) {
   const { projectId, campaignId, slotId } = await params
@@ -101,23 +102,36 @@ export async function POST(
     ? buildSlotHookPrompt(artistProfile, ctx, slotArg)
     : buildSlotCaptionPrompt(artistProfile, ctx, slotArg)
 
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'launchpad:slot-generate',
+    units: 1,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   // Step 5: run AI call (max_tokens: 1000 — single caption output is small)
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let output: Record<string, unknown> | null
+  let generationSucceeded = false
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }],
-    })
+    }, { signal: aiProviderSignal() })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
       .join('')
     output = extractJson(text)
+    generationSucceeded = output !== null
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Generation failed'
     return NextResponse.json({ error: msg }, { status: 502 })
+  } finally {
+    await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
 
   const caption = output?.caption

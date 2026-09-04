@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AddTrackForm } from '@/components/vault/AddTrackForm'
 import type { SyncListingStatus } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 
 export type PlayerTrack = {
   id: string
@@ -283,16 +284,43 @@ export function TrackList({
     setUploadingKey(`${trackId}:${role}`)
     setError(null)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('role', role)
-      if (role === 'share') {
-        const duration = await readDuration(file)
-        if (duration != null) fd.append('duration', String(duration))
+      const duration = role === 'share' ? await readDuration(file) : null
+      const intentResponse = await fetch(
+        `/api/vault/${projectId}/tracks/${trackId}/audio/upload-intent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': crypto.randomUUID(),
+          },
+          body: JSON.stringify({ fileName: file.name, mimeType: file.type, size: file.size, role }),
+        }
+      )
+      const intentBody = (await intentResponse.json().catch(() => ({}))) as {
+        data?: { path: string; token: string; contentType: string }
+        error?: string
       }
-      const res = await fetch(`/api/vault/${projectId}/tracks/${trackId}/audio`, {
+      if (!intentResponse.ok || !intentBody.data) {
+        setError(intentBody.error ?? 'Could not prepare upload')
+        return
+      }
+
+      const intent = intentBody.data
+      const { error: uploadError } = await createClient().storage
+        .from('track-audio')
+        .uploadToSignedUrl(intent.path, intent.token, file, {
+          contentType: intent.contentType,
+          upsert: false,
+        })
+      if (uploadError) {
+        setError(uploadError.message)
+        return
+      }
+
+      const res = await fetch(`/api/vault/${projectId}/tracks/${trackId}/audio/complete`, {
         method: 'POST',
-        body: fd,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: intent.path, role, duration }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
@@ -300,6 +328,8 @@ export function TrackList({
         return
       }
       router.refresh()
+    } catch {
+      setError('Upload failed — please try again')
     } finally {
       setUploadingKey(null)
     }

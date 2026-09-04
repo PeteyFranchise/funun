@@ -15,12 +15,10 @@ jest.mock('@/lib/selects/public-resolve', () => ({
   loadOwnSelectsTrack: (...a: unknown[]) => mockLoadTrack(...a),
 }))
 
-const mockInsert = jest.fn()
+const mockRpc = jest.fn()
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
-    from: (table: string) => ({
-      insert: (row: Record<string, unknown>) => mockInsert(table, row),
-    }),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   }),
 }))
 
@@ -37,7 +35,7 @@ beforeEach(() => {
   mockResolveSelects.mockResolvedValue({ id: 'sel-1', buyer_org_id: 'org-1' })
   mockLoadTrack.mockResolvedValue({ id: UUID, selects_id: 'sel-1' })
   mockCheckRateLimit.mockResolvedValue(false)
-  mockInsert.mockResolvedValue({ error: null })
+  mockRpc.mockResolvedValue({ data: true, error: null })
 })
 
 describe('POST /api/selects/[token]/engagement — delta events', () => {
@@ -47,9 +45,9 @@ describe('POST /api/selects/[token]/engagement — delta events', () => {
       ctx('tok')
     )
     expect(res.status).toBe(200)
-    expect(mockInsert).toHaveBeenCalledWith(
-      'selects_track_engagement',
-      expect.objectContaining({ delta_seconds: 15 })
+    expect(mockRpc).toHaveBeenCalledWith(
+      'record_selects_engagement_event',
+      expect.objectContaining({ p_delta_seconds: 15 })
     )
   })
 
@@ -59,7 +57,7 @@ describe('POST /api/selects/[token]/engagement — delta events', () => {
       ctx('tok')
     )
     expect(res.status).toBe(400)
-    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 
   it('a track id not scoped to this Selects is 404', async () => {
@@ -69,7 +67,7 @@ describe('POST /api/selects/[token]/engagement — delta events', () => {
       ctx('tok')
     )
     expect(res.status).toBe(404)
-    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 
   it('an invalid/expired token is 404 and never reaches the rate limiter', async () => {
@@ -100,12 +98,12 @@ describe('POST /api/selects/[token]/engagement — delta events', () => {
 
   it('persists the viewer_key and event exactly as sent for a within-ceiling delta', async () => {
     await POST(req({ selectsTrackId: UUID, deltaSeconds: 8, event: 'pause', viewerKey: 'abcdefgh' }), ctx('tok'))
-    expect(mockInsert).toHaveBeenCalledWith('selects_track_engagement', {
-      selects_id: 'sel-1',
-      selects_track_id: UUID,
-      viewer_key: 'abcdefgh',
-      delta_seconds: 8,
-      event: 'pause',
+    expect(mockRpc).toHaveBeenCalledWith('record_selects_engagement_event', {
+      p_selects_id: 'sel-1',
+      p_selects_track_id: UUID,
+      p_viewer_key: 'abcdefgh',
+      p_delta_seconds: 8,
+      p_event: 'pause',
     })
   })
 
@@ -121,7 +119,7 @@ describe('POST /api/selects/[token]/engagement — delta events', () => {
       ctx('tok')
     )
     expect(res.status).toBe(400)
-    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 })
 
@@ -129,9 +127,12 @@ describe('POST /api/selects/[token]/engagement — open events', () => {
   it('writes a selects_opens row, not a delta row', async () => {
     const res = await POST(req({ event: 'open', viewerKey: 'abcdefgh' }), ctx('tok'))
     expect(res.status).toBe(200)
-    expect(mockInsert).toHaveBeenCalledWith('selects_opens', {
-      selects_id: 'sel-1',
-      viewer_key: 'abcdefgh',
+    expect(mockRpc).toHaveBeenCalledWith('record_selects_engagement_event', {
+      p_selects_id: 'sel-1',
+      p_selects_track_id: null,
+      p_viewer_key: 'abcdefgh',
+      p_delta_seconds: null,
+      p_event: 'open',
     })
     expect(mockLoadTrack).not.toHaveBeenCalled()
   })
@@ -146,7 +147,19 @@ describe('POST /api/selects/[token]/engagement — open events', () => {
     mockResolveSelects.mockResolvedValueOnce(null)
     const res = await POST(req({ event: 'open', viewerKey: 'abcdefgh' }), ctx('bad'))
     expect(res.status).toBe(404)
-    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('requires a stable viewer key so anonymous traffic cannot create unbounded rows', async () => {
+    const res = await POST(req({ event: 'open' }), ctx('tok'))
+    expect(res.status).toBe(400)
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 when the bounded aggregate reaches capacity', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { code: '23514' } })
+    const res = await POST(req({ event: 'open', viewerKey: 'abcdefgh' }), ctx('tok'))
+    expect(res.status).toBe(429)
   })
 })
 

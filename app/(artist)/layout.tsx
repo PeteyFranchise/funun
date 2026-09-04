@@ -10,6 +10,7 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { hasAdmittedSyncListing } from '@/lib/sync-library/hub-access'
 import { resolveHandleGate } from '@/lib/handles/gate'
 import { profileDisplayTitle } from '@/lib/profile/display-name'
+import { GlobalCaptureHeaderButton } from '@/components/ideas/GlobalQuickCapture'
 
 // Reads the account's approved capability set server-side and passes it to
 // ArtistNav as a prop (D-08). Never fetched client-side — capability_grants
@@ -28,6 +29,7 @@ export default async function ArtistLayout({ children }: { children: React.React
   // mirroring the capabilities read immediately above (26-CONTEXT.md).
   let hasSyncLibraryAccess = false
   let navUser: { name: string } | undefined
+  let isUserAccount = false
 
   if (user) {
     const service = createServiceClient()
@@ -78,6 +80,10 @@ export default async function ArtistLayout({ children }: { children: React.React
       .select('handle, artist_name')
       .eq('id', user.id)
       .maybeSingle()
+    // A user_profiles row is the structural User Account signal. Team
+    // Members, buyers, and client partners authenticate too, but Global
+    // Capture must never mount for those account types.
+    isUserAccount = profileRow !== null
     const navName = profileRow
       ? profileDisplayTitle({
           artistName: (profileRow.artist_name as string | null) ?? null,
@@ -108,6 +114,7 @@ export default async function ArtistLayout({ children }: { children: React.React
       />
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">
+          {user && <GlobalCaptureHeaderButton />}
           {user && <MessagesIcon userId={user.id} />}
           {user && <NotificationBell userId={user.id} />}
         </header>
@@ -122,5 +129,5 @@ export default async function ArtistLayout({ children }: { children: React.React
   // above) — render children directly when unauthenticated.
   if (!user) return body
 
-  return <ArtistLayoutClient userId={user.id}>{body}</ArtistLayoutClient>
+  return <ArtistLayoutClient userId={user.id} enableGlobalCapture={isUserAccount}>{body}</ArtistLayoutClient>
 }

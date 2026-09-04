@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { draftBriefFromProse, BRIEF_PROSE_MAX } from '@/lib/buyer/brief-ai'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 // POST /api/buyer/brief-draft — turn a buyer's free-text description into a
 // structured Brief (Brief Builder v1). No persistence — the caller holds it.
@@ -33,7 +34,17 @@ export async function POST(request: Request) {
     )
   }
 
-  const result = await draftBriefFromProse(prose)
+  const admission = await claimAiUsage(supabase, request, {
+    operation: 'buyer:brief-draft',
+    units: 2,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
+  const result = await draftBriefFromProse(prose, aiProviderSignal())
+  await finishAiUsage(supabase, admission.claimId, result.ok)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 })
   }

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   VaultIcon,
+  IdeasIcon,
   LockerIcon,
   AntennaIcon,
   GreenRoomIcon,
@@ -43,6 +44,7 @@ type Item = {
 }
 
 const ITEMS: Item[] = [
+  { href: '/ideas', label: 'Ideas', match: '/ideas', Icon: IdeasIcon, requiresCapability: 'artist' },
   { href: '/vault', label: 'Sound Vault', match: '/vault', Icon: VaultIcon, requiresCapability: 'artist' },
   { href: '/contracts', label: 'Contract Locker', match: '/contracts', Icon: LockerIcon, requiresCapability: 'artist' },
   // No requiresCapability — split sheets are open to industry accounts by

@@ -84,7 +84,7 @@ describe('claimNextJob', () => {
     expect(job).toEqual({ id: 'j1', type: 'vault_export', claim_token: 'claim-1' })
     expect(mockRpc).toHaveBeenCalledWith('claim_next_job', {
       p_type: null,
-      p_lease_seconds: 120,
+      p_lease_seconds: 300,
     })
   })
 
@@ -93,7 +93,7 @@ describe('claimNextJob', () => {
     await claimNextJob('watermark_preview')
     expect(mockRpc).toHaveBeenCalledWith('claim_next_job', {
       p_type: 'watermark_preview',
-      p_lease_seconds: 120,
+      p_lease_seconds: 300,
     })
   })
 

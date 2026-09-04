@@ -79,7 +79,10 @@ Rules:
 - Output JSON only, with no prose before or after.`
 }
 
-export async function draftBriefFromProse(prose: string): Promise<BriefDraftResult> {
+export async function draftBriefFromProse(
+  prose: string,
+  signal?: AbortSignal
+): Promise<BriefDraftResult> {
   const trimmed = prose.trim()
   if (!trimmed) return { ok: false, error: 'Tell us a bit about your project first.' }
 
@@ -95,7 +98,7 @@ export async function draftBriefFromProse(prose: string): Promise<BriefDraftResu
       model: MODEL,
       max_tokens: 700,
       messages: [{ role: 'user', content: buildPrompt(trimmed.slice(0, BRIEF_PROSE_MAX)) }],
-    })
+    }, { signal })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
@@ -160,7 +163,11 @@ Rules:
 - Output JSON only, with no prose before or after.`
 }
 
-export async function rerankCandidates(brief: Brief, candidates: BriefCandidate[]): Promise<RerankResult> {
+export async function rerankCandidates(
+  brief: Brief,
+  candidates: BriefCandidate[],
+  signal?: AbortSignal
+): Promise<RerankResult> {
   // Nothing to order.
   if (candidates.length <= 1) {
     return { ok: true, ranked: candidates.map(c => ({ id: c.id, reason: '' })) }
@@ -179,7 +186,7 @@ export async function rerankCandidates(brief: Brief, candidates: BriefCandidate[
       model: MODEL,
       max_tokens: 1100,
       messages: [{ role: 'user', content: buildRerankPrompt(brief, candidates) }],
-    })
+    }, { signal })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)

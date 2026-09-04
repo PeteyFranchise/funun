@@ -120,7 +120,10 @@ export function coerceSuggestion(parsed: Record<string, unknown> | null): TagSug
 }
 
 /** AI-suggest moods/energy/vocal/instruments/genres for a track. Degrades gracefully with no key. */
-export async function suggestTrackTags(input: SuggestTrackTagsInput): Promise<SuggestTrackTagsResult> {
+export async function suggestTrackTags(
+  input: SuggestTrackTagsInput,
+  signal?: AbortSignal
+): Promise<SuggestTrackTagsResult> {
   const title = (input.title ?? '').trim()
   if (!title) return { ok: false, error: 'A track title is needed to suggest tags.' }
 
@@ -136,7 +139,7 @@ export async function suggestTrackTags(input: SuggestTrackTagsInput): Promise<Su
       model: MODEL,
       max_tokens: MAX_TOKENS,
       messages: [{ role: 'user', content: buildPrompt(title, (input.text ?? '').trim()) }],
-    })
+    }, { signal })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)

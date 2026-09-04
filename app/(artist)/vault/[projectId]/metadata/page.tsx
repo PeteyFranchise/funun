@@ -54,7 +54,6 @@ export default async function MetadataPage({
 }) {
   const { projectId } = await params
   let project: MetaProject | null = null
-  let artistName = ''
   let coverWidth: number | null = null
   let coverHeight: number | null = null
   // Eligibility for the self-assignable/platform-issued release-level
@@ -70,7 +69,6 @@ export default async function MetadataPage({
 
   if (DEMO) {
     project = (await getDemoProject(projectId)) as MetaProject | null
-    artistName = 'Demo Artist'
   } else {
     const supabase = await createServerClient()
     const {
@@ -95,13 +93,6 @@ export default async function MetadataPage({
     project = (data as MetaProject | null) ?? null
 
     if (project && user) {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('artist_name')
-        .eq('id', user.id)
-        .maybeSingle()
-      artistName = profile?.artist_name ?? ''
-
       // gs1_company_prefix/grid_issuer_code/catalog_number_prefix are
       // PRIVATE columns (migration 040/082 doctrine) — read via the
       // service-role client, ownership already established via
@@ -216,8 +207,6 @@ export default async function MetadataPage({
           projectId={projectId}
           releaseTitle={project.title}
           releaseType={project.type}
-          genre={project.genre}
-          subGenre={project.sub_genre}
           coverArtUrl={project.cover_art_url}
           coverWidth={coverWidth}
           coverHeight={coverHeight}

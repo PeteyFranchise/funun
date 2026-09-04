@@ -105,6 +105,7 @@ function configHealth() {
     { label: 'Supabase anon key', ok: has(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) },
     { label: 'Supabase service role', ok: has(process.env.SUPABASE_SERVICE_ROLE_KEY) },
     { label: 'Anthropic API key', ok: has(process.env.ANTHROPIC_API_KEY) },
+    { label: 'OpenAI API key', ok: has(process.env.OPENAI_API_KEY) },
     { label: 'Stripe key', ok: has(process.env.STRIPE_SECRET_KEY) },
     { label: 'Resend key', ok: has(process.env.RESEND_API_KEY) },
   ]

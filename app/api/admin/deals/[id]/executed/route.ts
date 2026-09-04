@@ -11,7 +11,7 @@ import { stampLicenseExecuted } from '@/lib/deals/executed'
 // stage transitions: moving a deal to closed_won does not stamp this
 // column, and this route does not touch `stage`. Leadership-only
 // (verifyAdmin), mirroring app/api/admin/deals/[id]/route.ts's auth gate.
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAdmin()
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 

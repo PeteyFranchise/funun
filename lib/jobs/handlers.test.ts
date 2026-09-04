@@ -13,6 +13,11 @@ jest.mock('@/lib/vault/export-assemble', () => ({
   MAX_PACK_BYTES: 200 * 1024 * 1024,
 }))
 
+const mockProcessLyricLift = jest.fn()
+jest.mock('@/lib/catalogue/lyric-lift-service', () => ({
+  processLyricLift: (...a: unknown[]) => mockProcessLyricLift(...a),
+}))
+
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({}),
 }))
@@ -20,6 +25,22 @@ jest.mock('@/lib/supabase/server', () => ({
 import { JOB_HANDLERS } from '@/lib/jobs/handlers'
 
 beforeEach(() => jest.clearAllMocks())
+
+describe('JOB_HANDLERS.lyric_lift', () => {
+  it('processes one addressed transcription draft', async () => {
+    mockProcessLyricLift.mockResolvedValue({ liftId: 'l1', status: 'review', sectionCount: 4 })
+    await expect(JOB_HANDLERS.lyric_lift({ liftId: 'l1' })).resolves.toEqual({
+      liftId: 'l1',
+      status: 'review',
+      sectionCount: 4,
+    })
+    expect(mockProcessLyricLift).toHaveBeenCalledWith('l1')
+  })
+
+  it('rejects a job with no lift id', async () => {
+    await expect(JOB_HANDLERS.lyric_lift({})).rejects.toThrow('liftId')
+  })
+})
 
 describe('JOB_HANDLERS.watermark_preview', () => {
   it('renders the track and returns status + path', async () => {

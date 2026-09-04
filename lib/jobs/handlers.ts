@@ -11,6 +11,13 @@
 export type JobHandler = (payload: Record<string, unknown>) => Promise<Record<string, unknown>>
 
 export const JOB_HANDLERS: Record<string, JobHandler> = {
+  lyric_lift: async payload => {
+    const liftId = String(payload.liftId ?? '')
+    if (!liftId) throw new Error('lyric_lift job missing liftId')
+    const { processLyricLift } = await import('@/lib/catalogue/lyric-lift-service')
+    return processLyricLift(liftId)
+  },
+
   // #5 — render a track's watermarked stream preview. renderPreviewIfAbsent is
   // idempotent (existence-checks first), so a re-run for an already-ready track
   // is a cheap no-op. A 'failed' result (e.g. no master audio) is a permanent

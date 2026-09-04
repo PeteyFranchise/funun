@@ -36,15 +36,27 @@ export async function POST(request: Request) {
         // Curator emails are normalized to lowercase everywhere they're
         // written; match the same normalization here so casing differences
         // in what Resend reports don't silently match zero rows (WR-09).
-        await service
+        const { data: updated, error } = await service
           .from('curators')
           .update({ email_valid: false })
           .eq('email', recipient.trim().toLowerCase())
+          .select('id')
+
+        if (error) {
+          // Acknowledging a failed persistence step would permanently lose
+          // the bounce because Resend retries only non-2xx deliveries.
+          return NextResponse.json({ error: 'Could not record the hard bounce' }, { status: 500 })
+        }
+        if (!updated || updated.length === 0) {
+          // An address that is not in the curator directory is not a
+          // persistence failure and must not be retried forever.
+          return NextResponse.json({ ok: true, ignored: true })
+        }
       }
     }
   }
 
-  // Always 200 for a verified event, bounce or not — Resend retries on any
-  // non-2xx response, and a non-bounce event legitimately writes nothing.
+  // A verified event that either needs no write or was durably applied can
+  // be acknowledged. Transient persistence failures return above as 5xx.
   return NextResponse.json({ ok: true })
 }

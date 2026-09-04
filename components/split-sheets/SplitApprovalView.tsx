@@ -446,7 +446,6 @@ export function SplitApprovalView({
     <ApprovePhase
       token={token}
       partyId={partyId}
-      partyName={partyName}
       songName={songName}
       artistName={artistName}
       parties={parties}
@@ -460,7 +459,6 @@ export function SplitApprovalView({
 type ApprovePhaseProps = {
   token: string
   partyId: string
-  partyName: string
   songName: string
   artistName: string
   parties: Party[]
@@ -471,7 +469,6 @@ type ApprovePhaseProps = {
 function ApprovePhase({
   token,
   partyId,
-  partyName,
   songName,
   artistName,
   parties,

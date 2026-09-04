@@ -19,6 +19,7 @@ import {
   type ProducerFeedbackSnapshot,
 } from '@/lib/catalogue/producer-handoff'
 import { safeTakeDownloadName } from '@/lib/catalogue/take-workflow'
+import { loadOpenLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -349,7 +350,19 @@ export default async function WorkComposerPage({
   // recursion-sensitive split_sheets/split_sheet_parties pair — migration
   // 137's own header records why.
   const service = createServiceClient()
+  const [{ data: promotedOriginIdeas }, { data: originLinks }] = await Promise.all([
+    service.from('ideas').select('id, title, captured_at').eq('promoted_work_id', workId).order('captured_at', { ascending: true }).limit(5),
+    service.from('idea_work_version_links').select('idea_id').eq('work_id', workId).limit(20),
+  ])
+  const linkedIdeaIds = Array.from(new Set((originLinks ?? []).map(link => link.idea_id)))
+  const { data: linkedOriginIdeas } = linkedIdeaIds.length > 0
+    ? await service.from('ideas').select('id, title, captured_at').in('id', linkedIdeaIds)
+    : { data: [] }
+  const originIdeas = Array.from(new Map(
+    [...(promotedOriginIdeas ?? []), ...(linkedOriginIdeas ?? [])].map(idea => [idea.id, idea])
+  ).values()).sort((left, right) => left.captured_at.localeCompare(right.captured_at)).slice(0, 5)
   const splitsSheet = await loadWorkSplits(service, workId)
+  const lyricLift = await loadOpenLyricLiftView(service, workId)
   const songPassportAvailable = await isSongPassportAvailableForWork(service as unknown as SongPassportCohortClient, workId, user.id)
   const songPassport = songPassportAvailable
     ? await loadSongPassportView(service, {
@@ -762,6 +775,19 @@ export default async function WorkComposerPage({
         </Link>
       </Topbar>
       <div className="mx-auto max-w-5xl px-6 py-8 sm:px-9">
+        {(originIdeas ?? []).length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-lav/25 bg-lav/5 px-5 py-4">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[.18em] text-lav">Started as an idea</div>
+              <p className="mt-1 text-sm text-white/55">
+                {originIdeas.map(idea => idea.title).join(' · ')} — the original capture provenance stays linked to this room.
+              </p>
+            </div>
+            <Link href={`/ideas?idea=${originIdeas[0]?.id}`} className="text-sm font-bold text-white/70 hover:text-white">
+              View origin →
+            </Link>
+          </div>
+        )}
         <WorkPage
           workId={work.id}
           songTitle={work.title}
@@ -797,6 +823,7 @@ export default async function WorkComposerPage({
           priorAiEntryCount={priorAiEntryCount}
           hasHumFirstFired={humFirstFiredCookie || aiEntries.length > 0}
           songPassport={songPassport}
+          lyricLift={lyricLift}
         />
       </div>
     </>

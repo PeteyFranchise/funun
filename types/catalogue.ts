@@ -108,7 +108,7 @@ export type LyricBlock = {
   position: number // absolute drag order — the ONLY ordering fact stored (RENUMBERING RULE)
   text: string
   author_kind: LyricBlockAuthorKind
-  author_user_id: string | null // ✍ badge — the automatic writer credit; required when author_kind === 'human'
+  author_user_id: string | null // ✍ badge — null for imported human-source lyrics until the room confirms the writer
   performers: PerformerRef[] // 🎤 badges — declared singer cluster; moves credits, never splits
   vocal_direction?: string | null // uncast creative intent — never a person, credit, membership, or split fact
   repeat_of_block_id: string | null // linked repeat (REPEAT RULE) — detach (copy-on-write) clears this

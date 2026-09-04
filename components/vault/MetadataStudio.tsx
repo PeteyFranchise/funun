@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CollaboratorProfile } from '@/lib/collaborators'
@@ -106,8 +106,6 @@ export function MetadataStudio({
   projectId,
   releaseTitle,
   releaseType,
-  genre,
-  subGenre,
   coverArtUrl,
   coverWidth,
   coverHeight,
@@ -119,8 +117,6 @@ export function MetadataStudio({
   projectId: string
   releaseTitle: string
   releaseType: string
-  genre: string | null
-  subGenre: string | null
   coverArtUrl: string | null
   coverWidth: number | null
   coverHeight: number | null
@@ -139,19 +135,6 @@ export function MetadataStudio({
   const [savingTrack, setSavingTrack] = useState<string | null>(null)
   const [deliveryState, setDeliveryState] = useState<Record<string, DeliveryActionState>>({})
   const [isrcState, setIsrcState] = useState<Record<string, { busy: boolean; msg?: string; needsSetup?: boolean }>>({})
-  const [collaborators, setCollaborators] = useState<CollaboratorProfile[]>([])
-
-  // Fetch the global collaborator roster on mount so ComposerEditor can offer a picker
-  useEffect(() => {
-    fetch('/api/collaborators')
-      .then(r => r.json())
-      .then(json => {
-        if (Array.isArray(json.data)) setCollaborators(json.data)
-      })
-      .catch(() => {
-        // non-blocking — picker degrades to empty state
-      })
-  }, [])
 
   const report: ValidationReport = useMemo(
     () =>
@@ -493,7 +476,6 @@ export function MetadataStudio({
                 <ComposerEditor
                   composers={t.composers}
                   onChange={composers => setTrack(t.id, { composers })}
-                  collaborators={collaborators}
                 />
               </div>
 
@@ -809,11 +791,9 @@ type PickedRow = {
 function ComposerEditor({
   composers,
   onChange,
-  collaborators,
 }: {
   composers: Composer[]
   onChange: (next: Composer[]) => void
-  collaborators: CollaboratorProfile[]
 }) {
   // Track which rows were populated from the roster and whether their IPI was absent at pick time
   const [pickedRows, setPickedRows] = useState<Record<number, PickedRow>>({})

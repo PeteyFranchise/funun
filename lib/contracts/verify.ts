@@ -137,7 +137,11 @@ Rules:
 - "detail" must be under 8 words. Output JSON only.`
 }
 
-export async function verifyContractPdf(pdfBase64: string, ctx: VerifyContext): Promise<VerifyResult> {
+export async function verifyContractPdf(
+  pdfBase64: string,
+  ctx: VerifyContext,
+  signal?: AbortSignal
+): Promise<VerifyResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return {
@@ -163,7 +167,7 @@ export async function verifyContractPdf(pdfBase64: string, ctx: VerifyContext): 
         ],
       },
     ],
-  })
+  }, { signal })
 
   const text = msg.content.find(b => b.type === 'text')
   const parsed = text && text.type === 'text' ? extractJson(text.text) : null

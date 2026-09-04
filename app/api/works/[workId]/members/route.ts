@@ -4,7 +4,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import * as collaboratorInvite from '@/lib/collaborators/invite'
 import { planWriterPromotion } from '@/lib/catalogue/splits'
-import { loadWorkSplits, applyWorkSplits } from '@/lib/catalogue/splits-io'
+import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import { planWorkMemberAdmission } from '@/lib/catalogue/member-admission'
 
 // ─── POST /api/works/[workId]/members — invite, tiers, and the separate
@@ -149,30 +149,66 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // unclaimed roster rows enter the invite workflow.
   const admission = planWorkMemberAdmission(collaborator.claimed_by)
 
-  // ── Insert the work_members row through the service role. ────────────
+  // ── Plan an optional writer promotion before persisting membership. ──
   // Migration 136 revokes INSERT/UPDATE/DELETE on work_members from
   // authenticated and anon — every membership write goes through a
   // service-role route that has already proved the caller's tier on this
   // specific work (resolveWorkAccess, above).
   const service = createServiceClient()
 
-  const { data: member, error: memberError } = await service
-    .from('work_members')
-    .insert({
-      work_id: workId,
-      // Set immediately for an already-claimed collaborator; otherwise left
-      // null and backfilled by migration 136's bridge trigger the moment that
-      // person signs up, keyed off collaborators.claimed_by — the only
-      // verified-identity signal in this codebase.
-      // split_sheet_parties.user_id (a dead column, written nowhere) is
-      // never consulted for this.
-      user_id: admission.userId,
-      collaborator_id: collaborator.id,
-      tier,
-      added_by: userId,
+  let splitSheetId: string | null = null
+  let splitParties: Record<string, unknown>[] | null = null
+  let splits: { changed: boolean } | null = null
+  if (isWriter) {
+    let sheet
+    try {
+      sheet = await loadWorkSplits(service, workId)
+    } catch {
+      return NextResponse.json({ error: 'Could not load this work’s split sheet' }, { status: 500 })
+    }
+    if (!sheet) {
+      return NextResponse.json(
+        { error: 'This work has no living-draft split sheet to promote a writer onto' },
+        { status: 409 }
+      )
+    }
+
+    const promotion = planWriterPromotion({
+      parties: sheet.parties,
+      writer: { collaboratorId: collaborator.id, name: collaborator.name },
+      status: sheet.status,
     })
-    .select()
-    .single()
+    if (!promotion.ok) {
+      return NextResponse.json({ error: promotion.reason }, { status: 409 })
+    }
+
+    splits = { changed: promotion.changed }
+    if (promotion.changed) {
+      splitSheetId = sheet.sheetId
+      splitParties = promotion.parties.map(party => ({
+        collaborator_id: party.collaboratorId ?? null,
+        user_id: party.userId ?? null,
+        name: party.name,
+        split_percentage: party.splitPercentage,
+        writer_designation: party.writerDesignation ?? null,
+      }))
+    }
+  }
+
+  // Membership and a requested split-party promotion commit together.
+  // The invitation is sent only after this transaction succeeds.
+  const { data: member, error: memberError } = await service.rpc(
+    'add_work_member_transactional',
+    {
+      p_work_id: workId,
+      p_user_id: admission.userId,
+      p_collaborator_id: collaborator.id,
+      p_tier: tier,
+      p_added_by: userId,
+      p_sheet_id: splitSheetId,
+      p_parties: splitParties,
+    }
+  )
 
   if (memberError || !member) {
     if (memberError?.code === '23505') {
@@ -205,41 +241,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
           nextPath: `/vault/works/${workId}`,
         })
       : null
-
-  // ── Writer promotion — explicit, separate, and ONLY on request. ──────
-  // PITFALL 3 (doctrine, verbatim): auto-adding every member to the sheet
-  // would silently grant a publishing share to a pure performer or
-  // listener who was never meant to own one. Being on the work and being
-  // on the splits are different facts, and this is the one place they are
-  // allowed to touch — behind an explicit, deliberate conditional, never
-  // implicitly.
-  let splits: { changed: boolean } | null = null
-  if (isWriter) {
-    const sheet = await loadWorkSplits(service, workId)
-    if (!sheet) {
-      return NextResponse.json(
-        { error: 'This work has no living-draft split sheet to promote a writer onto' },
-        { status: 500 }
-      )
-    }
-
-    const promotion = planWriterPromotion({
-      parties: sheet.parties,
-      writer: { collaboratorId: collaborator.id, name: collaborator.name },
-      status: sheet.status,
-    })
-    if (!promotion.ok) {
-      return NextResponse.json({ error: promotion.reason }, { status: 409 })
-    }
-
-    if (promotion.changed) {
-      const applied = await applyWorkSplits(service, sheet.sheetId, promotion.parties)
-      if (!applied.ok) {
-        return NextResponse.json({ error: applied.reason }, { status: 500 })
-      }
-    }
-    splits = { changed: promotion.changed }
-  }
 
   return NextResponse.json({
     data: {

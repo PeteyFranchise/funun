@@ -31,6 +31,19 @@ export const VaultIcon = (p: IconProps) => (
   </Svg>
 )
 
+// Ideas — a small spark captured before it becomes a song.
+export const IdeasIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3v3" />
+    <path d="m5.6 5.6 2.1 2.1" />
+    <path d="M3 12h3" />
+    <path d="m18.4 5.6-2.1 2.1" />
+    <path d="M21 12h-3" />
+    <path d="M8.5 14.5a5 5 0 1 1 7 0c-1 1-1.3 1.8-1.4 3h-4.2c-.1-1.2-.4-2-1.4-3Z" />
+    <path d="M10 21h4" />
+  </Svg>
+)
+
 // Contract Locker — document with a lock
 export const LockerIcon = (p: IconProps) => (
   <Svg {...p}>

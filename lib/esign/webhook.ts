@@ -67,13 +67,24 @@ export function verifyDocusealSignature(
 // template.created, template.updated) that all fall through to 'other'
 // so the route never throws on an event Funūn doesn't yet act on.
 
+function normalizeProviderId(value: unknown): string {
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return String(value)
+  }
+  return ''
+}
+
 /** Extracts the DocuSeal submission id from a loosely-shaped event payload. */
 function extractRequestId(data: Record<string, unknown>): string {
-  if (typeof data.submission_id === 'string') return data.submission_id
-  if (typeof data.id === 'string') return data.id
+  const directSubmissionId = normalizeProviderId(data.submission_id)
+  if (directSubmissionId) return directSubmissionId
+
   const submission = data.submission as Record<string, unknown> | undefined
-  if (submission && typeof submission.id === 'string') return submission.id
-  return ''
+  const nestedSubmissionId = normalizeProviderId(submission?.id)
+  if (nestedSubmissionId) return nestedSubmissionId
+
+  return normalizeProviderId(data.id)
 }
 
 /**

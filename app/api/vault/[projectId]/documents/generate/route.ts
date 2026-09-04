@@ -5,6 +5,7 @@ import type { UserProfile } from '@/types'
 import type { Stage3ToolSlug } from '@/lib/vault/stage3'
 import { TOOL_DOC_TYPE, TOOL_NAME, buildDocPrompt } from '@/lib/tools/documents'
 import { buildSplitSheet } from '@/lib/tools/splitsheet'
+import { aiAdmissionError, aiProviderSignal, claimAiUsage, finishAiUsage } from '@/lib/ai/admission'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const MODEL = 'claude-sonnet-4-6'
@@ -112,22 +113,35 @@ export async function POST(
   const prompt = buildDocPrompt(tool, (profile ?? { artist_name: null }) as UserProfile, input)
   if (!prompt) return NextResponse.json({ error: 'Tool not generatable' }, { status: 400 })
 
+  const admission = await claimAiUsage(supabase, request, {
+    operation: `document:${tool}`,
+    units: 4,
+  })
+  if (!admission.allowed) {
+    const denied = aiAdmissionError(admission)
+    return NextResponse.json({ error: denied.error }, { status: denied.status })
+  }
+
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   let output: Record<string, unknown> | null
+  let generationSucceeded = false
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
-    })
+    }, { signal: aiProviderSignal() })
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)
       .join('')
     output = extractJson(text)
+    generationSucceeded = output !== null
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Generation failed'
     return NextResponse.json({ error: msg }, { status: 502 })
+  } finally {
+    await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
   if (!output) {
     return NextResponse.json({ error: 'Could not parse tool output' }, { status: 502 })

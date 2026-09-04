@@ -20,7 +20,10 @@ export type Job = {
   lease_expires_at: string | null
 }
 
-const JOB_LEASE_SECONDS = 120
+// A mixed-song transcription performs two audio passes plus one structure
+// pass. Keep its claim fenced for five minutes so an overlapping cron cannot
+// reclaim the same paid provider request while it is still running.
+const JOB_LEASE_SECONDS = 300
 
 // Enqueue idempotently. With a dedupKey, the partial unique index rejects a
 // second ACTIVE (pending/processing) job for the same key — we return the

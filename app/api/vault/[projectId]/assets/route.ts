@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { addDemoAsset } from '@/lib/vault/demo-store'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const BUCKET = 'vault-assets'
@@ -29,7 +30,24 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
-  const form = await request.formData()
+  const supabase = await createApiClient()
+  const auth = DEMO ? null : await supabase.auth.getUser()
+  if (!DEMO && !auth?.data.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const parsedUpload = DEMO
+    ? { ok: true as const, form: await request.formData() }
+    : await parseAdmittedFormData(supabase, request, {
+        operation: 'vault:asset',
+        maxBodyBytes: MAX_BYTES + 1024 * 1024,
+        dailyCountLimit: 30,
+        dailyByteLimit: 300 * 1024 * 1024,
+      })
+  if (!parsedUpload.ok) {
+    return NextResponse.json({ error: parsedUpload.error }, { status: parsedUpload.status })
+  }
+  const form = parsedUpload.form
   const file = form.get('file')
   const type = String(form.get('type') ?? '') as AssetType
   const toDim = (v: FormDataEntryValue | null): number | null => {
@@ -59,10 +77,7 @@ export async function POST(
     return NextResponse.json({ data: project })
   }
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = auth?.data.user
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Confirm ownership (RLS also enforces this on the insert/upload).
@@ -108,11 +123,18 @@ export async function POST(
 
   // Cover art doubles as the project's display image.
   if (type === 'cover_art') {
-    await supabase
+    const { data: coveredProject, error: coverError } = await supabase
       .from('vault_projects')
       .update({ cover_art_url: publicUrl })
       .eq('id', projectId)
       .eq('user_id', user.id)
+      .select('id')
+      .maybeSingle()
+    if (coverError || !coveredProject) {
+      await supabase.from('vault_assets').delete().eq('id', asset.id).eq('user_id', user.id)
+      await supabase.storage.from(BUCKET).remove([path])
+      return NextResponse.json({ error: 'Could not attach the cover art to this project' }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ data: asset })

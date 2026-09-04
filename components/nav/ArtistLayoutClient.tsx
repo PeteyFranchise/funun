@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { DockedWidget } from '@/components/messages/DockedWidget'
+import { GlobalQuickCaptureProvider } from '@/components/ideas/GlobalQuickCapture'
 
 // ─── ArtistLayoutClient (D-03, D-04, RESEARCH Pattern 2) ─────────────────
 // Client wrapper mounted once by the server-component `app/(artist)/layout.tsx`.
@@ -33,9 +34,11 @@ export function useMessagesDock(): MessagesDockContextValue {
 export function ArtistLayoutClient({
   children,
   userId,
+  enableGlobalCapture,
 }: {
   children: ReactNode
   userId: string
+  enableGlobalCapture: boolean
 }) {
   const [dockedThreadId, setDockedThreadId] = useState<string | null>(null)
 
@@ -46,13 +49,15 @@ export function ArtistLayoutClient({
   }
 
   return (
-    <MessagesDockContext.Provider value={value}>
-      {children}
-      {dockedThreadId && (
-        <div className="hidden lg:block">
-          <DockedWidget threadId={dockedThreadId} viewerId={userId} onClose={() => setDockedThreadId(null)} />
-        </div>
-      )}
-    </MessagesDockContext.Provider>
+    <GlobalQuickCaptureProvider enabled={enableGlobalCapture}>
+      <MessagesDockContext.Provider value={value}>
+        {children}
+        {dockedThreadId && (
+          <div className="hidden lg:block">
+            <DockedWidget threadId={dockedThreadId} viewerId={userId} onClose={() => setDockedThreadId(null)} />
+          </div>
+        )}
+      </MessagesDockContext.Provider>
+    </GlobalQuickCaptureProvider>
   )
 }

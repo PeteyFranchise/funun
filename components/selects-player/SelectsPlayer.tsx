@@ -25,7 +25,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SELP_CSS } from './theme'
 import { SELECTS_VIEWER_COOKIE } from '@/lib/selects/viewer-cookie'
-import { escapeHtml } from '@/lib/security/escape-html'
 import { useAudibleTimeAccumulator, type AudibleFlushEvent } from './useAudibleTimeAccumulator'
 
 export type PlayerReaction = 'love' | 'pass' | 'more_like_this' | null
@@ -305,11 +304,6 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // `msg` is rendered as HTML (see the toast <span dangerouslySetInnerHTML
-  // below) so callers may include trusted static markup like <b>. ANY
-  // user/artist-controlled value interpolated in (track titles, labels, names)
-  // MUST be wrapped in escapeHtml() first — otherwise it is a stored-XSS sink
-  // on this public/token surface (2026-08-22 audit finding #1).
   function showToast(msg: string) {
     setToast(msg)
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -373,7 +367,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
   function playSuggested(index: number) {
     setCurrent({ kind: 'suggested', index })
     setPlaying(true)
-    showToast(`Previewing — <b>${escapeHtml(suggested[index]?.title)}</b>`)
+    showToast(`Previewing — ${suggested[index]?.title ?? 'track'}`)
   }
 
   function togglePlay() {
@@ -395,7 +389,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
     const idx = Math.floor(Math.random() * tracks.length)
     setCurrent({ kind: 'curated', index: idx })
     setPlaying(true)
-    showToast(`Shuffling — <b>${escapeHtml(tracks[idx].title)}</b>`)
+    showToast(`Shuffling — ${tracks[idx].title}`)
   }
 
   // ─── reactions ───────────────────────────────────────────────────────
@@ -408,8 +402,8 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
         body: JSON.stringify({ selectsTrackId: rowId, reaction, viewerKey: viewerKeyRef.current }),
       })
       if (!res.ok) throw new Error('failed')
-      if (reaction === 'love') showToast(`Kept — <b>${escapeHtml(tracks.find(t => t.rowId === rowId)?.title)}</b>`)
-      else if (reaction === 'pass') showToast(`Passed — <b>${escapeHtml(tracks.find(t => t.rowId === rowId)?.title)}</b>`)
+      if (reaction === 'love') showToast(`Kept — ${tracks.find(t => t.rowId === rowId)?.title ?? 'track'}`)
+      else if (reaction === 'pass') showToast(`Passed — ${tracks.find(t => t.rowId === rowId)?.title ?? 'track'}`)
     } catch {
       showToast("Couldn't save that — try again")
     }
@@ -433,7 +427,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
         return
       }
       setStatus(body.data.status)
-      showToast(action === 'approve' ? 'Approved — thanks!' : 'Sent <b>Request changes</b> to your AE')
+      showToast(action === 'approve' ? 'Approved — thanks!' : 'Sent Request changes to your AE')
     } catch {
       showToast("Couldn't reach Funūn — try again")
     }
@@ -459,7 +453,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
       }
       if (result.status === 'ok' && result.url) {
         window.location.href = result.url
-        showToast(`Downloading watermarked preview — <b>${escapeHtml(label)}</b>`)
+        showToast(`Downloading watermarked preview — ${label}`)
       } else if (result.status === 'gate') {
         setGateOpen(true)
       } else if (result.status === 'disabled') {
@@ -510,7 +504,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
         preview: { status: 'processing' },
       },
     ])
-    showToast(`Added — <b>${escapeHtml(s.title)}</b>`)
+    showToast(`Added — ${s.title}`)
   }
 
   function refreshSuggested() {
@@ -533,12 +527,12 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
   function share() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
     if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {})
-    showToast('Copied link to this <b>Selects</b>')
+    showToast('Copied link to this Selects')
   }
 
   function licenseTrack(trackId: string, title: string) {
     setCart(c => new Set(c).add(trackId))
-    showToast(`Added to licensing cart — <b>${escapeHtml(title)}</b>`)
+    showToast(`Added to licensing cart — ${title}`)
     setSheetIndex(null)
   }
 
@@ -851,11 +845,11 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
                   <div className="sub">Adds to your cart · opens the Deals room</div>
                 </div>
               </button>
-              <button className="srow" onClick={() => showToast(`Finding more like <b>${escapeHtml(sheetTrack.title)}</b>`)}>
+              <button className="srow" onClick={() => showToast(`Finding more like ${sheetTrack.title}`)}>
                 <MoreLikeIcon />
                 <div>More like this</div>
               </button>
-              <button className="srow" onClick={() => showToast('Opening credits &amp; rights…')}>
+              <button className="srow" onClick={() => showToast('Opening credits & rights…')}>
                 <CreditsIcon />
                 <div>View credits &amp; rights</div>
               </button>
@@ -982,7 +976,7 @@ export default function SelectsPlayer({ data }: { data: SelectsPlayerData }) {
 
       <div className={`toast${toast ? ' on' : ''}`}>
         <span className="d" />
-        <span dangerouslySetInnerHTML={{ __html: toast ?? '' }} />
+        <span>{toast}</span>
       </div>
 
       <audio ref={audioRef} onEnded={() => setPlaying(false)} />

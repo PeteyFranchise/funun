@@ -88,13 +88,13 @@ describe('GET /api/cron/process-jobs — dispatch', () => {
     expect(mockComplete).not.toHaveBeenCalled()
   })
 
-  it('stops at MAX_PER_RUN even if the queue stays full', async () => {
+  it('claims only one job per run so long audio work stays inside the function window', async () => {
     JOB_HANDLERS['vault_export'] = jest.fn().mockResolvedValue({})
     mockClaim.mockResolvedValue({ id: 'jN', type: 'vault_export', payload: {}, claim_token: 'cN' })
 
     const res = await GET(req(auth))
     const body = await res.json()
-    expect(body.processed).toHaveLength(5)
-    expect(mockClaim).toHaveBeenCalledTimes(5)
+    expect(body.processed).toHaveLength(1)
+    expect(mockClaim).toHaveBeenCalledTimes(1)
   })
 })
