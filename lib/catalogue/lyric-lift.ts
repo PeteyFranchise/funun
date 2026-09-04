@@ -1,6 +1,8 @@
 import type { LyricBlockType } from '@/types/catalogue'
 
 export const LYRIC_LIFT_MAX_BYTES = 25 * 1024 * 1024
+export const LYRIC_LIFT_UNAVAILABLE_MESSAGE =
+  'Lyric Lift is temporarily unavailable. Your recording is safe — please try again later.'
 export const LYRIC_LIFT_SUPPORTED_EXTENSIONS = new Set([
   'flac',
   'mp3',

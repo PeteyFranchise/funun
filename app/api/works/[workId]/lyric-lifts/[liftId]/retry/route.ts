@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
+import { LYRIC_LIFT_UNAVAILABLE_MESSAGE } from '@/lib/catalogue/lyric-lift'
 import { loadLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
 import { queueLyricLift } from '@/lib/catalogue/lyric-lift-queue'
 
@@ -19,7 +20,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const access = await resolveWorkAccess(createWorkAccessDeps(supabase), workId, user.id, 'contribute')
   if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: 'Lyric Lift is not configured yet. Add OPENAI_API_KEY.' }, { status: 503 })
+    return NextResponse.json({ error: LYRIC_LIFT_UNAVAILABLE_MESSAGE }, { status: 503 })
   }
 
   const service = createServiceClient()

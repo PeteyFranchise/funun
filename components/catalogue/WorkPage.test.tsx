@@ -259,7 +259,7 @@ describe('WorkPage', () => {
         })}
       />
     )
-    expect(markup).toContain('Pull lyrics')
+    expect(markup).toContain('>Lyric Lift<')
     expect(markup).toContain('Your lyric draft is ready to review')
     expect(markup).toContain('▶ 0:15')
     expect(markup).toContain('Check this')

@@ -383,8 +383,8 @@ export function TimedTrackPlayer({
             {recordOverLabel}
           </button>
           {onPullLyrics && (
-            <button type="button" onClick={onPullLyrics} className="text-[10px] font-semibold text-brandindigo hover:text-white">
-              Pull lyrics
+            <button type="button" onClick={onPullLyrics} aria-label={`Use Lyric Lift to pull lyrics from ${display}`} className="text-[10px] font-semibold text-brandindigo hover:text-white">
+              Lyric Lift
             </button>
           )}
           {downloadUrl && <a href={downloadUrl} download aria-label={`Download ${display} ${description}`} className="text-[10px] text-lavdim hover:text-white">Download</a>}

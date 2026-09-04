@@ -6,10 +6,13 @@ function source(file: string) {
 }
 
 const start = source('app/api/works/[workId]/versions/[versionId]/lyric-lift/route.ts')
+const retry = source('app/api/works/[workId]/lyric-lifts/[liftId]/retry/route.ts')
 const read = source('app/api/works/[workId]/lyric-lifts/[liftId]/route.ts')
 const edit = source('app/api/works/[workId]/lyric-lifts/[liftId]/sections/[sectionId]/route.ts')
 const apply = source('app/api/works/[workId]/lyric-lifts/[liftId]/apply/route.ts')
 const worker = source('lib/catalogue/lyric-lift-service.ts')
+const provider = source('lib/catalogue/lyric-lift-provider.ts')
+const workPage = source('components/catalogue/WorkPage.tsx')
 
 describe('Writer’s Room Lyric Lift route contracts', () => {
   it('authenticates and checks room contribution access before every private draft operation', () => {
@@ -32,6 +35,19 @@ describe('Writer’s Room Lyric Lift route contracts', () => {
     expect(start).toContain('LYRIC_LIFT_MAX_BYTES')
     expect(start).toContain('LYRIC_LIFT_SUPPORTED_EXTENSIONS')
     expect(start).toContain('OPENAI_API_KEY')
+  })
+
+  it('brands the upload offer as Lyric Lift and keeps operator instructions out of artist errors', () => {
+    expect(workPage).toContain('Use Lyric Lift to pull lyrics from this recording?')
+    expect(workPage).toContain('Lyric Lift will transcribe them')
+    expect(workPage).toContain("'Start Lyric Lift'")
+    expect(start).toContain('LYRIC_LIFT_UNAVAILABLE_MESSAGE')
+    expect(retry).toContain('LYRIC_LIFT_UNAVAILABLE_MESSAGE')
+    expect(provider).toContain('LYRIC_LIFT_UNAVAILABLE_MESSAGE')
+    for (const artistFacingSource of [start, retry, provider]) {
+      expect(artistFacingSource).not.toContain('Add OPENAI_API_KEY')
+      expect(artistFacingSource).not.toContain('Add a valid OPENAI_API_KEY')
+    }
   })
 
   it('queues paid work durably and makes worker retries idempotent per lift', () => {

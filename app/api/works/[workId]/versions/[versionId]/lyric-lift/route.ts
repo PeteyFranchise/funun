@@ -4,6 +4,7 @@ import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 import {
   LYRIC_LIFT_MAX_BYTES,
   LYRIC_LIFT_SUPPORTED_EXTENSIONS,
+  LYRIC_LIFT_UNAVAILABLE_MESSAGE,
 } from '@/lib/catalogue/lyric-lift'
 import { loadLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
 import { queueLyricLift } from '@/lib/catalogue/lyric-lift-queue'
@@ -25,10 +26,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const access = await resolveWorkAccess(createWorkAccessDeps(supabase), workId, user.id, 'contribute')
   if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      { error: 'Lyric Lift is not configured yet. Add OPENAI_API_KEY to the server environment.' },
-      { status: 503 }
-    )
+    return NextResponse.json({ error: LYRIC_LIFT_UNAVAILABLE_MESSAGE }, { status: 503 })
   }
   if (await checkRateLimit(`lyric-lift:${user.id}`, { maxAttempts: 12, windowMs: 24 * 60 * 60 * 1000 })) {
     return NextResponse.json({ error: 'You have started several lyric transcriptions today. Try again tomorrow.' }, { status: 429 })

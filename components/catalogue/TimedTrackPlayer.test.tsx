@@ -17,6 +17,7 @@ describe('TimedTrackPlayer', () => {
         refreshToken={0}
         onActivity={() => undefined}
         onCommentChanged={() => undefined}
+        onPullLyrics={() => undefined}
         onArchive={async () => undefined}
         onRename={async () => ({ ok: true })}
         onMakeWorking={async () => ({ ok: true })}
@@ -26,6 +27,8 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('type="range"')
     expect(markup).toContain('Comment at 0:00')
     expect(markup).toContain('Record over this beat')
+    expect(markup).toContain('>Lyric Lift<')
+    expect(markup).toContain('aria-label="Use Lyric Lift to pull lyrics from v4"')
     expect(markup).toContain('Archive')
     expect(markup).toContain('Name')
     expect(markup).toContain('Make working')

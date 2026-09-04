@@ -1,4 +1,5 @@
 import {
+  LYRIC_LIFT_UNAVAILABLE_MESSAGE,
   normalizeStructuredLyricSections,
   type LyricLiftTimedSegment,
   type StructuredLyricSection,
@@ -43,7 +44,7 @@ async function providerError(response: Response, operation: string): Promise<Err
     return new Error('This recording is too large for lyric transcription. Try an MP3 or M4A under 25 MB.')
   }
   if (response.status === 401 || response.status === 403) {
-    return new Error('Lyric transcription is not configured yet. Add a valid OPENAI_API_KEY.')
+    return new Error(LYRIC_LIFT_UNAVAILABLE_MESSAGE)
   }
   if (response.status === 429) {
     return new Error(`Lyric transcription is busy right now. Funūn will retry automatically.${suffix}`)
@@ -53,7 +54,7 @@ async function providerError(response: Response, operation: string): Promise<Err
 
 async function postForm(path: string, form: FormData): Promise<Record<string, unknown>> {
   const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) throw new Error('Lyric transcription is not configured yet. Add OPENAI_API_KEY.')
+  if (!apiKey) throw new Error(LYRIC_LIFT_UNAVAILABLE_MESSAGE)
   const timeout = requestSignal(TRANSCRIPTION_TIMEOUT_MS)
   try {
     const response = await fetch(`${OPENAI_API_BASE}${path}`, {

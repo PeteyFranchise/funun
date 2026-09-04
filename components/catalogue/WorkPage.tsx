@@ -1769,9 +1769,9 @@ export function WorkPage({
         <FlowOverlay>
           <div className="w-full max-w-[430px] rounded-[12px] border border-hair bg-card px-6 py-6">
             <p className="text-[10px] font-bold uppercase tracking-[.14em] text-brandindigo">Lyric Lift</p>
-            <p className="mt-2 text-[14px] font-semibold text-white">Pull the lyrics from this recording?</p>
+            <p className="mt-2 text-[14px] font-semibold text-white">Use Lyric Lift to pull lyrics from this recording?</p>
             <p className="mt-2 text-[11px] leading-5 text-lavdim">
-              I&apos;ll transcribe them, organize the likely sections, and place a draft beside your Lyric Blocks for you to review. Nothing is added or credited until you approve it.
+              Lyric Lift will transcribe them, organize the likely sections, and place a draft beside your Lyric Blocks for you to review. Nothing is added or credited until you approve it.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
@@ -1783,7 +1783,7 @@ export function WorkPage({
                 })()}
                 className="rounded-[9px] border border-brandindigo/60 bg-brandindigo/15 px-4 py-2 text-[11px] font-semibold text-white hover:bg-brandindigo/25 disabled:opacity-40"
               >
-                {lyricLiftStartingVersionId === flow.versionId ? 'Starting…' : 'Pull the lyrics'}
+                {lyricLiftStartingVersionId === flow.versionId ? 'Starting Lyric Lift…' : 'Start Lyric Lift'}
               </button>
               <button type="button" onClick={() => requestAiQuestion(flow.versionId)} className="text-[11px] text-lavdim hover:text-white">
                 Not now
