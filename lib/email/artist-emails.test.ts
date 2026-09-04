@@ -24,6 +24,16 @@ describe('artistInviteEmail (template A)', () => {
     expect(text).toContain('Jamie Rivera')
   })
 
+  it('personalizes and escapes the artist greeting when a name is provided', () => {
+    const { html, text } = artistInviteEmail({
+      inviteeName: '<Maya & Co>',
+      actionLink: 'https://funun.studio/signup?invite=abc',
+    })
+    expect(html).toContain('Hi &lt;Maya &amp; Co&gt;,')
+    expect(html).not.toContain('Hi <Maya & Co>,')
+    expect(text).toContain('Hi <Maya & Co>,')
+  })
+
   it('omits the invited-by line cleanly when inviterName is absent', () => {
     const { html, text } = artistInviteEmail({ actionLink: 'https://funun.studio/signup?invite=abc' })
     expect(html).not.toContain('Invited by')

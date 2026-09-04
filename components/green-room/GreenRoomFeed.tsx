@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { GreenRoomComposer } from '@/components/green-room/GreenRoomComposer'
+import {
+  GREEN_ROOM_COMPOSER_BODY_ID,
+  GREEN_ROOM_COMPOSER_ID,
+  GreenRoomComposer,
+} from '@/components/green-room/GreenRoomComposer'
 import { FeedCard } from '@/components/green-room/FeedCard'
 import { PeopleSearch } from '@/components/green-room/PeopleSearch'
 import { subscribeToGreenRoomFeedUpdates } from '@/lib/green-room/realtime'
@@ -61,6 +65,14 @@ export function GreenRoomFeed() {
 
   function refresh() {
     setRefreshKey(key => key + 1)
+  }
+
+  function startPost() {
+    document.getElementById(GREEN_ROOM_COMPOSER_ID)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+    document.getElementById(GREEN_ROOM_COMPOSER_BODY_ID)?.focus({ preventScroll: true })
   }
 
   return (
@@ -160,10 +172,23 @@ export function GreenRoomFeed() {
           </ul>
         </div>
         <div className="rounded-[24px] border border-emerald-300/20 bg-emerald-300/[0.06] p-5">
-          <p className="text-sm font-black text-white">Monetization runway</p>
-          <p className="mt-2 text-sm leading-6 text-white/55">
-            Featured and sponsored cards are labeled in-feed now, without shipping self-serve ad buying or targeting.
+          <p className="text-sm font-black text-white">Put something in the room</p>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            Share what you&apos;re making, what you need, or what you can offer. Specific posts help the right people find you.
           </p>
+          <ul className="mt-4 space-y-2 text-[13px] leading-5 text-white/50">
+            <li>“Looking for a vocalist for…”</li>
+            <li>“I can help with…”</li>
+            <li>“Would love feedback on…”</li>
+          </ul>
+          <button
+            type="button"
+            onClick={startPost}
+            aria-controls={GREEN_ROOM_COMPOSER_ID}
+            className="mt-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-sm font-black text-emerald-200 transition hover:border-emerald-300/60 hover:bg-emerald-300/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+          >
+            Start a post <span aria-hidden>→</span>
+          </button>
         </div>
       </aside>
     </div>

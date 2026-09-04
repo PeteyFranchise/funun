@@ -405,7 +405,7 @@ export function ArtistNav({
 
       {/* Sign out — kept outside the /profile link so the tap targets stay distinct */}
       <div className={['pb-3', collapsed ? 'flex justify-center px-1' : 'px-3'].join(' ')}>
-        <SignOutButton />
+        <SignOutButton appearance="nav" collapsed={collapsed} />
       </div>
     </nav>
   )

@@ -3,6 +3,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildWallPostNotification } from '@/lib/social/notifications'
 import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { profileDisplayTitle } from '@/lib/profile/display-name'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -49,15 +50,19 @@ export async function POST(request: Request) {
   // keyed by profileId. Actor snapshot is the poster's own profile.
   try {
     const [{ data: actor }, { data: owner }] = await Promise.all([
-      supabase.from('user_profiles').select('artist_name, avatar_url').eq('id', user.id).maybeSingle(),
+      supabase.from('user_profiles').select('artist_name, handle, avatar_url').eq('id', user.id).maybeSingle(),
       supabase.from('user_profiles').select('handle').eq('id', profileId).maybeSingle(),
     ])
+    const actorName = profileDisplayTitle({
+      artistName: actor?.artist_name ?? null,
+      handle: actor?.handle ?? null,
+    }) || 'Member'
     await createNotification(
       service,
       buildWallPostNotification({
         recipientId: profileId,
         actorId: user.id,
-        actorName: actor?.artist_name || 'Member',
+        actorName,
         actorAvatarUrl: actor?.avatar_url ?? null,
         ownHandle: owner?.handle ?? '',
       })

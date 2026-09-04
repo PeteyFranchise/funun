@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PROFILE_ROLE_LABELS, type ProfileRole } from '@/types'
 import type { WallPostView } from '@/components/profile/Wall'
+import { profileDisplayTitle } from '@/lib/profile/display-name'
 
 function roleLabel(roles: unknown): string | null {
   const r = Array.isArray(roles) ? (roles[0] as ProfileRole | undefined) : undefined
@@ -41,22 +42,31 @@ export async function loadWall(
   const authorIds = Array.from(new Set(rows.map(p => p.author_id)))
   const { data: authors } = await supabase
     .from('user_profiles')
-    .select('id, artist_name, avatar_url, roles')
+    .select('id, artist_name, handle, avatar_url, roles')
     .in('id', authorIds)
 
   const map = new Map(
-    ((authors ?? []) as { id: string; artist_name: string | null; avatar_url: string | null; roles: unknown }[]).map(
-      a => [a.id, a]
-    )
+    ((authors ?? []) as {
+      id: string
+      artist_name: string | null
+      handle: string | null
+      avatar_url: string | null
+      roles: unknown
+    }[]).map(a => [a.id, a])
   )
 
   return rows.map(p => {
     const a = map.get(p.author_id)
+    const authorName = profileDisplayTitle({
+      artistName: a?.artist_name ?? null,
+      handle: a?.handle ?? null,
+    }) || 'Member'
     return {
       id: p.id,
       body: p.body,
       createdAt: p.created_at,
-      authorName: a?.artist_name || 'Member',
+      authorName,
+      authorHandle: a?.handle ?? null,
       authorAvatarUrl: a?.avatar_url ?? null,
       authorRole: roleLabel(a?.roles),
     }

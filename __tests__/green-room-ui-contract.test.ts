@@ -33,5 +33,15 @@ describe('Green Room UI contract', () => {
     expect(card).toContain('/reactions')
     expect(card).toContain('/reposts')
   })
-})
 
+  it('uses the sidebar for actionable member guidance instead of internal monetization copy', () => {
+    expect(feed).toContain('Put something in the room')
+    expect(feed).toContain('Looking for a vocalist for…')
+    expect(feed).toContain('Start a post')
+    expect(feed).toContain('GREEN_ROOM_COMPOSER_BODY_ID')
+    expect(composer).toContain("GREEN_ROOM_COMPOSER_ID = 'green-room-composer'")
+    expect(composer).toContain("GREEN_ROOM_COMPOSER_BODY_ID = 'green-room-composer-body'")
+    expect(feed).not.toContain('Monetization runway')
+    expect(feed).not.toContain('self-serve ad buying')
+  })
+})

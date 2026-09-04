@@ -10,9 +10,9 @@ const completeRoute = readFileSync(path.join(root, 'app/api/ideas/[ideaId]/recor
 const collectionsRoute = readFileSync(path.join(root, 'app/api/ideas/[ideaId]/collections/route.ts'), 'utf8')
 
 describe('Global Quick Capture boundaries', () => {
-  it('mounts from the persistent artist shell only when a User Account profile exists', () => {
-    expect(layout).toContain('isUserAccount = profileRow !== null')
-    expect(layout).toContain('enableGlobalCapture={isUserAccount}')
+  it('mounts from the persistent member shell only when the resolved account has a Member workspace', () => {
+    expect(layout).toContain('isMemberAccount = accountContext.hasMemberWorkspace')
+    expect(layout).toContain('enableGlobalCapture={isMemberAccount}')
   })
 
   it('requires a User Account at both Idea creation and room attachment', () => {

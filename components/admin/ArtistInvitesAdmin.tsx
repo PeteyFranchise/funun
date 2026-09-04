@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 
 // ─── ArtistInvitesAdmin ───────────────────────────────────────────────────
 // Team Console surface for Phase 27's waitlist/invite system (D-14).
@@ -55,6 +55,17 @@ export function ArtistInvitesAdmin({ initialWaitlist, isLeadership }: Props) {
   const [convertingId, setConvertingId] = useState<string | null>(null)
   const [convertErrors, setConvertErrors] = useState<Record<string, string>>({})
 
+  const [artistName, setArtistName] = useState('')
+  const [artistEmail, setArtistEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteResult, setInviteResult] = useState<{
+    email: string
+    message: string
+    inviteLink: string | null
+  } | null>(null)
+  const [copiedInviteLink, setCopiedInviteLink] = useState(false)
+
   const [confirmingBroadcast, setConfirmingBroadcast] = useState(false)
   const [broadcasting, setBroadcasting] = useState(false)
   const [broadcastError, setBroadcastError] = useState<string | null>(null)
@@ -105,6 +116,58 @@ export function ArtistInvitesAdmin({ initialWaitlist, isLeadership }: Props) {
     }
   }
 
+  async function handleDirectInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const email = artistEmail.trim().toLowerCase()
+    const name = artistName.trim()
+
+    setInviting(true)
+    setInviteError(null)
+    setInviteResult(null)
+    setCopiedInviteLink(false)
+
+    try {
+      const res = await fetch('/api/admin/artist-invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: name || undefined }),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string
+        duplicate?: boolean
+        emailSent?: boolean
+        inviteLink?: string
+      }
+      if (!res.ok) {
+        throw new Error(json.error ?? 'Could not create the invite — try again.')
+      }
+
+      const message = json.duplicate
+        ? `${email} already has an active invitation.`
+        : json.emailSent === false
+          ? `The invite is ready, but the email could not be delivered to ${email}.`
+          : `Invitation sent to ${email}.`
+
+      setInviteResult({ email, message, inviteLink: json.inviteLink ?? null })
+      setArtistName('')
+      setArtistEmail('')
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Could not create the invite — try again.')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  async function handleCopyInviteLink() {
+    if (!inviteResult?.inviteLink) return
+    try {
+      await navigator.clipboard.writeText(inviteResult.inviteLink)
+      setCopiedInviteLink(true)
+    } catch {
+      setInviteError('Could not copy the link. Open it and copy it from the address bar instead.')
+    }
+  }
+
   async function handleBroadcast() {
     setBroadcasting(true)
     setBroadcastError(null)
@@ -132,6 +195,75 @@ export function ArtistInvitesAdmin({ initialWaitlist, isLeadership }: Props) {
 
   return (
     <div className="mt-6">
+      <section className="mb-6 rounded-xl border border-[color:var(--border)] bg-[color:var(--panel)] p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div>
+            <h2 className="text-[14px] font-bold text-[color:var(--ink)]">Invite one artist</h2>
+            <p className="mt-1 text-[12px] text-[color:var(--ink-3)]">
+              Send a private Funūn invitation without adding them to the waiting list.
+            </p>
+          </div>
+          <span className="mt-2 w-fit rounded-full border border-[color:var(--border)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--ink-3)] sm:mt-0">
+            One at a time
+          </span>
+        </div>
+
+        <form onSubmit={handleDirectInvite} className="mt-4 grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] md:items-end">
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--ink-3)]">
+              Artist name <span className="normal-case tracking-normal">(optional)</span>
+            </span>
+            <input
+              value={artistName}
+              onChange={event => setArtistName(event.target.value)}
+              maxLength={120}
+              autoComplete="name"
+              placeholder="e.g. Maya Reeves"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2 text-[14px] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] focus:border-[color:var(--indigo)] focus:outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--ink-3)]">
+              Email
+            </span>
+            <input
+              type="email"
+              required
+              value={artistEmail}
+              onChange={event => setArtistEmail(event.target.value)}
+              autoComplete="email"
+              placeholder="artist@example.com"
+              className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2 text-[14px] text-[color:var(--ink)] placeholder:text-[color:var(--ink-3)] focus:border-[color:var(--indigo)] focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={inviting || !artistEmail.trim()}
+            className="fncon-cta h-[38px] rounded-lg px-4 text-[13px] font-bold shadow transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {inviting ? 'Sending…' : 'Send invite'}
+          </button>
+        </form>
+
+        <div aria-live="polite">
+          {inviteError && <p className="mt-3 text-[12px] text-[color:var(--rose-fg)]">{inviteError}</p>}
+          {inviteResult && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[color:var(--green-fg)]">
+              <span>{inviteResult.message}</span>
+              {inviteResult.inviteLink && (
+                <button
+                  type="button"
+                  onClick={handleCopyInviteLink}
+                  className="font-bold text-[color:var(--indigo)] transition hover:text-[color:var(--ink)]"
+                >
+                  {copiedInviteLink ? 'Link copied' : 'Copy invite link'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Leadership-only page-level broadcast action (D-15) — rendered
           strictly from the server-resolved isLeadership prop, never CSS. */}
       {isLeadership && (

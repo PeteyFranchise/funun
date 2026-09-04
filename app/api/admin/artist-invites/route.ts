@@ -18,6 +18,7 @@ import { sendEmail } from '@/lib/email'
 // migration 097).
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NAME_MAX_LENGTH = 120
 
 const WAITLIST_COLUMNS =
   'id, email, name, note, unsubscribed_at, notified_reopen_at, converted_to_invite_at, created_at'
@@ -73,8 +74,12 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
   if (!email || !EMAIL_REGEX.test(email)) {
     return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 })
+  }
+  if (name.length > NAME_MAX_LENGTH) {
+    return NextResponse.json({ error: `Artist name must be ${NAME_MAX_LENGTH} characters or fewer.` }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -84,15 +89,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: mint.error }, { status: 500 })
   }
 
-  if (mint.state === 'reused') {
-    return NextResponse.json({ ok: true, data: { id: mint.id, email }, duplicate: true })
-  }
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const actionLink = `${appUrl}/signup?invite=${mint.token}`
+
+  if (mint.state === 'reused') {
+    return NextResponse.json({
+      ok: true,
+      data: { id: mint.id, email },
+      duplicate: true,
+      inviteLink: actionLink,
+    })
+  }
+
   const inviterName = await resolveStaffDisplayName(service, auth.user.id)
 
-  const template = artistInviteEmail({ inviterName, actionLink })
+  const template = artistInviteEmail({ inviteeName: name || null, inviterName, actionLink })
   // Best-effort — a send failure never blocks issuing the invite itself,
   // mirroring app/api/collaborators/[id]/invite/route.ts's convention.
   const emailResult = await sendEmail({ to: email, subject: template.subject, html: template.html, text: template.text })
@@ -102,11 +113,11 @@ export async function POST(request: Request) {
     action: mint.state === 'rotated' ? 'artist_invite.reissue' : 'artist_invite.create',
     targetType: 'artist_invite',
     targetId: mint.id,
-    changes: { email },
+    changes: { email, ...(name ? { name } : {}) },
   })
 
   return NextResponse.json(
-    { ok: true, data: { id: mint.id, email }, emailSent: emailResult.ok },
+    { ok: true, data: { id: mint.id, email }, emailSent: emailResult.ok, inviteLink: actionLink },
     { status: 201 }
   )
 }

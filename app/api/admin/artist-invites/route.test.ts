@@ -134,12 +134,13 @@ describe('POST /api/admin/artist-invites', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
     ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'invite-1', token: 'tok-abc', state: 'created' })
 
-    const res = await POST(jsonRequest({ email: 'newartist@example.com' }))
+    const res = await POST(jsonRequest({ email: ' NewArtist@Example.com ', name: ' Maya Reeves ' }))
 
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.data.email).toBe('newartist@example.com')
+    expect(body.inviteLink).toBe('/signup?invite=tok-abc')
 
     expect(mintOrRotateInvite).toHaveBeenCalledWith(service, {
       email: 'newartist@example.com',
@@ -150,13 +151,14 @@ describe('POST /api/admin/artist-invites', () => {
     expect(sendEmail).toHaveBeenCalledTimes(1)
     const sendArgs = (sendEmail as jest.Mock).mock.calls[0][0]
     expect(sendArgs.to).toBe('newartist@example.com')
+    expect(sendArgs.html).toContain('Maya Reeves')
 
     expect(logStaffAction).toHaveBeenCalledWith(service, {
       actorId: AE_UUID,
       action: 'artist_invite.create',
       targetType: 'artist_invite',
       targetId: 'invite-1',
-      changes: { email: 'newartist@example.com' },
+      changes: { email: 'newartist@example.com', name: 'Maya Reeves' },
     })
   })
 
@@ -171,6 +173,7 @@ describe('POST /api/admin/artist-invites', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.duplicate).toBe(true)
+    expect(body.inviteLink).toBe('/signup?invite=existing-tok')
     expect(sendEmail).not.toHaveBeenCalled()
     expect(logStaffAction).not.toHaveBeenCalled()
   })
@@ -206,6 +209,22 @@ describe('POST /api/admin/artist-invites', () => {
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
+  it('keeps the active invite available when email delivery fails', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    ;(mintOrRotateInvite as jest.Mock).mockResolvedValue({ ok: true, id: 'invite-1', token: 'tok-abc', state: 'created' })
+    ;(sendEmail as jest.Mock).mockResolvedValue({ ok: false, error: 'provider unavailable' })
+
+    const res = await POST(jsonRequest({ email: 'artist@example.com' }))
+
+    expect(res.status).toBe(201)
+    await expect(res.json()).resolves.toMatchObject({
+      emailSent: false,
+      inviteLink: '/signup?invite=tok-abc',
+    })
+  })
+
   it('rejects a non-staff caller with 403 before touching the service client', async () => {
     ;(requireStaff as jest.Mock).mockResolvedValue({ error: 'Forbidden', status: 403 })
 
@@ -221,6 +240,17 @@ describe('POST /api/admin/artist-invites', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await POST(jsonRequest({ email: 'not-an-email' }))
+
+    expect(res.status).toBe(400)
+    expect(mintOrRotateInvite).not.toHaveBeenCalled()
+  })
+
+  it('rejects an artist name longer than 120 characters before minting', async () => {
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: AE_UUID }, staffRole: 'ae' })
+    const service = mockService()
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ email: 'artist@example.com', name: 'A'.repeat(121) }))
 
     expect(res.status).toBe(400)
     expect(mintOrRotateInvite).not.toHaveBeenCalled()

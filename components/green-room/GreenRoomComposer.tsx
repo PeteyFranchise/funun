@@ -26,6 +26,9 @@ const VISIBILITY_LABELS: Record<GreenRoomVisibility, string> = {
   custom: 'Custom audience',
 }
 
+export const GREEN_ROOM_COMPOSER_ID = 'green-room-composer'
+export const GREEN_ROOM_COMPOSER_BODY_ID = 'green-room-composer-body'
+
 type GreenRoomComposerProps = {
   onPosted: () => void
 }
@@ -71,7 +74,10 @@ export function GreenRoomComposer({ onPosted }: GreenRoomComposerProps) {
   }
 
   return (
-    <section className="rounded-[26px] border border-white/10 bg-black/35 p-5 backdrop-blur">
+    <section
+      id={GREEN_ROOM_COMPOSER_ID}
+      className="scroll-mt-24 rounded-[26px] border border-white/10 bg-black/35 p-5 backdrop-blur"
+    >
       <div className="flex flex-wrap gap-3">
         <select
           value={postType}
@@ -101,6 +107,7 @@ export function GreenRoomComposer({ onPosted }: GreenRoomComposerProps) {
         />
       )}
       <textarea
+        id={GREEN_ROOM_COMPOSER_BODY_ID}
         value={body}
         onChange={event => setBody(event.target.value)}
         maxLength={4000}
@@ -132,4 +139,3 @@ export function GreenRoomComposer({ onPosted }: GreenRoomComposerProps) {
     </section>
   )
 }
-

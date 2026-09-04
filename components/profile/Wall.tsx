@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export type WallPostView = {
   id: string
   body: string
   createdAt: string
   authorName: string
+  authorHandle?: string | null
   authorAvatarUrl: string | null
   authorRole: string | null
 }
@@ -108,7 +110,23 @@ export function Wall({ wall }: { wall: WallState }) {
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-[15px] font-bold text-white">{p.authorName}</span>
+                {p.authorHandle ? (
+                  <Link
+                    href={`/u/${p.authorHandle}`}
+                    className="group inline-flex items-baseline gap-2"
+                  >
+                    <span className="text-[15px] font-bold text-white group-hover:text-brandindigo">
+                      {p.authorName}
+                    </span>
+                    {p.authorName !== `@${p.authorHandle}` && (
+                      <span className="text-[12.5px] text-lavdim transition group-hover:text-lav">
+                        @{p.authorHandle}
+                      </span>
+                    )}
+                  </Link>
+                ) : (
+                  <span className="text-[15px] font-bold text-white">{p.authorName}</span>
+                )}
                 {p.authorRole && <span className="text-[12.5px] text-lavdim">· {p.authorRole}</span>}
                 <span className="ml-auto text-[12.5px] text-lavdim">{timeAgo(p.createdAt)}</span>
               </div>
