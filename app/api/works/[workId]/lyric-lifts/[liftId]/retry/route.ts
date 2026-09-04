@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
-import { LYRIC_LIFT_UNAVAILABLE_MESSAGE } from '@/lib/catalogue/lyric-lift'
+import {
+  LYRIC_LIFT_NO_VOCALS_MESSAGE,
+  LYRIC_LIFT_UNAVAILABLE_MESSAGE,
+} from '@/lib/catalogue/lyric-lift'
 import { loadLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
 import { queueLyricLift } from '@/lib/catalogue/lyric-lift-queue'
 
@@ -26,12 +29,15 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const service = createServiceClient()
   const { data: lift } = await service
     .from('work_lyric_lifts')
-    .select('id, status')
+    .select('id, status, error_message')
     .eq('id', liftId)
     .eq('work_id', workId)
     .maybeSingle()
   if (!lift) return NextResponse.json({ error: 'Lyric Lift not found.' }, { status: 404 })
   if (lift.status !== 'failed') return NextResponse.json({ error: 'Only a failed Lyric Lift can be retried.' }, { status: 409 })
+  if (lift.error_message === LYRIC_LIFT_NO_VOCALS_MESSAGE) {
+    return NextResponse.json({ error: LYRIC_LIFT_NO_VOCALS_MESSAGE }, { status: 409 })
+  }
 
   await service
     .from('work_lyric_lifts')

@@ -3,6 +3,8 @@ import type { LyricBlockType } from '@/types/catalogue'
 export const LYRIC_LIFT_MAX_BYTES = 25 * 1024 * 1024
 export const LYRIC_LIFT_UNAVAILABLE_MESSAGE =
   'Lyric Lift is temporarily unavailable. Your recording is safe — please try again later.'
+export const LYRIC_LIFT_NO_VOCALS_MESSAGE =
+  'No vocals detected—this sounds like an instrumental'
 export const LYRIC_LIFT_SUPPORTED_EXTENSIONS = new Set([
   'flac',
   'mp3',
@@ -30,6 +32,31 @@ export type LyricLiftTimedSegment = {
   endMs: number
   text: string
   confidence: number | null
+}
+
+export type LyricLiftVocalEvidenceSegment = {
+  text: string
+  noSpeechProbability: number | null
+}
+
+export class NoVocalsDetectedError extends Error {
+  readonly code = 'NO_VOCALS_DETECTED'
+
+  constructor() {
+    super(LYRIC_LIFT_NO_VOCALS_MESSAGE)
+    this.name = 'NoVocalsDetectedError'
+  }
+}
+
+export function isNoVocalsDetectedError(error: unknown): boolean {
+  return error instanceof NoVocalsDetectedError
+    || (error instanceof Error
+      && 'code' in error
+      && (error as Error & { code?: unknown }).code === 'NO_VOCALS_DETECTED')
+}
+
+export function isNoVocalsDetectedMessage(message: string | null | undefined): boolean {
+  return message === LYRIC_LIFT_NO_VOCALS_MESSAGE
 }
 
 export type LyricLiftSection = {
@@ -82,6 +109,54 @@ function clamp(value: number, min: number, max: number): number {
 
 function tokens(value: string): string[] {
   return (value.toLocaleLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []).filter(Boolean)
+}
+
+const NON_LYRIC_TRANSCRIPTS = new Set([
+  'applause',
+  'background music',
+  'humming',
+  'instrumental',
+  'instrumental music',
+  'music',
+  'music playing',
+  'no vocals',
+  'silence',
+])
+
+function hasMeaningfulLyricText(value: string): boolean {
+  const withoutCues = value
+    .replace(/[♪♫♬🎵🎶]+/gu, ' ')
+    .replace(/\[[^\]]*\b(?:music|instrumental|applause|silence|humming|no vocals)\b[^\]]*\]/giu, ' ')
+    .replace(/\([^)]*\b(?:music|instrumental|applause|silence|humming|no vocals)\b[^)]*\)/giu, ' ')
+  const words = tokens(withoutCues)
+  return words.length > 0 && !NON_LYRIC_TRANSCRIPTS.has(words.join(' '))
+}
+
+/**
+ * Require the accurate transcript and independent Whisper alignment to agree
+ * that human words exist. `no_speech_prob` is only decisive at a deliberately
+ * high threshold so a quiet or heavily mixed vocal remains reviewable.
+ */
+export function hasLyricLiftVocalEvidence(input: {
+  transcript: string
+  alignmentTranscript: string
+  alignmentSegments: LyricLiftVocalEvidenceSegment[]
+}): boolean {
+  if (!hasMeaningfulLyricText(input.transcript)) return false
+
+  const meaningfulSegments = input.alignmentSegments.filter(segment =>
+    hasMeaningfulLyricText(segment.text)
+  )
+  if (input.alignmentSegments.length > 0) {
+    if (meaningfulSegments.length === 0) return false
+    const fullyScored = meaningfulSegments.every(segment => segment.noSpeechProbability !== null)
+    if (fullyScored && meaningfulSegments.every(segment =>
+      (segment.noSpeechProbability ?? 0) >= 0.85
+    )) return false
+    return true
+  }
+
+  return hasMeaningfulLyricText(input.alignmentTranscript)
 }
 
 function transcriptCoverage(transcript: string, sections: StructuredLyricSection[]): {

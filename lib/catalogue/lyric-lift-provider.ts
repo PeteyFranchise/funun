@@ -1,7 +1,10 @@
 import {
   LYRIC_LIFT_UNAVAILABLE_MESSAGE,
+  NoVocalsDetectedError,
+  hasLyricLiftVocalEvidence,
   normalizeStructuredLyricSections,
   type LyricLiftTimedSegment,
+  type LyricLiftVocalEvidenceSegment,
   type StructuredLyricSection,
 } from '@/lib/catalogue/lyric-lift'
 
@@ -92,7 +95,7 @@ function audioForm(input: {
   form.append('response_format', input.responseFormat)
   form.append(
     'prompt',
-    'This is a song recording. Transcribe only audible sung, rapped, or spoken lyrics. Preserve every repetition and the original language. Do not invent missing words or add section labels.'
+    'This is a song recording. Transcribe only audible sung, rapped, or spoken lyrics. If there are no human vocal words, return empty text. Preserve every repetition and the original language. Do not describe instrumental music, invent missing words, or add section labels.'
   )
   if (input.withSegmentTimestamps) form.append('timestamp_granularities[]', 'segment')
   return form
@@ -114,7 +117,9 @@ function languageFrom(value: Record<string, unknown>): string | null {
   return null
 }
 
-function timedSegmentsFrom(value: Record<string, unknown>): LyricLiftTimedSegment[] {
+type AlignmentSegment = LyricLiftTimedSegment & LyricLiftVocalEvidenceSegment
+
+function alignmentSegmentsFrom(value: Record<string, unknown>): AlignmentSegment[] {
   if (!Array.isArray(value.segments)) return []
   return value.segments.slice(0, 1000).flatMap(raw => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
@@ -126,11 +131,15 @@ function timedSegmentsFrom(value: Record<string, unknown>): LyricLiftTimedSegmen
     const avgLogprob = typeof row.avg_logprob === 'number' && Number.isFinite(row.avg_logprob)
       ? row.avg_logprob
       : null
+    const noSpeechProbability = typeof row.no_speech_prob === 'number' && Number.isFinite(row.no_speech_prob)
+      ? Math.max(0, Math.min(1, row.no_speech_prob))
+      : null
     return [{
       startMs: Math.round(start * 1000),
       endMs: Math.round(end * 1000),
       text,
       confidence: avgLogprob === null ? null : Math.max(0, Math.min(1, Math.exp(avgLogprob))),
+      noSpeechProbability,
     }]
   })
 }
@@ -160,10 +169,12 @@ export async function transcribeLyricLiftAudio(input: {
   ])
 
   const transcript = stringValue(transcriptResponse.text)
-  if (!transcript) {
-    throw new Error('I could not find clear vocals in this recording. Try a louder vocal mix or add the lyrics by hand.')
+  const alignmentTranscript = stringValue(alignmentResponse.text)
+  const alignmentSegments = alignmentSegmentsFrom(alignmentResponse)
+  if (!hasLyricLiftVocalEvidence({ transcript, alignmentTranscript, alignmentSegments })) {
+    throw new NoVocalsDetectedError()
   }
-  const timedSegments = timedSegmentsFrom(alignmentResponse)
+  const timedSegments = alignmentSegments.map(({ noSpeechProbability: _noSpeechProbability, ...segment }) => segment)
   const responseDuration = typeof alignmentResponse.duration === 'number' && Number.isFinite(alignmentResponse.duration)
     ? Math.round(alignmentResponse.duration * 1000)
     : 0

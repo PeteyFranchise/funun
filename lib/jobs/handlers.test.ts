@@ -40,6 +40,15 @@ describe('JOB_HANDLERS.lyric_lift', () => {
   it('rejects a job with no lift id', async () => {
     await expect(JOB_HANDLERS.lyric_lift({})).rejects.toThrow('liftId')
   })
+
+  it('passes a no-vocals analysis through as completed work instead of retrying it', async () => {
+    mockProcessLyricLift.mockResolvedValue({ liftId: 'l1', status: 'failed', reason: 'no_vocals' })
+    await expect(JOB_HANDLERS.lyric_lift({ liftId: 'l1' })).resolves.toEqual({
+      liftId: 'l1',
+      status: 'failed',
+      reason: 'no_vocals',
+    })
+  })
 })
 
 describe('JOB_HANDLERS.watermark_preview', () => {

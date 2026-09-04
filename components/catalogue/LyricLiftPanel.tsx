@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   LYRIC_LIFT_BLOCK_TYPES,
+  LYRIC_LIFT_NO_VOCALS_MESSAGE,
   formatLyricLiftTimestamp,
+  isNoVocalsDetectedMessage,
   lyricLiftSectionLabel,
   type LyricLiftSection,
   type LyricLiftView,
@@ -160,10 +162,12 @@ export function LyricLiftPanel({
 
   async function discardDraft() {
     if (busy) return
-    const confirmed = window.confirm(
-      'Discard this lyric draft? Your source recording and anything already in Lyric Blocks will stay untouched.'
-    )
-    if (!confirmed) return
+    if (!noVocalsDetected) {
+      const confirmed = window.confirm(
+        'Discard this lyric draft? Your source recording and anything already in Lyric Blocks will stay untouched.'
+      )
+      if (!confirmed) return
+    }
     setBusy(true)
     setError(null)
     const response = await fetch(`/api/works/${workId}/lyric-lifts/${lift.id}`, { method: 'DELETE' })
@@ -178,6 +182,7 @@ export function LyricLiftPanel({
   const sourceLabel = sourceVersion
     ? `${sourceVersion.display} ${sourceVersion.description}`.trim()
     : 'uploaded recording'
+  const noVocalsDetected = lift.status === 'failed' && isNoVocalsDetectedMessage(lift.errorMessage)
 
   return (
     <section aria-label="Lyric Lift" className="mt-4 rounded-[12px] border border-brandindigo/40 bg-card px-4 py-4">
@@ -185,29 +190,47 @@ export function LyricLiftPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.16em] text-brandindigo">Lyric Lift</p>
-          <h2 className="mt-1 text-[14px] font-semibold text-white">
-            {lift.status === 'review' ? 'Your lyric draft is ready to review' : `Pulling lyrics from ${sourceLabel}`}
+          <h2 role={noVocalsDetected ? 'status' : undefined} className="mt-1 text-[14px] font-semibold text-white">
+            {lift.status === 'review'
+              ? 'Your lyric draft is ready to review'
+              : noVocalsDetected
+                ? LYRIC_LIFT_NO_VOCALS_MESSAGE
+                : `Pulling lyrics from ${sourceLabel}`}
           </h2>
           <p className="mt-1 max-w-[650px] text-[11px] leading-5 text-lavdim">
             {lift.status === 'review'
               ? 'Listen from any section, fix the words, and choose what belongs in Lyric Blocks. Nothing moves into the song until you approve it.'
-              : lift.status === 'failed'
-                ? 'The recording is still safe. Fix the issue below and try the transcription again.'
-                : 'You can leave the room. The recording is processing in the background and this draft will be here when you return.'}
+              : noVocalsDetected
+                ? 'Your recording is still safe. Upload or choose a version with sung, rapped, or spoken lyrics, then use Lyric Lift on that version.'
+                : lift.status === 'failed'
+                  ? 'The recording is still safe. Fix the issue below and try the transcription again.'
+                  : 'You can leave the room. The recording is processing in the background and this draft will be here when you return.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button type="button" disabled={busy} onClick={() => void discardDraft()} className="text-[10px] text-lavdim hover:text-white disabled:opacity-40">
-            {lift.status === 'queued' || lift.status === 'processing' ? 'Cancel' : 'Discard draft'}
+            {lift.status === 'queued' || lift.status === 'processing'
+              ? 'Cancel'
+              : noVocalsDetected
+                ? 'Dismiss'
+                : 'Discard draft'}
           </button>
           <span className={`rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[.1em] ${
             lift.status === 'review'
               ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
-              : lift.status === 'failed'
-                ? 'border-red-400/40 bg-red-400/10 text-red-300'
-                : 'border-brandindigo/40 bg-brandindigo/10 text-brandindigo'
+              : noVocalsDetected
+                ? 'border-brandindigo/40 bg-brandindigo/10 text-brandindigo'
+                : lift.status === 'failed'
+                  ? 'border-red-400/40 bg-red-400/10 text-red-300'
+                  : 'border-brandindigo/40 bg-brandindigo/10 text-brandindigo'
           }`}>
-            {lift.status === 'queued' ? 'In line' : lift.status === 'processing' ? 'Listening' : lift.status}
+            {lift.status === 'queued'
+              ? 'In line'
+              : lift.status === 'processing'
+                ? 'Listening'
+                : noVocalsDetected
+                  ? 'No vocals'
+                  : lift.status}
           </span>
         </div>
       </div>
@@ -218,7 +241,7 @@ export function LyricLiftPanel({
         </div>
       )}
 
-      {lift.status === 'failed' && (
+      {lift.status === 'failed' && !noVocalsDetected && (
         <div className="mt-4 rounded-[10px] border border-red-400/25 bg-red-400/[.06] px-3 py-3">
           <p role="alert" className="text-[11px] leading-5 text-red-200">
             {lift.errorMessage ?? 'Lyric transcription did not finish.'}

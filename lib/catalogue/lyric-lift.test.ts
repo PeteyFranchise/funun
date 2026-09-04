@@ -1,5 +1,6 @@
 import {
   formatLyricLiftTimestamp,
+  hasLyricLiftVocalEvidence,
   normalizeStructuredLyricSections,
 } from '@/lib/catalogue/lyric-lift'
 
@@ -72,5 +73,39 @@ describe('normalizeStructuredLyricSections', () => {
 describe('formatLyricLiftTimestamp', () => {
   it('formats millisecond positions as track time', () => {
     expect(formatLyricLiftTimestamp(105400)).toBe('1:45')
+  })
+})
+
+describe('hasLyricLiftVocalEvidence', () => {
+  it('rejects empty output from both transcription passes', () => {
+    expect(hasLyricLiftVocalEvidence({
+      transcript: '',
+      alignmentTranscript: '',
+      alignmentSegments: [],
+    })).toBe(false)
+  })
+
+  it('rejects music-only cues instead of turning them into lyrics', () => {
+    expect(hasLyricLiftVocalEvidence({
+      transcript: '[Instrumental music]',
+      alignmentTranscript: '♪ Music playing ♪',
+      alignmentSegments: [{ text: '[Music]', noSpeechProbability: 0.12 }],
+    })).toBe(false)
+  })
+
+  it('rejects aligned words when every segment has very high no-speech probability', () => {
+    expect(hasLyricLiftVocalEvidence({
+      transcript: 'Thank you',
+      alignmentTranscript: 'Thank you',
+      alignmentSegments: [{ text: 'Thank you', noSpeechProbability: 0.97 }],
+    })).toBe(false)
+  })
+
+  it('keeps even a short genuine vocal idea when alignment finds speech', () => {
+    expect(hasLyricLiftVocalEvidence({
+      transcript: 'Oh yeah',
+      alignmentTranscript: 'Oh yeah',
+      alignmentSegments: [{ text: 'Oh yeah', noSpeechProbability: 0.08 }],
+    })).toBe(true)
   })
 })

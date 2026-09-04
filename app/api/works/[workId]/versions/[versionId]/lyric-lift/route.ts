@@ -3,6 +3,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 import {
   LYRIC_LIFT_MAX_BYTES,
+  LYRIC_LIFT_NO_VOCALS_MESSAGE,
   LYRIC_LIFT_SUPPORTED_EXTENSIONS,
   LYRIC_LIFT_UNAVAILABLE_MESSAGE,
 } from '@/lib/catalogue/lyric-lift'
@@ -72,6 +73,28 @@ export async function POST(_request: Request, { params }: RouteContext) {
       )
     }
     const view = await loadLyricLiftView(service, { workId, liftId: existing.id })
+    return NextResponse.json({ data: view })
+  }
+
+  // Work versions are immutable. Once both transcription passes agree this
+  // exact audio has no vocal words, return that durable result instead of
+  // charging the artist to analyze the same instrumental again.
+  const { data: noVocals, error: noVocalsError } = await service
+    .from('work_lyric_lifts')
+    .select('id, status')
+    .eq('work_id', workId)
+    .eq('version_id', versionId)
+    .in('status', ['failed', 'discarded'])
+    .eq('error_message', LYRIC_LIFT_NO_VOCALS_MESSAGE)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (noVocalsError) return NextResponse.json({ error: noVocalsError.message }, { status: 500 })
+  if (noVocals) {
+    if (noVocals.status === 'discarded') {
+      return NextResponse.json({ error: LYRIC_LIFT_NO_VOCALS_MESSAGE }, { status: 409 })
+    }
+    const view = await loadLyricLiftView(service, { workId, liftId: noVocals.id })
     return NextResponse.json({ data: view })
   }
 

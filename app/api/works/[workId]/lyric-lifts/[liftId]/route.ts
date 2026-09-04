@@ -38,7 +38,6 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       status: 'discarded',
       discarded_at: new Date().toISOString(),
       discarded_by: user.id,
-      error_message: null,
     })
     .eq('id', liftId)
     .eq('work_id', workId)

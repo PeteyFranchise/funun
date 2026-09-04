@@ -58,6 +58,18 @@ describe('Writer’s Room Lyric Lift route contracts', () => {
     expect(worker).toContain("status: 'failed'")
   })
 
+  it('treats instrumentals as a durable non-retried result with no lyric draft', () => {
+    expect(provider).toContain('hasLyricLiftVocalEvidence')
+    expect(provider).toContain('row.no_speech_prob')
+    expect(provider).toContain('throw new NoVocalsDetectedError()')
+    expect(worker).toContain("reason: 'no_vocals'")
+    expect(worker).toContain('if (noVocals) return')
+    expect(start).toContain(".in('status', ['failed', 'discarded'])")
+    expect(start).toContain(".eq('error_message', LYRIC_LIFT_NO_VOCALS_MESSAGE)")
+    expect(retry).toContain('lift.error_message === LYRIC_LIFT_NO_VOCALS_MESSAGE')
+    expect(read).not.toContain('error_message: null')
+  })
+
   it('never accepts a client-supplied writer and only applies through the append-safe RPC', () => {
     expect(edit).not.toContain('author_user_id')
     expect(apply).toContain("z.enum(['empty_only', 'append'])")

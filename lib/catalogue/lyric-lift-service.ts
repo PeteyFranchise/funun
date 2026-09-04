@@ -3,7 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { BUCKET } from '@/lib/catalogue/audio'
 import {
   LYRIC_LIFT_MAX_BYTES,
+  LYRIC_LIFT_NO_VOCALS_MESSAGE,
   LYRIC_LIFT_SUPPORTED_EXTENSIONS,
+  isNoVocalsDetectedError,
   type LyricLiftSection,
   type LyricLiftStatus,
   type LyricLiftView,
@@ -229,14 +231,22 @@ export async function processLyricLift(liftId: string): Promise<Record<string, u
 
     return { liftId, status: 'review', sectionCount: rows.length }
   } catch (error) {
+    const noVocals = isNoVocalsDetectedError(error)
     const { data: failed } = await service
       .from('work_lyric_lifts')
-      .update({ status: 'failed', error_message: safeFailure(error) })
+      .update({
+        status: 'failed',
+        error_message: noVocals ? LYRIC_LIFT_NO_VOCALS_MESSAGE : safeFailure(error),
+        completed_at: noVocals ? new Date().toISOString() : null,
+      })
       .eq('id', liftId)
       .neq('status', 'discarded')
       .select('id')
       .maybeSingle()
     if (!failed) return { liftId, status: 'discarded' }
+    // Instrumental audio is a valid completed analysis, not a transient job
+    // failure. Returning prevents the paid queue from retrying the same audio.
+    if (noVocals) return { liftId, status: 'failed', reason: 'no_vocals' }
     throw error
   }
 }
