@@ -116,7 +116,7 @@ legacy rows is a separate operational decision.
 ### M-12 — Vulnerable production dependency graph: fixed
 
 - Compatible lockfile resolutions install patched `browserslist`, `fast-uri`,
-  `brace-expansion`, and `sharp` releases without a blind major
+  `brace-expansion`, `nanoid`, `postcss`, `qs`, and `sharp` releases without a blind major
   framework upgrade.
 - Next.js is resolved to 15.5.23.
 - Both the full and production-only offline npm audits report zero known

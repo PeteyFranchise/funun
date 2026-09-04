@@ -37,5 +37,8 @@
 - A post-push npm 10 CI compatibility failure was corrected by removing an
   unnecessary exact-version transitive override and regenerating the lockfile;
   patched dependency resolutions remain intact.
+- The live registry then reported newly published `nanoid`, `postcss`, and `qs`
+  advisories that were absent from the local offline cache. Compatible patched
+  resolutions were added without forcing a Next.js major upgrade.
 - The manual GSD planning fallback was used because the checkout does not expose
   a native `/gsd-quick` execution surface.
