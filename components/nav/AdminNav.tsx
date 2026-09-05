@@ -42,6 +42,7 @@ type Item = {
 
 const isLead = (r: StaffRole) => r === 'leadership'
 const notIt = (r: StaffRole) => r !== 'it'
+const canOnboardMembers = (r: StaffRole) => r === 'leadership' || r === 'ae' || r === 'anr'
 const always = () => true
 
 // Order matches the current admin sidebar exactly (app/(admin)/layout.tsx).
@@ -77,6 +78,7 @@ const ITEMS: Item[] = [
   // in plan 05.
   { href: '/admin/health-rules', label: 'Health Rules', match: '/admin/health-rules', Icon: HealthPulseIcon, show: isLead },
   { href: '/admin/artist-invites', label: 'Artist Invites', match: '/admin/artist-invites', Icon: InvitesIcon, show: notIt },
+  { href: '/admin/member-onboarding', label: 'Member Onboarding', match: '/admin/member-onboarding', Icon: IndustryIcon, show: canOnboardMembers },
   { href: '/admin/profile', label: 'My Profile', match: '/admin/profile', Icon: ProfileIcon, show: notIt },
 ]
 
