@@ -5,6 +5,7 @@ import { getStaffRole } from '@/lib/admin/gate'
 import { ADMIN_THEME_COOKIE, readAdminTheme } from '@/lib/admin/theme'
 import { ADMIN_CONSOLE_CSS } from '@/components/admin/console-theme'
 import { AdminNav } from '@/components/nav/AdminNav'
+import { SessionIdentityGuard } from '@/components/auth/SessionIdentityGuard'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -27,16 +28,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const theme = readAdminTheme(cookieStore.get(ADMIN_THEME_COOKIE)?.value)
 
   return (
-    <div className="fncon" data-theme={theme}>
-      <style>{ADMIN_CONSOLE_CSS}</style>
-      <div className="flex min-h-screen bg-[color:var(--ground)] text-[color:var(--ink)]">
-        {/* Icon + collapse sidebar (components/nav/AdminNav) — the room list,
-            collapse-to-icon-rail, theme toggle, and sign-out all live inside
-            that client component; this server layout only resolves the
-            authoritative role + first-paint theme and hands them down. */}
-        <AdminNav role={role} theme={theme} />
-        <div className="flex min-h-screen flex-1 flex-col bg-[color:var(--ground)]">{children}</div>
+    <SessionIdentityGuard
+      identity={{ userId: user.id, context: 'team', label: user.email || 'Funūn Team member' }}
+    >
+      <div className="fncon" data-theme={theme}>
+        <style>{ADMIN_CONSOLE_CSS}</style>
+        <div className="flex min-h-screen bg-[color:var(--ground)] text-[color:var(--ink)]">
+          {/* Icon + collapse sidebar (components/nav/AdminNav) — the room list,
+              collapse-to-icon-rail, theme toggle, and sign-out all live inside
+              that client component; this server layout only resolves the
+              authoritative role + first-paint theme and hands them down. */}
+          <AdminNav role={role} theme={theme} userLabel={user.email} />
+          <div className="flex min-h-screen flex-1 flex-col bg-[color:var(--ground)]">{children}</div>
+        </div>
       </div>
-    </div>
+    </SessionIdentityGuard>
   )
 }

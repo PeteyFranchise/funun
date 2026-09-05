@@ -1826,6 +1826,58 @@ multi-Client-Partner organization switching (explicit active organization, route
 authorization audit). See
 `.planning/todos/pending/2026-09-04-member-client-partner-identity-continuity.md`.
 
+#### Next account build: explicit Team/Personal session switching (added 2026-09-05)
+
+**Problem observed in beta:** the founder currently uses `pete@funun.studio` as a privileged
+Funūn Team Member identity and `peter.zora@gmail.com` as the separate `@peterzora` Member
+identity. When both are used inside one Chrome profile, Supabase's browser cookie represents
+only the most recently authenticated identity. A navigation, refresh, or server revalidation
+in another tab can therefore appear to move the user from the Team Console into the personal
+workspace. The records have not moved; the browser session has changed underneath the tab.
+
+**Beta workaround:** use separate Chrome profiles (or one regular profile plus an Incognito
+window) for the Team Member and personal Member identities. The UI and internal support copy
+must not imply that two independent identities can safely remain signed in simultaneously in
+one browser profile before the build below ships.
+
+**Build scope:** provide an explicit, security-conscious account/workspace switcher for people
+who legitimately hold both a Funūn Team Member identity and a separate personal Member
+identity. Always display the active identity and context (`Funūn Team` or `Personal
+Workspace`) in persistent navigation chrome. Switching must be an intentional action, may
+require re-authentication, and must land on the correct context home without merging profiles,
+catalogues, subscriptions, permissions, staff audit history, or organization relationships.
+
+**Session-safety requirements:**
+
+- Detect when a tab's authenticated user changes and interrupt with a clear “Your active
+  account changed” handoff instead of silently rendering another identity's workspace.
+- Never model a Team/Personal switch as a client-side role toggle. Server authorization must
+  be recomputed from the newly verified identity on every protected request.
+- Preserve the doctrine that Funūn Team Member identities are privileged and structurally
+  separate from Member identities; linkage is only a verified switch relationship, not data
+  co-ownership or permission inheritance.
+- Require fresh authentication for sensitive transitions when appropriate, prevent open
+  redirects, rotate/revoke the prior session safely, and record security-relevant switch
+  events without logging credentials or private workspace content.
+- Define behavior for expired sessions, revoked staff access, a missing personal profile,
+  recovery-email loss, multiple tabs, back/forward navigation, and switching on mobile.
+- Keep Client Partner workspace selection distinct: organization context may sit under a
+  Member identity, while Team/Personal switching crosses two deliberately separate identities.
+
+**Definition of done:** in two open tabs within one browser profile, changing the authenticated
+identity can never silently transform an existing Team or Personal page. The affected tab
+shows the account-change interstitial, names the currently active identity, and offers a safe
+route to continue or sign back in. The intentional switch flow passes Team → Personal and
+Personal → Team tests, including expired/revoked access, with authorization tests proving no
+cross-identity data exposure. Separate-browser-profile use remains supported and documented.
+
+**Status:** safe beta version built locally on 2026-09-05; deployment pending. It ships the
+explicit sign-out/reauthentication handoff, target-account-class validation, persistent
+Personal/Team context labels, and per-tab account-change interstitial. Verified identity-link
+management and simultaneous independent sessions in one browser profile remain deliberately
+out of scope; separate browser profiles remain the supported way to keep both accounts active
+at once.
+
 ---
 
 ### Phase 32: Production Observability, Capacity & Incident Readiness

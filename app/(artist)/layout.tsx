@@ -14,6 +14,7 @@ import { GlobalCaptureHeaderButton } from '@/components/ideas/GlobalQuickCapture
 import { redirect } from 'next/navigation'
 import { getStaffRoles } from '@/lib/admin/staff-role'
 import { resolveAccountContext } from '@/lib/accounts/account-context'
+import { SessionIdentityGuard } from '@/components/auth/SessionIdentityGuard'
 
 export default async function ArtistLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -146,5 +147,11 @@ export default async function ArtistLayout({ children }: { children: React.React
   // above) — render children directly when unauthenticated.
   if (!user) return body
 
-  return <ArtistLayoutClient userId={user.id} enableGlobalCapture={isMemberAccount}>{body}</ArtistLayoutClient>
+  return (
+    <SessionIdentityGuard
+      identity={{ userId: user.id, context: 'personal', label: navUser?.name || user.email || 'Member' }}
+    >
+      <ArtistLayoutClient userId={user.id} enableGlobalCapture={isMemberAccount}>{body}</ArtistLayoutClient>
+    </SessionIdentityGuard>
+  )
 }

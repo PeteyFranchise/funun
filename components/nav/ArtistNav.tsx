@@ -20,6 +20,7 @@ import {
   SettingsIcon,
 } from './icons'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { AccountContextSwitch } from '@/components/auth/AccountContextSwitch'
 import { ReportProblemLink } from '@/components/nav/ReportProblemLink'
 import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
 
@@ -393,11 +394,18 @@ export function ArtistNav({
         </span>
         {!collapsed && (
           <span className="leading-tight">
+            <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-[.14em] text-brandindigo">
+              Personal workspace
+            </span>
             <span className="block text-[14.5px] font-bold text-white">{name}</span>
             <span className="block text-[12px] text-lavdim">{plan}</span>
           </span>
         )}
       </Link>
+
+      <div className={collapsed ? 'flex justify-center px-1 pb-2' : 'px-3 pb-2'}>
+        <AccountContextSwitch currentContext="personal" collapsed={collapsed} />
+      </div>
 
       {/* Beta escape hatch — an artist who hits something broken needs a way to
           say so; Sentry only sees code that throws, never "nothing happened". */}

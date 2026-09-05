@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { AccountContextSwitch } from '@/components/auth/AccountContextSwitch'
 import {
   PlaybookIcon,
   ChecklistIcon,
@@ -105,9 +106,11 @@ export function AdminNav({
   role,
   theme,
   activeOverride,
+  userLabel,
 }: {
   role: StaffRole
   theme: 'light' | 'dark'
+  userLabel?: string
   // Preview-only: force a given href to render active (usePathname won't match
   // on the standalone /nav-preview route).
   activeOverride?: string
@@ -222,6 +225,30 @@ export function AdminNav({
 
       {/* Footer: theme toggle + sign out */}
       <div className="mt-1 flex flex-col gap-1 border-t border-[color:var(--border)] pt-2">
+        <div
+          className={[
+            'rounded-lg',
+            collapsed ? 'px-0 py-1' : 'px-3 py-2',
+          ].join(' ')}
+          title={collapsed ? `Funūn Team — ${userLabel ?? 'Team Member'}` : undefined}
+        >
+          {collapsed ? (
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[image:linear-gradient(135deg,#818CF8,#D946EF)] text-[10px] font-extrabold text-white">
+              FT
+            </div>
+          ) : (
+            <>
+              <div className="text-[9px] font-bold uppercase tracking-[.14em] text-[color:var(--ink-3)]">
+                Active workspace
+              </div>
+              <div className="mt-0.5 text-[12px] font-bold text-[color:var(--ink)]">Funūn Team</div>
+              {userLabel && <div className="truncate text-[10px] text-[color:var(--ink-3)]">{userLabel}</div>}
+            </>
+          )}
+        </div>
+        <div className={collapsed ? 'flex justify-center' : 'px-3'}>
+          <AccountContextSwitch currentContext="team" collapsed={collapsed} appearance="team" />
+        </div>
         <AdminThemeToggle theme={theme} collapsed={collapsed} />
         {!collapsed && (
           <div className="px-3 py-1 [&>button]:text-[13px] [&>button]:text-[color:var(--ink-3)] [&>button:hover]:text-[color:var(--ink)]">
