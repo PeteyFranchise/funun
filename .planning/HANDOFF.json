@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-05T23:26:04.193Z",
+  "phase": "38",
+  "phase_name": "member-organization-team-workspaces",
+  "phase_dir": ".planning/phases/38-member-organization-team-workspaces",
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 13,
+  "status": "paused",
+  "stage": "planned-not-executed",
+  "completed_tasks": [
+    {"id": 1, "name": "Discuss Phase 38 — all 12 owner decision areas, 56 locked decisions D-01..D-56", "status": "done", "commit": "a5d1d355"},
+    {"id": 2, "name": "Research + pattern map + validation strategy", "status": "done", "commit": "a5d1d355"},
+    {"id": 3, "name": "Plan Phase 38 — 13 plans, 7 waves; gsd-plan-checker VERIFICATION PASSED", "status": "done", "commit": "27a0882e"},
+    {"id": 4, "name": "Owner approved A-D/E-G/H-I split; 38.1 + 38.2 roadmap entries created", "status": "done", "commit": "125d43b6"},
+    {"id": 5, "name": "D-56 disable control added to CONTEXT + plan 38-11; WS-01..WS-31 registered in REQUIREMENTS.md", "status": "done", "commit": "125d43b6"}
+  ],
+  "remaining_tasks": [
+    {"id": 6, "name": "Execute Phase 38 wave 1 — 38-01 permission catalogue + subset check (pure logic)", "status": "not_started"},
+    {"id": 7, "name": "Waves 2-7 — 12 remaining plans, incl. 5 owner-gated migration pushes (182-186)", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Review and run Remote database is up to date. for migrations 182-185", "context": "Executor agents must NEVER push. 182-185 are additive and batchable at one checkpoint.", "blocking": true},
+    {"action": "Review and push migration 186 ALONE, then run the six-account adversarial RLS smoke checklist + the D-56 disable drill (off/on/fail-closed)", "context": "186 is the only migration editing live policies. A defect grants third parties access to artists' catalogues platform-wide.", "blocking": true},
+    {"action": "Optional: push the 3 local docs commits to origin/main", "context": "Working tree clean; 3 commits ahead of origin/main, docs-only, nothing deployed.", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Phase split approved: 38 = Slices A-D, 38.1 = E-G, 38.2 = H-I", "rationale": "Full A-I landed at ~21-23 plans, past the Phase 31 threshold. Boundary after D not C so the permission model and its RLS consumer stay in one security review.", "phase": "38"},
+    {"decision": "D-56 — ship a WORKING platform-wide disable control, not just the seam", "rationale": "Supersedes the 'seam only' reading of D-55. This phase grants third parties access to artists' catalogues via a brand-new RLS path; revoking that in one action is cheap insurance while the branch is unproven. Adds WS-31.", "phase": "38"},
+    {"decision": "WS-20 and WS-25 pulled forward into Phase 38 against the research slice map", "rationale": "Payout exclusion is a property of the permission catalogue — deferring it ships the catalogue and RLS branch with 'payout unreachable' unproven. Audit must be in every service-role write route from day one; retrofitting is the anti-pattern.", "phase": "38"},
+    {"decision": "D-28 — vault_projects.user_id means RECORD CUSTODY, never rights ownership", "rationale": "Resolves both the label-owns-masters case and the performs-on-someone-elses-record case without a schema fork. Rights live on split sheets (composition) and version ownership records (master, custody D-02).", "phase": "38"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run /gsd-execute-phase 38. Wave 1 is 38-01 (pure logic, no migration). Wave 2 hits the first owner migration checkpoint (182), so start when you can review a migration in the same sitting.",
+  "context_notes": "Session went: A&R member-CRM exploration -> that surfaced the missing relationship layer -> became Phase 38, discussed and planned end to end. The A&R CRM itself was NOT planned; its findings are preserved in .planning/todos/pending/2026-09-05-anr-member-crm-and-role-vocabulary.md, including a live inconsistency (A&R can approve Sync Library tags via API but cannot reach the page). Binding upstream doctrine that must NOT be re-litigated: docs/architecture/ACCOUNT-TYPES.md and .planning/deliberations/sound-vault-master-custody.md D-01..D-10."
+}
