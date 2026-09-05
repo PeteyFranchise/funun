@@ -9,7 +9,7 @@ import { z } from 'zod'
 
 export const WRITER_ROOM_LAYOUT_VERSION = 1 as const
 
-export const WRITER_ROOM_MODULE_KEYS = ['module:versions', 'module:diary'] as const
+export const WRITER_ROOM_MODULE_KEYS = ['module:versions', 'module:diary', 'module:notes'] as const
 export type WriterRoomModuleKey = (typeof WRITER_ROOM_MODULE_KEYS)[number]
 export type WriterRoomLayoutKey = `lyric:${string}` | WriterRoomModuleKey
 export type WriterRoomLayoutWidth = 'full' | 'half'

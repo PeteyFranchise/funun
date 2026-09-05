@@ -177,6 +177,7 @@ export type LyricBlockCommentView = {
   resolvedByName: string | null
   createdAt: string
   canResolve: boolean
+  reactions?: StudioNoteReactionView[]
 }
 
 // ─── lyric-section suggestions — non-destructive alternate words ─────
@@ -249,12 +250,72 @@ export type WorkVersionCommentView = {
   carriedFromVersionDisplay: string | null
   createdAt: string
   canResolve: boolean
+  reactions?: StudioNoteReactionView[]
 }
 
 export type WorkVersionCommentCarryOffer = {
   sourceVersionId: string
   sourceVersionDisplay: string
   comments: WorkVersionCommentView[]
+}
+
+// ─── unified Writer's Room Studio Notes ─────────────────────────────
+
+export type StudioNoteSource = 'song' | 'audio' | 'lyrics'
+export type StudioNoteReaction = 'like' | 'love' | 'fire' | 'heard' | 'done' | 'idea' | 'laugh'
+
+export type WorkNoteReaction = {
+  id: string
+  work_id: string
+  source: StudioNoteSource
+  note_id: string
+  user_id: string
+  reaction: StudioNoteReaction
+  created_at: string
+}
+
+export type StudioNoteReactionView = {
+  reaction: StudioNoteReaction
+  count: number
+  reactedByViewer: boolean
+  people: LyricCommentParticipant[]
+}
+
+export type WorkStudioNote = {
+  id: string
+  work_id: string
+  parent_note_id: string | null
+  author_user_id: string | null
+  body: string
+  mentioned_user_ids: string[]
+  resolved_at: string | null
+  resolved_by_user_id: string | null
+  created_at: string
+}
+
+export type StudioNoteContext =
+  | { kind: 'song'; label: 'Whole song' }
+  | { kind: 'audio'; label: string; versionId: string; timestampMs: number }
+  | { kind: 'lyrics'; label: string; blockId: string }
+
+export type StudioNoteMessageView = {
+  id: string
+  source: StudioNoteSource
+  parentId: string | null
+  body: string
+  author: LyricCommentParticipant | null
+  recipients: LyricCommentParticipant[]
+  resolvedAt: string | null
+  resolvedByName: string | null
+  createdAt: string
+  context: StudioNoteContext
+  canResolve: boolean
+  reactions: StudioNoteReactionView[]
+}
+
+export type StudioNoteThreadView = StudioNoteMessageView & {
+  parentId: null
+  replies: StudioNoteMessageView[]
 }
 
 // ─── work_members — collaborator access + tier (S-02) ─────────────────

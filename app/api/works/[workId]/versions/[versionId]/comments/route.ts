@@ -16,8 +16,10 @@ import {
 } from '@/lib/catalogue/version-comments'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 import { createNotification } from '@/lib/notifications'
+import { presentNoteReactionGroups } from '@/lib/catalogue/studio-notes'
 import type {
   LyricCommentParticipant,
+  WorkNoteReaction,
   WorkVersionComment,
   WorkVersionCommentCarryOffer,
 } from '@/types/catalogue'
@@ -67,19 +69,31 @@ export async function GET(_request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Recording version not found.' }, { status: 404 })
     }
 
-    const { data, error } = await supabase
-      .from('work_version_comments')
-      .select(COMMENT_COLUMNS)
-      .eq('work_id', workId)
-      .eq('version_id', versionId)
-      .order('timestamp_ms', { ascending: true })
-      .order('created_at', { ascending: true })
-      .limit(300)
-    if (error) throw new Error(error.message)
+    const [{ data, error }, { data: reactionData, error: reactionError }] = await Promise.all([
+      supabase
+        .from('work_version_comments')
+        .select(COMMENT_COLUMNS)
+        .eq('work_id', workId)
+        .eq('version_id', versionId)
+        .order('timestamp_ms', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(300),
+      supabase
+        .from('work_note_reactions')
+        .select('id, work_id, source, note_id, user_id, reaction, created_at')
+        .eq('work_id', workId)
+        .eq('source', 'audio')
+        .limit(2000),
+    ])
+    if (error || reactionError) throw new Error(error?.message ?? reactionError?.message)
 
     const comments = (data ?? []) as WorkVersionComment[]
+    const reactions = (reactionData ?? []) as WorkNoteReaction[]
     const participantIds = await loadWorkParticipantIds(workId)
-    const profiles = await loadCommentProfiles(identityIds(comments, participantIds))
+    const profiles = await loadCommentProfiles(Array.from(new Set([
+      ...identityIds(comments, participantIds),
+      ...reactions.map(reaction => reaction.user_id),
+    ])))
     const displays = versionDisplayMap(versions)
     const participants = participantIds
       .map(id => profiles.get(id))
@@ -92,7 +106,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
       viewerUserId: user.id,
       viewerIsOwner: access.isOwner,
       viewerCanAdminister: access.tier === 'administer',
-    })
+    }).map(comment => ({
+      ...comment,
+      reactions: presentNoteReactionGroups({ source: 'audio', noteId: comment.id, reactions, profiles, viewerUserId: user.id }),
+    }))
 
     let carryOffer: WorkVersionCommentCarryOffer | null = null
     const sourceVersionId = previousVersionId(versions, versionId)
@@ -127,7 +144,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
               viewerUserId: user.id,
               viewerIsOwner: access.isOwner,
               viewerCanAdminister: access.tier === 'administer',
-            }),
+            }).map(comment => ({
+              ...comment,
+              reactions: presentNoteReactionGroups({ source: 'audio', noteId: comment.id, reactions, profiles: sourceProfiles, viewerUserId: user.id }),
+            })),
           }
         }
       }

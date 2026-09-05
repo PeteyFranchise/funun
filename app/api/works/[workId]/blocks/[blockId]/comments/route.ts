@@ -5,11 +5,13 @@ import { createWorkAccessDeps, resolveWorkAccess } from '@/lib/catalogue/access'
 import { lyricCommentSectionLabel, resolveMentionedUserIds } from '@/lib/catalogue/comments'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 import { createNotification } from '@/lib/notifications'
+import { presentNoteReactionGroups } from '@/lib/catalogue/studio-notes'
 import type {
   LyricBlockComment,
   LyricBlockCommentView,
   LyricBlockType,
   LyricCommentParticipant,
+  WorkNoteReaction,
 } from '@/types/catalogue'
 
 type RouteContext = { params: Promise<{ workId: string; blockId: string }> }
@@ -91,16 +93,25 @@ export async function GET(_request: Request, { params }: RouteContext) {
     const block = await loadBlock(workId, blockId)
     if (!block) return NextResponse.json({ error: 'Block not found.' }, { status: 404 })
 
-    const { data, error } = await supabase
-      .from('work_lyric_block_comments')
-      .select('id, work_id, block_id, parent_comment_id, author_user_id, body, mentioned_user_ids, resolved_at, resolved_by_user_id, created_at')
-      .eq('work_id', workId)
-      .eq('block_id', blockId)
-      .order('created_at', { ascending: true })
-      .limit(200)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const [{ data, error }, { data: reactionData, error: reactionError }] = await Promise.all([
+      supabase
+        .from('work_lyric_block_comments')
+        .select('id, work_id, block_id, parent_comment_id, author_user_id, body, mentioned_user_ids, resolved_at, resolved_by_user_id, created_at')
+        .eq('work_id', workId)
+        .eq('block_id', blockId)
+        .order('created_at', { ascending: true })
+        .limit(200),
+      supabase
+        .from('work_note_reactions')
+        .select('id, work_id, source, note_id, user_id, reaction, created_at')
+        .eq('work_id', workId)
+        .eq('source', 'lyrics')
+        .limit(2000),
+    ])
+    if (error || reactionError) return NextResponse.json({ error: error?.message ?? reactionError?.message }, { status: 500 })
 
     const comments = (data ?? []) as LyricBlockComment[]
+    const reactions = (reactionData ?? []) as WorkNoteReaction[]
     const participantIds = await loadParticipantIds(workId)
     const identityIds = Array.from(
       new Set([
@@ -110,6 +121,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
           comment.resolved_by_user_id,
           ...comment.mentioned_user_ids,
         ]).filter((id): id is string => Boolean(id)),
+        ...reactions.map(reaction => reaction.user_id),
       ])
     )
     const profiles = await loadProfiles(identityIds)
@@ -142,6 +154,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       canResolve:
         comment.parent_comment_id === null &&
         (access.isOwner || access.tier === 'administer' || comment.author_user_id === user.id),
+      reactions: presentNoteReactionGroups({ source: 'lyrics', noteId: comment.id, reactions, profiles, viewerUserId: user.id }),
     }))
 
     return NextResponse.json({ data: presented, participants })

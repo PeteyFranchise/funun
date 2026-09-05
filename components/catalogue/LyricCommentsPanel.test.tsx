@@ -9,6 +9,7 @@ describe('LyricCommentsPanel', () => {
     const participant = { userId: 'u-1', name: 'Maya Reyes', handle: 'maya-reyes', avatarUrl: null }
     const markup = renderToStaticMarkup(
       <LyricCommentsPanel
+        workId="11111111-1111-4111-8111-111111111111"
         label="Verse 1"
         comments={[{
           id: 'c-1',
@@ -29,6 +30,7 @@ describe('LyricCommentsPanel', () => {
         resolvingId={null}
         onSubmit={asyncTrue}
         onSetResolved={asyncTrue}
+        onReactionChanged={noop}
         onClose={noop}
       />
     )
@@ -43,6 +45,7 @@ describe('LyricCommentsPanel', () => {
   it('shows an empty state and a focused comment composer', () => {
     const markup = renderToStaticMarkup(
       <LyricCommentsPanel
+        workId="11111111-1111-4111-8111-111111111111"
         label="Chorus"
         comments={[]}
         participants={[]}
@@ -52,6 +55,7 @@ describe('LyricCommentsPanel', () => {
         resolvingId={null}
         onSubmit={asyncTrue}
         onSetResolved={asyncTrue}
+        onReactionChanged={noop}
         onClose={noop}
       />
     )

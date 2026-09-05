@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import type { LyricBlockCommentView, LyricCommentParticipant } from '@/types/catalogue'
+import { MicroReactionBar } from './MicroReactionBar'
 
 export type LyricCommentsPanelProps = {
+  workId: string
   label: string
   comments: LyricBlockCommentView[]
   participants: LyricCommentParticipant[]
@@ -13,6 +15,7 @@ export type LyricCommentsPanelProps = {
   resolvingId: string | null
   onSubmit: (body: string, parentCommentId: string | null) => Promise<boolean>
   onSetResolved: (commentId: string, resolved: boolean) => Promise<boolean>
+  onReactionChanged: () => void
   onClose: () => void
 }
 
@@ -80,12 +83,16 @@ function CommentCard({
   resolving,
   onReply,
   onSetResolved,
+  workId,
+  onReactionChanged,
 }: {
   comment: LyricBlockCommentView
   isReply: boolean
   resolving: boolean
   onReply?: () => void
   onSetResolved: (resolved: boolean) => void
+  workId: string
+  onReactionChanged: () => void
 }) {
   const resolved = comment.resolvedAt !== null
   return (
@@ -95,6 +102,7 @@ function CommentCard({
         <span className="text-[9px] text-lavdim">{formatDate(comment.createdAt)}</span>
       </div>
       <div className="mt-3"><CommentText comment={comment} /></div>
+      <MicroReactionBar workId={workId} source="lyrics" noteId={comment.id} reactions={comment.reactions ?? []} onChanged={onReactionChanged} />
       {!isReply && (
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-hair pt-2">
           {!resolved && onReply && (
@@ -124,6 +132,7 @@ function CommentCard({
 }
 
 export function LyricCommentsPanel({
+  workId,
   label,
   comments,
   participants,
@@ -133,6 +142,7 @@ export function LyricCommentsPanel({
   resolvingId,
   onSubmit,
   onSetResolved,
+  onReactionChanged,
   onClose,
 }: LyricCommentsPanelProps) {
   const [draft, setDraft] = useState('')
@@ -213,6 +223,8 @@ export function LyricCommentsPanel({
                 resolving={resolvingId === root.id}
                 onReply={() => setReplyingToId(root.id)}
                 onSetResolved={resolved => void onSetResolved(root.id, resolved)}
+                workId={workId}
+                onReactionChanged={onReactionChanged}
               />
               {(repliesByRoot.get(root.id) ?? []).map(reply => (
                 <div key={reply.id} className="ml-6">
@@ -221,6 +233,8 @@ export function LyricCommentsPanel({
                     isReply
                     resolving={false}
                     onSetResolved={() => undefined}
+                    workId={workId}
+                    onReactionChanged={onReactionChanged}
                   />
                 </div>
               ))}

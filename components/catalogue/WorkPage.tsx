@@ -25,6 +25,7 @@ import { RecordOverBeatStudio } from './RecordOverBeatStudio'
 import { ReturnedMixReviewCard, type ReturnedMixReviewItem } from './ReturnedMixReviewCard'
 import { ProducerHandoffTimeline, type ProducerHandoffTimelineItem } from './ProducerHandoffTimeline'
 import { LyricLiftPanel } from './LyricLiftPanel'
+import { StudioNotes } from './StudioNotes'
 import { pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { AUDIO_FILE_ACCEPT } from '@/lib/catalogue/audio-mime'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
@@ -49,11 +50,11 @@ import type {
   LyricBlockType,
   LyricCommentParticipant,
   PerformerRef,
+  StudioNoteThreadView,
   WorkVocalState,
 } from '@/types/catalogue'
 import type { SongPassportView } from '@/lib/song-passport/view'
 import type { SingerCandidate } from '@/lib/catalogue/singer-options'
-import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { workingTakeFirst } from '@/lib/catalogue/take-workflow'
 import type { ReturnedMixReviewOutcome } from '@/lib/catalogue/returned-mix-review'
 import type { LyricLiftView } from '@/lib/catalogue/lyric-lift'
@@ -132,6 +133,10 @@ export type WorkPageProps = {
     viewer: RoomPresencePerson
     people: RoomPresencePerson[]
   }
+  /** Whole-song, audio-moment, and lyric-section discussions in one facade. */
+  studioNotes?: StudioNoteThreadView[]
+  /** Current room members eligible for explicit @ notifications. */
+  studioNoteParticipants?: LyricCommentParticipant[]
   /** resolveGuidingLine()'s own return — a single step or null, already resolved server-side. */
   guidingLineStep: GuidingLineStep | null
   diaryEntries: DiaryFeedEntry[]
@@ -141,6 +146,8 @@ export type WorkPageProps = {
   /** Current and prior production rounds, newest first. Every action remains optional. */
   producerHandoffs?: ProducerHandoffTimelineItem[]
   highlightedHandoffId?: string | null
+  /** Notification deep-link target; expands and reveals the matching Studio Note. */
+  highlightedStudioNoteId?: string | null
   lyricsBlocks: LyricsPadBlock[]
   suggestionCounts?: Record<string, number>
   vocalState: WorkVocalState
@@ -215,7 +222,6 @@ type Flow =
   | { kind: 'ai-question'; versionId: string | null }
   | { kind: 'ai-entry'; versionId: string | null; humanSourceVersionId: string | null }
   | { kind: 'reauthor'; headline: string; component: AiEntryComponent }
-  | { kind: 'note' }
   | { kind: 'add-singer'; blockId: string }
   | { kind: 'existing-take'; targetVersionId: string | null }
   | { kind: 'compare-versions'; preferredVersionId?: string }
@@ -434,70 +440,6 @@ function AiInvolvedPrompt({ onYes, onNo }: { onYes: () => void; onNo: () => void
   )
 }
 
-function NoteComposer({
-  draftKey,
-  onSubmit,
-  onCancel,
-}: {
-  draftKey: string
-  onSubmit: (text: string) => Promise<{ ok: boolean; error?: string }>
-  onCancel: () => void
-}) {
-  const [text, setText] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const recovered = readTextDraft(draftKey)
-    if (recovered?.text) setText(recovered.text)
-  }, [draftKey])
-
-  async function submit() {
-    const trimmed = text.trim()
-    if (!trimmed) return
-    setSaving(true)
-    setError(null)
-    const result = await onSubmit(trimmed)
-    setSaving(false)
-    if (!result.ok) setError(result.error ?? 'Could not save the note')
-    else clearTextDraft(draftKey)
-  }
-
-  return (
-    <div className="w-full max-w-[420px] rounded-[12px] border border-hair bg-card px-6 py-6">
-      <p className="mb-3 text-[13px] font-semibold text-white">Add a note</p>
-      <textarea
-        value={text}
-        onChange={e => {
-          setText(e.target.value)
-          writeTextDraft(draftKey, e.target.value)
-        }}
-        rows={4}
-        placeholder="Anything worth remembering about this song"
-        className="w-full resize-none rounded-[10px] border border-hair bg-transparent px-3 py-2 text-[13px] text-white outline-none placeholder:text-lavdim"
-      />
-      {error && <p className="mt-2 text-[11px] text-rose-300">{error}</p>}
-      <div className="mt-3 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-[9px] border border-hairstrong bg-lav/[.06] px-[13px] py-[7px] text-[12px] font-semibold text-lav hover:text-white"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={saving || !text.trim()}
-          onClick={() => void submit()}
-          className="rounded-[9px] bg-grad px-[13px] py-[7px] text-[12px] font-semibold text-white shadow-cta disabled:opacity-40"
-        >
-          {saving ? 'Saving…' : 'Save note'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function WorkPage({
   workId,
   songTitle,
@@ -506,12 +448,15 @@ export function WorkPage({
   roster,
   singerCandidates,
   presence,
+  studioNotes = [],
+  studioNoteParticipants = [],
   guidingLineStep,
   diaryEntries,
   versions,
   returnedMixReviews = [],
   producerHandoffs = [],
   highlightedHandoffId = null,
+  highlightedStudioNoteId = null,
   lyricsBlocks,
   suggestionCounts = {},
   vocalState,
@@ -540,6 +485,8 @@ export function WorkPage({
   const [lyricSuggestions, setLyricSuggestions] = useState<LyricSuggestionsState | null>(null)
   const [liveSuggestionCounts, setLiveSuggestionCounts] = useState<Record<string, number>>(suggestionCounts)
   const [trackCommentRefreshes, setTrackCommentRefreshes] = useState<Record<string, number>>({})
+  const [studioNoteComposerOpen, setStudioNoteComposerOpen] = useState(false)
+  const [studioNoteDeepLinkOpen, setStudioNoteDeepLinkOpen] = useState(Boolean(highlightedStudioNoteId))
   const [activeLyricLift, setActiveLyricLift] = useState<LyricLiftView | null>(lyricLift)
   const [lyricLiftStartError, setLyricLiftStartError] = useState<string | null>(null)
   const [lyricLiftStartingVersionId, setLyricLiftStartingVersionId] = useState<string | null>(null)
@@ -802,6 +749,7 @@ export function WorkPage({
   const lyricLiftRef = useRef<HTMLDivElement | null>(null)
   const rosterRef = useRef<HTMLDivElement | null>(null)
   const diaryRef = useRef<HTMLDivElement | null>(null)
+  const studioNotesRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [audioUploadPhase, setAudioUploadPhase] = useState<'preparing' | 'uploading' | 'finalizing' | null>(null)
   const [audioUploadError, setAudioUploadError] = useState<string | null>(null)
@@ -853,6 +801,24 @@ export function WorkPage({
   function scrollToDiary() {
     diaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  function openStudioNotes() {
+    setStudioNoteComposerOpen(true)
+  }
+
+  useEffect(() => {
+    if (!studioNoteComposerOpen && !studioNoteDeepLinkOpen) return
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        studioNotesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [studioNoteComposerOpen, studioNoteDeepLinkOpen])
+
+  useEffect(() => {
+    if (highlightedStudioNoteId) setStudioNoteDeepLinkOpen(true)
+  }, [highlightedStudioNoteId])
 
   // ─── The AI question, inline (005-C) — fires after an add, never as a
   // separate chore ───────────────────────────────────────────────────
@@ -1468,6 +1434,7 @@ export function WorkPage({
       }]
     : [])
   const activeVersionCount = versions.filter(version => !version.archivedAt).length
+  const openStudioNoteCount = studioNotes.filter(note => note.resolvedAt === null).length
   const roomModules: WriterRoomModule[] = [
     {
       key: 'module:versions',
@@ -1501,6 +1468,36 @@ export function WorkPage({
             layout="compact"
             collapseAfter={6}
             onRemoveNote={eventId => void handleRemoveNote(eventId)}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'module:notes',
+      label: 'Studio Notes',
+      description: `${openStudioNoteCount} open ${openStudioNoteCount === 1 ? 'thread' : 'threads'}`,
+      content: (
+        <div ref={studioNotesRef}>
+          <StudioNotes
+            workId={workId}
+            viewerUserId={presence.viewer.userId}
+            notes={studioNotes}
+            participants={studioNoteParticipants}
+            versions={versions
+              .filter(version => !version.archivedAt)
+              .map(version => ({
+                id: version.id,
+                label: `${version.display} ${version.description}`.trim(),
+                durationSeconds: version.durationSeconds,
+              }))}
+            lyricBlocks={deriveBlockNumerals(liveLyricsBlocks).map(block => ({ id: block.id, label: block.label }))}
+            composerOpen={studioNoteComposerOpen}
+            onComposerOpenChange={setStudioNoteComposerOpen}
+            highlightedNoteId={highlightedStudioNoteId}
+            onChanged={() => {
+              announceRoomActivity('recently_active')
+              router.refresh()
+            }}
           />
         </div>
       ),
@@ -1570,7 +1567,7 @@ export function WorkPage({
           <ComposerCardEmptyState
             onHumYourIdea={handleHum}
             onStartWithLyrics={scrollToLyrics}
-            onNote={() => setFlow({ kind: 'note' })}
+            onNote={openStudioNotes}
             supportsCapture={supportsCapture}
             onAddAudio={triggerAddAudio}
           />
@@ -1580,7 +1577,7 @@ export function WorkPage({
               onHum={handleHum}
               onWriteLyrics={scrollToLyrics}
               onAddAudio={triggerAddAudio}
-              onNote={() => setFlow({ kind: 'note' })}
+              onNote={openStudioNotes}
               supportsCapture={supportsCapture}
             />
             <GuidingLine
@@ -1673,6 +1670,7 @@ export function WorkPage({
           roomModules={roomModules}
           roomLayout={roomLayout}
           onRoomLayoutChange={handleRoomLayoutChange}
+          expandedRoomModuleKey={studioNoteComposerOpen || studioNoteDeepLinkOpen ? 'module:notes' : null}
         />
       </div>
 
@@ -1832,31 +1830,6 @@ export function WorkPage({
         </FlowOverlay>
       )}
 
-      {flow?.kind === 'note' && (
-        <FlowOverlay>
-          <NoteComposer
-            draftKey={`funun:user:${presence.viewer.userId}:work:${workId}:note-draft`}
-            onSubmit={async text => {
-              const res = await fetch(`/api/works/${workId}/notes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text }),
-              })
-              if (res.ok) {
-                announceRoomActivity('recently_active')
-                router.refresh()
-                setFlow(null)
-                showToast('Saved to the diary')
-                return { ok: true }
-              }
-              const body = (await res.json().catch(() => ({}))) as { error?: string }
-              return { ok: false, error: body.error }
-            }}
-            onCancel={() => setFlow(null)}
-          />
-        </FlowOverlay>
-      )}
-
       {activeSingerBlock && (
         <FlowOverlay>
           <SingerPicker
@@ -1934,6 +1907,7 @@ export function WorkPage({
       {lyricComments && (
         <FlowOverlay>
           <LyricCommentsPanel
+            workId={workId}
             label={lyricComments.label}
             comments={lyricComments.comments}
             participants={lyricComments.participants}
@@ -1943,6 +1917,7 @@ export function WorkPage({
             resolvingId={lyricComments.resolvingId}
             onSubmit={handleSubmitLyricComment}
             onSetResolved={handleSetLyricCommentResolved}
+            onReactionChanged={() => void refreshLyricComments(lyricComments.blockId)}
             onClose={() => setLyricComments(null)}
           />
         </FlowOverlay>

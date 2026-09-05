@@ -9,6 +9,7 @@ import { loadSongPassportView } from '@/lib/song-passport/repository'
 import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import * as CatalogueAudio from '@/lib/catalogue/audio'
 import { deriveVersionNumerals, presentVersion } from '@/lib/catalogue/versions'
+import { deriveBlockNumerals } from '@/lib/catalogue/blocks'
 import { describeDiaryEvent, type DiaryEventContext, type DiaryEventRowLike } from '@/lib/catalogue/diary'
 import * as CatalogueGuidingLine from '@/lib/catalogue/guiding-line'
 import type { GuidingLineSnapshot } from '@/lib/catalogue/guiding-line'
@@ -21,6 +22,8 @@ import {
 import { safeTakeDownloadName } from '@/lib/catalogue/take-workflow'
 import { loadOpenLyricLiftView } from '@/lib/catalogue/lyric-lift-service'
 import { parseWriterRoomLayout } from '@/lib/catalogue/writer-room-layout'
+import { presentStudioNotes } from '@/lib/catalogue/studio-notes'
+import { loadCommentProfiles } from '@/lib/catalogue/comment-participants.server'
 import { writersMissingFromSheet, identityKey, type PartyIdentity, type WorkMember as SplitsWorkMember } from '@/lib/catalogue/splits'
 import { WorkPage, type VersionCardData } from '@/components/catalogue/WorkPage'
 import type { WorkRosterMember } from '@/components/catalogue/WorkRoster'
@@ -41,6 +44,12 @@ import type {
   AiEntry,
   WorkDiaryEvent,
   PerformerRef,
+  LyricBlockComment,
+  LyricCommentParticipant,
+  StudioNoteThreadView,
+  WorkNoteReaction,
+  WorkStudioNote,
+  WorkVersionComment,
 } from '@/types/catalogue'
 
 export const dynamic = 'force-dynamic'
@@ -100,10 +109,10 @@ export default async function WorkComposerPage({
   searchParams,
 }: {
   params: Promise<{ workId: string }>
-  searchParams: Promise<{ handoff?: string }>
+  searchParams: Promise<{ handoff?: string; studioNote?: string }>
 }) {
   const { workId } = await params
-  const { handoff: highlightedHandoffId } = await searchParams
+  const { handoff: highlightedHandoffId, studioNote: highlightedStudioNoteId } = await searchParams
 
   const supabase = await createServerClient()
   const {
@@ -127,7 +136,7 @@ export default async function WorkComposerPage({
   }
 
   // ─── One parallel pass — every entity this page needs ────────────────
-  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes, receiptsRes, handoffProgressRes, handoffNudgesRes, handoffActivityRes, roomLayoutRes] =
+  const [workRes, versionsRes, blocksRes, membersRes, aiEntriesRes, diaryRes, aiAccountCountRes, singerRosterRes, suggestionCountsRes, recordingSessionsRes, handoffsRes, returnsRes, returnReviewsRes, receiptsRes, handoffProgressRes, handoffNudgesRes, handoffActivityRes, roomLayoutRes, studioNotesRes, audioNotesRes, lyricNotesRes, noteReactionsRes] =
     await Promise.all([
       supabase.from('works').select('*').eq('id', workId).maybeSingle(),
       supabase
@@ -225,6 +234,30 @@ export default async function WorkComposerPage({
         .eq('work_id', workId)
         .eq('user_id', user.id)
         .maybeSingle(),
+      supabase
+        .from('work_studio_notes')
+        .select('id, work_id, parent_note_id, author_user_id, body, mentioned_user_ids, resolved_at, resolved_by_user_id, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: true })
+        .limit(500),
+      supabase
+        .from('work_version_comments')
+        .select('id, work_id, version_id, parent_comment_id, author_user_id, body, timestamp_ms, mentioned_user_ids, resolved_at, resolved_by_user_id, carried_from_version_id, carried_from_comment_id, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: true })
+        .limit(500),
+      supabase
+        .from('work_lyric_block_comments')
+        .select('id, work_id, block_id, parent_comment_id, author_user_id, body, mentioned_user_ids, resolved_at, resolved_by_user_id, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: true })
+        .limit(500),
+      supabase
+        .from('work_note_reactions')
+        .select('id, work_id, source, note_id, user_id, reaction, created_at')
+        .eq('work_id', workId)
+        .order('created_at', { ascending: true })
+        .limit(2000),
     ])
 
   const workRow = workRes.data as Work | null
@@ -241,6 +274,10 @@ export default async function WorkComposerPage({
   const aiEntries = (aiEntriesRes.data ?? []) as AiEntry[]
   const diaryRows = (diaryRes.data ?? []) as WorkDiaryEvent[]
   const roomLayout = parseWriterRoomLayout((roomLayoutRes.data as { layout?: unknown } | null)?.layout)
+  const studioNoteRows = (studioNotesRes.data ?? []) as WorkStudioNote[]
+  const audioNoteRows = (audioNotesRes.data ?? []) as WorkVersionComment[]
+  const lyricNoteRows = (lyricNotesRes.data ?? []) as LyricBlockComment[]
+  const noteReactionRows = (noteReactionsRes.data ?? []) as WorkNoteReaction[]
   const priorAiEntryCount = aiAccountCountRes.count ?? 0
   const singerRoster = (singerRosterRes.data ?? []) as {
     id: string
@@ -744,6 +781,50 @@ export default async function WorkComposerPage({
     avatarUrl: memberAvatarById.get(user.id) ?? null,
     isViewer: true,
   }
+
+  // Studio Notes is a read-time facade over the whole-song, timestamped
+  // audio, and lyric-section stores. Load every identity referenced by those
+  // rows once here so the client never guesses names from ids.
+  const participantUserIds = Array.from(new Set([
+    work.user_id,
+    ...members.flatMap(member => member.user_id ? [member.user_id] : []),
+  ]))
+  const noteIdentityIds = Array.from(new Set([
+    ...participantUserIds,
+    ...studioNoteRows.flatMap(note => [
+      note.author_user_id,
+      note.resolved_by_user_id,
+      ...note.mentioned_user_ids,
+    ]),
+    ...audioNoteRows.flatMap(note => [
+      note.author_user_id,
+      note.resolved_by_user_id,
+      ...note.mentioned_user_ids,
+    ]),
+    ...lyricNoteRows.flatMap(note => [
+      note.author_user_id,
+      note.resolved_by_user_id,
+      ...note.mentioned_user_ids,
+    ]),
+    ...noteReactionRows.map(reaction => reaction.user_id),
+  ].filter((id): id is string => Boolean(id))))
+  const noteProfiles = await loadCommentProfiles(noteIdentityIds)
+  const studioNoteParticipants = participantUserIds
+    .map(id => noteProfiles.get(id))
+    .filter((person): person is LyricCommentParticipant => Boolean(person))
+    .sort((left, right) => left.name.localeCompare(right.name))
+  const studioNotes: StudioNoteThreadView[] = presentStudioNotes({
+    songNotes: studioNoteRows,
+    audioNotes: audioNoteRows,
+    lyricNotes: lyricNoteRows,
+    profiles: noteProfiles,
+    versionLabels: new Map(versionCards.map(version => [version.id, `${version.display} ${version.description}`.trim()])),
+    blockLabels: new Map(deriveBlockNumerals(blocks).map(block => [block.id, block.label])),
+    viewerUserId: user.id,
+    viewerIsOwner: access.isOwner,
+    viewerCanAdminister: access.tier === 'administer',
+    reactions: noteReactionRows,
+  })
   const singerCandidates = buildSingerCandidates({
     viewer: { userId: user.id, name: presenceViewer.name },
     room: members.map(member => ({
@@ -819,12 +900,15 @@ export default async function WorkComposerPage({
           }}
           singerCandidates={singerCandidates}
           presence={{ viewer: presenceViewer, people: presencePeople }}
+          studioNotes={studioNotes}
+          studioNoteParticipants={studioNoteParticipants}
           guidingLineStep={guidingLineStep}
           diaryEntries={diaryEntries}
           versions={versionCards}
           returnedMixReviews={returnedMixReviewItems}
           producerHandoffs={producerHandoffItems}
           highlightedHandoffId={highlightedHandoffId ?? null}
+          highlightedStudioNoteId={highlightedStudioNoteId ?? null}
           lyricsBlocks={lyricsPadBlocks}
           suggestionCounts={suggestionCounts}
           vocalState={work.vocal_state}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import { MicroReactionBar } from './MicroReactionBar'
 import type {
   LyricCommentParticipant,
   WorkVersionCommentCarryOffer,
@@ -184,8 +185,20 @@ export function TimedTrackPlayer({
     () => comments.filter(comment => comment.parentCommentId === null).sort((a, b) => a.timestampMs - b.timestampMs),
     [comments]
   )
+  const markerGroups = useMemo(() => {
+    const groups = new Map<number, WorkVersionCommentView[]>()
+    for (const comment of roots) {
+      const key = Math.round(comment.timestampMs / 100) * 100
+      const group = groups.get(key) ?? []
+      group.push(comment)
+      groups.set(key, group)
+    }
+    return Array.from(groups.entries()).map(([timestampMs, groupedComments]) => ({ timestampMs, comments: groupedComments }))
+  }, [roots])
   const unresolvedCount = roots.filter(comment => comment.resolvedAt === null).length
+  const visibleNoteCount = unresolvedCount > 0 ? unresolvedCount : roots.length
   const selectedRoot = roots.find(comment => comment.id === selectedRootId) ?? null
+  const selectedRootIndex = selectedRoot ? roots.findIndex(comment => comment.id === selectedRoot.id) : -1
   const replies = selectedRoot
     ? comments.filter(comment => comment.parentCommentId === selectedRoot.id)
     : []
@@ -213,6 +226,20 @@ export function TimedTrackPlayer({
     setSelectedRootId(comment.id)
     setReplyingToId(null)
     seek(comment.timestampMs)
+  }
+
+  function viewNotes() {
+    const first = roots.find(comment => comment.resolvedAt === null) ?? roots[0]
+    if (!first) return
+    selectComment(first)
+  }
+
+  function stepSelectedNote(direction: -1 | 1) {
+    if (roots.length === 0) return
+    const nextIndex = selectedRootIndex < 0
+      ? 0
+      : (selectedRootIndex + direction + roots.length) % roots.length
+    selectComment(roots[nextIndex]!)
   }
 
   function insertMention(handle: string) {
@@ -308,9 +335,14 @@ export function TimedTrackPlayer({
             <span className="truncate">{display} {description}</span>
             {isWorking && <span className="rounded-full border border-brandindigo/50 bg-brandindigo/10 px-2 py-0.5 text-[8px] uppercase tracking-[.1em] text-brandindigo">Working take</span>}
           </p>
-          <p className="mt-0.5 text-[9px] text-lavdim">
-            {isAiTagged ? 'AI noted · ' : ''}{unresolvedCount} unresolved {unresolvedCount === 1 ? 'note' : 'notes'}
-          </p>
+          <span className="mt-0.5 flex items-center gap-1 text-[9px] text-lavdim">
+            {isAiTagged ? <span>AI noted ·</span> : null}
+            {roots.length > 0 ? (
+              <button type="button" onClick={viewNotes} className="font-semibold text-brandindigo underline decoration-brandindigo/40 underline-offset-2 hover:text-white">
+                View {visibleNoteCount} {unresolvedCount > 0 ? 'unresolved ' : ''}{visibleNoteCount === 1 ? 'note' : 'notes'}
+              </button>
+            ) : <span>0 unresolved notes</span>}
+          </span>
         </div>
         <button
           type="button"
@@ -352,16 +384,26 @@ export function TimedTrackPlayer({
           aria-label={`Seek ${display}`}
           className="absolute inset-x-0 top-0 h-9 w-full cursor-pointer opacity-0"
         />
-        {roots.map(comment => (
+        {selectedRoot ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 h-9 w-px bg-brandindigo/80"
+            style={{ left: `${Math.max(1, Math.min(99, (selectedRoot.timestampMs / effectiveDurationMs) * 100))}%` }}
+          />
+        ) : null}
+        {markerGroups.map(group => (
           <button
-            key={comment.id}
+            key={group.timestampMs}
             type="button"
-            onClick={() => selectComment(comment)}
-            aria-label={`${comment.resolvedAt ? 'Resolved' : 'Open'} comment at ${formatTrackTimestamp(comment.timestampMs)}`}
-            className={`absolute top-8 -translate-x-1/2 text-[10px] ${comment.resolvedAt ? 'text-lavdim' : 'text-brandindigo'}`}
-            style={{ left: `${Math.min(100, (comment.timestampMs / effectiveDurationMs) * 100)}%` }}
+            onClick={() => {
+              const selectedInGroup = group.comments.findIndex(comment => comment.id === selectedRootId)
+              selectComment(group.comments[(selectedInGroup + 1) % group.comments.length]!)
+            }}
+            aria-label={`${group.comments.length} ${group.comments.length === 1 ? 'comment' : 'comments'} at ${formatTrackTimestamp(group.timestampMs)}`}
+            className={`absolute top-7 flex min-h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border border-brandindigo/70 bg-card px-1 text-[9px] font-bold shadow-md ${group.comments.some(comment => comment.id === selectedRootId) ? 'text-white ring-2 ring-brandindigo/30' : 'text-brandindigo'}`}
+            style={{ left: `${Math.max(1, Math.min(99, (group.timestampMs / effectiveDurationMs) * 100))}%` }}
           >
-            <span className="block text-[11px]">●</span>
+            {group.comments.length}
           </button>
         ))}
         <div className="absolute inset-x-0 bottom-0 flex justify-between text-[9px] text-lavdim">
@@ -444,6 +486,15 @@ export function TimedTrackPlayer({
           ) : selectedRoot ? (
             <div className="space-y-2">
               <div className={`rounded-[9px] border border-hairstrong bg-card2 p-2.5 ${selectedRoot.resolvedAt ? 'opacity-70' : ''}`}>
+                <div className="mb-2 flex items-center justify-between gap-3 border-b border-hair pb-2 text-[9px] text-lavdim">
+                  <span>Note {selectedRootIndex + 1} of {roots.length}</span>
+                  {roots.length > 1 ? (
+                    <span className="flex items-center gap-3">
+                      <button type="button" onClick={() => stepSelectedNote(-1)} className="font-semibold hover:text-white">← Previous</button>
+                      <button type="button" onClick={() => stepSelectedNote(1)} className="font-semibold hover:text-white">Next →</button>
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex items-start justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brandindigo/15 text-[9px] font-bold text-brandindigo">
@@ -459,6 +510,7 @@ export function TimedTrackPlayer({
                   )}
                 </div>
                 <div className="mt-2"><CommentText comment={selectedRoot} /></div>
+                <MicroReactionBar workId={workId} source="audio" noteId={selectedRoot.id} reactions={selectedRoot.reactions ?? []} onChanged={() => void loadComments()} />
                 <div className="mt-2 flex flex-wrap gap-3 border-t border-hair pt-2">
                   {!selectedRoot.resolvedAt && (
                     <button type="button" onClick={() => setReplyingToId(selectedRoot.id)} className="text-[9px] text-lavdim hover:text-white">Reply</button>
@@ -474,6 +526,7 @@ export function TimedTrackPlayer({
                 <div key={reply.id} className="ml-4 rounded-[9px] border border-hair bg-card2/70 p-2.5">
                   <p className="text-[9px] text-lavdim"><b className="text-white">{reply.author?.name ?? 'Former member'}</b> · {formatDate(reply.createdAt)}</p>
                   <div className="mt-1"><CommentText comment={reply} /></div>
+                  <MicroReactionBar workId={workId} source="audio" noteId={reply.id} reactions={reply.reactions ?? []} onChanged={() => void loadComments()} />
                 </div>
               ))}
             </div>

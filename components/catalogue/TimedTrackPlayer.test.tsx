@@ -26,6 +26,7 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('<audio')
     expect(markup).toContain('type="range"')
     expect(markup).toContain('Comment at 0:00')
+    expect(markup).toContain('0 unresolved notes')
     expect(markup).toContain('Record over this beat')
     expect(markup).toContain('>Lyric Lift<')
     expect(markup).toContain('aria-label="Use Lyric Lift to pull lyrics from v4"')

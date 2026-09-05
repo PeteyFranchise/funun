@@ -23,6 +23,7 @@ describe('writer-room-layout', () => {
         { key: lyricLayoutKey(B2), width: 'full' },
         { key: 'module:versions', width: 'full' },
         { key: 'module:diary', width: 'full' },
+        { key: 'module:notes', width: 'full' },
       ],
     })
   })
@@ -35,6 +36,7 @@ describe('writer-room-layout', () => {
         { key: 'module:versions', width: 'half' },
         { key: lyricLayoutKey(B1), width: 'full' },
         { key: 'module:diary', width: 'half' },
+        { key: 'module:notes', width: 'full' },
       ],
     }
 
@@ -45,6 +47,7 @@ describe('writer-room-layout', () => {
         { key: 'module:versions', width: 'half' },
         { key: lyricLayoutKey(B2), width: 'half' },
         { key: 'module:diary', width: 'half' },
+        { key: 'module:notes', width: 'full' },
       ],
     })
   })
@@ -66,6 +69,7 @@ describe('writer-room-layout', () => {
         { key: lyricLayoutKey(B2), width: 'full' },
         { key: 'module:diary', width: 'half' },
         { key: 'module:versions', width: 'full' },
+        { key: 'module:notes', width: 'full' },
       ],
     })
   })
@@ -87,6 +91,7 @@ describe('writer-room-layout', () => {
       { key: lyricLayoutKey(B2), width: 'full' },
       { key: 'module:versions', width: 'half' },
       { key: 'module:diary', width: 'full' },
+      { key: 'module:notes', width: 'full' },
     ])
     expect(lyricOrderFromWriterRoomLayout(snapped)).toEqual([B1, B2])
   })
@@ -97,6 +102,7 @@ describe('writer-room-layout', () => {
       { key: lyricLayoutKey(B1), width: 'half' },
       { key: 'module:versions', width: 'full' },
       { key: 'module:diary', width: 'full' },
+      { key: 'module:notes', width: 'full' },
     ])
   })
 

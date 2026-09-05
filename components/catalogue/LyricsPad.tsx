@@ -104,6 +104,8 @@ export type LyricsPadProps = {
   roomLayout?: WriterRoomLayout | null
   /** Persists presentation only; it must never write lyric/version/Diary facts. */
   onRoomLayoutChange?: (layout: WriterRoomLayout) => Promise<void>
+  /** Expands a movable module when an outside shortcut opens its content. */
+  expandedRoomModuleKey?: WriterRoomModuleKey | null
 }
 
 // Migration 138's edit trigger fires once per SAVE, not per keystroke —
@@ -336,16 +338,22 @@ function SortableRoomModule({
   roomModule,
   width,
   onToggleWidth,
+  forceExpanded,
 }: {
   roomModule: WriterRoomModule
   width: WriterRoomLayoutWidth
   onToggleWidth: () => void
+  forceExpanded: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: roomModule.key,
   })
   const style = { transform: CSS.Transform.toString(transform), transition }
+
+  useEffect(() => {
+    if (forceExpanded) setCollapsed(false)
+  }, [forceExpanded])
 
   return (
     <section
@@ -419,6 +427,7 @@ export function LyricsPad({
   roomModules = [],
   roomLayout = null,
   onRoomLayoutChange,
+  expandedRoomModuleKey = null,
 }: LyricsPadProps) {
   const labeled = deriveBlockNumerals(blocks)
   const byId = new Map(blocks.map(block => [block.id, block]))
@@ -876,6 +885,7 @@ export function LyricsPad({
                   roomModule={roomModule}
                   width={item.width}
                   onToggleWidth={() => handleRoomWidthToggle(item.key)}
+                  forceExpanded={expandedRoomModuleKey === item.key}
                 />
               </div>
             )
