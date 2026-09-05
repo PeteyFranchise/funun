@@ -664,6 +664,7 @@ Plans:
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
+| 38. Member Organization & Team Workspaces (Artist Teams, Management, Label) | 0/0 | Discussed (55 decisions) | - |
 
 *Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work is only: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), 32-09 (k6 load test, deferred to pre-launch).***
 
@@ -1906,3 +1907,134 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 32-10-PLAN.md — Incident runbook + operating rhythm (R9/R10)
+
+---
+
+### Phase 38: Member Organization & Team Workspaces (Artist Teams, Management/Roster, Record Label)
+
+**Goal:** A shared-workspace layer for **Member Accounts** — Artist Teams, Management/Roster
+workspaces, and Record Label workspaces. A Member belongs to many workspaces under ONE identity
+and switches between them **in-session**. Workspace membership grants **access only** — never
+ownership, credit, royalty entitlement, signature authority, or licensing power.
+
+**Not a new account class.** The three classes in `docs/architecture/ACCOUNT-TYPES.md` (Member,
+Client Partner, Funūn Team Member) are unchanged. Workspaces are contexts Member Accounts join.
+
+**Supersedes and absorbs** the deferred manager/A&R roster vision recorded at ROADMAP.md ~line
+1109 and `28-CONTEXT.md` §Deferred Ideas ("per-subtype industry toolsets"). That vision is now
+this phase; remove it from Phase 28's deferred list at planning.
+
+**Why now:** the September 2026 One Identity, Many Roles doctrine established that artists,
+producers, songwriters, managers, attorneys, engineers and label executives are all one Member
+class distinguished by professional role. What the product still lacks is the *relationship*
+layer that doctrine points at — a way for those people to work together with explicit, revocable,
+evidenced access. Today `project_members` has four flat roles and no management API, and the
+"account switch" is a sign-out between two separate logins.
+
+**Architecture review (2026-09-05) — legacy conflicts this phase must resolve:**
+
+1. `components/auth/AccountContextSwitch.tsx` signs out and re-logs in; `AccountWorkspace` is a
+   two-value union. **No in-session workspace switching exists.**
+2. `lib/accounts/account-context.ts` resolves account *class*, never *workspace*.
+3. `lib/accounts/member-api-gate.ts` is identity-scoped only — no acting-workspace concept.
+4. `project_members` / `work_members` / `idea_members` are all `REVOKE`d from `authenticated`;
+   **no membership management API exists anywhere.**
+5. `project_members` has four flat roles; the permission matrix needs ~20 distinct capabilities.
+6. Ownership is a single `user_id` column on every entity — no custodian concept.
+7. `collaborators` is private per user (RLS `auth.uid() = user_id`).
+8. **`buyer_orgs` reviewed and REJECTED** for creative workspaces: born-verified (080 D-14),
+   exactly one org per user (D-13), purchase-shaped `requester`/`approver` roles.
+9. `work_members` (136) is the best precedent — "MEMBERSHIP IS NOT SPLITS" doctrine verbatim,
+   plus a two-axis `user_id`/`collaborator_id` identity for people without accounts.
+
+**Decisions:** **55 locked (D-01..D-55)** — see `38-CONTEXT.md`. Discussion covered all twelve
+owner-specified areas: taxonomy, creation/verification, membership, roster relationships,
+permissions, catalogue attachment, navigation/UX, contracts/authority, rights/credits/earnings,
+billing, security/auditability, migration. **Do not re-ask these at planning.**
+
+Headline decisions: one `workspaces` entity with independent capability flags (D-01/D-02) ·
+self-declared but unverified, with roster claims **inert until the Member accepts** (D-04/D-05) ·
+granular permissions with editable bundles and a two-tier operational/authority split where
+authority requires a document-supported relationship (D-19/D-21/D-16) · the Member always holds
+the project record, workspaces attach (D-23/D-26) · `user_id` means **record custody, never rights
+ownership** (D-28) · active workspace in the URL, server-resolved every request (D-30) · Funūn
+never parses or verifies an agreement — the rights holder declares scope (D-36/D-37) · payout and
+tax data **structurally excluded** from every workspace path (D-42) · workspace-derived access
+reaches RLS by extending the existing SECURITY DEFINER helpers (D-48) · cohort-scoped beta flag,
+personal paths untouched (D-55).
+
+**Binding upstream doctrine — do NOT re-litigate:**
+`docs/architecture/ACCOUNT-TYPES.md` (owner-approved 2026-09-04) and
+`.planning/deliberations/sound-vault-master-custody.md` **D-01..D-10 (LOCKED 2026-09-01)** —
+custody D-01's preview/clean-master separation and D-02's six ownership states bound decisions
+D-08, D-10 and D-40.
+
+**Requirements:** WS-01..WS-30 (registered in `38-CONTEXT.md`; move to REQUIREMENTS.md at planning)
+
+**Depends on:** Phase 21 (`project_members`, Shared-with-me lane), Phase 36 (handles), and the
+One Identity foundation (migrations 177–178, applied). Coordination point with **Phase 37.2**
+(Writer's Room Live Collaboration) — both touch `work_members`.
+
+**Sizing:** the context recommends **nine slices (A–I)** and flags that this is large enough to
+split, likely **38 / 38.1 / 38.2** along the A–C / D–F / G–I boundaries (Phase 31 precedent, which
+needed a split at ~19 plans). Slice D (RLS + attachment) is security-critical and should soak.
+
+**Risks flagged for review:** the RLS third path is the highest-risk change (a bug grants third
+parties access to artists' catalogues); per-row helper performance; counsel review of document-state
+vocabulary and the declared-authority model; **no kill switch was selected — planning should
+re-raise a platform-wide disable control with the owner.**
+
+**Status:** Discussed 2026-09-05 via `/gsd-discuss-phase 38` — 55 decisions, decision-complete.
+Planned 2026-09-05 via `/gsd-plan-phase 38`. **Planner recommends a phase split** (see below);
+Phase 38 as planned covers Slices A–D only.
+
+**Scope as planned — Slices A–D (foundation → roster → permissions → RLS).**
+Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS-30 (18 of 30).
+Deferred, pending owner approval of the split:
+- **Phase 38.1** (Slices E, F, G) — active-workspace UX, contracts/authority/rights boundaries,
+  audit surfaces: WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29.
+- **Phase 38.2** (Slices H, I) — workspace billing/metering, cohort rollout and docs:
+  WS-21, WS-22, WS-27, WS-28.
+
+**Migration numbers pre-assigned** to prevent the collision class this repo has hit before:
+182 = Slice A foundation · 183 = roster relationships · 184 = grants and bundles ·
+185 = attachments and custody transfers · 186 = the RLS workspace branch.
+**187 and 188 are RESERVED for Phase 38.2** and must not be claimed. Migrations 182–185 are
+additive and may be pushed as one batch; **186 is pushed alone** with its own adversarial smoke.
+
+**Plans:** 13 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 38-01-PLAN.md — Domain types, permission catalogue, tiers, bundles, grant subset check — pure (WS-07/08/20/24/30)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 38-02-PLAN.md — Membership + roster state machines, compute-on-read evidence ladder — pure (WS-03/05/06)
+- [ ] 38-03-PLAN.md — Migration 182: workspaces, members, invitations, audit log, helper pair [owner push] (WS-01/02/03/04/25)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 38-04-PLAN.md — Migration 183: roster relationships, agreement evidence, blocks [owner push] (WS-05/06/26)
+- [ ] 38-05-PLAN.md — Workspace access gate, audit write-through, create + members routes (WS-01/02/03/25/30)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 38-06-PLAN.md — Invitation lifecycle: pending seat, service-only reconciliation, expiry, rate limit (WS-04/26)
+- [ ] 38-07-PLAN.md — Roster lifecycle routes: propose, accept, refuse, block, revoke, evidence (WS-05/06/26)
+- [ ] 38-08-PLAN.md — Migration 184: grants + editable bundles, catalogue-drift gate [owner push] (WS-07/08/20/24)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 38-09-PLAN.md — Grant issuance + use-time re-check resolver + attributed acting-on-behalf (WS-08/24/30)
+- [ ] 38-10-PLAN.md — Migration 185: attachments + two-sided custody transfers [owner push] (WS-09/10/12)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 38-11-PLAN.md — Migration 186: THE RLS workspace branch + negative-exclusion suite + adversarial smoke checklist [owner push, alone] (WS-23/25/09)
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 38-12-PLAN.md — Project attachment, workspace catalogue as a query, workspace-created projects (WS-09/10)
+- [ ] 38-13-PLAN.md — "Appears on" shelf + two-sided record-custody transfer (WS-11/12)
