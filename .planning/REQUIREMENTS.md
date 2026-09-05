@@ -717,6 +717,75 @@ Backed by migrations **111** (`selects` / `selects_tracks`→`tracks.id` / `sele
 
 **Coverage (Phase 33):** 10 requirement IDs (PLAYBOOK-01..10), every ID assigned to ≥1 plan across 8 plans / 2 waves. Deferred items (authoring, RBAC editor, DB content, other rooms, Observability v2) are explicitly OUT of scope and are NOT requirements.
 
+## v1.4 — Phase 38: Member Organization & Team Workspaces Requirements
+
+Derived from `38-CONTEXT.md` D-01..D-56 (no SPEC.md for this phase); phase-scoped.
+**Phase 38 covers Slices A–D only** — the owner approved a split on 2026-09-05.
+WS-13..WS-19 and WS-29 belong to **Phase 38.1**; WS-21, WS-22, WS-27, WS-28 to **Phase 38.2**.
+
+| ID | Requirement | Decisions | Phase |
+|---|---|---|---|
+| WS-01 | `workspaces` entity: type + independent capability flags | D-01, D-02 | 38 |
+| WS-02 | Workspace creation, unverified state, verification as a separate auditable state | D-03, D-04, D-06 | 38 |
+| WS-03 | Workspace membership: 5 roles, states incl. `expired`, never-zero-owners | D-11, D-13 | 38 |
+| WS-04 | Invitations: pending seat, email binding, service-only reconciliation, expiry | D-12, D-51 | 38 |
+| WS-05 | Roster relationships: inert claim, acceptance, multiplicity, dates, unilateral revocation | D-05, D-07, D-15, D-17, D-18 | 38 |
+| WS-06 | Agreement evidence ladder + rights-holder-declared scope | D-16, D-36 | 38 |
+| WS-07 | Granular permission model with editable preset bundles | D-19, D-20 | 38 |
+| WS-08 | Two-tier operational/authority separation incl. bundle-excluded sensitive permissions | D-21, D-40 | 38 |
+| WS-09 | Project attachment; workspace catalogue as a query, never a copy | D-23, D-25, D-26 | 38 |
+| WS-10 | Workspace-created projects born held by the subject Member | D-24 | 38 |
+| WS-11 | Read-only "Appears on" shelf for contributed records | D-27, D-35 | 38 |
+| WS-12 | Two-sided, logged record-custody transfer | D-29 | 38 |
+| WS-13 | URL-carried active workspace, server-resolved every request | D-30 | 38.1 |
+| WS-14 | Persistent workspace chrome + server-side acting-context re-check on writes | D-31 | 38.1 |
+| WS-15 | Roster + Activity tabs; role-aware roster cards | D-32, D-35 | 38.1 |
+| WS-16 | Instant in-session switching; Funūn Team boundary unchanged | D-33 | 38.1 |
+| WS-17 | Contract Locker workspace shelf + provenance vocabulary (never "verified") | D-37, D-38 | 38.1 |
+| WS-18 | Authority lapses on document expiry; operational persists | D-39 | 38.1 |
+| WS-19 | Rights-information propose-then-confirm | D-41 | 38.1 |
+| WS-20 | Structural exclusion of payout/tax data | D-42 | 38 |
+| WS-21 | Workspace billing entity; lapse → read-only, nothing destroyed | D-44, D-45, D-46 | 38.2 |
+| WS-22 | Usage metering tracked, not enforced, during beta | D-47 | 38.2 |
+| WS-23 | RLS workspace branch in the SECURITY DEFINER helpers | D-48 | 38 |
+| WS-24 | Grant subset check at grant time AND at use time | D-49 | 38 |
+| WS-25 | Member-side immutable audit trail, visible to both sides | D-50 | 38 |
+| WS-26 | Abuse controls: rate limits, expiry, member-side block | D-51 | 38 |
+| WS-27 | Cohort-scoped server-side beta flag; personal paths untouched | D-53, D-55 | 38.2 |
+| WS-28 | Documentation updates: ACCOUNT-TYPES.md + The Playbook | D-28, D-34, D-43 | 38.2 |
+| WS-29 | Master-ownership claims + D-08 evidence-derived label access | D-08, D-09, D-10 | 38.1 |
+| WS-30 | Attributed acting-on-behalf; no impersonation anywhere | D-22 | 38 |
+| WS-31 | Platform-wide workspace-access disable control (owner-operable, no deploy) | D-56 | 38 |
+
+**Traceability (Phase 38 — Slices A–D):**
+
+| Requirement | Phase | Plan | Status |
+|-------------|-------|------|--------|
+| WS-01 | Phase 38 | 38-03, 38-05 | Planned |
+| WS-02 | Phase 38 | 38-03, 38-05 | Planned |
+| WS-03 | Phase 38 | 38-02, 38-03, 38-05 | Planned |
+| WS-04 | Phase 38 | 38-03, 38-06 | Planned |
+| WS-05 | Phase 38 | 38-02, 38-04, 38-07 | Planned |
+| WS-06 | Phase 38 | 38-02, 38-04, 38-07 | Planned |
+| WS-07 | Phase 38 | 38-01, 38-08 | Planned |
+| WS-08 | Phase 38 | 38-01, 38-08, 38-09 | Planned |
+| WS-09 | Phase 38 | 38-10, 38-11, 38-12 | Planned |
+| WS-10 | Phase 38 | 38-10, 38-12 | Planned |
+| WS-11 | Phase 38 | 38-13 | Planned |
+| WS-12 | Phase 38 | 38-10, 38-13 | Planned |
+| WS-20 | Phase 38 | 38-01, 38-08 | Planned |
+| WS-23 | Phase 38 | 38-11 | Planned |
+| WS-24 | Phase 38 | 38-01, 38-08, 38-09 | Planned |
+| WS-25 | Phase 38 | 38-03, 38-05, 38-11 | Planned |
+| WS-26 | Phase 38 | 38-04, 38-06, 38-07 | Planned |
+| WS-30 | Phase 38 | 38-01, 38-09 | Planned |
+| WS-31 | Phase 38 | 38-11 | Planned |
+
+**Coverage (Phase 38):** 19 requirement IDs assigned to ≥1 plan across 13 plans / 7 waves.
+The remaining 12 IDs are assigned to Phases 38.1 and 38.2, both of which have roadmap entries
+and inherit their decisions from the same `38-CONTEXT.md` — they are deferred, not dropped.
+
+---
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*
+*Last updated: 2026-09-05 — Phase 38 registered WS-01..WS-31 (Member Organization & Team Workspaces; Slices A–D planned as Phase 38, E–G as 38.1, H–I as 38.2). IDs derived from 38-CONTEXT.md D-01..D-56; phase-scoped. Prior entry: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*

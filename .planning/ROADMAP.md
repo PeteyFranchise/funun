@@ -664,7 +664,9 @@ Plans:
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
-| 38. Member Organization & Team Workspaces (Artist Teams, Management, Label) | 0/0 | Discussed (55 decisions) | - |
+| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 0/13 | Planned | - |
+| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | Split out, not planned | - |
+| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | Split out, not planned | - |
 
 *Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work is only: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), 32-09 (k6 load test, deferred to pre-launch).***
 
@@ -1981,16 +1983,26 @@ needed a split at ~19 plans). Slice D (RLS + attachment) is security-critical an
 
 **Risks flagged for review:** the RLS third path is the highest-risk change (a bug grants third
 parties access to artists' catalogues); per-row helper performance; counsel review of document-state
-vocabulary and the declared-authority model; **no kill switch was selected — planning should
-re-raise a platform-wide disable control with the owner.**
+vocabulary and the declared-authority model. **Kill switch RESOLVED at planning — see D-56 below.**
 
 **Status:** Discussed 2026-09-05 via `/gsd-discuss-phase 38` — 55 decisions, decision-complete.
 Planned 2026-09-05 via `/gsd-plan-phase 38`. **Planner recommends a phase split** (see below);
 Phase 38 as planned covers Slices A–D only.
 
+**SPLIT APPROVED by the owner 2026-09-05.** Boundary sits after Slice D, not after C, so the
+permission model and its RLS consumer stay inside one security review.
+
+**D-56 ADDED AT PLANNING (owner, 2026-09-05):** a **working platform-wide disable control** ships
+with this phase, not merely the `workspace_access_enabled()` seam — supersedes the "seam only"
+reading of D-55 and adds requirement **WS-31**. Built in 38-11 beside migration 186:
+`workspace_access_config` singleton (service-role-only, fails closed when the row is missing),
+`workspace_access_enabled()` as `STABLE SECURITY DEFINER`, `lib/workspaces/access-kill-switch.ts`,
+and a leadership-only `app/api/admin/workspaces/access` route that logs every flip via
+`logStaffAction`. Exercised end-to-end in the 186 checkpoint drill (off / on / fail-closed).
+
 **Scope as planned — Slices A–D (foundation → roster → permissions → RLS).**
-Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS-30 (18 of 30).
-Deferred, pending owner approval of the split:
+Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS-30, **WS-31**
+(19 of 31). Deferred to the approved follow-on phases:
 - **Phase 38.1** (Slices E, F, G) — active-workspace UX, contracts/authority/rights boundaries,
   audit surfaces: WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29.
 - **Phase 38.2** (Slices H, I) — workspace billing/metering, cohort rollout and docs:
@@ -2038,3 +2050,68 @@ Plans:
 
 - [ ] 38-12-PLAN.md — Project attachment, workspace catalogue as a query, workspace-created projects (WS-09/10)
 - [ ] 38-13-PLAN.md — "Appears on" shelf + two-sided record-custody transfer (WS-11/12)
+
+---
+
+### Phase 38.1: Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit Surfaces
+
+**Goal:** Slices E–G of the workspace layer. The in-session active-workspace experience (URL-carried
+context resolved server-side on every request, persistent workspace chrome, acting-context re-check
+on writes, instant switching, the Roster/Activity room); contracts and authority (Contract Locker
+workspace shelf, provenance vocabulary, document-expiry lapse, rights propose-then-confirm,
+master-ownership claims and the D-08 evidence-derived label access); and the member-side audit read
+surfaces.
+
+**Requirements:** WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29
+**Decisions — already locked, do not re-ask:** D-10, D-30, D-31, D-32, D-33, D-36, D-37, D-38, D-39,
+D-41 in `.planning/phases/38-member-organization-team-workspaces/38-CONTEXT.md`
+**Migrations:** 189+ (187–188 are reserved for 38.2; reconcile at planning)
+
+**Watch-outs:** (a) In-session workspace switching has **no in-repo precedent** — `components/auth/AccountContextSwitch.tsx`
+is explicitly the ANTI-pattern (it signs out and re-logs in). Build a parallel resolver keyed off the
+URL path, never off `sessionStorage`/`session-identity.ts`. (b) Server Components must never pass
+function props to Client Components — a documented production-only 500 in this repo. (c) Counsel must
+review the D-37 document-state vocabulary before any user-facing copy ships. (d) `components/admin/ClientPartnersRoom.tsx`
+is the closest analog for the D-32 Roster/Activity room, including its hide-not-filter server gating.
+
+**Depends on:** Phase 38 (workspace entity, membership, permissions, grants, RLS branch)
+**Status:** Split from Phase 38 on 2026-09-05, owner-approved. Decisions already exist in
+`38-CONTEXT.md` — run `/gsd-plan-phase 38.1` directly; no discuss-phase needed.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 38.1 to break down)
+
+---
+
+### Phase 38.2: Member Workspaces — Organization Billing, Beta Rollout & Doctrine Docs
+
+**Goal:** Slices H–I. A workspace as its own billable entity with its own plan — a genuinely new
+org-billing model, since `subscriptions` is strictly per-user (`user_id UNIQUE NOT NULL`);
+lapse-to-read-only that never destroys rights evidence; beta usage counters tracked but not
+enforced; then the cohort-scoped rollout flag and the doctrine documentation updates.
+
+**Requirements:** WS-21, WS-22, WS-27, WS-28
+**Decisions — already locked, do not re-ask:** D-44, D-45, D-46, D-47, D-53, D-55, plus the
+`<documentation>` section's ACCOUNT-TYPES.md + Playbook update list in `38-CONTEXT.md`
+**Migrations:** 187–188 (reserved at Phase 38 planning)
+
+**Watch-outs:** (a) Organization billing has **no in-repo precedent** — build from research, not from
+analog. (b) Do NOT relax `subscriptions.user_id UNIQUE NOT NULL`; the workspace plan is an ADDITIVE
+table beside it. (c) D-46 is absolute — a billing event must never destroy rights evidence, detach a
+project, or touch a Member's own catalogue. (d) The ACCOUNT-TYPES.md and Playbook updates are this
+work's contract with every future reader; the Playbook publish is a human-gated migration per repo
+convention (precedent: migrations 141, 150, 178). (e) The D-56 disable control already shipped in
+Phase 38 — this phase adds the cohort flag, not the kill switch.
+
+**Depends on:** Phase 38 (workspace entity), Phase 38.1 (the surfaces the cohort flag gates)
+**Status:** Split from Phase 38 on 2026-09-05, owner-approved. Decisions already exist in
+`38-CONTEXT.md` — run `/gsd-plan-phase 38.2` directly; no discuss-phase needed.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 38.2 to break down)

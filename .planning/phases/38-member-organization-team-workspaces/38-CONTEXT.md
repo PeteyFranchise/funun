@@ -154,6 +154,7 @@ use artist-specific language in schema, permissions, or RLS (D-34).
 - **D-49:** **Server-side subset check on every grant** — a grant must be a subset of what the granter holds, refused otherwise (not hidden in UI) — **and re-checked on use**, so a grant cannot outlive the granter's own access or relationship.
 - **D-50:** **Every workspace-context action** records actor, workspace, subject member, permission relied on, and timestamp. **Append-only, and visible to BOTH the workspace and the affected Member.** Extends the staff `logStaffAction` pattern to the member side. Transparency is what makes delegated access trustworthy.
 - **D-51:** Invitations and roster claims are **rate-limited per workspace, expire if unaccepted**, and a Member may **block** a workspace from claiming them again after refusing once.
+- **D-56 (added 2026-09-05, at planning):** **A working platform-wide disable control ships with this phase**, not just the seam. `workspace_access_enabled()` in migration 186 is the single function every workspace RLS branch consults; an owner-operable server-side control flips it to disable ALL workspace-derived access instantly, with no deploy, leaving personal Member access fully intact. Supersedes the "seam only" reading of D-55 — cohort scoping remains the containment for *who* can use the feature; this is the containment for *the feature itself* while the new RLS path is unproven. Adds requirement **WS-31**.
 
 ### Migration & backward compatibility
 - **D-52:** `project_members` is **untouched** — it keeps meaning artist-to-artist direct collaboration. Workspace access is a **separate, additional path** resolved by the same helpers (D-48). Phase 21 sharing keeps working unchanged.
@@ -330,6 +331,7 @@ permissions must be granted individually with each use logged (D-40).
 | WS-28 | Documentation updates: ACCOUNT-TYPES.md + The Playbook | D-28, D-34, D-43 |
 | WS-29 | Master-ownership claims + D-08 evidence-derived label access | D-08, D-09, D-10 |
 | WS-30 | Attributed acting-on-behalf; no impersonation anywhere | D-22 |
+| WS-31 | Platform-wide workspace-access disable control (owner-operable, no deploy) | D-56 |
 
 **Explicitly NOT requirements:** legacy field removal (D-54), `project_members` migration (D-52),
 any earnings feature (D-42), any document verification (D-36/D-37).
@@ -396,7 +398,7 @@ Cohort flag, ACCOUNT-TYPES.md + Playbook updates.
 2. **Per-row helper performance** — the workspace branch runs inside policies on every row of `vault_projects` and four child tables. Needs measurement before rollout.
 3. **Payout structural exclusion (D-42) must be verified as genuinely structural**, not a permission defaulting to false. Should be untestable-by-construction, not merely untested.
 4. **Clean-master separation (D-08/D-40) must not regress custody D-01.** Needs a test proving no workspace grant path reaches a clean-master URL.
-5. **NO KILL SWITCH WAS SELECTED (D-55 chose the flag alone).** Given this phase grants third parties access to artists' catalogues, planning should re-raise a platform-wide disable control with the owner. *Recorded as a recommendation, not a decision.*
+5. **RESOLVED at planning (2026-09-05) — see D-56.** The owner approved building a working platform-wide disable control, not merely the `workspace_access_enabled()` seam. The risk stands only until WS-31 ships: until then, cohort scoping is the sole containment for a new RLS path that grants third parties access to artists' catalogues.
 6. **Grant re-check on use (D-49)** must be genuinely enforced server-side on every access path, not only at the API boundary.
 
 ### Legal / counsel review required
@@ -464,7 +466,7 @@ for everyone outside the cohort. Migrations human-gated per repo convention.
 <deferred>
 ## Deferred Ideas
 
-- **Kill switch / platform-wide disable control** — raised, not selected (D-55). Re-raise at planning; recorded under Risks.
+- ~~Kill switch / platform-wide disable control~~ — **no longer deferred.** Owner approved at planning 2026-09-05; now D-56 / WS-31, in scope for Phase 38.
 - **Client Partner multi-organization membership** — still deferred per ACCOUNT-TYPES; unaffected by this phase.
 - **Corporate-to-personal verified credential linking** — a separate authentication build; ACCOUNT-TYPES already defers it.
 - **Legacy field removal** (`member_type`, `industry_roles`, `capability_grants`) — its own audited cleanup phase (D-54).

@@ -5,14 +5,14 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 37.1 fully executed (13/13 plans, 3572 tests green) — 37-13 Task 3, the owner's cross-device hum test, is the one open gate
-last_updated: "2026-08-30T15:05:00.000Z"
-last_activity: 2026-08-25
-last_activity_desc: Phase 31.2 execution started
+stopped_at: Phase 38 discussed + planned (56 decisions, 13 plans, 7 waves, checker PASSED). Owner approved the A–D/E–G/H–I split; 38.1 and 38.2 have roadmap entries. Nothing executed yet. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+last_updated: "2026-09-05T00:00:00.000Z"
+last_activity: 2026-09-05
+last_activity_desc: Phase 38 discussed and planned (Member Organization & Team Workspaces)
 progress:
-  total_phases: 39
+  total_phases: 42
   completed_phases: 30
-  total_plans: 250
+  total_plans: 263
   completed_plans: 246
   percent: 77
 ---
@@ -36,6 +36,46 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > one-line patch from a plan executor.
 
 ## Current Position
+
+### UPDATE 2026-09-05 — Phase 38 (Member Organization & Team Workspaces) discussed + planned
+
+**Discussed** via `/gsd-discuss-phase 38` across all twelve owner-specified decision areas →
+**56 locked decisions (D-01..D-56)** and **31 requirement IDs (WS-01..WS-31)** in
+`38-CONTEXT.md`. Registered in REQUIREMENTS.md.
+
+The phase adds a shared-workspace layer for Member Accounts (Artist Teams, Management/Roster,
+Record Label) as **contexts, not a fourth account class** — the three classes in
+`docs/architecture/ACCOUNT-TYPES.md` are unchanged. Workspace membership grants ACCESS ONLY.
+Binding upstream doctrine (ACCOUNT-TYPES.md; `sound-vault-master-custody.md` D-01..D-10) was
+treated as locked and bounds D-08/D-10/D-40.
+
+**Planned** via `/gsd-plan-phase 38` → research + pattern map + validation strategy, then
+**13 plans across 7 waves**, `gsd-plan-checker` **VERIFICATION PASSED** (19/19 requirements,
+wave file-disjointness, threat models, artifacts sections all green).
+
+**Owner decisions taken at planning:**
+- **Split APPROVED.** Phase 38 = Slices A–D (foundation, roster, permissions, RLS). Boundary sits
+  after D, not C, so the permission model and its RLS consumer stay in one security review.
+  **Phase 38.1** = E–G (active-workspace UX, contracts/authority, audit surfaces);
+  **Phase 38.2** = H–I (org billing, cohort rollout, doctrine docs). Both have roadmap entries and
+  inherit decisions from the same `38-CONTEXT.md` — run `/gsd-plan-phase 38.1` directly, no
+  discuss-phase needed.
+- **D-56 added:** a **working** platform-wide disable control ships with Phase 38, not merely the
+  `workspace_access_enabled()` seam — supersedes the "seam only" reading of D-55. Adds **WS-31**;
+  built in 38-11 beside migration 186.
+
+**Migrations pre-assigned:** 182 foundation · 183 roster · 184 grants · 185 attachments/custody ·
+**186 RLS branch + disable control**. 187–188 reserved for 38.2. 182–185 are additive and batchable
+at one owner checkpoint; **186 edits live policies and is pushed alone** with its own adversarial
+smoke checklist. Every migration plan is `autonomous: false` — an executor must never run
+`supabase db push`.
+
+**Highest risk:** the D-48 RLS workspace branch. A defect there grants third parties access to
+artists' catalogues platform-wide. 38-11 carries a six-account adversarial smoke checklist, a
+42P17 recursion check, an `EXPLAIN ANALYZE` performance gate, and the D-56 disable drill.
+
+**Nothing executed. No code or migrations written.** Next: `/gsd-execute-phase 38`.
+
 
 ### UPDATE 2026-09-04 — One Identity, Many Roles foundation built
 
