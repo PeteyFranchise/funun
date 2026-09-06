@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 discussed + planned (56 decisions, 13 plans, 7 waves, checker PASSED). Owner approved the A–D/E–G/H–I split; 38.1 and 38.2 have roadmap entries. Nothing executed yet. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 EXECUTING — Wave 1 complete (38-01 merged, 453 suites / 4229 tests green, tsc clean). Wave 2 next: 38-02 (auto) + 38-03 (migration 182, OWNER PUSH REQUIRED). Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 discussed and planned (Member Organization & Team Workspaces)
+last_activity_desc: Phase 38 Wave 1 executed (38-01 permission core)
 progress:
   total_phases: 42
   completed_phases: 30
   total_plans: 263
-  completed_plans: 246
+  completed_plans: 247
   percent: 77
 ---
 

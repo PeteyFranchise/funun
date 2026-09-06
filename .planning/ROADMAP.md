@@ -664,7 +664,7 @@ Plans:
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
-| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 0/13 | Planned | - |
+| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 1/13 | In Progress|  |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | Split out, not planned | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | Split out, not planned | - |
 
@@ -1762,14 +1762,18 @@ Plans:
 - Planning pack complete:
   `.planning/phases/37.3-song-passport/37.3-CONTEXT.md`,
   `37.3-ARCHITECTURE.md` and `37.3-IMPLEMENTATION-PLAN.md`
+
 - Slices 1–7: implemented with migrations 151–156, server APIs, Writer's Room Passport UI,
   trust workflows, master/Release Report graduation, exports/custody and pilot operations.
+
 - Migrations 150–156 are applied. Deployment and `37.3-PILOT-UAT.md` remain human-gated.
   General release and public claims wait for pilot evidence (`37.3-01-SUMMARY.md` through
   `37.3-07-SUMMARY.md`).
+
 - Definition of done: one work, two contributors, three recording versions and one
   graduation produce stable, privacy-safe delivery artifacts without changing the source
   audio or silently rewriting confirmed/delivered facts
+
 - Internal handoff: publish a versioned Song Passport doctrine entry in The Playbook so
   team members have one authoritative reference for definitions, system role, approved
   rules, operating boundaries and current-versus-planned capability status. Doctrine v1.0
@@ -1781,6 +1785,7 @@ Plans:
 - Store the DPID in deployment secrets; never commit registry credentials
 - Select one receiving partner and obtain its ERN version/profile, choreography,
   packaging, acknowledgment and UAT requirements
+
 - Track completion in
   `.planning/todos/pending/2026-09-01-ddex-license-dpid-and-partner-discovery.md`
 
@@ -1854,16 +1859,21 @@ catalogues, subscriptions, permissions, staff audit history, or organization rel
 
 - Detect when a tab's authenticated user changes and interrupt with a clear “Your active
   account changed” handoff instead of silently rendering another identity's workspace.
+
 - Never model a Team/Personal switch as a client-side role toggle. Server authorization must
   be recomputed from the newly verified identity on every protected request.
+
 - Preserve the doctrine that Funūn Team Member identities are privileged and structurally
   separate from Member identities; linkage is only a verified switch relationship, not data
   co-ownership or permission inheritance.
+
 - Require fresh authentication for sensitive transitions when appropriate, prevent open
   redirects, rotate/revoke the prior session safely, and record security-relevant switch
   events without logging credentials or private workspace content.
+
 - Define behavior for expired sessions, revoked staff access, a missing personal profile,
   recovery-email loss, multiple tabs, back/forward navigation, and switching on mobile.
+
 - Keep Client Partner workspace selection distinct: organization context may sit under a
   Member identity, while Team/Personal switching crosses two deliberately separate identities.
 
@@ -1937,15 +1947,18 @@ evidenced access. Today `project_members` has four flat roles and no management 
 
 1. `components/auth/AccountContextSwitch.tsx` signs out and re-logs in; `AccountWorkspace` is a
    two-value union. **No in-session workspace switching exists.**
+
 2. `lib/accounts/account-context.ts` resolves account *class*, never *workspace*.
 3. `lib/accounts/member-api-gate.ts` is identity-scoped only — no acting-workspace concept.
 4. `project_members` / `work_members` / `idea_members` are all `REVOKE`d from `authenticated`;
    **no membership management API exists anywhere.**
+
 5. `project_members` has four flat roles; the permission matrix needs ~20 distinct capabilities.
 6. Ownership is a single `user_id` column on every entity — no custodian concept.
 7. `collaborators` is private per user (RLS `auth.uid() = user_id`).
 8. **`buyer_orgs` reviewed and REJECTED** for creative workspaces: born-verified (080 D-14),
    exactly one org per user (D-13), purchase-shaped `requester`/`approver` roles.
+
 9. `work_members` (136) is the best precedent — "MEMBERSHIP IS NOT SPLITS" doctrine verbatim,
    plus a two-axis `user_id`/`collaborator_id` identity for people without accounts.
 
@@ -2003,8 +2016,10 @@ and a leadership-only `app/api/admin/workspaces/access` route that logs every fl
 **Scope as planned — Slices A–D (foundation → roster → permissions → RLS).**
 Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS-30, **WS-31**
 (19 of 31). Deferred to the approved follow-on phases:
+
 - **Phase 38.1** (Slices E, F, G) — active-workspace UX, contracts/authority/rights boundaries,
   audit surfaces: WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29.
+
 - **Phase 38.2** (Slices H, I) — workspace billing/metering, cohort rollout and docs:
   WS-21, WS-22, WS-27, WS-28.
 
@@ -2014,12 +2029,12 @@ Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS
 **187 and 188 are RESERVED for Phase 38.2** and must not be claimed. Migrations 182–185 are
 additive and may be pushed as one batch; **186 is pushed alone** with its own adversarial smoke.
 
-**Plans:** 13 plans
+**Plans:** 1/13 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 38-01-PLAN.md — Domain types, permission catalogue, tiers, bundles, grant subset check — pure (WS-07/08/20/24/30)
+- [x] 38-01-PLAN.md — Domain types, permission catalogue, tiers, bundles, grant subset check — pure (WS-07/08/20/24/30)
 
 **Wave 2** *(blocked on Wave 1)*
 
