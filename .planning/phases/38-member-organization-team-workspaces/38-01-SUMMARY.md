@@ -150,6 +150,10 @@ None - no external service configuration required. No database, no route, no com
 - `WORKSPACE_PERMISSION_VALUES` is ready to be the literal source migration 184's CHECK constraint mirrors; `isSubsetGrant`/`assertGrantIsIssuable` are ready to be the single function plan 38-09's issuance route and use-time re-check both call.
 - No blockers. No stubs. No threat-surface additions beyond what the plan's own `<threat_model>` already registers (all five threats mitigated by tests in this plan; T-38-01-06 accepted — no new package installed).
 
+## Self-Check: PASSED
+
+All five created files (`lib/workspaces/types.ts`, `permissions.ts`, `permissions.test.ts`, `grants.ts`, `grants.test.ts`) verified present on disk. All four commit hashes (`72c58402`, `b270afce`, `6ad16ca5`, `6c99e2d0`) verified present in `git log`.
+
 ---
 *Phase: 38-member-organization-team-workspaces*
 *Completed: 2026-09-05*
