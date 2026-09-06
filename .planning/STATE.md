@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 EXECUTING — Waves 1-5 complete (10/13 plans). MIGRATIONS 182-185 ALL LIVE (owner pushed; verified local=remote through 185). Roster + grants API routes are now backed by real tables. 466 suites / 4570 tests green. Wave 6 next and it is the RISKIEST: 38-11 authors migration 186 (the RLS workspace branch on vault_projects + 4 child tables) AND the D-56 disable control. 186 is pushed ALONE with a six-account adversarial smoke, a 42P17 recursion check and an EXPLAIN ANALYZE gate. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 PAUSED AT THE MIGRATION 186 OWNER CHECKPOINT — Waves 1-6 merged (11/13 plans). Migrations 182-185 LIVE. Migration 186 authored + merged, PUSH PENDING — it is the ONLY file editing live RLS policies (10 policies across vault_projects + 4 child tables) and ships the D-56 disable control. Pushed ALONE. 469 suites / 4719 tests green, tsc clean. Orchestrator independently verified: relationship-scoped grant join (escalation fix), no recursion, STABLE-not-IMMUTABLE predicate, COALESCE fail-closed, blast radius = 5 expected tables. BLOCKED ON: owner push + 42P17 recursion check + six-account adversarial smoke + EXPLAIN ANALYZE gate + D-56 disable drill. Wave 7 (38-12, 38-13) depends on 186 being live. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 migrations 183-185 pushed and verified; Wave 6 dispatched
+last_activity_desc: Phase 38 Wave 6 merged; awaiting owner push of migration 186
 progress:
   total_phases: 42
   completed_phases: 30
   total_plans: 263
-  completed_plans: 256
+  completed_plans: 257
   percent: 77
 ---
 
