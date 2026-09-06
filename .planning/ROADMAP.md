@@ -665,8 +665,9 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | Split out, not planned | - |
-| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | Split out, not planned | - |
+| 38.0.1. Workspace Authorization Remediation (19 adversarial-review findings) | 0/0 | Discussed (17 decisions) | - |
+| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
+| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
 
 *Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work is only: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), 32-09 (k6 load test, deferred to pre-launch).***
 
@@ -2074,6 +2075,59 @@ Plans:
 
 - [x] 38-12-PLAN.md — Project attachment, workspace catalogue as a query, workspace-created projects (WS-09/10)
 - [x] 38-13-PLAN.md — "Appears on" shelf + two-sided record-custody transfer (WS-11/12)
+
+---
+
+### Phase 38.0.1: Workspace Authorization Remediation
+
+**Goal:** Phase 38's doctrine is right; its **enforcement is not**. An external adversarial review
+(Codex, 2026-09-06) found 22 defects. Three P0s shipped the same day (migration 187 — F1 unilateral
+custody theft, F7 kill-switch coverage, F10 inverted rate limit). This phase closes the remaining 19.
+
+**The problem in two sentences:** the permission catalogue names 19 granular capabilities, but
+row-level RLS grants WHOLE ROWS — `view_summaries` hands over `tracks.audio_file_url`,
+`vault_documents.document_data`, lyrics and ISRCs, while `edit_metadata` maps onto `FOR ALL`
+policies and becomes delete-and-overwrite authority including direct mutation of
+`vault_projects.user_id`. Meanwhile the grant model has **no consent origin**, so no first grant can
+ever be issued. **The layer is both over-powerful and non-functional.**
+
+**Changes NO doctrine.** D-01..D-56 stay locked. Every change makes the code do what they already say.
+
+**Headline decisions (17 locked, R-01..R-17 — see `38.0.1-CONTEXT.md`):**
+- **R-01** the subject Member is the root of grant authority, with a Member-side consent endpoint
+  and a `parent_grant_id` delegation lineage re-validated at use time — this is what D-21 always
+  said; the Member's side was never built.
+- **R-02** remove the workspace branch from the four child tables entirely; workspace reads go
+  through SECURITY DEFINER RPCs with explicit column allowlists. Only `vault_projects` keeps a
+  narrowed branch.
+- **R-03** **flip the kill switch OFF in production now**, before this is built — free, since F6
+  makes the feature non-functional anyway, and it closes the F5/F8 exposure that needs no grants.
+- **R-04** bind access to custody in the helper (`p.user_id = r.member_user_id`).
+- **R-05** ownership transfer becomes two-sided, mirroring D-29.
+- **R-06** transactional RPCs for every consequential state change, with the audit insert inside
+  the same transaction.
+- **R-07** the D-55 cohort gate is a release requirement before the switch goes back on.
+- **R-08** evidence: workspace proposes, subject confirms, document mandatory for authority tier.
+- **R-17** the `vault_projects` `user_id` WITH CHECK hole is **PRE-EXISTING from migration 078** —
+  a Phase 21 editor can seize custody today, independent of workspaces. **Own migration 188, own
+  review.**
+
+**Requirements:** WSR-01..WSR-26 (in `38.0.1-CONTEXT.md`)
+**Migrations:** 188 = the pre-existing F3 fix (independent, can ship first); 189+ for this phase.
+Phase 38.2's reservation moves to 195–196.
+**Depends on:** Phase 38 (shipped 2026-09-06, in production)
+
+**Blocks:** Phase 38.1 and 38.2 should NOT be planned until this lands — 38.1 builds surfaces on
+the authorization model being reworked.
+
+**Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions, decision-complete.
+Not yet planned. Next: `/gsd-plan-phase 38.0.1`.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 38.0.1 to break down)
 
 ---
 

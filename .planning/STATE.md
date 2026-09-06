@@ -5,12 +5,12 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 built (13/13) + P0 security hotfix APPLIED AND PUSHED. Migrations 182-187 all LIVE (verified local=remote through 187). F1 custody theft closed at BOTH layers (app + DB trigger); F7 kill switch now covers every workspace route; F10 rate limit corrected. 474 suites / 4818 tests green, tsc + lint clean. *** ONE BLOCKING GATE REMAINS: 38-RLS-SMOKE-CHECKLIST.md is still unticked (42P17 recursion check, six-account adversarial smoke, EXPLAIN ANALYZE gate, D-56 disable drill). *** NEXT PHASE 38.0.1 (19 deferred Codex findings) — highest priority F6: the grant model cannot bootstrap, so the workspace layer's core purpose is NON-FUNCTIONAL; and F3: the vault_projects user_id WITH CHECK hole is PRE-EXISTING from migration 078 and lets a Phase 21 editor seize custody today (own migration 188). Reservations: 188 = F3 fix, 189-190 = Phase 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38 SHIPPED TO PRODUCTION (on origin/main; migrations 182-187 live). P0 hotfix applied. Phase 38.0.1 (Workspace Authorization Remediation) DISCUSSED — 17 decisions R-01..R-17, 26 requirements WSR-01..WSR-26, decision-complete, not yet planned. *** TWO IMMEDIATE OWNER ACTIONS: (1) R-03 — flip workspace_access_config.enabled = FALSE in production NOW (free: F6 makes the feature non-functional anyway; closes the F5/F8 exposure that needs no grants; satisfies smoke-checklist 8a/8b); (2) 38-RLS-SMOKE-CHECKLIST.md still unticked, now a PRODUCTION verification. *** 38.1 and 38.2 are BLOCKED on 38.0.1. Migrations: 188 = pre-existing F3 fix (independent), 189+ = 38.0.1, 195-196 = 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 P0 security hotfix applied after Codex adversarial review
+last_activity_desc: Phase 38.0.1 discussed (17 decisions from the adversarial review)
 progress:
-  total_phases: 42
+  total_phases: 43
   completed_phases: 30
   total_plans: 263
   completed_plans: 259
