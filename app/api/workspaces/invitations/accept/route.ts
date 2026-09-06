@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireMemberApiAccount as requireMemberOnlyAccess } from '@/lib/accounts/member-api-gate'
+import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { isLegalMembershipTransition } from '@/lib/workspaces/membership'
 import {
-  hashInvitationToken as hashRawToken,
+  hashInvitationToken,
   isInvitationRedeemable,
   normalizeInvitedEmail,
 } from '@/lib/workspaces/invitations'
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const gate = await requireMemberOnlyAccess(supabase, user)
+  const gate = await requireMemberApiAccount(supabase, user)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const tokenHash = hashRawToken(parsed.data.token)
+  const tokenHash = hashInvitationToken(parsed.data.token)
   const service = createServiceClient()
 
   const { data: invitationData, error: lookupError } = await service

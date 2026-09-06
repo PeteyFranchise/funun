@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 EXECUTING — Waves 1-3 complete (38-01..38-05). Migration 182 LIVE; 183 authored, push DEFERRED to the batched 183-185 sitting before Wave 6. 460 suites / 4405 tests green. Wave 4 next: 38-06 invitations + 38-07 roster lifecycle + 38-08 (authors migration 184). Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 EXECUTING — Waves 1-4 complete (38-01..38-08). Migration 182 LIVE; 183 + 184 authored, push DEFERRED to the batched 183-185 sitting before Wave 6. 463 suites / 4495 tests green. NOTE: the roster API routes (lib/workspaces/roster-service.ts, app/api/roster/**, app/api/workspaces/[workspaceId]/roster/**) query migration-183 tables and are NON-FUNCTIONAL until that push — expected, nothing regressed. Wave 5 next: 38-09 grant issuance + 38-10 (authors migration 185). Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 Wave 3 merged (access gate, audit, routes, migration 183 authored)
+last_activity_desc: Phase 38 Wave 4 merged (invitations, roster lifecycle, migration 184 authored)
 progress:
   total_phases: 42
   completed_phases: 30
   total_plans: 263
-  completed_plans: 251
+  completed_plans: 254
   percent: 77
 ---
 
