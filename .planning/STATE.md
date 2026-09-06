@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 PAUSED AT OWNER CHECKPOINT — Waves 1-2 merged (38-01, 38-02 complete; 38-03 authored migration 182 and stopped at its blocking push gate, NOT pushed). 457 suites / 4340 tests green, tsc clean. BLOCKED ON: owner review + `supabase db push` of migration 182. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 EXECUTING — Waves 1-2 complete (38-01/02/03). MIGRATION 182 IS LIVE (owner pushed, verified local=remote through 182). Wave 3 next: 38-04 (authors migration 183, push DEFERRED to the batched 183-185 sitting) + 38-05 (routes). Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 Waves 1-2 executed; awaiting owner push of migration 182
+last_activity_desc: Phase 38 migration 182 pushed and verified; Wave 3 dispatched
 progress:
   total_phases: 42
   completed_phases: 30
   total_plans: 263
-  completed_plans: 248
+  completed_plans: 249
   percent: 77
 ---
 
