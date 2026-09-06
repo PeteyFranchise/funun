@@ -20,6 +20,7 @@ describe('Team and Personal account-switch integration', () => {
     expect(signIn).toContain('accountWorkspaceForUser(data.user) !== switchTo')
     expect(signIn).toContain("supabase.auth.signOut({ scope: 'local' })")
     expect(signIn).toContain('accountWorkspaceHome(switchTo)')
+    expect(signIn).toContain('window.location.assign(')
   })
 
   it('clears the tab identity marker during ordinary sign-out', () => {

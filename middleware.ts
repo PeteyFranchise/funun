@@ -1,6 +1,7 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { isAccountTransitionSignIn } from '@/lib/auth/auth-route-intent'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
@@ -16,7 +17,7 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Route groups like (artist) are NOT part of the URL, so match real path prefixes.
-  const { pathname } = req.nextUrl
+  const { pathname, searchParams } = req.nextUrl
   // /forgot-password is a public auth route: a fully signed-in user has no reason
   // to be there, so it bounces to /vault like signin/signup. /update-password is
   // deliberately NOT listed here — during a password recovery the user holds a
@@ -27,6 +28,11 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/signin') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot-password')
+  const isAccountTransition = isAccountTransitionSignIn({
+    pathname,
+    switchTo: searchParams.get('switchTo'),
+    accountChanged: searchParams.get('accountChanged'),
+  })
   const isProtected =
     pathname.startsWith('/vault') ||
     pathname.startsWith('/dashboard') ||
@@ -44,7 +50,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (isAuthRoute && user) {
+  // An explicit account switch must be allowed to replace the current browser
+  // session. Redirecting it here would send the user straight back into the
+  // old workspace before the requested credentials can be entered.
+  if (isAuthRoute && user && !isAccountTransition) {
     return NextResponse.redirect(new URL('/vault', req.url))
   }
 

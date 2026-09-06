@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
@@ -16,7 +16,6 @@ const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
 function SignInForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next')
   const switchToRaw = searchParams.get('switchTo')
@@ -56,12 +55,14 @@ function SignInForm() {
     // Role-aware landing (25-11): staff → admin surface, others → vault; an
     // explicit same-origin ?next= deep link wins. postSignInPath guards against
     // off-site open redirects the prior raw router.push(next) allowed.
-    router.push(
+    // Account credentials can replace an existing browser session. A hard
+    // navigation guarantees the next server-rendered layout reads the newly
+    // written auth cookie instead of retaining state from the prior workspace.
+    window.location.assign(
       switchTo
         ? accountWorkspaceHome(switchTo)
         : postSignInPath({ user: data.user, next })
     )
-    router.refresh()
   }
 
   return (

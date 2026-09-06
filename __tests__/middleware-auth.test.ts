@@ -8,4 +8,11 @@ describe('middleware auth validation', () => {
     expect(source).toContain('supabase.auth.getUser()')
     expect(source).not.toContain('supabase.auth.getSession()')
   })
+
+  it('lets an explicit account transition reach signin despite the old session', () => {
+    const source = readFileSync(path.join(process.cwd(), 'middleware.ts'), 'utf8')
+
+    expect(source).toContain('isAccountTransitionSignIn')
+    expect(source).toContain('isAuthRoute && user && !isAccountTransition')
+  })
 })
