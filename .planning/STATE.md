@@ -5,15 +5,15 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 EXECUTING — Waves 1-6 complete (11/13 plans). ALL MIGRATIONS 182-186 LIVE (verified local=remote through 186). Wave 7 dispatched: 38-12 attachment+catalogue, 38-13 Appears-on+custody transfer. *** OUTSTANDING GATE: 38-RLS-SMOKE-CHECKLIST.md is NOT ticked. The 42P17 recursion check, the six-account adversarial smoke, the EXPLAIN ANALYZE performance gate and the D-56 disable drill (off/on/fail-closed) have NOT been run/reported. Migration 186 edits live RLS policies on vault_projects + 4 child tables; these must pass before Phase 38 can be called verified or shipped. *** Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 ALL 13 PLANS EXECUTED AND MERGED. Migrations 182-186 all LIVE. 472 suites / 4788 tests green, tsc + lint clean. *** PHASE IS NOT VERIFIED — one blocking gate outstanding: 38-RLS-SMOKE-CHECKLIST.md is unticked. The 42P17 recursion check, the six-account adversarial smoke, the EXPLAIN ANALYZE performance gate and the D-56 disable drill (off/on/fail-closed) have not been run. Migration 186 rewrote 10 live RLS policies on vault_projects + 4 child tables; these must pass before Phase 38 ships. Also flagged human_judgment by 38-13: live offer->accept custody flow and Appears-on shelf visual render need a UAT pass. *** Next: run the smoke checklist, then /gsd-verify-work 38. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 migration 186 live; Wave 7 dispatched; RLS smoke checklist outstanding
+last_activity_desc: Phase 38 all 13 plans executed; RLS smoke checklist outstanding before verification
 progress:
   total_phases: 42
   completed_phases: 30
   total_plans: 263
-  completed_plans: 257
+  completed_plans: 259
   percent: 77
 ---
 
