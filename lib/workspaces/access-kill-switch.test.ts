@@ -1,4 +1,5 @@
 import {
+  isWorkspaceAccessEnabled,
   readWorkspaceAccessState,
   setWorkspaceAccessEnabled,
 } from '@/lib/workspaces/access-kill-switch'
@@ -183,5 +184,49 @@ describe('setWorkspaceAccessEnabled', () => {
       setWorkspaceAccessEnabled(service as never, { enabled: true, actorUserId: ACTOR_UUID })
     ).resolves.toMatchObject({ enabled: true })
     expect(service.update).toHaveBeenCalledTimes(1)
+  })
+})
+
+// F7 hotfix (2026-09-06): requireWorkspaceAccess's request-path consultation
+// of the kill switch, before any other work. Unlike readWorkspaceAccessState
+// above, this must NEVER throw — every failure mode collapses to `false`.
+describe('isWorkspaceAccessEnabled', () => {
+  it('returns true when the config row reads enabled: true', async () => {
+    const service = mockSelectService({
+      enabled: true,
+      disabled_reason: null,
+      disabled_by: null,
+      disabled_at: null,
+    })
+    await expect(isWorkspaceAccessEnabled(service as never)).resolves.toBe(true)
+  })
+
+  it('returns false when the config row reads enabled: false', async () => {
+    const service = mockSelectService({
+      enabled: false,
+      disabled_reason: 'suspected RLS defect',
+      disabled_by: ACTOR_UUID,
+      disabled_at: '2026-09-05T00:00:00.000Z',
+    })
+    await expect(isWorkspaceAccessEnabled(service as never)).resolves.toBe(false)
+  })
+
+  it('fails closed (false), never throws, when the row is missing', async () => {
+    const service = mockSelectService(null)
+    await expect(isWorkspaceAccessEnabled(service as never)).resolves.toBe(false)
+  })
+
+  it('fails closed (false), never throws, when the read errors', async () => {
+    const service = mockSelectService(null, { message: 'connection reset' })
+    await expect(isWorkspaceAccessEnabled(service as never)).resolves.toBe(false)
+  })
+
+  it('fails closed (false), never throws, when the client itself throws', async () => {
+    const service = {
+      from: jest.fn(() => {
+        throw new Error('client construction failed')
+      }),
+    }
+    await expect(isWorkspaceAccessEnabled(service as never)).resolves.toBe(false)
   })
 })
