@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 ALL 13 PLANS EXECUTED AND MERGED. Migrations 182-186 all LIVE. 472 suites / 4788 tests green, tsc + lint clean. *** PHASE IS NOT VERIFIED — one blocking gate outstanding: 38-RLS-SMOKE-CHECKLIST.md is unticked. The 42P17 recursion check, the six-account adversarial smoke, the EXPLAIN ANALYZE performance gate and the D-56 disable drill (off/on/fail-closed) have not been run. Migration 186 rewrote 10 live RLS policies on vault_projects + 4 child tables; these must pass before Phase 38 ships. Also flagged human_judgment by 38-13: live offer->accept custody flow and Appears-on shelf visual render need a UAT pass. *** Next: run the smoke checklist, then /gsd-verify-work 38. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38 built (13/13) + P0 SECURITY HOTFIX applied. Codex adversarial review found 22 issues; F1 (critical: workspace admin could unilaterally take record custody), F7 (kill switch didn't cover service routes) and F10 (inverted rate limit) are FIXED and merged. 474 suites / 4818 tests green. *** TWO BLOCKING OWNER ACTIONS: (1) push migration 187 (DB-layer custody guard — the app-layer fix is the sole enforcement point until then); (2) run 38-RLS-SMOKE-CHECKLIST.md, still unticked. *** DEFERRED to Phase 38.0.1: review findings F2, F3 (needs its own migration 188 — the user_id WITH CHECK hole is PRE-EXISTING from migration 078 and also affects Phase 21 editors), F4, F5, F6 (grant model cannot bootstrap — the feature is non-functional until fixed), F8, F9-full, F11-F22. Migration reservations: 187 hotfix, 188 F3 fix, 189-190 Phase 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 all 13 plans executed; RLS smoke checklist outstanding before verification
+last_activity_desc: Phase 38 P0 security hotfix applied after Codex adversarial review
 progress:
   total_phases: 42
   completed_phases: 30
@@ -750,6 +750,10 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - 23-01: plan frontmatter references requirement SYNC-01 but REQUIREMENTS.md has no Phase 23 section registering it (requirements.mark-complete returned not_found) -- same pre-existing gap pattern as Phases 16/22/25/28, deferred to a future /gsd-docs-update pass, not fixed by this executor
 
 ### Quick Tasks Completed
+
+| Date | Slug | Result |
+|---|---|---|
+| 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 authored, push pending |
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
