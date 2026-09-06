@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Appears-on: the read-only third vault lane (D-27, D-35) ───────────────
 //
-// This module EXTENDS Phase 21's "Shared with me" lane (`project_members`,
-// migration 078) rather than forking a parallel data path (38-RESEARCH.md
+// This module EXTENDS Phase 21's "Shared with me" lane (migration 078's
+// project-membership table) rather than forking a parallel data path (38-RESEARCH.md
 // Open Question 3): both lanes read `vault_projects` through the SAME
 // RLS-scoped client, and the only difference between the two is WHICH
 // branch of `vault_projects`' SELECT policy admitted the row —
@@ -41,7 +41,7 @@ export type AppearsOnRow = {
   holderName: string | null
   /** The CALLER's own contribution role on the workspace whose attachment
    *  reaches this project (`workspace_roster_relationships.
-   *  professional_role`) — deliberately NOT a `project_members`-style
+   *  professional_role`) — deliberately NOT a Phase-21-membership-style
    *  owner/co-owner/editor/viewer project role, which means nothing on a
    *  record the caller does not hold. A producer or engineer sees the
    *  signal that matters to them (D-35), not a project-role label that
