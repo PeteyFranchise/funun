@@ -2112,7 +2112,14 @@ ever be issued. **The layer is both over-powerful and non-functional.**
   a Phase 21 editor can seize custody today, independent of workspaces. **Own migration 188, own
   review.**
 
-**Requirements:** WSR-01..WSR-26 (in `38.0.1-CONTEXT.md`)
+**Requirements:** WSR-01..WSR-27 (in `38.0.1-CONTEXT.md`)
+
+**R-18 added at planning (owner, 2026-09-06):** a **minimal Member-facing consent surface** ships
+in this phase. R-01 makes the Member the root of authority; a Member cannot exercise authority
+through an API they cannot reach, and 38.1 (which owns UX) is blocked on this phase. Without it the
+remediation would ship a correct security model that still leaves the feature unusable and the kill
+switch un-flippable. Deliberately minimal — pending requests, per-permission approve/decline. NOT
+38.1's UX slice. Adds **WSR-27**.
 **Migrations:** 188 = the pre-existing F3 fix (independent, can ship first); 189+ for this phase.
 Phase 38.2's reservation moves to 195–196.
 **Depends on:** Phase 38 (shipped 2026-09-06, in production)
