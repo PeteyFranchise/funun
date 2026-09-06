@@ -3,7 +3,12 @@
 // Mock the module so every pre-existing test in this file (which predates
 // the kill-switch check and asserts nothing about it) keeps exercising the
 // membership-gate logic against an ENABLED switch by default.
-const mockServiceMaybeSingle = jest.fn(async () => ({ data: { enabled: true }, error: null }))
+type ConfigRow = { enabled: boolean } | null
+type ConfigError = { message: string } | null
+const mockServiceMaybeSingle = jest.fn<Promise<{ data: ConfigRow; error: ConfigError }>, []>(async () => ({
+  data: { enabled: true },
+  error: null,
+}))
 jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: () => ({
     from: (table: string) => {
