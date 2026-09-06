@@ -664,7 +664,7 @@ Plans:
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
-| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 1/13 | In Progress|  |
+| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 3/13 | In Progress|  |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | Split out, not planned | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | Split out, not planned | - |
 
@@ -2029,7 +2029,7 @@ Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS
 **187 and 188 are RESERVED for Phase 38.2** and must not be claimed. Migrations 182–185 are
 additive and may be pushed as one batch; **186 is pushed alone** with its own adversarial smoke.
 
-**Plans:** 1/13 plans executed
+**Plans:** 3/13 plans executed
 
 Plans:
 **Wave 1**
@@ -2038,8 +2038,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 38-02-PLAN.md — Membership + roster state machines, compute-on-read evidence ladder — pure (WS-03/05/06)
-- [ ] 38-03-PLAN.md — Migration 182: workspaces, members, invitations, audit log, helper pair [owner push] (WS-01/02/03/04/25)
+- [x] 38-02-PLAN.md — Membership + roster state machines, compute-on-read evidence ladder — pure (WS-03/05/06)
+- [x] 38-03-PLAN.md — Migration 182: workspaces, members, invitations, audit log, helper pair [owner push] (WS-01/02/03/04/25)
 
 **Wave 3** *(blocked on Wave 2)*
 

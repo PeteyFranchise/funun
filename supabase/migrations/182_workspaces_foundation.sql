@@ -361,7 +361,7 @@ BEGIN
       AND id <> OLD.id;
 
     IF v_remaining_owners = 0 THEN
-      RAISE EXCEPTION 'a workspace must always retain at least one owner'
+      RAISE EXCEPTION 'A workspace must always have at least one active owner.'
         USING ERRCODE = 'insufficient_privilege';
     END IF;
   END IF;
