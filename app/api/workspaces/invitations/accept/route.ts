@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
+import { isWorkspaceAccessEnabled } from '@/lib/workspaces/access-kill-switch'
 import { isLegalMembershipTransition } from '@/lib/workspaces/membership'
 import {
   hashInvitationToken,
@@ -54,6 +55,16 @@ export async function POST(request: Request) {
   const gate = await requireMemberApiAccount(supabase, user)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // D-56/WS-31 (hotfix F7, completion): accepting a seat forms new workspace
+  // membership, so it must stop when the platform-wide control is off. The
+  // accepter not yet being a member is not a reason to skip a GLOBAL control.
+  if (!(await isWorkspaceAccessEnabled(createServiceClient()))) {
+    return NextResponse.json(
+      { error: 'Workspace access is temporarily disabled.' },
+      { status: 503 }
+    )
+  }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const parsed = AcceptSchema.safeParse(body)

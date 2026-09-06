@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
+import { isWorkspaceAccessEnabled } from '@/lib/workspaces/access-kill-switch'
 import { WORKSPACE_TYPE_VALUES } from '@/lib/workspaces/types'
 
 // ─── /api/workspaces — create + list (D-03, D-04, D-06, D-50) ─────────────
@@ -78,6 +79,19 @@ export async function POST(request: Request) {
 
   const gate = await requireMemberApiAccount(supabase, user)
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  // D-56/WS-31 (hotfix F7, completion): creating a workspace forms new
+  // workspace state, so it must stop when the platform-wide control is off.
+  // The control is GLOBAL — `isWorkspaceAccessEnabled` needs no workspaceId,
+  // so "there is no workspace yet" is not a reason to skip it. GET below is
+  // deliberately NOT gated: listing memberships you already hold is read-only
+  // and helps a Member understand state during an incident.
+  if (!(await isWorkspaceAccessEnabled(createServiceClient()))) {
+    return NextResponse.json(
+      { error: 'Workspace access is temporarily disabled.' },
+      { status: 503 }
+    )
+  }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const parsed = CreateWorkspaceSchema.safeParse(pickCreateFields(body))

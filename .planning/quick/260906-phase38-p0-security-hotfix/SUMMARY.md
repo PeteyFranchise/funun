@@ -173,3 +173,29 @@ All 13 files created/modified by this hotfix were verified present on disk, and 
 
 *Quick task: 260906-phase38-p0-security-hotfix*
 *Completed: 2026-09-06*
+
+
+## Orchestrator follow-up (post-merge, 2026-09-06)
+
+The executor's F7 route audit was accurate, but I disagreed with two of its five exemptions and
+closed them. The stated reasons — "there is no workspaceId at creation time" and "the accepting
+user is not yet a member" — are reasons to skip a *membership* check, not a *global* one:
+`isWorkspaceAccessEnabled(service)` takes only a service client. A kill switch that still lets
+people create workspaces and join them is not containment.
+
+Added a direct switch check to three call sites:
+
+| Route | Gated | Reasoning |
+|---|---|---|
+| `app/api/workspaces` POST | yes | Creating a workspace forms new state. GET deliberately left open — listing memberships you already hold is read-only and helps a Member understand state during an incident. |
+| `app/api/workspaces/invitations/accept` | yes | Accepting a seat forms new membership. |
+| `app/api/roster/relationships` | **accept only** | `accept` forms new workspace-derived authority. `refuse`, `block` and `end` are deliberately NOT gated — they are the Member's own protective actions and D-18 makes revocation unconditional. Disabling a Member's escape hatch during an incident would trap them in precisely the relationship the control exists to contain. |
+| `app/api/vault/custody-transfers` | no — agreed with executor | After the F1 fix this route carries zero workspace-derived authority; it is a personal custodian→recipient act. Gating it would block a legitimate Member action. |
+| `app/api/admin/workspaces/access` | no — agreed | The control itself; must stay reachable to re-enable. |
+
+Also correcting a mistake of my own: an initial `grep` of mine reported `vault/custody-transfers`
+as calling `requireWorkspaceAccess`. It was matching comment text, not a call. The executor's
+SUMMARY was right and my scan was wrong.
+
+Verification after the change: `npx tsc --noEmit` clean, `npm test` 474 suites / 4818 tests green,
+`npx next lint` clean.

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
+import { isWorkspaceAccessEnabled } from '@/lib/workspaces/access-kill-switch'
 import { assertCanTransition, assertMemberMayEnd, loadRelationshipTier } from '@/lib/workspaces/roster-service'
 import type { RosterRelationshipState } from '@/lib/workspaces/types'
 
@@ -144,6 +145,19 @@ export async function PATCH(request: Request) {
   }
 
   const nowIso = new Date().toISOString()
+
+  // D-56/WS-31 (hotfix F7, completion): ACCEPT forms new workspace-derived
+  // authority, so it stops when the platform-wide control is off. `refuse`,
+  // `block` and `end` are deliberately NOT gated — those are the Member's own
+  // protective actions, and D-18 makes revocation unconditional. Disabling a
+  // Member's escape hatch during an incident would trap them in exactly the
+  // relationship the control exists to contain.
+  if (parsed.data.action === 'accept' && !(await isWorkspaceAccessEnabled(createServiceClient()))) {
+    return NextResponse.json(
+      { error: 'Workspace access is temporarily disabled.' },
+      { status: 503 }
+    )
+  }
 
   if (parsed.data.action === 'accept') {
     const check = assertCanTransition(row.state, 'accepted')
