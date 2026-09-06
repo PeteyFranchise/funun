@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 PAUSED AT BATCHED OWNER CHECKPOINT — Waves 1-5 complete (38-01..38-10, 10/13 plans). Migration 182 LIVE. Migrations 183 + 184 + 185 authored and merged, PUSH PENDING as one batch. 466 suites / 4570 tests green, tsc clean. BLOCKED ON: owner review + `supabase db push` of 183/184/185, plus the consolidated smoke (roster inertness, payout CHECK rejection, custody-guard rejections). Roster + grants API routes are inert until that push. Wave 6 (38-11, migration 186 + D-56 disable control) follows. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
+stopped_at: Phase 38 EXECUTING — Waves 1-5 complete (10/13 plans). MIGRATIONS 182-185 ALL LIVE (owner pushed; verified local=remote through 185). Roster + grants API routes are now backed by real tables. 466 suites / 4570 tests green. Wave 6 next and it is the RISKIEST: 38-11 authors migration 186 (the RLS workspace branch on vault_projects + 4 child tables) AND the D-56 disable control. 186 is pushed ALONE with a six-account adversarial smoke, a 42P17 recursion check and an EXPLAIN ANALYZE gate. Phase 37.1's 37-13 Task 3 cross-device hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38 Wave 5 merged; awaiting batched 183-185 owner push
+last_activity_desc: Phase 38 migrations 183-185 pushed and verified; Wave 6 dispatched
 progress:
   total_phases: 42
   completed_phases: 30
