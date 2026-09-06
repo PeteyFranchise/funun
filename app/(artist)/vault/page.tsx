@@ -7,6 +7,7 @@ import { getDemoProjects } from '@/lib/vault/demo-store'
 import { VaultBrowser } from '@/components/vault/VaultBrowser'
 import { VaultProjectCard, type VaultCard } from '@/components/vault/VaultProjectCard'
 import type { ProjectRole } from '@/lib/vault/membership'
+import { partitionVaultLanes, resolveAppearsOnRows, type AppearsOnRow } from '@/lib/workspaces/appears-on'
 import { Topbar, TopbarSearch } from '@/components/layout/Topbar'
 import { CatalogueShelf } from '@/components/catalogue/CatalogueShelf'
 import type { CatalogueCard, CatalogueWorkCard, CatalogueWorkContributor } from '@/components/catalogue/WorkCard'
@@ -56,6 +57,40 @@ type WorkRow = Work & {
   work_versions: WorkVersionEmbed[] | null
   lyric_blocks: LyricBlockEmbed[] | null
   work_members: WorkMemberEmbed[] | null
+}
+
+// ─── Appears-on badge (D-27, D-35) — a LOCAL read-only variant, defined ────
+// here rather than by importing `SharedProjectBadge` unmodified: that
+// component's `role` prop is typed to the four `project_members` roles
+// (owner/co-owner/editor/viewer, migration 078) and its copy literally
+// reads "Shared", which is the WRONG lane label for a record the caller
+// contributed to but does not hold (D-27 calls for a shelf that reads as
+// "clearly not theirs to administer", not as a shared-and-editable
+// project). This plan's file scope is `app/(artist)/vault/page.tsx` only —
+// `components/vault/SharedProjectBadge.tsx` belongs to plan 38-12/Phase 21
+// and is not touched here. This badge reuses that component's exact
+// positioning classes (`absolute right-[14px] top-[14px] z-[...] ...`) so
+// it occupies the identical corner of the card, but leads with the
+// caller's free-text CONTRIBUTION role (D-35) rather than a project role
+// that would mean nothing on a record the caller does not hold. A higher
+// z-index than `VaultProjectCard`'s own internal chip/ring (z-[2]/z-[3])
+// keeps it visible without needing to edit that component.
+function AppearsOnBadge({
+  holderName,
+  contributionRole,
+}: {
+  holderName: string | null
+  contributionRole: string | null
+}) {
+  const projectText = holderName ? `Appears on · ${holderName}'s project` : 'Appears on'
+  const roleText = contributionRole ? `You're the ${contributionRole.toLowerCase()}` : 'You contributed'
+
+  return (
+    <span className="pointer-events-none absolute right-[14px] top-[14px] z-[20] flex flex-col items-end gap-[2px] rounded-[10px] border border-brandindigo/30 bg-brandindigo/10 px-[11px] py-[6px] text-right">
+      <span className="text-[12.5px] font-bold text-brandindigo">{projectText}</span>
+      <span className="text-[11px] font-semibold text-lavdim">{roleText}</span>
+    </span>
+  )
 }
 
 function initialOf(name: string | null | undefined): string {
@@ -147,6 +182,13 @@ export default async function VaultPage() {
   let sharedProjects: VaultProjectRow[] = []
   let sharedOwnerNameById = new Map<string, string | null>()
   let sharedRoleByProjectId = new Map<string, ProjectRole>()
+
+  // "Appears on" (D-27, D-35) — the third, READ-ONLY lane. Kept wholly
+  // separate from `projects`/`sharedProjects` and their counts, exactly
+  // like the shared lane above: [] by default so the demo path (which has
+  // no workspace tables at all) renders nothing new, ever.
+  let appearsOnProjects: VaultProjectRow[] = []
+  let appearsOnRowByProjectId = new Map<string, AppearsOnRow>()
 
   // My Catalogue's own arrays — [] by default so the demo path (which has
   // no `works` table at all) renders the shelf's empty state instead of
@@ -294,6 +336,49 @@ export default async function VaultPage() {
         sharedOwnerNameById = new Map(
           ((owners ?? []) as { id: string; artist_name: string | null }[]).map(o => [o.id, o.artist_name])
         )
+      }
+    }
+
+    // ─── Appears on (D-27, D-35) — extends this SAME shared-lane ───────
+    // resolution rather than forking a parallel data path (38-RESEARCH.md
+    // Open Question 3). `excludeForAppearsOn` is exactly the owned +
+    // already-resolved shared ids above, so a project reachable both ways
+    // surfaces on exactly one shelf. `partitionVaultLanes` is a second,
+    // defense-in-depth pass over the SAME exclusion — belt-and-suspenders,
+    // mirroring this file's own precedent for the shared lane just above
+    // (21-03-PLAN.md).
+    if (viewerId) {
+      const excludeForAppearsOn = [...ownedProjectIds, ...sharedProjectIds]
+      const resolvedAppearsOnRows = await resolveAppearsOnRows(supabase, {
+        userId: viewerId,
+        excludeProjectIds: excludeForAppearsOn,
+      })
+
+      const lanePartition = partitionVaultLanes({
+        ownedIds: Array.from(ownedProjectIds),
+        sharedIds: sharedProjectIds,
+        appearsOnIds: resolvedAppearsOnRows.map(r => r.projectId),
+      })
+      const appearsOnRows = resolvedAppearsOnRows.filter(r => lanePartition.appearsOn.has(r.projectId))
+      appearsOnRowByProjectId = new Map(appearsOnRows.map(r => [r.projectId, r]))
+
+      const appearsOnProjectIds = appearsOnRows.map(r => r.projectId)
+      if (appearsOnProjectIds.length > 0) {
+        const { data: appearsOnData } = await supabase
+          .from('vault_projects')
+          .select(
+            `
+        *,
+        tracks (id, isrc, iswc, metadata),
+        vault_assets (id, type),
+        vault_documents (id, type, status),
+        tool_outputs (id, tool_slug)
+      `
+          )
+          .in('id', appearsOnProjectIds)
+          .order('created_at', { ascending: false })
+
+        appearsOnProjects = (appearsOnData ?? []) as VaultProjectRow[]
       }
     }
 
@@ -448,6 +533,7 @@ export default async function VaultPage() {
   // state — is byte-for-byte what this page already had.
   const releaseProjects = projects.filter(p => p.type !== 'unreleased')
   const releaseSharedProjects = sharedProjects.filter(p => p.type !== 'unreleased')
+  const releaseAppearsOnProjects = appearsOnProjects.filter(p => p.type !== 'unreleased')
 
   const cards: VaultCard[] = releaseProjects.map(project => {
     const items = readinessItemsForProject({
@@ -503,6 +589,40 @@ export default async function VaultPage() {
       lane: laneFor(project.status, project.release_date),
       sharedBy: { ownerName },
       viewerRole: sharedRoleByProjectId.get(project.id) ?? 'viewer',
+    }
+  })
+
+  // Appears-on cards (D-27, D-35): same readiness derivation as the owned
+  // and shared cards above, but `artist` resolves to the HOLDING Member's
+  // name (never the viewer's — appearing on a record grants no authority
+  // to relabel it), and NEITHER `sharedBy` nor `viewerRole` is set here —
+  // this lane's own `AppearsOnBadge` (defined above, plain data props
+  // only) renders instead of `SharedProjectBadge`, so a producer or
+  // engineer sees their contribution role, not a project role that would
+  // mean nothing on a record they don't hold.
+  const appearsOnCards: VaultCard[] = releaseAppearsOnProjects.map(project => {
+    const items = readinessItemsForProject({
+      type: project.type,
+      distributor: (project as { distributor?: string | null }).distributor ?? null,
+      tracks: project.tracks,
+      assets: project.vault_assets,
+      documents: project.vault_documents,
+      tool_outputs: project.tool_outputs,
+    })
+    const info = appearsOnRowByProjectId.get(project.id)
+    return {
+      id: project.id,
+      title: project.title,
+      type: project.type,
+      artist: info?.holderName ?? null,
+      status: project.status,
+      score: project.vault_readiness_score,
+      completeItems: items.filter(i => i.status === 'complete').length,
+      totalItems: items.length,
+      trackCount: project.tracks?.length ?? 0,
+      releaseDate: project.release_date,
+      coverUrl: project.cover_art_url,
+      lane: laneFor(project.status, project.release_date),
     }
   })
 
@@ -585,6 +705,39 @@ export default async function VaultPage() {
               {sharedCards.map(card => (
                 <VaultProjectCard key={card.id} card={card} />
               ))}
+            </div>
+          </div>
+        )}
+
+        {/*
+          Appears on (D-27, D-35) — a read-only third shelf, additive only.
+          Renders NOTHING at all (no heading, no divider) when the resolved
+          set is empty, so a Member with no workspace-derived contributions
+          sees a page byte-identical to before this plan (T-38-13-06).
+          Every prop below is plain data — strings, numbers, booleans and
+          plain objects only, never a function, a class instance or a Date
+          — required on every Server->Client boundary this file crosses;
+          this file's own history and components/admin/ClientPartnersRoom.
+          tsx's header both record that a function prop here produces a
+          production-only 500 that does not reproduce in development
+          (commit 80443bb).
+        */}
+        {appearsOnCards.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-6 text-[19px] font-bold tracking-[-.01em] text-white">Appears on</h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {appearsOnCards.map(card => {
+                const info = appearsOnRowByProjectId.get(card.id)
+                return (
+                  <div key={card.id} className="relative">
+                    <VaultProjectCard card={card} />
+                    <AppearsOnBadge
+                      holderName={info?.holderName ?? null}
+                      contributionRole={info?.contributionRole ?? null}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
