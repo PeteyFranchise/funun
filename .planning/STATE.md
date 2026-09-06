@@ -5,7 +5,7 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 built (13/13) + P0 SECURITY HOTFIX applied. Codex adversarial review found 22 issues; F1 (critical: workspace admin could unilaterally take record custody), F7 (kill switch didn't cover service routes) and F10 (inverted rate limit) are FIXED and merged. 474 suites / 4818 tests green. *** TWO BLOCKING OWNER ACTIONS: (1) push migration 187 (DB-layer custody guard — the app-layer fix is the sole enforcement point until then); (2) run 38-RLS-SMOKE-CHECKLIST.md, still unticked. *** DEFERRED to Phase 38.0.1: review findings F2, F3 (needs its own migration 188 — the user_id WITH CHECK hole is PRE-EXISTING from migration 078 and also affects Phase 21 editors), F4, F5, F6 (grant model cannot bootstrap — the feature is non-functional until fixed), F8, F9-full, F11-F22. Migration reservations: 187 hotfix, 188 F3 fix, 189-190 Phase 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38 built (13/13) + P0 security hotfix APPLIED AND PUSHED. Migrations 182-187 all LIVE (verified local=remote through 187). F1 custody theft closed at BOTH layers (app + DB trigger); F7 kill switch now covers every workspace route; F10 rate limit corrected. 474 suites / 4818 tests green, tsc + lint clean. *** ONE BLOCKING GATE REMAINS: 38-RLS-SMOKE-CHECKLIST.md is still unticked (42P17 recursion check, six-account adversarial smoke, EXPLAIN ANALYZE gate, D-56 disable drill). *** NEXT PHASE 38.0.1 (19 deferred Codex findings) — highest priority F6: the grant model cannot bootstrap, so the workspace layer's core purpose is NON-FUNCTIONAL; and F3: the vault_projects user_id WITH CHECK hole is PRE-EXISTING from migration 078 and lets a Phase 21 editor seize custody today (own migration 188). Reservations: 188 = F3 fix, 189-190 = Phase 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 38 P0 security hotfix applied after Codex adversarial review
@@ -753,7 +753,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 | Date | Slug | Result |
 |---|---|---|
-| 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 authored, push pending |
+| 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 pushed and verified live |
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
