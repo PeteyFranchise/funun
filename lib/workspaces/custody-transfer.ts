@@ -1,6 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { canManageRoster } from '@/lib/workspaces/membership'
-import type { WorkspaceRole } from '@/lib/workspaces/types'
 
 // ─── Two-sided record custody transfer (D-28, D-29, D-43, custody D-02) ────
 //
@@ -20,6 +18,20 @@ import type { WorkspaceRole } from '@/lib/workspaces/types'
 // unilateral. `isLegalTransferTransition` is the one place that legality is
 // decided; `assertMayRespond` is the one place that authority to respond is
 // decided. Neither function throws — both fail closed to a refusal.
+//
+// WORKSPACE ADMINISTRATION IS ACCESS AUTHORITY, NEVER CUSTODY AUTHORITY
+// (F1 hotfix, Codex adversarial review 2026-09-06): `assertMayOffer` below
+// permits ONLY the project's current custodian to offer a transfer — a
+// workspace owner or admin, however broad their access grants, may not
+// dispose of a Member's record on the Member's behalf. An earlier version
+// of this module conflated the two: it let an active owner/admin of a
+// workspace holding a live attachment to the project offer a transfer AS
+// IF they were the custodian, and the same actor could then accept their
+// own offer via `assertMayRespond` — one person performing both sides of
+// an act this file's own header already documented as two-sided, with no
+// grant required to do it. That branch has been DELETED, not narrowed.
+// Migration 187 enforces the identical rule independently at the database
+// layer, so the attack stays impossible even if this file regresses.
 //
 // custody D-02's own rule, restated here because this module's entire
 // reason for existing is to not violate it: "Version contributors,
@@ -66,23 +78,34 @@ export function isLegalTransferTransition(from: CustodyTransferState, to: Custod
   return TRANSFER_LEGAL_EDGES[from].has(to)
 }
 
-// ─── Offer authority (D-29, T-38-13-01) ─────────────────────────────────
+// ─── Offer authority (D-29, T-38-13-01, F1 hotfix 2026-09-06) ───────────
 export type AssertMayOfferResult =
   | { ok: true; custodianId: string }
   | { ok: false; status: 403 | 404 | 500; reason: string }
 
 type ProjectCustodyRow = { id: string; user_id: string }
-type WorkspaceMembershipRow = { role: string; status: string }
-type WorkspaceAttachmentRow = { id: string }
 
 /**
- * Permits exactly two kinds of offerer, mirroring migration 185's
- * `guard_custody_transfer_offered_by_holder` BEFORE INSERT trigger — this
- * function is the SECOND enforcement point, not the only one (T-38-13-01):
- * (1) the project's current custodian, offering directly; or (2) an
- * active owner/admin of a workspace that holds a LIVE attachment to the
- * project. Refuses everyone else, and refuses (rather than throws) on any
- * lookup error.
+ * Permits exactly ONE kind of offerer: the project's current custodian,
+ * offering directly. Nobody else — including a workspace's owner or admin —
+ * may offer on a Member's behalf. This is a deliberate DELETION, not a
+ * narrowed check: an earlier version of this function also permitted an
+ * active owner/admin of a workspace holding a live attachment to the
+ * project, which let a workspace admin who was never the custodian offer a
+ * transfer and then accept their own offer via `assertMayRespond` — one
+ * person performing both sides of an act D-29 requires to be two-sided,
+ * with no grant required (Codex adversarial review, F1, 2026-09-06).
+ * Workspace administration is ACCESS authority (who can manage a
+ * workspace's roster and seats); it is NEVER custody authority (who may
+ * dispose of a Member's own record). A manager may not dispose of a
+ * Member's record on their behalf, full stop.
+ *
+ * `args.workspaceId` is still accepted and still recorded on the inserted
+ * row for attribution (which workspace context the offer happened in), but
+ * it confers no authority here — mirrors migration 187's independent
+ * database-layer refusal (T-38-13-01's "second enforcement point" doctrine,
+ * now with both points agreeing on the SAME rule). Refuses (rather than
+ * throws) on any lookup error.
  */
 export async function assertMayOffer(
   supabase: SupabaseClient,
@@ -107,50 +130,11 @@ export async function assertMayOffer(
     return { ok: true, custodianId }
   }
 
-  if (!args.workspaceId) {
-    return {
-      ok: false,
-      status: 403,
-      reason:
-        "Only the record's current custodian may offer a custody transfer outside a workspace context — custody transfer is two-sided, never unilateral (D-29).",
-    }
-  }
-
-  const [{ data: membership, error: membershipError }, { data: attachment, error: attachmentError }] =
-    await Promise.all([
-      supabase
-        .from('workspace_members')
-        .select('role, status')
-        .eq('workspace_id', args.workspaceId)
-        .eq('user_id', args.offeredByUserId)
-        .maybeSingle(),
-      supabase
-        .from('workspace_attachments')
-        .select('id')
-        .eq('workspace_id', args.workspaceId)
-        .eq('project_id', args.projectId)
-        .is('detached_at', null)
-        .maybeSingle(),
-    ])
-
-  if (membershipError || attachmentError) {
-    return { ok: false, status: 500, reason: 'Could not verify workspace authority over this record.' }
-  }
-
-  const membershipRow = membership as WorkspaceMembershipRow | null
-  const hasAuthorityRole =
-    !!membershipRow && membershipRow.status === 'active' && canManageRoster(membershipRow.role as WorkspaceRole)
-  const hasLiveAttachment = !!(attachment as WorkspaceAttachmentRow | null)
-
-  if (hasAuthorityRole && hasLiveAttachment) {
-    return { ok: true, custodianId }
-  }
-
   return {
     ok: false,
     status: 403,
     reason:
-      "Only the record's current custodian, or an owner/admin of a workspace with a live attachment to this project, may offer a custody transfer.",
+      "Only the record's current custodian may offer a custody transfer — workspace administration is access authority, never custody authority, and cannot offer on a Member's behalf (D-29).",
   }
 }
 
@@ -166,6 +150,16 @@ export type AssertMayRespondResult = { ok: true } | { ok: false; status: 403; re
  * can never withdraw an offer made TO them (only decline it); the party
  * that put the offer forward — the holder or the workspace admin who acted
  * for them — is the only one who can retract it before the recipient acts.
+ *
+ * DEFENCE IN DEPTH (F1 hotfix, 2026-09-06): an accept or decline additionally
+ * refuses when the responder IS the offerer, even though `assertMayOffer`
+ * now makes `offered_by` always equal the custodian, and the two-sided
+ * `from_user_id <> to_user_id` CHECK (migration 185) makes `offered_by ===
+ * toUserId` impossible today. This check exists so that if `assertMayOffer`
+ * is ever widened again in the future, the same person still cannot both
+ * offer and resolve a single transfer — self-dealing stays structurally
+ * impossible at this second layer regardless of what the first layer
+ * permits.
  */
 export function assertMayRespond(args: {
   parties: TransferParties
@@ -180,6 +174,13 @@ export function assertMayRespond(args: {
         ok: false,
         status: 403,
         reason: `Only the offer's recipient may ${action} a custody transfer.`,
+      }
+    }
+    if (actorUserId === parties.offeredBy) {
+      return {
+        ok: false,
+        status: 403,
+        reason: `The party who offered this transfer cannot also ${action} it — custody transfer is two-sided, never unilateral (D-29).`,
       }
     }
     return { ok: true }

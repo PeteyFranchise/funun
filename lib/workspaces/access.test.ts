@@ -1,4 +1,27 @@
+// F7 hotfix (2026-09-06): requireWorkspaceAccess now consults the D-56/WS-31
+// kill switch via its own createServiceClient() call, before anything else.
+// Mock the module so every pre-existing test in this file (which predates
+// the kill-switch check and asserts nothing about it) keeps exercising the
+// membership-gate logic against an ENABLED switch by default.
+type ConfigRow = { enabled: boolean } | null
+type ConfigError = { message: string } | null
+const mockServiceMaybeSingle = jest.fn<Promise<{ data: ConfigRow; error: ConfigError }>, []>(async () => ({
+  data: { enabled: true },
+  error: null,
+}))
+jest.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => ({
+    from: (table: string) => {
+      if (table !== 'workspace_access_config') {
+        throw new Error(`Unexpected table on the service client: ${table}`)
+      }
+      return { select: () => ({ eq: () => ({ maybeSingle: mockServiceMaybeSingle }) }) }
+    },
+  }),
+}))
+
 import {
+  WORKSPACE_ACCESS_DISABLED,
   WORKSPACE_ACCESS_REQUIRED,
   requireWorkspaceAccess,
   requireWorkspaceRole,
@@ -18,6 +41,73 @@ function client(
   const from = jest.fn(() => ({ select }))
   return { from, select, eq1, eq2, maybeSingle }
 }
+
+beforeEach(() => {
+  mockServiceMaybeSingle.mockReset()
+  mockServiceMaybeSingle.mockResolvedValue({ data: { enabled: true }, error: null })
+})
+
+describe('requireWorkspaceAccess — the D-56/WS-31 kill switch (F7 hotfix)', () => {
+  it('returns 503 and never touches the membership table when the config row reads enabled: false', async () => {
+    mockServiceMaybeSingle.mockResolvedValue({ data: { enabled: false }, error: null })
+    const supabase = client({ role: 'owner', status: 'active', expires_at: null })
+
+    const result = await requireWorkspaceAccess(
+      supabase as never,
+      { id: USER_ID, app_metadata: {} },
+      WORKSPACE_ID
+    )
+
+    expect(result).toEqual({ ok: false, status: 503, error: WORKSPACE_ACCESS_DISABLED })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('fails closed (503) when the config row is missing', async () => {
+    mockServiceMaybeSingle.mockResolvedValue({ data: null, error: null })
+    const supabase = client({ role: 'owner', status: 'active', expires_at: null })
+
+    const result = await requireWorkspaceAccess(
+      supabase as never,
+      { id: USER_ID, app_metadata: {} },
+      WORKSPACE_ID
+    )
+
+    expect(result).toEqual({ ok: false, status: 503, error: WORKSPACE_ACCESS_DISABLED })
+  })
+
+  it('fails closed (503) when the config read errors', async () => {
+    mockServiceMaybeSingle.mockResolvedValue({ data: null, error: { message: 'connection reset' } })
+    const supabase = client({ role: 'owner', status: 'active', expires_at: null })
+
+    const result = await requireWorkspaceAccess(
+      supabase as never,
+      { id: USER_ID, app_metadata: {} },
+      WORKSPACE_ID
+    )
+
+    expect(result).toEqual({ ok: false, status: 503, error: WORKSPACE_ACCESS_DISABLED })
+  })
+
+  it('is consulted even for an unauthenticated caller — the kill switch check precedes the null-user check', async () => {
+    mockServiceMaybeSingle.mockResolvedValue({ data: { enabled: false }, error: null })
+
+    const result = await requireWorkspaceAccess({ from: jest.fn() } as never, null, WORKSPACE_ID)
+
+    expect(result).toEqual({ ok: false, status: 503, error: WORKSPACE_ACCESS_DISABLED })
+  })
+
+  it('proceeds to the ordinary membership gate when the config row reads enabled: true', async () => {
+    const supabase = client({ role: 'owner', status: 'active', expires_at: null })
+
+    const result = await requireWorkspaceAccess(
+      supabase as never,
+      { id: USER_ID, app_metadata: {} },
+      WORKSPACE_ID
+    )
+
+    expect(result).toEqual({ ok: true, workspaceId: WORKSPACE_ID, userId: USER_ID, role: 'owner' })
+  })
+})
 
 describe('requireWorkspaceAccess', () => {
   it('rejects an unauthenticated request with 401', async () => {

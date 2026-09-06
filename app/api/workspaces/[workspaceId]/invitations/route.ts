@@ -76,8 +76,15 @@ export async function POST(
   )
   if (!gated.ok) return NextResponse.json({ error: gated.error }, { status: gated.status })
 
-  const withinLimit = await checkRateLimit(`workspace-invite:${workspaceId}`, INVITATION_RATE_LIMIT)
-  if (!withinLimit) {
+  // F10 hotfix (2026-09-06): checkRateLimit()/check_rate_limit (migration
+  // 116) returns TRUE at/over the limit. This previously named that result
+  // `withinLimit` and guarded with `if (!withinLimit)`, inverting the
+  // polarity — attempts 1-20 were refused while accumulating hits, and
+  // attempt 21 onward passed unbounded for the rest of the window. `limited`
+  // matches the name and guard app/api/workspaces/[workspaceId]/roster/
+  // route.ts already uses for the same RPC.
+  const limited = await checkRateLimit(`workspace-invite:${workspaceId}`, INVITATION_RATE_LIMIT)
+  if (limited) {
     return NextResponse.json(
       { error: 'Too many invitations issued for this workspace. Try again later.' },
       { status: 429 }

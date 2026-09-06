@@ -23,6 +23,16 @@ import { readWorkspaceAccessState, setWorkspaceAccessEnabled } from '@/lib/works
 // `authenticated`/`anon`, so a session-scoped client cannot reach this table
 // at all — only the service role can.
 //
+// DELIBERATE EXEMPTION FROM THE KILL SWITCH ITSELF (F7 hotfix, 2026-09-06):
+// this route is gated by `requireStaff`, a Funūn-staff check entirely
+// separate from `requireWorkspaceAccess` and the workspace-membership model
+// — it never calls `requireWorkspaceAccess` and therefore never consults
+// `isWorkspaceAccessEnabled()`. This is intentional and load-bearing: this
+// route MUST keep working while `enabled` is FALSE, or an owner who flips
+// the switch off would have no way to flip it back on. Do not add a
+// `requireWorkspaceAccess` call to this route under any circumstance — that
+// would make the kill switch capable of disabling itself.
+//
 // No UI ships for this in this plan — the route plus the 186 push checkpoint
 // are the full "owner-operable" surface for now; a Playbook IT-room control
 // panel belongs to Phase 38.2's rollout slice.

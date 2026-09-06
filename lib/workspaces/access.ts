@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getStaffRoles } from '@/lib/admin/staff-role'
+import { createServiceClient } from '@/lib/supabase/server'
+import { isWorkspaceAccessEnabled } from '@/lib/workspaces/access-kill-switch'
 import type { WorkspaceRole } from '@/lib/workspaces/types'
 
 // ─── Server-side workspace access gate (D-30, D-31, D-33) ──────────────────
@@ -19,9 +21,31 @@ import type { WorkspaceRole } from '@/lib/workspaces/types'
 // (instant, in-session switching) for workspaces, so this gate is a new,
 // standalone module rather than a generalization of the staff-only
 // sign-out boundary.
+//
+// D-56/WS-31 KILL SWITCH (F7 hotfix, 2026-09-06): `workspace_access_enabled()`
+// (migration 186) originally gated only the RLS branch on vault_projects and
+// its four child tables — with the switch OFF, every workspace SERVICE
+// route (this gate) still worked, including the F1 custody-transfer chain,
+// because this function never consulted the config at all. D-56 requires
+// the control to disable ALL workspace-derived access, not just the RLS
+// branch. `requireWorkspaceAccess` now consults
+// `isWorkspaceAccessEnabled()` FIRST, before any other work — including the
+// null-user check — and fails closed (503) the same way
+// `workspace_access_enabled()`'s own `COALESCE(..., FALSE)` does on a
+// missing or unreadable config row. Because every route under
+// `app/api/workspaces/**` funnels through this one function, this single
+// change covers the whole route family (see this hotfix's PLAN.md and
+// SUMMARY.md for the route-by-route verification, including the two
+// deliberate exceptions: `app/api/admin/workspaces/access/route.ts`, which
+// must keep working WHILE disabled so an owner can re-enable it, and
+// `app/api/vault/custody-transfers/route.ts`, which never carried any
+// workspace-derived authority in the first place after the F1 fix).
 
 export const WORKSPACE_ACCESS_REQUIRED =
   'Workspaces do not apply to Funūn Team Member identities. Sign in with your personal Member account.'
+
+export const WORKSPACE_ACCESS_DISABLED =
+  'Workspace access is temporarily disabled. Please try again shortly.'
 
 type AuthAccount = {
   id: string
@@ -30,12 +54,14 @@ type AuthAccount = {
 
 export type WorkspaceAccessResult =
   | { ok: true; workspaceId: string; userId: string; role: WorkspaceRole }
-  | { ok: false; status: 401 | 403 | 500; error: string }
+  | { ok: false; status: 401 | 403 | 500 | 503; error: string }
 
 /**
  * Enforces the workspace access boundary for `/api/workspaces/**` routes.
  *
- * Order mirrors requireMemberApiAccount: null user -> 401; any staff role ->
+ * Order: the D-56/WS-31 kill switch is consulted FIRST, before any other
+ * work -> 503 when disabled, missing, or unreadable (fail closed). Then,
+ * mirroring requireMemberApiAccount: null user -> 401; any staff role ->
  * 403 (staff identities are never workspace members, D-33, evaluated before
  * any database lookup); missing/non-active/lapsed membership row -> 403;
  * lookup error -> 500, never a permissive fallthrough. On success, `role`
@@ -48,6 +74,11 @@ export async function requireWorkspaceAccess(
   workspaceId: string,
   options?: { now?: number }
 ): Promise<WorkspaceAccessResult> {
+  const accessEnabled = await isWorkspaceAccessEnabled(createServiceClient())
+  if (!accessEnabled) {
+    return { ok: false, status: 503, error: WORKSPACE_ACCESS_DISABLED }
+  }
+
   if (!user) return { ok: false, status: 401, error: 'Unauthorized' }
 
   if (getStaffRoles(user).length > 0) {

@@ -20,16 +20,17 @@ type Res<T> = { data: T; error: { message: string } | null }
 
 type Handlers = {
   project: () => Res<{ id: string; user_id: string } | null>
-  membership: () => Res<{ role: string; status: string } | null>
-  attachment: () => Res<{ id: string } | null>
 }
 
 const DEFAULT_HANDLERS: Handlers = {
   project: () => ({ data: { id: PROJECT_ID, user_id: CUSTODIAN_ID }, error: null }),
-  membership: () => ({ data: null, error: null }),
-  attachment: () => ({ data: null, error: null }),
 }
 
+// F1 hotfix (2026-09-06): assertMayOffer no longer looks at workspace
+// membership or attachments at all — it never queries `workspace_members`
+// or `workspace_attachments` — so this fake only ever needs to answer
+// `vault_projects`. A query against either of the removed tables now
+// throwing here is itself a regression signal.
 function createFakeSupabase(overrides: Partial<Handlers> = {}) {
   const handlers: Handlers = { ...DEFAULT_HANDLERS, ...overrides }
 
@@ -37,22 +38,9 @@ function createFakeSupabase(overrides: Partial<Handlers> = {}) {
   const projectEq = jest.fn(() => ({ maybeSingle: projectMaybeSingle }))
   const projectSelect = jest.fn(() => ({ eq: projectEq }))
 
-  const membershipMaybeSingle = jest.fn(async () => handlers.membership())
-  const membershipEq2 = jest.fn(() => ({ maybeSingle: membershipMaybeSingle }))
-  const membershipEq1 = jest.fn(() => ({ eq: membershipEq2 }))
-  const membershipSelect = jest.fn(() => ({ eq: membershipEq1 }))
-
-  const attachmentMaybeSingle = jest.fn(async () => handlers.attachment())
-  const attachmentIs = jest.fn(() => ({ maybeSingle: attachmentMaybeSingle }))
-  const attachmentEq2 = jest.fn(() => ({ is: attachmentIs }))
-  const attachmentEq1 = jest.fn(() => ({ eq: attachmentEq2 }))
-  const attachmentSelect = jest.fn(() => ({ eq: attachmentEq1 }))
-
   const from = jest.fn((table: string) => {
     if (table === 'vault_projects') return { select: projectSelect }
-    if (table === 'workspace_members') return { select: membershipSelect }
-    if (table === 'workspace_attachments') return { select: attachmentSelect }
-    throw new Error(`Unexpected table: ${table}`)
+    throw new Error(`Unexpected table: ${table} — assertMayOffer must not query workspace authority anymore (F1)`)
   })
 
   return { from, handlers }
@@ -118,24 +106,14 @@ describe('assertMayOffer', () => {
     if (!result.ok) expect(result.status).toBe(403)
   })
 
-  it('permits an owner/admin of a workspace with a live attachment to the project', async () => {
-    const fake = createFakeSupabase({
-      membership: () => ({ data: { role: 'admin', status: 'active' }, error: null }),
-      attachment: () => ({ data: { id: 'att-1' }, error: null }),
-    })
-    const result = await assertMayOffer(asClient(fake), {
-      projectId: PROJECT_ID,
-      offeredByUserId: WORKSPACE_ADMIN_ID,
-      workspaceId: WORKSPACE_ID,
-    })
-    expect(result).toEqual({ ok: true, custodianId: CUSTODIAN_ID })
-  })
-
-  it('refuses a workspace member role (not owner/admin) even with a live attachment', async () => {
-    const fake = createFakeSupabase({
-      membership: () => ({ data: { role: 'member', status: 'active' }, error: null }),
-      attachment: () => ({ data: { id: 'att-1' }, error: null }),
-    })
+  // F1 hotfix (2026-09-06): a workspace owner/admin is no longer permitted
+  // to offer on the custodian's behalf, regardless of role, membership
+  // status, or attachment — the branch that used to grant this was
+  // DELETED, not narrowed. These four cases replace the pre-hotfix
+  // "permits an owner/admin with a live attachment" test, which asserted
+  // exactly the behavior this hotfix removes. Three cases below.
+  it("refuses an active workspace admin who is not the project's custodian, live attachment or not", async () => {
+    const fake = createFakeSupabase()
     const result = await assertMayOffer(asClient(fake), {
       projectId: PROJECT_ID,
       offeredByUserId: WORKSPACE_ADMIN_ID,
@@ -143,31 +121,33 @@ describe('assertMayOffer', () => {
     })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.status).toBe(403)
+    // The whole point of the fix: no workspace-authority lookup happens at
+    // all for a non-custodian offerer.
+    expect(fake.from).not.toHaveBeenCalledWith('workspace_members')
+    expect(fake.from).not.toHaveBeenCalledWith('workspace_attachments')
   })
 
-  it('refuses an owner/admin whose workspace has no live attachment to the project', async () => {
-    const fake = createFakeSupabase({
-      membership: () => ({ data: { role: 'owner', status: 'active' }, error: null }),
-      attachment: () => ({ data: null, error: null }),
-    })
+  it("refuses an active workspace owner who is not the project's custodian", async () => {
+    const fake = createFakeSupabase()
     const result = await assertMayOffer(asClient(fake), {
       projectId: PROJECT_ID,
       offeredByUserId: WORKSPACE_ADMIN_ID,
       workspaceId: WORKSPACE_ID,
     })
-    expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.status).toBe(403)
+    expect(result).toEqual({
+      ok: false,
+      status: 403,
+      reason:
+        "Only the record's current custodian may offer a custody transfer — workspace administration is access authority, never custody authority, and cannot offer on a Member's behalf (D-29).",
+    })
   })
 
-  it('refuses a suspended owner/admin membership even with a live attachment', async () => {
-    const fake = createFakeSupabase({
-      membership: () => ({ data: { role: 'owner', status: 'suspended' }, error: null }),
-      attachment: () => ({ data: { id: 'att-1' }, error: null }),
-    })
+  it('refuses a non-custodian offerer even with no workspaceId supplied', async () => {
+    const fake = createFakeSupabase()
     const result = await assertMayOffer(asClient(fake), {
       projectId: PROJECT_ID,
       offeredByUserId: WORKSPACE_ADMIN_ID,
-      workspaceId: WORKSPACE_ID,
+      workspaceId: null,
     })
     expect(result.ok).toBe(false)
   })
@@ -229,6 +209,30 @@ describe('assertMayRespond', () => {
 
   it('refuses a withdraw attempted by the recipient', () => {
     const result = assertMayRespond({ parties, actorUserId: RECIPIENT_ID, action: 'withdraw' })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.status).toBe(403)
+  })
+
+  // F1 hotfix (2026-09-06): defence in depth against self-dealing. This
+  // scenario is not reachable through assertMayOffer today (offered_by is
+  // always the custodian, and from_user_id <> to_user_id is a DB CHECK), but
+  // assertMayRespond is a pure function tested independently of that
+  // guarantee — proving it refuses self-resolution even if a future change
+  // to assertMayOffer ever re-widens who may offer.
+  it('refuses an accept where the responder is also the offerer, even if they are named as to_user_id', () => {
+    const selfDealing = { fromUserId: CUSTODIAN_ID, toUserId: WORKSPACE_ADMIN_ID, offeredBy: WORKSPACE_ADMIN_ID }
+    const result = assertMayRespond({ parties: selfDealing, actorUserId: WORKSPACE_ADMIN_ID, action: 'accept' })
+    expect(result).toEqual({
+      ok: false,
+      status: 403,
+      reason:
+        'The party who offered this transfer cannot also accept it — custody transfer is two-sided, never unilateral (D-29).',
+    })
+  })
+
+  it('refuses a decline where the responder is also the offerer', () => {
+    const selfDealing = { fromUserId: CUSTODIAN_ID, toUserId: WORKSPACE_ADMIN_ID, offeredBy: WORKSPACE_ADMIN_ID }
+    const result = assertMayRespond({ parties: selfDealing, actorUserId: WORKSPACE_ADMIN_ID, action: 'decline' })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.status).toBe(403)
   })

@@ -68,6 +68,39 @@ export async function readWorkspaceAccessState(
 }
 
 /**
+ * Fail-closed read of the D-56/WS-31 kill switch, for consultation on EVERY
+ * `requireWorkspaceAccess` call, before any other work (F7 hotfix,
+ * 2026-09-06). `requireWorkspaceAccess` is a request-path gate reached from
+ * Node, not a Postgres RLS policy — it never automatically inherits
+ * `workspace_access_enabled()`'s own DB-side `COALESCE(..., FALSE)`
+ * fail-closed posture (migration 186), so this function restates that same
+ * posture at the application layer for the one gate that needs it.
+ *
+ * DELIBERATELY DIFFERENT FROM `readWorkspaceAccessState` ABOVE: that
+ * function THROWS so the leadership-only admin route
+ * (`app/api/admin/workspaces/access/route.ts`) can surface a genuine
+ * configuration error to an operator who can act on it. This function NEVER
+ * throws — a request-path authorization gate must fail closed silently
+ * (return `false`, meaning "access disabled"), never bubble an unhandled
+ * rejection that could be mistaken for "the check errored, so allow the
+ * request through."
+ */
+export async function isWorkspaceAccessEnabled(service: SupabaseClient): Promise<boolean> {
+  try {
+    const { data, error } = await service
+      .from('workspace_access_config')
+      .select('enabled')
+      .eq('id', true)
+      .maybeSingle()
+
+    if (error || !data) return false
+    return (data as { enabled: boolean }).enabled === true
+  } catch {
+    return false
+  }
+}
+
+/**
  * The single writer for the D-56/WS-31 kill switch. Disabling REQUIRES a
  * non-empty `reason` — this control disables a platform-wide access layer,
  * and a flip with no recorded reason is not acceptable at that severity.

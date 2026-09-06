@@ -14,16 +14,26 @@ import { createNotification } from '@/lib/notifications'
 // ─── /api/vault/custody-transfers — offer, list, respond (D-28, D-29, D-43) ─
 //
 // Custody is a MEMBER act, not a workspace one — this route is gated with
-// `requireMemberApiAccount` ONLY, never `requireWorkspaceAccess`. A
-// workspace admin who is entitled to offer a transfer (via
-// `assertMayOffer`'s second branch) still reaches this route as themselves,
-// a signed-in Member; the workspace's authority over the offer is proved by
-// `assertMayOffer`'s own lookup, not by a route-level workspace gate.
+// `requireMemberApiAccount` ONLY, never `requireWorkspaceAccess`. F1 HOTFIX
+// (2026-09-06): `assertMayOffer` no longer has a workspace-admin branch at
+// all — it now permits ONLY the project's own custodian, offering
+// directly — so this route carries ZERO workspace-derived authority of any
+// kind. This is a stronger form of the same design intent an earlier
+// version of this comment described (a workspace admin proving authority
+// through `assertMayOffer`'s own lookup rather than a route-level gate):
+// there is no longer any workspace lookup to prove authority THROUGH.
+// `workspaceId` remains an accepted, optional request field, recorded on
+// the inserted row for attribution only (which workspace context the offer
+// happened in, if any) — it confers no authority at this route, in
+// `assertMayOffer`, or in migration 187's trigger. Because no workspace
+// grant reaches this route, the D-56/WS-31 platform-wide workspace-access
+// kill switch (`requireWorkspaceAccess`, hotfix finding F7) has nothing to
+// gate here and is correctly never called from this file.
 //
-// `workspace_custody_transfers`' BEFORE INSERT guard (migration 185,
-// `guard_custody_transfer_offered_by_holder`) is the FIRST enforcement
-// point for D-29's two-sided rule; `assertMayOffer` here is the SECOND,
-// giving a friendly, pre-insert refusal reason rather than a raw
+// `workspace_custody_transfers`' BEFORE INSERT guard (migration 187,
+// replacing migration 185's original) is the FIRST enforcement point for
+// D-29's two-sided rule; `assertMayOffer` here is the SECOND, giving a
+// friendly, pre-insert refusal reason rather than a raw
 // insufficient_privilege database error; the partial unique index
 // (one live offer per project) is the THIRD (T-38-13-01).
 //
@@ -268,13 +278,40 @@ export async function PATCH(request: Request) {
     // controllers and authorized users are separate concepts and must not
     // be inferred from one another." Accepting a transfer infers none of
     // those; it only changes who administers this one row.
-    const { error: custodyError } = await service
+    //
+    // STALE-CUSTODIAN GUARD (F9's cheap half, hotfix 2026-09-06): filtered
+    // by `.eq('user_id', row.from_user_id)` in addition to project id, so
+    // this write only lands if the custodian named on the offer is STILL
+    // the project's custodian at accept time. Without this, a custodian
+    // who transferred custody elsewhere (or had it transferred away) after
+    // this offer was made, but before it was accepted, could have their
+    // record silently overwritten by a stale offer. `.select('id')` +
+    // `.maybeSingle()` lets us tell "the row exists but the filter didn't
+    // match" (stale custodian — a conflict) apart from "the update simply
+    // failed" (an error) — the same distinguishing pattern the DIARY WRITE
+    // above already uses for its own `.eq('state', 'offered')` race guard.
+    // Full transactional accept (both writes in one atomic RPC) remains
+    // deferred to 38.0.1 (F9's full form) — this is the narrow, cheap
+    // mitigation for the same class of race.
+    const { data: custodyUpdated, error: custodyError } = await service
       .from('vault_projects')
       .update({ user_id: row.to_user_id })
       .eq('id', row.project_id)
+      .eq('user_id', row.from_user_id)
+      .select('id')
+      .maybeSingle()
 
     if (custodyError) {
       return NextResponse.json({ error: custodyError.message }, { status: 500 })
+    }
+    if (!custodyUpdated) {
+      return NextResponse.json(
+        {
+          error:
+            "This record's custodian changed after this transfer was offered — it can no longer be accepted.",
+        },
+        { status: 409 }
+      )
     }
 
     if (row.workspace_id) {
