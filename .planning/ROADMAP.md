@@ -2023,6 +2023,15 @@ Requirements delivered here: WS-01..WS-12, WS-20, WS-23, WS-24, WS-25, WS-26, WS
 - **Phase 38.2** (Slices H, I) — workspace billing/metering, cohort rollout and docs:
   WS-21, WS-22, WS-27, WS-28.
 
+**PUSH CADENCE — owner decision 2026-09-05 (during execution):** migrations **183, 184 and 185 are
+BATCHED into a single owner review + push** before Wave 6, rather than stopping at each wave's gate.
+They are purely additive (new tables/columns, no live policy edits). Waves 3–5 therefore author
+their migrations and run their code plans, deferring the push; each plan's `[BLOCKING]` checkpoint
+still exists but is satisfied at the batched sitting. **Migration 186 is unchanged — pushed ALONE**
+with its own adversarial smoke, because it is the only file editing live policies. Migration 182 is
+pushed on its own since it was already authored and gated when the decision was taken.
+Net: three owner sittings (182 · 183–185 · 186) instead of five.
+
 **Migration numbers pre-assigned** to prevent the collision class this repo has hit before:
 182 = Slice A foundation · 183 = roster relationships · 184 = grants and bundles ·
 185 = attachments and custody transfers · 186 = the RLS workspace branch.
