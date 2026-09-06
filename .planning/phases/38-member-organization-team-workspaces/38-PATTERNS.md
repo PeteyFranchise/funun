@@ -218,7 +218,15 @@ export function isLegalSelectsTransition(from: SelectsStatus, to: SelectsStatus)
   return LEGAL_EDGES[from].has(to)
 }
 ```
-Map directly onto `RosterRelationshipState` (`proposed | accepted | document-supported | refused | blocked | ended`) exactly as RESEARCH's own Code Examples section already drafts.
+> **CORRECTION (2026-09-05, after 38-01/38-02 shipped) — the line below is STALE. Do not follow it.**
+> `document-supported` is **NOT** a roster relationship state. Open Question 2 resolved to
+> **compute-on-read**: the evidence tier is DERIVED (`lib/workspaces/evidence.ts`) from an accepted
+> relationship plus a live agreement with a declared scope, per D-16. The shipped
+> `ROSTER_RELATIONSHIP_STATE_VALUES` in `lib/workspaces/types.ts` is the source of truth and
+> deliberately omits it. **Do not add a `document_supported` column, enum value, or stored state to
+> any migration** — D-39's expiry lapse then needs no cron job, which is the whole point.
+
+~~Map directly onto `RosterRelationshipState` (`proposed | accepted | document-supported | refused | blocked | ended`) exactly as RESEARCH's own Code Examples section already drafts.~~ *(superseded — see correction above; read `lib/workspaces/types.ts` and `lib/workspaces/roster.ts` for the shipped shape)*
 
 ---
 

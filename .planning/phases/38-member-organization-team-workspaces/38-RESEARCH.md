@@ -572,6 +572,16 @@ duplicate.
 
 ## Code Examples
 
+> **CORRECTION (2026-09-05, after 38-01/38-02 shipped).** The roster state-machine draft below
+> lists `document-supported` as a stored state and Open Question 2 (further down) leaves it open.
+> **That question is now RESOLVED: compute-on-read.** The evidence tier is DERIVED at read time in
+> `lib/workspaces/evidence.ts` from an accepted relationship plus a live agreement with a declared
+> scope (D-16). The shipped `ROSTER_RELATIONSHIP_STATE_VALUES` in `lib/workspaces/types.ts`
+> deliberately omits it, and `lib/workspaces/roster.ts` implements the 5-state machine.
+> **Migrations must NOT add a `document_supported` column, enum value or stored status.** The draft
+> below is preserved as the research record only — read the shipped modules for the real shape.
+
+
 ### Never-zero-owners guard (D-13) — trigger shape to copy
 
 ```sql
@@ -669,7 +679,7 @@ remain fully live and untouched per D-52.
      array-diff. This is also what makes D-50's per-permission audit trail natural (log which named
      permission was relied on, not "some permission in a JSONB blob").
 
-2. **Where does the "document-supported" state live — on the roster relationship row, or derived
+2. **[RESOLVED 2026-09-05 — compute-on-read. Derived in `lib/workspaces/evidence.ts`; no stored column. See the correction under Code Examples.]** Where does the "document-supported" state live — on the roster relationship row, or derived
    from a join to the agreement-evidence table?**
    - What we know: D-16 says an agreement is optional to form a relationship but a prerequisite for
      authority-tier permissions; D-39 says authority lapses automatically on document expiry while
