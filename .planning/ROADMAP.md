@@ -664,7 +664,7 @@ Plans:
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
-| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 3/13 | In Progress|  |
+| 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 5/13 | In Progress|  |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | Split out, not planned | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | Split out, not planned | - |
 
@@ -2038,7 +2038,7 @@ Net: three owner sittings (182 · 183–185 · 186) instead of five.
 **187 and 188 are RESERVED for Phase 38.2** and must not be claimed. Migrations 182–185 are
 additive and may be pushed as one batch; **186 is pushed alone** with its own adversarial smoke.
 
-**Plans:** 3/13 plans executed
+**Plans:** 5/13 plans executed
 
 Plans:
 **Wave 1**
@@ -2052,8 +2052,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 38-04-PLAN.md — Migration 183: roster relationships, agreement evidence, blocks [owner push] (WS-05/06/26)
-- [ ] 38-05-PLAN.md — Workspace access gate, audit write-through, create + members routes (WS-01/02/03/25/30)
+- [x] 38-04-PLAN.md — Migration 183: roster relationships, agreement evidence, blocks [owner push] (WS-05/06/26)
+- [x] 38-05-PLAN.md — Workspace access gate, audit write-through, create + members routes (WS-01/02/03/25/30)
 
 **Wave 4** *(blocked on Wave 3)*
 
