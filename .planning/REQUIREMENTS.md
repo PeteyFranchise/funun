@@ -833,21 +833,21 @@ production. See `38.0.1-SPLIT.md`.
 
 | Req ID | Phase | Plans | Status |
 |--------|-------|-------|--------|
-| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Verified in production 2026-09-07 (Part B / B5 lineage) |
 | WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Verified in production 2026-09-07 (Part A / A3) |
 | WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Verified in production 2026-09-07 (Part A / A1+A2) |
-| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Structure verified 2026-09-07; behaviour pending Part B |
-| WSR-28 | Phase 38.0.1 | 38.0.1-15, 38.0.1-16 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Verified in production 2026-09-07 (Part A A3b + Part B B10) |
+| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Verified in production 2026-09-07 (Part B / B6 custody binding) |
+| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Verified in production 2026-09-07 (Part B / B2+B2b both layers) |
+| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Verified in production 2026-09-07 (migration 191 applied clean) |
+| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Verified in production 2026-09-07 (Part B / B10 as authenticated) |
+| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
+| WSR-28 | Phase 38.0.1 | 38.0.1-15, 38.0.1-16 | Structure verified; app-layer behaviour pending (unit-tested; needs the plan-13 human check) |
 | WSR-07 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-08 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-09 | Phase 38.0.2 (proposed) | — | Deferred (second deferral — flagged in 38.0.1-SPLIT.md) |
@@ -881,6 +881,23 @@ structural and Part A covers them completely: no policy on the four child tables
 helper, and the four read functions carry both the caller bind and a clean column allowlist. Every
 other row reads "Structure verified; behaviour pending Part B" — the deployed objects have the
 reviewed shape, but no behaviour under a live grant has been exercised.
+
+**VERIFICATION PART B RAN 2026-09-07 against production — 12 behavioural checks, ALL PASS.** Seeded
+six identities, enabled the D-56 kill switch, exercised the authorization paths, tore everything down
+and restored the switch, all inside one atomic `DO` block. Teardown confirmed switch OFF and tables
+empty. Six requirements move to **Verified in production**: WSR-02 (revoking a consent root really
+does kill its delegated descendant at read time), WSR-05, WSR-06 (a workspace really does lose access
+the moment custody transfers), WSR-17 (an expired-but-active seat is refused identically by RLS and
+the helper), WSR-24 and WSR-25.
+
+The remaining rows are **application-layer** — a consent endpoint, evidence confirmation, date
+validation, the catalogue reader, the Member consent surface. SQL cannot prove those. They stay
+"structure verified; app-layer behaviour pending", covered by unit tests and awaiting plan 13's human
+check. Do not mark them Verified on the strength of Part B.
+
+Part B also found a production bug nothing static could reach: migration 139's `guard_owner_immutable`
+blocked `transfer_vault_project_custody`, so custody transfer had never worked. Fixed by migration
+196 and re-verified.
 
 **Part B is blocked by a genuine circular dependency**, not an oversight: it needs the D-56 kill
 switch ON, and this phase's binding condition (R-03/R-07) requires it OFF until Phase 38.0.2 lands.
