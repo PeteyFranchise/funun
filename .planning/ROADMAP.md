@@ -665,7 +665,8 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation (19 adversarial-review findings) | 0/0 | Discussed (17 decisions) | - |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 188 | 0/14 | Planned | - |
+| 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
 
@@ -2130,12 +2131,21 @@ the authorization model being reworked.
 **Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions (+R-18 at planning),
 decision-complete. **Planned 2026-09-06 — 14 plans across 6 waves.**
 
-**PHASE SPLIT RECOMMENDED — awaiting owner approval.** Full A-E scope prices at 21-23 plans (Phase 38
+**PHASE SPLIT APPROVED by the owner 2026-09-06.** Full A-E scope prices at 21-23 plans (Phase 38
 itself needed 13). Planned here: slices **A + B + E + WSR-27** — WSR-01, 02, 03, 04, 05, 06, 14, 15,
 17, 20, 22, 24, 25, 27. Deferred to a proposed **Phase 38.0.2** (slices C + D): WSR-07, 08, 09, 10,
 11, 12, 13, 16, 18, 19, 21, 23, 26. Rationale, per-requirement safety argument and the binding
 condition are in `38.0.1-SPLIT.md`. **Every deferral is safe only while the D-56 kill switch stays
 OFF in production** (R-03 + R-07); three plans re-verify that.
+
+**WSR-09's SECOND deferral accepted by the owner 2026-09-06.** The P0 hotfix already deferred the
+full transactional custody accept; its cheap half shipped (stale-custodian guard + single-row
+check), closing the dangerous overwrite. The residual split-brain window needs the transactional
+RPC that 38.0.2 is building anyway. **Do not defer it a third time.**
+
+**gsd-plan-checker: VERIFICATION PASSED** — migration discipline, the live-Postgres gap closure,
+P0-hotfix preservation, R-17's trigger mechanism, migration 078 branch survival, storage-path
+unreachability, the WSR-24 pre-flight, wave disjointness and the Server/Client boundary all green.
 
 **Plans:** 14 plans
 
@@ -2155,6 +2165,40 @@ Plans:
 - [ ] 38.0.1-12-PLAN.md — Plain-language permission copy and the Member's aggregate consent API
 - [ ] 38.0.1-13-PLAN.md — `/settings/permissions`: tab, server page and per-permission consent surface
 - [ ] 38.0.1-14-PLAN.md — Strict ISO date validation across the remaining workspace date inputs
+
+---
+
+### Phase 38.0.2: Workspace Transactional Integrity & Hygiene
+
+**Goal:** The 13 findings deferred from 38.0.1 on context-cost grounds rather than difficulty.
+Transactional SECURITY DEFINER RPCs for every consequential state change — custody acceptance,
+invitation redemption, ownership/owner-floor, roster transitions — each doing `SELECT ... FOR
+UPDATE`, revalidate, mutate and **audit-insert in ONE transaction**; the ownership hierarchy and
+two-sided ownership transfer; the D-55 cohort gate; audit redaction; and the remaining hygiene.
+
+**Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26
+**Decisions — already locked in `38.0.1-CONTEXT.md`; no discuss-phase needed:** R-05, R-06, R-07,
+R-09, R-12, R-13, R-15, S1
+**Migrations:** 193–194 (195–196 remain reserved for Phase 38.2)
+
+**⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
+ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
+grants to exploit, so the switch is their only containment.
+
+**Watch-outs:** (a) **No `SELECT ... FOR UPDATE` plpgsql RPC exists anywhere in this repo** — the
+transactional core is build-from-research, not build-from-analog. (b) Locking order matters:
+concurrent custody and roster operations must not deadlock. (c) **WSR-09 has now been deferred
+twice. Do not defer it a third time.**
+
+**Depends on:** Phase 38.0.1
+**Status:** Split from 38.0.1 on 2026-09-06, owner-approved. Decisions already exist — run
+`/gsd-plan-phase 38.0.2` directly.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 38.0.2 to break down)
 
 ---
 

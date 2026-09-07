@@ -5,14 +5,14 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 SHIPPED TO PRODUCTION (on origin/main; migrations 182-187 live). P0 hotfix applied. Phase 38.0.1 (Workspace Authorization Remediation) DISCUSSED — 17 decisions R-01..R-17, 26 requirements WSR-01..WSR-26, decision-complete, not yet planned. *** TWO IMMEDIATE OWNER ACTIONS: (1) R-03 — flip workspace_access_config.enabled = FALSE in production NOW (free: F6 makes the feature non-functional anyway; closes the F5/F8 exposure that needs no grants; satisfies smoke-checklist 8a/8b); (2) 38-RLS-SMOKE-CHECKLIST.md still unticked, now a PRODUCTION verification. *** 38.1 and 38.2 are BLOCKED on 38.0.1. Migrations: 188 = pre-existing F3 fix (independent), 189+ = 38.0.1, 195-196 = 38.2. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38 SHIPPED TO PRODUCTION. Phase 38.0.1 PLANNED — 14 plans / 6 waves, gsd-plan-checker VERIFICATION PASSED. Split approved: 38.0.1 = consent model + RLS rework + migration 188 + consent surface; Phase 38.0.2 = transactional integrity + hygiene (13 requirements). *** IMMEDIATE OWNER ACTION: flip the D-56 kill switch OFF in production. EVERY 38.0.2 deferral is safe ONLY while it is off — WSR-07/08 (admin self-promotion to owner) need no grants to exploit. Plan 01's pre-flight probe reads the config row and will confirm. *** Migration ordering: 188 ships FIRST ALONE; 189-192 get ONE JOINT PUSH at plan 11 (plans 05/09/10 carry HOLD checkpoints, not push authorisations); 193-194 free for 38.0.2; 195-196 reserved for 38.2. Live-Postgres gap: repo migration tests are TEXT-LOCK with no live-DB harness, so WSR-06/25/03-04 have named owner-run verification steps instead of Jest. 38-RLS-SMOKE-CHECKLIST.md still outstanding from Phase 38; plan 11 re-runs it. Next: /gsd-execute-phase 38.0.1. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38.0.1 discussed (17 decisions from the adversarial review)
+last_activity_desc: Phase 38.0.1 planned (14 plans, checker passed); 38.0.2 split out
 progress:
-  total_phases: 43
+  total_phases: 44
   completed_phases: 30
-  total_plans: 263
+  total_plans: 277
   completed_plans: 259
   percent: 77
 ---
