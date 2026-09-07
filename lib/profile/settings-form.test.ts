@@ -22,15 +22,30 @@ const ok = (): Promise<SaveResult> => Promise.resolve({ ok: true })
 const fail = (error: string) => (): Promise<SaveResult> => Promise.resolve({ ok: false, error })
 
 describe('SETTINGS_TABS', () => {
-  it('is ordered rights → profile → payouts with segments matching useSelectedLayoutSegment()', () => {
-    expect(SETTINGS_TABS.map(t => t.id)).toEqual(['rights', 'profile', 'payouts'])
+  it('is ordered rights → profile → payouts → permissions with segments matching useSelectedLayoutSegment()', () => {
+    expect(SETTINGS_TABS.map(t => t.id)).toEqual(['rights', 'profile', 'payouts', 'permissions'])
     expect(SETTINGS_TABS.map(t => t.href)).toEqual([
       '/settings',
       '/settings/profile',
       '/settings/payouts',
+      '/settings/permissions',
     ])
     // The index route's segment is null, not '' and not '/settings'.
-    expect(SETTINGS_TABS.map(t => t.segment)).toEqual([null, 'profile', 'payouts'])
+    expect(SETTINGS_TABS.map(t => t.segment)).toEqual([
+      null,
+      'profile',
+      'payouts',
+      'permissions',
+    ])
+  })
+
+  // WSR-27 / R-18. The label is the one the approved UI-SPEC names; the tab
+  // is the ONLY entry point this phase adds, so a rename here silently makes
+  // the Member's consent surface unreachable.
+  it('carries the UI-SPEC label for the consent tab, positioned last', () => {
+    const permissions = SETTINGS_TABS[SETTINGS_TABS.length - 1]
+    expect(permissions.id).toBe('permissions')
+    expect(permissions.label).toBe('Permissions')
   })
 })
 
@@ -191,6 +206,16 @@ describe('isTabDirty', () => {
     }
     expect(isTabDirty('payouts', everythingChanged, BASELINE)).toBe(false)
   })
+
+  it('is always false for permissions — an action list, not a form', () => {
+    const everythingChanged: FormState = {
+      ...BASELINE,
+      artist_name: 'x',
+      ipi: 'y',
+      mailing_address_structured: { raw: 'z' },
+    }
+    expect(isTabDirty('permissions', everythingChanged, BASELINE)).toBe(false)
+  })
 })
 
 describe('buildTabPayload', () => {
@@ -234,6 +259,10 @@ describe('buildTabPayload', () => {
     expect(
       buildTabPayload('rights', { ...BASELINE, mailing_address: '  1 Main St  ' }).mailing_address
     ).toEqual({ raw: '1 Main St' })
+  })
+
+  it('returns an empty body for permissions', () => {
+    expect(buildTabPayload('permissions', BASELINE)).toEqual({})
   })
 
   it('returns an empty body for payouts', () => {
@@ -297,6 +326,24 @@ describe('buildSaversForTab', () => {
 
   it('leaves the payouts tab with nothing to save', () => {
     expect(buildSaversForTab('payouts', deps({ profileDirty: true, visibilityDirty: true }))).toEqual([])
+  })
+
+  // T-38.0.1-13-07. The UI-SPEC's planner note: the consent surface has no
+  // fields, so switching to or away from it must be instant — no write
+  // attempt, no "Saving…" label, no dirty-state prompt. A regression here
+  // does not look like a bug; it looks like a tab that hangs.
+  it('leaves the permissions tab with nothing to save, even with both groups dirty', () => {
+    expect(
+      buildSaversForTab('permissions', deps({ profileDirty: true, visibilityDirty: true }))
+    ).toHaveLength(0)
+  })
+
+  // The regression guard for the three tabs this change must not touch.
+  it('does not change how many savers the three existing tabs return', () => {
+    const d = deps({ profileDirty: true, visibilityDirty: true })
+    expect(buildSaversForTab('rights', d)).toHaveLength(1)
+    expect(buildSaversForTab('profile', d)).toHaveLength(2)
+    expect(buildSaversForTab('payouts', d)).toHaveLength(0)
   })
 
   it('writes only visibility when only the privacy selects changed on the profile tab', async () => {

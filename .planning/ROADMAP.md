@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 12/16 | In Progress|  |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Complete   | 2026-09-07 |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2181,24 +2181,27 @@ RPC that 38.0.2 is building anyway. **Do not defer it a third time.**
 P0-hotfix preservation, R-17's trigger mechanism, migration 078 branch survival, storage-path
 unreachability, the WSR-24 pre-flight, wave disjointness and the Server/Client boundary all green.
 
-**Plans:** 3/14 plans executed
+**Plans:** 16/16 plans complete
 
 Plans:
 
-- [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 190 and 189
+- [x] 38.0.1-15-PLAN.md
+- [x] 38.0.1-16-PLAN.md
+
+- [x] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 190 and 189
 - [x] 38.0.1-02-PLAN.md — Migration 190: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
 - [x] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
-- [ ] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
+- [x] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
 - [x] 38.0.1-05-PLAN.md — Migration 191: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
-- [ ] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)
-- [ ] 38.0.1-07-PLAN.md — Member consent route under `/api/roster/relationships/[id]/consent`
-- [ ] 38.0.1-08-PLAN.md — Evidence: workspace proposes, subject confirms; shared ISO date schemas
-- [ ] 38.0.1-09-PLAN.md — Migration 192: helper v2 with the custody binding, the lineage hop and `expires_at`
-- [ ] 38.0.1-10-PLAN.md — Migration 193: remove the four child-table branches, add column-allowlist read RPCs
-- [ ] 38.0.1-11-PLAN.md — Migration 194 + catalogue rewrite + the joint push of 191-194 and full adversarial smoke
-- [ ] 38.0.1-12-PLAN.md — Plain-language permission copy and the Member's aggregate consent API
-- [ ] 38.0.1-13-PLAN.md — `/settings/permissions`: tab, server page and per-permission consent surface
-- [ ] 38.0.1-14-PLAN.md — Strict ISO date validation across the remaining workspace date inputs
+- [x] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)
+- [x] 38.0.1-07-PLAN.md — Member consent route under `/api/roster/relationships/[id]/consent`
+- [x] 38.0.1-08-PLAN.md — Evidence: workspace proposes, subject confirms; shared ISO date schemas
+- [x] 38.0.1-09-PLAN.md — Migration 192: helper v2 with the custody binding, the lineage hop and `expires_at`
+- [x] 38.0.1-10-PLAN.md — Migration 193: remove the four child-table branches, add column-allowlist read RPCs
+- [x] 38.0.1-11-PLAN.md — Migration 194 + catalogue rewrite + the joint push of 191-194 and full adversarial smoke
+- [x] 38.0.1-12-PLAN.md — Plain-language permission copy and the Member's aggregate consent API
+- [x] 38.0.1-13-PLAN.md — `/settings/permissions`: tab, server page and per-permission consent surface
+- [x] 38.0.1-14-PLAN.md — Strict ISO date validation across the remaining workspace date inputs
 
 ---
 
