@@ -11,6 +11,10 @@ import {
 } from '@/lib/workspaces/grants'
 import { isWorkspaceAccessLive } from '@/lib/workspaces/roster'
 import { loadRelationshipTier } from '@/lib/workspaces/roster-service'
+import {
+  resolveConsentRootPermissions,
+  resolveLivePermissionsForRelationship,
+} from '@/lib/workspaces/grant-lineage-service'
 import type { RosterRelationshipState, WorkspaceAuthorityTier } from '@/lib/workspaces/types'
 
 // ─── The use-time authority (D-49, D-16, D-21, D-39, custody D-01/D-09) ────
@@ -44,6 +48,25 @@ import type { RosterRelationshipState, WorkspaceAuthorityTier } from '@/lib/work
 // returns means the caller is entitled to ask the existing, non-workspace
 // clean-master accessor for a file — it is not itself that accessor, and it
 // never widens what that accessor will hand back (custody D-01, D-09).
+//
+// (5) THE F6 CORRECTION. `assertGrantIssuable`'s `granterHolds` no longer
+// comes from this module's own `resolveEffectivePermissions` — it comes
+// from `resolveConsentRootPermissions` (`lib/workspaces/
+// grant-lineage-service.ts`), which walks the Member's live consent root
+// established by `lib/workspaces/consent.ts` and
+// `lib/workspaces/grant-lineage.ts`. The prior call was circular: it
+// derived a granter's authority from `workspace_grants` rows that only
+// this very function could authorise into existence, so with zero grants
+// ever issued, `resolveEffectivePermissions`'s Step 4 always returned an
+// empty set and `assertGrantIsIssuable`'s subset check refused every
+// possible first grant, forever (finding F6, empirically confirmed at
+// 0/0 grants in production). The Member's own consent root is the
+// non-circular seed a workspace admin may relay onward but never exceed
+// (D-21). Step 4 below was likewise re-sourced to
+// `resolveLivePermissionsForRelationship`, which re-walks the FULL
+// delegation lineage — not just the leaf row — on every call, so a
+// revoked ancestor drops all of its descendants immediately, per item
+// (2)'s doctrine.
 
 const KNOWN_PERMISSIONS: ReadonlySet<string> = new Set(WORKSPACE_PERMISSION_VALUES)
 
@@ -60,7 +83,6 @@ type RosterRelationshipRow = {
   effective_from: string | null
   terminates_on: string | null
 }
-type WorkspaceGrantRow = { permission: string; project_id: string | null }
 
 /**
  * The single use-time authority (D-49's second, harder clause). Re-derives,
@@ -131,29 +153,21 @@ export async function resolveEffectivePermissions(
   })
   if (!tierResult.ok) return EMPTY_PERMISSIONS
 
-  // Step 4: unrevoked grant rows for this exact relationship.
-  const { data: grantRows, error: grantError } = await supabase
-    .from('workspace_grants')
-    .select('permission, project_id')
-    .eq('workspace_id', workspaceId)
-    .eq('relationship_id', relationshipRow.id)
-    .is('revoked_at', null)
-
-  if (grantError) return EMPTY_PERMISSIONS
-
-  const applicable = ((grantRows ?? []) as WorkspaceGrantRow[]).filter(
-    (row) => row.project_id === null || row.project_id === projectId
-  )
-
-  const requested = new Set<WorkspacePermission>()
-  for (const row of applicable) {
-    if (isKnownWorkspacePermission(row.permission)) requested.add(row.permission)
-  }
+  // Step 4: unrevoked grant rows for this relationship whose lineage chain
+  // terminates at a live member-consent root (F6;
+  // `lib/workspaces/grant-lineage-service.ts`). A row whose ancestor was
+  // revoked is dropped here, on every call — there is no cascade job.
+  const applicablePermissions = await resolveLivePermissionsForRelationship(supabase, {
+    workspaceId,
+    relationshipId: relationshipRow.id,
+    projectId,
+    now,
+  })
 
   // Step 5: drop any authority-tier permission the current tier does not
   // support. `filterGrantableByAuthority` is the one implementation of this
   // rule (plan 38-01); this module never re-implements it.
-  return new Set(filterGrantableByAuthority(requested, tierResult.tier))
+  return new Set(filterGrantableByAuthority(applicablePermissions, tierResult.tier))
 }
 
 export type ExerciseResult =
@@ -206,9 +220,14 @@ export async function assertMayExercise(
 }
 
 /**
- * The grant-time half of D-49. Resolves the granter's own effective set
- * (via `resolveEffectivePermissions`, scoped to the same workspace/
- * subject/project) and the relationship's current authority tier, then
+ * The grant-time half of D-49. Resolves `granterHolds` from the
+ * relationship's Member consent root (F6; `resolveConsentRootPermissions`,
+ * `lib/workspaces/grant-lineage-service.ts`) — NOT from the granter's own
+ * `resolveEffectivePermissions` result, which is precisely the circularity
+ * that made every first grant unissuable (see this module's header item
+ * (5)). A workspace admin may relay what the Member consented to but never
+ * exceed it; they need no personal grant row of their own to do so (D-21).
+ * Resolves the relationship's current authority tier separately, then
  * delegates the subset-and-tier decision entirely to
  * `assertGrantIsIssuable` (plan 38-01) — this function never re-implements
  * that check.
@@ -225,12 +244,10 @@ export async function assertGrantIssuable(
     now?: number
   }
 ): Promise<GrantIssuanceResult> {
-  const granterHolds = await resolveEffectivePermissions(supabase, {
+  const granterHolds = await resolveConsentRootPermissions(supabase, {
     workspaceId: args.workspaceId,
-    actorUserId: args.granterUserId,
-    subjectMemberId: args.subjectMemberId,
+    relationshipId: args.relationshipId,
     projectId: args.projectId,
-    now: args.now,
   })
 
   const { data: relationship, error: relationshipError } = await supabase
