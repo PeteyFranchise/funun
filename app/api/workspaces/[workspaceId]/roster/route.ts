@@ -12,6 +12,7 @@ import {
   ROSTER_PROPOSAL_RATE_LIMIT,
 } from '@/lib/workspaces/roster-service'
 import type { RosterRelationshipState } from '@/lib/workspaces/types'
+import { assertDateOrdering, optionalIsoDate } from '@/lib/workspaces/date-schemas'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 import { createNotification } from '@/lib/notifications'
 
@@ -35,14 +36,23 @@ type RosterRelationshipRow = {
   workspace_id: string
   member_user_id: string
   state: RosterRelationshipState
+  effective_from: string | null
+  terminates_on: string | null
 }
 
+// `effective_from` and `terminates_on` are DATE columns (migration 183) that
+// `isWorkspaceAccessLive` and `workspace_roster_relationship_is_live()` both
+// read, so they are an authorization input rather than display data. Both go
+// through `lib/workspaces/date-schemas.ts` (R-14 / WSR-22) — the one place
+// ISO date validation lives on the workspace surface — never a bare
+// `z.string()`, which lets a malformed bound parse to NaN and read as "no
+// constraint".
 const ProposeRosterSchema = z
   .object({
     memberUserId: z.string().uuid(),
     professionalRole: z.string().trim().max(200).optional(),
-    effectiveFrom: z.string().optional(),
-    terminatesOn: z.string().optional(),
+    effectiveFrom: optionalIsoDate,
+    terminatesOn: optionalIsoDate,
   })
   .strict()
 
@@ -51,8 +61,9 @@ const PatchRosterSchema = z
     relationshipId: z.string().uuid(),
     action: z.literal('end').optional(),
     professional_role: z.union([z.string().trim().max(200), z.null()]).optional(),
-    effective_from: z.union([z.string(), z.null()]).optional(),
-    terminates_on: z.union([z.string(), z.null()]).optional(),
+    // `optionalIsoDate` is nullish, so an explicit null still clears a bound.
+    effective_from: optionalIsoDate,
+    terminates_on: optionalIsoDate,
   })
   .strict()
 
@@ -63,7 +74,7 @@ async function loadTargetRelationship(
 ): Promise<{ row: RosterRelationshipRow | null; error?: string }> {
   const { data, error } = await service
     .from('workspace_roster_relationships')
-    .select('id, workspace_id, member_user_id, state')
+    .select('id, workspace_id, member_user_id, state, effective_from, terminates_on')
     .eq('id', relationshipId)
     .eq('workspace_id', workspaceId)
     .maybeSingle()
@@ -109,6 +120,18 @@ export async function POST(
       { status: 400 }
     )
   }
+
+  // Mirrors migration 183's own CHECK (`terminates_on > effective_from`) at
+  // the API layer. It does not replace that constraint — it exists so the
+  // caller gets a message naming both fields instead of a raw
+  // constraint-violation string.
+  const ordering = assertDateOrdering({
+    start: parsed.data.effectiveFrom,
+    end: parsed.data.terminatesOn,
+    startLabel: 'effectiveFrom',
+    endLabel: 'terminatesOn',
+  })
+  if (!ordering.ok) return NextResponse.json({ error: ordering.error }, { status: 400 })
 
   const service = createServiceClient()
 
@@ -287,6 +310,25 @@ export async function PATCH(
   const fields = pickRosterFields(editableCandidate)
   if (Object.keys(fields).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update.' }, { status: 400 })
+  }
+
+  // Same rule as the POST guard above, and the same reason: this mirrors
+  // migration 183's CHECK to turn a constraint violation into a readable
+  // message, not to replace the database rule. The incoming values are merged
+  // OVER the stored ones first, because a request that names only one bound is
+  // still capable of leaving the row's window inverted.
+  const mergedStart =
+    'effective_from' in fields ? (fields.effective_from as string | null) : target.effective_from
+  const mergedEnd =
+    'terminates_on' in fields ? (fields.terminates_on as string | null) : target.terminates_on
+  const patchOrdering = assertDateOrdering({
+    start: mergedStart,
+    end: mergedEnd,
+    startLabel: 'effective_from',
+    endLabel: 'terminates_on',
+  })
+  if (!patchOrdering.ok) {
+    return NextResponse.json({ error: patchOrdering.error }, { status: 400 })
   }
 
   const { data: updated, error: updateError } = await service

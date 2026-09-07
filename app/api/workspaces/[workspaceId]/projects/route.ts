@@ -4,6 +4,7 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireWorkspaceAccess } from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { assertMayExercise } from '@/lib/workspaces/grant-service'
+import { optionalIsoDate } from '@/lib/workspaces/date-schemas'
 import { isWorkspaceAccessLive } from '@/lib/workspaces/roster'
 import type { VaultProjectType } from '@/types'
 import type { RosterRelationshipState } from '@/lib/workspaces/types'
@@ -31,7 +32,9 @@ const CreateWorkspaceProjectSchema = z
     relationshipId: z.string().uuid(),
     title: z.string().trim().min(1),
     type: z.enum(['single', 'snippet', 'ep', 'album', 'unreleased']),
-    releaseDate: z.string().optional(),
+    // R-14 / WSR-22: `vault_projects.release_date` is a DATE column, so the
+    // date schema applies here and not the datetime one.
+    releaseDate: optionalIsoDate,
     genre: z.string().trim().optional(),
   })
   .strict()
