@@ -181,11 +181,25 @@ BEGIN
       CASE WHEN n = 0 THEN 'PASS' ELSE '*** FAIL — READ IMPERSONATION STILL POSSIBLE ***' END);
   EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (9,'B9 p_uid impersonation refused',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  -- B10 must run as `authenticated`, NOT as the editor's `postgres` session.
+  -- Migrations 190 and 196 both exempt current_user = 'postgres' so the
+  -- SECURITY DEFINER custody RPC can work; a raw UPDATE typed into the SQL
+  -- editor therefore inherits that exemption and would SUCCEED, reporting a
+  -- false FAIL. The realistic case is the project's own custodian trying to
+  -- reassign user_id directly, so impersonate them and drop to the
+  -- authenticated role first. RESET ROLE in the handler too, or every later
+  -- statement would keep running as authenticated.
   BEGIN
+    PERFORM set_config('request.jwt.claims', json_build_object('sub',SUBJECT::text,'role','authenticated')::text, true);
+    EXECUTE 'SET LOCAL ROLE authenticated';
     UPDATE public.vault_projects SET user_id = OUTSIDER WHERE id = PROJ;
-    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable','raw UPDATE succeeded','*** FAIL — TRIGGER DID NOT BLOCK ***');
+    RESET ROLE;
+    PERFORM set_config('request.jwt.claims', NULL, true);
+    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable (as authenticated)','raw UPDATE succeeded','*** FAIL — TRIGGER DID NOT BLOCK ***');
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable', left(SQLERRM,80),'PASS — refused');
+    RESET ROLE;
+    PERFORM set_config('request.jwt.claims', NULL, true);
+    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable (as authenticated)', left(SQLERRM,80),'PASS — refused');
   END;
 
   BEGIN
