@@ -833,21 +833,21 @@ production. See `38.0.1-SPLIT.md`.
 
 | Req ID | Phase | Plans | Status |
 |--------|-------|-------|--------|
-| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Code complete — awaiting live verification |
-| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Code complete — awaiting live verification |
-| WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Code complete — awaiting live verification |
-| WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Code complete — awaiting live verification |
-| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Code complete — awaiting live verification |
-| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Code complete — awaiting live verification |
-| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Code complete — awaiting live verification |
-| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Code complete — awaiting live verification |
-| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Code complete — awaiting live verification |
-| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Code complete — awaiting live verification |
-| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Code complete — awaiting live verification |
-| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Code complete — awaiting live verification |
-| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Code complete — awaiting live verification |
-| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Code complete — awaiting live verification |
-| WSR-28 | Phase 38.0.1 | 38.0.1-15, 38.0.1-16 | Code complete — awaiting live verification |
+| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Verified in production 2026-09-07 (Part A / A3) |
+| WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Verified in production 2026-09-07 (Part A / A1+A2) |
+| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Structure verified 2026-09-07; behaviour pending Part B |
+| WSR-28 | Phase 38.0.1 | 38.0.1-15, 38.0.1-16 | Structure verified 2026-09-07; behaviour pending Part B |
 | WSR-07 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-08 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-09 | Phase 38.0.2 (proposed) | — | Deferred (second deferral — flagged in 38.0.1-SPLIT.md) |
@@ -874,6 +874,19 @@ migrations 190-195 are authored-and-held, unapplied. None of these requirements 
 that joint push lands and the live-Postgres checks in plan 38.0.1-11's Task 3 checkpoint (steps
 6-11, including the 57-box `38-RLS-SMOKE-CHECKLIST.md`) are run and reported. Do not mark any row
 Verified before then.
+
+**VERIFICATION PART A RAN 2026-09-07 against production — 35 checks, 0 FAIL.** See
+`38.0.1-VERIFICATION.md`. WSR-03 and WSR-04 are marked Verified because their claims are purely
+structural and Part A covers them completely: no policy on the four child tables names a workspace
+helper, and the four read functions carry both the caller bind and a clean column allowlist. Every
+other row reads "Structure verified; behaviour pending Part B" — the deployed objects have the
+reviewed shape, but no behaviour under a live grant has been exercised.
+
+**Part B is blocked by a genuine circular dependency**, not an oversight: it needs the D-56 kill
+switch ON, and this phase's binding condition (R-03/R-07) requires it OFF until Phase 38.0.2 lands.
+A9 confirmed all five workspace tables hold zero rows, so Part B also needs seeded data and six test
+accounts. Recommended resolution is a Supabase preview branch. Do not mark any row fully Verified
+until Part B runs.
 
 **Migrations:** see the **LIVE LEDGER** table under Phase 38.0.1 in `.planning/ROADMAP.md`, which
 is authoritative. Summary: **190-195 all belong to Phase 38.0.1** and are authored-but-unapplied;
