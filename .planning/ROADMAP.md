@@ -2127,14 +2127,34 @@ Phase 38.2's reservation moves to 195–196.
 **Blocks:** Phase 38.1 and 38.2 should NOT be planned until this lands — 38.1 builds surfaces on
 the authorization model being reworked.
 
-**Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions, decision-complete.
-Not yet planned. Next: `/gsd-plan-phase 38.0.1`.
+**Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions (+R-18 at planning),
+decision-complete. **Planned 2026-09-06 — 14 plans across 6 waves.**
 
-**Plans:** 0 plans
+**PHASE SPLIT RECOMMENDED — awaiting owner approval.** Full A-E scope prices at 21-23 plans (Phase 38
+itself needed 13). Planned here: slices **A + B + E + WSR-27** — WSR-01, 02, 03, 04, 05, 06, 14, 15,
+17, 20, 22, 24, 25, 27. Deferred to a proposed **Phase 38.0.2** (slices C + D): WSR-07, 08, 09, 10,
+11, 12, 13, 16, 18, 19, 21, 23, 26. Rationale, per-requirement safety argument and the binding
+condition are in `38.0.1-SPLIT.md`. **Every deferral is safe only while the D-56 kill switch stays
+OFF in production** (R-03 + R-07); three plans re-verify that.
+
+**Plans:** 14 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 38.0.1 to break down)
+- [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 188 and 189
+- [ ] 38.0.1-02-PLAN.md — Migration 188: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
+- [ ] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
+- [ ] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
+- [ ] 38.0.1-05-PLAN.md — Migration 189: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
+- [ ] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)
+- [ ] 38.0.1-07-PLAN.md — Member consent route under `/api/roster/relationships/[id]/consent`
+- [ ] 38.0.1-08-PLAN.md — Evidence: workspace proposes, subject confirms; shared ISO date schemas
+- [ ] 38.0.1-09-PLAN.md — Migration 190: helper v2 with the custody binding, the lineage hop and `expires_at`
+- [ ] 38.0.1-10-PLAN.md — Migration 191: remove the four child-table branches, add column-allowlist read RPCs
+- [ ] 38.0.1-11-PLAN.md — Migration 192 + catalogue rewrite + the joint push of 189-192 and full adversarial smoke
+- [ ] 38.0.1-12-PLAN.md — Plain-language permission copy and the Member's aggregate consent API
+- [ ] 38.0.1-13-PLAN.md — `/settings/permissions`: tab, server page and per-permission consent surface
+- [ ] 38.0.1-14-PLAN.md — Strict ISO date validation across the remaining workspace date inputs
 
 ---
 

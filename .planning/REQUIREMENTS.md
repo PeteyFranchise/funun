@@ -786,6 +786,88 @@ The remaining 12 IDs are assigned to Phases 38.1 and 38.2, both of which have ro
 and inherit their decisions from the same `38-CONTEXT.md` — they are deferred, not dropped.
 
 ---
+
+## v1.4 — Phase 38.0.1: Workspace Authorization Remediation Requirements
+
+Derived from `38.0.1-CONTEXT.md` decisions R-01..R-18. Phase 38 shipped a workspace layer whose
+doctrine is right and whose enforcement is not; an external adversarial review (Codex, 2026-09-06)
+found 22 defects, three P0s shipped the same day, and these 27 requirements close the remaining 19.
+**No Phase 38 doctrine changes — D-01..D-56 stay locked.**
+
+**Split (planner, 2026-09-06, awaiting owner approval):** Phase 38.0.1 covers slices A + B + E plus
+WSR-27. WSR-07..WSR-13, WSR-16, WSR-18, WSR-19, WSR-21, WSR-23 and WSR-26 belong to a proposed
+**Phase 38.0.2** (slices C + D). Every deferral is safe only while the D-56 kill switch stays OFF in
+production. See `38.0.1-SPLIT.md`.
+
+| ID | Requirement | Decisions | Finding |
+|---|---|---|---|
+| WSR-01 | Member-side consent endpoint; Member is the root of grant authority | R-01 | F6 |
+| WSR-02 | `parent_grant_id` delegation lineage, re-validated at use time | R-01 | F6 |
+| WSR-03 | Remove workspace branch from the four child tables | R-02 | F2 |
+| WSR-04 | SECURITY DEFINER read RPCs with explicit column allowlists | R-02 | F2 |
+| WSR-05 | Narrow the `vault_projects` workspace branch; no custody mutation | R-02 | F3 |
+| WSR-06 | Helper binds access to custody (`p.user_id = r.member_user_id`) | R-04 | F4 |
+| WSR-07 | Owner-only promotion; no self-promotion; admins cannot touch owner rows | R-05 | F5 |
+| WSR-08 | Two-sided ownership transfer (nominate + accept) | R-05 | F5 |
+| WSR-09 | Transactional RPC: custody acceptance | R-06 | F9 |
+| WSR-10 | Transactional RPC: invitation redemption | R-06 | F11 |
+| WSR-11 | Transactional RPC: ownership / owner-floor | R-06 | F15 |
+| WSR-12 | Transactional RPC: roster transitions (CAS + side effects) | R-06 | F16 |
+| WSR-13 | Audit insert inside the same transaction as its mutation | R-06 | F14 |
+| WSR-14 | Evidence: workspace proposes, subject confirms, document mandatory | R-08 | F8 |
+| WSR-15 | Enforce `effective_from <= now` at use time | R-08 | F8 |
+| WSR-16 | Cohort gate on creation and `requireWorkspaceAccess` | R-07 | F17 |
+| WSR-17 | One canonical live-membership definition incl. `expires_at` | R-11 | F12 |
+| WSR-18 | Proposed relationships visible only to named Member + owner/admin | R-12 | F13 |
+| WSR-19 | Redacted audit reads; no restricted PII in `changes` | R-13 | F14 |
+| WSR-20 | Set-based paginated catalogue and roster RPCs | R-10 | F18 |
+| WSR-21 | "Appears on" requires a contributor relationship naming the caller | R-09 | F20 |
+| WSR-22 | Strict ISO date validation + ordering | R-14 | F19 |
+| WSR-23 | Remove/condition the `created_by` visibility fallback | R-15 | F21 |
+| WSR-24 | `relationship_id` NOT NULL on attachments and grants (audit first) | R-16 | F22 |
+| WSR-25 | Migration 188: BEFORE UPDATE trigger blocking `user_id` changes (all callers) | R-17 | F3 pre-existing |
+| WSR-26 | Verify + explicitly revoke `service_role` audit UPDATE/DELETE | S1 | S1 |
+| WSR-27 | Minimal Member-facing consent surface (approve/decline per permission) | R-18 | — |
+
+**Traceability (Phase 38.0.1 — slices A + B + E + WSR-27):**
+
+| Req ID | Phase | Plans | Status |
+|--------|-------|-------|--------|
+| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Planned |
+| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Planned |
+| WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Planned |
+| WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Planned |
+| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Planned |
+| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Planned |
+| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Planned |
+| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Planned |
+| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Planned |
+| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Planned |
+| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Planned |
+| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Planned |
+| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Planned |
+| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Planned |
+| WSR-07 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-08 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-09 | Phase 38.0.2 (proposed) | — | Deferred (second deferral — flagged in 38.0.1-SPLIT.md) |
+| WSR-10 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-11 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-12 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-13 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-16 | Phase 38.0.2 (proposed) | — | Deferred — release requirement before the kill switch goes back on (R-07) |
+| WSR-18 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-19 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-21 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-23 | Phase 38.0.2 (proposed) | — | Deferred |
+| WSR-26 | Phase 38.0.2 (proposed) | — | Deferred; its verification query runs in 38.0.1-01 (probe P4) and the result is carried forward |
+
+**Coverage (Phase 38.0.1):** 14 requirement IDs assigned to at least one plan across 14 plans /
+6 waves. 13 IDs explicitly deferred by name to Phase 38.0.2, each with a written safety argument.
+
+**Migrations:** 188 (independent, ships first) and 189-192 (one joint push) are claimed by Phase
+38.0.1. 193-194 are left free for Phase 38.0.2. **195-196 remain reserved for Phase 38.2.**
+
+---
 ---
 *Requirements defined: 2026-07-03*
-*Last updated: 2026-09-05 — Phase 38 registered WS-01..WS-31 (Member Organization & Team Workspaces; Slices A–D planned as Phase 38, E–G as 38.1, H–I as 38.2). IDs derived from 38-CONTEXT.md D-01..D-56; phase-scoped. Prior entry: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*
+*Last updated: 2026-09-06 — Phase 38.0.1 registered WSR-01..WSR-27 (Workspace Authorization Remediation; slices A + B + E + WSR-27 planned as Phase 38.0.1, C + D proposed as Phase 38.0.2). IDs derived from 38.0.1-CONTEXT.md R-01..R-18; phase-scoped. Prior entry: 2026-09-05 — Phase 38 registered WS-01..WS-31 (Member Organization & Team Workspaces; Slices A–D planned as Phase 38, E–G as 38.1, H–I as 38.2). IDs derived from 38-CONTEXT.md D-01..D-56; phase-scoped. Prior entry: 2026-08-17 — Phase 33 registered PLAYBOOK-01..10 (The Playbook double-sidebar shell + IT Team room read-only v1: `it` StaffRole + owner-run migration 114, Rail 1 entry + Rail 2 rooms/ghosts/role-conditional IT room, 4 markdown-rendered doc pages + Vercel file-tracing, bespoke live Monitoring Dashboard — health/digest/thresholds/vendors/uptime link-out). IDs derived from 33-CONTEXT.md D-01..D-10 (no SPEC.md for this phase); phase-scoped. Prior 2026-08-16 entry: Phase 31 Slice-1 R1/R2/R5/R10/R11/R12 — phase-scoped, distinct from Phase 19's.*
