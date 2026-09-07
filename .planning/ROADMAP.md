@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 11/15 | In Progress|  |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 12/16 | In Progress|  |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2163,7 +2163,7 @@ outside the grant lineage entirely — no `parent_grant_id`, never walked by
 the authorization model being reworked.
 
 **Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions (+R-18 at planning),
-decision-complete. **Planned 2026-09-06 — 15 plans across 7 waves** (plan 15 added during execution, see R-19).
+decision-complete. **Planned 2026-09-06 — 16 plans across 7 waves** (plans 15 and 16 added during execution, see R-19).
 
 **PHASE SPLIT APPROVED by the owner 2026-09-06.** Full A-E scope prices at 21-23 plans (Phase 38
 itself needed 13). Planned here: slices **A + B + E + WSR-27** — WSR-01, 02, 03, 04, 05, 06, 14, 15,
