@@ -6,6 +6,7 @@ import {
   resolveEffectivePermissions,
   SENSITIVE_USE_LOG_REQUIRED,
 } from '@/lib/workspaces/grant-service'
+import { MEMBER_CONSENT_SOURCE } from '@/lib/workspaces/grant-lineage'
 
 const WORKSPACE_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
 const ACTOR_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -17,6 +18,52 @@ const PROJECT_B = '22222222-2222-2222-2222-222222222222'
 type Row = Record<string, unknown> | null
 type Rows = Record<string, unknown>[]
 type Res<T> = { data: T; error: { message: string } | null }
+
+type RawGrantRow = {
+  id: string
+  parent_grant_id: string | null
+  source: string
+  permission: string
+  project_id: string | null
+  revoked_at: string | null
+  relationship_id: string
+}
+
+// A live Member-consent root row for one permission — the F6-correct shape
+// `resolveLivePermissionsForRelationship`/`resolveConsentRootPermissions`
+// (lib/workspaces/grant-lineage-service.ts) require in order to count a row
+// as held: unrevoked, and its lineage chain (here, just itself) terminates
+// at `source = member_consent` with `parent_grant_id = null`.
+function rootRow(permission: string, overrides: Partial<RawGrantRow> = {}): RawGrantRow {
+  return {
+    id: `root-${permission}`,
+    parent_grant_id: null,
+    source: MEMBER_CONSENT_SOURCE,
+    permission,
+    project_id: null,
+    revoked_at: null,
+    relationship_id: RELATIONSHIP_ID,
+    ...overrides,
+  }
+}
+
+// A delegated row relaying a parent grant — never itself a consent root.
+function delegatedRow(
+  permission: string,
+  parentGrantId: string,
+  overrides: Partial<RawGrantRow> = {}
+): RawGrantRow {
+  return {
+    id: `delegated-${permission}`,
+    parent_grant_id: parentGrantId,
+    source: 'individual',
+    permission,
+    project_id: null,
+    revoked_at: null,
+    relationship_id: RELATIONSHIP_ID,
+    ...overrides,
+  }
+}
 
 type Handlers = {
   membership: () => Res<Row>
@@ -38,8 +85,12 @@ const DEFAULT_HANDLERS: Handlers = {
 // Builds a stubbed Supabase client whose chained query builders read the
 // CURRENT `handlers.*` function on every invocation (not a captured
 // one-time value) — this is what lets a test mutate `fake.handlers` between
-// two calls to prove resolveEffectivePermissions re-derives rather than
-// caches (D-49).
+// two calls to prove resolveEffectivePermissions/assertGrantIssuable
+// re-derive rather than cache (D-49). The `workspace_grants` chain is now
+// TWO `.eq()` calls with no `.is()` — the query shape
+// `lib/workspaces/grant-lineage-service.ts`'s `loadRelationshipGrantChain`
+// actually issues (revoked rows must reach the walker, not be filtered out
+// by the query itself).
 function createFakeSupabase(overrides: Partial<Handlers> = {}) {
   const handlers: Handlers = { ...DEFAULT_HANDLERS, ...overrides }
 
@@ -60,8 +111,7 @@ function createFakeSupabase(overrides: Partial<Handlers> = {}) {
   const evidenceEq = jest.fn(async () => handlers.evidence())
   const evidenceSelect = jest.fn(() => ({ eq: evidenceEq }))
 
-  const grantsIs = jest.fn(async () => handlers.grants())
-  const grantsEq2 = jest.fn(() => ({ is: grantsIs }))
+  const grantsEq2 = jest.fn(async () => handlers.grants())
   const grantsEq1 = jest.fn(() => ({ eq: grantsEq2 }))
   const grantsSelect = jest.fn(() => ({ eq: grantsEq1 }))
 
@@ -73,7 +123,7 @@ function createFakeSupabase(overrides: Partial<Handlers> = {}) {
     throw new Error(`Unexpected table: ${table}`)
   })
 
-  return { from, handlers, grantsIs, memberMaybeSingle, relMaybeSingle }
+  return { from, handlers, grantsEq1, grantsEq2, memberSelect, memberMaybeSingle, relMaybeSingle }
 }
 
 function asClient(fake: ReturnType<typeof createFakeSupabase>): SupabaseClient {
@@ -99,7 +149,7 @@ describe('resolveEffectivePermissions', () => {
     expect(result.size).toBe(0)
   })
 
-  it('[D-49] returns an empty set when the relationship is not live, despite unrevoked grant rows in the stub', async () => {
+  it('[D-49] returns an empty set when the relationship is not live, despite a live consent-root row in the stub', async () => {
     const fake = createFakeSupabase({
       relationship: () => ({
         data: {
@@ -112,7 +162,7 @@ describe('resolveEffectivePermissions', () => {
         },
         error: null,
       }),
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     const result = await resolveEffectivePermissions(asClient(fake), {
@@ -126,7 +176,7 @@ describe('resolveEffectivePermissions', () => {
   it('[D-49] returns an empty set when no live roster relationship row exists for the pair', async () => {
     const fake = createFakeSupabase({
       relationship: () => ({ data: null, error: null }),
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     const result = await resolveEffectivePermissions(asClient(fake), baseArgs)
@@ -138,8 +188,8 @@ describe('resolveEffectivePermissions', () => {
       evidence: () => ({ data: [], error: null }), // no qualifying evidence -> tier 'operational'
       grants: () => ({
         data: [
-          { permission: 'view_metadata', project_id: null }, // operational tier
-          { permission: 'approve_releases', project_id: null }, // authority tier
+          rootRow('view_metadata'), // operational tier
+          rootRow('approve_releases'), // authority tier
         ],
         error: null,
       }),
@@ -166,20 +216,20 @@ describe('resolveEffectivePermissions', () => {
         ],
         error: null,
       }),
-      grants: () => ({ data: [{ permission: 'approve_releases', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('approve_releases')], error: null }),
     })
 
     const result = await resolveEffectivePermissions(asClient(fake), baseArgs)
     expect(result.has('approve_releases')).toBe(true)
   })
 
-  it('includes a matching per-project row and a null-project row, excludes a non-matching project row', async () => {
+  it('includes a matching per-project row and a relationship-wide row, excludes a non-matching project row', async () => {
     const fake = createFakeSupabase({
       grants: () => ({
         data: [
-          { permission: 'view_metadata', project_id: null },
-          { permission: 'upload_audio', project_id: PROJECT_A },
-          { permission: 'edit_metadata', project_id: PROJECT_B },
+          rootRow('view_metadata'),
+          rootRow('upload_audio', { id: 'root-upload_audio', project_id: PROJECT_A }),
+          rootRow('edit_metadata', { id: 'root-edit_metadata', project_id: PROJECT_B }),
         ],
         error: null,
       }),
@@ -195,8 +245,8 @@ describe('resolveEffectivePermissions', () => {
     const fake = createFakeSupabase({
       grants: () => ({
         data: [
-          { permission: 'view_metadata', project_id: null },
-          { permission: 'upload_audio', project_id: PROJECT_A },
+          rootRow('view_metadata'),
+          rootRow('upload_audio', { id: 'root-upload_audio', project_id: PROJECT_A }),
         ],
         error: null,
       }),
@@ -207,15 +257,28 @@ describe('resolveEffectivePermissions', () => {
     expect(result.has('upload_audio')).toBe(false)
   })
 
-  it('queries workspace_grants filtered to unrevoked rows via .is(revoked_at, null)', async () => {
+  it('queries workspace_grants scoped to this workspace and relationship (via grant-lineage-service)', async () => {
     const fake = createFakeSupabase()
     await resolveEffectivePermissions(asClient(fake), baseArgs)
-    expect(fake.grantsIs).toHaveBeenCalledWith('revoked_at', null)
+    expect(fake.grantsEq1).toHaveBeenCalledWith('workspace_id', WORKSPACE_ID)
+    expect(fake.grantsEq2).toHaveBeenCalledWith('relationship_id', RELATIONSHIP_ID)
+  })
+
+  it('excludes a revoked consent-root row from the resolved set', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({
+        data: [rootRow('view_metadata', { revoked_at: '2020-01-01T00:00:00.000Z' })],
+        error: null,
+      }),
+    })
+
+    const result = await resolveEffectivePermissions(asClient(fake), baseArgs)
+    expect(result.has('view_metadata')).toBe(false)
   })
 
   it('does not cache — reducing the resolved permissions between two calls changes the second result', async () => {
     const fake = createFakeSupabase({
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     const first = await resolveEffectivePermissions(asClient(fake), baseArgs)
@@ -228,10 +291,47 @@ describe('resolveEffectivePermissions', () => {
   })
 })
 
+describe('resolveEffectivePermissions — delegated lineage (F6)', () => {
+  it('resolves a delegated grant whose chain terminates at a live Member consent root', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({
+        data: [rootRow('view_metadata'), delegatedRow('view_metadata', 'root-view_metadata')],
+        error: null,
+      }),
+    })
+
+    const result = await resolveEffectivePermissions(asClient(fake), baseArgs)
+    expect(result.has('view_metadata')).toBe(true)
+  })
+
+  it('revoking the Members root makes a previously-working delegated permission stop resolving on the very next call, with no cache to clear', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({
+        data: [rootRow('view_metadata'), delegatedRow('view_metadata', 'root-view_metadata')],
+        error: null,
+      }),
+    })
+
+    const first = await resolveEffectivePermissions(asClient(fake), baseArgs)
+    expect(first.has('view_metadata')).toBe(true)
+
+    fake.handlers.grants = () => ({
+      data: [
+        rootRow('view_metadata', { revoked_at: '2020-01-01T00:00:00.000Z' }),
+        delegatedRow('view_metadata', 'root-view_metadata'),
+      ],
+      error: null,
+    })
+
+    const second = await resolveEffectivePermissions(asClient(fake), baseArgs)
+    expect(second.has('view_metadata')).toBe(false)
+  })
+})
+
 describe('assertMayExercise', () => {
   it('succeeds when the permission is present in the resolved set', async () => {
     const fake = createFakeSupabase({
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     await expect(
@@ -252,7 +352,7 @@ describe('assertMayExercise', () => {
 
   it('fails for a structurally excluded capability name regardless of what a grant row might store', async () => {
     const fake = createFakeSupabase({
-      grants: () => ({ data: [{ permission: 'manage_payouts', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('manage_payouts')], error: null }),
     })
 
     const result = await assertMayExercise(asClient(fake), { ...baseArgs, permission: 'manage_payouts' })
@@ -280,9 +380,29 @@ describe('assertGrantIssuable', () => {
     subjectMemberId: SUBJECT_MEMBER_ID,
   }
 
-  it('refuses a request exceeding the granters own resolved set, naming the offending permission', async () => {
+  it('[F6] the bootstrap case: zero pre-existing admin grants, a live Member consent root, admin delegation is approved', async () => {
     const fake = createFakeSupabase({
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
+    })
+
+    await expect(
+      assertGrantIssuable(asClient(fake), { ...issuanceArgs, requested: ['view_metadata'] })
+    ).resolves.toEqual({ ok: true, permissions: ['view_metadata'] })
+  })
+
+  it('approves an admin delegating a permission the Member consented to, even though the admin holds no personal grant row', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({ data: [rootRow('upload_audio')], error: null }),
+    })
+
+    await expect(
+      assertGrantIssuable(asClient(fake), { ...issuanceArgs, requested: ['upload_audio'] })
+    ).resolves.toEqual({ ok: true, permissions: ['upload_audio'] })
+  })
+
+  it('refuses an admin delegating a permission the Member did NOT consent to, naming it as exceeding what the granter holds', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     const result = await assertGrantIssuable(asClient(fake), {
@@ -294,25 +414,30 @@ describe('assertGrantIssuable', () => {
     if (!result.ok) expect(result.reason).toContain('upload_audio')
   })
 
-  it('permits a request fully within the granters own resolved set', async () => {
-    const fake = createFakeSupabase({
-      grants: () => ({
-        data: [
-          { permission: 'view_metadata', project_id: null },
-          { permission: 'upload_audio', project_id: null },
-        ],
-        error: null,
-      }),
+  it('refuses when no Member consent root exists at all — there is no "empty means allow" branch', async () => {
+    const fake = createFakeSupabase({ grants: () => ({ data: [], error: null }) })
+
+    const result = await assertGrantIssuable(asClient(fake), {
+      ...issuanceArgs,
+      requested: ['view_metadata'],
     })
 
-    await expect(
-      assertGrantIssuable(asClient(fake), { ...issuanceArgs, requested: ['view_metadata'] })
-    ).resolves.toEqual({ ok: true, permissions: ['view_metadata'] })
+    expect(result.ok).toBe(false)
   })
 
-  it('does not cache — the granters own resolved set is re-derived on every call (D-49)', async () => {
+  it('does not query workspace_members to resolve the granters authority — the F6 circularity is gone', async () => {
     const fake = createFakeSupabase({
-      grants: () => ({ data: [{ permission: 'view_metadata', project_id: null }], error: null }),
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
+    })
+
+    await assertGrantIssuable(asClient(fake), { ...issuanceArgs, requested: ['view_metadata'] })
+
+    expect(fake.memberSelect).not.toHaveBeenCalled()
+  })
+
+  it('does not cache — revoking the Members root makes a previously-issuable delegation stop resolving on the very next call (D-49)', async () => {
+    const fake = createFakeSupabase({
+      grants: () => ({ data: [rootRow('view_metadata')], error: null }),
     })
 
     const first = await assertGrantIssuable(asClient(fake), {
@@ -321,9 +446,10 @@ describe('assertGrantIssuable', () => {
     })
     expect(first).toEqual({ ok: true, permissions: ['view_metadata'] })
 
-    // The granter's own membership is reduced between the two calls — a
-    // cached first result would incorrectly let the second call succeed.
-    fake.handlers.membership = () => ({ data: { status: 'suspended' }, error: null })
+    fake.handlers.grants = () => ({
+      data: [rootRow('view_metadata', { revoked_at: '2020-01-01T00:00:00.000Z' })],
+      error: null,
+    })
 
     const second = await assertGrantIssuable(asClient(fake), {
       ...issuanceArgs,
