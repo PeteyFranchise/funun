@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 0/14 | Planned | - |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 1/14 | In Progress|  |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2095,18 +2095,23 @@ ever be issued. **The layer is both over-powerful and non-functional.**
 **Changes NO doctrine.** D-01..D-56 stay locked. Every change makes the code do what they already say.
 
 **Headline decisions (17 locked, R-01..R-17 — see `38.0.1-CONTEXT.md`):**
+
 - **R-01** the subject Member is the root of grant authority, with a Member-side consent endpoint
   and a `parent_grant_id` delegation lineage re-validated at use time — this is what D-21 always
   said; the Member's side was never built.
+
 - **R-02** remove the workspace branch from the four child tables entirely; workspace reads go
   through SECURITY DEFINER RPCs with explicit column allowlists. Only `vault_projects` keeps a
   narrowed branch.
+
 - **R-03** **flip the kill switch OFF in production now**, before this is built — free, since F6
   makes the feature non-functional anyway, and it closes the F5/F8 exposure that needs no grants.
+
 - **R-04** bind access to custody in the helper (`p.user_id = r.member_user_id`).
 - **R-05** ownership transfer becomes two-sided, mirroring D-29.
 - **R-06** transactional RPCs for every consequential state change, with the audit insert inside
   the same transaction.
+
 - **R-07** the D-55 cohort gate is a release requirement before the switch goes back on.
 - **R-08** evidence: workspace proposes, subject confirms, document mandatory for authority tier.
 - **R-17** the `vault_projects` `user_id` WITH CHECK hole is **PRE-EXISTING from migration 078** —
@@ -2147,13 +2152,13 @@ RPC that 38.0.2 is building anyway. **Do not defer it a third time.**
 P0-hotfix preservation, R-17's trigger mechanism, migration 078 branch survival, storage-path
 unreachability, the WSR-24 pre-flight, wave disjointness and the Server/Client boundary all green.
 
-**Plans:** 14 plans
+**Plans:** 1/14 plans executed
 
 Plans:
 
 - [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 190 and 189
 - [ ] 38.0.1-02-PLAN.md — Migration 190: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
-- [ ] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
+- [x] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
 - [ ] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
 - [ ] 38.0.1-05-PLAN.md — Migration 191: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
 - [ ] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)

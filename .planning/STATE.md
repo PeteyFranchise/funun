@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38 SHIPPED TO PRODUCTION. Phase 38.0.1 PLANNED (14 plans / 6 waves, checker PASSED, NOT executed). Repo fully in sync with origin/main; working tree clean; no migration local/remote mismatch. MIGRATION ALLOCATION (settled 2026-09-06): 186-187 Phase 38 APPLIED | 188 A&R doctrine APPLIED | 189 BDT doctrine APPLIED | 190-194 Phase 38.0.1 | 195-196 Phase 38.0.2 | 197-198 Phase 38.2 | 199 first free. *** ONE BLOCKING GATE: the D-56 kill switch state is UNVERIFIED. Every Phase 38.0.2 deferral is safe only while it is OFF (WSR-07/08 need no grants to exploit). Check via GET /api/admin/workspaces/access or the Supabase dashboard; plan 01 also probes it. *** 38-RLS-SMOKE-CHECKLIST.md (57 boxes) still unrun and is now a PRODUCTION verification. Shared adversarial-audit baseline with Codex: docs/security/PHASE-38-ADVERSARIAL-AUDIT-BASELINE.md. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38.0.1 EXECUTING — Wave 1 merged. 38.0.1-03 COMPLETE (pure Member-root consent + delegation lineage, 38 new tests, zero I/O, no circular grant-service import — F6's circularity not reintroduced). 479 suites / 4884 tests green, tsc clean. *** 38.0.1-01 AT ITS OWNER CHECKPOINT: 38.0.1-PREFLIGHT.md holds six read-only production probes the owner must run. P5 is the D-56 kill-switch gate — if enabled=true, STOP and flip it before any further plan. P2 (NULL relationship_id audit) gates migration 191's NOT NULL; non-zero means plan 05 needs replanning. No agent may touch the database. *** Wave 2 (migrations 190 + 191) is BLOCKED until the probes are reported. Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Migration allocation settled; repo synced; Codex baseline recorded
+last_activity_desc: Phase 38.0.1 wave 1 merged; awaiting owner production probes
 progress:
   total_phases: 44
   completed_phases: 30
