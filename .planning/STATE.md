@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38.0.1 EXECUTING — Waves 1-4 merged (10/15 plans: 01-10). 489 suites / 5160 tests green, tsc clean. D-56 kill switch OFF. *** PRODUCTION DEFECT, LIVE NOW: origin/main deploys app/api/vault/custody-transfers/route.ts calling service.rpc('transfer_vault_project_custody'), but MIGRATION 190 WAS NEVER APPLIED, so that function does not exist in the production database. The route is gated on requireMemberApiAccount only and is deliberately NOT kill-switch shielded, so any Member accepting a custody transfer gets a 500 today. Cause: the route companion shipped with wave 2 while 190 was deferred; the two facts were not reconnected. FIX = apply migration 190 ALONE. Verified safe: both vault_projects user_id writes in the codebase are INSERTs and 190's trigger is BEFORE UPDATE, and 190 depends on nothing in 191-195. HAZARD: a bare `supabase db push` would also apply 191, 192 and 193 — see the recommended surgical procedure. *** Migrations 191, 192, 193 authored+reviewed+HELD; 194 (plan 11) and 195 (plan 15) still being authored; all push together at plan 11's window, which is now 190-195 (corrected — an earlier plan-11 draft wrongly said 192 had already shipped at plan 02, which would have stranded 190). NEW: R-19/WSR-28 + plan 15 add workspace_permission_requests (migration 195) after plan 07 found a workspace cannot ask for a permission at all. Wave 5 running: 14, 15. Phase 37.1's 37-13 Task 3 hum test also remains open.
-last_updated: "2026-09-06T00:00:00.000Z"
-last_activity: 2026-09-06
-last_activity_desc: "Phase 38.0.1 waves 3-4 merged; LIVE custody-transfer 500 found — migration 190 must be applied alone"
+stopped_at: "Phase 38.0.1 plan 13 complete (Member consent surface, WSR-27). Wave 7 done; all 16 plans executed. Full suite 498 suites / 5510 tests green, tsc + lint clean. Migrations 190-195 still authored-but-unapplied; D-56 kill switch still OFF. Outstanding: plan 13 Task 3 human-check (needs kill switch ON + migration 195 applied)."
+last_updated: "2026-09-07T04:15:29.602Z"
+last_activity: 2026-08-25
+last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 44
-  completed_phases: 30
-  total_plans: 277
-  completed_plans: 259
-  percent: 77
+  total_phases: 42
+  completed_phases: 33
+  total_plans: 287
+  completed_plans: 283
+  percent: 79
 ---
 
 # Project State
@@ -54,12 +54,14 @@ treated as locked and bounds D-08/D-10/D-40.
 wave file-disjointness, threat models, artifacts sections all green).
 
 **Owner decisions taken at planning:**
+
 - **Split APPROVED.** Phase 38 = Slices A–D (foundation, roster, permissions, RLS). Boundary sits
   after D, not C, so the permission model and its RLS consumer stay in one security review.
   **Phase 38.1** = E–G (active-workspace UX, contracts/authority, audit surfaces);
   **Phase 38.2** = H–I (org billing, cohort rollout, doctrine docs). Both have roadmap entries and
   inherit decisions from the same `38-CONTEXT.md` — run `/gsd-plan-phase 38.1` directly, no
   discuss-phase needed.
+
 - **D-56 added:** a **working** platform-wide disable control ships with Phase 38, not merely the
   `workspace_access_enabled()` seam — supersedes the "seam only" reading of D-55. Adds **WS-31**;
   built in 38-11 beside migration 186.
@@ -75,7 +77,6 @@ artists' catalogues platform-wide. 38-11 carries a six-account adversarial smoke
 42P17 recursion check, an `EXPLAIN ANALYZE` performance gate, and the D-56 disable drill.
 
 **Nothing executed. No code or migrations written.** Next: `/gsd-execute-phase 38`.
-
 
 ### UPDATE 2026-09-04 — One Identity, Many Roles foundation built
 
@@ -439,6 +440,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 | Phase 36 P06 | ~14min | 3 tasks | 5 files |
 | Phase 36 P07 | ~50min | 3 tasks | 4 files |
 | Phase 37 P09 | 25min | 3 tasks | 10 files |
+| Phase 38.0.1 P13 | 45min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -713,6 +715,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 - [Phase 36]: 36-07: presence is the ONLY handle property still application-enforced (D-09's gate). The database now owns uniqueness (010), reserved/retired names (133) and format (134's user_profiles_handle_format_chk). Residual: the gate guards page loads, not direct API calls — security-neutral, but a handle-less account can surface on social surfaces.
 - [Phase 36]: 36-07: migration 134 writes to NO row. Its planned fixture sweep was removed after the owner deleted the five fixture accounts outright — the remaining handle-less rows are three real people, and generating handles for them would violate D-09's prompted-never-assigned rule.
 - [Phase 37]: Test-only injectable props (isTypeSupported, initialError, initialResult) drive HumCaptureButton/AiEntryFlow states unreachable via renderToStaticMarkup alone, since this repo has no jsdom/testing-library — Mirrors pickSupportedMimeType()'s own injectable-predicate convention rather than inventing a new test mechanism; documented inline as never set by a production caller.
+- [Phase 38.0.1]: 38.0.1-13: the Member consent surface renders relationship-wide asks only, and omits the attached-agreement link and the per-grant date because plan 12's payload carries neither; inventing either on a consent screen would misstate what is being granted. All three are carried to 38.1.
 
 ### Pending Todos
 
@@ -807,8 +810,8 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-08-30T14:36:43.437Z
-Stopped at: Completed 37-09-PLAN.md (hum capture + AI-entry flow + hygiene nudges)
+Last session: 2026-09-07T04:15:22.668Z
+Stopped at: Phase 38.0.1 plan 13 complete (Member consent surface, WSR-27). Wave 7 done; all 16 plans executed. Full suite 498 suites / 5510 tests green, tsc + lint clean. Migrations 190-195 still authored-but-unapplied; D-56 kill switch still OFF. Outstanding: plan 13 Task 3 human-check (needs kill switch ON + migration 195 applied).
 Resume file: 
 None
 Stopped at: Completed 28-03-PLAN.md
