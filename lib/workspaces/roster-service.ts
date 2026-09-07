@@ -202,10 +202,16 @@ export async function loadRelationshipTier(
     return { ok: true, tier: resolveAuthorityTier({ relationshipState: args.state, evidence: [], now: args.now }) }
   }
 
+  // document_id and confirmed_by_subject_at are added by migration 191
+  // (R-08/WSR-14, finding F8). The pure resolver (`isLiveQualifyingEvidence`
+  // in lib/workspaces/evidence.ts) gates authority tier on both and cannot
+  // fetch either itself -- this is the only place in the codebase that
+  // constructs AgreementEvidenceFacts from the database, so it must supply
+  // them here for the gate to see the facts it now checks.
   const { data, error } = await supabase
     .from('workspace_agreement_evidence')
     .select(
-      'declared_scope, effective_from, expires_at, superseded_at, declared_by, uploaded_at, witnessed_by_signature'
+      'declared_scope, effective_from, expires_at, superseded_at, declared_by, uploaded_at, witnessed_by_signature, document_id, confirmed_by_subject_at'
     )
     .eq('relationship_id', args.relationshipId)
 
@@ -221,6 +227,8 @@ export async function loadRelationshipTier(
     uploadedBy: row.declared_by as string,
     uploadedAt: row.uploaded_at as string,
     witnessedBySignature: Boolean(row.witnessed_by_signature),
+    documentId: (row.document_id as string | null) ?? null,
+    confirmedBySubjectAt: (row.confirmed_by_subject_at as string | null) ?? null,
   }))
 
   const tier = resolveAuthorityTier({ relationshipState: args.state, evidence, now: args.now })

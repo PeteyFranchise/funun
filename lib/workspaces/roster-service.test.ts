@@ -211,18 +211,45 @@ describe('loadRelationshipTier', () => {
     ).resolves.toEqual({ ok: true, tier: 'operational' })
   })
 
-  it('returns authority when live scoped evidence exists', async () => {
+  it('R-08/F8: resolves to operational (not authority) when confirmed_by_subject_at is null, however complete the declared scope', async () => {
     const supabase = fakeSupabase({
       evidence: {
         data: [
           {
             declared_scope: 'Manage registrations',
-            effective_from: null,
+            effective_from: '2026-01-01T00:00:00.000Z',
             expires_at: null,
             superseded_at: null,
             declared_by: MEMBER_ID,
             uploaded_at: '2026-01-01T00:00:00.000Z',
             witnessed_by_signature: false,
+            document_id: 'document-123',
+            confirmed_by_subject_at: null,
+          },
+        ],
+        error: null,
+      },
+    })
+
+    await expect(
+      loadRelationshipTier(supabase as never, { relationshipId: RELATIONSHIP_ID, state: 'accepted' })
+    ).resolves.toEqual({ ok: true, tier: 'operational' })
+  })
+
+  it('resolves to authority when the row is confirmed, documented, and effective in the past', async () => {
+    const supabase = fakeSupabase({
+      evidence: {
+        data: [
+          {
+            declared_scope: 'Manage registrations',
+            effective_from: '2026-01-01T00:00:00.000Z',
+            expires_at: null,
+            superseded_at: null,
+            declared_by: MEMBER_ID,
+            uploaded_at: '2026-01-01T00:00:00.000Z',
+            witnessed_by_signature: false,
+            document_id: 'document-123',
+            confirmed_by_subject_at: '2026-01-02T00:00:00.000Z',
           },
         ],
         error: null,
@@ -232,6 +259,12 @@ describe('loadRelationshipTier', () => {
     await expect(
       loadRelationshipTier(supabase as never, { relationshipId: RELATIONSHIP_ID, state: 'accepted' })
     ).resolves.toEqual({ ok: true, tier: 'authority' })
+    expect(supabase.evidenceSelect).toHaveBeenCalledWith(
+      expect.stringContaining('document_id')
+    )
+    expect(supabase.evidenceSelect).toHaveBeenCalledWith(
+      expect.stringContaining('confirmed_by_subject_at')
+    )
   })
 
   it('returns 500 on an evidence-lookup error', async () => {

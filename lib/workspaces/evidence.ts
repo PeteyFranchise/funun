@@ -34,6 +34,15 @@ export type AgreementEvidenceFacts = {
   uploadedBy: string
   uploadedAt: string
   witnessedBySignature: boolean
+  // Optional (not just nullable): `describeProvenance` below accepts the
+  // same `AgreementEvidenceFacts` type but must stay byte-unchanged and
+  // does not read either field, so its one existing caller
+  // (app/api/workspaces/[workspaceId]/roster/evidence/route.ts's GET,
+  // outside this plan's declared file scope) can keep constructing a
+  // literal without them. A missing key here is read identically to an
+  // explicit `null` by every check below -- fail-closed either way.
+  confirmedBySubjectAt?: string | null
+  documentId?: string | null
 }
 
 function isLiveQualifyingEvidence(row: AgreementEvidenceFacts, now: number): boolean {
@@ -42,12 +51,48 @@ function isLiveQualifyingEvidence(row: AgreementEvidenceFacts, now: number): boo
   // of why (D-36).
   if (!row.declaredScope || row.declaredScope.trim().length === 0) return false
 
+  // The workspace may draft evidence naming a scope -- that is genuine
+  // admin help -- but a draft confers nothing until the relationship's own
+  // named Member has confirmed it. A null confirmedBySubjectAt means the
+  // subject has not acted, so the row stays inert no matter how complete
+  // its declared scope (D-36, R-08, finding F8).
+  if (!row.confirmedBySubjectAt) return false
+
+  // A document is mandatory for anything reaching authority tier (WSR-14).
+  // Funun never opens or interprets the document's contents -- it is
+  // required as provenance for the declaration, not as something checked
+  // (D-36, D-37).
+  if (!row.documentId) return false
+
+  // effective_from has been stored since migration 183 and read by nobody
+  // until now. A row whose declared window has not started yet is not
+  // live today, even when every other condition is met. A null
+  // effectiveFrom means "effective immediately."
+  if (row.effectiveFrom) {
+    const effectiveFromMs = new Date(row.effectiveFrom).getTime()
+    // A malformed effectiveFrom parses to NaN. Any numeric comparison
+    // against NaN is false, which would silently read as "no constraint"
+    // -- treat a NaN parse as not-live instead, so a corrupt date can
+    // never grant authority.
+    if (Number.isNaN(effectiveFromMs) || effectiveFromMs > now) return false
+  }
+
   // Expiry demotes authority automatically; it never keeps the tier at
   // 'authority' past its own declared window (D-39).
-  if (row.expiresAt && new Date(row.expiresAt).getTime() <= now) return false
+  if (row.expiresAt) {
+    const expiresAtMs = new Date(row.expiresAt).getTime()
+    // Same NaN guard as above -- a malformed expiry must not be read as
+    // never-expiring.
+    if (Number.isNaN(expiresAtMs) || expiresAtMs <= now) return false
+  }
 
   // A superseded row (replaced by a newer agreement) no longer qualifies.
-  if (row.supersededAt && new Date(row.supersededAt).getTime() <= now) return false
+  if (row.supersededAt) {
+    const supersededAtMs = new Date(row.supersededAt).getTime()
+    // Same NaN guard -- a malformed supersededAt must not be read as
+    // "never superseded."
+    if (Number.isNaN(supersededAtMs) || supersededAtMs <= now) return false
+  }
 
   return true
 }
@@ -57,12 +102,18 @@ function isLiveQualifyingEvidence(row: AgreementEvidenceFacts, now: number): boo
  * evidence, recomputed on every call -- nothing is stored, nothing is
  * scheduled. Returns 'none' for any relationship that is not accepted.
  * Returns 'authority' only when the accepted relationship has at least one
- * evidence row with a non-empty declared scope that is neither expired nor
- * superseded as of `now`. Otherwise returns 'operational' -- including when
- * there is no evidence at all, when the only evidence has expired, and when
- * the only evidence has no declared scope. Expiry demotes to 'operational';
- * it never demotes all the way to 'none' (D-39) -- day-to-day operational
- * access survives a lapsed document.
+ * evidence row that is: non-empty declared scope, confirmed by the
+ * relationship's own subject Member (`confirmedBySubjectAt` non-null,
+ * R-08/WSR-14, finding F8), backed by a document (`documentId` non-null,
+ * WSR-14), currently effective (`effectiveFrom` null or not in the future,
+ * WSR-15), and neither expired nor superseded as of `now`. Otherwise
+ * returns 'operational' -- including when there is no evidence at all,
+ * when the only evidence has expired, when the only evidence has no
+ * declared scope, when the only evidence is unconfirmed, undocumented, or
+ * not yet effective, and when a date field is malformed. None of these
+ * conditions demotes all the way to 'none' (D-39) -- day-to-day
+ * operational access survives a lapsed, unconfirmed, undocumented, or
+ * not-yet-effective agreement.
  */
 export function resolveAuthorityTier(args: {
   relationshipState: RosterRelationshipState
