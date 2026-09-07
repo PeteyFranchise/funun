@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 3/14 | In Progress|  |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 11/15 | In Progress|  |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2094,7 +2094,7 @@ ever be issued. **The layer is both over-powerful and non-functional.**
 
 **Changes NO doctrine.** D-01..D-56 stay locked. Every change makes the code do what they already say.
 
-**Headline decisions (17 locked, R-01..R-17 — see `38.0.1-CONTEXT.md`):**
+**Headline decisions (19 locked, R-01..R-19 — see `38.0.1-CONTEXT.md`):**
 
 - **R-01** the subject Member is the root of grant authority, with a Member-side consent endpoint
   and a `parent_grant_id` delegation lineage re-validated at use time — this is what D-21 always
@@ -2118,7 +2118,7 @@ ever be issued. **The layer is both over-powerful and non-functional.**
   a Phase 21 editor can seize custody today, independent of workspaces. **Own migration 190, own
   review.**
 
-**Requirements:** WSR-01..WSR-27 (in `38.0.1-CONTEXT.md`)
+**Requirements:** WSR-01..WSR-28 (in `38.0.1-CONTEXT.md`)
 
 **R-18 added at planning (owner, 2026-09-06):** a **minimal Member-facing consent surface** ships
 in this phase. R-01 makes the Member the root of authority; a Member cannot exercise authority
@@ -2126,15 +2126,44 @@ through an API they cannot reach, and 38.1 (which owns UX) is blocked on this ph
 remediation would ship a correct security model that still leaves the feature unusable and the kill
 switch un-flippable. Deliberately minimal — pending requests, per-permission approve/decline. NOT
 38.1's UX slice. Adds **WSR-27**.
-**Migrations:** 188 = the pre-existing F3 fix (independent, can ship first); 189+ for this phase.
-Phase 38.2's reservation moves to 197–198.
+**Migrations — LIVE LEDGER (authoritative; supersedes every migration-file header):**
+
+| Range | Owner | State |
+|---|---|---|
+| 182–187 | Phase 38 + the F1/F7/F10 hotfix | applied |
+| 188–189 | Playbook ANR + BDT doctrine (unrelated, parallel session) | applied |
+| **190** | **the pre-existing F3 custody fix (plan 02)** | **authored, NOT applied — its route companion is already live, so this is currently broken in production** |
+| 191–193 | this phase: consent/lineage schema, helper v2, column-allowlist RPCs | authored, reviewed, held |
+| 194 | this phase: catalogue RPC (plan 11) | not yet authored |
+| 195 | this phase: `workspace_permission_requests` (plan 15, R-19) | being authored |
+| 196–197 | Phase 38.0.2 | reserved |
+| 198–199 | Phase 38.2 (billing, beta flag) | reserved |
+
+**Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
+fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
+headers of migrations 191, 192 and 193 state "195-196 reserved for Phase 38.0.2 / 197-198 for Phase
+38.2". That was true when they were written and is now off by one, because plan 15 claimed 195. Those
+headers are text-locked by their own test suites and are already reviewed and held for the joint
+push, so they are deliberately NOT being edited — following them would collide on 195.
 **Depends on:** Phase 38 (shipped 2026-09-06, in production)
+
+**R-19 added during execution (owner, 2026-09-06):** a workspace could not **ask** for a permission
+at all. Plan 07 surfaced it and the orchestrator verified it independently: no request
+representation exists anywhere in the schema, and migration 191's
+`workspace_grants_consent_root_or_lineage_check` requires every non-`member_consent` grant to carry
+a non-null `parent_grant_id` — so a workspace physically cannot record an ask until a Member consent
+root already exists. That made WSR-27's primary story ("{Workspace} wants access — approve or
+decline") unreachable and would have reduced the consent surface to a settings page the Member must
+find unprompted. **Plan 15 adds `workspace_permission_requests` (migration 195).** The ask sits
+outside the grant lineage entirely — no `parent_grant_id`, never walked by
+`workspace_grant_lineage_live`, read by no authorization path — and approving routes through
+`issueMemberConsent`, which remains the sole writer of consent rows. Adds **WSR-28**.
 
 **Blocks:** Phase 38.1 and 38.2 should NOT be planned until this lands — 38.1 builds surfaces on
 the authorization model being reworked.
 
 **Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions (+R-18 at planning),
-decision-complete. **Planned 2026-09-06 — 14 plans across 6 waves.**
+decision-complete. **Planned 2026-09-06 — 15 plans across 7 waves** (plan 15 added during execution, see R-19).
 
 **PHASE SPLIT APPROVED by the owner 2026-09-06.** Full A-E scope prices at 21-23 plans (Phase 38
 itself needed 13). Planned here: slices **A + B + E + WSR-27** — WSR-01, 02, 03, 04, 05, 06, 14, 15,
@@ -2184,7 +2213,7 @@ two-sided ownership transfer; the D-55 cohort gate; audit redaction; and the rem
 **Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26
 **Decisions — already locked in `38.0.1-CONTEXT.md`; no discuss-phase needed:** R-05, R-06, R-07,
 R-09, R-12, R-13, R-15, S1
-**Migrations:** 195–196 (Phase 38.2 moves to 197–198)
+**Migrations:** 196–197 (Phase 38.2 moves to 198–199) — shifted by one when plan 15 claimed 195 for `workspace_permission_requests` (R-19). See the LIVE MIGRATION LEDGER under Phase 38.0.1.
 
 **⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
 ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
