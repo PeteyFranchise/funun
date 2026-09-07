@@ -46,6 +46,19 @@ BEGIN
   END IF;
 
   -- ─── SEED ──────────────────────────────────────────────────────
+  -- The auth.users INSERT trigger handle_new_user() enforces an invite gate
+  -- and raises 'not_invited' for any email with no pending artist_invites row
+  -- and no collaborators row. Rather than disabling a trigger in the auth
+  -- schema (owned by supabase_auth_admin, so ALTER would likely be refused),
+  -- admit these six through the real front door by seeding invites first.
+  -- collaborators is not an option: it requires a user_id, which is precisely
+  -- what we are creating.
+  INSERT INTO public.artist_invites (email, source, status)
+  SELECT e, 'backfill', 'pending'
+  FROM unnest(ARRAY['b-subject@verify.invalid','b-owner@verify.invalid',
+                    'b-admin@verify.invalid','b-contractor@verify.invalid',
+                    'b-guest@verify.invalid','b-outsider@verify.invalid']) AS e;
+
   INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
                           email_confirmed_at, created_at, updated_at,
                           raw_app_meta_data, raw_user_meta_data)
@@ -168,6 +181,7 @@ BEGIN
   DELETE FROM public.tracks                         WHERE id::text LIKE 'ffff0000-%';
   DELETE FROM public.vault_projects                 WHERE id::text LIKE 'ffff0000-%';
   DELETE FROM auth.users                            WHERE id::text LIKE 'ffff0000-%';
+  DELETE FROM public.artist_invites                 WHERE email LIKE '%@verify.invalid';
   ALTER TABLE public.workspace_members ENABLE TRIGGER guard_workspace_never_zero_owners;
 
   INSERT INTO public.zz_verify_b_results VALUES (100,'TEARDOWN','fixtures removed, switch restored',
