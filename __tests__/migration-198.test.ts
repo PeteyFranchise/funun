@@ -1,17 +1,17 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 
-const migration188 = readFileSync(
-  path.join(process.cwd(), 'supabase/migrations/188_playbook_anr_core_responsibilities.sql'),
+const migration198 = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/198_playbook_anr_core_responsibilities.sql'),
   'utf8'
 )
 
-const sqlOnly = migration188
+const sqlOnly = migration198
   .split('\n')
   .filter(line => !line.trim().startsWith('--'))
   .join('\n')
 
-describe('migration 188 — A&R core responsibilities Playbook doctrine', () => {
+describe('migration 198 — A&R core responsibilities Playbook doctrine', () => {
   it('activates the A&R room and creates a dedicated doctrine subgroup', () => {
     expect(sqlOnly).toContain("WHERE key = 'ar'")
     expect(sqlOnly).toContain("'role-doctrine', 'Role Doctrine'")

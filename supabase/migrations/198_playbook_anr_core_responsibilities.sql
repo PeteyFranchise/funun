@@ -1,7 +1,11 @@
 -- ============================================================
 -- Funūn — The Playbook: A&R Core Responsibilities
--- Migration 188: activate the A&R room and publish the
+-- Migration 198: activate the A&R room and publish the
 -- owner-approved first section of the evolving A&R doctrine.
+--
+-- Renumbered 188 -> 198 on 2026-09-06: 188-192 are claimed by Phase 38.0.1's
+-- migration chain, 193-194 by Phase 38.0.2, 195-196 by Phase 38.2 and 197 by
+-- the BDT doctrine entry. This migration is independent of all of them.
 --
 -- HUMAN-GATED: review and apply with `supabase db push`.
 -- This entry defines responsibilities, not final decision authority.
