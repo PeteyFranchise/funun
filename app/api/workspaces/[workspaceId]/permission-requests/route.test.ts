@@ -240,6 +240,50 @@ describe('POST /api/workspaces/[workspaceId]/permission-requests', () => {
     }
   )
 
+  // ─── Per-project asks are refused for now (owner decision 2026-09-07) ────
+  it('refuses a project-scoped ask with 400 and the service explanation, writing nothing', async () => {
+    const service = buildServiceClient()
+    install(buildSessionClient(), service)
+
+    const response = await POST(
+      jsonRequest({
+        relationshipId: RELATIONSHIP_ID,
+        permission: 'view_metadata',
+        projectId: '22222222-2222-2222-2222-222222222222',
+      }),
+      { params }
+    )
+
+    expect(response.status).toBe(400)
+    // The service's own words reach the caller unchanged — the route does
+    // not reword the refusal, and `projectId` stays in the strict schema so
+    // this is what a caller gets instead of a generic unrecognized-key Zod
+    // message.
+    await expect(response.json()).resolves.toEqual({
+      error:
+        'Per-project permission requests are not supported yet. Ask for this permission across the whole relationship instead.',
+    })
+    expect(service.inserts).toHaveLength(0)
+  })
+
+  it('still records the ask when projectId is explicitly null', async () => {
+    const service = buildServiceClient()
+    install(buildSessionClient(), service)
+
+    const response = await POST(
+      jsonRequest({
+        relationshipId: RELATIONSHIP_ID,
+        permission: 'view_metadata',
+        projectId: null,
+      }),
+      { params }
+    )
+
+    expect(response.status).toBe(201)
+    expect(service.inserts).toHaveLength(1)
+    expect(service.inserts[0].project_id).toBeNull()
+  })
+
   it('[no body can carry a decision] a state key is rejected by the strict schema', async () => {
     const service = buildServiceClient()
     install(buildSessionClient(), service)

@@ -198,7 +198,6 @@ describe('createPermissionRequest', () => {
       workspaceId: WORKSPACE_ID,
       relationshipId: RELATIONSHIP_ID,
       permission: 'view_metadata',
-      projectId: PROJECT_ID,
       requestedBy: ADMIN_ID,
       note: 'so we can prep the release',
     })
@@ -209,7 +208,7 @@ describe('createPermissionRequest', () => {
         relationship_id: RELATIONSHIP_ID,
         member_user_id: MEMBER_ID,
         permission: 'view_metadata',
-        project_id: PROJECT_ID,
+        project_id: null,
         requested_by: ADMIN_ID,
         state: 'pending',
         decided_at: null,
@@ -217,6 +216,86 @@ describe('createPermissionRequest', () => {
         note: 'so we can prep the release',
       },
     ])
+  })
+
+  // ─── Per-project asks are refused for now (owner decision 2026-09-07) ────
+  // The Member-facing surface omits project-scoped rows on a documented
+  // fail-closed argument, so accepting one would store a row nobody could
+  // ever see or approve — and the partial unique index would then block
+  // re-asking for that pair. Refuse rather than accept.
+  it('refuses a project-scoped ask with 400, writing nothing', async () => {
+    const fake = createFakeSupabase()
+
+    const result = await createPermissionRequest(asClient(fake), {
+      workspaceId: WORKSPACE_ID,
+      relationshipId: RELATIONSHIP_ID,
+      permission: 'view_metadata',
+      projectId: PROJECT_ID,
+      requestedBy: ADMIN_ID,
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.status).toBe(400)
+      expect(result.error).toBe(
+        'Per-project permission requests are not supported yet. Ask for this permission across the whole relationship instead.'
+      )
+    }
+    expect(fake.requestInserts).toHaveLength(0)
+    expect(fake.grantInserts).toHaveLength(0)
+    expect(fake.audits).toHaveLength(0)
+  })
+
+  it('refuses the project-scoped ask before it reads the relationship', async () => {
+    const fake = createFakeSupabase({
+      relationship: () => {
+        throw new Error('the relationship must not be read for a refused ask')
+      },
+    })
+
+    const result = await createPermissionRequest(asClient(fake), {
+      workspaceId: WORKSPACE_ID,
+      relationshipId: RELATIONSHIP_ID,
+      permission: 'view_metadata',
+      projectId: PROJECT_ID,
+      requestedBy: ADMIN_ID,
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.status).toBe(400)
+  })
+
+  it('still creates a relationship-wide ask when projectId is explicitly null', async () => {
+    const fake = createFakeSupabase()
+
+    const result = await createPermissionRequest(asClient(fake), {
+      workspaceId: WORKSPACE_ID,
+      relationshipId: RELATIONSHIP_ID,
+      permission: 'view_metadata',
+      projectId: null,
+      requestedBy: ADMIN_ID,
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.created).toBe(true)
+    expect(fake.requestInserts).toHaveLength(1)
+    expect(fake.requestInserts[0].project_id).toBeNull()
+  })
+
+  it('still creates a relationship-wide ask when projectId is omitted entirely', async () => {
+    const fake = createFakeSupabase()
+
+    const result = await createPermissionRequest(asClient(fake), {
+      workspaceId: WORKSPACE_ID,
+      relationshipId: RELATIONSHIP_ID,
+      permission: 'view_metadata',
+      requestedBy: ADMIN_ID,
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.created).toBe(true)
+    expect(fake.requestInserts).toHaveLength(1)
+    expect(fake.requestInserts[0].project_id).toBeNull()
   })
 
   it('never accepts a member_user_id from the caller — there is no such parameter', async () => {
