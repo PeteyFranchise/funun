@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-06T21:00:00Z",
+  "timestamp": "2026-09-06T23:30:00Z",
   "phase": "38.0.1",
   "phase_name": "workspace-authorization-remediation",
   "phase_dir": ".planning/phases/38.0.1-workspace-authorization-remediation",
@@ -55,36 +55,21 @@
   ],
   "blockers": [
     {
-      "description": "MIGRATION 189 COLLISION: untracked 189_playbook_bdt_foundation_doctrine.sql (parallel session) vs Phase 38.0.1 plan 05, which also assigns 189. Neither pushed; highest remote is 187. Recommend renumbering the BDT migration (2 files) rather than 38.0.1 (4-migration chain across 14 plans + roadmap). First free number is 197.",
-      "type": "external",
-      "workaround": "Owner decision; BDT work is not the agent's and was not touched."
-    },
-    {
-      "description": "D-56 kill switch must be OFF in production. All 13 Phase 38.0.2 deferrals are safe only while it is; WSR-07/08 need no grants to exploit.",
+      "description": "D-56 kill switch state is UNVERIFIED. Both agents' shared baseline asserts it is disabled, but no confirmation exists and the agent cannot read it (supabase db query targets the LOCAL database; local Postgres is not running here). Every Phase 38.0.2 deferral is safe ONLY while it is off — WSR-07/08 need no grants to exploit.",
       "type": "human_action",
-      "workaround": "One UPDATE on workspace_access_config; plan 01 verifies."
+      "workaround": "GET /api/admin/workspaces/access with a leadership session, or the Supabase dashboard SQL editor. Phase 38.0.1 plan 01 reads the row as a pre-flight probe."
     }
   ],
   "async_jobs": [],
   "human_actions_pending": [
     {
-      "action": "Resolve the migration 189 collision",
-      "context": "Two pieces of work claim 189. Renumbering BDT to 197 is the cheap fix.",
+      "action": "Verify (and if needed set) the D-56 kill switch to disabled",
+      "context": "Sole containment for the 13 requirements deferred to Phase 38.0.2.",
       "blocking": true
     },
     {
-      "action": "Flip the D-56 kill switch OFF",
-      "context": "Sole containment for the 13 deferred requirements.",
-      "blocking": true
-    },
-    {
-      "action": "Run 38-RLS-SMOKE-CHECKLIST.md",
-      "context": "Outstanding since Phase 38; now a production verification. Plan 11 re-runs it.",
-      "blocking": false
-    },
-    {
-      "action": "Optionally push the 8 local docs commits",
-      "context": "Docs-only; Phase 38 code is already on origin/main and in production.",
+      "action": "Run 38-RLS-SMOKE-CHECKLIST.md (57 boxes)",
+      "context": "Outstanding since Phase 38; now a PRODUCTION verification, not a pre-ship gate. Covers recursion, adversarial scenarios, EXPLAIN ANALYZE and the disable drill. Plan 11 re-runs it.",
       "blocking": false
     }
   ],
@@ -111,6 +96,11 @@
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Resolve the 189 collision, flip the kill switch off, then /gsd-execute-phase 38.0.1. Wave 1 is probes + pure logic, no migrations.",
-  "context_notes": "Phase 38 shipped to production, then an external Codex adversarial review found 22 defects. Three P0s were fixed same-day (migration 187) including a live custody-takeover path. 38.0.1 closes 14 of the remaining 19; 38.0.2 takes 13. Key lesson carried forward: this repo's migration tests are TEXT-LOCK, so green Jest never proved the RLS behaved — three requirements here have named owner-run verification instead."
+  "next_action": "Verify the D-56 kill switch is off, then /gsd-execute-phase 38.0.1. Wave 1 is production probes + pure logic with no migrations.",
+  "context_notes": "Phase 38 shipped to production, then an external Codex adversarial review found 22 defects. Three P0s were fixed same-day (migration 187) including a live custody-takeover path. 38.0.1 closes 14 of the remaining 19; 38.0.2 takes 13. Key lesson carried forward: this repo's migration tests are TEXT-LOCK, so green Jest never proved the RLS behaved — three requirements here have named owner-run verification instead.",
+  "resolved_since_last_handoff": [
+    "Migration collisions resolved: 188 A&R and 189 BDT restored to match production (they were applied from a parallel session); Phase 38.0.1's chain moved 188-192 -> 190-194; 38.0.2 -> 195-196; Phase 38.2 -> 197-198. No duplicates, no local/remote mismatch.",
+    "All commits pushed; local and origin/main in sync.",
+    "Codex acknowledged the status sync; shared baseline recorded at docs/security/PHASE-38-ADVERSARIAL-AUDIT-BASELINE.md."
+  ]
 }
