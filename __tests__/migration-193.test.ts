@@ -321,6 +321,11 @@ describe('migration 193 — child-table branch removal + column-allowlist read f
         expect(block).toContain(
           `AND public.workspace_project_permission(p_project_id, p_uid, 'view_summaries')`
         )
+        // The caller-identity binding. Without it, p_uid is caller-supplied and
+        // unbound in a SECURITY DEFINER body GRANTed to authenticated — read
+        // impersonation of any other user. Text-locked so a future edit cannot
+        // drop it as redundant.
+        expect(block).toContain('AND p_uid = (SELECT auth.uid())')
         // Exactly one production table is read per function body.
         const otherTables = READ_FUNCTIONS.filter((f) => f.table !== table).map((f) => f.table)
         const leaked = otherTables.filter((t) => block.includes(`public.${t}`))

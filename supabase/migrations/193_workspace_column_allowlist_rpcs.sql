@@ -372,6 +372,11 @@ AS $$
   FROM public.tracks t
   WHERE t.project_id = p_project_id
     AND public.workspace_project_permission(p_project_id, p_uid, 'view_summaries')
+    -- The caller-identity binding. These functions are SECURITY DEFINER and
+    -- GRANTed to authenticated, so without this line any caller could pass
+    -- another user uuid and read what that user is permitted to see. p_uid
+    -- names the caller or it names nobody. Do not remove as redundant.
+    AND p_uid = (SELECT auth.uid())
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.workspace_read_tracks(uuid, uuid) FROM PUBLIC, anon;
@@ -407,6 +412,7 @@ AS $$
   FROM public.vault_assets a
   WHERE a.project_id = p_project_id
     AND public.workspace_project_permission(p_project_id, p_uid, 'view_summaries')
+    AND p_uid = (SELECT auth.uid())
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.workspace_read_assets(uuid, uuid) FROM PUBLIC, anon;
@@ -440,6 +446,7 @@ AS $$
   FROM public.vault_documents d
   WHERE d.project_id = p_project_id
     AND public.workspace_project_permission(p_project_id, p_uid, 'view_summaries')
+    AND p_uid = (SELECT auth.uid())
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.workspace_read_documents(uuid, uuid) FROM PUBLIC, anon;
@@ -473,6 +480,7 @@ AS $$
   FROM public.tool_outputs o
   WHERE o.project_id = p_project_id
     AND public.workspace_project_permission(p_project_id, p_uid, 'view_summaries')
+    AND p_uid = (SELECT auth.uid())
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.workspace_read_tool_outputs(uuid, uuid) FROM PUBLIC, anon;
