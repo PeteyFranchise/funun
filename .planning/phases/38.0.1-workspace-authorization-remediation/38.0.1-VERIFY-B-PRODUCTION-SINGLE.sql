@@ -111,68 +111,90 @@ BEGIN
 
   UPDATE public.workspace_access_config SET enabled = TRUE;   -- switch ON
 
-  -- ─── ASSERTIONS (any failure still reaches teardown below) ─────
+  -- ─── ASSERTIONS ────────────────────────────────────────────────
+  -- EACH assertion gets its OWN BEGIN/EXCEPTION block. That matters: a
+  -- PL/pgSQL exception block is a subtransaction, so one shared wrapper
+  -- rolls back every result row written before the failure. The first
+  -- production run lost all eleven verdicts that way and showed only the
+  -- abort. An INSERT inside a handler runs after that rollback, in the
+  -- outer context, so it survives — which is why each error row is
+  -- written in the handler.
   BEGIN
     ok := public.workspace_project_permission(PROJ,OWNER_,'view_summaries');
     INSERT INTO public.zz_verify_b_results VALUES (1,'B1 baseline: owner HAS access','workspace_project_permission',
       CASE WHEN ok THEN 'PASS' ELSE '*** FAIL — baseline broken, later results meaningless ***' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (1,'B1 baseline: owner HAS access',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     ok := public.workspace_project_permission(PROJ,CONTRACT,'view_summaries');
     INSERT INTO public.zz_verify_b_results VALUES (2,'B2 WSR-17 expired seat refused','contractor active + expires_at past',
       CASE WHEN ok THEN '*** FAIL — EXPIRED SEAT GRANTED ACCESS ***' ELSE 'PASS' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (2,'B2 WSR-17 expired seat refused',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     INSERT INTO public.zz_verify_b_results VALUES (3,'B2b WSR-17 helper agrees',
       coalesce(public.workspace_member_role(WS,CONTRACT),'(null)'),
       CASE WHEN public.workspace_member_role(WS,CONTRACT) IS NULL THEN 'PASS' ELSE '*** FAIL ***' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (3,'B2b WSR-17 helper agrees',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     ok := public.workspace_project_permission(PROJ,GUEST,'view_summaries');
     INSERT INTO public.zz_verify_b_results VALUES (4,'B3 seat WITHOUT grant','guest',
       CASE WHEN ok THEN '*** FAIL — membership alone granted access ***' ELSE 'PASS' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (4,'B3 seat WITHOUT grant',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     ok := public.workspace_project_permission(PROJ,OUTSIDER,'view_summaries');
     INSERT INTO public.zz_verify_b_results VALUES (5,'B4 outsider','no relationship',
       CASE WHEN ok THEN '*** FAIL — outsider granted access ***' ELSE 'PASS' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (5,'B4 outsider',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     UPDATE public.workspace_grants SET revoked_at = now() WHERE id = ROOT;
     ok := public.workspace_project_permission(PROJ,OWNER_,'view_summaries');
     UPDATE public.workspace_grants SET revoked_at = NULL WHERE id = ROOT;
     INSERT INTO public.zz_verify_b_results VALUES (6,'B5 WSR-02 revoked root kills descendant','root revoked, child live',
       CASE WHEN ok THEN '*** FAIL — descendant survived root revocation ***' ELSE 'PASS' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (6,'B5 WSR-02 revoked root kills descendant',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     PERFORM public.transfer_vault_project_custody(PROJ, SUBJECT, OUTSIDER);
     ok := public.workspace_project_permission(PROJ,OWNER_,'view_summaries');
     PERFORM public.transfer_vault_project_custody(PROJ, OUTSIDER, SUBJECT);
     INSERT INTO public.zz_verify_b_results VALUES (7,'B6 WSR-06 custody binding','access after custody moved away',
       CASE WHEN ok THEN '*** FAIL — ACCESS SURVIVED CUSTODY TRANSFER ***' ELSE 'PASS' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (7,'B6 WSR-06 custody binding',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR — expected until migration 196 lands ***'); END;
 
+  BEGIN
     PERFORM set_config('request.jwt.claims', json_build_object('sub',OWNER_::text,'role','authenticated')::text, true);
     SELECT count(*) INTO n FROM public.workspace_read_tracks(PROJ, OWNER_);
     INSERT INTO public.zz_verify_b_results VALUES (8,'B8 WSR-04 allowlisted accessor works', n||' rows',
       CASE WHEN n > 0 THEN 'PASS' ELSE '*** FAIL — accessor returned nothing; chain broken ***' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (8,'B8 WSR-04 allowlisted accessor works',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
+  BEGIN
     PERFORM set_config('request.jwt.claims', json_build_object('sub',OUTSIDER::text,'role','authenticated')::text, true);
     SELECT count(*) INTO n FROM public.workspace_read_tracks(PROJ, OWNER_);
     PERFORM set_config('request.jwt.claims', NULL, true);
     INSERT INTO public.zz_verify_b_results VALUES (9,'B9 p_uid impersonation refused',
       'outsider passing owner uuid saw '||n||' rows',
       CASE WHEN n = 0 THEN 'PASS' ELSE '*** FAIL — READ IMPERSONATION STILL POSSIBLE ***' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (9,'B9 p_uid impersonation refused',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
-    BEGIN
-      UPDATE public.vault_projects SET user_id = OUTSIDER WHERE id = PROJ;
-      INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable','raw UPDATE succeeded','*** FAIL — TRIGGER DID NOT BLOCK ***');
-    EXCEPTION WHEN OTHERS THEN
-      INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable', left(SQLERRM,90),'PASS — refused');
-    END;
+  BEGIN
+    UPDATE public.vault_projects SET user_id = OUTSIDER WHERE id = PROJ;
+    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable','raw UPDATE succeeded','*** FAIL — TRIGGER DID NOT BLOCK ***');
+  EXCEPTION WHEN OTHERS THEN
+    INSERT INTO public.zz_verify_b_results VALUES (10,'B10 WSR-25 custody immutable', left(SQLERRM,80),'PASS — refused');
+  END;
 
+  BEGIN
     UPDATE public.workspace_access_config SET enabled = FALSE;
     ok := public.workspace_project_permission(PROJ,OWNER_,'view_summaries');
     UPDATE public.workspace_access_config SET enabled = TRUE;
     INSERT INTO public.zz_verify_b_results VALUES (11,'B12 D-56 disable drill','access while switch OFF',
       CASE WHEN ok THEN '*** FAIL — KILL SWITCH DOES NOT KILL ***' ELSE 'PASS' END);
-
-  EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.zz_verify_b_results VALUES (99,'ASSERTION RUN ABORTED', SQLSTATE||': '||left(SQLERRM,120),'*** ERROR ***');
-  END;
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (11,'B12 D-56 disable drill',SQLSTATE||': '||left(SQLERRM,80),'*** ERROR ***'); END;
 
   -- ─── TEARDOWN — always reached ─────────────────────────────────
   UPDATE public.workspace_access_config SET enabled = FALSE;   -- switch OFF
