@@ -2219,29 +2219,60 @@ invitation redemption, ownership/owner-floor, roster transitions — each doing 
 UPDATE`, revalidate, mutate and **audit-insert in ONE transaction**; the ownership hierarchy and
 two-sided ownership transfer; the D-55 cohort gate; audit redaction; and the remaining hygiene.
 
-**Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26
+**Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26, **29**
 **Decisions — already locked in `38.0.1-CONTEXT.md`; no discuss-phase needed:** R-05, R-06, R-07,
-R-09, R-12, R-13, R-15, S1
-**Migrations:** **197–198** (Phase 38.2 moves to 199–200). Shifted TWICE: plan 15 claimed 195 for `workspace_permission_requests` (R-19), and the quick custody fix claimed 196. The LIVE MIGRATION LEDGER under Phase 38.0.1 is authoritative — check it before claiming a number.
+R-09, R-12, R-13, R-15, S1. **Settled 2026-09-07 in `38.0.2-CONTEXT.md`:** R-20 (guest role floor on
+project access — adds WSR-29), R-21..R-30 (actor binding, ownership transfers rather than adds,
+`blocked` collapses to `refused`, cohort gate on the acceptor, 404 for a non-cohort Member, audit
+authority refusals as outcome codes, narrowed audit policy, owner-floor `expires_at`, no cohort admin
+surface, single-shot production verification).
+**Migrations:** **197–198** (Phase 38.2 moves to 199–200). Shifted TWICE: plan 15 claimed 195 for `workspace_permission_requests` (R-19), and the quick custody fix claimed 196. The LIVE MIGRATION LEDGER under Phase 38.0.1 is authoritative — check it before claiming a number. **201–202 are the Playbook rich-content workstream's; do not take them.**
 
 **⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
 ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
-grants to exploit, so the switch is their only containment.
+grants to exploit, so the switch is their only containment. **No plan in this phase flips it** — the
+decision is a separate, deliberate act at plan 17's checkpoint.
 
-**Watch-outs:** (a) **No `SELECT ... FOR UPDATE` plpgsql RPC exists anywhere in this repo** — the
-transactional core is build-from-research, not build-from-analog. (b) Locking order matters:
-concurrent custody and roster operations must not deadlock. (c) **WSR-09 has now been deferred
-twice. Do not defer it a third time.**
+**Watch-outs:** (a) ~~No `SELECT ... FOR UPDATE` plpgsql RPC exists anywhere in this repo~~ —
+**WRONG, corrected by research 2026-09-07. Twenty-seven `SECURITY DEFINER` functions here use
+`FOR UPDATE`.** `123_job_claim_leases.sql` is the security template; `046_atomic_opportunity_apply.sql`
+is the behavioural template and the worst security template (**no REVOKE at all** — backlog, not
+fixed here). This is build-from-analog. (b) Locking order matters: LO-1 is stated as a rank table in
+migration 198's header and machine-checked by its suite. (c) **WSR-09 has now been deferred twice.
+Plan 11 closes it.** (d) The 190/196 `current_user IN ('postgres')` exemption is **role-scoped, not
+function-scoped**, so every new definer RPC joins it — the custody RPC therefore *calls*
+`transfer_vault_project_custody()` rather than writing `user_id` itself. (e) A `RAISE` rolls back the
+audit row written earlier in the same transaction, so audited refusals are outcome codes (R-26).
+(f) `guard_workspace_never_zero_owners` does **not** fire on promotion, so WSR-07 needs a NEW trigger;
+and it sees uncommitted writes from earlier statements, so ownership transfer must promote before it
+demotes.
 
 **Depends on:** Phase 38.0.1
-**Status:** Split from 38.0.1 on 2026-09-06, owner-approved. Decisions already exist — run
-`/gsd-plan-phase 38.0.2` directly.
+**Status:** **Planned 2026-09-07 — 17 plans across 6 waves.** Decisions were already locked; no
+discuss-phase was run. Research is in `38.0.2-RESEARCH.md` (1233 lines, load-bearing: copy-paste RPC
+skeleton §2.2, LO-1 §3.1, 15-trigger inventory §4.2, keep-vs-delete classification §11).
 
-**Plans:** 0 plans
+**Plans:** 17 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 38.0.2 to break down)
+- [ ] 38.0.2-01-PLAN.md — pure ownership-transfer state machine (`lib/workspaces/ownership-transfer.ts`)
+- [ ] 38.0.2-02-PLAN.md — D-55 cohort gate module + the two server-only env vars
+- [ ] 38.0.2-03-PLAN.md — `canManageOwners` + the WSR-29 project-access role floor predicates
+- [ ] 38.0.2-04-PLAN.md — "Appears on" requires a relationship naming the caller; multi-workspace fix
+- [ ] 38.0.2-05-PLAN.md — migration 197 pt1: ownership-transfer + cohort tables, owner-role guard, owner floor v2
+- [ ] 38.0.2-06-PLAN.md — migration 198 pt1: the LO-1 doctrine, the canonical RPC template, `workspace_create`
+- [ ] 38.0.2-07-PLAN.md — migration 197 pt2: audit lockdown, PII guard, deferred audit-assertion triggers, redacted read
+- [ ] 38.0.2-08-PLAN.md — migration 198 pt2: member role/status + the two ownership RPCs
+- [ ] 38.0.2-09-PLAN.md — migration 197 pt3: policy rewrites, WSR-29 role floor, cohort gate fn (**completes 197**)
+- [ ] 38.0.2-10-PLAN.md — migration 198 pt3: invitation redemption + roster transition RPCs
+- [ ] 38.0.2-11-PLAN.md — migration 198 pt4: transactional custody accept (WSR-09) (**completes 198**)
+- [ ] 38.0.2-12-PLAN.md — members route onto the RPC + the new workspace ownership route
+- [ ] 38.0.2-13-PLAN.md — cohort gate in `requireWorkspaceAccess`, atomic create route, role floor at project routes
+- [ ] 38.0.2-14-PLAN.md — invitation accept onto the RPC + audit PII removal
+- [ ] 38.0.2-15-PLAN.md — both roster surfaces onto the RPC + `logWorkspaceAction` doctrine correction
+- [ ] 38.0.2-16-PLAN.md — custody-transfers route onto the RPC (WSR-09 route half)
+- [ ] 38.0.2-17-PLAN.md — Part A structural probe, Part B behavioural harness, evidence map, **joint push**
 
 ---
 
