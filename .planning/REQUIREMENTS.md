@@ -833,20 +833,21 @@ production. See `38.0.1-SPLIT.md`.
 
 | Req ID | Phase | Plans | Status |
 |--------|-------|-------|--------|
-| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Planned |
-| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Planned |
-| WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Planned |
-| WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Planned |
-| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Planned |
-| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Planned |
-| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Planned |
-| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Planned |
-| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Planned |
-| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Planned |
-| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Planned |
-| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Planned |
-| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Planned |
-| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Planned |
+| WSR-01 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07 | Code complete — awaiting live verification |
+| WSR-02 | Phase 38.0.1 | 38.0.1-03, 38.0.1-05, 38.0.1-06, 38.0.1-07, 38.0.1-09 | Code complete — awaiting live verification |
+| WSR-03 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Code complete — awaiting live verification |
+| WSR-04 | Phase 38.0.1 | 38.0.1-10, 38.0.1-11 | Code complete — awaiting live verification |
+| WSR-05 | Phase 38.0.1 | 38.0.1-09, 38.0.1-10 | Code complete — awaiting live verification |
+| WSR-06 | Phase 38.0.1 | 38.0.1-09 | Code complete — awaiting live verification |
+| WSR-14 | Phase 38.0.1 | 38.0.1-04, 38.0.1-05, 38.0.1-08 | Code complete — awaiting live verification |
+| WSR-15 | Phase 38.0.1 | 38.0.1-04, 38.0.1-08 | Code complete — awaiting live verification |
+| WSR-17 | Phase 38.0.1 | 38.0.1-09 | Code complete — awaiting live verification |
+| WSR-20 | Phase 38.0.1 | 38.0.1-11 | Code complete — awaiting live verification |
+| WSR-22 | Phase 38.0.1 | 38.0.1-08, 38.0.1-14 | Code complete — awaiting live verification |
+| WSR-24 | Phase 38.0.1 | 38.0.1-01, 38.0.1-05 | Code complete — awaiting live verification |
+| WSR-25 | Phase 38.0.1 | 38.0.1-01, 38.0.1-02 | Code complete — awaiting live verification |
+| WSR-27 | Phase 38.0.1 | 38.0.1-12, 38.0.1-13 | Code complete — awaiting live verification |
+| WSR-28 | Phase 38.0.1 | 38.0.1-15, 38.0.1-16 | Code complete — awaiting live verification |
 | WSR-07 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-08 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-09 | Phase 38.0.2 (proposed) | — | Deferred (second deferral — flagged in 38.0.1-SPLIT.md) |
@@ -861,11 +862,27 @@ production. See `38.0.1-SPLIT.md`.
 | WSR-23 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-26 | Phase 38.0.2 (proposed) | — | Deferred; its verification query runs in 38.0.1-01 (probe P4) and the result is carried forward |
 
-**Coverage (Phase 38.0.1):** 14 requirement IDs assigned to at least one plan across 14 plans /
-6 waves. 13 IDs explicitly deferred by name to Phase 38.0.2, each with a written safety argument.
+**Coverage (Phase 38.0.1):** 15 requirement IDs assigned to at least one plan across 16 plans /
+7 waves. 13 IDs explicitly deferred by name to Phase 38.0.2, each with a written safety argument.
 
-**Migrations:** 188 (independent, ships first) and 191-194 (one joint push) are claimed by Phase
-38.0.1. 193-194 are left free for Phase 38.0.2. **195-196 remain reserved for Phase 38.2.**
+WSR-28 and plans 15 and 16 were added during execution (decision R-19): a workspace had no way to
+ASK for a permission, which made WSR-27's primary story unreachable. Plan 14 was joined by plan 15
+in wave 5, plan 16 in wave 6, and plan 13 moved to wave 7.
+
+**"Code complete" is not "verified".** Every row above has merged, tested code behind it, but
+migrations 190-195 are authored-and-held, unapplied. None of these requirements is verified until
+that joint push lands and the live-Postgres checks in plan 38.0.1-11's Task 3 checkpoint (steps
+6-11, including the 57-box `38-RLS-SMOKE-CHECKLIST.md`) are run and reported. Do not mark any row
+Verified before then.
+
+**Migrations:** see the **LIVE LEDGER** table under Phase 38.0.1 in `.planning/ROADMAP.md`, which
+is authoritative. Summary: **190-195 all belong to Phase 38.0.1** and are authored-but-unapplied;
+**196-197** are Phase 38.0.2; **198-199** are Phase 38.2.
+
+The line previously here read "188 (independent, ships first) and 191-194 ... 193-194 are left free
+for Phase 38.0.2. 195-196 remain reserved for Phase 38.2." That was residue of the 188/189 renumber
+and contradicted itself (191-194 claimed AND 193-194 free). 188/189 are unrelated Playbook
+migrations applied from a parallel session; the independent F3 custody fix is **190**.
 
 ---
 ## v1.4 — Phase 38.0.1 / 38.0.2: Workspace Authorization Remediation Requirements

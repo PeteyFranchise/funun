@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: "Phase 38.0.1 plan 13 complete (Member consent surface, WSR-27). Wave 7 done; all 16 plans executed. Full suite 498 suites / 5510 tests green, tsc + lint clean. Migrations 190-195 still authored-but-unapplied; D-56 kill switch still OFF. Outstanding: plan 13 Task 3 human-check (needs kill switch ON + migration 195 applied)."
-last_updated: "2026-09-07T04:15:29.602Z"
-last_activity: 2026-08-25
-last_activity_desc: Phase 31.2 execution started
+stopped_at: Phase 38.0.1 CODE COMPLETE — all 16 plans merged, 498 suites / 5510 tests green, tsc clean, 65 commits ahead of origin/main, NOTHING PUSHED. *** THREE OWNER ITEMS OPEN. (1) MIGRATION 190 — LIVE PRODUCTION 500: origin/main already deploys app/api/vault/custody-transfers/route.ts calling transfer_vault_project_custody, but 190 was never applied, so the function does not exist. The route is gated on requireMemberApiAccount only and is NOT kill-switch shielded, so any Member accepting a custody transfer gets a 500 today. Verified safe to apply alone: both vault_projects user_id writes in the codebase are INSERTs and 190's trigger is BEFORE UPDATE. HAZARD: a bare `supabase db push` also applies 191-195 — move them aside first. (2) THE JOINT PUSH — plan 11's Task 3 checkpoint, migrations 190-195 plus a deploy of the same commit, then live-Postgres steps 6-11 including the 57-box 38-RLS-SMOKE-CHECKLIST.md. Its step 1 detects whether 190 is already applied, so it is correct either way. (3) PROJECT-SCOPED ASKS — plan 15's route accepts projectId but plan 12 cannot render such asks, so one would be stored and never approvable. Latent (no client sends it until the UI ships). Recommendation: refuse them for now. See 38.0.1-ORCHESTRATOR-NOTES.md item 4. *** SECURITY FIXES FOUND DURING EXECUTION, both closed: migration 193's four workspace_read_* SECURITY DEFINER functions accepted a caller-supplied p_uid unbound to auth.uid(), allowing read impersonation by any authenticated caller (found by plan 11, fixed in quick task 260906-x8i with a negative-control test); and plan 16 found that approving a permission SET split across two writers lost all-or-nothing semantics. *** ALSO OPEN: the kill-switch-before-auth ordering in the consent route (38.0.1-ORCHESTRATOR-NOTES.md item 1, consent route now free to edit), and plan 13's human-check which needs migration 195 applied. D-56 kill switch must stay OFF until Phase 38.0.2. Phase 37.1's 37-13 Task 3 hum test also open.
+last_updated: "2026-09-07T00:00:00.000Z"
+last_activity: 2026-09-07
+last_activity_desc: "Phase 38.0.1 code complete (16/16); migration 190 still unapplied and causing a live 500"
 progress:
   total_phases: 42
   completed_phases: 33
