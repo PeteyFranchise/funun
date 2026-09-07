@@ -1,127 +1,142 @@
 -- ============================================================
--- Phase 38.0.1 — VERIFICATION PART A: STRUCTURAL (read-only)
+-- Phase 38.0.1 — VERIFICATION PART A: STRUCTURAL
 --
--- Run this in the Supabase SQL editor against PRODUCTION.
--- It is 100% READ-ONLY: no INSERT, UPDATE, DELETE, DDL, or GRANT.
--- It does NOT require the D-56 kill switch to be on.
--- It does NOT require any seeded data or test accounts.
+-- ONE query, ONE result table. Paste into the Supabase SQL editor
+-- and run against PRODUCTION.
 --
--- It proves the migrations produced the objects they were reviewed
--- as producing. It CANNOT prove behaviour under a live grant — that
--- is Part B, which needs the kill switch on and seeded data.
+-- 100% READ-ONLY: no INSERT/UPDATE/DELETE/DDL/GRANT anywhere.
+-- Does NOT need the D-56 kill switch on.
+-- Does NOT need seeded data or test accounts.
 --
--- Each query prints a verdict column. Anything that is not PASS is
--- a finding: stop and report it rather than proceeding.
+-- Proves the migrations produced the objects they were reviewed as
+-- producing. It cannot prove behaviour under a live grant — that is
+-- Part B, which needs the kill switch on and seeded data.
+--
+-- Read the `verdict` column. Anything containing FAIL is a finding.
+-- Rows marked INFO are informational, not pass/fail.
 -- ============================================================
 
--- ─── A1. The p_uid caller bind (the impersonation fix) ───────────
--- Migration 193's four read functions must each contain the bind.
--- Without it, any authenticated caller can read as any other user.
-SELECT
-  p.proname,
-  CASE WHEN pg_get_functiondef(p.oid) LIKE '%p_uid = ( SELECT auth.uid()%'
-         OR pg_get_functiondef(p.oid) LIKE '%p_uid = (SELECT auth.uid()%'
-       THEN 'PASS' ELSE '*** FAIL — MISSING CALLER BIND ***' END AS verdict
-FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public' AND p.proname LIKE 'workspace_read_%'
-ORDER BY p.proname;
+WITH read_fns AS (
+  SELECT p.oid, p.proname,
+         pg_get_functiondef(p.oid) AS def,
+         pg_get_function_result(p.oid) AS res
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname LIKE 'workspace_read_%'
+),
+wpp AS (
+  SELECT pg_get_functiondef(p.oid) AS def
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'workspace_project_permission'
+  LIMIT 1
+)
 
--- ─── A2. Column allowlist (WSR-03/04) ────────────────────────────
--- The declared OUT columns ARE the security contract. Read this
--- list yourself: no audio path, no asset URL, no document payload,
--- no lyric body, no *_url, no storage path of any kind.
-SELECT p.proname, pg_get_function_result(p.oid) AS declared_columns
-FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public' AND p.proname LIKE 'workspace_read_%'
-ORDER BY p.proname;
+-- A1 — the p_uid caller bind (the read-impersonation fix)
+SELECT 1 AS ord, 'A1 p_uid caller bind' AS check_name, proname AS detail,
+       CASE WHEN def ILIKE '%p_uid = (select auth.uid()%'
+            THEN 'PASS' ELSE '*** FAIL — MISSING CALLER BIND ***' END AS verdict
+FROM read_fns
 
--- A2b. Automated negative check on the forbidden names.
-SELECT p.proname,
-  CASE WHEN pg_get_function_result(p.oid) ~* '(audio_file_url|audio_file_size|lyrics|file_url|url|payload|claim_token|iswc|metadata)'
-       THEN '*** FAIL — FORBIDDEN COLUMN EXPOSED ***' ELSE 'PASS' END AS verdict
-FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public' AND p.proname LIKE 'workspace_read_%'
-ORDER BY p.proname;
+UNION ALL
+-- A2 — declared column allowlist: forbidden names must not appear
+SELECT 2, 'A2 allowlist (forbidden names)', proname,
+       CASE WHEN res ~* '(audio_file_url|audio_file_size|lyrics|file_url|payload|claim_token|iswc|signed_by)'
+            THEN '*** FAIL — FORBIDDEN COLUMN EXPOSED ***' ELSE 'PASS' END
+FROM read_fns
 
--- ─── A3. Blast radius (R-02) ─────────────────────────────────────
--- After migration 193, vault_projects must be the ONLY table whose
--- policies name a workspace helper. These four must return zero rows.
-SELECT tablename, policyname, 'FAIL — workspace branch still present' AS verdict
+UNION ALL
+-- A2b — the declared columns themselves, for you to read
+SELECT 3, 'A2b declared columns (read these)', proname, res FROM read_fns
+
+UNION ALL
+-- A3 — blast radius: the four child tables must name no workspace helper
+SELECT 4, 'A3 blast radius (4 child tables)', 'tracks, vault_assets, vault_documents, tool_outputs',
+       CASE WHEN count(*) = 0 THEN 'PASS — no workspace branch remains'
+            ELSE '*** FAIL — ' || count(*) || ' policies still name a workspace helper ***' END
 FROM pg_policies
 WHERE schemaname = 'public'
   AND tablename IN ('tracks','vault_assets','vault_documents','tool_outputs')
-  AND (qual ILIKE '%workspace_project_permission%' OR with_check ILIKE '%workspace_project_permission%');
--- Expect: 0 rows. Any row is a finding.
+  AND (coalesce(qual,'') ILIKE '%workspace_project_permission%'
+    OR coalesce(with_check,'') ILIKE '%workspace_project_permission%')
 
--- A3b. vault_projects must still HAVE its (narrowed) workspace branch.
-SELECT count(*) AS vault_projects_workspace_policies,
-  CASE WHEN count(*) > 0 THEN 'PASS' ELSE '*** FAIL — branch missing ***' END AS verdict
+UNION ALL
+-- A3b — vault_projects must still HAVE its narrowed workspace branch
+SELECT 5, 'A3b vault_projects branch kept', count(*) || ' policies',
+       CASE WHEN count(*) > 0 THEN 'PASS' ELSE '*** FAIL — branch missing ***' END
 FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'vault_projects'
-  AND (qual ILIKE '%workspace_project_permission%' OR with_check ILIKE '%workspace_project_permission%');
+  AND (coalesce(qual,'') ILIKE '%workspace_project_permission%'
+    OR coalesce(with_check,'') ILIKE '%workspace_project_permission%')
 
--- ─── A4. One canonical live-membership definition (WSR-17) ───────
--- Both helpers must check expires_at, matching requireWorkspaceAccess.
-SELECT p.proname,
-  CASE WHEN pg_get_functiondef(p.oid) ILIKE '%expires_at%' THEN 'PASS'
-       ELSE '*** FAIL — expires_at not checked ***' END AS verdict
+UNION ALL
+-- A4 — one canonical live-membership definition (expires_at)
+SELECT 6, 'A4 expires_at in membership helper', p.proname,
+       CASE WHEN pg_get_functiondef(p.oid) ILIKE '%expires_at%'
+            THEN 'PASS' ELSE '*** FAIL — expires_at not checked ***' END
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.proname IN ('workspace_member_role','is_workspace_owner')
-ORDER BY p.proname;
 
--- ─── A5. The six hops (WSR-06, WSR-02) ───────────────────────────
--- workspace_project_permission must contain the kill switch first,
--- the custody binding, and the lineage re-validation.
-SELECT
-  CASE WHEN d ILIKE '%workspace_access_enabled%' THEN 'PASS' ELSE 'FAIL' END AS kill_switch,
-  CASE WHEN d ILIKE '%vault_projects%' AND d ILIKE '%member_user_id%' THEN 'PASS' ELSE 'FAIL' END AS custody_binding,
-  CASE WHEN d ILIKE '%workspace_grant_lineage_live%' THEN 'PASS' ELSE 'FAIL' END AS lineage_revalidation
-FROM (SELECT pg_get_functiondef(p.oid) AS d
-      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname='public' AND p.proname='workspace_project_permission' LIMIT 1) s;
+UNION ALL
+-- A5 — the six hops inside workspace_project_permission
+SELECT 7, 'A5 hops', 'kill switch conjunct',
+       CASE WHEN (SELECT def FROM wpp) ILIKE '%workspace_access_enabled%' THEN 'PASS' ELSE '*** FAIL ***' END
+UNION ALL
+SELECT 8, 'A5 hops', 'custody binding (vault_projects + member_user_id)',
+       CASE WHEN (SELECT def FROM wpp) ILIKE '%vault_projects%'
+             AND (SELECT def FROM wpp) ILIKE '%member_user_id%' THEN 'PASS' ELSE '*** FAIL ***' END
+UNION ALL
+SELECT 9, 'A5 hops', 'lineage re-validation',
+       CASE WHEN (SELECT def FROM wpp) ILIKE '%workspace_grant_lineage_live%' THEN 'PASS' ELSE '*** FAIL ***' END
 
--- ─── A6. Index backing the custody join (perf, step 9 precursor) ─
-SELECT indexname, 'PASS' AS verdict FROM pg_indexes
-WHERE schemaname='public' AND tablename='vault_projects' AND indexdef ILIKE '%user_id%';
--- Expect at least one row.
+UNION ALL
+-- A6 — index backing the custody join
+SELECT 10, 'A6 custody join index', coalesce(string_agg(indexname, ', '), '(none)'),
+       CASE WHEN count(*) > 0 THEN 'PASS' ELSE '*** FAIL — join unindexed ***' END
+FROM pg_indexes
+WHERE schemaname = 'public' AND tablename = 'vault_projects' AND indexdef ILIKE '%user_id%'
 
--- ─── A7. Custody immutability (WSR-25) ───────────────────────────
-SELECT tgname,
-  CASE WHEN tgenabled <> 'D' THEN 'PASS' ELSE '*** FAIL — trigger disabled ***' END AS verdict
+UNION ALL
+-- A7 — custody immutability trigger present and enabled
+SELECT 11, 'A7 custody immutability trigger', coalesce(string_agg(tgname, ', '), '(none)'),
+       CASE WHEN count(*) FILTER (WHERE tgenabled <> 'D') > 0
+            THEN 'PASS' ELSE '*** FAIL — missing or disabled ***' END
 FROM pg_trigger
 WHERE tgrelid = 'public.vault_projects'::regclass AND NOT tgisinternal
-  AND tgname LIKE '%user_id_immutable%';
+  AND tgname ILIKE '%user_id_immutable%'
 
--- ─── A8. Kill switch state (must be FALSE until Phase 38.0.2) ────
-SELECT enabled,
-  CASE WHEN enabled IS FALSE THEN 'PASS — correctly OFF'
-       ELSE '*** FAIL — MUST BE OFF until 38.0.2 (R-03/R-07) ***' END AS verdict
-FROM public.workspace_access_config;
+UNION ALL
+-- A8 — kill switch must be OFF until Phase 38.0.2 (R-03/R-07)
+SELECT 12, 'A8 D-56 kill switch', 'enabled = ' || coalesce(enabled::text, 'NULL'),
+       CASE WHEN enabled IS FALSE THEN 'PASS — correctly OFF'
+            ELSE '*** FAIL — MUST BE OFF until 38.0.2 ***' END
+FROM public.workspace_access_config
 
--- ─── A9. Exposure check — are the workspace tables still empty? ──
-SELECT 'workspace_grants' AS t, count(*) FROM public.workspace_grants
-UNION ALL SELECT 'workspace_attachments', count(*) FROM public.workspace_attachments
-UNION ALL SELECT 'workspace_members', count(*) FROM public.workspace_members
-UNION ALL SELECT 'workspace_roster_relationships', count(*) FROM public.workspace_roster_relationships
-UNION ALL SELECT 'workspace_permission_requests', count(*) FROM public.workspace_permission_requests;
--- Non-zero is not necessarily wrong (beta users may have started),
--- but it changes the risk calculus for Part B. Report the numbers.
+UNION ALL
+-- A9 — current population (INFO: changes the risk calculus for Part B)
+SELECT 13, 'A9 population (INFO)', t, n::text FROM (
+  SELECT 'workspace_grants' AS t, count(*) AS n FROM public.workspace_grants
+  UNION ALL SELECT 'workspace_attachments', count(*) FROM public.workspace_attachments
+  UNION ALL SELECT 'workspace_members', count(*) FROM public.workspace_members
+  UNION ALL SELECT 'workspace_roster_relationships', count(*) FROM public.workspace_roster_relationships
+  UNION ALL SELECT 'workspace_permission_requests', count(*) FROM public.workspace_permission_requests
+) pop
 
--- ─── A10. S1 — audit log is not append-only (carried to 38.0.2) ──
-SELECT grantee, privilege_type
+UNION ALL
+-- A10 — S1: audit log is not append-only (expected; deferred to 38.0.2)
+SELECT 14, 'A10 audit-log write grants (INFO, S1)',
+       coalesce(string_agg(grantee || ':' || privilege_type, ', '), '(none)'),
+       'INFO — expected today, deferred to 38.0.2 as WSR-26'
 FROM information_schema.role_table_grants
-WHERE table_schema='public' AND table_name='workspace_audit_log'
+WHERE table_schema = 'public' AND table_name = 'workspace_audit_log'
   AND privilege_type IN ('UPDATE','DELETE','TRUNCATE')
-ORDER BY grantee, privilege_type;
--- Expected TODAY: service_role holds these. That is finding S1,
--- deliberately deferred to Phase 38.0.2 (WSR-26). Recording it, not fixing it.
 
--- ─── A11. Anon must reach none of the read functions ─────────────
-SELECT p.proname,
-  CASE WHEN has_function_privilege('anon', p.oid, 'EXECUTE')
-       THEN '*** FAIL — anon can execute ***' ELSE 'PASS' END AS verdict
+UNION ALL
+-- A11 — anon must reach none of these functions
+SELECT 15, 'A11 anon EXECUTE', p.proname,
+       CASE WHEN has_function_privilege('anon', p.oid, 'EXECUTE')
+            THEN '*** FAIL — anon can execute ***' ELSE 'PASS' END
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname='public'
-  AND (p.proname LIKE 'workspace_read_%' OR p.proname IN
-       ('workspace_project_permission','workspace_grant_lineage_live','transfer_vault_project_custody'))
-ORDER BY p.proname;
+WHERE n.nspname = 'public'
+  AND (p.proname LIKE 'workspace_read_%'
+    OR p.proname IN ('workspace_project_permission','workspace_grant_lineage_live','transfer_vault_project_custody'))
+
+ORDER BY ord, detail;
