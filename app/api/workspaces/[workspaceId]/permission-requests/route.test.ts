@@ -409,7 +409,6 @@ describe('the route surface — this route cannot answer', () => {
   })
 
   it('does not import the deciding function at all', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const source = require('fs').readFileSync(
       require('path').join(
         process.cwd(),

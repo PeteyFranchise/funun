@@ -725,7 +725,6 @@ describe('listRequestsForMember / listRequestsForWorkspace', () => {
 // ─── the module boundary ──────────────────────────────────────────────────
 describe('request-service module boundary', () => {
   it('writes no grant row itself — the only grant path is issueMemberConsent', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const source = require('fs').readFileSync(
       require('path').join(process.cwd(), 'lib/workspaces/request-service.ts'),
       'utf8'
