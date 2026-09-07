@@ -2138,15 +2138,18 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | 193 | column-allowlist RPCs (plan 10) | authored, reviewed, HELD |
 | 194 | catalogue RPC (plan 11) | authored, reviewed, HELD |
 | 195 | `workspace_permission_requests` (plan 15, R-19) | authored, reviewed, HELD |
-| 196–197 | Phase 38.0.2 | reserved |
-| 198–199 | Phase 38.2 (billing, beta flag) | reserved |
+| **196** | migration 139's guard blocked the custody RPC (quick `260907-cust`) | **authored 2026-09-07, awaiting owner push.** Migration 190 shipped its exemption, but migration 139's older, differently-named `guard_owner_immutable` trigger ALSO fires on `vault_projects` and refused the sanctioned RPC with `42501: ownership is immutable`. 196 gives that shared function the same structural exemption, scoped by `TG_TABLE_NAME` to `vault_projects` only — `works` keeps its absolute guard. Custody transfer stays broken in production until this is pushed. |
+| 197–198 | Phase 38.0.2 | reserved (was 196–197; 196 taken by the fix above) |
+| 199–200 | Phase 38.2 (billing, beta flag) | reserved (was 198–199) |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
 headers of migrations 191, 192 and 193 state "195-196 reserved for Phase 38.0.2 / 197-198 for Phase
-38.2". That was true when they were written and is now off by one, because plan 15 claimed 195. Those
-headers are text-locked by their own test suites and are already reviewed and held for the joint
-push, so they are deliberately NOT being edited — following them would collide on 195.
+38.2". That was true when they were written and is now off by TWO — plan 15 claimed 195, and the
+2026-09-07 custody-guard fix claimed 196. Those headers are text-locked by their own test suites
+and are already reviewed and held for the joint push, so they are deliberately NOT being edited —
+following them would collide on both 195 and 196. Migration 190's header carries the same stale
+range and is likewise not edited: it is already applied.
 **Depends on:** Phase 38 (shipped 2026-09-06, in production)
 
 **R-19 added during execution (owner, 2026-09-06):** a workspace could not **ask** for a permission
