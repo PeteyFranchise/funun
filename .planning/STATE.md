@@ -5,10 +5,10 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38.0.1 EXECUTING — Wave 1 merged. 38.0.1-03 COMPLETE (pure Member-root consent + delegation lineage, 38 new tests, zero I/O, no circular grant-service import — F6's circularity not reintroduced). 479 suites / 4884 tests green, tsc clean. *** 38.0.1-01 AT ITS OWNER CHECKPOINT: 38.0.1-PREFLIGHT.md holds six read-only production probes the owner must run. P5 is the D-56 kill-switch gate — if enabled=true, STOP and flip it before any further plan. P2 (NULL relationship_id audit) gates migration 191's NOT NULL; non-zero means plan 05 needs replanning. No agent may touch the database. *** Wave 2 (migrations 190 + 191) is BLOCKED until the probes are reported. Phase 37.1's 37-13 Task 3 hum test also remains open.
+stopped_at: Phase 38.0.1 EXECUTING — Wave 1 COMPLETE (38.0.1-01 probes run + 38.0.1-03 consent/lineage modules). D-56 KILL SWITCH NOW OFF (flipped 2026-09-07 02:16 UTC, confirmed). PROBE FINDINGS: exposure while the switch was on was NONE — workspaces/members/roster/attachments/grants/audit are ALL ZERO, so F5/F8 were never reachable; latent misconfiguration, not an incident. F6 corroborated (0 grants ever). S1 CONFIRMED: service_role holds UPDATE/DELETE/TRUNCATE on workspace_audit_log — it is NOT append-only (carried to 38.0.2 WSR-26). D-PF-02 = GO (no NULL relationship_id; tables empty, so no data migration needed anywhere in this phase — de-risks migs 191/193). *** D-PF-01 STILL OPEN: migration 190's trigger role list is a DESIGN decision, not a probe result — blocking service_role breaks the legitimate custody-transfer path; blocking only authenticated leaves a gap. Plan 02 must choose explicitly. *** Wave 2 next: 38.0.1-02 (mig 190) + 38.0.1-05 (mig 191). Phase 37.1's 37-13 Task 3 hum test also remains open.
 last_updated: "2026-09-05T00:00:00.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 38.0.1 wave 1 merged; awaiting owner production probes
+last_activity_desc: Phase 38.0.1 wave 1 complete; kill switch off; zero exposure confirmed
 progress:
   total_phases: 44
   completed_phases: 30
