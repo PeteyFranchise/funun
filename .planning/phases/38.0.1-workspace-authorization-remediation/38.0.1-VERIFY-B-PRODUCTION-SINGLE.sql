@@ -54,7 +54,7 @@ BEGIN
   -- collaborators is not an option: it requires a user_id, which is precisely
   -- what we are creating.
   INSERT INTO public.artist_invites (email, source, status)
-  SELECT e, 'backfill', 'pending'
+  SELECT e, 'staff', 'pending'
   FROM unnest(ARRAY['b-subject@verify.invalid','b-owner@verify.invalid',
                     'b-admin@verify.invalid','b-contractor@verify.invalid',
                     'b-guest@verify.invalid','b-outsider@verify.invalid']) AS e;
