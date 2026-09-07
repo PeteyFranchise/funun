@@ -360,14 +360,10 @@ export function PermissionsTab({
   const hasPending = pending.length > 0
   const hasActive = active.length > 0
 
+  // The page heading and subhead belong to the server page, which owns the
+  // static chrome; everything below this point is the part that needs state.
   return (
     <div>
-      <h2 className="text-[22px] font-bold text-white">Workspace permissions</h2>
-      <p className="mt-1 text-sm text-white/50">
-        See exactly what a workspace is asking to do with your work — and decide, one permission at
-        a time.
-      </p>
-
       {!hasPending && !hasActive && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <p className="text-[15px] font-semibold text-white/60">{EMPTY_HEADING}</p>
@@ -376,7 +372,7 @@ export function PermissionsTab({
       )}
 
       {hasPending && (
-        <section className="mt-8">
+        <section>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-white/40">
             {PENDING_HEADING}
           </h3>
