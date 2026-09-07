@@ -1,7 +1,8 @@
 // ── Artist Settings shared form model + pure tab logic ──────────────────
-// The artist Settings page is split across three linkable routes
-// (/settings, /settings/profile, /settings/payouts) that share one client
-// provider mounted in app/(artist)/settings/layout.tsx. Everything in this
+// The artist Settings page is split across four linkable routes
+// (/settings, /settings/profile, /settings/payouts, and the Permissions
+// tab) that share one client provider mounted in
+// app/(artist)/settings/layout.tsx. Everything in this
 // module is PURE — no React, no fetch, no next/navigation — because that is
 // the only way it can be tested: jest.config.js runs `testEnvironment:
 // 'node'` and this repo has neither jsdom nor @testing-library, so the
@@ -101,7 +102,7 @@ export function toForm(p: UserProfile): FormState {
 // the index route (/settings). Do NOT switch this to a usePathname() prefix
 // test — '/settings' is a prefix of all three routes and would mark every
 // tab active at once.
-export type SettingsTabId = 'rights' | 'profile' | 'payouts'
+export type SettingsTabId = 'rights' | 'profile' | 'payouts' | 'permissions'
 
 export type SettingsTab = {
   id: SettingsTabId
@@ -114,6 +115,15 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
   { id: 'rights', href: '/settings', label: 'Rights & contracts', segment: null },
   { id: 'profile', href: '/settings/profile', label: 'Public profile', segment: 'profile' },
   { id: 'payouts', href: '/settings/payouts', label: 'Payouts', segment: 'payouts' },
+  // WSR-27 / R-18 — the Member's consent surface. Last in the bar, and the
+  // only entry point this phase adds: it is deliberately NOT a new
+  // top-level nav item (see the UI-SPEC's Placement section).
+  {
+    id: 'permissions',
+    href: '/settings/permissions',
+    label: 'Permissions',
+    segment: 'permissions',
+  },
 ] as const
 
 // ── Field ownership ─────────────────────────────────────────────────────
@@ -190,6 +200,11 @@ const DEEP_COMPARE_KEYS: readonly (keyof FormState)[] = [
 function fieldsForTab(tab: SettingsTabId): readonly (keyof FormState)[] {
   if (tab === 'rights') return [...RIGHTS_FIELDS, ...CLIENT_ONLY_FIELDS]
   if (tab === 'profile') return PUBLIC_FIELDS
+  // Payouts and permissions own no FormState key. Stated here rather than
+  // left to the fall-through so isTabDirty and buildTabPayload are correct
+  // by construction: neither tab can ever be dirty and neither can ever
+  // contribute a key to a PATCH body.
+  if (tab === 'permissions') return []
   return []
 }
 
@@ -216,7 +231,7 @@ export function isTabDirty(tab: SettingsTabId, form: FormState, baseline: FormSt
  */
 export function buildTabPayload(tab: SettingsTabId, form: FormState): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
-  if (tab === 'payouts') return payload
+  if (tab === 'payouts' || tab === 'permissions') return payload
 
   const fields = tab === 'rights' ? RIGHTS_FIELDS : PUBLIC_FIELDS
   for (const key of fields) {
@@ -260,6 +275,14 @@ export type SaveThenNavigateResult = {
  *
  * Payouts owns no fields, so leaving it never writes.
  *
+ * NEITHER DOES PERMISSIONS, AND FOR A DIFFERENT REASON. The UI-SPEC's
+ * planner note for WSR-27: that surface is an action list, not a form —
+ * every decision on it is written the moment it is made, through the
+ * per-relationship consent route. Switching to or away from it must be
+ * instant, with no save attempt, no "Saving…" label and no dirty-state
+ * prompt (T-38.0.1-13-07). A saver here would make the Member's consent
+ * screen appear to hang on a write that has nothing to write.
+ *
  * Kept pure and dependency-injected so the composition is assertable under
  * jest's node environment, where no component can be rendered.
  */
@@ -278,6 +301,7 @@ export function buildSaversForTab(
   if (tab === 'profile') {
     return [profileSaver, { dirty: deps.visibilityDirty, save: deps.saveVisibility }]
   }
+  if (tab === 'permissions') return []
   return []
 }
 
