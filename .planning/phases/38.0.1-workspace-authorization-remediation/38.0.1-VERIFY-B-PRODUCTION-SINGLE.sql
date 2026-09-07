@@ -101,7 +101,7 @@ BEGIN
   VALUES (ROOT,WS,REL,'view_summaries','member_consent',NULL,SUBJECT) ON CONFLICT (id) DO NOTHING;
   INSERT INTO public.workspace_grants
     (id,workspace_id,relationship_id,permission,source,parent_grant_id,granted_by)
-  VALUES ('ffff0000-0000-0000-0000-000000000092',WS,REL,'view_summaries','delegated',ROOT,OWNER_)
+  VALUES ('ffff0000-0000-0000-0000-000000000092',WS,REL,'view_summaries','individual',ROOT,OWNER_)
   ON CONFLICT (id) DO NOTHING;
 
   UPDATE public.workspace_access_config SET enabled = TRUE;   -- switch ON
