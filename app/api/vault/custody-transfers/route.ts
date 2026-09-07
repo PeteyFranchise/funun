@@ -293,13 +293,23 @@ export async function PATCH(request: Request) {
     // Full transactional accept (both writes in one atomic RPC) remains
     // deferred to 38.0.1 (F9's full form) — this is the narrow, cheap
     // mitigation for the same class of race.
-    const { data: custodyUpdated, error: custodyError } = await service
-      .from('vault_projects')
-      .update({ user_id: row.to_user_id })
-      .eq('id', row.project_id)
-      .eq('user_id', row.from_user_id)
-      .select('id')
-      .maybeSingle()
+    // WSR-25 / migration 190: `vault_projects.user_id` is immutable to every
+    // caller. `transfer_vault_project_custody` is a SECURITY DEFINER function
+    // owned by postgres and is the ONLY sanctioned path that may change it —
+    // the boundary is "did this statement run inside that function", not
+    // "which role connected" (PREFLIGHT S1: service_role's directly-granted
+    // privileges survive `REVOKE ... FROM PUBLIC`). It reproduces the
+    // stale-custodian guard as the same WHERE-clause double filter and returns
+    // NULL, changing nothing, when `from_user_id` is no longer the current
+    // custodian — so the 409 below behaves exactly as it did before.
+    const { data: custodyUpdated, error: custodyError } = await service.rpc(
+      'transfer_vault_project_custody',
+      {
+        p_project_id: row.project_id,
+        p_from_user_id: row.from_user_id,
+        p_to_user_id: row.to_user_id,
+      }
+    )
 
     if (custodyError) {
       return NextResponse.json({ error: custodyError.message }, { status: 500 })

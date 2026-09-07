@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 1/14 | In Progress|  |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 3/14 | In Progress|  |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2152,15 +2152,15 @@ RPC that 38.0.2 is building anyway. **Do not defer it a third time.**
 P0-hotfix preservation, R-17's trigger mechanism, migration 078 branch survival, storage-path
 unreachability, the WSR-24 pre-flight, wave disjointness and the Server/Client boundary all green.
 
-**Plans:** 1/14 plans executed
+**Plans:** 3/14 plans executed
 
 Plans:
 
 - [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 190 and 189
-- [ ] 38.0.1-02-PLAN.md — Migration 190: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
+- [x] 38.0.1-02-PLAN.md — Migration 190: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
 - [x] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
 - [ ] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
-- [ ] 38.0.1-05-PLAN.md — Migration 191: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
+- [x] 38.0.1-05-PLAN.md — Migration 191: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
 - [ ] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)
 - [ ] 38.0.1-07-PLAN.md — Member consent route under `/api/roster/relationships/[id]/consent`
 - [ ] 38.0.1-08-PLAN.md — Evidence: workspace proposes, subject confirms; shared ISO date schemas
