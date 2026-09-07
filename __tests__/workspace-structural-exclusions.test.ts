@@ -189,6 +189,80 @@ describe('workspace structural exclusions (repository-level, application code)',
     })
   })
 
+  // ══ The column-allowlist read functions stay away from storage (WSR-04) ══
+  // Migration 193 removed the workspace RLS branch from tracks, vault_assets,
+  // vault_documents and tool_outputs and replaced it with four SECURITY
+  // DEFINER read functions whose declared return column lists are the
+  // security contract. __tests__/migration-193.test.ts locks those lists at
+  // the SQL level; this block proves the same exclusion at the repository
+  // level, mirroring the signed-URL-accessor assertion above: a module that
+  // resolves or signs a storage path must never also be a caller of one of
+  // the four functions, because that adjacency is how a "describe the asset"
+  // read quietly becomes a "fetch the asset" read (custody D-01/D-09, D-40).
+  //
+  // Written as a single collecting assertion rather than it.each() on the
+  // discovered file list on purpose: the sample is derived from a tree walk,
+  // and it.each() throws on an empty array, so a future refactor that moves
+  // every signing module would turn this suite red for the wrong reason.
+  describe('no storage or signing module calls a workspace column-allowlist read function', () => {
+    const WORKSPACE_READ_FUNCTIONS = [
+      'workspace_read_tracks',
+      'workspace_read_assets',
+      'workspace_read_documents',
+      'workspace_read_tool_outputs',
+    ]
+
+    const STORAGE_SIGNALS = [
+      /createSignedUrl(s)?\s*\(/,
+      /@\/lib\/storage/,
+      /@\/lib\/catalogue\/audio/,
+      /@\/lib\/watermark\/signed-url/,
+      /\.storage\s*\n?\s*\.from\s*\(/,
+    ]
+
+    const storageAwareModules = [...LIB_ALL_FILES, ...APP_API_ALL_FILES].filter((f) => {
+      const executable = stripTsComments(readSource(f))
+      return STORAGE_SIGNALS.some((pattern) => pattern.test(executable))
+    })
+
+    it('discovers at least one storage-aware module by walking the tree (the sample is not empty)', () => {
+      expect(storageAwareModules.length).toBeGreaterThan(0)
+    })
+
+    it('names all four read functions, so the list cannot silently fall out of date', () => {
+      expect(WORKSPACE_READ_FUNCTIONS).toEqual([
+        'workspace_read_tracks',
+        'workspace_read_assets',
+        'workspace_read_documents',
+        'workspace_read_tool_outputs',
+      ])
+    })
+
+    it('no storage-aware module calls workspace_read_tracks / _assets / _documents / _tool_outputs', () => {
+      const offenders = storageAwareModules
+        .map((file) => {
+          const executable = stripTsComments(readSource(file))
+          const calls = WORKSPACE_READ_FUNCTIONS.filter((fn) => executable.includes(fn))
+          return { file, calls }
+        })
+        .filter((entry) => entry.calls.length > 0)
+      expect(offenders).toEqual([])
+    })
+
+    it('no module anywhere in lib/ or app/api passes a read-function name to a raw SQL escape hatch', () => {
+      const offenders = [...LIB_ALL_FILES, ...APP_API_ALL_FILES]
+        .map((file) => {
+          const executable = stripTsComments(readSource(file))
+          const calls = WORKSPACE_READ_FUNCTIONS.filter((fn) =>
+            new RegExp(`(execute_sql|\\.sql\\s*\\(|raw\\s*\\()[^\\n]*${fn}`).test(executable)
+          )
+          return { file, calls }
+        })
+        .filter((entry) => entry.calls.length > 0)
+      expect(offenders).toEqual([])
+    })
+  })
+
   // ══ Legacy fields untouched (D-54) ═══════════════════════════════════════
   describe('no workspace file references the legacy account fields', () => {
     it.each(WORKSPACES_ALL_FILES)('%s references none of member_type / industry_roles / capability_grants', (file) => {
