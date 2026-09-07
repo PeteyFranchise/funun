@@ -2141,6 +2141,7 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **196** | migration 139's guard blocked the custody RPC (quick `260907-cust`) | **APPLIED 2026-09-07 and re-verified (Part B B6 PASS, B10 still refused).** Migration 190 shipped its exemption, but migration 139's older, differently-named `guard_owner_immutable` trigger ALSO fires on `vault_projects` and refused the sanctioned RPC with `42501: ownership is immutable`. 196 gives that shared function the same structural exemption, scoped by `TG_TABLE_NAME` to `vault_projects` only — `works` keeps its absolute guard. Custody transfer stays broken in production until this is pushed. |
 | 197–198 | Phase 38.0.2 | reserved (was 196–197; 196 taken by the fix above) |
 | 199–200 | Phase 38.2 (billing, beta flag) | reserved (was 198–199) |
+| **201–202** | **Playbook rich-content model, Release 1 (Codex, in progress 2026-09-07)** | **RESERVED.** Revision-history and schema changes are being drafted OUTSIDE `supabase/migrations/` specifically to avoid a number conflict while Phase 38 work is live. 197–198 belong to Phase 38.0.2 and 199–200 to Phase 38.2, so this is the next free block. Claim these when the draft lands. |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
