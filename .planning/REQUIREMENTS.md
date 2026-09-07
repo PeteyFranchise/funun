@@ -861,6 +861,7 @@ production. See `38.0.1-SPLIT.md`.
 | WSR-21 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-23 | Phase 38.0.2 (proposed) | — | Deferred |
 | WSR-26 | Phase 38.0.2 (proposed) | — | Deferred; its verification query runs in 38.0.1-01 (probe P4) and the result is carried forward |
+| WSR-29 | Phase 38.0.2 | TBD | Planned — role floor on project access (R-20, owner decision 2026-09-07) |
 
 **Coverage (Phase 38.0.1):** 15 requirement IDs assigned to at least one plan across 16 plans /
 7 waves. 13 IDs explicitly deferred by name to Phase 38.0.2, each with a written safety argument.
