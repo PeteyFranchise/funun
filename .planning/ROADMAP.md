@@ -2134,11 +2134,11 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | 188–189 | Playbook ANR + BDT doctrine (unrelated, parallel session) | applied |
 | **190** | the pre-existing F3 custody fix (plan 02) | **APPLIED 2026-09-07** — verified live: an anon RPC probe returns SQLSTATE 42501 (permission denied), which proves the function exists and is correctly locked down. The custody-transfer 500 is resolved. |
 | **191** | consent/lineage schema (plan 05) | **APPLIED 2026-09-07.** Its two `SET NOT NULL` constraints on `relationship_id` are compatible with deployed code — all three insert sites on `origin/main` set the column explicitly. |
-| 192 | helper v2 — six hops (plan 09) | authored, reviewed, HELD |
-| 193 | column-allowlist RPCs (plan 10) | authored, reviewed, HELD |
-| 194 | catalogue RPC (plan 11) | authored, reviewed, HELD |
-| 195 | `workspace_permission_requests` (plan 15, R-19) | authored, reviewed, HELD |
-| **196** | migration 139's guard blocked the custody RPC (quick `260907-cust`) | **authored 2026-09-07, awaiting owner push.** Migration 190 shipped its exemption, but migration 139's older, differently-named `guard_owner_immutable` trigger ALSO fires on `vault_projects` and refused the sanctioned RPC with `42501: ownership is immutable`. 196 gives that shared function the same structural exemption, scoped by `TG_TABLE_NAME` to `vault_projects` only — `works` keeps its absolute guard. Custody transfer stays broken in production until this is pushed. |
+| 192 | helper v2 — six hops (plan 09) | **APPLIED 2026-09-07** |
+| 193 | column-allowlist RPCs (plan 10) | **APPLIED 2026-09-07** |
+| 194 | catalogue RPC (plan 11) | **APPLIED 2026-09-07** |
+| 195 | `workspace_permission_requests` (plan 15, R-19) | **APPLIED 2026-09-07** |
+| **196** | migration 139's guard blocked the custody RPC (quick `260907-cust`) | **APPLIED 2026-09-07 and re-verified (Part B B6 PASS, B10 still refused).** Migration 190 shipped its exemption, but migration 139's older, differently-named `guard_owner_immutable` trigger ALSO fires on `vault_projects` and refused the sanctioned RPC with `42501: ownership is immutable`. 196 gives that shared function the same structural exemption, scoped by `TG_TABLE_NAME` to `vault_projects` only — `works` keeps its absolute guard. Custody transfer stays broken in production until this is pushed. |
 | 197–198 | Phase 38.0.2 | reserved (was 196–197; 196 taken by the fix above) |
 | 199–200 | Phase 38.2 (billing, beta flag) | reserved (was 198–199) |
 
@@ -2221,7 +2221,7 @@ two-sided ownership transfer; the D-55 cohort gate; audit redaction; and the rem
 **Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26
 **Decisions — already locked in `38.0.1-CONTEXT.md`; no discuss-phase needed:** R-05, R-06, R-07,
 R-09, R-12, R-13, R-15, S1
-**Migrations:** 196–197 (Phase 38.2 moves to 198–199) — shifted by one when plan 15 claimed 195 for `workspace_permission_requests` (R-19). See the LIVE MIGRATION LEDGER under Phase 38.0.1.
+**Migrations:** **197–198** (Phase 38.2 moves to 199–200). Shifted TWICE: plan 15 claimed 195 for `workspace_permission_requests` (R-19), and the quick custody fix claimed 196. The LIVE MIGRATION LEDGER under Phase 38.0.1 is authoritative — check it before claiming a number.
 
 **⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
 ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
