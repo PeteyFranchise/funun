@@ -206,6 +206,11 @@ describe('resolveEffectivePermissions', () => {
         data: [
           {
             declared_scope: 'Manage registrations',
+            // WSR-14 / finding F8: authority tier now requires BOTH a
+            // backing document and the subject Member's own confirmation.
+            // Without these two the ladder correctly demotes to operational.
+            document_id: '00000000-0000-4000-8000-0000000000ed',
+            confirmed_by_subject_at: '2026-01-02T00:00:00.000Z',
             effective_from: null,
             expires_at: null,
             superseded_at: null,
