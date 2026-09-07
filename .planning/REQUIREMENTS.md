@@ -825,7 +825,7 @@ production. See `38.0.1-SPLIT.md`.
 | WSR-22 | Strict ISO date validation + ordering | R-14 | F19 |
 | WSR-23 | Remove/condition the `created_by` visibility fallback | R-15 | F21 |
 | WSR-24 | `relationship_id` NOT NULL on attachments and grants (audit first) | R-16 | F22 |
-| WSR-25 | Migration 188: BEFORE UPDATE trigger blocking `user_id` changes (all callers) | R-17 | F3 pre-existing |
+| WSR-25 | Migration 190: BEFORE UPDATE trigger blocking `user_id` changes (all callers) | R-17 | F3 pre-existing |
 | WSR-26 | Verify + explicitly revoke `service_role` audit UPDATE/DELETE | S1 | S1 |
 | WSR-27 | Minimal Member-facing consent surface (approve/decline per permission) | R-18 | — |
 
@@ -864,7 +864,7 @@ production. See `38.0.1-SPLIT.md`.
 **Coverage (Phase 38.0.1):** 14 requirement IDs assigned to at least one plan across 14 plans /
 6 waves. 13 IDs explicitly deferred by name to Phase 38.0.2, each with a written safety argument.
 
-**Migrations:** 188 (independent, ships first) and 189-192 (one joint push) are claimed by Phase
+**Migrations:** 188 (independent, ships first) and 191-194 (one joint push) are claimed by Phase
 38.0.1. 193-194 are left free for Phase 38.0.2. **195-196 remain reserved for Phase 38.2.**
 
 ---
@@ -904,7 +904,7 @@ quick task with migration 187 and are NOT requirements here.
 | WSR-22 | Strict ISO date validation + ordering | R-14 | F19 | 38.0.1 |
 | WSR-23 | Remove/condition the `created_by` visibility fallback | R-15 | F21 | 38.0.2 |
 | WSR-24 | `relationship_id` NOT NULL on attachments and grants (audit first) | R-16 | F22 | 38.0.1 |
-| WSR-25 | Migration 188: BEFORE UPDATE trigger blocking `user_id` changes | R-17 | F3 pre-existing | 38.0.1 |
+| WSR-25 | Migration 190: BEFORE UPDATE trigger blocking `user_id` changes | R-17 | F3 pre-existing | 38.0.1 |
 | WSR-26 | Verify + explicitly revoke `service_role` audit UPDATE/DELETE | S1 | S1 | 38.0.2 |
 | WSR-27 | Minimal Member-facing consent surface | R-18 | — | 38.0.1 |
 
@@ -913,7 +913,7 @@ migration 186's helper match ANY accepted relationship in the workspace, which d
 custody binding directly. It is load-bearing for slice B, not hygiene.
 
 **WSR-25 note:** the mechanism is a `BEFORE UPDATE` trigger, NOT a `WITH CHECK` change — a Postgres
-RLS `WITH CHECK` clause sees only the NEW row and cannot compare against OLD. Migration 188 is
+RLS `WITH CHECK` clause sees only the NEW row and cannot compare against OLD. Migration 190 is
 independent of the rest of the phase and ships first, alone. The hole it closes is **pre-existing
 from migration 078** and lets a Phase 21 `co-owner`/`editor` seize custody today.
 

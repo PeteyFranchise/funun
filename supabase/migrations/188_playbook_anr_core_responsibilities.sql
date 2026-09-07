@@ -1,6 +1,6 @@
 -- ============================================================
 -- Funūn — The Playbook: A&R Core Responsibilities
--- Migration 198: activate the A&R room and publish the
+-- Migration 188: activate the A&R room and publish the
 -- owner-approved first section of the evolving A&R doctrine.
 --
 -- Renumbered 188 -> 198 on 2026-09-06: 188-192 are claimed by Phase 38.0.1's

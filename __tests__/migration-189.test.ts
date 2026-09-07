@@ -1,17 +1,17 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 
-const migration197 = readFileSync(
-  path.join(process.cwd(), 'supabase/migrations/197_playbook_bdt_foundation_doctrine.sql'),
+const migration189 = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/189_playbook_bdt_foundation_doctrine.sql'),
   'utf8'
 )
 
-const sqlOnly = migration197
+const sqlOnly = migration189
   .split('\n')
   .filter(line => !line.trim().startsWith('--'))
   .join('\n')
 
-describe('migration 197 — BDT foundation doctrine Playbook room', () => {
+describe('migration 189 — BDT foundation doctrine Playbook room', () => {
   it('creates and activates a dedicated Business Development room', () => {
     expect(sqlOnly).toContain("('business-development', 'Business Development', 3, false, false)")
     expect(sqlOnly).toContain("WHERE room.key = 'business-development'")

@@ -10,9 +10,9 @@
   authority and Leadership authority.
 - Separated continuing Client Partner verification from the eligible organic-buyer path.
 - Defined the pre-authorized boundary between instant and assisted/manual licensing.
-- Added migration 197 to create a Business Development Playbook room and publish nine
+- Added migration 189 to create a Business Development Playbook room and publish nine
   readable foundation-doctrine cards.
 
 ## Deployment note
 
-- Migration 197 is human-gated and must be applied before the BDT room appears in production.
+- Migration 189 is human-gated and must be applied before the BDT room appears in production.

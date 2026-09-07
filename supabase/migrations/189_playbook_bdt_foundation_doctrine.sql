@@ -1,12 +1,12 @@
 -- ============================================================
 -- Funūn — The Playbook: BDT Foundation Doctrine
--- Migration 197: create the Business Development room and
+-- Migration 189: create the Business Development room and
 -- publish the owner-approved scope, handoff, verification and
 -- organic-buyer licensing foundation.
 --
--- Renumbered 189 -> 197 on 2026-09-06: 188-192 are claimed by Phase 38.0.1's
--- migration chain, 193-194 by Phase 38.0.2 and 195-196 by Phase 38.2. This
--- migration is independent of all of them and can be pushed on its own.
+-- APPLIED IN PRODUCTION as migration 189. A 2026-09-06 renumber to 197 was
+-- reverted: this migration was already applied under 189, so the local file
+-- must keep that number. Phase 38.0.1's chain moved to 190-194 instead.
 --
 -- HUMAN-GATED: review and apply with `supabase db push`.
 -- Expanded BDT responsibilities remain under discussion.

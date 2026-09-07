@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 188 | 0/14 | Planned | - |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 0/14 | Planned | - |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2110,7 +2110,7 @@ ever be issued. **The layer is both over-powerful and non-functional.**
 - **R-07** the D-55 cohort gate is a release requirement before the switch goes back on.
 - **R-08** evidence: workspace proposes, subject confirms, document mandatory for authority tier.
 - **R-17** the `vault_projects` `user_id` WITH CHECK hole is **PRE-EXISTING from migration 078** —
-  a Phase 21 editor can seize custody today, independent of workspaces. **Own migration 188, own
+  a Phase 21 editor can seize custody today, independent of workspaces. **Own migration 190, own
   review.**
 
 **Requirements:** WSR-01..WSR-27 (in `38.0.1-CONTEXT.md`)
@@ -2122,7 +2122,7 @@ remediation would ship a correct security model that still leaves the feature un
 switch un-flippable. Deliberately minimal — pending requests, per-permission approve/decline. NOT
 38.1's UX slice. Adds **WSR-27**.
 **Migrations:** 188 = the pre-existing F3 fix (independent, can ship first); 189+ for this phase.
-Phase 38.2's reservation moves to 195–196.
+Phase 38.2's reservation moves to 197–198.
 **Depends on:** Phase 38 (shipped 2026-09-06, in production)
 
 **Blocks:** Phase 38.1 and 38.2 should NOT be planned until this lands — 38.1 builds surfaces on
@@ -2151,17 +2151,17 @@ unreachability, the WSR-24 pre-flight, wave disjointness and the Server/Client b
 
 Plans:
 
-- [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 188 and 189
-- [ ] 38.0.1-02-PLAN.md — Migration 188: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
+- [ ] 38.0.1-01-PLAN.md — Production runtime pre-flight: six owner-run probes gating migrations 190 and 189
+- [ ] 38.0.1-02-PLAN.md — Migration 190: BEFORE UPDATE trigger making `vault_projects.user_id` immutable (independent, ships first)
 - [ ] 38.0.1-03-PLAN.md — Pure modules: `consent.ts` (Member-root consent) and `grant-lineage.ts` (chain validity)
 - [ ] 38.0.1-04-PLAN.md — Evidence ladder gates on confirmation, document presence and `effectiveFrom`
-- [ ] 38.0.1-05-PLAN.md — Migration 189: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
+- [ ] 38.0.1-05-PLAN.md — Migration 191: consent root, delegation lineage, `relationship_id` NOT NULL, evidence confirmation
 - [ ] 38.0.1-06-PLAN.md — I/O services: consent writer, lineage resolver, and `assertGrantIssuable` re-sourced (closes F6)
 - [ ] 38.0.1-07-PLAN.md — Member consent route under `/api/roster/relationships/[id]/consent`
 - [ ] 38.0.1-08-PLAN.md — Evidence: workspace proposes, subject confirms; shared ISO date schemas
-- [ ] 38.0.1-09-PLAN.md — Migration 190: helper v2 with the custody binding, the lineage hop and `expires_at`
-- [ ] 38.0.1-10-PLAN.md — Migration 191: remove the four child-table branches, add column-allowlist read RPCs
-- [ ] 38.0.1-11-PLAN.md — Migration 192 + catalogue rewrite + the joint push of 189-192 and full adversarial smoke
+- [ ] 38.0.1-09-PLAN.md — Migration 192: helper v2 with the custody binding, the lineage hop and `expires_at`
+- [ ] 38.0.1-10-PLAN.md — Migration 193: remove the four child-table branches, add column-allowlist read RPCs
+- [ ] 38.0.1-11-PLAN.md — Migration 194 + catalogue rewrite + the joint push of 191-194 and full adversarial smoke
 - [ ] 38.0.1-12-PLAN.md — Plain-language permission copy and the Member's aggregate consent API
 - [ ] 38.0.1-13-PLAN.md — `/settings/permissions`: tab, server page and per-permission consent surface
 - [ ] 38.0.1-14-PLAN.md — Strict ISO date validation across the remaining workspace date inputs
@@ -2179,7 +2179,7 @@ two-sided ownership transfer; the D-55 cohort gate; audit redaction; and the rem
 **Requirements:** WSR-07, 08, 09, 10, 11, 12, 13, 16, 18, 19, 21, 23, 26
 **Decisions — already locked in `38.0.1-CONTEXT.md`; no discuss-phase needed:** R-05, R-06, R-07,
 R-09, R-12, R-13, R-15, S1
-**Migrations:** 193–194 (195–196 remain reserved for Phase 38.2)
+**Migrations:** 195–196 (Phase 38.2 moves to 197–198)
 
 **⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
 ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
