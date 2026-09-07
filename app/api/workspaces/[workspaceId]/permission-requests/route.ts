@@ -70,6 +70,14 @@ const CreateRequestSchema = z
     // reasoning `app/api/roster/relationships/[relationshipId]/consent/
     // route.ts` records for its own permission array.
     permission: z.string().trim().min(1, 'A permission is required.'),
+    // KEPT DELIBERATELY, EVEN THOUGH A NON-NULL VALUE IS ALWAYS REFUSED.
+    // `request-service.ts` refuses a project-scoped ask with 400 and an
+    // explanation (owner decision, 2026-09-07: do not accept an ask the
+    // Member-facing surface cannot render). Dropping the key from this
+    // `.strict()` schema would instead give a caller a generic Zod
+    // "unrecognized key" error that says nothing about why. The service is
+    // the SINGLE source of the rule; this route neither restates it nor
+    // rewords the refusal on its way out.
     projectId: z.string().uuid().nullable().optional(),
     note: z.string().trim().max(1000).optional(),
   })

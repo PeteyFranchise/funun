@@ -196,6 +196,10 @@ async function loadRequest(
  * Records a workspace's ask for one permission against one roster
  * relationship.
  *
+ * A non-null `projectId` is REFUSED with 400 for now — see the check below
+ * for why, and for what would lift it. The parameter stays in the signature
+ * because this is a temporary product limitation, not a shape change.
+ *
  * THE BOOTSTRAP CASE THIS EXISTS FOR: this succeeds with ZERO pre-existing
  * grant rows, against a relationship that has never seen a consent root,
  * and the resulting row confers nothing. That is the whole point — the
@@ -241,6 +245,36 @@ export async function createPermissionRequest(
 
   if (!isKnownWorkspacePermission(args.permission)) {
     return { ok: false, status: 400, error: `${args.permission} is not a known permission.` }
+  }
+
+  // ─── PER-PROJECT ASKS ARE REFUSED FOR NOW (owner decision, 2026-09-07) ──
+  // DO NOT ACCEPT AN ASK THAT CANNOT BE RENDERED. A project-scoped row is
+  // storable — the `project_id` column and the partial unique index over
+  // `coalesce(project_id, ...)` are migration 195's forward-compatible
+  // shape, and they stay — but the Member-facing surface cannot show it:
+  // `app/api/settings/permissions/route.ts` deliberately OMITS
+  // project-scoped rows because its group carries no project, and
+  // flattening one in would make the client issue a relationship-WIDE
+  // consent, broader than what was asked. That omission is correct.
+  //
+  // Accepting the ask anyway would store a row that is invisible to the
+  // Member, never approvable, and — via that same partial unique index —
+  // blocking of any re-ask for the pair while it sits pending. A clear
+  // refusal is the honest answer, and matches WSR-27 being explicitly
+  // "minimal".
+  //
+  // WHAT LIFTS THIS: the Member-facing surface being able to render a
+  // per-project row on its own terms — plan 12's endpoint returning it and
+  // plan 13's UI showing which project it names. Delete this check then,
+  // and nothing else has to change: the parameter, the column and the index
+  // are all already the right shape.
+  if (projectId !== null) {
+    return {
+      ok: false,
+      status: 400,
+      error:
+        'Per-project permission requests are not supported yet. Ask for this permission across the whole relationship instead.',
+    }
   }
 
   const { data: relationshipData, error: relationshipError } = await service
