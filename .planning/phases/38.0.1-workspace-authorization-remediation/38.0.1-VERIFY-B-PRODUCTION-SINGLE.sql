@@ -99,9 +99,14 @@ BEGIN
   INSERT INTO public.workspace_grants
     (id,workspace_id,relationship_id,permission,source,parent_grant_id,granted_by)
   VALUES (ROOT,WS,REL,'view_summaries','member_consent',NULL,SUBJECT) ON CONFLICT (id) DO NOTHING;
+  -- Project-scoped, not relationship-wide: idx_workspace_grants_unique_live is
+  -- UNIQUE on (workspace_id, relationship_id, project_id, permission) NULLS NOT
+  -- DISTINCT among live rows, so a child sharing the parent's relationship-wide
+  -- scope would collide with it. Scoping the child to one project gives it a
+  -- distinct key and still exercises the lineage walk.
   INSERT INTO public.workspace_grants
-    (id,workspace_id,relationship_id,permission,source,parent_grant_id,granted_by)
-  VALUES ('ffff0000-0000-0000-0000-000000000092',WS,REL,'view_summaries','individual',ROOT,OWNER_)
+    (id,workspace_id,relationship_id,project_id,permission,source,parent_grant_id,granted_by)
+  VALUES ('ffff0000-0000-0000-0000-000000000092',WS,REL,PROJ,'view_summaries','individual',ROOT,OWNER_)
   ON CONFLICT (id) DO NOTHING;
 
   UPDATE public.workspace_access_config SET enabled = TRUE;   -- switch ON
