@@ -665,7 +665,7 @@ Plans:
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
-| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Code complete — NOT pushed, NOT verified |  |
+| 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Code complete; 190+191 applied, 192-195 held |  |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 0/0 | Split out, ready to plan | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
@@ -2132,10 +2132,12 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 |---|---|---|
 | 182–187 | Phase 38 + the F1/F7/F10 hotfix | applied |
 | 188–189 | Playbook ANR + BDT doctrine (unrelated, parallel session) | applied |
-| **190** | **the pre-existing F3 custody fix (plan 02)** | **authored, NOT applied — its route companion is already live, so this is currently broken in production** |
-| 191–193 | this phase: consent/lineage schema, helper v2, column-allowlist RPCs | authored, reviewed, held |
-| 194 | this phase: catalogue RPC (plan 11) | not yet authored |
-| 195 | this phase: `workspace_permission_requests` (plan 15, R-19) | being authored |
+| **190** | the pre-existing F3 custody fix (plan 02) | **APPLIED 2026-09-07** — verified live: an anon RPC probe returns SQLSTATE 42501 (permission denied), which proves the function exists and is correctly locked down. The custody-transfer 500 is resolved. |
+| **191** | consent/lineage schema (plan 05) | **APPLIED 2026-09-07.** Its two `SET NOT NULL` constraints on `relationship_id` are compatible with deployed code — all three insert sites on `origin/main` set the column explicitly. |
+| 192 | helper v2 — six hops (plan 09) | authored, reviewed, HELD |
+| 193 | column-allowlist RPCs (plan 10) | authored, reviewed, HELD |
+| 194 | catalogue RPC (plan 11) | authored, reviewed, HELD |
+| 195 | `workspace_permission_requests` (plan 15, R-19) | authored, reviewed, HELD |
 | 196–197 | Phase 38.0.2 | reserved |
 | 198–199 | Phase 38.2 (billing, beta flag) | reserved |
 
