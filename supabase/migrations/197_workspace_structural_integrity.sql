@@ -1075,6 +1075,33 @@ CREATE CONSTRAINT TRIGGER assert_workspace_invitation_change_audited
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION public.assert_workspace_change_is_audited();
 
+-- ─── READ THIS TRIGGER TOGETHER WITH MIGRATION 198 SECTION (i) ───────────
+-- **THE UNCONDITIONAL FORM BELOW IS NOT THE ONE THAT ENDS UP INSTALLED.**
+-- Migration 198 section (i) DROPs and re-creates this trigger under this same
+-- name, with a `WHEN (NEW.workspace_id IS NOT NULL)` clause, and 198 applies
+-- after 197 in the same push window — so 198's scoped version is what the
+-- database actually carries. A reader of 197 alone would see a trigger that
+-- appears to fire on every custody row and would have no way to learn
+-- otherwise; this comment is that way.
+--
+-- WHY IT HAS TO BE RE-SCOPED. Three facts cannot all hold at once:
+--   * workspace_audit_log.workspace_id is NOT NULL (migration 182);
+--   * workspace_custody_transfers.workspace_id is NULLABLE (migration 185,
+--     deliberately — a transfer may be offered outside any workspace); and
+--   * this assertion fires unconditionally.
+-- For a transfer with no workspace, NO audit row can be written at all, so
+-- the unconditional form demands a row the schema makes impossible. That is
+-- not strict, it is unsatisfiable: every direct Member-to-Member custody
+-- accept, decline and withdraw would abort at COMMIT — the current route
+-- included, not only the RPC that replaces it.
+--
+-- The re-scope lives in 198 rather than being applied here because 198 is the
+-- file that discovered the problem, and because churning an authored,
+-- reviewed, text-locked migration is higher risk than adjusting its object
+-- from a later one — the same later-migration-adjusts-an-earlier-object
+-- pattern migration 196 used on migration 139's guard. THIS IS A COMMENT
+-- ONLY: no SQL behaviour in 197 changes, and the three OTHER assertion
+-- triggers above stay unconditional.
 CREATE CONSTRAINT TRIGGER assert_workspace_custody_transfer_change_audited
   AFTER UPDATE OF state ON public.workspace_custody_transfers
   DEFERRABLE INITIALLY DEFERRED
