@@ -1335,27 +1335,68 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(createIndex).toBeGreaterThan(dropIndex)
     })
 
-    it('carries all four visibility branches', () => {
+    it('carries exactly TWO visibility branches — the Member, and settled states', () => {
+      // WAS "all four" until the R-23 owner decision of 2026-09-07 deleted
+      // the owner and admin branches. Corrected rather than deleted: the
+      // count is still asserted, it is just a different count, and the
+      // branches that went are pinned by their own negative test below.
       const policy = normalizeWhitespace(rosterSelectPolicy())
-      // 1 — the named Member, including while proposed (D-05).
+      // 1 — the named Member, including while `proposed` (D-05), and
+      // including their own `blocked`: their record of their own act.
       expect(policy).toContain('member_user_id = (SELECT auth.uid())')
-      // 2 — the owner.
-      expect(policy).toContain('(SELECT public.is_workspace_owner(workspace_id, auth.uid()))')
-      // 3 — the admin proposal-management surface.
-      expect(policy).toContain(
-        "(SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'"
-      )
-      // 4 — every other active seat, settled states only.
+      // 2 — every workspace-side seat, OWNER AND ADMIN INCLUDED, settled
+      // states only.
       expect(policy).toContain("state IN ('accepted', 'ended')")
+      // And NOTHING else. Two disjuncts means exactly one ` OR `; a third
+      // branch would be one nobody reviewed.
+      expect(policy.match(/ OR /g) ?? []).toHaveLength(1)
+    })
+
+    it('has NO owner and NO admin branch — the R-23 raw-table closure itself', () => {
+      // THE ASSERTION THIS CHANGE EXISTS FOR (owner decision, 2026-09-07).
+      // Plan 09 admitted the owner by a bare is_workspace_owner(...) and the
+      // admin by workspace_member_role(...) = 'admin', NEITHER qualified by
+      // state, so both read the RAW row — and RLS is row-level, so
+      // state = 'blocked' was plainly readable and T-38-04-05 was defeated
+      // by the one audience most able to act on it. Restoring EITHER branch
+      // must fail here.
+      const policy = normalizeWhitespace(rosterSelectPolicy())
+      expect(policy).not.toContain('is_workspace_owner')
+      expect(policy).not.toContain("'admin'")
+      // The one surviving workspace_member_role call is the state-qualified
+      // branch asserted below, so an owner branch cannot hide inside it.
+      expect(policy.match(/workspace_member_role/g) ?? []).toHaveLength(1)
+      // And no unsettled state is nameable by the workspace at all —
+      // `proposed`, `refused` and `blocked` are uniformly absent, which is
+      // what stops ABSENCE from becoming the signal.
+      for (const state of ['proposed', 'refused', 'blocked']) {
+        expect([state, policy.includes(state)]).toEqual([state, false])
+      }
+    })
+
+    it('leaves R-12 to workspace_roster_page, which still returns `proposed`', () => {
+      // The pair that makes the closure survivable, asserted TOGETHER so it
+      // cannot rot in halves. `proposed` has left the raw view entirely; if
+      // the definer reader ALSO lost its owner and admin branches, the
+      // proposal-management surface R-12 requires would have no home at all
+      // and nothing else in this suite would have said so.
+      const block = normalizeWhitespace(functionBlock(ROSTER_PAGE))
+      expect(block).toContain('public.is_workspace_owner(r.workspace_id, p_uid)')
+      expect(block).toContain("public.workspace_member_role(r.workspace_id, p_uid) = 'admin'")
+      // Neither is gated on state in the function — that ungatedness is
+      // precisely what keeps a `proposed` row reachable by the owner and the
+      // admin, and it is the reason this reader may be WIDER than the policy.
+      expect(block).not.toMatch(/r\.state[^)]*is_workspace_owner/)
+      expect(block).not.toMatch(/r\.state[^)]*= 'admin'/)
     })
 
     it('is byte-locked as a whole, so a silent widening names itself', () => {
+      // The byte-lock is UPDATED to the two-branch policy, not relaxed: it
+      // is still the whole statement, character for character.
       expect(normalizeWhitespace(rosterSelectPolicy())).toBe(
         'CREATE POLICY "workspace_roster_relationships_select" ' +
           'ON public.workspace_roster_relationships FOR SELECT TO authenticated USING ( ' +
           'member_user_id = (SELECT auth.uid()) ' +
-          'OR (SELECT public.is_workspace_owner(workspace_id, auth.uid())) ' +
-          "OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin' " +
           "OR ( state IN ('accepted', 'ended') " +
           'AND (SELECT public.workspace_member_role(workspace_id, auth.uid())) IS NOT NULL ) );'
       )
@@ -1379,14 +1420,24 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
     it('wraps every helper call in the recreated policy as a scalar subselect', () => {
       const unwrapped = unwrappedHelperCalls(rosterSelectPolicy())
       expect(unwrapped).toEqual([])
-      // The sample is not empty — there ARE helper calls to wrap.
+      // The sample is not empty — there IS a helper call to wrap. The
+      // companion is_workspace_owner check that stood here was removed with
+      // the owner branch itself (R-23, 2026-09-07); the policy no longer
+      // calls that helper at all, and the negative assertion above is now
+      // what holds that fact. This one still proves the wrap rule is being
+      // tested against real content rather than an empty string.
       expect(rosterSelectPolicy()).toMatch(/public\.workspace_member_role\s*\(/)
-      expect(rosterSelectPolicy()).toMatch(/public\.is_workspace_owner\s*\(/)
     })
 
-    it('states both consequences in the header rather than leaving them to be discovered', () => {
+    it('states every consequence in the header rather than leaving them to be discovered', () => {
       expect(prose).toMatch(/NO LONGER SEES A `proposed` ROW AT ALL/)
       expect(prose).toMatch(/a refusal is the Member's business/)
+      // The three R-23 claims (2026-09-07) a future reader must not have to
+      // reconstruct from the SQL. The middle one is the trap this whole
+      // change turns on: believing the collapse alone is the defence.
+      expect(prose).toContain('R-12 IS SATISFIED BY THE FUNCTION, NOT BY THE POLICY')
+      expect(prose).toContain('THE COLLAPSE ALONE NEVER CARRIED THE GUARANTEE')
+      expect(prose).toContain('IS NO LONGER COSMETIC — IT IS REQUIRED')
     })
   })
 
@@ -1489,6 +1540,22 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(comment![0]).toMatch(/THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION/)
       expect(comment![0]).toMatch(/T-38-04-05/)
       expect(comment![0]).toMatch(/assertCanPropose/)
+    })
+
+    it('records that this reader is DELIBERATELY WIDER than the policy, and why', () => {
+      // The shipped COMMENT used to assert the WHERE clause "repeats the
+      // four visibility branches ... exactly". After the R-23 closure that
+      // sentence is FALSE, and a false comment here is worse than none: it
+      // would invite a future reader to "fix" the divergence by widening
+      // the policy back to four branches, reopening the leak in full. The
+      // stale sentence is pinned as forbidden, not merely replaced.
+      const comment = sql.match(
+        /COMMENT ON FUNCTION public\.workspace_roster_page\(uuid, uuid, int, int\) IS[\s\S]*?';/
+      )
+      expect(comment).not.toBeNull()
+      expect(comment![0]).toMatch(/DELIBERATELY WIDER/)
+      expect(comment![0]).not.toMatch(/repeats the four visibility branches/)
+      expect(prose).toContain('DO NOT "HARMONISE" THE TWO IN EITHER DIRECTION')
     })
   })
 

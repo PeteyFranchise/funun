@@ -14,6 +14,13 @@
 -- change in the phase goes to migration 198. It may now be read and reviewed
 -- as a finished migration.
 --
+-- ONE AMENDMENT SINCE, MADE IN PLACE RATHER THAN APPENDED: quick task
+-- 260907-r23 (owner decision, 2026-09-07) deleted the owner and admin
+-- branches from section (i)'s workspace_roster_relationships_select, closing
+-- the R-23 residual that plan 09 deliberately left open as an explicit owner
+-- question. No section was added, removed or reordered — the twelve are
+-- still the twelve, and section (i) still holds both of its parts.
+--
 -- COMPLETE IS NOT THE SAME AS PUSHED. IT REMAINS UNAPPLIED, and it is pushed
 -- at plan 17's joint window together with migration 198 and the TypeScript
 -- from plans 12-16. `NOTIFY pgrst, 'reload schema';` is, and must remain, the
@@ -108,8 +115,13 @@
 -- R-23 / T-38-04-05: and the `blocked` state leaks further than that policy.
 --   Migration 183 keeps workspace_roster_blocks Member-private so a
 --   workspace can never enumerate who blocked it, but the relationship row's
---   own state column says the same thing out loud. `blocked` collapses to
---   `refused` in every workspace-facing read. Section (i).
+--   own state column says the same thing out loud. TWO MECHANISMS, NOT ONE:
+--   `blocked` collapses to `refused` in every workspace-facing read, AND the
+--   workspace has NO RAW READ PATH to a `proposed`, `refused` or `blocked`
+--   row at all. THE COLLAPSE ALONE NEVER CARRIED THE GUARANTEE — RLS is
+--   row-level and Postgres cannot redact a column through a policy, so an
+--   owner reading the table directly would still have seen the true state.
+--   Section (i).
 -- R-20 / WSR-29 (owner decision, 2026-09-07): workspace_members.role gates
 --   NOTHING about project access — 38.0.1 Part B check B3 confirmed
 --   behaviourally that a GUEST reaches a Member's attached project exactly
@@ -1273,7 +1285,9 @@ COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
 --
 -- ── Part 1: the recreated SELECT policy ──────────────────────────────────
 --
--- FOUR BRANCHES, each with a different reason to exist:
+-- TWO BRANCHES. Plan 09 wrote FOUR; the owner deleted the middle two on
+-- 2026-09-07, and the reason is recorded here rather than left in a
+-- planning document.
 --
 --   1. member_user_id = (SELECT auth.uid())
 --      The named Member always sees a claim about themselves, INCLUDING
@@ -1281,25 +1295,45 @@ COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
 --      got right and it is preserved verbatim: the Member must be able to
 --      see, accept, refuse or block a claim naming them without ever
 --      entering the claiming workspace's context. It is also the branch
---      that keeps app/api/roster/relationships/route.ts working unchanged.
+--      that keeps app/api/roster/relationships/route.ts working unchanged,
+--      and the branch that keeps the Member's TRUE state — a Member sees
+--      that they blocked a workspace, because that is their own record of
+--      their own act.
 --
---   2. (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
---      The owner. Ownership of the workspace carries responsibility for
---      what the workspace has claimed in its own name.
+--   2. state IN ('accepted', 'ended') AND workspace_member_role(...) IS NOT NULL
+--      EVERY workspace-side seat, OWNER AND ADMIN INCLUDED, sees only
+--      SETTLED, NON-PRIVATE outcomes. An accepted relationship is a public
+--      fact about the workspace — it is what the roster IS — and an ended
+--      one is its history (D-17: a relationship is never deleted, it
+--      terminates). Neither reveals anything the Member has not already
+--      agreed to.
 --
---   3. (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
---      The proposal-management surface. Owners and admins are the two roles
---      the roster PATCH handler already gates on through canManageRoster,
---      so they are exactly the two that must see a proposal to manage it.
+-- ── WHY THE OWNER AND ADMIN BRANCHES ARE GONE (R-23, owner, 2026-09-07) ──
 --
---   4. state IN ('accepted', 'ended') AND workspace_member_role(...) IS NOT NULL
---      Every OTHER active seat sees only SETTLED, NON-PRIVATE outcomes. An
---      accepted relationship is a public fact about the workspace — it is
---      what the roster IS — and an ended one is its history (D-17: a
---      relationship is never deleted, it terminates). Neither reveals
---      anything the Member has not already agreed to.
+-- Plan 09 admitted the owner by a bare is_workspace_owner(...) and the admin
+-- by workspace_member_role(...) = 'admin', NEITHER QUALIFIED BY STATE, so
+-- both read the RAW row. RLS IS ROW-LEVEL: POSTGRES CANNOT REDACT A COLUMN
+-- THROUGH A POLICY. An owner querying PostgREST with their own JWT therefore
+-- read state = 'blocked' verbatim, and T-38-04-05 — "a workspace must never
+-- enumerate who blocked it" — was defeated by the one audience most able to
+-- act on it. The collapse in workspace_roster_page below never covered that
+-- path and was never capable of covering it.
 --
--- THE TWO CONSEQUENCES, STATED SO NEITHER IS DISCOVERED LATER:
+-- THE NARROWER FIX WAS CONSIDERED AND REJECTED. Excluding only `blocked`
+-- from those two branches leaves `refused` visible, and then ABSENCE ITSELF
+-- BECOMES THE SIGNAL: an owner who proposed to someone and now sees no row
+-- at all learns exactly the fact the block was meant to withhold. That
+-- narrows the channel without closing it.
+--
+-- SO THE BRANCHES GO ENTIRELY, and `proposed`, `refused` and `blocked` are
+-- uniformly absent from the workspace's raw view — absence then tells nobody
+-- anything, because it is the same absence for all three. This is precisely
+-- the move 38.0.1 made for tracks, vault_assets, vault_documents and
+-- tool_outputs (R-02 / migration 193): REMOVE THE BRANCH, PROVIDE A
+-- FUNCTION. Same shape, same reasoning, and the function already exists
+-- immediately below.
+--
+-- THE CONSEQUENCES, STATED SO NONE IS DISCOVERED LATER:
 --
 --   * An ordinary member, contractor or guest NO LONGER SEES A `proposed`
 --     ROW AT ALL. That is WSR-18, and it is the point.
@@ -1309,6 +1343,22 @@ COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
 --     Broadcasting "this person told us no" to every seat in the workspace
 --     is a second disclosure the Member never consented to, and the
 --     narrowest policy that satisfies WSR-18 gets that for free.
+--   * AND NEITHER DOES AN OWNER OR AN ADMIN, ON THE RAW TABLE. The
+--     proposal-management surface R-12 requires is now served ONLY by
+--     public.workspace_roster_page below, whose WHERE clause KEEPS the owner
+--     and admin branches and therefore still returns `proposed` rows to
+--     them. R-12 IS SATISFIED BY THE FUNCTION, NOT BY THE POLICY. That is
+--     the load-bearing claim of this whole change, and it was verified
+--     against the function body below rather than assumed.
+--   * THEREFORE PLAN 15'S REPOINT OF THE WORKSPACE ROSTER GET ONTO
+--     workspace_roster_page IS NO LONGER COSMETIC — IT IS REQUIRED.
+--     app/api/workspaces/[workspaceId]/roster/route.ts still reads the raw
+--     table through the RLS client, and once this policy applies that GET
+--     returns NO `proposed` row to an owner, leaving the proposal-management
+--     surface empty until the repoint lands. The two must ship together, and
+--     they do: this file is pushed at plan 17's joint window WITH the
+--     TypeScript from plans 12-16, and plan 15 is inside that set. DO NOT
+--     APPLY THIS MIGRATION AHEAD OF THAT REPOINT.
 --
 -- Every helper call is wrapped as a scalar subselect (SELECT public.f(...)),
 -- per the standing rule from migrations 078/136/182-186/192. Not style: the
@@ -1321,8 +1371,6 @@ CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster
   FOR SELECT TO authenticated
   USING (
     member_user_id = (SELECT auth.uid())
-    OR (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
-    OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
     OR (
       state IN ('accepted', 'ended')
       AND (SELECT public.workspace_member_role(workspace_id, auth.uid())) IS NOT NULL
@@ -1368,18 +1416,22 @@ CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster
 --     block. THE COLLAPSE MUST NOT LEAVE A FINGERPRINT, and this is the
 --     column that would have carried one.
 --
--- WHAT THE COLLAPSE DOES NOT COVER, STATED PLAINLY BECAUSE IT IS THE ONE
--- RESIDUAL: an owner or admin admitted by branch 2 or 3 of the policy above
--- still reads the RAW table, and RLS is row-level — Postgres cannot redact
--- a column through a policy. So an owner querying
--- workspace_roster_relationships directly still sees state = 'blocked'.
--- Closing that would mean excluding `blocked` from branches 2 and 3
--- entirely, which makes the row VANISH from the workspace's raw view rather
--- than reading as `refused` — a different and stronger choice than the
--- mechanism R-23 describes. IT IS RAISED AT PLAN 09'S REVIEW CHECKPOINT AS
--- AN EXPLICIT OWNER QUESTION rather than decided silently here, and plan 15
--- repoints the workspace roster GET at THIS function so the application
--- surface is collapsed either way.
+-- THAT RESIDUAL IS NOW CLOSED, AND THE COLLAPSE IS NOT THE ONLY DEFENCE.
+-- Plan 09 shipped this paragraph as an open question: an owner or admin
+-- admitted by the policy's then-branches 2 and 3 still read the RAW table,
+-- and RLS is row-level — POSTGRES CANNOT REDACT A COLUMN THROUGH A POLICY —
+-- so an owner querying workspace_roster_relationships directly still saw
+-- state = 'blocked'. The owner answered that question on 2026-09-07 and took
+-- the stronger option: THE TWO BRANCHES WERE DELETED, so there is no
+-- workspace-side raw read of a `proposed`, `refused` or `blocked` row left
+-- for anything to redact. The reasoning is above the policy.
+--
+-- A FUTURE READER MUST NOT CONCLUDE THAT THE CASE EXPRESSION BELOW CARRIES
+-- THE T-38-04-05 GUARANTEE ON ITS OWN. IT NEVER DID, AND IT CANNOT. It
+-- collapses a DISPLAYED state on ONE read path. The guarantee is the PAIR —
+-- the closed raw path above, plus the collapse here. Restore either deleted
+-- branch to that policy and the leak reopens in full, and no change to this
+-- function would compensate for it.
 --
 -- THE THREE PROPERTIES COPIED FROM MIGRATION 194, NOT REINVENTED — the same
 -- three section (h) preserves, for the same reasons:
@@ -1399,11 +1451,25 @@ CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster
 --     that order, so the route renders no field this contract has not
 --     declared.
 --
--- AND THE SAME VISIBILITY BRANCHES AS THE POLICY ABOVE. A SECURITY DEFINER
--- function bypasses RLS by construction, so if this WHERE clause were any
--- broader than the policy it would BE the way around the policy. It is the
--- same four branches, in the same order, plus the D-56 kill switch and a
--- live seat in the workspace being read.
+-- THE VISIBILITY BRANCHES, AND WHY THIS FUNCTION IS NOW DELIBERATELY WIDER
+-- THAN THE POLICY. A SECURITY DEFINER function bypasses RLS by construction,
+-- so plan 09 held this WHERE clause to exactly the policy's four branches:
+-- anything broader would have BEEN the way around the policy. THE POLICY IS
+-- NOW TWO BRANCHES AND THIS CLAUSE IS STILL FOUR, and that gap IS THE DESIGN
+-- RATHER THAN A DRIFT — it is the entire point of the R-02 / migration-193
+-- shape this change adopts. REMOVE THE BRANCH, PROVIDE A FUNCTION: the raw
+-- path is closed, and the owner/admin proposal-management surface R-12
+-- requires is served HERE INSTEAD, where the CASE above collapses `blocked`
+-- to `refused` on the way out. The widening is safe for exactly one reason —
+-- THIS READER CAN REDACT AND THE RAW TABLE COULD NOT.
+--
+-- DO NOT "HARMONISE" THE TWO IN EITHER DIRECTION. Narrowing this clause to
+-- the policy's two branches BREAKS R-12, because `proposed` would then reach
+-- no proposal-management surface at all. Widening that policy back to four
+-- REOPENS R-23. They are different on purpose.
+--
+-- Plus, as before, the D-56 kill switch and a live seat in the workspace
+-- being read.
 --
 -- ORDER BY created_at ASC matches what the workspace roster GET already
 -- renders (`.order('created_at', { ascending: true })`), so plan 15's
@@ -1481,7 +1547,7 @@ GRANT  EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)
   TO authenticated;
 
 COMMENT ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int) IS
-  'R-23/WSR-18/T-38-04-05. One page of a workspace roster, WITH `blocked` COLLAPSED TO `refused`. Migration 183 keeps workspace_roster_blocks Member-private so a workspace can never enumerate who blocked it (T-38-04-05), but the relationship row''s own state column says the same thing out loud; R-23 settles that contradiction in favour of T-38-04-05. The workspace learns the Member said no, never that the Member also shut the door. refused_at is passed through unchanged BECAUSE THE BLOCK PATH ALREADY STAMPS IT — a `refused` row with no refusal timestamp would be a fingerprint a reader could use to infer the collapse, and therefore infer the block. THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION: app/api/roster/relationships/route.ts reads the raw table through the RLS client and keeps the TRUE state, because a Member must be able to see their own act. The block itself keeps working either way, because enforcement reads the Member-private blocks table through assertCanPropose, never this column. The WHERE clause repeats the four visibility branches of workspace_roster_relationships_select exactly: a SECURITY DEFINER function bypasses RLS, so anything broader here would BE the way around that policy. Preserves the three properties migration 194 established: p_uid must equal auth.uid() so the parameter can only ever name the caller and a NULL auth.uid() returns zero rows (38.0.1 Part B check B9); the page is clamped to at most 200 rows because an unbounded page on a SECURITY DEFINER function is a denial-of-service surface; and the return list is DECLARED rather than SELECT * — it is the complete set of facts obtainable here and widening it must be reviewed as carefully as widening an RLS policy. Reads the D-56 kill switch, exactly as every workspace read surface does, and never writes it. Client-invoked, so authenticated keeps EXECUTE — matching migrations 193 and 194, not migration 123.';
+  'R-23/WSR-18/T-38-04-05. One page of a workspace roster, WITH `blocked` COLLAPSED TO `refused`. Migration 183 keeps workspace_roster_blocks Member-private so a workspace can never enumerate who blocked it (T-38-04-05), but the relationship row''s own state column says the same thing out loud; R-23 settles that contradiction in favour of T-38-04-05. The workspace learns the Member said no, never that the Member also shut the door. refused_at is passed through unchanged BECAUSE THE BLOCK PATH ALREADY STAMPS IT — a `refused` row with no refusal timestamp would be a fingerprint a reader could use to infer the collapse, and therefore infer the block. THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION: app/api/roster/relationships/route.ts reads the raw table through the RLS client and keeps the TRUE state, because a Member must be able to see their own act. The block itself keeps working either way, because enforcement reads the Member-private blocks table through assertCanPropose, never this column. The WHERE clause is DELIBERATELY WIDER than workspace_roster_relationships_select, which since the R-23 owner decision of 2026-09-07 admits ONLY the named Member and settled accepted/ended rows: the workspace has NO raw read path to a proposed, refused or blocked row, and THIS FUNCTION IS THE ONLY SURFACE serving the owner/admin proposal-management view R-12 requires. Plan 09 held the two identical, because a SECURITY DEFINER function bypasses RLS and anything broader would have been the way around the policy; the widening is safe now for exactly one reason — THIS READER REDACTS `blocked` AND THE RAW TABLE COULD NOT, since RLS is row-level and Postgres cannot redact a column through a policy. Do not harmonise the two: narrowing this clause to the policy''s two branches breaks R-12, and widening the policy back to four reopens R-23. Preserves the three properties migration 194 established: p_uid must equal auth.uid() so the parameter can only ever name the caller and a NULL auth.uid() returns zero rows (38.0.1 Part B check B9); the page is clamped to at most 200 rows because an unbounded page on a SECURITY DEFINER function is a denial-of-service surface; and the return list is DECLARED rather than SELECT * — it is the complete set of facts obtainable here and widening it must be reviewed as carefully as widening an RLS policy. Reads the D-56 kill switch, exactly as every workspace read surface does, and never writes it. Client-invoked, so authenticated keeps EXECUTE — matching migrations 193 and 194, not migration 123.';
 
 -- ─── (j) workspaces_select_member, WITHOUT THE CREATOR FALLBACK ──────────
 --         R-15 / WSR-23
