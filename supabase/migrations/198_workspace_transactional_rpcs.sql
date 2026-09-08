@@ -1712,6 +1712,948 @@ COMMENT ON FUNCTION public.workspace_respond_ownership_nomination(
   'Side two of the two-sided workspace ownership transfer (R-22/WSR-08): the named successor accepts or declines, or the incumbent owner withdraws, and every row the response touches plus its audit row are written in ONE transaction. LOCK RANKS, IN ORDER: the transfer row is first read WITHOUT a lock, because the rank-1 workspace and the rank-2 seats it names cannot be locked in ascending order until they are known -- that read proves nothing and every value from it is re-read from the locked row; then rank 1 public.workspaces, then rank 2 public.workspace_members for the successor''s seat and the incumbent''s seat in ONE statement with ORDER BY m.id (LO-1''s within-table rule -- opposite pairings would otherwise deadlock), then rank 7 public.workspace_ownership_transfers last of the locks, all FOR NO KEY UPDATE (LO-2). REVALIDATED AFTER THE LOCKS: the transfer still exists; the caller-side compare-and-set token p_expected_state still matches; the state is still offered (all three other states are terminal); authority -- only to_user_id may accept or decline, only offered_by or from_user_id may withdraw, and THE NOMINATOR MAY NEVER ACCEPT WHATEVER ELSE IS TRUE, which is the F1 self-dealing attack shape restated where the prize is the workspace itself; on accept, that the nominator STILL holds a live owner seat, because a nomination must not survive its author losing the authority to make it; and on accept, that the SUCCESSOR still holds a live seat, without which the promotion would match zero rows while the demotion matched one and the transfer would leave the workspace with no owner at all. THE ACCEPT PATH MUTATES IN EXACTLY THIS ORDER, ONE ROW PER STATEMENT: promote the successor to owner, THEN demote the nominator to admin, THEN resolve the transfer. THE ORDER IS LOAD-BEARING AND MUST NOT BE REVERSED -- guard_workspace_never_zero_owners runs inside this transaction and sees its uncommitted writes from earlier statements, so promoting first makes the demotion''s floor count find the freshly-promoted successor and pass, while the reverse order counts zero and raises SQLSTATE 42501. One row per statement because a BEFORE ROW trigger''s own SELECT cannot see rows changed by its own command. R-22: ownership TRANSFERS -- the nominator ends as admin, never as a second owner, and no add-a-second-owner RPC exists here by design. TRIGGERS THAT FIRE: guard_workspace_owner_role_change and guard_workspace_never_zero_owners and workspace_members_updated_at on each member UPDATE, and guard_ownership_transfer_transition and workspace_ownership_transfers_updated_at on the transfer UPDATE (which is why updated_at is never set by hand, though responded_at is, since no trigger maintains it). AUDIT: one row per MUTATED row, so an accept writes THREE -- migration 197''s deferred constraint triggers are scoped per table and match on target_id = NEW.id, so a mutated row without its own audit row naming it fails the whole transaction at COMMIT. OUTCOME VOCABULARY the route must map: ok, not_found, stale, already_resolved, forbidden, nominator_no_longer_owner, successor_no_longer_a_member. The last three are AUTHORITY-class refusals and each writes its audit row before returning its code, never raising, because a RAISE would roll that row back (R-26). Granted to service_role only.';
 
 
+-- ─── (f) public.workspace_redeem_invitation ───────────────────────────────
+--         (WSR-10 / WSR-16 / F11 / R-24)
+--
+-- Replaces the whole mutation sequence in
+-- app/api/workspaces/invitations/accept/route.ts. Plan 14 does the route
+-- side.
+--
+-- WHAT F11 ACTUALLY IS. That route performs FOUR separate transactions:
+-- lookup; a CAS-update of the invitation to `accepted` filtered on
+-- status = 'pending'; a seat lookup; then a seat UPDATE **or** a seat
+-- INSERT. The CAS is issued but ITS RESULT IS NEVER CHECKED -- the route
+-- destructures only `{ error }`, which reports a database failure and not
+-- "zero rows matched", so a redemption that lost the race is indistinguish-
+-- able from one that won it. Worse, the seat lookup and the seat write are
+-- also two transactions, so two concurrent redemptions can both miss the
+-- seat and both take the INSERT branch. Correctness survives today only
+-- because idx_workspace_members_unique_user refuses the second one with a
+-- 23505, which the route reports as a generic 500.
+--
+-- Here the invitation row is LOCKED, every precondition is revalidated
+-- under that lock, and the seat is written as ONE statement. The CAS
+-- becomes structural: there is no unchecked-result path left to check.
+--
+-- R-24 -- THE COHORT GATE APPLIES TO THE ACCEPTOR. This is the third
+-- kill-switch call site, and the one research flagged as reproducing the
+-- exact shape of hotfix F7: a route carrying workspace state that consulted
+-- the platform control directly instead of going through the gate. If the
+-- D-55 cohort bound applied only to workspace creation, one cohort owner
+-- could pull in unlimited non-cohort Members and the pilot bound would stop
+-- meaning anything.
+--
+-- THE THREE THINGS THAT DELIBERATELY STAY IN THE ROUTE (RESEARCH §11's KEEP
+-- LIST), each for a reason, not by omission:
+--   * hashInvitationToken -- THE RAW TOKEN MUST NEVER REACH SQL. It would
+--     otherwise appear in pg_stat_statements, in a log_min_duration_statement
+--     line, and in any error context this function raises. The RPC receives
+--     only the hash.
+--   * normalizeInvitedEmail -- the route normalises the SESSION's own
+--     verified address and passes the result. SQL does not read
+--     auth.users.email at all.
+--   * isInvitationRedeemable -- the independent second layer producing the
+--     friendly sentence. Two layers agreeing is this repo's doctrine (078,
+--     136, 187, 190, 192, 196); WSR-17 exists because two layers once
+--     disagreed about expires_at.
+--
+-- WHY p_actor_email IS A PARAMETER AT ALL, STATED RATHER THAN GLOSSED.
+-- This is R-21 Option A applied to one more field than usual. The route
+-- asserts the identity from `auth.getUser()` -- never from a body value --
+-- and this function re-checks the BINDING IT WAS TOLD against the address
+-- the invitation actually names. So the authority half ("does this
+-- invitation name this address") is decided in the database; the identity
+-- half ("is this session that address") is still decided in the route. That
+-- is the same partial satisfaction of R-05 the file header records for
+-- p_actor_id, extended to the email, and it is written down here rather
+-- than left for a reader to infer.
+--
+-- WHY p_require_cohort IS A PARAMETER. SQL cannot read environment
+-- variables. lib/workspaces/cohort.ts derives it from
+-- WORKSPACE_ACCESS_GENERAL_ENABLED and hands it in, exactly as
+-- resolveWorkspaceAccessDecision already does for the other two call sites.
+-- The DEFAULT IS CLOSED on the TypeScript side, so an absent variable means
+-- "cohort required", never "everyone admitted".
+CREATE OR REPLACE FUNCTION public.workspace_redeem_invitation(
+  p_actor_id       UUID,      -- asserted by the route AFTER auth.getUser()
+                              -- (R-21 Option A)
+  p_token_hash     TEXT,      -- the sha256 hex digest, NEVER the raw token
+  p_actor_email    TEXT,      -- already normalised by normalizeInvitedEmail
+  p_require_cohort BOOLEAN    -- supplied from the environment by
+                              -- lib/workspaces/cohort.ts (D-55 / R-07)
+)
+RETURNS TABLE (
+  outcome             TEXT,
+  workspace_id        UUID,
+  member_id           UUID,
+  member_role         TEXT,
+  invitation_audit_id UUID,
+  member_audit_id     UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  -- Every value the body reads or writes lives in a v_ local, so the OUT
+  -- parameter names above are never referenced as expressions inside the
+  -- body (plan 06's rule, kept -- and load-bearing here, because
+  -- `workspace_id` is also a real column on four of the tables below).
+  v_workspace_id          UUID;
+  v_invitation_id         UUID;
+  v_invitation_email      TEXT;
+  v_invitation_role       TEXT;
+  v_invitation_status     TEXT;
+  v_invitation_expires_at TIMESTAMPTZ;
+  v_seat                  public.workspace_members%ROWTYPE;
+  v_seat_found            BOOLEAN := FALSE;
+  v_member_id             UUID;
+  v_access_enabled        BOOLEAN;
+  v_cohort_ok             BOOLEAN;
+  v_invitation_audit_id   UUID;
+  v_member_audit_id       UUID;
+  -- Used by the AUDITED REFUSAL branches only. Named to match the
+  -- shared harness assertion in __tests__/migration-198.test.ts, which
+  -- checks that every refusal captures its audit row's id before
+  -- returning: one local for that job keeps the check meaningful across
+  -- every RPC in this file rather than per-function.
+  v_audit_id              UUID;
+BEGIN
+  -- (0) LO-4: bound the wait.
+  SET LOCAL lock_timeout = '3s';
+
+  -- Validation errors, NOT audited, so RAISE is the correct mechanism
+  -- (R-26). A correct caller cannot produce any of them: the route's Zod
+  -- schema refuses an empty token and the session gate refuses an anonymous
+  -- caller before this function is reached.
+  IF p_actor_id IS NULL THEN
+    RAISE EXCEPTION 'p_actor_id is required'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  IF p_token_hash IS NULL OR btrim(p_token_hash) = '' THEN
+    RAISE EXCEPTION 'p_token_hash is required'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  IF p_actor_email IS NULL OR btrim(p_actor_email) = '' THEN
+    RAISE EXCEPTION 'p_actor_email is required'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- (1) THE GLOBAL GATE, FIRST, AND BOTH HALVES IN ONE ROUND TRIP.
+  --
+  -- public.workspace_access_permitted (migration 197, plan 09) folds the
+  -- D-56 kill switch and the D-55 cohort window into one function
+  -- specifically so a gated request does not grow from one round trip to
+  -- two -- the same move migrations 192 and 194 already made. This RPC is
+  -- the acceptor call site R-24 names.
+  SELECT a.access_enabled, a.cohort_ok
+    INTO v_access_enabled, v_cohort_ok
+    FROM public.workspace_access_permitted(p_actor_id, p_require_cohort) a;
+
+  -- COALESCE, not a bare NOT: a three-valued NULL would make `NOT v` return
+  -- NULL, which an IF treats as false and would therefore ADMIT the caller.
+  -- Plan 07 shipped the same COALESCE for the same reason on the audit
+  -- reader's redaction flag. Fail closed on every path.
+  IF NOT COALESCE(v_access_enabled, FALSE) THEN
+    -- RAISE, not an outcome code, and the reason is R-26's test: there is
+    -- nothing to audit about a globally disabled feature -- no authority
+    -- was exercised, and no workspace's record is the right place for it --
+    -- and no audit row has been written yet, so the RAISE rolls back
+    -- nothing. Section (c) makes the identical call for the identical
+    -- reason.
+    RAISE EXCEPTION 'workspace access is disabled'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  IF NOT COALESCE(v_cohort_ok, FALSE) THEN
+    -- R-24 / R-25. The route maps this outcome to 404, NOT 403: during a
+    -- bounded pilot a Member outside the cohort should not learn the
+    -- feature exists, and 404 is how the rest of this repo hides an
+    -- unreachable resource. That is why it is a DISTINCT outcome from the
+    -- disabled RAISE above -- 503 and 404 are different answers to
+    -- different questions and the route must be able to tell them apart.
+    --
+    -- NOT AUDITED, and the reason is structural rather than a judgement
+    -- call: workspace_audit_log.workspace_id is NOT NULL, and no workspace
+    -- is known at this point -- the invitation has not been read yet,
+    -- deliberately, because reading it before the eligibility gate would
+    -- leak the existence of an invitation to an ineligible caller. A
+    -- platform-eligibility fact also does not belong on one workspace's
+    -- record.
+    RETURN QUERY SELECT 'not_in_cohort'::TEXT,
+      NULL::UUID, NULL::UUID, NULL::TEXT, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- (2) LOCK, IN ASCENDING LO-1 RANK ONLY: 1 -> 2 -> 4.
+  --
+  -- READ BEFORE LOCK, AND WHY IT IS SAFE. The rank-1 row to lock is the
+  -- invitation's workspace, which is not known until the invitation has
+  -- been read. Reading it UNLOCKED first is the only way to acquire the
+  -- rest in ascending rank order; locking the invitation first would take
+  -- rank 4 before rank 1 and invert LO-1 outright. This read therefore
+  -- proves NOTHING and is treated as proving nothing: the invitation is
+  -- re-read from the locked row at step (3) and every precondition is
+  -- decided there. All it does is name the workspace.
+  SELECT i.workspace_id INTO v_workspace_id
+    FROM public.workspace_invitations i
+   WHERE i.token_hash = p_token_hash;
+
+  IF NOT FOUND THEN
+    -- The route's message for this outcome must stay NON-ENUMERATING: it
+    -- may not disclose whether the token ever existed, whether it belonged
+    -- to this caller, or whether it has already been used. One generic
+    -- sentence for every miss.
+    RETURN QUERY SELECT 'not_found'::TEXT,
+      NULL::UUID, NULL::UUID, NULL::TEXT, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Rank 1, the container, FIRST. Nothing on the workspaces row is read or
+  -- written here; the lock is cheap and it gives every concurrent
+  -- redemption against the SAME workspace one stable serialisation point,
+  -- which is what turns two racing redemptions into two queued ones.
+  --
+  -- FOR NO KEY UPDATE, never FOR UPDATE (LO-2). public.workspaces is a
+  -- foreign-key parent of members, invitations, grants, attachments and the
+  -- audit log; FOR UPDATE conflicts with the FOR KEY SHARE that every one
+  -- of those concurrent child INSERTs takes on this row, so it would block
+  -- all of them for the whole transaction. The weaker mode is sufficient
+  -- here because nothing in this function modifies a column that any
+  -- foreign key references. That phrasing is deliberate and section (c)
+  -- explains why at length: LO-2's suite assertion treats one particular
+  -- two-word phrase in the ten comment lines above a locking clause as a
+  -- JUSTIFICATION for a stronger mode, so prose explaining why the stronger
+  -- mode is NOT needed must avoid that token or it would silently
+  -- pre-authorise a future FOR UPDATE at this exact site.
+  PERFORM 1
+     FROM public.workspaces w
+    WHERE w.id = v_workspace_id
+      FOR NO KEY UPDATE;
+
+  -- Rank 2, the candidate seat -- the row the seat write at step (4) will
+  -- conflict with if it exists. Locked BEFORE the invitation so the rank
+  -- sequence stays ascending, and captured in full rather than PERFORMed
+  -- because step (3) has to look at its role and its status.
+  SELECT * INTO v_seat
+    FROM public.workspace_members m
+   WHERE m.workspace_id = v_workspace_id
+     AND m.user_id      = p_actor_id
+     FOR NO KEY UPDATE;
+
+  v_seat_found := FOUND;
+
+  -- Rank 4, the invitation itself, last of the locks. Keyed on token_hash,
+  -- which migration 182 declares UNIQUE, so this can only ever match one
+  -- row.
+  SELECT i.id, i.email, i.role, i.status, i.expires_at
+    INTO v_invitation_id, v_invitation_email, v_invitation_role,
+         v_invitation_status, v_invitation_expires_at
+    FROM public.workspace_invitations i
+   WHERE i.token_hash = p_token_hash
+     FOR NO KEY UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::TEXT,
+      NULL::UUID, NULL::UUID, NULL::TEXT, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- (3) REVALIDATE EVERY PRECONDITION *AFTER* THE LOCKS.
+  --
+  -- THE SELF-HEAL, FOLDED IN. The route today issues this expiry write as
+  -- its own separate transaction before returning 410. Here it happens
+  -- under the lock that already proved the invitation is still pending, so
+  -- it cannot race the acceptance path.
+  --
+  -- IT MUST BE AN OUTCOME AND NOT A RAISE, and the reason is mechanical:
+  -- this branch MUTATES and therefore AUDITS, and a RAISE would roll that
+  -- audit row back along with the mutation (R-26). Migration 197's deferred
+  -- constraint trigger on workspace_invitations (AFTER UPDATE OF status)
+  -- would also abort the transaction at COMMIT if this UPDATE committed
+  -- without an audit row naming this invitation's own id.
+  IF v_invitation_status = 'pending' AND v_invitation_expires_at <= now() THEN
+    UPDATE public.workspace_invitations
+       SET status = 'expired'
+     WHERE id = v_invitation_id;
+
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_workspace_id, p_actor_id, p_actor_id,
+      'workspace.invitation.expired', NULL, 'workspace_invitation', v_invitation_id,
+      jsonb_build_object('status',
+        jsonb_build_object('before', 'pending', 'after', 'expired'))
+    )
+    RETURNING id INTO v_invitation_audit_id;
+
+    RETURN QUERY SELECT 'expired'::TEXT,
+      v_workspace_id, NULL::UUID, v_invitation_role, v_invitation_audit_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Already accepted, refused, revoked or swept to expired. A business
+  -- outcome about a link the caller holds a stale copy of, not a fact about
+  -- anyone's authority, so NOT audited (R-26).
+  IF v_invitation_status <> 'pending' THEN
+    RETURN QUERY SELECT 'not_pending'::TEXT,
+      v_workspace_id, NULL::UUID, v_invitation_role, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- THE BINDING CHECK. An attempted redemption by an identity the
+  -- invitation does not name is an AUTHORITY refusal and belongs on the
+  -- record (R-26), so it writes its audit row and returns a code rather
+  -- than raising -- a RAISE would roll that row back.
+  --
+  -- Both sides are lowered because migration 182's own live-invitation
+  -- index is keyed on lower(email); comparing raw would let a differently
+  -- cased address miss a row the database considers the same one.
+  --
+  -- NO ADDRESS APPEARS IN `changes`. Migration 197 section (f) refuses the
+  -- key `email` at ANY depth, and the address already lives on
+  -- workspace_invitations.email behind an owner/admin-only policy, which
+  -- this audit row reaches through its own target_id.
+  IF lower(v_invitation_email) IS DISTINCT FROM lower(p_actor_email) THEN
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_workspace_id, p_actor_id, p_actor_id,
+      'workspace.invitation.redemption_refused', NULL,
+      'workspace_invitation', v_invitation_id,
+      jsonb_build_object('refusal', 'email_mismatch')
+    )
+    RETURNING id INTO v_audit_id;
+
+    RETURN QUERY SELECT 'email_mismatch'::TEXT,
+      v_workspace_id, NULL::UUID, v_invitation_role, v_audit_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- AN OWNER-ROLE INVITATION IS REFUSED HERE, AND THIS IS THE EXPLICIT
+  -- ANSWER TO "WHICH OF THE TWO DID YOU DO", AS THE PLAN REQUIRED.
+  --
+  -- Migration 197's guard_workspace_owner_role_change DOES define the rule
+  -- structurally -- a workspace_members row may not become owner, and an
+  -- owner row may not change -- but its FIRST statement is
+  -- `IF current_user IN ('postgres') THEN RETURN NEW`, and current_user IS
+  -- 'postgres' for the duration of this function, because this function is
+  -- a postgres-owned SECURITY DEFINER function. THE TRIGGER THEREFORE
+  -- ADMITS AN OWNER SEAT CREATED HERE. Its exemption is role-scoped, not
+  -- function-scoped, exactly as this file's header records at length.
+  --
+  -- So the guard is added here explicitly rather than relied on: an owner
+  -- seat is created ONLY at workspace creation (section (b)) or through the
+  -- two-sided ownership transfer (sections (d) and (e), R-05/R-22). An
+  -- invitation is neither, and an owner-role invitation reaching this point
+  -- means somebody issued one -- which is an authority event worth having
+  -- on the record, so it is audited before the code is returned.
+  IF v_invitation_role = 'owner' THEN
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_workspace_id, p_actor_id, p_actor_id,
+      'workspace.invitation.redemption_refused', NULL,
+      'workspace_invitation', v_invitation_id,
+      jsonb_build_object('refusal', 'owner_invitation_forbidden')
+    )
+    RETURNING id INTO v_audit_id;
+
+    RETURN QUERY SELECT 'owner_invitation_forbidden'::TEXT,
+      v_workspace_id, NULL::UUID, v_invitation_role, v_audit_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- THE SECOND HALF OF THE SAME RULE, AND IT IS NOT IN THE PLAN TEXT --
+  -- RECORDED HERE RATHER THAN LEFT SILENT.
+  --
+  -- The single seat statement at step (4) ends `DO UPDATE SET role =
+  -- EXCLUDED.role`. If the caller ALREADY holds an owner seat on this
+  -- workspace and redeems a lower-role invitation to it, that clause would
+  -- DEMOTE AN OWNER -- outside the two-sided transfer, silently, and past
+  -- migration 197's guard because of the same postgres exemption explained
+  -- above. guard_workspace_never_zero_owners would catch it only when that
+  -- owner is the LAST one, and then only as a raised 42501 the route
+  -- reports as a 500.
+  --
+  -- Refusing is the correct answer rather than "leave the role alone",
+  -- because an owner silently receiving a member-role invitation and having
+  -- it appear to succeed is a worse outcome than a named refusal.
+  IF v_seat_found AND v_seat.role = 'owner' THEN
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_workspace_id, p_actor_id, p_actor_id,
+      'workspace.invitation.redemption_refused', NULL,
+      'workspace_member', v_seat.id,
+      jsonb_build_object('refusal', 'owner_seat_conflict')
+    )
+    RETURNING id INTO v_audit_id;
+
+    RETURN QUERY SELECT 'owner_seat_conflict'::TEXT,
+      v_workspace_id, v_seat.id, v_invitation_role, NULL::UUID, v_audit_id;
+    RETURN;
+  END IF;
+
+  -- SEAT-TRANSITION LEGALITY, ALSO NOT IN THE PLAN TEXT AND ALSO RECORDED.
+  --
+  -- `DO UPDATE SET status = 'active'` would REVIVE a `removed` seat. D-14
+  -- makes removal terminal -- "removal ends future access only; nothing is
+  -- ever deleted or revived" -- and migration 182's status set gives
+  -- `removed` no outbound edge at all. A person removed from a workspace
+  -- while an invitation to it was still pending must not be able to let
+  -- themselves back in by redeeming it.
+  --
+  -- The allowlist is migration 182's own inbound edges to `active`:
+  -- pending -> active, suspended -> active, expired -> active, and
+  -- active -> active as a no-op re-redemption. NOT audited, matching
+  -- section (c)'s treatment of the same code: losing to the state machine
+  -- is a business outcome, not an exercise of authority.
+  IF v_seat_found AND v_seat.status NOT IN ('pending', 'active', 'suspended', 'expired') THEN
+    RETURN QUERY SELECT 'illegal_transition'::TEXT,
+      v_workspace_id, v_seat.id, v_invitation_role, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- (4) MUTATE. ONE STATEMENT EACH.
+  --
+  -- THE CAS IS NOW STRUCTURAL. The route's `.eq('status','pending')` filter
+  -- is gone because there is nothing left for it to do: the row was locked
+  -- at step (2) and its status was revalidated under that lock at step (3),
+  -- so no concurrent writer can have moved it in between. There is no
+  -- unchecked result to check.
+  --
+  -- updated_at is deliberately absent everywhere in this function -- and
+  -- workspace_invitations has no updated_at column at all.
+  UPDATE public.workspace_invitations
+     SET status      = 'accepted',
+         accepted_at = now(),
+         accepted_by = p_actor_id
+   WHERE id = v_invitation_id;
+
+  -- THE SEAT, AS ONE STATEMENT. THREE THINGS ABOUT IT.
+  --
+  -- 1. THE CONFLICT TARGET IS THE PARTIAL UNIQUE INDEX
+  --    idx_workspace_members_unique_user (workspace_id, user_id)
+  --    WHERE user_id IS NOT NULL. Restating that predicate in the ON
+  --    CONFLICT clause is what makes the inference well-defined: without
+  --    it, PostgreSQL has no partial index to match and the statement
+  --    fails to plan. Migration 182 chose a PARTIAL index deliberately --
+  --    a plain composite UNIQUE would still allow the same person to be
+  --    seated twice through two NULL-user_id pending rows, because every
+  --    NULL is distinct.
+  --
+  -- 2. IT REPLACES THE LOOKUP-THEN-UPDATE-OR-INSERT FORK ENTIRELY, which
+  --    is the half of F11 that let two concurrent redemptions both miss
+  --    the seat and both take the INSERT branch. One statement cannot
+  --    race itself.
+  --
+  -- 3. IT IS STILL ONE ROW PER STATEMENT, honouring the workspace_members
+  --    trigger rule in this file's header: a BEFORE ROW trigger's own
+  --    SELECT cannot see rows changed by its own command, so a statement
+  --    touching two member rows would fire each guard twice, blind.
+  --
+  -- ON THE PL/PGSQL NAME QUESTION, REASONED AND NOT OBSERVED. The OUT
+  -- parameter `workspace_id` shares a name with the column in the conflict
+  -- target below. A bare column name in an ON CONFLICT inference list is
+  -- carried as an IndexElem name and resolved directly against the target
+  -- relation's attributes -- it is not transformed as an expression, so
+  -- PL/pgSQL's variable substitution does not reach it. The infer clause's
+  -- WHERE predicate IS an expression, which is why it names `user_id`, a
+  -- word that collides with nothing here. This reasoning was NOT checked
+  -- against a running database, because no plan in this phase opens one; if
+  -- it is wrong the failure is a loud plan-time error in plan 17's harness,
+  -- never a silent misbehaviour.
+  --
+  -- expires_at IS CARRIED OVER FROM THE PAIRED PENDING SEAT, and this is an
+  -- addition to the plan text, stated rather than slipped in. The issuance
+  -- route sets expires_at on the pending seat for a time-boxed role (D-11,
+  -- contractor). When the invitee had no account at issuance time that
+  -- pending row carries user_id = NULL, so it is NOT the row this statement
+  -- conflicts with, and a plain INSERT would produce a contractor seat with
+  -- NO expiry at all -- an unbounded contractor, which is precisely what
+  -- D-11's time-boxing exists to prevent. The scalar subquery is a read,
+  -- not a branch: there is still exactly one INSERT and no conditional
+  -- UPDATE against this table. On the conflict path expires_at is left
+  -- untouched, so an existing seat keeps its own window.
+  INSERT INTO public.workspace_members (
+    workspace_id, user_id, invited_email, role, status, expires_at
+  ) VALUES (
+    v_workspace_id,
+    p_actor_id,
+    v_invitation_email,
+    v_invitation_role,
+    'active',
+    (SELECT m.expires_at
+       FROM public.workspace_members m
+      WHERE m.workspace_id        = v_workspace_id
+        AND m.user_id             IS NULL
+        AND lower(m.invited_email) = lower(v_invitation_email)
+        AND m.status              = 'pending'
+      ORDER BY m.created_at DESC
+      LIMIT 1)
+  )
+  ON CONFLICT (workspace_id, user_id) WHERE user_id IS NOT NULL
+  DO UPDATE SET status = 'active',
+                role   = EXCLUDED.role
+  RETURNING id INTO v_member_id;
+
+  -- (5) AUDIT TWICE, IN THE SAME TRANSACTION, AND HERE IS WHY TWICE.
+  --
+  -- Migration 197 installs its deferred constraint triggers PER TABLE, and
+  -- each matches on `target_id = NEW.id`. This function mutates a row on
+  -- workspace_invitations AND a row on workspace_members, so ONE audit row
+  -- cannot satisfy both: whichever table it did not name would abort the
+  -- whole transaction at COMMIT.
+  --
+  -- THE SHAPE THAT WOULD FAIL, NAMED SO NOBODY REINTRODUCES IT. The route
+  -- today writes a single log line with `targetId: pendingSeat?.id ?? null`
+  -- -- null whenever no pending seat existed, and a null target_id matches
+  -- no row at all. Plan 14 removes it.
+  --
+  -- `changes` carries the role and NOTHING else on both rows. No email
+  -- address appears anywhere: migration 197 section (f) refuses the key at
+  -- any depth, and the address is already reachable from the audit row
+  -- through target_id, behind workspace_invitations' owner/admin-only
+  -- policy.
+  INSERT INTO public.workspace_audit_log (
+    workspace_id, actor_user_id, subject_member_id,
+    action, permission_relied_on, target_type, target_id, changes
+  ) VALUES (
+    v_workspace_id, p_actor_id, p_actor_id,
+    'workspace.invitation.accepted', NULL, 'workspace_invitation', v_invitation_id,
+    jsonb_build_object('role', v_invitation_role)
+  )
+  RETURNING id INTO v_invitation_audit_id;
+
+  -- target_id is the SEAT ROW's own id -- never null, never the workspace's,
+  -- never the invitation's.
+  INSERT INTO public.workspace_audit_log (
+    workspace_id, actor_user_id, subject_member_id,
+    action, permission_relied_on, target_type, target_id, changes
+  ) VALUES (
+    v_workspace_id, p_actor_id, p_actor_id,
+    'workspace.member.activated', NULL, 'workspace_member', v_member_id,
+    jsonb_build_object('role', v_invitation_role)
+  )
+  RETURNING id INTO v_member_audit_id;
+
+  RETURN QUERY SELECT 'ok'::TEXT,
+    v_workspace_id, v_member_id, v_invitation_role,
+    v_invitation_audit_id, v_member_audit_id;
+END;
+$$;
+
+-- Migration 123's grant posture, NOT migration 046's.
+REVOKE EXECUTE ON FUNCTION public.workspace_redeem_invitation(
+  UUID, TEXT, TEXT, BOOLEAN
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.workspace_redeem_invitation(
+  UUID, TEXT, TEXT, BOOLEAN
+) TO service_role;
+
+COMMENT ON FUNCTION public.workspace_redeem_invitation(
+  UUID, TEXT, TEXT, BOOLEAN
+) IS
+  'Redeems a workspace invitation -- activating or creating the seat, resolving the invitation, and writing BOTH audit rows -- in ONE transaction (R-06/WSR-10/F11). LOCK RANKS, IN ORDER: the invitation is first read WITHOUT a lock, because the rank-1 workspace it names cannot be locked in ascending order until it is known -- that read proves nothing and the invitation is re-read from the locked row; then rank 1 public.workspaces (taken purely as a stable serialisation point for concurrent redemptions on the same workspace), then rank 2 the candidate public.workspace_members seat for this actor, then rank 4 public.workspace_invitations keyed on its UNIQUE token_hash, all FOR NO KEY UPDATE (LO-2 -- every one of these tables is a foreign-key parent, and FOR UPDATE would block every concurrent child insert on the workspace). Rank 9 public.workspace_audit_log is INSERT only and never locked. REVALIDATED AFTER THE LOCKS: a passed expiry on a still-pending invitation, which is SELF-HEALED to expired here -- an outcome and never a RAISE, because that branch mutates and therefore audits, and a RAISE would roll the audit row back; the status is still pending; the invitation names this actor''s address, compared lowered on both sides, refused as an AUTHORITY refusal that is audited before its code is returned; the invitation''s role is not owner, refused explicitly because migration 197''s guard_workspace_owner_role_change returns at its postgres exemption inside this postgres-owned definer function and therefore ADMITS an owner seat created here -- an owner seat is created only at workspace creation or through the two-sided transfer (R-05/R-22); the actor does not already hold an OWNER seat on this workspace, which the conflict clause''s role assignment would otherwise silently demote; and the existing seat''s status is a legal inbound edge to active, so a removed seat is never revived (D-14). R-24: the D-55 cohort gate applies to the ACCEPTOR, consulted through public.workspace_access_permitted BEFORE any other work and before the invitation is read at all, so an ineligible caller learns nothing -- the disabled switch RAISEs (a platform fact, nothing to audit) while a cohort miss returns not_in_cohort, which the route maps to 404 and not 403 per R-25. THE SEAT IS ONE STATEMENT: INSERT ... ON CONFLICT (workspace_id, user_id) WHERE user_id IS NOT NULL DO UPDATE, inferring migration 182''s PARTIAL unique index idx_workspace_members_unique_user, which is what removes F11''s lookup-then-update-or-insert fork and the double-INSERT race it allowed; expires_at is carried across from the paired NULL-user_id pending seat so a time-boxed contractor invitation cannot produce an unbounded seat (D-11). TRIGGERS THAT FIRE: guard_workspace_member_owner_role_change and workspace_members_updated_at on the seat write, guard_workspace_never_zero_owners only on the conflict path, and migration 197''s four deferred audit assertions at COMMIT -- which is why this function writes TWO audit rows, one per mutated table, each with target_id set to the MUTATED ROW''S OWN id: one row cannot satisfy two per-table assertions. The route''s current single log line with targetId pendingSeat?.id ?? null is exactly the shape that fails them, and plan 14 removes it. `changes` carries the role and nothing else on both rows -- no address anywhere, which migration 197 section (f) refuses at any depth and which is already reachable through target_id behind workspace_invitations'' owner/admin-only policy. THE RAW TOKEN NEVER REACHES SQL: hashInvitationToken stays in the route and this function receives only the digest, so no raw token can reach pg_stat_statements or a statement log. normalizeInvitedEmail and isInvitationRedeemable also stay in the route as the independent second layer. OUTCOME VOCABULARY the route must map: ok, not_found, not_in_cohort, expired, not_pending, email_mismatch, owner_invitation_forbidden, owner_seat_conflict, illegal_transition. Granted to service_role only (R-21 Option A): the route supplies the actor identity and the already-normalised session address it has proved, and this function re-checks the binding it was told.';
+
+
+-- ─── (g) public.workspace_transition_roster_relationship ──────────────────
+--         (WSR-12 / F16 / R-23)
+--
+-- Replaces the four PATCH branches in app/api/roster/relationships/route.ts
+-- AND the `end` branch of app/api/workspaces/[workspaceId]/roster/route.ts.
+-- Plan 12 does the route side.
+--
+-- WHAT F16 ACTUALLY IS, IN TWO HALVES.
+--
+--   THE MISSING CAS. Every branch reads the row, calls assertCanTransition
+--   on the state it read, then issues `.update({state}).eq('id', row.id)`.
+--   THERE IS NO `.eq('state', row.state)` ANYWHERE IN THAT FILE. Two
+--   concurrent PATCHes can both read `proposed`, both pass the legality
+--   check, and the second can overwrite the first's TERMINAL state -- an
+--   `accept` landing on top of a `block` is the shape that matters, because
+--   it hands a workspace the relationship the Member just refused.
+--
+--   THE SIDE EFFECT IN A SEPARATE TRANSACTION. The `block` branch updates
+--   the relationship in one transaction and upserts workspace_roster_blocks
+--   in another. A crash between them leaves a `blocked` relationship with
+--   NO block row -- and assertCanPropose reads the BLOCK TABLE, not the
+--   relationship state, so the workspace would then be permitted to
+--   re-propose to a Member who had just blocked it. That is D-51's control
+--   silently not existing.
+--
+-- ONE RPC WITH A p_action PARAMETER, NOT FOUR FUNCTIONS. The state machine
+-- is one machine and isLegalRosterTransition is already one function;
+-- splitting it into one RPC per action would create four places to keep in
+-- step with LEGAL_ROSTER_EDGES instead of one, and the drift between them
+-- would be invisible until a Member hit it.
+--
+-- p_actor_side NAMES THE SURFACE, AND IS NEVER AN AUTHORITY CLAIM. The two
+-- calling surfaces have genuinely different authority rules -- the Member
+-- surface authorises on "this row names me", the workspace surface on a
+-- live owner/admin seat -- so this function has to know which rule to
+-- apply. IT STILL RE-DERIVES THE ACTOR'S AUTHORITY FROM THE DATABASE FOR
+-- BOTH SIDES (R-21): a caller that named 'member' cannot thereby become the
+-- Member, because the member branch compares p_actor_id to the locked row's
+-- own member_user_id, and a caller that named 'workspace' still has to hold
+-- a live seat whose role passes the owner/admin test. The parameter selects
+-- which check runs; it never substitutes for one.
+--
+-- WHAT THIS FUNCTION DOES NOT DO. It does not collapse `blocked` into
+-- `refused` at the write. R-23 collapses the two only in the
+-- WORKSPACE-FACING READ (migration 197's workspace_roster_page), so the
+-- workspace cannot distinguish a decline from a block while the Member's
+-- own view keeps the true state and the block keeps working. `blocked` is a
+-- real distinct state in migration 183's CHECK and in LEGAL_ROSTER_EDGES,
+-- and collapsing it here would throw away a value the schema and the pure
+-- state machine both define -- which is the deviation the roster route's
+-- own header already records and refuses.
+CREATE OR REPLACE FUNCTION public.workspace_transition_roster_relationship(
+  p_actor_id       UUID,   -- asserted by the route AFTER its own gate
+                           -- (R-21 Option A)
+  p_relationship_id UUID,
+  p_action         TEXT,   -- 'accept' | 'refuse' | 'block' | 'end'
+  p_expected_state TEXT,   -- caller-side CAS token; NULL means "do not compare"
+  p_actor_side     TEXT    -- 'member' | 'workspace' -- a routing hint, never
+                           -- an authority claim; see the header above
+)
+RETURNS TABLE (
+  outcome         TEXT,
+  relationship_id UUID,
+  new_state       TEXT,
+  audit_id        UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  -- Every value the body reads or writes lives in a v_ local, so the OUT
+  -- parameter names above are never referenced as expressions inside the
+  -- body (plan 06's rule, kept).
+  v_workspace_id UUID;
+  v_relationship public.workspace_roster_relationships%ROWTYPE;
+  v_actor_role   TEXT;
+  v_authorized   BOOLEAN;
+  v_new_state    TEXT;
+  v_action_name  TEXT;
+  v_audit_id     UUID;
+BEGIN
+  -- (0) LO-4: bound the wait.
+  SET LOCAL lock_timeout = '3s';
+
+  -- Validation errors, NOT audited, so RAISE is correct (R-26). Both
+  -- parameters are closed vocabularies that the route's Zod enum already
+  -- refuses to widen; a fifth action or a third side is a caller defect,
+  -- not a business outcome.
+  IF p_action IS NULL OR p_action NOT IN ('accept', 'refuse', 'block', 'end') THEN
+    RAISE EXCEPTION 'p_action must be accept, refuse, block or end'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  IF p_actor_side IS NULL OR p_actor_side NOT IN ('member', 'workspace') THEN
+    RAISE EXCEPTION 'p_actor_side must be member or workspace'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- (1) THE KILL SWITCH, AND THE ASYMMETRY IT IS DELIBERATELY GIVEN.
+  --
+  -- CONSULTED ONLY ON `accept`. This is not an oversight and it is not a
+  -- shortcut: it preserves the asymmetry the roster route already states in
+  -- its own comment. Accepting FORMS new workspace-derived authority, so it
+  -- must stop when the platform-wide control is off. Refuse, block and end
+  -- are the Member's OWN PROTECTIVE ACTIONS, D-18 makes revocation
+  -- unconditional, and disabling a Member's escape hatch during an incident
+  -- would trap them in exactly the relationship the control exists to
+  -- contain. A control that locks the victim in is not a safety control.
+  --
+  -- The guard therefore sits INSIDE the action branch rather than at the
+  -- top of the body, and __tests__/migration-198.test.ts asserts that
+  -- placement by source offset so a future tidy-up cannot "simplify" it to
+  -- the top.
+  IF p_action = 'accept' THEN
+    IF NOT public.workspace_access_enabled() THEN
+      RAISE EXCEPTION 'workspace access is disabled'
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+  END IF;
+
+  -- (2) LOCK, IN ASCENDING LO-1 RANK ONLY: 1 -> 3 -> 3.5.
+  --
+  -- READ BEFORE LOCK, AND WHY IT IS SAFE. The rank-1 row to lock is the
+  -- relationship's workspace, which is not known until the relationship has
+  -- been read. Reading it UNLOCKED first is the only way to acquire the
+  -- rest in ascending rank order. This read proves NOTHING and is treated
+  -- as proving nothing: the relationship is re-read from the locked row
+  -- below and every precondition, including the compare-and-set, is decided
+  -- against THAT copy.
+  SELECT r.workspace_id INTO v_workspace_id
+    FROM public.workspace_roster_relationships r
+   WHERE r.id = p_relationship_id;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::TEXT, NULL::UUID, NULL::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Rank 1, the container, FIRST. Nothing on the workspaces row is read or
+  -- written; the lock gives concurrent transitions on the same workspace
+  -- one stable serialisation point. FOR NO KEY UPDATE, never the stronger
+  -- mode (LO-2) -- public.workspaces is a foreign-key parent of six tables
+  -- and the stronger mode would block every concurrent child insert on it
+  -- for the whole transaction, which is the throughput cliff and the
+  -- enlarged deadlock surface LO-1 exists to avoid. Section (c) explains
+  -- why this paragraph is worded the way it is.
+  PERFORM 1
+     FROM public.workspaces w
+    WHERE w.id = v_workspace_id
+      FOR NO KEY UPDATE;
+
+  -- Rank 3, the consent root. THIS LOCK IS THE ANSWER TO F16: from here to
+  -- COMMIT no other transaction can move this row, so the state read below
+  -- is the state written against.
+  SELECT * INTO v_relationship
+    FROM public.workspace_roster_relationships r
+   WHERE r.id = p_relationship_id
+     FOR NO KEY UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::TEXT, NULL::UUID, NULL::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Rank 3.5, and ONLY for the action that touches it. LO-1's auxiliary
+  -- rule: workspace_roster_blocks is a child of rank 3 and is touched AFTER
+  -- it, never before. Locking the pair's block row here -- whether or not
+  -- one exists yet -- means the upsert at step (4) cannot race a concurrent
+  -- block of the same pair.
+  IF p_action = 'block' THEN
+    PERFORM 1
+       FROM public.workspace_roster_blocks b
+      WHERE b.workspace_id   = v_workspace_id
+        AND b.member_user_id = v_relationship.member_user_id
+        FOR NO KEY UPDATE;
+  END IF;
+
+  -- (3) REVALIDATE EVERY PRECONDITION *AFTER* THE LOCK.
+  --
+  -- THE COMPARE-AND-SET. THIS IS THE POINT OF THE EXERCISE. The caller
+  -- passes the state it believes the row holds and this compares it to the
+  -- LOCKED row. F16 is that no such comparison existed anywhere: the route
+  -- reads the row in one transaction, checks legality against what it read,
+  -- and writes in another with no condition on the state at all, so two
+  -- concurrent PATCHes can both read `proposed` and the loser can overwrite
+  -- the winner's terminal state.
+  --
+  -- NOT audited (R-26): losing a race is a business outcome about the
+  -- caller's stale copy, not a fact about anyone's authority, and a trail
+  -- full of stale-CAS rows would bury the refusals that matter.
+  IF p_expected_state IS NOT NULL
+     AND v_relationship.state IS DISTINCT FROM p_expected_state THEN
+    RETURN QUERY SELECT 'stale'::TEXT, v_relationship.id, v_relationship.state, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- AUTHORITY, BY SIDE, RE-DERIVED FROM THE DATABASE ON BOTH BRANCHES.
+  IF p_actor_side = 'member' THEN
+    -- The Member surface authorises on "this row names me" -- the same rule
+    -- app/api/roster/relationships/route.ts applies before every write
+    -- (T-38-07-02), expressed where the lock is held. All four actions are
+    -- available to the named Member.
+    v_authorized := v_relationship.member_user_id IS NOT DISTINCT FROM p_actor_id;
+  ELSE
+    -- The workspace surface authorises on a LIVE seat whose role passes the
+    -- manage-roster test -- canManageRoster in lib/workspaces/membership.ts,
+    -- re-derived here rather than accepted as a parameter (R-21). There is
+    -- deliberately no p_actor_role and there never will be.
+    SELECT m.role INTO v_actor_role
+      FROM public.workspace_members m
+     WHERE m.workspace_id = v_workspace_id
+       AND m.user_id      = p_actor_id
+       AND m.status       = 'active'
+       AND (m.expires_at IS NULL OR m.expires_at > now());
+
+    -- ONLY `end` IS AVAILABLE TO A WORKSPACE. A workspace may never accept,
+    -- refuse or block ON A MEMBER'S BEHALF: D-05 makes a proposal inert
+    -- until the named Member affirms it, and a workspace that could accept
+    -- its own proposal would make consent a formality. Ending is available
+    -- to both sides (D-17) -- only the Member's end is unconditional (D-18).
+    --
+    -- COALESCE, not a bare boolean: v_actor_role IS NULL for a caller with
+    -- no live seat, and `NULL IN (...) AND TRUE` is NULL, which an IF treats
+    -- as false only by accident. Fail closed on purpose, not by luck.
+    v_authorized := v_actor_role IN ('owner', 'admin') AND p_action = 'end';
+  END IF;
+
+  IF NOT COALESCE(v_authorized, FALSE) THEN
+    -- An AUTHORITY refusal, so it is audited and therefore MUST NOT RAISE:
+    -- a RAISE would roll back the row written moments earlier in this
+    -- transaction (R-26). subject_member_id is the relationship's own
+    -- Member on both sides (D-22) -- on the Member side the actor and the
+    -- subject coincide, on the workspace side they do not.
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_workspace_id, p_actor_id, v_relationship.member_user_id,
+      'roster.transition_refused', NULL,
+      'workspace_roster_relationship', v_relationship.id,
+      jsonb_build_object('refusal', 'forbidden')
+    )
+    RETURNING id INTO v_audit_id;
+
+    RETURN QUERY SELECT 'forbidden'::TEXT,
+      v_relationship.id, v_relationship.state, v_audit_id;
+    RETURN;
+  END IF;
+
+  v_new_state := CASE p_action
+                   WHEN 'accept' THEN 'accepted'
+                   WHEN 'refuse' THEN 'refused'
+                   WHEN 'block'  THEN 'blocked'
+                   ELSE 'ended'
+                 END;
+
+  -- TRANSITION LEGALITY, REPRODUCING LEGAL_ROSTER_EDGES EXACTLY:
+  --   proposed -> accepted, refused, blocked   (D-05: inert until affirmed)
+  --   accepted -> ended                        (D-17/D-18)
+  --   refused, blocked, ended are TERMINAL -- no outbound edge, ever, and
+  --   they are covered by falling through this check rather than by being
+  --   listed, so a renewed relationship is a new row and never a revival
+  --   (D-25's never-move-never-copy posture).
+  --
+  -- isLegalRosterTransition stays in the route as the INDEPENDENT second
+  -- layer, and it is kept for a reason a RAISE cannot supply: it produces
+  -- the friendly sentence naming the illegal edge ("Cannot move a roster
+  -- relationship from ended to accepted"). Two layers agreeing is this
+  -- repo's doctrine (078, 136, 187, 190, 192, 196), and the suite imports
+  -- LEGAL_ROSTER_EDGES from source so a future divergence fails the tests
+  -- instead of reaching production.
+  --
+  -- NOT audited, matching section (c)'s treatment of the same code.
+  IF NOT (
+       (v_relationship.state = 'proposed' AND v_new_state IN ('accepted', 'refused', 'blocked'))
+    OR (v_relationship.state = 'accepted' AND v_new_state = 'ended')
+  ) THEN
+    RETURN QUERY SELECT 'illegal_transition'::TEXT,
+      v_relationship.id, v_relationship.state, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- (4) MUTATE. ONE ROW PER STATEMENT, EVERY STATEMENT KEYED ON THE PRIMARY
+  --     KEY, so none of them can ever match more than one row.
+  --
+  -- updated_at is deliberately absent from all four -- migration 183's
+  -- workspace_roster_relationships_updated_at trigger fires on each and
+  -- would overwrite anything set by hand.
+  IF p_action = 'accept' THEN
+    -- effective_from is set ONLY when it is currently null, which preserves
+    -- the route's existing behaviour exactly: a workspace that named a
+    -- start date when it proposed keeps that date, and a proposal with no
+    -- date starts today. COALESCE expresses "only when null" in one
+    -- statement rather than a branch. The UTC cast matches the route's
+    -- `nowIso.slice(0, 10)` to the day.
+    UPDATE public.workspace_roster_relationships
+       SET state          = 'accepted',
+           accepted_at    = now(),
+           effective_from = COALESCE(effective_from, (now() AT TIME ZONE 'UTC')::DATE)
+     WHERE id = v_relationship.id;
+
+  ELSIF p_action = 'refuse' THEN
+    UPDATE public.workspace_roster_relationships
+       SET state      = 'refused',
+           refused_at = now()
+     WHERE id = v_relationship.id;
+
+  ELSIF p_action = 'block' THEN
+    UPDATE public.workspace_roster_relationships
+       SET state      = 'blocked',
+           refused_at = now()
+     WHERE id = v_relationship.id;
+
+    -- THE SIDE EFFECT, NOW IN THE SAME TRANSACTION AS THE STATE CHANGE.
+    -- THIS IS THE OTHER HALF OF WSR-12. Today this upsert is a separate
+    -- write issued after the state update has already committed, so a crash
+    -- between the two leaves a `blocked` relationship with NO block row --
+    -- and assertCanPropose reads THIS TABLE, not the relationship state, so
+    -- the workspace would then be permitted to re-propose to a Member who
+    -- had just blocked it. Being in one transaction is what makes that
+    -- window not exist.
+    --
+    -- ON CONFLICT DO NOTHING is D-51's upsert-and-ignore: a repeat block is
+    -- a harmless no-op, which is what migration 183's
+    -- UNIQUE (workspace_id, member_user_id) was chosen to make it.
+    INSERT INTO public.workspace_roster_blocks (workspace_id, member_user_id)
+    VALUES (v_workspace_id, v_relationship.member_user_id)
+    ON CONFLICT (workspace_id, member_user_id) DO NOTHING;
+
+  ELSE
+    UPDATE public.workspace_roster_relationships
+       SET state    = 'ended',
+           ended_at = now(),
+           ended_by = p_actor_id
+     WHERE id = v_relationship.id;
+  END IF;
+
+  -- (5) AUDIT, IN THE SAME TRANSACTION.
+  --
+  -- The action strings are the ones the two routes ALREADY EMIT, so the
+  -- trail stays continuous across this change rather than splitting into a
+  -- before-and-after vocabulary. That is why `end` is side-conditional:
+  -- app/api/roster/relationships/route.ts writes 'roster.ended' and
+  -- app/api/workspaces/[workspaceId]/roster/route.ts writes
+  -- 'workspace.roster.ended', and one RPC now serves both. Collapsing them
+  -- would rewrite the meaning of every historical row of one of the two.
+  v_action_name := CASE
+                     WHEN p_action = 'accept'          THEN 'roster.accepted'
+                     WHEN p_action = 'refuse'          THEN 'roster.refused'
+                     WHEN p_action = 'block'           THEN 'roster.blocked'
+                     WHEN p_actor_side = 'workspace'   THEN 'workspace.roster.ended'
+                     ELSE 'roster.ended'
+                   END;
+
+  -- target_id is the RELATIONSHIP ROW's own id. Migration 197's deferred
+  -- constraint trigger on workspace_roster_relationships matches on
+  -- target_id = NEW.id, so any other value fails the whole transaction at
+  -- COMMIT. `changes` carries the state move and nothing else -- no
+  -- professional role, no identifier belonging to a person; the actor and
+  -- the subject are already first-class columns (D-22, WSR-19).
+  INSERT INTO public.workspace_audit_log (
+    workspace_id, actor_user_id, subject_member_id,
+    action, permission_relied_on, target_type, target_id, changes
+  ) VALUES (
+    v_workspace_id, p_actor_id, v_relationship.member_user_id,
+    v_action_name, NULL, 'workspace_roster_relationship', v_relationship.id,
+    jsonb_build_object('state',
+      jsonb_build_object('before', v_relationship.state, 'after', v_new_state))
+  )
+  RETURNING id INTO v_audit_id;
+
+  RETURN QUERY SELECT 'ok'::TEXT, v_relationship.id, v_new_state, v_audit_id;
+END;
+$$;
+
+-- Migration 123's grant posture, NOT migration 046's.
+REVOKE EXECUTE ON FUNCTION public.workspace_transition_roster_relationship(
+  UUID, UUID, TEXT, TEXT, TEXT
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.workspace_transition_roster_relationship(
+  UUID, UUID, TEXT, TEXT, TEXT
+) TO service_role;
+
+COMMENT ON FUNCTION public.workspace_transition_roster_relationship(
+  UUID, UUID, TEXT, TEXT, TEXT
+) IS
+  'Moves one roster relationship through the D-05/D-17/D-18 state machine -- accept, refuse, block or end -- and writes its audit row, and the block side effect, in ONE transaction (R-06/WSR-12/F16). ONE function with a p_action parameter rather than four, because the state machine is one machine and four copies of LEGAL_ROSTER_EDGES would drift invisibly. LOCK RANKS, IN ORDER: the relationship is first read WITHOUT a lock, because the rank-1 workspace it names cannot be locked in ascending order until it is known -- that read proves nothing and the row is re-read from the locked copy; then rank 1 public.workspaces (a stable serialisation point), then rank 3 public.workspace_roster_relationships, then -- for the block action ONLY -- rank 3.5 public.workspace_roster_blocks, which is LO-1''s auxiliary rule: a child of rank 3, touched after it. All FOR NO KEY UPDATE (LO-2). Rank 9 public.workspace_audit_log is INSERT only and never locked. REVALIDATED AFTER THE LOCK: the row still exists; THE COMPARE-AND-SET, p_expected_state against the LOCKED row''s state, which is the whole of F16 -- no `.eq(''state'', ...)` existed anywhere in the routes, so two concurrent PATCHes could both read proposed and one could overwrite the other''s terminal state; authority, re-derived from the database on BOTH sides (R-21) -- the member side requires the row''s own member_user_id to equal the actor, the workspace side requires a LIVE active unexpired seat holding owner or admin AND permits ONLY `end`, because a workspace may never accept, refuse or block on a Member''s behalf (D-05); and transition legality reproducing LEGAL_ROSTER_EDGES, with refused, blocked and ended terminal. p_actor_side names the CALLING SURFACE and is never an authority claim -- it selects which check runs and never substitutes for one. THE KILL SWITCH IS CONSULTED ONLY ON accept, deliberately: accepting forms new workspace-derived authority, while refuse, block and end are the Member''s own protective actions and D-18 makes revocation unconditional -- disabling a Member''s escape hatch during an incident would trap them in exactly the relationship the control exists to contain. That placement is asserted by source offset in the suite. THE BLOCK SIDE EFFECT IS IN THE SAME TRANSACTION AS THE STATE CHANGE: today the workspace_roster_blocks upsert is a separate write, so a crash between the two leaves a blocked relationship with no block row -- and assertCanPropose reads the BLOCK TABLE, not the state, so the workspace would then be permitted to re-propose to a Member who had just blocked it. ON CONFLICT DO NOTHING is D-51''s upsert-and-ignore. blocked is NOT collapsed to refused at the write: R-23 collapses the two only in the workspace-facing READ (migration 197''s workspace_roster_page), so the workspace cannot distinguish a decline from a block while the Member''s own view keeps the true state. TRIGGERS THAT FIRE: workspace_roster_relationships_updated_at on every UPDATE, which is why updated_at is never set by hand, and migration 197''s deferred audit assertion at COMMIT, which is why target_id is the RELATIONSHIP ROW''S OWN id. The audit action strings are the ones the two routes already emit -- roster.accepted, roster.refused, roster.blocked, roster.ended for the Member surface and workspace.roster.ended for the workspace surface -- so the trail stays continuous rather than splitting into a before-and-after vocabulary. OUTCOME VOCABULARY the route must map: ok, not_found, stale, forbidden, illegal_transition. Only forbidden is an AUTHORITY refusal; it writes its audit row before returning its code and never raises, because a RAISE would roll that row back (R-26). Granted to service_role only.';
+
+
 -- ─── END OF FILE ──────────────────────────────────────────────────────────
 -- `NOTIFY pgrst, 'reload schema';` MUST REMAIN THE LAST STATEMENT IN THIS
 -- FILE. Plans 08, 10 and 11 append their sections ABOVE this line, never
