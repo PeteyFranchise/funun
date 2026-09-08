@@ -1,5 +1,6 @@
 -- ============================================================
--- Funūn — Phase 38.0.2 (workspace-transactional-integrity-hygiene): Plan 06.
+-- Funūn — Phase 38.0.2 (workspace-transactional-integrity-hygiene):
+--         opened by plan 06, CLOSED BY PLAN 11.
 -- Migration 198: the transactional SECURITY DEFINER RPC family for every
 --                consequential workspace state change (R-06).
 --
@@ -19,15 +20,24 @@
 --   (e) public.workspace_respond_ownership_nomination       plan 08
 --   (f) public.workspace_redeem_invitation                  plan 10
 --   (g) public.workspace_transition_roster_relationship     plan 10
---   (h) public.workspace_accept_custody_transfer
---       + public.guard_custody_transfer_transition          plan 11
+--   (h) public.workspace_accept_custody_transfer            plan 11
+--   (i) public.guard_custody_transfer_transition, and the
+--       re-scoped custody audit assertion                   plan 11
 --
--- **THIS FILE IS INCOMPLETE AS OF PLAN 06.** Sections (c) through (h) do
--- not exist yet. Plans 08, 10 and 11 APPEND to this file, in that order,
--- and plan 11 closes it and carries the owner review checkpoint. Do not
--- review this file as a finished artifact before plan 11, and do not push
--- it in any state before then. Every appended section is stamped from
--- section (a) and obeys LO-1 through LO-4, R-26 and R-21 below.
+-- ─── FILE COMPLETE — CLOSED BY PLAN 11 ───────────────────────────────────
+-- **THIS FILE IS COMPLETE.** Sections (a) through (i) all exist. Plans 08,
+-- 10 and 11 APPENDed to this file, in that order, and plan 11 closed it and
+-- carried the owner review checkpoint. Every appended section is stamped
+-- from section (a) and obeys LO-1 through LO-4, R-26 and R-21 below.
+--
+-- The plan-06 staged-authorship notice this paragraph replaces declared the
+-- file unfinished and told a reader not to review it as a finished
+-- artifact. That is no longer true, and the sentence is DELETED rather than
+-- left to mislead: reviewing this file as a finished artifact is exactly
+-- what plan 11's checkpoint asks for.
+--
+-- COMPLETE AND UNAPPLIED ARE DIFFERENT THINGS. Nothing here has been
+-- pushed. The next two sections say so, and say when it is.
 --
 -- ─── HUMAN-GATED ─────────────────────────────────────────────────────────
 -- HUMAN-GATED — this project never runs `supabase db push`, `supabase db
@@ -264,7 +274,9 @@
 --   | workspace_attachments          | (none)                             | —                   |
 --   | workspace_grants               | (none)                             | —                   |
 --   | workspace_custody_transfers    | guard_custody_transfer_offered_..  | BEFORE INSERT ROW   |
---   | workspace_custody_transfers    | (no UPDATE guard today; (h) adds)  | —                   |
+--   | workspace_custody_transfers    | guard_custody_transfer_transition  | BEFORE UPDATE ROW   |
+--   |                                | — section (i) adds it; this table  |                     |
+--   |                                | had NO UPDATE guard at all before  |                     |
 --   | workspace_permission_requests  | ..._member_matches                 | BEFORE INS/UPD ROW  |
 --   | workspace_permission_requests  | ..._transition_guard               | BEFORE UPDATE ROW   |
 --   | vault_projects                 | vault_projects_updated_at          | BEFORE UPDATE ROW   |
@@ -2653,6 +2665,573 @@ COMMENT ON FUNCTION public.workspace_transition_roster_relationship(
 ) IS
   'Moves one roster relationship through the D-05/D-17/D-18 state machine -- accept, refuse, block or end -- and writes its audit row, and the block side effect, in ONE transaction (R-06/WSR-12/F16). ONE function with a p_action parameter rather than four, because the state machine is one machine and four copies of LEGAL_ROSTER_EDGES would drift invisibly. LOCK RANKS, IN ORDER: the relationship is first read WITHOUT a lock, because the rank-1 workspace it names cannot be locked in ascending order until it is known -- that read proves nothing and the row is re-read from the locked copy; then rank 1 public.workspaces (a stable serialisation point), then rank 3 public.workspace_roster_relationships, then -- for the block action ONLY -- rank 3.5 public.workspace_roster_blocks, which is LO-1''s auxiliary rule: a child of rank 3, touched after it. All FOR NO KEY UPDATE (LO-2). Rank 9 public.workspace_audit_log is INSERT only and never locked. REVALIDATED AFTER THE LOCK: the row still exists; THE COMPARE-AND-SET, p_expected_state against the LOCKED row''s state, which is the whole of F16 -- no `.eq(''state'', ...)` existed anywhere in the routes, so two concurrent PATCHes could both read proposed and one could overwrite the other''s terminal state; authority, re-derived from the database on BOTH sides (R-21) -- the member side requires the row''s own member_user_id to equal the actor, the workspace side requires a LIVE active unexpired seat holding owner or admin AND permits ONLY `end`, because a workspace may never accept, refuse or block on a Member''s behalf (D-05); and transition legality reproducing LEGAL_ROSTER_EDGES, with refused, blocked and ended terminal. p_actor_side names the CALLING SURFACE and is never an authority claim -- it selects which check runs and never substitutes for one. THE KILL SWITCH IS CONSULTED ONLY ON accept, deliberately: accepting forms new workspace-derived authority, while refuse, block and end are the Member''s own protective actions and D-18 makes revocation unconditional -- disabling a Member''s escape hatch during an incident would trap them in exactly the relationship the control exists to contain. That placement is asserted by source offset in the suite. THE BLOCK SIDE EFFECT IS IN THE SAME TRANSACTION AS THE STATE CHANGE: today the workspace_roster_blocks upsert is a separate write, so a crash between the two leaves a blocked relationship with no block row -- and assertCanPropose reads the BLOCK TABLE, not the state, so the workspace would then be permitted to re-propose to a Member who had just blocked it. ON CONFLICT DO NOTHING is D-51''s upsert-and-ignore. blocked is NOT collapsed to refused at the write: R-23 collapses the two only in the workspace-facing READ (migration 197''s workspace_roster_page), so the workspace cannot distinguish a decline from a block while the Member''s own view keeps the true state. TRIGGERS THAT FIRE: workspace_roster_relationships_updated_at on every UPDATE, which is why updated_at is never set by hand, and migration 197''s deferred audit assertion at COMMIT, which is why target_id is the RELATIONSHIP ROW''S OWN id. The audit action strings are the ones the two routes already emit -- roster.accepted, roster.refused, roster.blocked, roster.ended for the Member surface and workspace.roster.ended for the workspace surface -- so the trail stays continuous rather than splitting into a before-and-after vocabulary. OUTCOME VOCABULARY the route must map: ok, not_found, stale, forbidden, illegal_transition. Only forbidden is an AUTHORITY refusal; it writes its audit row before returning its code and never raises, because a RAISE would roll that row back (R-26). Granted to service_role only.';
 
+
+-- ─── (h) public.workspace_accept_custody_transfer (WSR-09 / WSR-13 / F9) ──
+--
+-- Replaces the PATCH branch of app/api/vault/custody-transfers/route.ts.
+-- Plan 16 does the route side.
+--
+-- WHAT F9 STILL IS, AFTER THE P0 HOTFIX TOOK ITS CHEAP HALF. The route runs
+-- THREE SEPARATE TRANSACTIONS: read the transfer, CAS-update it to
+-- `accepted` with `.eq('state','offered')`, then call
+-- transfer_vault_project_custody(). The hotfix added the stale-custodian
+-- double filter and the single-row check, which closed the dangerous
+-- overwrite. THE RESIDUAL WINDOW IS BETWEEN TRANSACTIONS 2 AND 3: a crash,
+-- a lost connection, a redeploy or a concurrent transfer landing there
+-- leaves the diary saying `accepted` while custody never moved. Split-brain,
+-- on the one record whose custodian decides who can reach it. WSR-09 has
+-- been deferred TWICE for this. It is not deferred again: from here the
+-- diary move, the custody move and the audit row are ONE transaction.
+--
+-- ONE RPC FOR ALL THREE RESPONSES, NOT ONE FOR ACCEPT. p_action carries
+-- `accept`, `decline` or `withdraw`. The diary write is then atomic on
+-- EVERY path rather than only on the path that also moves custody, and the
+-- terminal-state CAS, the authority rule and the audit row are written once
+-- instead of three times drifting apart -- the same reasoning section (g)
+-- gives for serving four roster actions from one function.
+--
+-- ══ THE SINGLE MOST IMPORTANT LINE IN THIS SECTION ══════════════════════
+-- THIS FUNCTION CALLS public.transfer_vault_project_custody(). IT NEVER
+-- ISSUES ITS OWN UPDATE AGAINST public.vault_projects. Migrations 190 and
+-- 196 both exempt `current_user IN ('postgres')`, which is true inside ANY
+-- postgres-owned SECURITY DEFINER function -- including this one. A raw
+-- UPDATE here WOULD WORK. THAT IS PRECISELY WHY IT MUST NOT BE WRITTEN:
+-- both guards' headers describe their exemption as function-scoped while
+-- their code enforces it as role-scoped, and the phase's answer to that gap
+-- is to remove the need to rely on the sentence rather than to churn two
+-- applied, reviewed, text-locked production migrations. One sanctioned
+-- write path to vault_projects.user_id, kept literally true, at zero cost.
+-- __tests__/migration-198.test.ts holds the line in two places: a file-wide
+-- assertion that no function here SETs user_id, and a section-local one
+-- whose failure message names the role-scoped exemption.
+--
+-- WHAT THE NESTED CALL BUYS, BESIDES THE DOCTRINE. A nested SECURITY
+-- DEFINER call runs in the SAME transaction, so atomicity is preserved
+-- exactly as it would be for an inline UPDATE. Its `WHERE id = p_project_id
+-- AND user_id = p_from_user_id` double filter and its NULL-return
+-- stale-custodian semantics come along for free, so this function does not
+-- reimplement either.
+--
+-- BOTH vault_projects GUARDS FIRE ON THAT NESTED UPDATE AND BOTH MUST ADMIT
+-- IT. guard_owner_immutable (migration 139, exempted for this one table by
+-- migration 196) fires FIRST -- trigger-name alphabetical order, and 'g' <
+-- 't' puts it ahead of trg_guard_vault_projects_user_id_immutable
+-- (migration 190). That is exactly the interaction that broke custody
+-- transfer in production until 196: 190's suite was green, its function
+-- existed and the route called it correctly, and the transfer still raised
+-- 42501 because a differently-named second trigger also fired. NO TEXT-LOCK
+-- IN THIS FILE CAN PROVE THAT PAIR ADMITS THIS CALL. Plan 17's owner-run
+-- behavioural harness, performing a real custody accept, is the proof --
+-- and 38.0.1-VERIFICATION.md Part B row 7, which flipped from ERROR to PASS
+-- when 196 landed, is the precedent for why.
+--
+-- ══ WHY THE CUSTODY MOVE COMES BEFORE THE DIARY UPDATE ══════════════════
+-- A DEVIATION FROM SECTION (a)'s STEP ORDER, JUSTIFIED HERE AT THE POINT OF
+-- DEVIATION AS THE TEMPLATE REQUIRES. The sanctioned function returns NULL
+-- rather than raising when the custodian has moved. If the diary UPDATE ran
+-- first and that NULL then had to be reported as an OUTCOME CODE, the
+-- function would RETURN -- and a RETURN COMMITS. The transaction would
+-- commit a transfer row reading `accepted` with custody unmoved: F9's
+-- split-brain, rebuilt inside the very function written to close it. Doing
+-- the custody move first means the NULL branch has mutated NOTHING and can
+-- return its outcome code honestly.
+--
+-- LO-1 IS NOT AFFECTED. LO-1 governs LOCK ACQUISITION, and both row locks
+-- (rank 7 then rank 8) are already held before either write, so neither
+-- write acquires anything new and there is no ordering hazard between them.
+-- Only the WRITE order is 8 -> 7 -> 9, and it is deliberate.
+--
+-- ══ NO D-56 KILL SWITCH HERE, DELIBERATELY ══════════════════════════════
+-- STATE IT EXPLICITLY SO A FUTURE REVIEWER DOES NOT "FIX" IT. Custody is a
+-- MEMBER act. app/api/vault/custody-transfers/route.ts is gated with
+-- requireMemberApiAccount ONLY and has carried ZERO workspace-derived
+-- authority since the F1 hotfix deleted assertMayOffer's workspace-admin
+-- branch -- there is no longer any workspace lookup for authority to be
+-- proved through, which is why the F7 audit found the kill switch correctly
+-- absent from that file. And workspace_custody_transfers.workspace_id is
+-- NULLABLE precisely because a transfer may be offered outside any
+-- workspace context at all (migration 185). Gating a Member's disposition
+-- of their OWN record on a workspace-feature control would be a category
+-- error, and for a NULL-workspace transfer it would be gating on a
+-- workspace that does not exist. Contrast section (g), which consults the
+-- switch on `accept` only, and section (f), which consults it first: those
+-- flows form workspace-derived authority. This one does not.
+--
+-- ══ THE NULLABLE workspace_id ON THE AUDIT PATH -- THE CHOICE, STATED ════
+-- THIS IS THE ONE PLACE IN THE PHASE WHERE THE AUDIT-ASSERTION TRIGGER AND
+-- A NULLABLE COLUMN CAN CONTRADICT EACH OTHER. The facts:
+--
+--   * workspace_audit_log.workspace_id is NOT NULL and references
+--     public.workspaces (migration 182).
+--   * workspace_custody_transfers.workspace_id is NULLABLE (migration 185).
+--   * migration 197's assert_workspace_custody_transfer_change_audited is
+--     an AFTER UPDATE OF state deferred constraint trigger that fires
+--     UNCONDITIONALLY and demands an audit row at COMMIT.
+--
+-- Those three cannot all hold. For a transfer offered outside any workspace
+-- context, NO audit row can be written -- and 197 as written would then
+-- abort the transaction at COMMIT, making every direct Member-to-Member
+-- custody accept, decline and withdraw IMPOSSIBLE. That is true of the
+-- CURRENT route too, not only of the RPC that replaces it.
+--
+-- THE CHOICE MADE HERE: the audit row is written WHENEVER workspace_id IS
+-- NOT NULL -- matching the route's existing `if (row.workspace_id)`
+-- condition, so the trail stays continuous -- and the block after section
+-- (i) RE-SCOPES migration 197's constraint trigger, by name and with a WHEN
+-- clause, to fire only on rows that HAVE a workspace. The two now agree.
+-- This is 197's own stated discipline applied one step further: it
+-- column-scoped that trigger because a constraint that fires on writes
+-- nobody considers consequential is one that gets disabled rather than one
+-- that gets satisfied, and a constraint that demands a row the schema makes
+-- impossible to write is not strict, it is unsatisfiable.
+--
+-- THE TWO ALTERNATIVES, AND WHY NOT. Making
+-- workspace_audit_log.workspace_id nullable would be a far larger change,
+-- reaching every policy, index and reader of that table including D-50's
+-- both-sides read and 197's redacted audit page -- rejected. Refusing to
+-- resolve a NULL-workspace transfer would delete the direct
+-- Member-to-Member custody flow the column was made nullable to support --
+-- rejected. Plan 16's executor must not contradict this choice; it is
+-- carried verbatim into 38.0.2-11-SUMMARY.md and to the owner checkpoint.
+--
+-- ══ WHAT STAYS IN THE ROUTE (the KEEP list) ═════════════════════════════
+-- lib/workspaces/custody-transfer.ts's assertMayRespond,
+-- isLegalTransferTransition and describeTransferEffect all STAY, as the
+-- independent second layer this repo's doctrine requires (078, 136, 187,
+-- 190, 192, 196) -- including assertMayRespond's self-dealing check, which
+-- exists so that if assertMayOffer is ever widened again the same person
+-- still cannot both offer and resolve one transfer. The authority predicate
+-- below copies it exactly rather than deduplicating it.
+CREATE OR REPLACE FUNCTION public.workspace_accept_custody_transfer(
+  p_actor_id       UUID,   -- asserted by the route AFTER requireMemberApiAccount
+                           -- (R-21 Option A)
+  p_transfer_id    UUID,
+  p_action         TEXT,   -- 'accept' | 'decline' | 'withdraw'
+  p_expected_state TEXT    -- caller-side CAS token; NULL means "do not compare"
+)
+RETURNS TABLE (
+  outcome     TEXT,
+  transfer_id UUID,
+  project_id  UUID,
+  audit_id    UUID
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  -- Every value the body reads or writes lives in a v_ local, so the OUT
+  -- parameter names above are never referenced as expressions inside the
+  -- body (plan 06's rule, kept). It matters more here than anywhere else in
+  -- this file: `project_id` is also a COLUMN NAME on the table this
+  -- function locks, and an unqualified mention of it would be ambiguous.
+  v_transfer    public.workspace_custody_transfers%ROWTYPE;
+  v_custodian   UUID;
+  v_authorized  BOOLEAN;
+  v_new_state   TEXT;
+  v_action_name TEXT;
+  v_subject_id  UUID;
+  v_moved_id    UUID;
+  v_audit_id    UUID;
+BEGIN
+  -- (0) LO-4: bound the wait.
+  SET LOCAL lock_timeout = '3s';
+
+  -- A validation error, NOT audited, so RAISE is correct (R-26). The three
+  -- actions are a closed vocabulary the route's Zod enum already refuses to
+  -- widen; a fourth is a caller defect, not a business outcome.
+  IF p_action IS NULL OR p_action NOT IN ('accept', 'decline', 'withdraw') THEN
+    RAISE EXCEPTION 'p_action must be accept, decline or withdraw'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- (1) NO KILL-SWITCH CONSULTATION. See the section header: custody is a
+  --     Member act carrying no workspace-derived authority (F1/F7), and the
+  --     transfer's workspace_id is nullable because a transfer may be
+  --     offered outside any workspace at all. Deliberate, not omitted.
+
+  -- (2) LOCK, IN ASCENDING LO-1 RANK ONLY: 7 -> 8.
+  --
+  -- Rank 7, the diary row. THIS LOCK IS THE ANSWER TO THE DOUBLE-RESOLVE
+  -- half of F9: from here to COMMIT no other transaction can move this row,
+  -- so the state read below is the state written against.
+  SELECT * INTO v_transfer
+    FROM public.workspace_custody_transfers t
+   WHERE t.id = p_transfer_id
+     FOR NO KEY UPDATE;   -- LO-2: NO KEY, never the stronger mode
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::TEXT, NULL::UUID, NULL::UUID, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Rank 8, the shared resource, LAST -- which is the whole reason
+  -- vault_projects sits at the bottom of LO-1. It is the most contended row
+  -- in the model and the join point of the two flows most likely to
+  -- collide: custody acceptance arrives at it as 7 -> 8 and roster and
+  -- attachment work arrives as 1-6 -> 8, so ranking it last means both
+  -- flows approach it in the SAME direction -- lock-order inversion is what
+  -- produces deadlocks -- and every transaction holds it for the shortest
+  -- possible interval, here only the few statements that remain.
+  --
+  -- TAKEN ON ALL THREE ACTIONS, NOT ONLY ON ACCEPT. A decline and a
+  -- withdraw do not read or write this row, so the lock could have been put
+  -- inside the accept branch. It is not, deliberately: one uniform lock
+  -- sequence for every action means two concurrent responses to the same
+  -- offer can never interleave into two different orders, which is the
+  -- property LO-1 exists to buy, and it is worth more than a lock held for
+  -- microseconds on a flow that runs at human speed. FOR NO KEY UPDATE, as
+  -- everywhere in this file (LO-2): public.vault_projects is a foreign-key
+  -- parent of tracks, assets, documents and attachments among others, and
+  -- the stronger mode would block every concurrent child insert against it
+  -- for the whole transaction.
+  SELECT p.user_id INTO v_custodian
+    FROM public.vault_projects p
+   WHERE p.id = v_transfer.project_id
+     FOR NO KEY UPDATE;
+
+  IF NOT FOUND THEN
+    -- Unreachable through the foreign key (ON DELETE CASCADE would have
+    -- taken the transfer row with the project), and handled anyway rather
+    -- than left to a NULL comparison further down.
+    RETURN QUERY SELECT 'not_found'::TEXT, v_transfer.id, v_transfer.project_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- (3) REVALIDATE EVERY PRECONDITION *AFTER* THE LOCK.
+  --
+  -- THE COMPARE-AND-SET, against the LOCKED row. NOT audited (R-26):
+  -- losing a race is a business outcome about the caller's stale copy, not
+  -- a fact about anyone's authority.
+  IF p_expected_state IS NOT NULL
+     AND v_transfer.state IS DISTINCT FROM p_expected_state THEN
+    RETURN QUERY SELECT 'stale'::TEXT, v_transfer.id, v_transfer.project_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- THE TERMINAL-STATE CHECK. This replaces the route's
+  -- `.eq('state', 'offered')` filter, which until now was the ONLY thing in
+  -- the entire system preventing a double-resolve of a custody offer --
+  -- workspace_custody_transfers has never carried an UPDATE guard, a gap
+  -- migration 197 names explicitly while installing the equivalent on its
+  -- own ownership-transfer table. Section (i) closes it at the database
+  -- layer; this is the same rule where the lock is held, so the caller gets
+  -- an outcome code instead of a raw check_violation. NOT audited.
+  IF v_transfer.state <> 'offered' THEN
+    RETURN QUERY SELECT 'already_resolved'::TEXT, v_transfer.id, v_transfer.project_id, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- AUTHORITY, COPYING assertMayRespond's PREDICATE EXACTLY.
+  --   accept / decline -- only to_user_id, AND NEVER THE OFFERER.
+  --   withdraw         -- only offered_by or from_user_id.
+  -- THE OFFERER MAY NEVER ALSO ACCEPT. That is the F1 attack shape: one
+  -- person performing both sides of an act D-29 requires to be two-sided.
+  -- It is refused here, refused again by assertMayRespond at the route --
+  -- kept deliberately as the independent second layer, self-dealing check
+  -- included -- and refused a third time at offer time by migration 187's
+  -- INSERT guard. Three layers agreeing, which is this repo's doctrine
+  -- rather than deduplication.
+  IF p_action IN ('accept', 'decline') THEN
+    v_authorized := v_transfer.to_user_id IS NOT DISTINCT FROM p_actor_id
+                AND v_transfer.offered_by IS DISTINCT FROM p_actor_id;
+  ELSE
+    v_authorized := v_transfer.offered_by   IS NOT DISTINCT FROM p_actor_id
+                 OR v_transfer.from_user_id IS NOT DISTINCT FROM p_actor_id;
+  END IF;
+
+  IF NOT COALESCE(v_authorized, FALSE) THEN
+    -- An AUTHORITY refusal, so it is audited and therefore MUST NOT RAISE:
+    -- a RAISE rolls the transaction back and takes the row written moments
+    -- earlier with it (R-26). Written only when the transfer HAS a
+    -- workspace -- see the section header's stated choice; a refusal
+    -- mutates nothing, so migration 197's assertion is not involved on this
+    -- path either way. subject_member_id is the current custodian: the
+    -- action concerns THEIR record (D-22).
+    IF v_transfer.workspace_id IS NOT NULL THEN
+      INSERT INTO public.workspace_audit_log (
+        workspace_id, actor_user_id, subject_member_id,
+        action, permission_relied_on, target_type, target_id, changes
+      ) VALUES (
+        v_transfer.workspace_id, p_actor_id, v_transfer.from_user_id,
+        'custody.transfer.refused', NULL,
+        'workspace_custody_transfer', v_transfer.id,
+        jsonb_build_object('refusal', 'forbidden', 'attempted', p_action)
+      )
+      RETURNING id INTO v_audit_id;
+    END IF;
+
+    RETURN QUERY SELECT 'forbidden'::TEXT, v_transfer.id, v_transfer.project_id, v_audit_id;
+    RETURN;
+  END IF;
+
+  -- THE STALE-CUSTODIAN PRE-CHECK, ON ACCEPT ONLY, AGAINST THE LOCKED ROW.
+  -- This is the check the P0 hotfix added at the route -- and it is now
+  -- INSIDE THE SAME TRANSACTION AS THE WRITE, which is the whole of what
+  -- F9's residual window was. If the custodian moved after the offer, the
+  -- offer is stale and can no longer be accepted; the route maps this one
+  -- code to one 409, exactly as it does today.
+  IF p_action = 'accept'
+     AND v_custodian IS DISTINCT FROM v_transfer.from_user_id THEN
+    IF v_transfer.workspace_id IS NOT NULL THEN
+      INSERT INTO public.workspace_audit_log (
+        workspace_id, actor_user_id, subject_member_id,
+        action, permission_relied_on, target_type, target_id, changes
+      ) VALUES (
+        v_transfer.workspace_id, p_actor_id, v_transfer.from_user_id,
+        'custody.transfer.refused', NULL,
+        'workspace_custody_transfer', v_transfer.id,
+        jsonb_build_object('refusal', 'stale_custodian')
+      )
+      RETURNING id INTO v_audit_id;
+    END IF;
+
+    RETURN QUERY SELECT 'stale_custodian'::TEXT, v_transfer.id, v_transfer.project_id, v_audit_id;
+    RETURN;
+  END IF;
+
+  v_new_state := CASE p_action
+                   WHEN 'accept'  THEN 'accepted'
+                   WHEN 'decline' THEN 'declined'
+                   ELSE 'withdrawn'
+                 END;
+
+  -- The audit action strings the route ALREADY EMITS, so the trail stays
+  -- continuous across this change rather than splitting into a
+  -- before-and-after vocabulary. Same reasoning as section (g).
+  v_action_name := CASE p_action
+                     WHEN 'accept'  THEN 'custody.transfer.accepted'
+                     WHEN 'decline' THEN 'custody.transfer.declined'
+                     ELSE 'custody.transfer.withdrawn'
+                   END;
+
+  -- The route attributes an accept to the incoming custodian and the other
+  -- two to the outgoing one; reproduced rather than normalised, for the
+  -- same continuity reason (D-22).
+  v_subject_id := CASE p_action
+                    WHEN 'accept' THEN v_transfer.to_user_id
+                    ELSE v_transfer.from_user_id
+                  END;
+
+  -- (4) MUTATE. THE CUSTODY MOVE COMES FIRST -- see the section header for
+  --     why, at length: the sanctioned function reports a moved custodian
+  --     by returning NULL, and a NULL reported as an outcome code RETURNS,
+  --     and a RETURN COMMITS. Doing this before the diary UPDATE means that
+  --     branch has mutated nothing and can say so honestly instead of
+  --     committing the split-brain this function exists to close.
+  --
+  -- THE ONE SANCTIONED WRITE PATH TO vault_projects.user_id. Not an UPDATE
+  -- here -- see this section's header. A raw UPDATE would be admitted by
+  -- both guards, because their exemption is role-scoped and this function
+  -- is postgres-owned; that is exactly why it is not written.
+  IF p_action = 'accept' THEN
+    v_moved_id := public.transfer_vault_project_custody(
+      v_transfer.project_id, v_transfer.from_user_id, v_transfer.to_user_id
+    );
+
+    IF v_moved_id IS NULL THEN
+      -- The sanctioned function's OWN stale-custodian semantics, surfaced
+      -- as the SAME outcome code as the pre-check above so the route maps
+      -- one code to one 409. Unreachable in practice -- the rank-8 lock is
+      -- held, so nothing can move user_id between the pre-check and here --
+      -- and kept as defence in depth rather than as an assumption, because
+      -- nothing has mutated yet at this point and the honest report costs
+      -- nothing.
+      IF v_transfer.workspace_id IS NOT NULL THEN
+        INSERT INTO public.workspace_audit_log (
+          workspace_id, actor_user_id, subject_member_id,
+          action, permission_relied_on, target_type, target_id, changes
+        ) VALUES (
+          v_transfer.workspace_id, p_actor_id, v_transfer.from_user_id,
+          'custody.transfer.refused', NULL,
+          'workspace_custody_transfer', v_transfer.id,
+          jsonb_build_object('refusal', 'stale_custodian')
+        )
+        RETURNING id INTO v_audit_id;
+      END IF;
+
+      RETURN QUERY SELECT 'stale_custodian'::TEXT, v_transfer.id, v_transfer.project_id, v_audit_id;
+      RETURN;
+    END IF;
+  END IF;
+
+  -- THE DIARY WRITE, now in the same transaction as the custody move. One
+  -- row, keyed on the primary key, so it can never match more than one.
+  -- The table carries no updated_at column and no timestamp trigger, so
+  -- responded_at is set by hand here -- unlike role, status and state
+  -- elsewhere in this file, where update_updated_at() would overwrite it.
+  -- Section (i)'s BEFORE UPDATE guard fires on this statement and admits it
+  -- because OLD.state was revalidated as `offered` above.
+  UPDATE public.workspace_custody_transfers
+     SET state        = v_new_state,
+         responded_at = now()
+   WHERE id = v_transfer.id;
+
+  -- (5) AUDIT, IN THE SAME TRANSACTION -- when there is a workspace to
+  --     audit against. target_id is the TRANSFER ROW's own id, which
+  --     migration 197's deferred constraint trigger matches on; any other
+  --     value fails the whole transaction at COMMIT. `changes` carries the
+  --     project id and the two party ids and nothing else -- no restricted
+  --     PII, and no key migration 197 section (f)'s guard refuses (WSR-19).
+  IF v_transfer.workspace_id IS NOT NULL THEN
+    INSERT INTO public.workspace_audit_log (
+      workspace_id, actor_user_id, subject_member_id,
+      action, permission_relied_on, target_type, target_id, changes
+    ) VALUES (
+      v_transfer.workspace_id, p_actor_id, v_subject_id,
+      v_action_name, NULL, 'workspace_custody_transfer', v_transfer.id,
+      jsonb_build_object(
+        'projectId',  v_transfer.project_id,
+        'fromUserId', v_transfer.from_user_id,
+        'toUserId',   v_transfer.to_user_id
+      )
+    )
+    RETURNING id INTO v_audit_id;
+  END IF;
+
+  RETURN QUERY SELECT 'ok'::TEXT, v_transfer.id, v_transfer.project_id, v_audit_id;
+END;
+$$;
+
+-- Migration 123's grant posture, NOT migration 046's.
+REVOKE EXECUTE ON FUNCTION public.workspace_accept_custody_transfer(
+  UUID, UUID, TEXT, TEXT
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.workspace_accept_custody_transfer(
+  UUID, UUID, TEXT, TEXT
+) TO service_role;
+
+COMMENT ON FUNCTION public.workspace_accept_custody_transfer(
+  UUID, UUID, TEXT, TEXT
+) IS
+  'Resolves ONE two-sided record-custody offer -- accept, decline or withdraw -- and moves the diary row, the custody itself and the audit row in ONE transaction (R-06/WSR-09/F9). WHAT F9 WAS: app/api/vault/custody-transfers/route.ts PATCH ran THREE separate transactions -- read the transfer, CAS it to accepted, then call transfer_vault_project_custody -- and a crash or a concurrent transfer between the last two left the diary saying accepted while custody never moved. ONE function with a p_action parameter rather than three, so the diary write is atomic on every path and the CAS, the authority rule and the audit row exist once instead of three times drifting apart. LOCK RANKS, IN ORDER: rank 7 public.workspace_custody_transfers, then rank 8 public.vault_projects, both FOR NO KEY UPDATE (LO-2), the rank-8 lock taken on ALL THREE actions so two concurrent responses can never interleave into two different orders. Rank 9 public.workspace_audit_log is INSERT only and never locked. REVALIDATED AFTER THE LOCK: the transfer exists; the project exists; THE COMPARE-AND-SET of p_expected_state against the LOCKED row; the terminal-state check, which replaces the route''s `.eq(''state'', ''offered'')` -- until now the ONLY double-resolve protection in the system, because this table has never carried an UPDATE guard; AUTHORITY, copying assertMayRespond exactly -- only to_user_id may accept or decline, only offered_by or from_user_id may withdraw, AND THE OFFERER MAY NEVER ALSO ACCEPT, which is the F1 attack shape refused here, again by assertMayRespond at the route and a third time by migration 187''s INSERT guard at offer time; and, on accept, the STALE-CUSTODIAN pre-check against the locked vault_projects row, the P0 hotfix''s check now inside the same transaction as the write, which is the whole of what F9''s residual window was. IT CALLS public.transfer_vault_project_custody() AND NEVER WRITES vault_projects.user_id ITSELF: migrations 190 and 196 exempt current_user IN (postgres), which is true inside ANY postgres-owned definer function including this one, so a raw UPDATE here WOULD work -- and that is precisely why it must not be written. One sanctioned write path, kept literally true; the nested definer call runs in the same transaction so atomicity is preserved, and the double filter and the NULL-return stale-custodian semantics come along for free. THE CUSTODY MOVE IS ISSUED BEFORE THE DIARY UPDATE, deliberately: a NULL return reported as an outcome code RETURNS, and a RETURN COMMITS, so doing it first means that branch has mutated nothing rather than committing the split-brain this function closes. LO-1 is unaffected -- both locks are already held, so neither write acquires anything new. TRIGGERS THAT FIRE ON THE NESTED UPDATE: guard_owner_immutable (migration 139, exempted for vault_projects by 196) FIRST by alphabetical trigger name, then trg_guard_vault_projects_user_id_immutable (190); BOTH must admit it, and that pair is exactly what broke custody transfer in production until 196, so plan 17''s behavioural run is the proof, not this file''s text-lock suite. THE D-56 KILL SWITCH IS DELIBERATELY NOT CONSULTED: custody is a Member act, the route has carried zero workspace-derived authority since the F1 fix, and workspace_custody_transfers.workspace_id is NULLABLE because a transfer may be offered outside any workspace at all. THE AUDIT ROW IS WRITTEN WHENEVER workspace_id IS NOT NULL, matching the route''s existing condition, because workspace_audit_log.workspace_id is NOT NULL and no audit row can exist for a transfer with no workspace; the re-scoped constraint trigger below section (i) makes migration 197''s deferred assertion agree, so the two cannot contradict. target_id is the TRANSFER ROW''S OWN id. OUTCOME VOCABULARY the route must map: ok, not_found, stale, already_resolved, forbidden, stale_custodian. forbidden is an AUTHORITY refusal and is audited before returning its code, never raised, because a RAISE would roll that row back (R-26). Granted to service_role only.';
+
+
+-- ─── (i) public.guard_custody_transfer_transition — the terminal-state ────
+--         guard workspace_custody_transfers has NEVER had, plus the
+--         re-scoped custody audit assertion that agrees with section (h).
+--
+-- WHY THIS TRIGGER LIVES IN 198 AND NOT IN 197. It is the DATABASE TWIN of
+-- the CAS section (h) internalises, and the two should be read together:
+-- section (h) refuses a non-`offered` transfer with an outcome code where
+-- the lock is held, and this refuses the same write at the table, for every
+-- writer, including one that never goes through the RPC. Migration 197
+-- installs precisely this shape on its own ownership-transfer table and
+-- says in its own header that workspace_custody_transfers conspicuously
+-- lacks it and that plan 11 adds it. This is plan 11.
+--
+-- WHAT IT CLOSES. Until now the ONLY thing preventing a double-resolve of a
+-- custody offer was the route's `.eq('state', 'offered')` filter -- an
+-- application-layer condition in a flow that spanned three transactions.
+-- That is the last route-only invariant in the custody flow, and after this
+-- it is a database one. service_role carries BYPASSRLS, so an RLS policy
+-- would be inert against the only role that can write this table; triggers
+-- bind it. Same reasoning migration 197 gives for its own guard.
+--
+-- Shape copied from migration 197's guard_ownership_transfer_transition,
+-- which itself mirrors migration 195's
+-- workspace_permission_request_transition_guard. A CHECK constraint cannot
+-- express any of this, because every rule compares OLD against NEW -- the
+-- mechanism correction R-17 recorded for migration 190's trigger.
+--
+-- TRIGGER FIRING ORDER ON THIS TABLE. On BEFORE UPDATE this is the only row
+-- trigger: the table carries no updated_at column and therefore no
+-- timestamp trigger, and migration 187's
+-- guard_custody_transfer_offered_by_holder is BEFORE INSERT only.
+--
+-- IS DISTINCT FROM on the identity comparison, not `<>`: workspace_id is
+-- NULLABLE on this table, and `NULL <> NULL` is NULL, which an IF treats as
+-- false -- so a plain inequality would silently permit the one identity
+-- change involving the one nullable column. Fail closed on purpose.
+CREATE OR REPLACE FUNCTION public.guard_custody_transfer_transition()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF OLD.state <> 'offered' THEN
+    RAISE EXCEPTION 'a record custody offer in state % is terminal and cannot be changed -- make a new offer instead (D-29)', OLD.state
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF NEW.state NOT IN ('accepted', 'declined', 'withdrawn') THEN
+    RAISE EXCEPTION 'a record custody offer leaves state ''offered'' only as accepted, declined or withdrawn -- got %', NEW.state
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF NEW.project_id      IS DISTINCT FROM OLD.project_id
+     OR NEW.from_user_id IS DISTINCT FROM OLD.from_user_id
+     OR NEW.to_user_id   IS DISTINCT FROM OLD.to_user_id
+     OR NEW.offered_by   IS DISTINCT FROM OLD.offered_by
+     OR NEW.workspace_id IS DISTINCT FROM OLD.workspace_id THEN
+    RAISE EXCEPTION 'the subject of a record custody offer is immutable -- make a new offer instead (D-29)'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- Trigger-internal only: clients never call this directly, and the trigger
+-- fires regardless of caller EXECUTE. Matches the guard-function posture of
+-- migrations 070, 126, 139, 187, 190, 196 and 197.
+REVOKE EXECUTE ON FUNCTION public.guard_custody_transfer_transition()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS guard_custody_transfer_transition ON public.workspace_custody_transfers;
+CREATE TRIGGER guard_custody_transfer_transition
+  BEFORE UPDATE ON public.workspace_custody_transfers
+  FOR EACH ROW EXECUTE FUNCTION public.guard_custody_transfer_transition();
+
+COMMENT ON FUNCTION public.guard_custody_transfer_transition() IS
+  'BEFORE UPDATE on workspace_custody_transfers. All three non-offered states are terminal, the three legal exits are accepted, declined and withdrawn, and the five identity columns -- project_id, from_user_id, to_user_id, offered_by, workspace_id -- are immutable. The database twin of the compare-and-set migration 198 section (h) internalises: until this trigger existed the ONLY thing preventing a double-resolve of a custody offer was the route''s `.eq(''state'', ''offered'')` filter, in a flow spanning three separate transactions (finding F9). service_role carries BYPASSRLS so an RLS policy would be inert against the only role that writes this table; triggers bind it. Mirrors migration 197''s guard_ownership_transfer_transition, which mirrors migration 195''s workspace_permission_request_transition_guard. IS DISTINCT FROM rather than <> on the identity comparison because workspace_id is nullable and NULL <> NULL is NULL, which an IF treats as false.';
+
+-- ─── The re-scoped custody audit assertion — see section (h)'s stated ─────
+--     choice about the nullable workspace_id.
+--
+-- READ THIS BEFORE CHANGING IT. Migration 197 installs
+-- assert_workspace_custody_transfer_change_audited as an unconditional
+-- AFTER UPDATE OF state deferred constraint trigger demanding an audit row
+-- at COMMIT. But workspace_audit_log.workspace_id is NOT NULL (migration
+-- 182) while workspace_custody_transfers.workspace_id is NULLABLE
+-- (migration 185, deliberately -- a transfer may be offered outside any
+-- workspace context). For such a transfer NO audit row can be written at
+-- all, so the unconditional form makes every direct Member-to-Member
+-- custody accept, decline and withdraw abort at COMMIT -- the CURRENT route
+-- included, not only the RPC that replaces it.
+--
+-- The trigger is therefore RE-CREATED HERE, under its own name, with a WHEN
+-- clause scoping it to rows that HAVE a workspace. Nothing else about it
+-- changes: same function, same column scope, same AFTER UPDATE OF state,
+-- same DEFERRABLE INITIALLY DEFERRED, same table, same name. This is
+-- migration 197's own stated discipline carried one step further -- it
+-- column-scoped this family of triggers because a constraint that fires on
+-- writes nobody considers consequential is one that gets disabled rather
+-- than one that gets satisfied, and a constraint that demands a row the
+-- schema makes impossible to write is not strict, it is unsatisfiable.
+--
+-- 198 IS APPLIED AFTER 197, IN THE SAME PUSH WINDOW, so this re-creation
+-- lands second and wins. MIGRATION 197 IS NOT EDITED: this is the same
+-- later-migration-adjusts-an-earlier-object pattern migration 196 used on
+-- migration 139's guard, and for the same reason -- churning an authored,
+-- reviewed, text-locked file is higher risk than adjusting its object from
+-- the file that discovered the problem. It is the FIRST item at plan 11's
+-- owner checkpoint.
+--
+-- WHAT IS AND IS NOT GIVEN UP. The three OTHER assertion triggers migration
+-- 197 installs are untouched and stay unconditional. For custody, WSR-13's
+-- guarantee now reads: every custody resolution that CAN be audited MUST
+-- be. A non-workspace transfer is still written only through section (h),
+-- still guarded by guard_custody_transfer_transition above, and still moves
+-- custody only through the one sanctioned function.
+DROP TRIGGER IF EXISTS assert_workspace_custody_transfer_change_audited
+  ON public.workspace_custody_transfers;
+CREATE CONSTRAINT TRIGGER assert_workspace_custody_transfer_change_audited
+  AFTER UPDATE OF state ON public.workspace_custody_transfers
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW
+  WHEN (NEW.workspace_id IS NOT NULL)
+  EXECUTE FUNCTION public.assert_workspace_change_is_audited();
 
 -- ─── END OF FILE ──────────────────────────────────────────────────────────
 -- `NOTIFY pgrst, 'reload schema';` MUST REMAIN THE LAST STATEMENT IN THIS

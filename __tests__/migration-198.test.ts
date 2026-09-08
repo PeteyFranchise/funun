@@ -9,6 +9,7 @@ import path from 'path'
 import { OWNERSHIP_TRANSFER_STATE_VALUES } from '@/lib/workspaces/ownership-transfer'
 import { LEGAL_ROSTER_EDGES } from '@/lib/workspaces/roster'
 import { WORKSPACE_ROLE_VALUES } from '@/lib/workspaces/types'
+import { CUSTODY_TRANSFER_STATE_VALUES } from '@/lib/workspaces/custody-transfer'
 
 // ─── migration 198 — the transactional workspace RPC family ───────────────
 //
@@ -226,6 +227,86 @@ function lockSites(): { line: number; mode: string }[] {
   return sites
 }
 
+/**
+ * Every `INSERT INTO public.workspace_audit_log` in `body`, as a map from
+ * COLUMN NAME to the expression written into it (plan 11).
+ *
+ * Written as a parser rather than a regex because the target_id expression
+ * is followed by `changes`, which is always a `jsonb_build_object(...)` call
+ * — nested parentheses and quoted literals that a flat comma split walks
+ * straight into. Tracks paren depth and single-quoted string state and
+ * splits on TOP-LEVEL commas only.
+ *
+ * This exists so the audit-target assertions can name the column they are
+ * checking instead of counting positions, which would break silently the
+ * first time a future section writes its column list in a different order.
+ */
+function auditInsertColumnValues(body: string): Record<string, string>[] {
+  const marker = 'INSERT INTO public.workspace_audit_log'
+  const rows: Record<string, string>[] = []
+  let at = body.indexOf(marker)
+
+  while (at >= 0) {
+    const openColumns = body.indexOf('(', at)
+    const closeColumns = body.indexOf(')', openColumns)
+    const columns = body
+      .slice(openColumns + 1, closeColumns)
+      .split(',')
+      .map((column) => column.trim())
+
+    const valuesAt = body.indexOf('VALUES', closeColumns)
+    const openValues = body.indexOf('(', valuesAt)
+
+    const values: string[] = []
+    let current = ''
+    let depth = 0
+    let inString = false
+    let cursor = openValues
+
+    for (; cursor < body.length; cursor += 1) {
+      const character = body[cursor]
+
+      if (inString) {
+        current += character
+        if (character === "'") inString = false
+        continue
+      }
+      if (character === "'") {
+        inString = true
+        current += character
+        continue
+      }
+      if (character === '(') {
+        depth += 1
+        if (depth === 1) continue
+      }
+      if (character === ')') {
+        depth -= 1
+        if (depth === 0) {
+          values.push(current.trim())
+          break
+        }
+      }
+      if (character === ',' && depth === 1) {
+        values.push(current.trim())
+        current = ''
+        continue
+      }
+      current += character
+    }
+
+    const row: Record<string, string> = {}
+    columns.forEach((column, index) => {
+      row[column] = normalizeWhitespace(values[index] ?? '')
+    })
+    rows.push(row)
+
+    at = body.indexOf(marker, cursor)
+  }
+
+  return rows
+}
+
 // ══ Header discipline ════════════════════════════════════════════════════
 
 describe('migration 198 — header states the doctrine every later plan copies', () => {
@@ -242,9 +323,23 @@ describe('migration 198 — header states the doctrine every later plan copies',
     expect(prose).toContain('never staged ahead of that window')
   })
 
-  it('declares itself incomplete until plan 11', () => {
-    expect(prose).toContain('THIS FILE IS INCOMPLETE AS OF PLAN 06')
-    expect(prose).toMatch(/Plans 08, 10 and 11 APPEND to this file/)
+  // REPLACES plan 06's 'declares itself incomplete until plan 11'. That test
+  // was correct for four plans and is now the OPPOSITE of what the file must
+  // say: plan 11 appended sections (h) and (i), and its checkpoint asks the
+  // owner to review this file AS A FINISHED ARTIFACT — which the plan-06
+  // notice explicitly told a reader not to do. The header and its twin test
+  // change together, which is the same discipline LO1_RANKS and the header's
+  // rank table are held to. It is NOT a weakening: the assertion is stronger,
+  // because it additionally requires the stale notice to be GONE rather than
+  // merely contradicted further down.
+  it('declares itself COMPLETE as of plan 11, and keeps the staged-authorship record', () => {
+    expect(prose).toContain('THIS FILE IS COMPLETE')
+    expect(prose).toContain('Sections (a) through (i) all exist')
+    expect(prose).toMatch(/Plans 08, 10 and 11 APPENDed to this file/)
+    expect(prose).not.toContain('THIS FILE IS INCOMPLETE')
+    // Complete is not applied. The distinction is load-bearing: 198 pushes
+    // with 197 and the plans 12-16 TypeScript in one window at plan 17.
+    expect(prose).toContain('COMPLETE AND UNAPPLIED ARE DIFFERENT THINGS')
   })
 
   it('takes its number from the LIVE LEDGER and reserves 199-200 and 201-202', () => {
@@ -1524,6 +1619,390 @@ describe('public.workspace_transition_roster_relationship — WSR-12 / F16', () 
   })
 })
 
+// ══ Section (h) — public.workspace_accept_custody_transfer ═══════════════
+
+describe('public.workspace_accept_custody_transfer — WSR-09 / WSR-13 / F9', () => {
+  const block = () => functionBlock('workspace_accept_custody_transfer')
+
+  it('exists with the signature plan 16 maps to HTTP statuses', () => {
+    // The parameter list carries trailing `--` comments on the same lines as
+    // the parameters, which the comment-line strip leaves in place, so the
+    // four names are asserted individually rather than as one flattened
+    // string. The four-argument arity is pinned by the REVOKE/GRANT pair.
+    const signature = normalizeWhitespace(
+      block().slice(0, block().indexOf('RETURNS TABLE'))
+    )
+    for (const parameter of [
+      'p_actor_id       UUID',
+      'p_transfer_id    UUID',
+      'p_action         TEXT',
+      'p_expected_state TEXT',
+    ]) {
+      expect(signature).toContain(normalizeWhitespace(parameter))
+    }
+    expect(normalizeWhitespace(block())).toContain(
+      'RETURNS TABLE ( outcome TEXT, transfer_id UUID, project_id UUID, audit_id UUID )'
+    )
+    expect(flatSql).toContain(
+      'REVOKE EXECUTE ON FUNCTION public.workspace_accept_custody_transfer( ' +
+        'UUID, UUID, TEXT, TEXT ) FROM PUBLIC, anon, authenticated;'
+    )
+  })
+
+  it('returns every outcome code plan 16 must map', () => {
+    const body = block()
+    const missing = [
+      'ok',
+      'not_found',
+      'stale',
+      'already_resolved',
+      'forbidden',
+      'stale_custodian',
+    ].filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  it('serves all three responses, and their three terminal states, from one function', () => {
+    const body = normalizeWhitespace(block())
+    for (const action of ['accept', 'decline', 'withdraw']) {
+      expect(body).toContain(`'${action}'`)
+    }
+    expect(body).toContain("WHEN 'accept' THEN 'accepted'")
+    expect(body).toContain("WHEN 'decline' THEN 'declined'")
+    expect(body).toContain("ELSE 'withdrawn'")
+  })
+
+  // The drift guard: CUSTODY_TRANSFER_STATE_VALUES is imported from source,
+  // never restated, so a future divergence between the TypeScript union and
+  // these SQL literals fails this suite instead of reaching production.
+  it('names every CUSTODY_TRANSFER_STATE_VALUES literal', () => {
+    const body = block()
+    const missing = CUSTODY_TRANSFER_STATE_VALUES.filter(
+      (state) => !body.includes(`'${state}'`)
+    )
+    expect(missing).toEqual([])
+  })
+
+  it('calls the sanctioned public.transfer_vault_project_custody()', () => {
+    expect(block()).toContain('public.transfer_vault_project_custody(')
+  })
+
+  // Deliberately its OWN test, with its OWN failure message, rather than
+  // leaning on the file-wide assertion higher up. The file-wide one says
+  // "no function SETs user_id"; this one says WHY that matters HERE, at the
+  // one call site that has any reason to want to.
+  it('issues no UPDATE against public.vault_projects — the exemption is role-scoped', () => {
+    const violations = /UPDATE\s+public\.vault_projects\b/.test(block())
+      ? [
+          'public.workspace_accept_custody_transfer UPDATEs public.vault_projects directly. ' +
+            'That UPDATE WOULD SUCCEED: migrations 190 and 196 both exempt ' +
+            "current_user IN ('postgres'), which is TRUE inside any postgres-owned " +
+            'SECURITY DEFINER function — including this one — even though both of their ' +
+            'headers describe the exemption as function-scoped. Succeeding is exactly why ' +
+            'it must not be written. Call public.transfer_vault_project_custody() instead: ' +
+            'the nested definer call runs in the same transaction, so atomicity is kept, ' +
+            'and its double filter and NULL-return stale-custodian semantics come free.',
+        ]
+      : []
+    expect(violations).toEqual([])
+  })
+
+  it('locks rank 7 workspace_custody_transfers before rank 8 vault_projects', () => {
+    expect(lockedTablesInOrder(block())).toEqual([
+      'workspace_custody_transfers',
+      'vault_projects',
+    ])
+  })
+
+  it('consults no kill switch — custody is a Member act (F1/F7)', () => {
+    const violations = /workspace_access_enabled/.test(block())
+      ? [
+          'public.workspace_accept_custody_transfer consults the D-56 kill switch. It must ' +
+            'not: custody is a MEMBER act, app/api/vault/custody-transfers/route.ts has ' +
+            'carried ZERO workspace-derived authority since the F1 fix deleted ' +
+            "assertMayOffer's workspace-admin branch, and " +
+            'workspace_custody_transfers.workspace_id is NULLABLE for exactly that reason — ' +
+            'a transfer may be offered outside any workspace context at all, so there may ' +
+            'be no workspace whose feature control could be consulted.',
+        ]
+      : []
+    expect(violations).toEqual([])
+  })
+
+  // The ordering that keeps the outcome-code discipline from rebuilding F9.
+  it('moves custody BEFORE the diary UPDATE, so the NULL branch has mutated nothing', () => {
+    const body = block()
+    const custodyAt = body.indexOf('public.transfer_vault_project_custody(')
+    const diaryAt = body.indexOf('UPDATE public.workspace_custody_transfers')
+    expect(custodyAt).toBeGreaterThan(-1)
+    expect(diaryAt).toBeGreaterThan(-1)
+    expect(custodyAt).toBeLessThan(diaryAt)
+  })
+
+  it('re-checks the custodian against the LOCKED vault_projects row before accepting', () => {
+    const body = normalizeWhitespace(block())
+    expect(body).toContain('SELECT p.user_id INTO v_custodian')
+    expect(body).toContain('v_custodian IS DISTINCT FROM v_transfer.from_user_id')
+  })
+
+  it('replaces the route’s only double-resolve protection with a post-lock check', () => {
+    expect(normalizeWhitespace(block())).toContain("IF v_transfer.state <> 'offered' THEN")
+  })
+
+  it('refuses the offerer accepting or declining their own offer (the F1 shape)', () => {
+    const body = normalizeWhitespace(block())
+    expect(body).toContain('v_transfer.to_user_id IS NOT DISTINCT FROM p_actor_id')
+    expect(body).toContain('v_transfer.offered_by IS DISTINCT FROM p_actor_id')
+  })
+
+  it('accepts no parameter that would let a caller assert their own authority (R-21)', () => {
+    const signature = normalizeWhitespace(
+      block().slice(0, block().indexOf('RETURNS TABLE'))
+    )
+    for (const forbidden of ['p_actor_role', 'p_role', 'p_is_custodian', 'p_authorized']) {
+      expect(signature).not.toContain(forbidden)
+    }
+  })
+
+  it('audits every AUTHORITY refusal before returning its code, and raises in none of them', () => {
+    const violations: string[] = []
+    for (const code of ['forbidden', 'stale_custodian']) {
+      const audited = auditedRefusalViolation('workspace_accept_custody_transfer', code)
+      if (audited) violations.push(audited)
+      // The second helper, added by plan 10 after it proved by mutation that
+      // a RAISE placed BETWEEN an audited refusal's INSERT and its RETURN
+      // survives the first one. Both, always — that is what makes the name
+      // of this test true.
+      const raising = raisingRefusalViolation('workspace_accept_custody_transfer', code)
+      if (raising) violations.push(raising)
+    }
+    expect(violations).toEqual([])
+  })
+
+  it('does not audit the stale CAS or the already-resolved outcome (R-26)', () => {
+    const body = block()
+    for (const code of ['stale', 'already_resolved']) {
+      const returnAt = body.indexOf(`RETURN QUERY SELECT '${code}'`)
+      expect(returnAt).toBeGreaterThan(-1)
+      const insertAt = body.lastIndexOf('INSERT INTO public.workspace_audit_log', returnAt)
+      // Either there is no audit INSERT before it at all, or the nearest one
+      // belongs to an earlier branch that has already returned.
+      if (insertAt >= 0) {
+        expect(body.slice(insertAt, returnAt)).toMatch(/RETURN QUERY SELECT/)
+      }
+    }
+  })
+
+  // The stated choice about the nullable workspace_id, machine-checked so a
+  // later edit cannot quietly write an unguarded audit row that fails the
+  // NOT NULL constraint on the direct Member-to-Member path.
+  it('guards every audit INSERT on the transfer having a workspace', () => {
+    const body = block()
+    const violations: string[] = []
+    let at = body.indexOf('INSERT INTO public.workspace_audit_log')
+    while (at >= 0) {
+      const window = normalizeWhitespace(body.slice(Math.max(0, at - 120), at))
+      if (!window.includes('IF v_transfer.workspace_id IS NOT NULL THEN')) {
+        violations.push(
+          `an audit INSERT at offset ${at} is not guarded by ` +
+            '`IF v_transfer.workspace_id IS NOT NULL THEN` — ' +
+            'workspace_audit_log.workspace_id is NOT NULL (migration 182) while ' +
+            'workspace_custody_transfers.workspace_id is nullable (migration 185), so an ' +
+            'unguarded INSERT fails outright for a transfer offered outside any workspace'
+        )
+      }
+      at = body.indexOf('INSERT INTO public.workspace_audit_log', at + 1)
+    }
+    expect(violations).toEqual([])
+  })
+
+  it('keeps the audit action strings the route already emits', () => {
+    const body = block()
+    for (const action of [
+      'custody.transfer.accepted',
+      'custody.transfer.declined',
+      'custody.transfer.withdrawn',
+    ]) {
+      expect(body).toContain(`'${action}'`)
+    }
+  })
+
+  it('audits the transfer row’s OWN id, never the project or the workspace', () => {
+    const targets = auditInsertColumnValues(block()).map((row) => row.target_id)
+    expect(targets.length).toBeGreaterThan(0)
+    expect([...new Set(targets)]).toEqual(['v_transfer.id'])
+  })
+
+  it('updates one row, keyed on the primary key', () => {
+    const body = normalizeWhitespace(block())
+    expect(body).toContain(
+      "UPDATE public.workspace_custody_transfers SET state = v_new_state, " +
+        'responded_at = now() WHERE id = v_transfer.id;'
+    )
+    expect(body.match(/UPDATE public\.workspace_custody_transfers/g)).toHaveLength(1)
+  })
+
+  it('sets responded_at by hand, because this table has no timestamp trigger', () => {
+    const body = block()
+    expect(body).toContain('responded_at = now()')
+    expect(body).not.toContain('updated_at')
+  })
+
+  it('documents the sanctioned call, the lock order, the triggers and its outcomes', () => {
+    const comment = normalizeWhitespace(
+      sql.slice(sql.indexOf('COMMENT ON FUNCTION public.workspace_accept_custody_transfer'))
+    )
+    for (const phrase of [
+      'LOCK RANKS, IN ORDER',
+      'REVALIDATED AFTER THE LOCK',
+      'NEVER WRITES vault_projects.user_id ITSELF',
+      'THE CUSTODY MOVE IS ISSUED BEFORE THE DIARY UPDATE',
+      'TRIGGERS THAT FIRE ON THE NESTED UPDATE',
+      'THE D-56 KILL SWITCH IS DELIBERATELY NOT CONSULTED',
+      'THE AUDIT ROW IS WRITTEN WHENEVER workspace_id IS NOT NULL',
+      'OUTCOME VOCABULARY',
+      'Granted to service_role only',
+    ]) {
+      expect(comment).toContain(phrase)
+    }
+  })
+})
+
+// ══ Section (i) — the terminal-state guard, and the re-scoped assertion ══
+
+describe('public.guard_custody_transfer_transition — the guard this table never had', () => {
+  const block = () => functionBlock('guard_custody_transfer_transition')
+
+  it('exists as a trigger function, and is therefore held to the trigger posture', () => {
+    expect(functionNames()).toContain('guard_custody_transfer_transition')
+    expect(block()).toMatch(/RETURNS\s+TRIGGER/)
+    // rpcFunctionNames() excludes RETURNS TRIGGER declarations, so this
+    // function is correctly NOT required to be SECURITY DEFINER, to carry a
+    // lock_timeout, or to take a service_role grant. Asserted, not assumed.
+    expect(rpcFunctionNames()).not.toContain('guard_custody_transfer_transition')
+    expect(block()).not.toContain('SECURITY DEFINER')
+    expect(block()).not.toContain('lock_timeout')
+  })
+
+  it('refuses any UPDATE whose OLD.state is not offered', () => {
+    expect(normalizeWhitespace(block())).toContain("IF OLD.state <> 'offered' THEN")
+    expect(block()).toContain("USING ERRCODE = 'check_violation'")
+  })
+
+  it('refuses a NEW.state outside the three legal exits', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      "IF NEW.state NOT IN ('accepted', 'declined', 'withdrawn') THEN"
+    )
+  })
+
+  it('holds the five identity columns immutable, null-safely', () => {
+    const body = normalizeWhitespace(block())
+    for (const column of [
+      'project_id',
+      'from_user_id',
+      'to_user_id',
+      'offered_by',
+      'workspace_id',
+    ]) {
+      expect(body).toContain(`NEW.${column} IS DISTINCT FROM OLD.${column}`)
+    }
+  })
+
+  it('is installed BEFORE UPDATE FOR EACH ROW on public.workspace_custody_transfers', () => {
+    expect(flatSql).toContain(
+      'CREATE TRIGGER guard_custody_transfer_transition ' +
+        'BEFORE UPDATE ON public.workspace_custody_transfers ' +
+        'FOR EACH ROW EXECUTE FUNCTION public.guard_custody_transfer_transition();'
+    )
+  })
+
+  it('takes no EXECUTE grant — trigger-internal only', () => {
+    expect(flatSql).toContain(
+      'REVOKE EXECUTE ON FUNCTION public.guard_custody_transfer_transition() ' +
+        'FROM PUBLIC, anon, authenticated;'
+    )
+    expect(flatSql).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.guard_custody_transfer_transition/
+    )
+  })
+})
+
+describe('the re-scoped custody audit assertion agrees with section (h)', () => {
+  // THE ONE PLACE IN THE PHASE where the audit-assertion trigger and a
+  // nullable column can contradict each other. workspace_audit_log.
+  // workspace_id is NOT NULL (182); workspace_custody_transfers.workspace_id
+  // is nullable (185); migration 197's assertion fires unconditionally. All
+  // three cannot hold, and the unconditional form would abort every direct
+  // Member-to-Member custody resolution at COMMIT — the CURRENT route
+  // included. Section (i) re-creates the trigger, under its own name, scoped
+  // to rows that have a workspace.
+  it('re-creates migration 197’s custody assertion with a WHEN clause', () => {
+    expect(flatSql).toContain(
+      'DROP TRIGGER IF EXISTS assert_workspace_custody_transfer_change_audited ' +
+        'ON public.workspace_custody_transfers;'
+    )
+    expect(flatSql).toContain(
+      'CREATE CONSTRAINT TRIGGER assert_workspace_custody_transfer_change_audited ' +
+        'AFTER UPDATE OF state ON public.workspace_custody_transfers ' +
+        'DEFERRABLE INITIALLY DEFERRED FOR EACH ROW ' +
+        'WHEN (NEW.workspace_id IS NOT NULL) ' +
+        'EXECUTE FUNCTION public.assert_workspace_change_is_audited();'
+    )
+  })
+
+  it('leaves migration 197’s other three assertion triggers alone', () => {
+    for (const trigger of [
+      'assert_workspace_member_change_audited',
+      'assert_workspace_roster_relationship_change_audited',
+      'assert_workspace_invitation_change_audited',
+    ]) {
+      expect(executable).not.toContain(trigger)
+    }
+  })
+
+  it('states the reasoning, and points at the owner checkpoint', () => {
+    expect(prose).toContain('THE NULLABLE workspace_id ON THE AUDIT PATH')
+    expect(prose).toContain('MIGRATION 197 IS NOT EDITED')
+    expect(prose).toContain('it is unsatisfiable')
+  })
+})
+
+// ══ Whole-file completeness — the guard against a later truncation ═══════
+
+describe('migration 198 is COMPLETE — every function it should carry is present', () => {
+  // Enumerated as an ARRAY so a missing one names itself in the failure
+  // message. This is the guard against an accidental truncation during a
+  // later edit: the loops above all iterate whatever happens to be in the
+  // file, so a file that lost half its functions would still pass every one
+  // of them. This test is the one that would not.
+  const EXPECTED_FUNCTIONS = [
+    'workspace_create',
+    'workspace_change_member_role_or_status',
+    'workspace_nominate_owner',
+    'workspace_respond_ownership_nomination',
+    'workspace_redeem_invitation',
+    'workspace_transition_roster_relationship',
+    'workspace_accept_custody_transfer',
+    'guard_custody_transfer_transition',
+  ]
+
+  it('declares all eight functions plans 06, 08, 10 and 11 authored', () => {
+    const present = new Set(functionNames())
+    const missing = EXPECTED_FUNCTIONS.filter((name) => !present.has(name)).map(
+      (name) =>
+        `migration 198 no longer declares public.${name} — it was authored into this ` +
+        'file and nothing in this phase removes it, so this is a truncation or a ' +
+        'bad merge, not a deliberate deletion'
+    )
+    expect(missing).toEqual([])
+  })
+
+  it('declares seven RPCs and one trigger function, and nothing else', () => {
+    expect(functionNames().sort()).toEqual([...EXPECTED_FUNCTIONS].sort())
+    expect(rpcFunctionNames()).toHaveLength(7)
+  })
+})
+
 // ══ Cross-function — the text-lock twin of migration 197's assertions ═════
 
 describe('every mutating function writes an audit row in the same transaction', () => {
@@ -1592,6 +2071,61 @@ describe('every mutating function writes an audit row in the same transaction', 
     }
     expect(violations).toEqual([])
   })
+
+  // ADDED by plan 11, alongside the assertion above rather than replacing it.
+  // That one catches a WRONG id under a known target_type; this one catches a
+  // LITERAL NULL under ANY target_type, including one nobody has enumerated
+  // yet. Both matter: migration 197's assert_workspace_change_is_audited
+  // matches on `l.target_id = NEW.id`, and NULL is not equal to anything, so
+  // a null target lands in the audit table and STILL aborts the transaction
+  // at COMMIT — the shape app/api/workspaces/invitations/accept/route.ts
+  // writes today with `targetId: pendingSeat?.id ?? null`, which plan 14
+  // fixes. Reads the target_id column BY NAME, not by position.
+  it('never writes a literal NULL into an audit row’s target_id', () => {
+    const violations: string[] = []
+    let inspected = 0
+
+    for (const name of functionNames()) {
+      for (const row of auditInsertColumnValues(functionBlock(name))) {
+        inspected += 1
+        const target = row.target_id ?? ''
+        if (/^NULL(::UUID)?$/i.test(target)) {
+          violations.push(
+            `public.${name} writes an audit row whose target_id is the literal ${target} — ` +
+              'migration 197’s deferred constraint trigger matches on target_id = NEW.id, ' +
+              'and NULL equals nothing, so the transaction aborts at COMMIT (WSR-13)'
+          )
+        }
+      }
+    }
+
+    // The loop must have something to look at, or it proves nothing.
+    expect(inspected).toBeGreaterThan(0)
+    expect(violations).toEqual([])
+  })
+
+  // The twin of the assertion above: an audit row's workspace_id must be a
+  // real workspace reference, because workspace_audit_log.workspace_id is
+  // NOT NULL (migration 182) and a NULL there fails the INSERT outright
+  // rather than at COMMIT. Section (h) is the one place in this file where
+  // that could go wrong, because workspace_custody_transfers.workspace_id is
+  // nullable — which is exactly why every audit INSERT there sits inside an
+  // `IS NOT NULL` guard.
+  it('never writes a literal NULL into an audit row’s workspace_id', () => {
+    const violations: string[] = []
+    for (const name of functionNames()) {
+      for (const row of auditInsertColumnValues(functionBlock(name))) {
+        const workspace = row.workspace_id ?? ''
+        if (/^NULL(::UUID)?$/i.test(workspace)) {
+          violations.push(
+            `public.${name} writes an audit row whose workspace_id is the literal ${workspace} — ` +
+              'workspace_audit_log.workspace_id is NOT NULL (migration 182), so that INSERT fails'
+          )
+        }
+      }
+    }
+    expect(violations).toEqual([])
+  })
 })
 
 describe('the SQL and the TypeScript modules agree — imported, never restated', () => {
@@ -1642,12 +2176,23 @@ describe('negative structural guarantees against executable SQL', () => {
     // <table>;` immediately before CREATEing that same trigger — the house
     // idempotency idiom (migration 182). Dropping any OTHER trigger from
     // this file would be removing a guard, which is review-blocking.
+    //
+    // PRECISION FIX (plan 11), NOT A WEAKENING — the fourth instance of the
+    // class of false positive plans 06, 08 and 10 each corrected, and
+    // corrected the same way. `CREATE CONSTRAINT TRIGGER <name>` creates a
+    // trigger every bit as much as `CREATE TRIGGER <name>` does; the original
+    // pattern simply could not see the constraint-trigger spelling, which
+    // migration 197 uses for all four of its deferred audit assertions and
+    // which section (i) uses to re-create one of them under its own name.
+    // Recognising it removes no protection: a DROP naming a trigger this file
+    // does not create, in EITHER spelling, is still an offender. Proved by
+    // mutation both ways.
     const offenders: string[] = []
     const re = /DROP TRIGGER(?:\s+IF EXISTS)?\s+([a-z0-9_]+)/gi
     let match: RegExpExecArray | null
     while ((match = re.exec(executable)) !== null) {
       const trigger = match[1]
-      if (!new RegExp(`CREATE TRIGGER\\s+${trigger}\\b`).test(executable)) {
+      if (!new RegExp(`CREATE (?:CONSTRAINT )?TRIGGER\\s+${trigger}\\b`).test(executable)) {
         offenders.push(`drops trigger ${trigger}, which this migration does not create`)
       }
     }
