@@ -84,6 +84,17 @@ function buildServiceClient(opts: {
     inserts,
     updates,
     audits,
+    // `requireWorkspaceAccess` resolves the D-56 kill switch and the D-55
+    // cohort bound in ONE service-role call to `workspace_access_permitted`
+    // (migration 197). `accessEnabled` is threaded through it rather than
+    // hardcoded true, so the two "fails closed with 503 when the kill switch
+    // is off" cases below still exercise the real gate.
+    rpc: jest.fn(() =>
+      thenable(() => ({
+        data: [{ access_enabled: opts.accessEnabled !== false, cohort_ok: true }],
+        error: null,
+      }))
+    ),
     from: jest.fn((table: string) => {
       if (table === 'workspace_access_config') {
         return thenable(() => ({

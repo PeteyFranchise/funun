@@ -63,6 +63,17 @@ function buildSessionClient(
     // `authenticated`, so it is invoked on the SESSION client — its own
     // `p_uid = (SELECT auth.uid())` clause returns zero rows otherwise.
     rpc: jest.fn((name: string, args: Record<string, unknown>) => {
+      // The D-56/D-55 access decision (`workspace_access_permitted`,
+      // migration 197) is the GATE's own round trip, not a call this route
+      // makes. It is answered ABOVE the recorder on purpose: the assertions
+      // below count the route's RPCs exactly, and recording the gate's call
+      // would inflate every one of those counts.
+      if (name === 'workspace_access_permitted') {
+        return Promise.resolve({
+          data: [{ access_enabled: true, cohort_ok: true }],
+          error: null,
+        })
+      }
       calls.rpcs.push({ name, args })
       return Promise.resolve({ data: opts.pageRows ?? [], error: opts.pageError ?? null })
     }),
@@ -104,6 +115,17 @@ function buildServiceClient(
   const client = {
     calls,
     rpc: jest.fn((name: string, args: Record<string, unknown>) => {
+      // The D-56/D-55 access decision (`workspace_access_permitted`,
+      // migration 197) is the GATE's own round trip, not a call this route
+      // makes. It is answered ABOVE the recorder on purpose: the assertions
+      // below count the route's RPCs exactly, and recording the gate's call
+      // would inflate every one of those counts.
+      if (name === 'workspace_access_permitted') {
+        return Promise.resolve({
+          data: [{ access_enabled: true, cohort_ok: true }],
+          error: null,
+        })
+      }
       calls.rpcs.push({ name, args })
       if (opts.rpcError) {
         return { single: async () => ({ data: null, error: opts.rpcError }) }
