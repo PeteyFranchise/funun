@@ -294,28 +294,66 @@ describe('POST /api/workspaces — creation is ONE transaction (WSR-23 / R-15)',
 })
 
 describe('POST /api/workspaces — the mass-assignment allowlist is unchanged', () => {
+  // `pickCreateFields` runs BEFORE Zod, so a key outside
+  // WORKSPACE_CREATE_FIELDS is DROPPED rather than rejected — it never
+  // reaches `CreateWorkspaceSchema.strict()` and therefore never produces a
+  // 400. The guarantee is "the server-owned value never reaches the write",
+  // which is what these cases assert. Zod `.strict()` remains the
+  // independent backstop for the day the allowlist and the schema diverge.
   it.each([
-    ['verification_state', { verification_state: 'verified' }],
-    ['verified_at', { verified_at: '2026-09-07T00:00:00.000Z' }],
-    ['verified_by', { verified_by: CREATOR_ID }],
-    ['created_by', { created_by: SUBJECT_ID }],
-    ['slug', { slug: 'chosen-by-the-caller' }],
-    ['id', { id: WORKSPACE_ID }],
-  ])('refuses to take %s from the body, before any RPC call', async (_label, extra) => {
+    ['verification_state', { verification_state: 'verified' }, 'verified'],
+    ['verified_at', { verified_at: '2026-09-07T00:00:00.000Z' }, '2026-09-07T00:00:00.000Z'],
+    ['verified_by', { verified_by: SUBJECT_ID }, SUBJECT_ID],
+    ['created_by', { created_by: SUBJECT_ID }, SUBJECT_ID],
+    ['slug', { slug: 'chosen-by-the-caller' }, 'chosen-by-the-caller'],
+    ['id', { id: WORKSPACE_ID }, WORKSPACE_ID],
+  ])('never carries a body-supplied %s into the write', async (_label, extra, injected) => {
     const service = buildServiceClient()
     wire(service)
 
     const res = await POST(postRequest(validBody(extra)))
 
+    expect(res.status).toBe(201)
+    const create = service.calls.rpc.find(c => c.fn === 'workspace_create')
+    expect(JSON.stringify(create?.args)).not.toContain(injected)
+  })
+
+  it('seats the PROVED actor as p_actor_id, never a body-supplied one', async () => {
+    const service = buildServiceClient()
+    wire(service)
+
+    await POST(postRequest(validBody({ created_by: SUBJECT_ID })))
+
+    const create = service.calls.rpc.find(c => c.fn === 'workspace_create')
+    expect(create?.args.p_actor_id).toBe(CREATOR_ID)
+  })
+
+  it('drops an unknown body key in pickCreateFields, so it never reaches the RPC', async () => {
+    const service = buildServiceClient()
+    wire(service)
+
+    const res = await POST(postRequest({ ...validBody(), somethingElse: 'sentinel-value' }))
+
+    expect(res.status).toBe(201)
+    const create = service.calls.rpc.find(c => c.fn === 'workspace_create')
+    expect(JSON.stringify(create?.args)).not.toContain('sentinel-value')
+  })
+
+  it('still refuses an invalid payload with 400 before any RPC call', async () => {
+    const service = buildServiceClient()
+    wire(service)
+
+    const res = await POST(postRequest(validBody({ workspaceType: 'not_a_type' })))
+
     expect(res.status).toBe(400)
     expect(service.calls.rpc.map(c => c.fn)).not.toContain('workspace_create')
   })
 
-  it('rejects an unknown body key via the allowlist plus Zod .strict()', async () => {
+  it('still refuses an empty name with 400 before any RPC call', async () => {
     const service = buildServiceClient()
     wire(service)
 
-    const res = await POST(postRequest({ ...validBody(), somethingElse: true }))
+    const res = await POST(postRequest(validBody({ name: '   ' })))
 
     expect(res.status).toBe(400)
     expect(service.calls.rpc.map(c => c.fn)).not.toContain('workspace_create')
