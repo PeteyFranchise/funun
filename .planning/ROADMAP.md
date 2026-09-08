@@ -666,7 +666,7 @@ Plans:
 | 35. The Playbook — Room Content (adopt docs, stock rooms) | 0/0 | Roadmapped | - |
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
 | 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Shipped (dark) + VERIFIED — Part A 35/35, Part B 12/12 | 2026-09-07 |
-| 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. | 2026-09-08 |
+| 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. **Vercel vars set 2026-09-08** (`WORKSPACE_ACCESS_GENERAL_ENABLED=false`, `WORKSPACE_COHORT_PILOT_ENABLED=true`, Config type, all three environments) — they bake in at BUILD time, so a deploy must run after this date before D-56 is flipped. `.env.example` documented (commit 321ce556). Remaining before D-56: the 57-box RLS smoke checklist carried over from 38.0.1. | 2026-09-08 |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
 
