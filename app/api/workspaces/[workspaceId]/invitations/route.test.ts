@@ -1,6 +1,7 @@
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { INVITATION_RATE_LIMIT } from '@/lib/workspaces/invitations'
+import { WORKSPACE_ACCESS_DISABLED } from '@/lib/workspaces/access'
 import { DELETE, POST } from './route'
 
 // ─── F10 hotfix (260906-phase38-p0-security-hotfix) ────────────────────────
@@ -188,19 +189,64 @@ function collectKeys(value: unknown, found: string[] = []): string[] {
   return found
 }
 
-function buildAuditServiceClient(opts: { revokeTarget?: Record<string, unknown> } = {}) {
+const SEAT_AUDIT_ID = '11111111-1111-1111-1111-111111111111'
+const INVITATION_AUDIT_ID = '22222222-2222-2222-2222-222222222222'
+
+type RpcCall = { fn: string; args: Record<string, unknown> }
+
+function buildAuditServiceClient(
+  opts: {
+    revokeTarget?: Record<string, unknown>
+    revokeOutcome?: string
+    revokeRpcError?: { message: string; code?: string }
+  } = {}
+) {
   const audits: Record<string, unknown>[] = []
+  const rpcCalls: RpcCall[] = []
 
   return {
     audits,
-    rpc: jest.fn(async (fn: string) => {
+    rpcCalls,
+    // NOT async: the revoke handler calls `.rpc(...).single()`, so this must
+    // return something chainable AND awaitable. `auditThenable` is both, and
+    // the branches the POST handler awaits directly still work unchanged.
+    rpc: jest.fn((fn: string, args: Record<string, unknown>) => {
+      rpcCalls.push({ fn, args })
+
       // See the note in buildServiceClient: the access decision is one RPC
       // and must be answered before the unexpected-rpc throw below.
       if (fn === 'workspace_access_permitted') {
-        return { data: [{ access_enabled: true, cohort_ok: true }], error: null }
+        return auditThenable(() => ({
+          data: [{ access_enabled: true, cohort_ok: true }],
+          error: null,
+        }))
       }
-      if (fn === 'check_rate_limit') return { data: false, error: null }
-      if (fn === 'find_auth_user_id_by_email') return { data: null, error: null }
+      if (fn === 'check_rate_limit') return auditThenable(() => ({ data: false, error: null }))
+      if (fn === 'find_auth_user_id_by_email') {
+        return auditThenable(() => ({ data: null, error: null }))
+      }
+
+      // Migration 198 section (j). The RPC writes BOTH audit rows itself, in
+      // the same transaction as both mutations, so nothing it returns lands
+      // in `audits` — that is the point of the change, and the assertions
+      // below check exactly that.
+      if (fn === 'workspace_revoke_invitation') {
+        return auditThenable(() =>
+          opts.revokeRpcError
+            ? { data: null, error: opts.revokeRpcError }
+            : {
+                data: {
+                  outcome: opts.revokeOutcome ?? 'ok',
+                  invitation_id: INVITATION_ID,
+                  seats_removed: 1,
+                  invitation_audit_id: INVITATION_AUDIT_ID,
+                  member_audit_id: SEAT_AUDIT_ID,
+                },
+                error: null,
+              }
+        )
+      }
+
       throw new Error(`unexpected rpc: ${fn}`)
     }),
     from: jest.fn((table: string) => {
@@ -216,7 +262,18 @@ function buildAuditServiceClient(opts: { revokeTarget?: Record<string, unknown> 
               error: null,
             })),
           insert: () => auditThenable(() => ({ data: { id: INVITATION_ID }, error: null })),
-          update: () => auditThenable(() => ({ data: null, error: null })),
+          // A ROUTE-SIDE UPDATE IS THE DEFECT, so the stub refuses it rather
+          // than absorbing it. Each PostgREST call is its own transaction, so
+          // an invitation status write issued from here can never carry an
+          // audit row in the same transaction, and migration 197's deferred
+          // assertion aborts it at COMMIT. If a future edit reintroduces one,
+          // this throws instead of passing quietly.
+          update: () => {
+            throw new Error(
+              'route-side update on workspace_invitations: consequential writes belong ' +
+                'in migration 198 section (j), in one transaction with their audit row'
+            )
+          },
         }
       }
 
@@ -224,7 +281,12 @@ function buildAuditServiceClient(opts: { revokeTarget?: Record<string, unknown> 
         return {
           select: () => auditThenable(() => ({ data: null, error: null })),
           insert: () => auditThenable(() => ({ data: null, error: null })),
-          update: () => auditThenable(() => ({ data: null, error: null })),
+          update: () => {
+            throw new Error(
+              'route-side update on workspace_members: consequential writes belong ' +
+                'in migration 198 section (j), in one transaction with their audit row'
+            )
+          },
         }
       }
 
@@ -320,37 +382,11 @@ describe('WSR-19 — the invited address never reaches workspace_audit_log.chang
     expect(body.data.role).toBe('member')
   })
 
-  it('WSR-19: the revoke handler audit row carries no restricted key either', async () => {
-    const service = buildAuditServiceClient({
-      revokeTarget: {
-        id: INVITATION_ID,
-        status: 'pending',
-        email: INVITEE_EMAIL,
-        role: 'member',
-      },
-    })
-    ;(createApiClient as jest.Mock).mockResolvedValue(buildSessionClient())
-    ;(createServiceClient as jest.Mock).mockReturnValue(service)
-
-    const res = await DELETE(revokeRequest(INVITATION_ID), {
-      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
-    })
-
-    expect(res.status).toBe(200)
-    expect(service.audits).toHaveLength(1)
-
-    const changes = service.audits[0].changes as Record<string, unknown>
-    const keys = collectKeys(changes)
-    for (const restricted of RESTRICTED_CHANGE_KEYS) {
-      expect(keys).not.toContain(restricted)
-    }
-    expect(JSON.stringify(changes)).not.toContain(INVITEE_EMAIL)
-  })
-
   it('WSR-19: EVERY audit row this file writes is swept, not just the issuance one', async () => {
     // The finding named one call site. This case exists to establish that it
-    // was the only one, by driving both handlers that log and checking the
-    // recorded payloads together.
+    // was the only one, by driving both handlers and checking the recorded
+    // payloads together. Issuance is now the ONLY handler in this file that
+    // writes an audit row from the route — see the revoke cases below.
     const issuance = buildAuditServiceClient()
     ;(createApiClient as jest.Mock).mockResolvedValue(buildSessionClient())
     ;(createServiceClient as jest.Mock).mockReturnValue(issuance)
@@ -359,12 +395,7 @@ describe('WSR-19 — the invited address never reaches workspace_audit_log.chang
     })
 
     const revoke = buildAuditServiceClient({
-      revokeTarget: {
-        id: INVITATION_ID,
-        status: 'pending',
-        email: INVITEE_EMAIL,
-        role: 'contractor',
-      },
+      revokeTarget: { id: INVITATION_ID, status: 'pending' },
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(revoke)
     await DELETE(revokeRequest(INVITATION_ID), {
@@ -372,7 +403,7 @@ describe('WSR-19 — the invited address never reaches workspace_audit_log.chang
     })
 
     const everyAudit = [...issuance.audits, ...revoke.audits]
-    expect(everyAudit).toHaveLength(2)
+    expect(everyAudit).toHaveLength(1)
 
     for (const row of everyAudit) {
       const keys = collectKeys(row.changes)
@@ -380,5 +411,144 @@ describe('WSR-19 — the invited address never reaches workspace_audit_log.chang
         expect(keys).not.toContain(restricted)
       }
     }
+  })
+})
+
+// ─── Revocation is ONE transaction — migration 198 section (j) ──────────────
+//
+// Before this change the DELETE handler issued THREE PostgREST calls, which
+// are THREE transactions: the invitation status write, the paired seat status
+// write, and one `logWorkspaceAction`. Migration 197's
+// `assert_workspace_change_is_audited` demands, at COMMIT, an audit row whose
+// `created_at` equals `now()` — `transaction_timestamp()`, one value per
+// transaction — and whose `target_id` is the mutated row's own id. The one
+// audit row landed in the THIRD transaction and the seat write had none at
+// all, so BOTH mutations abort at COMMIT once 197 applies and revocation stops
+// working. These cases lock in the fix from the route's side.
+describe('DELETE — the revoke handler writes nothing itself', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  function installRevoke(opts: Parameters<typeof buildAuditServiceClient>[0] = {}) {
+    const service = buildAuditServiceClient({
+      revokeTarget: { id: INVITATION_ID, status: 'pending' },
+      ...opts,
+    })
+    ;(createApiClient as jest.Mock).mockResolvedValue(buildSessionClient())
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+    return service
+  }
+
+  it('calls workspace_revoke_invitation and issues NO route-side write', async () => {
+    const service = installRevoke()
+
+    const res = await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ data: { id: INVITATION_ID, status: 'revoked' } })
+
+    // No audit row from the route: the RPC writes one per mutated table, in
+    // the same transaction as the mutation.
+    expect(service.audits).toEqual([])
+
+    // And the two `.update()` stubs throw, so reaching a 200 at all proves
+    // neither raw update was issued.
+    const revoke = service.rpcCalls.filter(call => call.fn === 'workspace_revoke_invitation')
+    expect(revoke).toHaveLength(1)
+    expect(revoke[0].args).toEqual({
+      p_actor_id: OWNER_ID,
+      p_workspace_id: WORKSPACE_ID,
+      p_invitation_id: INVITATION_ID,
+      // The compare-and-set token: the status this route read, checked by the
+      // RPC against the row it has LOCKED.
+      p_expected_status: 'pending',
+    })
+  })
+
+  it('never sends the invited address to the RPC — it does not even read it', async () => {
+    const service = installRevoke()
+    await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    // The pairing between an invitation and its pending seats is decided
+    // inside the RPC, against the row it locked. This route has no reason to
+    // hold a second copy of somebody's address (WSR-19).
+    const args = service.rpcCalls.find(call => call.fn === 'workspace_revoke_invitation')?.args
+    expect(JSON.stringify(args)).not.toContain(INVITEE_EMAIL)
+    expect(Object.keys(args ?? {})).not.toContain('p_email')
+  })
+
+  it.each([
+    ['not_found', 404],
+    ['forbidden', 403],
+    ['not_pending', 400],
+    ['stale', 409],
+  ])('maps the %s outcome to %i', async (outcome, status) => {
+    const service = installRevoke({ revokeOutcome: outcome })
+
+    const res = await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    expect(res.status).toBe(status)
+    expect((await res.json()).error).toEqual(expect.any(String))
+    expect(service.audits).toEqual([])
+  })
+
+  it('maps an outcome it does not recognise to a 400, never a 500', async () => {
+    installRevoke({ revokeOutcome: 'something_new' })
+
+    const res = await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('That invitation could not be revoked.')
+  })
+
+  it.each([['55P03'], ['40P01']])(
+    'maps the bounded lock failure %s to a retryable 409, never a 500',
+    async code => {
+      // Migration 198 sets `lock_timeout = '3s'` in every RPC precisely so a
+      // blocked row lock becomes this, rather than a hung request.
+      installRevoke({ revokeRpcError: { message: 'lock not available', code } })
+
+      const res = await DELETE(revokeRequest(INVITATION_ID), {
+        params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+      })
+
+      expect(res.status).toBe(409)
+    }
+  )
+
+  it('maps the D-56 refusal 42501 to the same 503 sentence the gate gives', async () => {
+    installRevoke({ revokeRpcError: { message: 'workspace access is disabled', code: '42501' } })
+
+    const res = await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    expect(res.status).toBe(503)
+    // Imported from lib/workspaces/access.ts rather than retyped, so the two
+    // layers cannot drift into two different sentences for one fact.
+    expect((await res.json()).error).toBe(WORKSPACE_ACCESS_DISABLED)
+  })
+
+  it('still refuses a non-pending invitation before the RPC is reached', async () => {
+    const service = installRevoke({
+      revokeTarget: { id: INVITATION_ID, status: 'accepted' },
+    })
+
+    const res = await DELETE(revokeRequest(INVITATION_ID), {
+      params: Promise.resolve({ workspaceId: WORKSPACE_ID }),
+    })
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Only a pending invitation can be revoked.')
+    expect(service.rpcCalls.filter(call => call.fn === 'workspace_revoke_invitation')).toEqual([])
   })
 })
