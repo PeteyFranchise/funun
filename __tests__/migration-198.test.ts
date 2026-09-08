@@ -109,6 +109,24 @@ const maskedExecutable = masked.replace(/COMMENT ON FUNCTION[\s\S]*?';\n/g, (blo
 // UPDATE. Neither strip removes a real relation reference.
 const DISTINCT_FROM = /\bIS\s+(?:NOT\s+)?DISTINCT\s+FROM\b/gi
 
+// PRECISION FIX (plan 10), NOT A WEAKENING — the third instance of exactly
+// the same class of false positive plan 06 and plan 08 already corrected,
+// and corrected the same way. `ON CONFLICT ... DO UPDATE SET` is an upsert's
+// conflict action: the token UPDATE there introduces NO relation at all, the
+// target relation was already named by the `INSERT INTO public.<t>` this
+// clause belongs to, and PostgreSQL forbids naming one after it. To a regex
+// that looks only at the keyword it is indistinguishable from a real
+// `UPDATE <relation>`, so `DO UPDATE SET status = 'active'` was read as a
+// reference to an unqualified relation named `SET`.
+//
+// This removes no executable statement and hides no real reference: the
+// INSERT that owns the clause is still scanned and still required to be
+// schema-qualified, and a genuine `UPDATE workspace_members` anywhere in a
+// body is untouched by this strip and still caught. Proved by mutation both
+// ways. Same reasoning as LOCK_CLAUSE ("FOR NO KEY UPDATE" contains UPDATE)
+// and DISTINCT_FROM ("IS DISTINCT FROM" contains FROM) above.
+const DO_UPDATE = /\bDO\s+UPDATE\b/gi
+
 const flatSql = normalizeWhitespace(sql)
 
 // ══ Shared harness — plans 08, 10 and 11 reuse all of this ═══════════════
@@ -525,8 +543,13 @@ describe('declaration posture — every function', () => {
       // Strip locking clauses first: "FOR NO KEY UPDATE" contains the token
       // UPDATE and would otherwise be read as an UPDATE target. Strip the
       // null-safe comparison operator for the identical reason — see
-      // DISTINCT_FROM's comment above. Neither strip hides a real relation.
-      const body = functionBlock(name).replace(LOCK_CLAUSE, ' ').replace(DISTINCT_FROM, ' ')
+      // DISTINCT_FROM's comment above — and the upsert conflict action for
+      // the same reason again, see DO_UPDATE. None of the three hides a real
+      // relation reference.
+      const body = functionBlock(name)
+        .replace(LOCK_CLAUSE, ' ')
+        .replace(DISTINCT_FROM, ' ')
+        .replace(DO_UPDATE, ' ')
       const re = /(?:FROM|JOIN|INSERT INTO|UPDATE)\s+([A-Za-z_"][\w".]*)/g
       let match: RegExpExecArray | null
       while ((match = re.exec(body)) !== null) {
