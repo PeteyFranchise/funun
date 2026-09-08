@@ -10,8 +10,15 @@ import {
 // shape, and lib/vault/membership.ts's canX role-predicate naming).
 //
 // This module governs the WORKSPACE itself — invite, configure, roster,
-// remove — and NEVER project access, which comes from separate grants
-// (D-11). This module must never import from '@/lib/workspaces/permissions'.
+// remove. It still GRANTS no project access: reaching a Member's project
+// remains a per-relationship grant resolved elsewhere (D-11). As of R-20 /
+// WSR-29 it does define the role FLOOR beneath project access — the set of
+// roles a grant is even allowed to reach through — which is a refusal, never
+// an authorisation. The sentence here used to read "and NEVER project
+// access"; that became half false with R-20 and is corrected rather than
+// left standing, because migration 139's stale parenthetical is how a wrong
+// doctrine comment reached production once already.
+// This module must never import from '@/lib/workspaces/permissions'.
 //
 // Removal ends future access only. Contributions, approvals, signatures,
 // diary entries, and audit rows persist attributed (D-14). This module
@@ -55,9 +62,11 @@ export function isLegalMembershipTransition(
 }
 
 // ─── Role capability predicates (D-11) ─────────────────────────────────────
-// These govern the workspace itself and never project access, which comes
-// from separate grants — see '@/lib/workspaces/grants' and
-// '@/lib/workspaces/permissions' for that independent axis.
+// These govern the workspace itself. None of them grants project access,
+// which comes from separate grants — see '@/lib/workspaces/grants' and
+// '@/lib/workspaces/permissions' for that independent axis. The project-access
+// role FLOOR (R-20 / WSR-29) lives in its own section further down; it only
+// ever subtracts from what a grant may reach.
 
 /** True for owner and admin only. */
 export function canManageWorkspaceMembers(role: WorkspaceRole): boolean {
@@ -71,6 +80,26 @@ export function canManageRoster(role: WorkspaceRole): boolean {
 
 /** True for owner only. */
 export function canConfigureWorkspace(role: WorkspaceRole): boolean {
+  return role === 'owner'
+}
+
+/**
+ * True for owner only — the R-05 / WSR-07 owner-management rule: only an
+ * owner may promote to owner, admins may not edit or remove owner rows, and
+ * nobody may self-promote.
+ *
+ * This exists BESIDE `canManageWorkspaceMembers`, never replacing or widening
+ * it. `canManageWorkspaceMembers` deliberately keeps admins, because ordinary
+ * member management is still an admin's job and no decision takes that away;
+ * the two predicates are meant to disagree on `admin`, and that disagreement
+ * is the whole of WSR-07. A route gates the owner paths on BOTH.
+ *
+ * Migration 197's `guard_workspace_owner_role_change` trigger (plan 05) is the
+ * independent database layer expressing the same rule structurally. Two layers
+ * agreeing is this repo's doctrine (migrations 078, 136, 187, 190, 196), not
+ * duplication to be collapsed.
+ */
+export function canManageOwners(role: WorkspaceRole): boolean {
   return role === 'owner'
 }
 
@@ -121,4 +150,59 @@ export function canRemoveMember(args: {
   }
 
   return { ok: true }
+}
+
+// ─── Project-access role floor (R-20 / WSR-29) ──────────────────────────────
+// The roles a workspace seat must hold before any grant is allowed to reach a
+// Member's project. This is a floor, not a grant: passing it authorises
+// nothing on its own, and failing it refuses regardless of what grants exist.
+//
+// This constant is the TypeScript twin of the conjunct migration 197 adds to
+// `workspace_project_permission`'s hop 2 `workspace_members` join (plan 09).
+// The two must change together — one exported set here, one conjunct there.
+//
+// It is deliberately a twin rather than a deduplication. WSR-17 exists because
+// those exact two layers once disagreed about `expires_at`: the SQL hop passed
+// an expired-but-active contractor seat while the API refused it, and migration
+// 192 had to bring them back into line. This repo's answer to that class of bug
+// is two independent layers that agree (migrations 078, 136, 187, 190, 196),
+// each carrying a comment naming the other, not one layer trusting the other.
+export const WORKSPACE_PROJECT_ACCESS_ROLES: readonly WorkspaceRole[] = [
+  'owner',
+  'admin',
+  'member',
+  'contractor',
+]
+
+const PROJECT_ACCESS_ROLE_SET: ReadonlySet<WorkspaceRole> = new Set(WORKSPACE_PROJECT_ACCESS_ROLES)
+
+/**
+ * The single user-facing sentence for a role-floor refusal, exported as a
+ * named constant in the same idiom as WORKSPACE_OWNER_FLOOR_MESSAGE so every
+ * project-data route refuses a guest in identical words.
+ */
+export const WORKSPACE_PROJECT_ROLE_FLOOR_MESSAGE =
+  'A guest seat covers this workspace but not a Member’s project records. Ask an owner or admin to change the seat’s role.'
+
+/**
+ * True when `role` clears the project-access role floor. Owner, admin, member
+ * and contractor clear it; `guest` does not (R-20, owner decision 2026-09-07):
+ * a guest gets workspace chrome and never reaches a Member's project data.
+ *
+ * This predicate is deliberately NOT applied inside `requireWorkspaceAccess`.
+ * That gate covers every route under /api/workspaces/**, including the chrome
+ * routes R-20 explicitly keeps guests on — "guests keep everything that is not
+ * project data". A branch inside the gate would over-apply the floor and lock
+ * guests out of their own workspace. Instead this composes at the project-data
+ * routes through `requireWorkspaceRole` (plan 13):
+ *
+ *   requireWorkspaceRole(access, canReachWorkspaceProjects, WORKSPACE_PROJECT_ROLE_FLOOR_MESSAGE)
+ *
+ * 38.0.1 Part B check B3 is the behavioural evidence that this floor did not
+ * previously exist: a guest seat reached an attached project exactly as the
+ * owner did, because grants are per-relationship and hop 2 carried no role
+ * condition at all.
+ */
+export function canReachWorkspaceProjects(role: WorkspaceRole): boolean {
+  return PROJECT_ACCESS_ROLE_SET.has(role)
 }
