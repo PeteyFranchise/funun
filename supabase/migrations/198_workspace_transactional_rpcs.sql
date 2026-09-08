@@ -1385,6 +1385,7 @@ DECLARE
   v_nominator_role      TEXT;
   v_nominator_member_id UUID;
   v_successor_member_id UUID;
+  v_successor_role      TEXT;
   v_new_state           TEXT;
   v_audit_id            UUID;
 BEGIN
@@ -1552,7 +1553,13 @@ BEGIN
     -- cannot act on, which is the trigger doing its job at the cost of a
     -- transaction that should never have been attempted. Refuse it here,
     -- where the refusal has a name.
-    SELECT m.id INTO v_successor_member_id
+    -- The role is captured alongside the id because the audit row below
+    -- records the successor's BEFORE value, and a successor may hold any
+    -- non-owner role — admin, member, contractor or guest. Hardcoding a
+    -- literal there would write a false value onto the audit trail, which
+    -- is worse than writing none: an audit record nobody can trust is not
+    -- an audit record.
+    SELECT m.id, m.role INTO v_successor_member_id, v_successor_role
       FROM public.workspace_members m
      WHERE m.workspace_id = v_workspace_id
        AND m.user_id      = v_to_user_id
@@ -1663,7 +1670,7 @@ BEGIN
     ) VALUES (
       v_workspace_id, p_actor_id, v_to_user_id,
       'workspace.member.role_changed', NULL, 'workspace_member', v_successor_member_id,
-      jsonb_build_object('role', jsonb_build_object('before', 'member', 'after', 'owner'))
+      jsonb_build_object('role', jsonb_build_object('before', v_successor_role, 'after', 'owner'))
     );
 
     INSERT INTO public.workspace_audit_log (
