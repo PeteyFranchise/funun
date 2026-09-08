@@ -7,12 +7,35 @@
 --                public.guard_workspace_never_zero_owners() that finally
 --                honours expires_at (R-28).
 --
--- ─── THIS FILE IS AUTHORED BY THREE SUCCESSIVE PLANS ──────────────────────
--- Sections (a)-(d) below are plan 05's. Plans 07 and 09 APPEND further
--- sections to this same file. THE FILE IS DELIBERATELY INCOMPLETE UNTIL
--- PLAN 09 CLOSES IT. Do not review it as a finished migration before then,
--- and do not stage it. Every appending plan must keep
--- `NOTIFY pgrst, 'reload schema';` as the file's LAST statement.
+-- ─── AUTHORED BY THREE SUCCESSIVE PLANS — THE FILE IS NOW CLOSED ──────────
+-- Sections (a)-(d) are plan 05's, (e)-(h) are plan 07's, and (i)-(l) are
+-- plan 09's. THIS FILE IS COMPLETE AS OF PLAN 09 AND NOTHING FURTHER IS
+-- APPENDED TO IT: no later plan in phase 38.0.2 owns it, and every remaining
+-- change in the phase goes to migration 198. It may now be read and reviewed
+-- as a finished migration.
+--
+-- COMPLETE IS NOT THE SAME AS PUSHED. IT REMAINS UNAPPLIED, and it is pushed
+-- at plan 17's joint window together with migration 198 and the TypeScript
+-- from plans 12-16. `NOTIFY pgrst, 'reload schema';` is, and must remain, the
+-- file's LAST statement.
+--
+-- THE TWELVE SECTIONS, IN FILE ORDER:
+--   (a) workspace_ownership_transfers — the two-sided nomination diary, its
+--       visibility helper, its policy and its two guards.        [plan 05]
+--   (b) workspace_cohorts — the D-55 pilot bound.                [plan 05]
+--   (c) guard_workspace_owner_role_change() — WSR-07.            [plan 05]
+--   (d) guard_workspace_never_zero_owners(), replaced — R-28.    [plan 05]
+--   (e) the audit lockdown, in three layers — S1 / WSR-26.       [plan 07]
+--   (f) the restricted-PII write guard — R-13 / WSR-19.          [plan 07]
+--   (g) the deferred audit-assertion triggers — R-06 / WSR-13.   [plan 07]
+--   (h) the redacted audit read — R-13 / R-27 / WSR-19.          [plan 07]
+--   (i) the roster proposal narrowing, and the `blocked` collapse —
+--       R-12 / WSR-18 and R-23 / T-38-04-05.                     [plan 09]
+--   (j) workspaces_select_member without the creator fallback —
+--       R-15 / WSR-23.                                           [plan 09]
+--   (k) workspace_project_permission, v3 with the WSR-29 role floor —
+--       R-20.                                                    [plan 09]
+--   (l) workspace_access_permitted — WSR-16 / R-07.              [plan 09]
 --
 -- ─── HUMAN-GATED ──────────────────────────────────────────────────────────
 -- This project never runs `supabase db push`, `supabase db reset`,
@@ -66,7 +89,36 @@
 --   owner who has no live access. Section (d) closes that.
 -- R-07 / WSR-16 (Codex finding F17): the D-55 cohort gate is a release
 --   requirement. Without it, re-enabling the D-56 kill switch goes from
---   "off" straight to "every Member". Section (b) is the pilot bound.
+--   "off" straight to "every Member". Section (b) is the pilot bound, and
+--   section (l) is the one function that resolves the switch and the cohort
+--   window together, in a single service-role round trip.
+-- S1 / WSR-26: service_role holds TRUNCATE, DELETE and UPDATE on
+--   workspace_audit_log — confirmed on production by 38.0.1 Part A check
+--   A10. The audit log is not append-only today. Section (e) closes it, in
+--   three layers, because BYPASSRLS means a policy alone binds nothing.
+-- R-13 / WSR-19: restricted PII — today an invited person's email address —
+--   sits in a broadly readable `changes` JSON. Section (f) stops it being
+--   written and section (h) redacts what may be read.
+-- R-06 / WSR-13: a consequential mutation must not be able to succeed
+--   without its audit record. Section (g)'s deferred constraint triggers
+--   make that structural rather than a convention.
+-- R-12 / WSR-18 (Codex finding F13): every active seat — including a guest
+--   and a contractor — currently sees every `proposed` roster relationship.
+--   D-05 says the workspace sees nothing until acceptance. Section (i).
+-- R-23 / T-38-04-05: and the `blocked` state leaks further than that policy.
+--   Migration 183 keeps workspace_roster_blocks Member-private so a
+--   workspace can never enumerate who blocked it, but the relationship row's
+--   own state column says the same thing out loud. `blocked` collapses to
+--   `refused` in every workspace-facing read. Section (i).
+-- R-20 / WSR-29 (owner decision, 2026-09-07): workspace_members.role gates
+--   NOTHING about project access — 38.0.1 Part B check B3 confirmed
+--   behaviourally that a GUEST reaches a Member's attached project exactly
+--   as the OWNER does. Section (k) adds the role floor, as ONE conjunct at
+--   the single chokepoint.
+-- R-15 / WSR-23 (Codex finding F21): workspaces_select_member has a
+--   created_by fallback, so a creator removed from their own workspace sees
+--   it forever. Section (j) removes it, which is safe only because
+--   migration 198's workspace_create makes creation atomic.
 --
 -- THE D-56 KILL SWITCH IS NOT TOUCHED BY THIS FILE AND MUST STAY OFF IN
 -- PRODUCTION UNTIL THIS PHASE SHIPS. WSR-07 and WSR-08 need no grants to
@@ -1197,6 +1249,539 @@ GRANT  EXECUTE ON FUNCTION public.workspace_audit_visible(uuid, uuid) TO authent
 COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
   'NARROWED BY MIGRATION 197 (R-13/R-27/WSR-19). True when p_uid is the audit row''s actor, its named subject Member, or an owner/admin of the row''s workspace. Migration 186''s version also admitted ANY live seat in the workspace, which is what put a raw `changes` object — today including an invited person''s email address — in front of every member. That branch is gone. workspace_audit_log_select no longer calls this function: the narrowed predicate reads only the row''s own columns plus workspace_members, so it cannot recurse into workspace_audit_log and the definer indirection migration 186 needed to avoid 42P17 buys nothing. This function is narrowed in lockstep anyway, because it is still EXECUTE-able by authenticated and a helper whose answer disagrees with the policy is the WSR-17 class of drift. Ordinary members now read the trail through public.workspace_audit_page, redacted. D-50''s intent is preserved — the workspace still audits itself and the affected Member still sees what was done to them — and only the mechanism changes for one class of reader; R-27 confirmed that on the record.';
 
+-- ─── (i) THE ROSTER PROPOSAL NARROWING, AND THE `blocked` COLLAPSE ────────
+--         R-12 / WSR-18, and R-23 / T-38-04-05
+--
+-- TWO CHANGES WITH ONE SUBJECT: what a workspace is allowed to learn about
+-- a roster relationship it proposed.
+--
+-- PART 1 — THE POLICY (R-12 / WSR-18). Migration 183's
+-- workspace_roster_relationships_select admits
+--   member_user_id = auth.uid() OR workspace_member_role(...) IS NOT NULL
+-- so EVERY active seat — including a guest and a contractor — sees every
+-- `proposed` row. D-05 says the workspace sees nothing about a Member until
+-- acceptance; that policy contradicts it in the plainest possible terms. A
+-- proposal is a CLAIM a workspace has made about a person who has not yet
+-- answered it, and until they answer it is their business and the business
+-- of the people who must manage the proposal. Nobody else's.
+--
+-- PART 2 — THE COLLAPSE (R-23). Narrowing the policy is not sufficient on
+-- its own, because the relationship row's OWN `state` column carries the
+-- value `blocked`, and that value says out loud the one thing migration 183
+-- built workspace_roster_blocks to keep quiet. See the long note above the
+-- reader below.
+--
+-- ── Part 1: the recreated SELECT policy ──────────────────────────────────
+--
+-- FOUR BRANCHES, each with a different reason to exist:
+--
+--   1. member_user_id = (SELECT auth.uid())
+--      The named Member always sees a claim about themselves, INCLUDING
+--      while it is still `proposed`. This is the half of D-05 migration 183
+--      got right and it is preserved verbatim: the Member must be able to
+--      see, accept, refuse or block a claim naming them without ever
+--      entering the claiming workspace's context. It is also the branch
+--      that keeps app/api/roster/relationships/route.ts working unchanged.
+--
+--   2. (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
+--      The owner. Ownership of the workspace carries responsibility for
+--      what the workspace has claimed in its own name.
+--
+--   3. (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
+--      The proposal-management surface. Owners and admins are the two roles
+--      the roster PATCH handler already gates on through canManageRoster,
+--      so they are exactly the two that must see a proposal to manage it.
+--
+--   4. state IN ('accepted', 'ended') AND workspace_member_role(...) IS NOT NULL
+--      Every OTHER active seat sees only SETTLED, NON-PRIVATE outcomes. An
+--      accepted relationship is a public fact about the workspace — it is
+--      what the roster IS — and an ended one is its history (D-17: a
+--      relationship is never deleted, it terminates). Neither reveals
+--      anything the Member has not already agreed to.
+--
+-- THE TWO CONSEQUENCES, STATED SO NEITHER IS DISCOVERED LATER:
+--
+--   * An ordinary member, contractor or guest NO LONGER SEES A `proposed`
+--     ROW AT ALL. That is WSR-18, and it is the point.
+--   * They no longer see a `refused` or a `blocked` row either. That goes
+--     beyond WSR-18's letter and is deliberate: a refusal is the Member's
+--     business and the owner/admin surface's, not the whole roster's.
+--     Broadcasting "this person told us no" to every seat in the workspace
+--     is a second disclosure the Member never consented to, and the
+--     narrowest policy that satisfies WSR-18 gets that for free.
+--
+-- Every helper call is wrapped as a scalar subselect (SELECT public.f(...)),
+-- per the standing rule from migrations 078/136/182-186/192. Not style: the
+-- wrap is what lets the planner evaluate the helper once per statement
+-- rather than once per row, and it is the shape the recursion doctrine
+-- assumes.
+DROP POLICY IF EXISTS "workspace_roster_relationships_select" ON public.workspace_roster_relationships;
+
+CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster_relationships
+  FOR SELECT TO authenticated
+  USING (
+    member_user_id = (SELECT auth.uid())
+    OR (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
+    OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
+    OR (
+      state IN ('accepted', 'ended')
+      AND (SELECT public.workspace_member_role(workspace_id, auth.uid())) IS NOT NULL
+    )
+  );
+
+-- ── Part 2: the workspace-facing read, with the R-23 collapse ────────────
+--
+-- THE COLLAPSE IS A DELIBERATE LIE TO ONE AUDIENCE, AND THE REASON BELONGS
+-- ON THE RECORD RATHER THAN IN A PLANNING DOCUMENT.
+--
+-- Migration 183 keeps public.workspace_roster_blocks Member-private — its
+-- SELECT policy references only member_user_id and auth.uid(), with no
+-- workspace_member_role call of any kind — precisely so that A WORKSPACE CAN
+-- NEVER ENUMERATE WHO BLOCKED IT (T-38-04-05). But the relationship row
+-- itself carries state = 'blocked', and that value says exactly the same
+-- thing out loud. The blocks table is the locked door and the state column
+-- is the window beside it.
+--
+-- R-23 SETTLES THE CONTRADICTION IN FAVOUR OF T-38-04-05: `blocked`
+-- collapses to `refused` in every workspace-facing read. The workspace
+-- learns that the Member said no. It does not learn that the Member also
+-- shut the door.
+--
+-- WHAT THE COLLAPSE DOES NOT BREAK, CHECKED RATHER THAN ASSUMED:
+--   * THE MEMBER'S OWN SURFACE KEEPS THE TRUE STATE.
+--     app/api/roster/relationships/route.ts reads the RAW TABLE through the
+--     RLS-scoped client, filtered to member_user_id = their own id, and
+--     deliberately does NOT call this function. A Member must be able to see
+--     that they blocked a workspace — that is their own record of their own
+--     act. The COMMENT ON FUNCTION below says so too, so that route is not
+--     later "harmonised" onto this reader.
+--   * THE BLOCK KEEPS WORKING. Enforcement never reads this column: it reads
+--     the Member-private blocks table, through
+--     lib/workspaces/roster-service.ts's assertCanPropose. Collapsing a
+--     DISPLAYED state changes nothing about whether a re-proposal is refused.
+--   * `refused_at` IS ALREADY POPULATED ON A BLOCK. The block branch of the
+--     Member's PATCH handler writes { state: 'blocked', refused_at: nowIso }
+--     in the same UPDATE, exactly as the refuse branch does. So passing
+--     refused_at straight through cannot produce the tell-tale a collapse
+--     would otherwise create: a `refused` row with no refusal timestamp,
+--     which would let a reader infer the collapse and therefore infer the
+--     block. THE COLLAPSE MUST NOT LEAVE A FINGERPRINT, and this is the
+--     column that would have carried one.
+--
+-- WHAT THE COLLAPSE DOES NOT COVER, STATED PLAINLY BECAUSE IT IS THE ONE
+-- RESIDUAL: an owner or admin admitted by branch 2 or 3 of the policy above
+-- still reads the RAW table, and RLS is row-level — Postgres cannot redact
+-- a column through a policy. So an owner querying
+-- workspace_roster_relationships directly still sees state = 'blocked'.
+-- Closing that would mean excluding `blocked` from branches 2 and 3
+-- entirely, which makes the row VANISH from the workspace's raw view rather
+-- than reading as `refused` — a different and stronger choice than the
+-- mechanism R-23 describes. IT IS RAISED AT PLAN 09'S REVIEW CHECKPOINT AS
+-- AN EXPLICIT OWNER QUESTION rather than decided silently here, and plan 15
+-- repoints the workspace roster GET at THIS function so the application
+-- surface is collapsed either way.
+--
+-- THE THREE PROPERTIES COPIED FROM MIGRATION 194, NOT REINVENTED — the same
+-- three section (h) preserves, for the same reasons:
+--   * `p_uid = (SELECT auth.uid())` — the caller bind. The parameter is
+--     explicit because it makes the resolution readable, but it can only
+--     ever name the CALLER, and a NULL auth.uid() returns zero rows. This is
+--     the binding 38.0.1 Part B check B9 proved bites behaviourally. DO NOT
+--     omit it because the parameter "looks" redundant.
+--   * The LEAST/GREATEST clamp — an unbounded page on a SECURITY DEFINER
+--     function is a denial-of-service surface, in migration 194's own words.
+--     200 is the ceiling, 50 the default for a NULL argument.
+--   * A DECLARED RETURN COLUMN LIST AS THE SECURITY CONTRACT, never
+--     SELECT *. It is the complete set of facts a caller can obtain here,
+--     and adding a column to it must be reviewed exactly as carefully as
+--     widening an RLS policy. The list below is the FIFTEEN names in
+--     ROSTER_COLUMNS in app/api/workspaces/[workspaceId]/roster/route.ts, in
+--     that order, so the route renders no field this contract has not
+--     declared.
+--
+-- AND THE SAME VISIBILITY BRANCHES AS THE POLICY ABOVE. A SECURITY DEFINER
+-- function bypasses RLS by construction, so if this WHERE clause were any
+-- broader than the policy it would BE the way around the policy. It is the
+-- same four branches, in the same order, plus the D-56 kill switch and a
+-- live seat in the workspace being read.
+--
+-- ORDER BY created_at ASC matches what the workspace roster GET already
+-- renders (`.order('created_at', { ascending: true })`), so plan 15's
+-- repoint is a substitution rather than a visible reordering.
+CREATE OR REPLACE FUNCTION public.workspace_roster_page(
+  p_workspace_id UUID,
+  p_uid UUID,
+  p_limit INT,
+  p_offset INT
+)
+RETURNS TABLE (
+  id                UUID,
+  workspace_id      UUID,
+  member_user_id    UUID,
+  professional_role TEXT,
+  state             TEXT,
+  effective_from    DATE,
+  terminates_on     DATE,
+  proposed_by       UUID,
+  accepted_at       TIMESTAMPTZ,
+  refused_at        TIMESTAMPTZ,
+  ended_at          TIMESTAMPTZ,
+  ended_by          UUID,
+  end_reason        TEXT,
+  created_at        TIMESTAMPTZ,
+  updated_at        TIMESTAMPTZ
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    r.id,
+    r.workspace_id,
+    r.member_user_id,
+    r.professional_role,
+    CASE WHEN r.state = 'blocked' THEN 'refused' ELSE r.state END,
+    r.effective_from,
+    r.terminates_on,
+    r.proposed_by,
+    r.accepted_at,
+    r.refused_at,
+    r.ended_at,
+    r.ended_by,
+    r.end_reason,
+    r.created_at,
+    r.updated_at
+  FROM public.workspace_roster_relationships r
+  WHERE r.workspace_id = p_workspace_id
+    AND p_uid = (SELECT auth.uid())
+    AND public.workspace_access_enabled()
+    AND public.workspace_member_role(p_workspace_id, p_uid) IS NOT NULL
+    AND (
+      r.member_user_id = p_uid
+      OR public.is_workspace_owner(r.workspace_id, p_uid)
+      OR public.workspace_member_role(r.workspace_id, p_uid) = 'admin'
+      OR (
+        r.state IN ('accepted', 'ended')
+        AND public.workspace_member_role(r.workspace_id, p_uid) IS NOT NULL
+      )
+    )
+  ORDER BY r.created_at ASC, r.id ASC
+  LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)
+  OFFSET GREATEST(COALESCE(p_offset, 0), 0)
+$$;
+
+-- A SESSION-CLIENT READ, like migrations 193 and 194 — NOT migration 198's
+-- write family, which is service-role-only after migration 123. The two
+-- readers this file adds (workspace_audit_page in section (h) and
+-- workspace_roster_page here) both keep EXECUTE for `authenticated`;
+-- workspace_access_permitted in section (l) below deliberately does not.
+-- Do not "harmonise" the three: the difference is the design.
+REVOKE EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)
+  FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)
+  TO authenticated;
+
+COMMENT ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int) IS
+  'R-23/WSR-18/T-38-04-05. One page of a workspace roster, WITH `blocked` COLLAPSED TO `refused`. Migration 183 keeps workspace_roster_blocks Member-private so a workspace can never enumerate who blocked it (T-38-04-05), but the relationship row''s own state column says the same thing out loud; R-23 settles that contradiction in favour of T-38-04-05. The workspace learns the Member said no, never that the Member also shut the door. refused_at is passed through unchanged BECAUSE THE BLOCK PATH ALREADY STAMPS IT — a `refused` row with no refusal timestamp would be a fingerprint a reader could use to infer the collapse, and therefore infer the block. THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION: app/api/roster/relationships/route.ts reads the raw table through the RLS client and keeps the TRUE state, because a Member must be able to see their own act. The block itself keeps working either way, because enforcement reads the Member-private blocks table through assertCanPropose, never this column. The WHERE clause repeats the four visibility branches of workspace_roster_relationships_select exactly: a SECURITY DEFINER function bypasses RLS, so anything broader here would BE the way around that policy. Preserves the three properties migration 194 established: p_uid must equal auth.uid() so the parameter can only ever name the caller and a NULL auth.uid() returns zero rows (38.0.1 Part B check B9); the page is clamped to at most 200 rows because an unbounded page on a SECURITY DEFINER function is a denial-of-service surface; and the return list is DECLARED rather than SELECT * — it is the complete set of facts obtainable here and widening it must be reviewed as carefully as widening an RLS policy. Reads the D-56 kill switch, exactly as every workspace read surface does, and never writes it. Client-invoked, so authenticated keeps EXECUTE — matching migrations 193 and 194, not migration 123.';
+
+-- ─── (j) workspaces_select_member, WITHOUT THE CREATOR FALLBACK ──────────
+--         R-15 / WSR-23
+--
+-- Migration 182's policy reads:
+--
+--   USING (
+--     (SELECT public.workspace_member_role(id, auth.uid())) IS NOT NULL
+--     OR created_by = (SELECT auth.uid())
+--   )
+--
+-- THAT SECOND BRANCH OUTLIVES MEMBERSHIP. A creator who has been removed
+-- from their own workspace — demoted, ended, or simply deleted from
+-- workspace_members by an owner — still sees the workspace row forever,
+-- because created_by is immutable history and nothing revokes it. There is
+-- no expiry on it, no status on it, and no way for an owner to take it
+-- away. It is the only branch anywhere in the workspace policy set that
+-- grants visibility from a FACT ABOUT THE PAST rather than a LIVE
+-- RELATIONSHIP, and D-23's whole posture is the opposite of that.
+--
+-- WHY THE FALLBACK EXISTED, AND WHY IT IS ONLY NOW SAFE TO REMOVE.
+-- Workspace creation is TWO INSERTS IN TWO TRANSACTIONS today: one into
+-- public.workspaces, then one into public.workspace_members for the owner
+-- seat, with a compensating DELETE if the second fails. A compensating
+-- DELETE DOES NOT RUN IF THE PROCESS DIES BETWEEN THE TWO — a deploy, an
+-- OOM kill, a lambda timeout — and the result is a workspace row with NO
+-- OWNER SEAT AT ALL. With membership as the only visibility branch, that
+-- workspace would be invisible to every human being on earth, including the
+-- person who just created it, and unreachable for repair through any
+-- product surface. The created_by branch was the fallback that kept such a
+-- workspace visible to at least one person.
+--
+-- workspace_create (MIGRATION 198, PLAN 06) MAKES CREATION ONE TRANSACTION.
+-- Both inserts either commit together or neither does, so the orphaned-
+-- workspace state the fallback covered can no longer be reached. The
+-- fallback is now pure downside: it protects against nothing and it grants
+-- a removed creator permanent visibility.
+--
+-- THIS IS THE SECOND REASON 197 AND 198 PUSH TOGETHER (the first is section
+-- (c)'s owner-role trigger, which needs 198's ownership RPCs to exist).
+-- Applying THIS section without 198 would remove the fallback while
+-- creation is still two transactions — reintroducing exactly the orphan
+-- this branch was written to survive. Neither file is ever staged alone.
+--
+-- WHAT REPLACES IT IS THE MEMBERSHIP BRANCH ALONE. workspace_member_role
+-- already restricts to ACTIVE seats (migration 182) and, since migration
+-- 192, to unexpired ones (R-11/WSR-17). So visibility now tracks a live
+-- relationship and nothing else, which is what every other workspace SELECT
+-- policy in this schema already does.
+DROP POLICY IF EXISTS "workspaces_select_member" ON public.workspaces;
+
+CREATE POLICY "workspaces_select_member" ON public.workspaces
+  FOR SELECT TO authenticated
+  USING (
+    (SELECT public.workspace_member_role(id, auth.uid())) IS NOT NULL
+  );
+
+-- ─── (k) workspace_project_permission v3 — THE WSR-29 ROLE FLOOR ─────────
+--         R-20, owner decision 2026-09-07
+--
+-- ONE CONJUNCT. NOTHING ELSE IN THIS FUNCTION CHANGES.
+--
+-- Migration 192's six-hop body is reproduced below VERBATIM — the leading
+-- public.workspace_access_enabled() kill-switch conjunct, hop 1's live
+-- attachment, hop 2's active unexpired membership, hop 3's accepted
+-- in-window relationship joined through the attachment's own
+-- relationship_id, hop 4's unrevoked grant on that same relationship, hop
+-- 5's custody bind to public.vault_projects, and hop 6's
+-- workspace_grant_lineage_live re-validation — plus EXACTLY ONE new line on
+-- hop 2's workspace_members join, immediately after the expires_at clause:
+--
+--   AND m.role IN ('owner', 'admin', 'member', 'contractor')
+--
+-- WHAT IT FIXES. workspace_members.role gated NOTHING about project access.
+-- 38.0.1 Part B check B3 confirmed this BEHAVIOURALLY, in production: a
+-- seeded GUEST identity reached a Member's attached project EXACTLY as the
+-- owner did, because grants are per-RELATIONSHIP rather than per-MEMBER and
+-- hop 2 filtered only on status and expires_at, with no role condition of
+-- any kind. That check is the evidence the floor did not previously exist,
+-- and under R-20 it flips from "PASS — matches the per-relationship model"
+-- to "PASS — guest refused".
+--
+-- THE OWNER DECIDED ON 2026-09-07 to add a role floor EXCLUDING `guest`.
+-- Owner, admin, member and contractor keep access. A GUEST GETS WORKSPACE
+-- CHROME AND NEVER REACHES A MEMBER'S PROJECT DATA. Guests keep everything
+-- that is NOT project data — workspace membership, chrome, and whatever the
+-- R-12 proposal-visibility rules in section (i) above already allow them.
+--
+-- HOP 2 IS THE SINGLE CHOKEPOINT, AND THAT IS THE ENTIRE DESIGN. All four
+-- workspace_read_* functions call THIS function, so the floor propagates to
+-- every child-table read — tracks, assets, documents, tool outputs —
+-- WITHOUT TOUCHING THOSE FOUR FUNCTIONS AT ALL, and without touching any of
+-- the ten policies that call this one. Nothing else in this file, and
+-- nothing anywhere else in this phase, needs a second copy of the rule.
+-- One conjunct, one place, one review.
+--
+-- THE TYPESCRIPT TWIN IS WORKSPACE_PROJECT_ACCESS_ROLES IN
+-- lib/workspaces/membership.ts (plan 03), consumed through
+-- canReachWorkspaceProjects. THE TWO MUST CHANGE TOGETHER. That file
+-- carries the reciprocal comment naming this conjunct, and
+-- __tests__/migration-197.test.ts imports the constant and asserts every
+-- element of it appears here — so a divergence fails the suite rather than
+-- reaching production.
+--
+-- IT IS A TWIN, NOT A DEDUPLICATION, DELIBERATELY. This repo's answer to
+-- two-layer disagreement is two independent layers that agree (migrations
+-- 078, 136, 187, 190, 196), each naming the other, not one layer trusting
+-- the other. WSR-17 EXISTS BECAUSE THESE EXACT TWO LAYERS ONCE DISAGREED
+-- ABOUT expires_at: the SQL hop admitted an expired-but-active seat while
+-- the API gate refused it, and migration 192 had to bring them back into
+-- line. Shipping the SQL half of this floor without the TypeScript half, or
+-- the reverse, reproduces that failure verbatim.
+--
+-- WHERE THE API HALF LIVES, AND WHERE IT DOES NOT. The floor is NOT applied
+-- inside requireWorkspaceAccess: that gate covers every route under
+-- /api/workspaces/**, INCLUDING the chrome routes R-20 explicitly keeps
+-- guests on, and a blanket branch there would turn a floor into a ban. It
+-- composes at the project-data routes instead, through requireWorkspaceRole
+-- with canReachWorkspaceProjects (plan 13).
+--
+-- THE FLOOR IS A FLOOR, NOT A GRANT. Clearing it authorises nothing on its
+-- own — every other hop still has to resolve. Failing it refuses regardless
+-- of what grants exist.
+CREATE OR REPLACE FUNCTION public.workspace_project_permission(
+  p_project_id UUID,
+  p_uid UUID,
+  p_permission TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    public.workspace_access_enabled()
+    AND EXISTS (
+      SELECT 1
+      FROM public.workspace_attachments a
+      JOIN public.workspace_members m
+        ON m.workspace_id = a.workspace_id
+       AND m.user_id = p_uid
+       AND m.status = 'active'
+       AND (m.expires_at IS NULL OR m.expires_at > now())
+       AND m.role IN ('owner', 'admin', 'member', 'contractor')
+      JOIN public.workspace_roster_relationships r
+        ON r.workspace_id = a.workspace_id
+       AND r.id = a.relationship_id
+       AND r.state = 'accepted'
+       AND (r.effective_from IS NULL OR r.effective_from <= CURRENT_DATE)
+       AND (r.terminates_on IS NULL OR r.terminates_on > CURRENT_DATE)
+      JOIN public.workspace_grants g
+        ON g.workspace_id = a.workspace_id
+       AND g.relationship_id = r.id
+       AND g.permission = p_permission
+       AND g.revoked_at IS NULL
+       AND (g.project_id IS NULL OR g.project_id = p_project_id)
+      JOIN public.vault_projects p
+        ON p.id = a.project_id
+       AND p.user_id = r.member_user_id
+      WHERE a.project_id = p_project_id
+        AND a.detached_at IS NULL
+        AND public.workspace_grant_lineage_live(g.id)
+    )
+$$;
+
+-- Restated exactly as migration 192 has it. CREATE OR REPLACE preserves
+-- existing grants, so this pair is belt-and-braces rather than strictly
+-- required — and it is restated for the same reason section (d) restates
+-- the owner floor's: a reader of THIS file must be able to see the grant
+-- posture of every function it defines without cross-referencing another
+-- migration.
+REVOKE EXECUTE ON FUNCTION public.workspace_project_permission(uuid, uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_project_permission(uuid, uuid, text) TO authenticated;
+
+COMMENT ON FUNCTION public.workspace_project_permission(uuid, uuid, text) IS
+  'The single point at which a workspace can reach a Member''s project, v3 (migration 197). Resolves, inside this ONE SECURITY DEFINER function body: hop 1, a live attachment (workspace_attachments), hop 2, an active unexpired membership WHOSE ROLE CLEARS THE PROJECT-ACCESS FLOOR (workspace_members) -- as of migration 197 this hop additionally requires m.role IN (owner, admin, member, contractor), the R-20/WSR-29 floor the owner decided on 2026-09-07, so a GUEST seat gets workspace chrome and never reaches a Member''s project data -- hop 3, an accepted in-window roster relationship joined through the attachment''s own relationship_id with NO nullable fallback (workspace_roster_relationships), hop 4, an unrevoked grant on that SAME relationship for the requested permission, with NO nullable fallback (workspace_grants), hop 5, a JOIN to public.vault_projects requiring p.user_id = r.member_user_id -- the custody binding (R-04/WSR-06) that makes access follow current custody automatically, with no cleanup step and no cron, and hop 6, public.workspace_grant_lineage_live(g.id) -- the delegation-lineage re-validation (R-01/WSR-02) that a revoked ancestor or a chain with no live member-consent root confers nothing. HOP 2 IS THE SINGLE CHOKEPOINT for the role floor: all four workspace_read_* functions call this one, so the floor propagates to every child-table read without those four functions being touched at all. WORKSPACE_PROJECT_ACCESS_ROLES in lib/workspaces/membership.ts is the TypeScript twin of that conjunct and THE TWO MUST CHANGE TOGETHER -- deliberately a twin rather than a deduplication, because WSR-17 exists precisely because these two layers once disagreed about expires_at. 38.0.1 Part B check B3 is the behavioural evidence the floor did not previously exist: a guest reached an attached project exactly as the owner did. Returns FALSE immediately when public.workspace_access_enabled() is FALSE (D-56/WS-31 kill switch, preserved from the F7 hotfix). STABLE, not cached anywhere: every hop is read live on every call, matching lib/workspaces/grant-service.ts''s resolveEffectivePermissions (T-38.0.1-09-05). Returns a boolean about a named permission only -- it never resolves, signs or returns a storage path or URL of any kind (custody D-01/D-09, D-40: no grant may become a shortcut around the existing narrow, asset-class-specific accessors). Intended for RLS policy USING/WITH CHECK clauses wrapped as a scalar subselect (SELECT ...), not a client-invoked RPC.';
+
+-- ─── (l) public.workspace_access_permitted — ONE ROUND TRIP ──────────────
+--         WSR-16 / R-07, with R-24, R-25 and R-29 recorded
+--
+-- Resolves the D-56 KILL SWITCH and the D-55 COHORT WINDOW together, in one
+-- service-role call. requireWorkspaceAccess runs on EVERY gated workspace
+-- request; growing it from one round trip to two would tax every one of
+-- them. Folding the hops into a single function is the same move migrations
+-- 192 and 194 already made, applied to the gate instead of to a read.
+--
+-- IT RETURNS TWO BOOLEANS RATHER THAN ONE, AND THAT IS THE WHOLE POINT.
+-- The caller must be able to tell:
+--
+--   * 503 — THE PLATFORM CONTROL IS OFF. The D-56 kill switch is disabled
+--     for everybody. This is an operational state, possibly an incident,
+--     and it is temporary.
+--   * 404 — THIS MEMBER IS OUTSIDE THE PILOT COHORT. The platform is fine;
+--     this account is simply not in the D-55 bound yet.
+--
+-- COLLAPSING THEM TO ONE BOOLEAN WOULD MAKE AN INCIDENT INDISTINGUISHABLE
+-- FROM AN ACCESS DECISION — the on-call engineer and the confused beta user
+-- would see the identical response, and the first question of any incident
+-- ("is it everyone or is it this person?") would have no answer. Two
+-- columns, always.
+--
+-- R-25 — A NON-COHORT MEMBER RECEIVES 404, NOT 403. During a bounded pilot,
+-- someone outside the cohort should not learn the feature exists. 403 is the
+-- more HONEST status and it is the wrong one here: it leaks the existence of
+-- a capability the caller cannot reach, and 404 matches how the rest of this
+-- repo hides unreachable resources. THE MAPPING ITSELF IS NOT HERE. This
+-- function only REPORTS; lib/workspaces/access.ts (plan 13) turns the two
+-- booleans into an HTTP status, exactly as lib/workspaces/cohort.ts (plan
+-- 02) says it does.
+--
+-- R-24 — THE COHORT GATE APPLIES TO THE ACCEPTOR OF AN INVITATION, NOT ONLY
+-- TO WORKSPACE CREATION. Without that, ONE cohort owner can pull in
+-- unlimited non-cohort Members and the pilot bound stops meaning anything —
+-- the bound would cap who can CREATE a workspace while leaving who can be
+-- IN one unbounded, which is not a bound at all.
+--
+-- THE THREE CALL SITES THAT MUST ALL REACH THIS FUNCTION:
+--   1. requireWorkspaceAccess          (lib/workspaces/access.ts, plan 13)
+--   2. POST /api/workspaces            (creation)
+--   3. POST /api/workspaces/invitations/accept   (R-24)
+--
+-- MISSING THE THIRD REPRODUCES THE EXACT SHAPE OF HOTFIX F7 — a route
+-- carrying workspace state that skipped the global control. That accept
+-- route calls isWorkspaceAccessEnabled directly today, which is precisely
+-- the shape F7 had to fix once already. canAcceptWorkspaceInvitation in
+-- lib/workspaces/cohort.ts exists so the third site is a one-line call
+-- rather than a re-derivation.
+--
+-- R-29 — THERE IS NO COHORT ADMIN SURFACE THIS PHASE. SQL seeding is
+-- accepted for beta; the exact INSERT is written down above section (b)'s
+-- table definition. WSR-16 needs the gate to WORK, not a UI to manage it.
+--
+-- THE COALESCE ON p_require_cohort IS NOT DECORATION. A NULL argument would
+-- make `NOT p_require_cohort` evaluate to NULL, and cohort_ok would come
+-- back NULL — neither true nor false — for a caller the gate then has to
+-- guess about. COALESCE(..., TRUE) FAILS CLOSED: an absent or malformed
+-- argument is read as "cohort membership IS required", never as "waive the
+-- bound". That is the same posture lib/workspaces/cohort.ts takes when it
+-- defaults to closed, and the same posture workspace_access_enabled() takes
+-- with its own COALESCE(..., FALSE) in migration 186.
+--
+-- THE COHORT WINDOW PREDICATE reproduces migration 156's, one axis narrower:
+-- enabled, starts_at already reached, and ends_at either absent or still in
+-- the future. song_passport_cohorts carries two nullable subject axes;
+-- workspace_cohorts carries one NOT NULL account axis, because the subject
+-- of the workspace pilot is always an ACCOUNT (there is no workspace yet at
+-- the moment creation is gated).
+CREATE OR REPLACE FUNCTION public.workspace_access_permitted(
+  p_uid UUID,
+  p_require_cohort BOOLEAN
+)
+RETURNS TABLE (
+  access_enabled BOOLEAN,
+  cohort_ok      BOOLEAN
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    public.workspace_access_enabled(),
+    (
+      NOT COALESCE(p_require_cohort, TRUE)
+      OR EXISTS (
+        SELECT 1
+        FROM public.workspace_cohorts c
+        WHERE c.account_user_id = p_uid
+          AND c.enabled
+          AND c.starts_at <= now()
+          AND (c.ends_at IS NULL OR c.ends_at > now())
+      )
+    )
+$$;
+
+-- SERVICE-ROLE ONLY. THIS GRANT DELIBERATELY DIFFERS FROM THE TWO READER
+-- FUNCTIONS IN THIS SAME FILE, AND THE DIFFERENCE MUST NOT BE
+-- "HARMONISED" LATER.
+--
+--   workspace_audit_page   (section (h))  -> authenticated. A client read.
+--   workspace_roster_page  (section (i))  -> authenticated. A client read.
+--   workspace_access_permitted (here)     -> service_role.  NOT a client
+--                                            read, at all.
+--
+-- This function is called ONLY from a service-role client, for two reasons
+-- that both stand on their own. First, migration 186 revokes
+-- workspace_access_config from authenticated and anon, so a session client
+-- cannot reach the D-56 state this function reports. Second, and more
+-- important, section (b) revokes ALL on workspace_cohorts from
+-- authenticated and anon on purpose: THE MEMBERSHIP OF A BOUNDED PILOT IS
+-- ITSELF INFORMATION A NON-COHORT ACCOUNT SHOULD NOT HAVE, and a SECURITY
+-- DEFINER function granted to `authenticated` would hand every logged-in
+-- account a probe for exactly that. It takes migration 123's posture, not
+-- migrations 193/194's.
+REVOKE EXECUTE ON FUNCTION public.workspace_access_permitted(uuid, boolean)
+  FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_access_permitted(uuid, boolean)
+  TO service_role;
+
+COMMENT ON FUNCTION public.workspace_access_permitted(uuid, boolean) IS
+  'WSR-16/R-07. Resolves the D-56 kill switch and the D-55 cohort window in ONE service-role round trip, so requireWorkspaceAccess does not grow from one round trip to two on every gated request -- the same fold-the-hops-into-one-function move migrations 192 and 194 already made. RETURNS TWO BOOLEANS RATHER THAN ONE ON PURPOSE: the caller must distinguish 503 (the platform control is off, an operational state affecting everybody) from 404 (this Member is outside the pilot cohort, an access decision affecting one account). Collapsing them would make an incident indistinguishable from an access decision. R-25: a non-cohort Member receives 404, NOT 403 -- during a bounded pilot someone outside the cohort should not learn the feature exists, and 403 leaks the existence of a capability they cannot reach; the mapping itself belongs to lib/workspaces/access.ts, this function only reports. R-24: the cohort gate applies to the ACCEPTOR of an invitation as well as to workspace creation, because otherwise one cohort owner can pull in unlimited non-cohort Members and the pilot bound stops meaning anything; the three call sites that must all reach this function are requireWorkspaceAccess, POST /api/workspaces and POST /api/workspaces/invitations/accept, and missing the third reproduces the exact shape of hotfix F7. R-29: there is no cohort admin surface this phase, SQL seeding is accepted for beta and the exact INSERT is recorded above the workspace_cohorts table definition. COALESCE(p_require_cohort, TRUE) fails CLOSED: a NULL argument reads as "cohort membership is required", never as "waive the bound". GRANTED TO service_role ONLY, unlike workspace_audit_page and workspace_roster_page in this same file which are client reads granted to authenticated -- the membership of a bounded pilot is itself information a non-cohort account should not have, so a definer function reachable by authenticated would be a probe for it. Takes migration 123''s posture, not migrations 193/194''s. Do not harmonise the three.';
+
 -- ─── Schema-cache reload — MUST REMAIN THE LAST STATEMENT IN THIS FILE ────
--- Plans 07 and 09 append further sections ABOVE this line, never below it.
+-- Plans 07 and 09 appended their sections ABOVE this line, never below it.
+-- The file is closed; anything further belongs in a new migration.
 NOTIFY pgrst, 'reload schema';
