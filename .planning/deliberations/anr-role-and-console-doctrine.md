@@ -1,6 +1,7 @@
 # Funūn A&R Role and Console Doctrine
 
-**Status:** OPEN — Point 1, Core Responsibilities, owner-approved on 2026-09-06; remaining doctrine under discussion
+**Status:** SUPERSEDED — source deliberation preserved; completed owner-approved doctrine packaged on 2026-09-07
+**Canonical package:** `.planning/deliberations/organizational-doctrine/functional-team-doctrines.md#1-ar-doctrine`
 **Intended home:** The Playbook → A&R Team Room
 **Purpose:** Internal operating doctrine, onboarding reference and product authority for the Funūn A&R Team Member console
 **Audience:** A&Rs, AEs, Leadership and other authorized Funūn Team Members

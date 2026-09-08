@@ -1,6 +1,7 @@
 # Funūn Business Development Team Role and Console Doctrine
 
-**Status:** OPEN — foundation owner-approved on 2026-09-06; expanded core responsibilities and remaining authority decisions are still under discussion
+**Status:** SUPERSEDED — source deliberation preserved; completed owner-approved doctrine packaged on 2026-09-07
+**Canonical package:** `.planning/deliberations/organizational-doctrine/functional-team-doctrines.md#3-business-development-doctrine`
 **Intended home:** The Playbook → Business Development → Role Doctrine
 **Purpose:** Internal operating doctrine, onboarding reference and product authority for the Funūn BDT Team Member console
 **Audience:** BDT, A&R, AE, Leadership and other authorized Funūn Team Members
