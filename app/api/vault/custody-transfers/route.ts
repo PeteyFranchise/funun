@@ -28,7 +28,15 @@ import { createNotification } from '@/lib/notifications'
 // `assertMayOffer`, or in migration 187's trigger. Because no workspace
 // grant reaches this route, the D-56/WS-31 platform-wide workspace-access
 // kill switch (`requireWorkspaceAccess`, hotfix finding F7) has nothing to
-// gate here and is correctly never called from this file.
+// gate here and is correctly never called from this file. THE RPC BELOW
+// DELIBERATELY DOES NOT CONSULT IT EITHER, for the same reason and stated
+// in its own header at length: custody is a Member act carrying no
+// workspace-derived authority, and `workspace_custody_transfers.
+// workspace_id` is NULLABLE precisely because a transfer may be offered
+// outside any workspace context at all — for such a transfer, gating on
+// the switch would be gating on a workspace that does not exist. Two
+// places now say so, so a future "consistency" fix that adds a gate here
+// fails review rather than shipping.
 //
 // `workspace_custody_transfers`' BEFORE INSERT guard (migration 187,
 // replacing migration 185's original) is the FIRST enforcement point for
@@ -51,11 +59,30 @@ import { createNotification } from '@/lib/notifications'
 // THE DIARY (D-29's "the diary records it permanently"): migration 185's
 // header records that the transfer row's own resolution IS that diary —
 // `workspace_custody_transfers.state` moves to its terminal `accepted`
-// value in the SAME handler, in the SAME request, as the `vault_projects.
-// user_id` write below, so the permanent record and the custody change are
-// one reviewable code path rather than two that could drift apart. No
+// value in the SAME TRANSACTION as the `vault_projects.user_id` write, so
+// the permanent record and the custody change cannot drift apart. No
 // separate diary table exists for `vault_projects`; this route does not
 // invent one.
+//
+// WSR-09 IS CLOSED HERE (F9). Until this change the PATCH handler ran THREE
+// separate transactions — read the transfer, CAS the diary to `accepted`
+// with `.eq('state','offered')`, then call `transfer_vault_project_custody`
+// — and a crash, a redeploy or a concurrent transfer landing between the
+// last two left the diary saying `accepted` while custody never moved.
+// Split-brain, on the one field that decides who holds a Member's record.
+// `public.workspace_accept_custody_transfer` (migration 198 section (h)) is
+// now the SINGLE WRITER on the response path: it takes the diary row and
+// the project row under lock, revalidates every precondition after the
+// lock, moves custody, moves the diary and writes the audit row in ONE
+// transaction. This route issues no `.update()` and no `logWorkspaceAction`
+// call on that path any more — both moved inside the function, which is the
+// whole point. WSR-09 had been deferred twice; it is not deferred again.
+//
+// The KEEP list below the RPC is deliberate and is NOT duplication:
+// `assertMayRespond` (self-dealing check included), `isLegalTransferTransition`
+// and `assertMayOffer` remain this repo's documented SECOND enforcement
+// point beside the database's own guards, producing friendly, pre-write
+// refusal sentences a `RAISE` cannot phrase.
 
 const OfferSchema = z
   .object({
@@ -86,7 +113,75 @@ type TransferRow = {
   state: CustodyTransferState
 }
 
-// POST — offer a custody transfer.
+type CustodyResponseOutcome = {
+  outcome: string
+  transfer_id: string | null
+  project_id: string | null
+  audit_id: string | null
+}
+
+// ─── Outcome → HTTP, in the shape of ────────────────────────────────────────
+// `app/api/workspaces/[workspaceId]/members/route.ts`: a
+// `Record<string, { error, status }>` with a fallback, so an outcome code
+// this route does not recognise degrades to a 400 with a sentence rather
+// than a 500 with a stack trace.
+//
+// The vocabulary below is migration 198 section (h)'s, in full:
+// ok, not_found, stale, already_resolved, forbidden, stale_custodian.
+//
+// TWO OF THESE SENTENCES ARE BYTE-IDENTICAL TO THE ONES THIS ROUTE RETURNED
+// BEFORE THE REWIRE, deliberately: a client may be matching on either, and
+// closing F9 is not a reason to reword a refusal. `route.test.ts` pins both
+// as literals so a future edit that rewords one goes red.
+const CUSTODY_RESPONSE_OUTCOMES: Record<string, { error: string; status: number }> = {
+  not_found: { error: 'Custody transfer not found.', status: 404 },
+  stale: {
+    error: 'This transfer changed while you were responding. Reload it and try again.',
+    status: 409,
+  },
+  already_resolved: {
+    error: 'This transfer was already resolved by someone else.',
+    status: 409,
+  },
+  forbidden: {
+    error: 'You are not permitted to respond to this custody transfer.',
+    status: 403,
+  },
+  stale_custodian: {
+    error:
+      "This record's custodian changed after this transfer was offered — it can no longer be accepted.",
+    status: 409,
+  },
+}
+
+const UNRECOGNISED_OUTCOME = {
+  error: 'That response to this custody transfer could not be applied.',
+  status: 400,
+}
+
+// ─── Postgres error code → response ─────────────────────────────────────────
+// Migration 198 sets `SET LOCAL lock_timeout = '3s'` in every RPC precisely so
+// that a blocked row lock becomes a bounded, retryable failure rather than a
+// hung request. `55P03` (lock not available) is that timeout arriving, and
+// `40P01` (deadlock detected) is the other bounded outcome; both mean "nothing
+// was written, ask again", which is a 409 the caller can act on — never a 500.
+type PostgresLikeError = { message: string; code?: string }
+
+const RETRYABLE_LOCK_CODES: ReadonlySet<string> = new Set(['40P01', '55P03'])
+
+const LOCK_CONTENTION_MESSAGE =
+  'This transfer was being resolved by someone else. Nothing was saved — please try again.'
+
+function respondToPostgresError(error: PostgresLikeError): NextResponse {
+  if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
+    return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
+  }
+  return NextResponse.json({ error: error.message }, { status: 500 })
+}
+
+// POST — offer a custody transfer. NOT moved to an RPC, unlike PATCH: the
+// offer is a SINGLE insert guarded by migration 187's BEFORE INSERT trigger
+// and the partial unique index, so there is no multi-statement race to close.
 export async function POST(request: Request) {
   const supabase = await createApiClient()
   const {
@@ -247,105 +342,66 @@ export async function PATCH(request: Request) {
     )
   }
 
-  const respondedAt = new Date().toISOString()
+  // ─── THE ONE WRITE — AND THE ONLY PATH THAT CHANGES vault_projects.user_id.
+  //
+  // `workspace_accept_custody_transfer` (migration 198 section (h)) takes the
+  // diary row (rank 7) and the project row (rank 8) under lock, revalidates
+  // every precondition AFTER the lock — the compare-and-set against
+  // `p_expected_state`, the terminal-state check that replaces this route's
+  // old `.eq('state', 'offered')` filter, `assertMayRespond`'s authority
+  // predicate copied exactly including the self-dealing refusal, and the
+  // stale-custodian pre-check on accept — then moves custody, moves the
+  // diary and writes the audit row in ONE transaction.
+  //
+  // THIS ROUTE NO LONGER CALLS `transfer_vault_project_custody` ITSELF. The
+  // RPC does, from inside the same transaction as the diary write, and that
+  // gap between two separate transactions is exactly what F9's residual
+  // window was. After this change the sanctioned low-level function has one
+  // caller in the entire system.
+  //
+  // WHAT AN ACCEPT CHANGES, AND WHAT IT DOES NOT. It sets
+  // `vault_projects.user_id` and nothing else. No `project_members`,
+  // `split_sheets`, `split_sheet_parties`, `work_members`, credit record or
+  // version-ownership record is touched here or anywhere in this file: a
+  // custody change is NOT a rights change (D-28, D-43), and custody D-02's
+  // own rule holds — "version contributors, uploaders, owners, controllers
+  // and authorized users are separate concepts and must not be inferred from
+  // one another." Accepting a transfer creates no split-sheet party, no
+  // credit, no royalty entitlement, no version-ownership record and no
+  // signature authority; it only changes who administers this one row.
+  //
+  // `p_actor_id` is the identity `requireMemberApiAccount` already proved
+  // (R-21 Option A) — the RPC re-checks that actor's authority itself rather
+  // than accepting any claim about it. `p_expected_state` is the state read
+  // above, travelling as the compare-and-set token, so a diary row that
+  // moved between this route's read and the RPC's lock comes back as
+  // `'stale'` instead of overwriting somebody else's response.
+  const { data: rpcData, error: rpcError } = await service
+    .rpc('workspace_accept_custody_transfer', {
+      p_actor_id: gated.user.id,
+      p_transfer_id: transferId,
+      p_action: action,
+      p_expected_state: row.state,
+    })
+    .single()
 
-  // ─── THE DIARY WRITE — this update, moving the transfer to its terminal
-  // state, is the permanent record D-29 requires. It happens in the SAME
-  // handler, guarded by `.eq('state', 'offered')` so a concurrent second
-  // response loses the race rather than double-resolving the same offer.
-  const { data: resolved, error: resolveError } = await service
+  if (rpcError) return respondToPostgresError(rpcError as PostgresLikeError)
+
+  const result = (rpcData as CustodyResponseOutcome | null) ?? null
+  if (!result || result.outcome !== 'ok') {
+    const mapped = CUSTODY_RESPONSE_OUTCOMES[result?.outcome ?? ''] ?? UNRECOGNISED_OUTCOME
+    return NextResponse.json({ error: mapped.error }, { status: mapped.status })
+  }
+
+  // Re-read through the same column list the rest of this file uses, so the
+  // success body keeps the shape it had when the diary UPDATE returned it
+  // directly and no client change is needed.
+  const { data: resolved, error: readError } = await service
     .from('workspace_custody_transfers')
-    .update({ state: targetState, responded_at: respondedAt })
-    .eq('id', transferId)
-    .eq('state', 'offered')
     .select(TRANSFER_COLUMNS)
+    .eq('id', transferId)
     .maybeSingle()
 
-  if (resolveError) return NextResponse.json({ error: resolveError.message }, { status: 500 })
-  if (!resolved) {
-    return NextResponse.json(
-      { error: 'This transfer was already resolved by someone else.' },
-      { status: 409 }
-    )
-  }
-
-  if (action === 'accept') {
-    // ─── THE ONLY vault_projects UPDATE ON THE ACCEPT PATH — sets
-    // `user_id` ONLY. No split-sheet, work-member, project-member or
-    // credit table is touched here or anywhere else in this file: a
-    // custody change is not a rights change (D-28, D-43), and custody
-    // D-02's own rule holds — "version contributors, uploaders, owners,
-    // controllers and authorized users are separate concepts and must not
-    // be inferred from one another." Accepting a transfer infers none of
-    // those; it only changes who administers this one row.
-    //
-    // STALE-CUSTODIAN GUARD (F9's cheap half, hotfix 2026-09-06): filtered
-    // by `.eq('user_id', row.from_user_id)` in addition to project id, so
-    // this write only lands if the custodian named on the offer is STILL
-    // the project's custodian at accept time. Without this, a custodian
-    // who transferred custody elsewhere (or had it transferred away) after
-    // this offer was made, but before it was accepted, could have their
-    // record silently overwritten by a stale offer. `.select('id')` +
-    // `.maybeSingle()` lets us tell "the row exists but the filter didn't
-    // match" (stale custodian — a conflict) apart from "the update simply
-    // failed" (an error) — the same distinguishing pattern the DIARY WRITE
-    // above already uses for its own `.eq('state', 'offered')` race guard.
-    // Full transactional accept (both writes in one atomic RPC) remains
-    // deferred to 38.0.1 (F9's full form) — this is the narrow, cheap
-    // mitigation for the same class of race.
-    // WSR-25 / migration 190: `vault_projects.user_id` is immutable to every
-    // caller. `transfer_vault_project_custody` is a SECURITY DEFINER function
-    // owned by postgres and is the ONLY sanctioned path that may change it —
-    // the boundary is "did this statement run inside that function", not
-    // "which role connected" (PREFLIGHT S1: service_role's directly-granted
-    // privileges survive `REVOKE ... FROM PUBLIC`). It reproduces the
-    // stale-custodian guard as the same WHERE-clause double filter and returns
-    // NULL, changing nothing, when `from_user_id` is no longer the current
-    // custodian — so the 409 below behaves exactly as it did before.
-    const { data: custodyUpdated, error: custodyError } = await service.rpc(
-      'transfer_vault_project_custody',
-      {
-        p_project_id: row.project_id,
-        p_from_user_id: row.from_user_id,
-        p_to_user_id: row.to_user_id,
-      }
-    )
-
-    if (custodyError) {
-      return NextResponse.json({ error: custodyError.message }, { status: 500 })
-    }
-    if (!custodyUpdated) {
-      return NextResponse.json(
-        {
-          error:
-            "This record's custodian changed after this transfer was offered — it can no longer be accepted.",
-        },
-        { status: 409 }
-      )
-    }
-
-    if (row.workspace_id) {
-      await logWorkspaceAction(service, {
-        workspaceId: row.workspace_id,
-        actorId: gated.user.id,
-        subjectMemberId: row.to_user_id,
-        action: 'custody.transfer.accepted',
-        targetType: 'workspace_custody_transfer',
-        targetId: row.id,
-        changes: { projectId: row.project_id, fromUserId: row.from_user_id, toUserId: row.to_user_id },
-      })
-    }
-  } else if (row.workspace_id) {
-    await logWorkspaceAction(service, {
-      workspaceId: row.workspace_id,
-      actorId: gated.user.id,
-      subjectMemberId: row.from_user_id,
-      action: action === 'decline' ? 'custody.transfer.declined' : 'custody.transfer.withdrawn',
-      targetType: 'workspace_custody_transfer',
-      targetId: row.id,
-      changes: { projectId: row.project_id },
-    })
-  }
-
+  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
   return NextResponse.json({ data: resolved })
 }
