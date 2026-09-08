@@ -1,6 +1,6 @@
 # Funūn Organizational Doctrine Package
 
-**Status:** OWNER-APPROVED — packaged 2026-09-07; not yet committed or published to The Playbook
+**Status:** OWNER-APPROVED — packaged 2026-09-07; publication preflight built locally; not yet published to The Playbook
 **Audience:** Funūn Team Members, Leadership, product designers and implementation teams
 **Purpose:** Define how Funūn's teams serve members and Client Partners, exercise authority, coordinate work and scale responsibly.
 
@@ -62,4 +62,4 @@ Each function is governed through the same operating questions:
 
 ## Publication note
 
-The current database-backed Playbook entry model stores SOPs and topics as flat arrays. It cannot faithfully represent the approved paragraphs, headings, callouts, tables and diagrams. These Markdown files are therefore the authoritative publication source until the Playbook rich-content/adoption work is completed. The publication map defines the intended rooms and entry groups without creating a conflicting migration while other Phase 38 work is active.
+The production database-backed Playbook still stores SOPs and topics as flat arrays. Local Releases 1–7 now provide rich documents, safe diagrams, adoption, governance, reading operations and publication preflight in candidate migrations 201–202. Those candidates remain outside the active chain until Phase 38.2 migrations 199–200 land. These Markdown files remain authoritative until the human-gated migrations are promoted, applied, and each doctrine passes review and publication UAT.

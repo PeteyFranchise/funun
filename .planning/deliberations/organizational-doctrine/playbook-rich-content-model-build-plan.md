@@ -1,6 +1,6 @@
 # The Playbook Rich-Content Model Build Plan
 
-**Status:** OWNER-APPROVED — Releases 1–3 application work complete locally 2026-09-07; migration reconciliation and doctrine publication remain gated
+**Status:** OWNER-APPROVED — Releases 1–5 application work complete locally 2026-09-07; migration reconciliation and doctrine publication remain gated
 **Commit constraint:** Do not commit, push, migrate or deploy until Claude's concurrent work is reconciled.
 
 ## Outcome
@@ -116,12 +116,46 @@ Adoption is one-time, not bidirectional sync:
 
 ### Release 2 — Adoption and connected knowledge
 
-- Restricted Mermaid diagrams. **Complete locally with strict rendering, DOMPurify, a second SVG safety policy and source fallback.**
 - Repository document adoption and source-change notices. **Complete locally.**
 - Doctrine-to-Gameplan links. **Complete locally.**
 - Search and filtering. **Complete locally, including doctrine-body search.**
+- Published-versus-proposed revision comparison and history. **Complete locally.**
+
+### Release 3 — Diagrams and review reminders
+
+- Restricted Mermaid diagrams. **Complete locally with strict rendering, DOMPurify, a second SVG safety policy and source fallback.**
 - Review dates, due-state visibility and scheduled idempotent owner notifications. **Complete locally.**
+
+### Release 4 — Governance Inbox
+
+- Cross-room approval, ownership, review, source-change, lifecycle and Gameplan-link queue for Leadership and authorized room leads. **Complete locally.**
+- Metadata-only portfolio reporting that never exposes pending or published document bodies across rooms. **Complete locally.**
+
+### Release 5 — Assignments and acknowledgements
+
+- Person and staff-role/team reading assignments tied to exact published revisions. **Complete locally.**
+- Personal required-reading queue, due states and revision-specific acknowledgement. **Complete locally.**
+- Governance completion/overdue reporting and room-lead re-acknowledgement for material revisions. **Complete locally.**
+- Gameplan-required reading continues through the existing connected-Gameplan workflow as a single source of truth. **Complete locally.**
 - Import and publication of the organizational doctrine package. **Workflow complete locally; human-reviewed production publication deferred.**
+
+### Release 6 — Reading operations
+
+- Immediate assignment and material-revision notifications. **Complete locally.**
+- Idempotent due-soon and overdue reminders, limited to one of each kind per person, assignment and revision. **Complete locally in the human-gated draft migration.**
+- Governance roster with per-reader state, assignment source, required revision, acknowledgement and due date. **Complete locally.**
+- Bulk person assignment, whole-team role assignment, due-date and required-status editing, and soft revocation that preserves history. **Complete locally.**
+- Authorized CSV completion-history export with spreadsheet-formula neutralization. **Complete locally.**
+- Gameplan-required reading remains governed by Connected Gameplans rather than creating a parallel workflow. **Preserved.**
+
+### Release 7 — Doctrine publication and UAT
+
+- Reconcile the migration ledger and materialize reserved candidate migrations 201–202 outside the active chain with human-application gates. **Complete locally; promotion waits for 199–200.**
+- Typed doctrine publication manifest with room, subgroup, reviewer, Gameplan and legacy-supersession intent. **Complete locally.**
+- Metadata-only readiness queue for Leadership and authorized room leads. **Complete locally.**
+- Missing-room/subgroup, duplicate-source, title/source collision, Gameplan and supersession preflight checks. **Complete locally.**
+- Role, mobile, diagram, hostile-content, revision and source-update UAT checklist. **Complete locally; production UAT awaits migration application.**
+- Doctrine adoption and publication remain explicit, individual, reviewable actions. **Preserved.**
 
 ## Verification
 

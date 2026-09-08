@@ -1,22 +1,22 @@
 # Organizational Doctrine — Playbook Publication Map
 
-**Status:** READY FOR CONTENT-MODEL IMPLEMENTATION — doctrine approved; no migration authored or applied
+**Status:** PUBLICATION PREFLIGHT BUILT LOCALLY — doctrine approved; candidate migrations 201–202 authored outside the active chain, human-gated and unapplied
 **Purpose:** Place every approved doctrine in the correct Playbook room without flattening or losing its hierarchy, callouts, tables, diagrams or authority distinctions.
 
 ## Publication constraint
 
-The database-backed Playbook currently represents:
+The production database-backed Playbook currently represents:
 
 - `sop` entries as `{ items: string[] }`.
 - `topic` entries as `{ questions: string[] }`.
 
-The doctrine package requires headings, paragraphs, lists, callouts, tables, links and Mermaid diagrams. Publishing it as hundreds of flat checklist lines would damage meaning and make authority rules harder to understand.
+The doctrine package requires headings, paragraphs, lists, callouts, tables, links and Mermaid diagrams. Publishing it as hundreds of flat checklist lines would damage meaning and make authority rules harder to understand. Releases 1–7 now implement the richer model, governance, reading operations and publication preflight locally; production remains on the earlier model until the owner applies migrations 201–202.
 
 Therefore:
 
-1. The Markdown package remains authoritative until the rich-content/adoption work is implemented.
+1. The Markdown package remains authoritative until migrations 201–202 are applied and each doctrine is human-reviewed and published.
 2. Existing A&R and BDT flat entries remain historical initial publications; they should be updated from the canonical package after adoption support exists.
-3. No new migration number is claimed while Claude's Phase 38 migration work is active.
+3. Candidate migrations 201–202 are reserved and authored outside `supabase/migrations`; they must not enter the active chain until Phase 38.2 migrations 199–200 land.
 4. Playbook publication is a separate human-reviewed operation after schema, renderer, editor and role grants are verified.
 
 ## Required content capability
@@ -135,6 +135,18 @@ Checking off a Gameplan does not prove that an approval, licence, payment, verif
 7. Publish through the existing approval workflow.
 8. Record the publication date and superseded source entries.
 9. Never auto-overwrite later in-app edits when a source file changes; surface a reviewable source-change notice.
+
+## Publication readiness console
+
+Release 7 adds `/admin/playbook/publication` for Leadership and authorized room leads. It is deliberately metadata-only and:
+
+- maps approved sources to their room and subgroup;
+- shows ready, draft, published, changed and blocked states;
+- detects missing structure, duplicate sources, title/source collisions and unresolved legacy supersession;
+- identifies expected reviewer roles and missing connected Gameplans;
+- filters non-Leadership room leads to rooms they actually govern;
+- provides a session checklist for ordinary-reader, room-lead, Leadership, mobile, diagram and hostile-content UAT;
+- links into the existing room adoption and approval workflow without bulk publishing.
 
 ## Publication acceptance criteria
 
