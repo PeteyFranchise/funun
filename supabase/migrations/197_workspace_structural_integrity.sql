@@ -707,6 +707,496 @@ REVOKE EXECUTE ON FUNCTION public.guard_workspace_never_zero_owners() FROM PUBLI
 COMMENT ON FUNCTION public.guard_workspace_never_zero_owners() IS
   'D-13, as amended by R-28 (Phase 38.0.2). A workspace must always have at least one active, UNEXPIRED owner. As of migration 197 this function honours expires_at on BOTH sides of its test: an owner whose seat has already expired neither triggers the floor when they leave nor counts toward satisfying it, and an UPDATE that pushes the last live owner''s expires_at into the past now fires the guard instead of silently de-ownering the workspace. Before 197 the floor counted an expired owner as live, while migration 192''s workspace_member_role() treated the same seat as no membership at all — two definitions of live membership, one of them wrong (the WSR-17 class of drift). The RAISE sentence is byte-identical to WORKSPACE_OWNER_FLOOR_MESSAGE in lib/workspaces/membership.ts; changing one without the other breaks both layers. THIS FUNCTION DOES NOT AND NEVER DID GUARD PROMOTION: its UPDATE branch requires OLD.role = ''owner'', so promoting an admin skips it entirely — that is guard_workspace_owner_role_change''s job (WSR-07). It runs inside the writing transaction and sees that transaction''s uncommitted writes from EARLIER STATEMENTS, which is why a two-sided ownership transfer must promote the successor first and demote the incumbent second.';
 
+-- ══ SECTIONS (e) AND (f) BELOW ARE PLAN 07'S ══════════════════════════════
+-- Plan 05 wrote sections (a)-(d) above. Plan 07 appends (e) through (h).
+-- Plan 09 closes the file. Everything an appending plan adds goes ABOVE the
+-- NOTIFY line at the bottom, never below it.
+
+-- ─── (e) THE AUDIT LOCKDOWN — S1 / WSR-26, IN THREE LAYERS ────────────────
+--
+-- THE EVIDENCE THIS SECTION ACTS ON, NOT A SUSPICION. 38.0.1 Part A check
+-- A10, run against PRODUCTION on 2026-09-07, found that service_role holds
+-- TRUNCATE, DELETE AND UPDATE on public.workspace_audit_log. Migration 182
+-- line 251 issued `REVOKE UPDATE, DELETE ON public.workspace_audit_log FROM
+-- PUBLIC;` and its comment claimed that made the table "append-only for
+-- every role, not merely for authenticated/anon (D-50)". IT REMOVED NOTHING
+-- FROM service_role. Supabase's bootstrap runs `ALTER DEFAULT PRIVILEGES IN
+-- SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated,
+-- service_role`, which is a DIRECT grant to each named role; a REVOKE from
+-- PUBLIC never touches a direct grant. The workspace audit log has not been
+-- append-only at any point since migration 182 landed.
+--
+-- THE DEFENSIBLE CLAIM, STATED BEFORE THE CODE SO IT CANNOT BE OVERSTATED
+-- AFTER IT. What the three layers below buy is "append-only to every
+-- application role", NOT "immutable". None of them constrains the database
+-- owner: postgres can drop the triggers, run ALTER TABLE ... DISABLE
+-- TRIGGER, or set session_replication_role to 'replica' — which disables
+-- triggers wholesale — and then mutate freely. That bound must not be
+-- overstated in this file, in D-50's wording, or in any audit-trail UI copy.
+-- An audit trail that claims more integrity than it has is worse than one
+-- that states its limit, because the first invites reliance the second does
+-- not.
+--
+-- WHY THREE LAYERS AND NOT ONE, WITH WHAT EACH ONE ACTUALLY BINDS WRITTEN
+-- BESIDE IT. CONTEXT.md's S1 says "revoke ... and add a rejecting policy".
+-- The revoke half is correct and is layer 1. THE POLICY HALF IS INERT
+-- AGAINST service_role AND MUST NOT BE COUNTED AS THE ENFORCEMENT:
+-- service_role carries the BYPASSRLS attribute, and PostgreSQL's own words
+-- are that "superusers and roles with the BYPASSRLS attribute always bypass
+-- the row security system when accessing a table". No policy — permissive
+-- or restrictive — constrains it. Only table privileges and TRIGGERS do.
+
+-- ── Layer 1 — PRIVILEGES. The layer that removes the ability. ─────────────
+-- BYPASSRLS confers no table privileges, so this is the statement that binds
+-- service_role, and it names that role explicitly because check A10 proved a
+-- revoke from PUBLIC alone does not reach it.
+--
+-- INSERT AND SELECT ARE DELIBERATELY RETAINED, and this file issues no
+-- REVOKE against either on this table. INSERT is how the audit trail is
+-- written at all (lib/workspaces/audit.ts, and every RPC in migration 198).
+-- SELECT is D-50's both-sides read, which survives through the narrowed
+-- policy and the redacted definer function in section (h). Revoking either
+-- would not harden the trail; it would silence it.
+REVOKE UPDATE, DELETE, TRUNCATE ON public.workspace_audit_log
+  FROM PUBLIC, anon, authenticated, service_role;
+
+-- ── Layer 2 — TRIGGERS. The layer that survives a future re-GRANT. ────────
+-- A trigger fires for EVERY role, including a BYPASSRLS role and the table
+-- owner. That is what makes this layer, not layer 1, the one that still
+-- refuses after a migration, an ALTER DEFAULT PRIVILEGES change, or a
+-- Supabase platform default hands the privilege back. Layer 1 can be undone
+-- by one GRANT; layer 2 cannot be undone by any GRANT at all.
+--
+-- The body is unconditional on purpose: there is no branch, no exemption and
+-- no current_user test. Section (c)'s guard has a postgres exemption because
+-- a sanctioned RPC legitimately needs to seat an owner; NOTHING legitimately
+-- needs to rewrite an audit row, so admitting a definer caller here would
+-- reopen the hole for every SECURITY DEFINER function this phase adds — the
+-- role-scoped-exemption trap this file's header describes at length.
+CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_append_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  RAISE EXCEPTION 'workspace_audit_log is append-only (D-50): rows cannot be updated, deleted or truncated by any role'
+    USING ERRCODE = 'insufficient_privilege';
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.guard_workspace_audit_log_append_only()
+  FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER guard_workspace_audit_log_no_row_change
+  BEFORE UPDATE OR DELETE ON public.workspace_audit_log
+  FOR EACH ROW EXECUTE FUNCTION public.guard_workspace_audit_log_append_only();
+
+-- THE SECOND TRIGGER IS NOT A DUPLICATE, AND SWAPPING ITS LEVEL SILENTLY
+-- REOPENS THE HOLE. A row-level trigger DOES NOT FIRE FOR TRUNCATE — there
+-- are no rows to fire per — so TRUNCATE needs its own STATEMENT-level
+-- trigger or it walks straight past the trigger above. This is also the one
+-- privilege check A10 found on service_role that migration 182 never even
+-- named in its REVOKE.
+CREATE TRIGGER guard_workspace_audit_log_no_truncate
+  BEFORE TRUNCATE ON public.workspace_audit_log
+  FOR EACH STATEMENT EXECUTE FUNCTION public.guard_workspace_audit_log_append_only();
+
+COMMENT ON FUNCTION public.guard_workspace_audit_log_append_only() IS
+  'S1/WSR-26. Refuses every UPDATE, DELETE and TRUNCATE against workspace_audit_log, unconditionally and for every role. Installed by TWO triggers: a BEFORE UPDATE OR DELETE ... FOR EACH ROW trigger, and a separate BEFORE TRUNCATE ... FOR EACH STATEMENT trigger, because a row-level trigger does not fire for TRUNCATE and a single row-level trigger would leave TRUNCATE open. Deliberately has NO postgres exemption branch, unlike guard_workspace_owner_role_change: a sanctioned RPC legitimately needs to seat an owner, but nothing legitimately needs to rewrite an audit row, and an exemption here would admit every SECURITY DEFINER function this phase adds. THIS IS THE LAYER THAT BINDS service_role, together with the REVOKE above: service_role carries BYPASSRLS, so no RLS policy constrains it, and 38.0.1 Part A check A10 proved on production that migration 182 line 251 left it holding TRUNCATE, DELETE and UPDATE. The guarantee this buys is APPEND-ONLY TO EVERY APPLICATION ROLE, not immutability: the database owner can disable these triggers and then mutate freely, and that bound must not be overstated in any audit-trail UI copy.';
+
+-- ── Layer 3 — A RESTRICTIVE POLICY, WITH ITS SCOPE STATED HONESTLY. ───────
+-- THIS IS NOT THE ENFORCEMENT AND MUST NOT BE COUNTED AS IT. A RESTRICTIVE
+-- policy constrains `authenticated` and `anon` and nobody else, and both of
+-- those already lack UPDATE and DELETE on this table — from migration 182
+-- line 242 and again from layer 1 above. It buys exactly one thing: if some
+-- future migration grants a NON-BYPASSRLS role a write privilege here, this
+-- policy refuses anyway. Forward-insurance, one layer deep, on a hole that
+-- is closed twice already.
+--
+-- TWO POLICIES, NOT ONE `FOR ALL` POLICY — AND THIS IS A CORRECTION, NOT A
+-- STYLE CHOICE. RESEARCH §6.3 and this plan both wrote a single
+-- `AS RESTRICTIVE FOR ALL ... USING (false) WITH CHECK (false)`. A
+-- RESTRICTIVE policy is AND-ed with the permissive ones for EVERY command it
+-- covers, and `FOR ALL` covers SELECT. That one policy would therefore have
+-- made workspace_audit_log UNREADABLE to `authenticated` — silently deleting
+-- D-50's both-sides read and the section (h) policy this very file
+-- recreates, while the redacted definer function kept working because it
+-- runs as postgres. The refusal must be scoped to the two commands it is
+-- about. PostgreSQL takes exactly one command per CREATE POLICY, so that is
+-- two policies. TRUNCATE is not an RLS-controlled command at all and is
+-- covered only by layer 1 and the statement-level trigger above.
+CREATE POLICY "workspace_audit_log_no_update" ON public.workspace_audit_log
+  AS RESTRICTIVE
+  FOR UPDATE TO authenticated, anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "workspace_audit_log_no_delete" ON public.workspace_audit_log
+  AS RESTRICTIVE
+  FOR DELETE TO authenticated, anon
+  USING (false);
+
+-- ─── (f) THE RESTRICTED-PII WRITE GUARD — R-13 / WSR-19 ───────────────────
+--
+-- WHAT THIS EXISTS TO CATCH, WITH THE CURRENT OFFENDER NAMED.
+-- app/api/workspaces/[workspaceId]/invitations/route.ts writes
+-- `changes: { role, email: normalizedEmail }` on the invitation-issuance
+-- path. `changes` is readable by every active seat in the workspace through
+-- migration 186's policy, so an invited person's email address is today
+-- exposed to every member of the workspace that invited them. Plan 14
+-- removes that key. THIS TRIGGER IS THE LAYER THAT CATCHES THE NEXT ONE —
+-- the primary control is that writers do not put restricted PII in `changes`
+-- at all, and a write-time guard is the backstop for the writer who forgets.
+--
+-- WHERE THE INVITED ADDRESS LEGITIMATELY LIVES INSTEAD: on
+-- workspace_invitations.email, whose SELECT policy is already owner/admin
+-- only (migration 182), and which the audit row already reaches through its
+-- own target_id. So `changes` on workspace.invitation.issued should carry
+-- the role and nothing else, and nothing is lost by removing the address.
+--
+-- WHY jsonb_path_exists AND NOT THE `?|` OPERATOR. `changes ?| ARRAY[...]`
+-- inspects TOP-LEVEL KEYS ONLY. A nested object — `{"before": {"email":
+-- "..."}}`, which is the exact shape this codebase already uses for
+-- before/after diffs, see the invitation-revoked call site's
+-- `{"status": {"before": ..., "after": ...}}` — walks straight past it. The
+-- `$.**."key"` recursive member accessor matches at EVERY depth including
+-- depth zero, so a top-level key is still caught.
+--
+-- TWO THINGS THIS GUARD DOES NOT CLAIM, WRITTEN DOWN RATHER THAN IMPLIED.
+--   1. It is a KEY-NAME guard, not a content classifier. A restricted value
+--      stored under an innocuous key — `{"note": "reach them at a@b.com"}` —
+--      still gets through. The primary control remains that writers do not
+--      put PII in `changes`; this only makes the common mistake loud.
+--   2. Its cost on the audit write path HAS NOT BEEN MEASURED. The table
+--      holds zero rows today, so there is nothing to measure against, and no
+--      agent opened a database connection to try. A recursive JSONB path
+--      predicate evaluated ten times per INSERT should be checked before
+--      this table carries real traffic; if it bites, the answer is to narrow
+--      the key list or to bound the depth, never to drop the guard.
+CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_no_restricted_pii()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_restricted_key TEXT;
+BEGIN
+  FOREACH v_restricted_key IN ARRAY ARRAY[
+    'email',
+    'phone',
+    'contact_email',
+    'contact_phone',
+    'address',
+    'tax_id',
+    'token',
+    'token_hash',
+    'ipi',
+    'isni'
+  ] LOOP
+    IF jsonb_path_exists(NEW.changes, ('$.**."' || v_restricted_key || '"')::jsonpath) THEN
+      RAISE EXCEPTION 'workspace_audit_log.changes may not carry the restricted key ''%'' at any depth (WSR-19) — the invited address lives on workspace_invitations.email, which is owner/admin-only, and the audit row already reaches it through target_id', v_restricted_key
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.guard_workspace_audit_log_no_restricted_pii()
+  FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER guard_workspace_audit_log_no_restricted_pii
+  BEFORE INSERT ON public.workspace_audit_log
+  FOR EACH ROW EXECUTE FUNCTION public.guard_workspace_audit_log_no_restricted_pii();
+
+COMMENT ON FUNCTION public.guard_workspace_audit_log_no_restricted_pii() IS
+  'R-13/WSR-19. BEFORE INSERT on workspace_audit_log. Refuses any row whose `changes` object carries a restricted key at ANY depth: email, phone, contact_email, contact_phone, address, tax_id, token, token_hash, ipi, isni. Uses jsonb_path_exists with the recursive `$.**."key"` member accessor rather than the `?|` operator, because `?|` inspects top-level keys only and this codebase already writes nested before/after diffs that would walk past it. TWO LIMITS, STATED NOT IMPLIED: it is a key-name guard and not a content classifier, so a restricted value under an innocuous key still gets through — the primary control is that writers do not put PII in `changes` at all, and this is the backstop; and its cost on the write path has not been measured, because the table holds zero rows and no agent opened a database connection, so it should be checked before this table carries traffic. The one offender that exists today is the invitation-issuance route, which writes the invited email into `changes`; plan 14 removes it. The address legitimately lives on workspace_invitations.email, whose SELECT policy is owner/admin-only, reachable from the audit row through target_id.';
+
+-- ─── (g) THE DEFERRED AUDIT-ASSERTION TRIGGERS — R-06 / WSR-13 ────────────
+--
+-- WHAT R-06 GUARANTEES, AND WHAT IT DOES NOT. R-06 says the audit row is
+-- written in the same transaction as the mutation. Putting the INSERT inside
+-- the RPC body achieves that, and it makes the audit NON-PARTIAL: the two
+-- can no longer half-happen. IT DOES NOT MAKE THE AUDIT NON-BYPASSABLE. A
+-- future RPC author who simply omits the INSERT is caught by nothing at all
+-- — which is finding F14's shape (a best-effort audit that can silently not
+-- happen) moved one layer up, from the logging helper to the RPC that calls
+-- it. A deferred constraint trigger, checked at COMMIT, is what closes it.
+--
+-- WHY `now()` IS A SOUND TEST FOR "IN THIS TRANSACTION".
+-- workspace_audit_log.created_at DEFAULTs to NOW(), and NOW() is
+-- transaction_timestamp() — one value per transaction, identical for every
+-- row that transaction writes, and unchanged by how long the transaction
+-- runs. Combined with target_id it is an effectively exact "was this change
+-- audited in this transaction" test.
+--
+-- THE CONTRACT THIS IMPOSES ON EVERY WRITER, WITH THE KNOWN OFFENDER NAMED.
+-- Every RPC in migration 198 must set its audit row's target_id to the
+-- MUTATED ROW'S OWN id. Not the workspace, not the invitation the seat came
+-- from, not null. One call site already fails that today:
+-- app/api/workspaces/invitations/accept/route.ts writes
+-- `targetId: pendingSeat?.id ?? null`, which is null whenever no pending
+-- seat existed, and a null target_id matches no row here. Plan 14 fixes it
+-- as part of WSR-10. This paragraph exists so that when the assertion fires
+-- in plan 17's harness, the reader already knows where to look.
+--
+-- THE CONFIDENCE LEVEL, HONESTLY. The mechanism is standard PostgreSQL —
+-- deferred constraint triggers, and NOW() as transaction_timestamp() — but
+-- its behaviour UNDER THIS SCHEMA has never been observed on a running
+-- database, because no agent opened a database connection to observe it.
+-- Plan 17's owner-run single-shot harness is the proof, and it must run with
+-- these triggers ENABLED for the assertion to mean anything. IF THEY PROVE
+-- TOO INVASIVE AT PUSH TIME, the cheaper fallback is to make
+-- logWorkspaceAction THROW instead of returning { ok: false } and to make
+-- every call site await it before returning success. That closes F14's
+-- OBSERVABLE half — a silent failure becomes a 500 — but leaves "an RPC that
+-- never audits at all" wide open. It is a fallback, not the design.
+--
+-- ONE MORE THING THE READER OF PLAN 17'S HARNESS NEEDS. These triggers fire
+-- at COMMIT on any DIRECT fixture UPDATE of a consequential column, so a
+-- seed or teardown that writes those columns outside the RPCs will abort at
+-- commit. Seed and tear down through the RPCs, or disable the triggers for
+-- those steps only and re-enable them before the assertions run. That
+-- hazard is recorded in 38.0.2-ORCHESTRATOR-NOTES.md as well as here.
+CREATE OR REPLACE FUNCTION public.assert_workspace_change_is_audited()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.workspace_audit_log l
+    WHERE l.target_id = NEW.id
+      AND l.created_at = now()
+  ) THEN
+    RAISE EXCEPTION 'a consequential change to %.% was committed without an audit row written in the same transaction (WSR-13) — the sanctioned RPC must write workspace_audit_log with target_id set to the mutated row''s own id', TG_TABLE_NAME, NEW.id
+      USING ERRCODE = 'integrity_constraint_violation';
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.assert_workspace_change_is_audited()
+  FROM PUBLIC, anon, authenticated;
+
+-- WHY DEFERRED. The check must run at COMMIT, after both the mutation and
+-- the audit row exist, REGARDLESS OF THE ORDER THEY APPEAR IN THE FUNCTION
+-- BODY. An immediate trigger would force every RPC to write its audit row
+-- before its mutation, which is both fragile and unstated anywhere a future
+-- author would read it.
+--
+-- WHY COLUMN-SCOPED. An unscoped trigger would demand an audit row for every
+-- incidental save, including updated_at-only writes — and a constraint that
+-- fires on writes nobody considers consequential is one that gets disabled,
+-- not one that gets satisfied. Scoping to the columns that DEFINE a
+-- consequential state change is what keeps this strict rather than merely
+-- loud. The four pairs below are exactly the four consequential-change
+-- surfaces R-06 names: a member's role or seat status, a roster
+-- relationship's state, an invitation's status, a custody transfer's state.
+CREATE CONSTRAINT TRIGGER assert_workspace_member_change_audited
+  AFTER UPDATE OF role, status ON public.workspace_members
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.assert_workspace_change_is_audited();
+
+CREATE CONSTRAINT TRIGGER assert_workspace_roster_relationship_change_audited
+  AFTER UPDATE OF state ON public.workspace_roster_relationships
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.assert_workspace_change_is_audited();
+
+CREATE CONSTRAINT TRIGGER assert_workspace_invitation_change_audited
+  AFTER UPDATE OF status ON public.workspace_invitations
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.assert_workspace_change_is_audited();
+
+CREATE CONSTRAINT TRIGGER assert_workspace_custody_transfer_change_audited
+  AFTER UPDATE OF state ON public.workspace_custody_transfers
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.assert_workspace_change_is_audited();
+
+COMMENT ON FUNCTION public.assert_workspace_change_is_audited() IS
+  'R-06/WSR-13. Installed by FOUR deferred CONSTRAINT TRIGGERs, each column-scoped to the columns that define a consequential state change: workspace_members (role, status), workspace_roster_relationships (state), workspace_invitations (status), workspace_custody_transfers (state). At COMMIT it requires an audit row whose target_id is the mutated row''s own id and whose created_at equals now() — NOW() is transaction_timestamp(), one value per transaction, so with target_id that is an effectively exact "was this change audited in this transaction" test. THIS IS THE PART R-06 ALONE DOES NOT BUY: writing the audit INSERT inside the RPC makes the audit non-PARTIAL, not non-BYPASSABLE, because a future RPC author who omits the INSERT is caught by nothing. Deferred so the check runs after both writes regardless of their order in the function body; column-scoped so an updated_at-only save does not demand an audit row, which would make the constraint unenforceable rather than strict. CONFIDENCE IS MEDIUM UNTIL PLAN 17 RUNS IT: the mechanism is standard PostgreSQL but has never been observed against this schema, because no agent opened a database connection. One known offender exists today — app/api/workspaces/invitations/accept/route.ts sets targetId to null when no pending seat existed — and plan 14 fixes it under WSR-10.';
+
+-- ─── (h) THE REDACTED AUDIT READ — R-13 / R-27 / WSR-19 ───────────────────
+--
+-- Section (f) stops restricted PII being WRITTEN. This section decides who
+-- may READ what is there, and it does the deciding IN THE DATABASE so a
+-- withheld value never leaves it — the same discipline migrations 193 and
+-- 194 apply to catalogue fields, applied here to the audit `changes` object.
+--
+-- THE THREE PROPERTIES COPIED FROM MIGRATION 194, NOT REINVENTED:
+--   * `p_uid = (SELECT auth.uid())` — the parameter is explicit, because it
+--     makes the resolution readable, but it can only ever name the CALLER.
+--     A NULL auth.uid() returns zero rows. This is the binding 38.0.1 Part B
+--     check B9 proved bites behaviourally; DO NOT omit it because the
+--     parameter "looks" redundant.
+--   * The LEAST/GREATEST clamp — an unbounded page on a SECURITY DEFINER
+--     function is a denial-of-service surface, in migration 194's own words.
+--     200 is the ceiling, 50 the default for a NULL argument.
+--   * A DECLARED RETURN COLUMN LIST AS THE SECURITY CONTRACT, never
+--     SELECT *. It is the complete set of facts a caller can obtain from
+--     this surface, and adding a column to it must be reviewed exactly as
+--     carefully as widening an RLS policy.
+--
+-- REDACTION IS ALLOWLIST-BASED, NOT DENYLIST. A caller without full view
+-- receives the empty object, not `changes` minus a list of keys. A
+-- subtraction leaks whatever a future writer adds under a key nobody thought
+-- to subtract, which is the same failure mode section (f) exists to catch
+-- and would be a second chance to make it. `changes_redacted` is returned as
+-- a boolean so a reader can tell "withheld" from "genuinely empty" without a
+-- second query.
+--
+-- WHO GETS FULL VIEW: the row's actor, its named subject Member, or an
+-- owner/admin of the row's workspace. Everyone else with a live seat sees
+-- the row and its shape but not its contents.
+--
+-- THE COALESCE ON full_view IS NOT DECORATION. subject_member_id is
+-- NULLABLE (migration 182: it is NULL whenever the action is about the
+-- workspace itself rather than a roster Member), and
+-- workspace_member_role() returns NULL for a caller with no live seat. So
+-- the three-way OR evaluates to NULL, not FALSE, for a perfectly ordinary
+-- row — and without the COALESCE, `NOT v.full_view` would return NULL as
+-- changes_redacted, telling the reader neither "withheld" nor "shown". It
+-- fails CLOSED to FALSE: unknown means redacted.
+--
+-- THE GRANT POSTURE DIFFERS FROM MIGRATION 198'S RPC FAMILY, DELIBERATELY.
+-- Migration 198's write RPCs are service-role-only, following migration 123,
+-- because no session client may reach them. THIS one is a client-invoked
+-- READ, like migrations 193 and 194, so `authenticated` keeps EXECUTE. Do
+-- not "correct" it to match 198.
+CREATE OR REPLACE FUNCTION public.workspace_audit_page(
+  p_workspace_id UUID,
+  p_uid UUID,
+  p_limit INT,
+  p_offset INT
+)
+RETURNS TABLE (
+  id                   UUID,
+  actor_user_id        UUID,
+  subject_member_id    UUID,
+  action               TEXT,
+  permission_relied_on TEXT,
+  target_type          TEXT,
+  target_id            UUID,
+  changes              JSONB,
+  changes_redacted     BOOLEAN,
+  created_at           TIMESTAMPTZ
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    l.id,
+    l.actor_user_id,
+    l.subject_member_id,
+    l.action,
+    l.permission_relied_on,
+    l.target_type,
+    l.target_id,
+    CASE WHEN v.full_view THEN l.changes ELSE '{}'::JSONB END,
+    NOT v.full_view,
+    l.created_at
+  FROM public.workspace_audit_log l
+  CROSS JOIN LATERAL (
+    SELECT COALESCE(
+      l.actor_user_id = p_uid
+      OR l.subject_member_id = p_uid
+      OR public.workspace_member_role(l.workspace_id, p_uid) IN ('owner', 'admin'),
+      FALSE
+    ) AS full_view
+  ) v
+  WHERE l.workspace_id = p_workspace_id
+    AND p_uid = (SELECT auth.uid())
+    AND public.workspace_access_enabled()
+    AND public.workspace_member_role(l.workspace_id, p_uid) IS NOT NULL
+  ORDER BY l.created_at DESC, l.id DESC
+  LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)
+  OFFSET GREATEST(COALESCE(p_offset, 0), 0)
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.workspace_audit_page(uuid, uuid, int, int)
+  FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_audit_page(uuid, uuid, int, int)
+  TO authenticated;
+
+COMMENT ON FUNCTION public.workspace_audit_page(uuid, uuid, int, int) IS
+  'R-13/R-27/WSR-19. One page of a workspace audit trail, with the `changes` object redacted for any caller who is not the row''s actor, its named subject Member, or an owner/admin of the row''s workspace. THE DECLARED RETURN COLUMN LIST IS THE SECURITY CONTRACT: it is the complete set of facts a caller can obtain from this surface, and adding a column must be reviewed exactly as carefully as widening an RLS policy. REDACTION IS ALLOWLIST-BASED: a caller without full view receives the empty object, never `changes` minus a key list, because a subtraction leaks whatever a future writer adds under a key nobody thought to subtract. changes_redacted is returned as a boolean so a reader can distinguish "withheld" from "genuinely empty" without a second query. Preserves the three properties migration 194 established: p_uid must equal auth.uid() so the parameter can only ever name the caller and a NULL auth.uid() returns zero rows (the binding 38.0.1 Part B check B9 proved bites); the page is clamped to at most 200 rows because an unbounded page on a SECURITY DEFINER function is a denial-of-service surface; and the return list is declared rather than SELECT *. The D-56 kill switch is READ here, exactly as every workspace read surface reads it, and is never written. Unlike migration 198''s write RPC family this IS a client-invoked read, so authenticated keeps EXECUTE, matching migrations 193 and 194 rather than 123.';
+
+-- ── The raw-table policy, narrowed. R-27 confirmed this is acceptable. ────
+--
+-- WHAT CHANGES: migration 186's workspace_audit_log_select admitted the
+-- row's actor, its named subject Member, OR anyone holding a live seat in
+-- the workspace (`workspace_member_role(...) IS NOT NULL`). That third
+-- branch is what puts a raw `changes` object — today including an invited
+-- person's email address — in front of every seat in the workspace. It goes.
+-- What remains is actor-or-subject-or-owner/admin.
+--
+-- THE D-50 TENSION, STATED RATHER THAN GLOSSED. D-50 literally says the
+-- audit trail is visible to BOTH the workspace and the affected Member. This
+-- narrows the LITERAL surface: the workspace still sees its own trail, but
+-- an ordinary member now reaches it through workspace_audit_page above,
+-- redacted, rather than through a direct table read. D-50's INTENT — that a
+-- workspace can audit itself, and that the person acted upon can see what
+-- was done to them — is preserved; only the mechanism changes for one class
+-- of reader. R-27 confirmed this is acceptable, on the record, rather than
+-- it being decided silently here.
+--
+-- NO UI BREAKS. NO APP SURFACE READS workspace_audit_log TODAY: a grep finds
+-- lib/workspaces/audit.ts writing to it, two routes writing through that
+-- helper, and test fixtures. Nothing reads it. So this narrowing costs
+-- nothing at the moment it lands, and the redacted reader exists before the
+-- first surface that needs one.
+--
+-- THE PREDICATE IS EXPRESSED IN THE POLICY BODY, NOT DELEGATED TO
+-- workspace_audit_visible, AND HERE IS THE ONE REASON: migration 186 needed
+-- the definer helper because its predicate SELECTed from workspace_audit_log
+-- itself, which would have re-entered this very policy and recursed (42P17).
+-- The narrowed predicate reads only the row's OWN columns plus
+-- workspace_members, so there is nothing to recurse into and the indirection
+-- buys nothing. Every remaining helper call is wrapped as a scalar subselect,
+-- per the standing rule (078/136/182-186/192).
+DROP POLICY IF EXISTS "workspace_audit_log_select" ON public.workspace_audit_log;
+
+CREATE POLICY "workspace_audit_log_select" ON public.workspace_audit_log
+  FOR SELECT TO authenticated
+  USING (
+    actor_user_id = (SELECT auth.uid())
+    OR subject_member_id = (SELECT auth.uid())
+    OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) IN ('owner', 'admin')
+  );
+
+-- migration 186's helper is narrowed IN LOCKSTEP even though the policy no
+-- longer calls it. It remains EXECUTE-able by `authenticated`, and leaving
+-- it asserting the broad rule would leave a function in the schema whose
+-- answer disagrees with the policy above — which is the WSR-17 class of
+-- drift, and the reason this repo keeps two layers agreeing rather than
+-- deduplicating one into the other. If a future policy re-adopts it, it now
+-- re-adopts the narrowed rule.
+CREATE OR REPLACE FUNCTION public.workspace_audit_visible(p_row_id UUID, p_uid UUID)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.workspace_audit_log l
+    WHERE l.id = p_row_id
+      AND (
+        l.actor_user_id = p_uid
+        OR l.subject_member_id = p_uid
+        OR public.workspace_member_role(l.workspace_id, p_uid) IN ('owner', 'admin')
+      )
+  )
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.workspace_audit_visible(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_audit_visible(uuid, uuid) TO authenticated;
+
+COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
+  'NARROWED BY MIGRATION 197 (R-13/R-27/WSR-19). True when p_uid is the audit row''s actor, its named subject Member, or an owner/admin of the row''s workspace. Migration 186''s version also admitted ANY live seat in the workspace, which is what put a raw `changes` object — today including an invited person''s email address — in front of every member. That branch is gone. workspace_audit_log_select no longer calls this function: the narrowed predicate reads only the row''s own columns plus workspace_members, so it cannot recurse into workspace_audit_log and the definer indirection migration 186 needed to avoid 42P17 buys nothing. This function is narrowed in lockstep anyway, because it is still EXECUTE-able by authenticated and a helper whose answer disagrees with the policy is the WSR-17 class of drift. Ordinary members now read the trail through public.workspace_audit_page, redacted. D-50''s intent is preserved — the workspace still audits itself and the affected Member still sees what was done to them — and only the mechanism changes for one class of reader; R-27 confirmed that on the record.';
+
 -- ─── Schema-cache reload — MUST REMAIN THE LAST STATEMENT IN THIS FILE ────
 -- Plans 07 and 09 append further sections ABOVE this line, never below it.
 NOTIFY pgrst, 'reload schema';

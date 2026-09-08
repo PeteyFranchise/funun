@@ -673,9 +673,39 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(executable).not.toMatch(/UPDATE public\./i)
     })
 
-    it('does not flip the D-56 kill switch', () => {
-      expect(executable).not.toMatch(/workspace_access_enabled/)
+    // NARROWED BY PLAN 07 — the one plan-05 assertion this plan changed, and
+    // the reason is written here rather than only in the SUMMARY.
+    //
+    // Plan 05 wrote `expect(executable).not.toMatch(/workspace_access_enabled/)`
+    // for a file that never touched the switch. Section (h)'s redacted audit
+    // reader must CALL public.workspace_access_enabled() — reading the switch
+    // is precisely what makes that reader fail closed while the switch is off,
+    // and every workspace read surface in the codebase reads it (migrations
+    // 186, 192, 194). READING THE SWITCH IS NOT FLIPPING IT, and an assertion
+    // that forbids the read would forbid the correct behaviour.
+    //
+    // So the assertion is narrowed to what it was always meant to catch: a
+    // WRITE to the switch's backing table, or a REDEFINITION of the predicate
+    // itself. Both of those are how this file could actually flip the switch,
+    // and neither is possible now without failing here.
+    it('does not flip the D-56 kill switch — it may read it, never write it', () => {
+      expect(executable).not.toMatch(/workspace_access_config/)
+      expect(executable).not.toMatch(
+        /CREATE OR REPLACE FUNCTION public\.workspace_access_enabled/
+      )
       expect(executable).not.toMatch(/kill_switch/i)
+    })
+
+    it('every appearance of workspace_access_enabled is a CALL, never a definition', () => {
+      const appearances = executable.match(/workspace_access_enabled\s*\(/g) ?? []
+      // The sample is not empty — section (h) reads the switch, so a future
+      // edit that drops that conjunct fails the section (h) assertion below
+      // rather than passing here vacuously.
+      expect(appearances.length).toBeGreaterThanOrEqual(1)
+      for (const site of executable.matchAll(/(.{0,40})workspace_access_enabled/g)) {
+        expect(site[1]).not.toMatch(/FUNCTION public\.$/)
+        expect(site[1]).not.toMatch(/DROP\s*$/)
+      }
     })
 
     it('creates or alters no table outside the two it introduces', () => {
