@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceProjectAccess,
+  requireWorkspaceRole,
+} from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { canManageRoster } from '@/lib/workspaces/membership'
 import { isWorkspaceAccessLive } from '@/lib/workspaces/roster'
@@ -70,8 +74,13 @@ export async function POST(
   } = await supabase.auth.getUser()
 
   const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  // R-20 / WSR-29: the API-layer twin of the `AND m.role IN (...)` conjunct on
+  // `workspace_project_permission` hop 2 (migration 197) — two independent
+  // layers agreeing, this repo's doctrine, and the reason WSR-17 exists.
+  // Applied FIRST because it is a role MINIMUM; `canManageRoster` below is a
+  // role MAXIMUM, and both must hold.
   const gated = requireWorkspaceRole(
-    access,
+    requireWorkspaceProjectAccess(access),
     canManageRoster,
     'Only owners and admins can attach a project to this workspace.'
   )
@@ -186,7 +195,14 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  // R-20 / WSR-29: `loadWorkspaceCatalogue` reads a Member's attached
+  // projects, so this GET is project data and carries the floor. The
+  // API-layer twin of the `AND m.role IN (...)` conjunct on
+  // `workspace_project_permission` hop 2 (migration 197) — two independent
+  // layers agreeing, this repo's doctrine, and the reason WSR-17 exists.
+  const access = requireWorkspaceProjectAccess(
+    await requireWorkspaceAccess(supabase, user, workspaceId)
+  )
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
   const entries = await loadWorkspaceCatalogue(supabase, {
@@ -252,9 +268,17 @@ export async function DELETE(
   // own project without asking the workspace to do it.
   const isCustodian = custodianUserId !== null && custodianUserId === user.id
   if (!isCustodian) {
+    // R-20 / WSR-29, on the WORKSPACE-DERIVED branch only. Detaching a
+    // Member's project is project data by any reading, so a guest seat cannot
+    // reach it. The custodian branch above is untouched: that authority comes
+    // from holding the project, not from a workspace seat, so a Member who
+    // happens to hold a guest seat can still cut a workspace off from their
+    // own project. The API-layer twin of the `AND m.role IN (...)` conjunct on
+    // `workspace_project_permission` hop 2 (migration 197). Floor first (a
+    // role minimum), existing gate second (a role maximum); both must hold.
     const access = await requireWorkspaceAccess(supabase, user, workspaceId)
     const gated = requireWorkspaceRole(
-      access,
+      requireWorkspaceProjectAccess(access),
       canManageRoster,
       'Only the project custodian or an owner/admin of this workspace can detach a project.'
     )

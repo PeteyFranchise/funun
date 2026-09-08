@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess } from '@/lib/workspaces/access'
+import { requireWorkspaceAccess, requireWorkspaceProjectAccess } from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { assertMayExercise } from '@/lib/workspaces/grant-service'
 import { optionalIsoDate } from '@/lib/workspaces/date-schemas'
@@ -58,7 +58,16 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  // R-20 / WSR-29: creating a project a Member will hold is project data, so
+  // this handler carries the role floor. Applied immediately after the gate
+  // and before the `assertMayExercise` grant check below — the floor is a
+  // role minimum and the grant check is a per-relationship authority, and
+  // both must hold. The API-layer twin of the `AND m.role IN (...)` conjunct
+  // on `workspace_project_permission` hop 2 (migration 197): two independent
+  // layers agreeing is this repo's doctrine, and the reason WSR-17 exists.
+  const access = requireWorkspaceProjectAccess(
+    await requireWorkspaceAccess(supabase, user, workspaceId)
+  )
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
