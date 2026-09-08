@@ -1197,6 +1197,240 @@ GRANT  EXECUTE ON FUNCTION public.workspace_audit_visible(uuid, uuid) TO authent
 COMMENT ON FUNCTION public.workspace_audit_visible(uuid, uuid) IS
   'NARROWED BY MIGRATION 197 (R-13/R-27/WSR-19). True when p_uid is the audit row''s actor, its named subject Member, or an owner/admin of the row''s workspace. Migration 186''s version also admitted ANY live seat in the workspace, which is what put a raw `changes` object — today including an invited person''s email address — in front of every member. That branch is gone. workspace_audit_log_select no longer calls this function: the narrowed predicate reads only the row''s own columns plus workspace_members, so it cannot recurse into workspace_audit_log and the definer indirection migration 186 needed to avoid 42P17 buys nothing. This function is narrowed in lockstep anyway, because it is still EXECUTE-able by authenticated and a helper whose answer disagrees with the policy is the WSR-17 class of drift. Ordinary members now read the trail through public.workspace_audit_page, redacted. D-50''s intent is preserved — the workspace still audits itself and the affected Member still sees what was done to them — and only the mechanism changes for one class of reader; R-27 confirmed that on the record.';
 
+-- ─── (i) THE ROSTER PROPOSAL NARROWING, AND THE `blocked` COLLAPSE ────────
+--         R-12 / WSR-18, and R-23 / T-38-04-05
+--
+-- TWO CHANGES WITH ONE SUBJECT: what a workspace is allowed to learn about
+-- a roster relationship it proposed.
+--
+-- PART 1 — THE POLICY (R-12 / WSR-18). Migration 183's
+-- workspace_roster_relationships_select admits
+--   member_user_id = auth.uid() OR workspace_member_role(...) IS NOT NULL
+-- so EVERY active seat — including a guest and a contractor — sees every
+-- `proposed` row. D-05 says the workspace sees nothing about a Member until
+-- acceptance; that policy contradicts it in the plainest possible terms. A
+-- proposal is a CLAIM a workspace has made about a person who has not yet
+-- answered it, and until they answer it is their business and the business
+-- of the people who must manage the proposal. Nobody else's.
+--
+-- PART 2 — THE COLLAPSE (R-23). Narrowing the policy is not sufficient on
+-- its own, because the relationship row's OWN `state` column carries the
+-- value `blocked`, and that value says out loud the one thing migration 183
+-- built workspace_roster_blocks to keep quiet. See the long note above the
+-- reader below.
+--
+-- ── Part 1: the recreated SELECT policy ──────────────────────────────────
+--
+-- FOUR BRANCHES, each with a different reason to exist:
+--
+--   1. member_user_id = (SELECT auth.uid())
+--      The named Member always sees a claim about themselves, INCLUDING
+--      while it is still `proposed`. This is the half of D-05 migration 183
+--      got right and it is preserved verbatim: the Member must be able to
+--      see, accept, refuse or block a claim naming them without ever
+--      entering the claiming workspace's context. It is also the branch
+--      that keeps app/api/roster/relationships/route.ts working unchanged.
+--
+--   2. (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
+--      The owner. Ownership of the workspace carries responsibility for
+--      what the workspace has claimed in its own name.
+--
+--   3. (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
+--      The proposal-management surface. Owners and admins are the two roles
+--      the roster PATCH handler already gates on through canManageRoster,
+--      so they are exactly the two that must see a proposal to manage it.
+--
+--   4. state IN ('accepted', 'ended') AND workspace_member_role(...) IS NOT NULL
+--      Every OTHER active seat sees only SETTLED, NON-PRIVATE outcomes. An
+--      accepted relationship is a public fact about the workspace — it is
+--      what the roster IS — and an ended one is its history (D-17: a
+--      relationship is never deleted, it terminates). Neither reveals
+--      anything the Member has not already agreed to.
+--
+-- THE TWO CONSEQUENCES, STATED SO NEITHER IS DISCOVERED LATER:
+--
+--   * An ordinary member, contractor or guest NO LONGER SEES A `proposed`
+--     ROW AT ALL. That is WSR-18, and it is the point.
+--   * They no longer see a `refused` or a `blocked` row either. That goes
+--     beyond WSR-18's letter and is deliberate: a refusal is the Member's
+--     business and the owner/admin surface's, not the whole roster's.
+--     Broadcasting "this person told us no" to every seat in the workspace
+--     is a second disclosure the Member never consented to, and the
+--     narrowest policy that satisfies WSR-18 gets that for free.
+--
+-- Every helper call is wrapped as a scalar subselect (SELECT public.f(...)),
+-- per the standing rule from migrations 078/136/182-186/192. Not style: the
+-- wrap is what lets the planner evaluate the helper once per statement
+-- rather than once per row, and it is the shape the recursion doctrine
+-- assumes.
+DROP POLICY IF EXISTS "workspace_roster_relationships_select" ON public.workspace_roster_relationships;
+
+CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster_relationships
+  FOR SELECT TO authenticated
+  USING (
+    member_user_id = (SELECT auth.uid())
+    OR (SELECT public.is_workspace_owner(workspace_id, auth.uid()))
+    OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'
+    OR (
+      state IN ('accepted', 'ended')
+      AND (SELECT public.workspace_member_role(workspace_id, auth.uid())) IS NOT NULL
+    )
+  );
+
+-- ── Part 2: the workspace-facing read, with the R-23 collapse ────────────
+--
+-- THE COLLAPSE IS A DELIBERATE LIE TO ONE AUDIENCE, AND THE REASON BELONGS
+-- ON THE RECORD RATHER THAN IN A PLANNING DOCUMENT.
+--
+-- Migration 183 keeps public.workspace_roster_blocks Member-private — its
+-- SELECT policy references only member_user_id and auth.uid(), with no
+-- workspace_member_role call of any kind — precisely so that A WORKSPACE CAN
+-- NEVER ENUMERATE WHO BLOCKED IT (T-38-04-05). But the relationship row
+-- itself carries state = 'blocked', and that value says exactly the same
+-- thing out loud. The blocks table is the locked door and the state column
+-- is the window beside it.
+--
+-- R-23 SETTLES THE CONTRADICTION IN FAVOUR OF T-38-04-05: `blocked`
+-- collapses to `refused` in every workspace-facing read. The workspace
+-- learns that the Member said no. It does not learn that the Member also
+-- shut the door.
+--
+-- WHAT THE COLLAPSE DOES NOT BREAK, CHECKED RATHER THAN ASSUMED:
+--   * THE MEMBER'S OWN SURFACE KEEPS THE TRUE STATE.
+--     app/api/roster/relationships/route.ts reads the RAW TABLE through the
+--     RLS-scoped client, filtered to member_user_id = their own id, and
+--     deliberately does NOT call this function. A Member must be able to see
+--     that they blocked a workspace — that is their own record of their own
+--     act. The COMMENT ON FUNCTION below says so too, so that route is not
+--     later "harmonised" onto this reader.
+--   * THE BLOCK KEEPS WORKING. Enforcement never reads this column: it reads
+--     the Member-private blocks table, through
+--     lib/workspaces/roster-service.ts's assertCanPropose. Collapsing a
+--     DISPLAYED state changes nothing about whether a re-proposal is refused.
+--   * `refused_at` IS ALREADY POPULATED ON A BLOCK. The block branch of the
+--     Member's PATCH handler writes { state: 'blocked', refused_at: nowIso }
+--     in the same UPDATE, exactly as the refuse branch does. So passing
+--     refused_at straight through cannot produce the tell-tale a collapse
+--     would otherwise create: a `refused` row with no refusal timestamp,
+--     which would let a reader infer the collapse and therefore infer the
+--     block. THE COLLAPSE MUST NOT LEAVE A FINGERPRINT, and this is the
+--     column that would have carried one.
+--
+-- WHAT THE COLLAPSE DOES NOT COVER, STATED PLAINLY BECAUSE IT IS THE ONE
+-- RESIDUAL: an owner or admin admitted by branch 2 or 3 of the policy above
+-- still reads the RAW table, and RLS is row-level — Postgres cannot redact
+-- a column through a policy. So an owner querying
+-- workspace_roster_relationships directly still sees state = 'blocked'.
+-- Closing that would mean excluding `blocked` from branches 2 and 3
+-- entirely, which makes the row VANISH from the workspace's raw view rather
+-- than reading as `refused` — a different and stronger choice than the
+-- mechanism R-23 describes. IT IS RAISED AT PLAN 09'S REVIEW CHECKPOINT AS
+-- AN EXPLICIT OWNER QUESTION rather than decided silently here, and plan 15
+-- repoints the workspace roster GET at THIS function so the application
+-- surface is collapsed either way.
+--
+-- THE THREE PROPERTIES COPIED FROM MIGRATION 194, NOT REINVENTED — the same
+-- three section (h) preserves, for the same reasons:
+--   * `p_uid = (SELECT auth.uid())` — the caller bind. The parameter is
+--     explicit because it makes the resolution readable, but it can only
+--     ever name the CALLER, and a NULL auth.uid() returns zero rows. This is
+--     the binding 38.0.1 Part B check B9 proved bites behaviourally. DO NOT
+--     omit it because the parameter "looks" redundant.
+--   * The LEAST/GREATEST clamp — an unbounded page on a SECURITY DEFINER
+--     function is a denial-of-service surface, in migration 194's own words.
+--     200 is the ceiling, 50 the default for a NULL argument.
+--   * A DECLARED RETURN COLUMN LIST AS THE SECURITY CONTRACT, never
+--     SELECT *. It is the complete set of facts a caller can obtain here,
+--     and adding a column to it must be reviewed exactly as carefully as
+--     widening an RLS policy. The list below is the FIFTEEN names in
+--     ROSTER_COLUMNS in app/api/workspaces/[workspaceId]/roster/route.ts, in
+--     that order, so the route renders no field this contract has not
+--     declared.
+--
+-- AND THE SAME VISIBILITY BRANCHES AS THE POLICY ABOVE. A SECURITY DEFINER
+-- function bypasses RLS by construction, so if this WHERE clause were any
+-- broader than the policy it would BE the way around the policy. It is the
+-- same four branches, in the same order, plus the D-56 kill switch and a
+-- live seat in the workspace being read.
+--
+-- ORDER BY created_at ASC matches what the workspace roster GET already
+-- renders (`.order('created_at', { ascending: true })`), so plan 15's
+-- repoint is a substitution rather than a visible reordering.
+CREATE OR REPLACE FUNCTION public.workspace_roster_page(
+  p_workspace_id UUID,
+  p_uid UUID,
+  p_limit INT,
+  p_offset INT
+)
+RETURNS TABLE (
+  id                UUID,
+  workspace_id      UUID,
+  member_user_id    UUID,
+  professional_role TEXT,
+  state             TEXT,
+  effective_from    DATE,
+  terminates_on     DATE,
+  proposed_by       UUID,
+  accepted_at       TIMESTAMPTZ,
+  refused_at        TIMESTAMPTZ,
+  ended_at          TIMESTAMPTZ,
+  ended_by          UUID,
+  end_reason        TEXT,
+  created_at        TIMESTAMPTZ,
+  updated_at        TIMESTAMPTZ
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    r.id,
+    r.workspace_id,
+    r.member_user_id,
+    r.professional_role,
+    CASE WHEN r.state = 'blocked' THEN 'refused' ELSE r.state END,
+    r.effective_from,
+    r.terminates_on,
+    r.proposed_by,
+    r.accepted_at,
+    r.refused_at,
+    r.ended_at,
+    r.ended_by,
+    r.end_reason,
+    r.created_at,
+    r.updated_at
+  FROM public.workspace_roster_relationships r
+  WHERE r.workspace_id = p_workspace_id
+    AND p_uid = (SELECT auth.uid())
+    AND public.workspace_access_enabled()
+    AND public.workspace_member_role(p_workspace_id, p_uid) IS NOT NULL
+    AND (
+      r.member_user_id = p_uid
+      OR public.is_workspace_owner(r.workspace_id, p_uid)
+      OR public.workspace_member_role(r.workspace_id, p_uid) = 'admin'
+      OR (
+        r.state IN ('accepted', 'ended')
+        AND public.workspace_member_role(r.workspace_id, p_uid) IS NOT NULL
+      )
+    )
+  ORDER BY r.created_at ASC, r.id ASC
+  LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)
+  OFFSET GREATEST(COALESCE(p_offset, 0), 0)
+$$;
+
+-- A SESSION-CLIENT READ, like migrations 193 and 194 — NOT migration 198's
+-- write family, which is service-role-only after migration 123. The two
+-- readers this file adds (workspace_audit_page in section (h) and
+-- workspace_roster_page here) both keep EXECUTE for `authenticated`;
+-- workspace_access_permitted in section (l) below deliberately does not.
+-- Do not "harmonise" the three: the difference is the design.
+REVOKE EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)
+  FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)
+  TO authenticated;
+
+COMMENT ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int) IS
+  'R-23/WSR-18/T-38-04-05. One page of a workspace roster, WITH `blocked` COLLAPSED TO `refused`. Migration 183 keeps workspace_roster_blocks Member-private so a workspace can never enumerate who blocked it (T-38-04-05), but the relationship row''s own state column says the same thing out loud; R-23 settles that contradiction in favour of T-38-04-05. The workspace learns the Member said no, never that the Member also shut the door. refused_at is passed through unchanged BECAUSE THE BLOCK PATH ALREADY STAMPS IT — a `refused` row with no refusal timestamp would be a fingerprint a reader could use to infer the collapse, and therefore infer the block. THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION: app/api/roster/relationships/route.ts reads the raw table through the RLS client and keeps the TRUE state, because a Member must be able to see their own act. The block itself keeps working either way, because enforcement reads the Member-private blocks table through assertCanPropose, never this column. The WHERE clause repeats the four visibility branches of workspace_roster_relationships_select exactly: a SECURITY DEFINER function bypasses RLS, so anything broader here would BE the way around that policy. Preserves the three properties migration 194 established: p_uid must equal auth.uid() so the parameter can only ever name the caller and a NULL auth.uid() returns zero rows (38.0.1 Part B check B9); the page is clamped to at most 200 rows because an unbounded page on a SECURITY DEFINER function is a denial-of-service surface; and the return list is DECLARED rather than SELECT * — it is the complete set of facts obtainable here and widening it must be reviewed as carefully as widening an RLS policy. Reads the D-56 kill switch, exactly as every workspace read surface does, and never writes it. Client-invoked, so authenticated keeps EXECUTE — matching migrations 193 and 194, not migration 123.';
+
 -- ─── Schema-cache reload — MUST REMAIN THE LAST STATEMENT IN THIS FILE ────
 -- Plans 07 and 09 append further sections ABOVE this line, never below it.
 NOTIFY pgrst, 'reload schema';
