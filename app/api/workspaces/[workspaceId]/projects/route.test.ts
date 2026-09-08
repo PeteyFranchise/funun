@@ -1,4 +1,5 @@
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
+import { WORKSPACE_PROJECT_ROLE_FLOOR_MESSAGE } from '@/lib/workspaces/membership'
 import { POST } from './route'
 
 // ─── R-14 / WSR-22 (finding F19) ─────────────────────────────────────────
@@ -73,6 +74,14 @@ function buildServiceClient(opts: { relationship?: Record<string, unknown> | nul
 
   const client = {
     calls,
+    // Plan 13: `requireWorkspaceAccess` resolves the D-56 kill switch and the
+    // D-55 cohort window through ONE `workspace_access_permitted` RPC rather
+    // than reading `workspace_access_config` through `.from()`. Both open
+    // here, so every pre-existing case below keeps asserting what it asserted
+    // before. The `workspace_access_config` branch under `from` is retained
+    // so a regression to the table read fails loudly rather than silently.
+    rpc: (_fn: string, _args: Record<string, unknown>) =>
+      Promise.resolve({ data: [{ access_enabled: true, cohort_ok: true }], error: null }),
     from: jest.fn((table: string) => {
       calls.tables.push(table)
 
@@ -268,4 +277,35 @@ describe('POST /api/workspaces/[workspaceId]/projects — existing behaviour is 
     })
     expect(service.calls.auditRows).toHaveLength(1)
   })
+})
+
+// ─── R-20 / WSR-29 — the project-data role floor ──────────────────────────
+// Creating a project on a Member's behalf is project data by any reading, so
+// the floor applies here. The API-layer twin of the `AND m.role IN (...)`
+// conjunct migration 197 adds to `workspace_project_permission` hop 2.
+describe('POST /api/workspaces/[workspaceId]/projects — the R-20 role floor (WSR-29)', () => {
+  it('refuses a guest with the role-floor message, before any write', async () => {
+    const service = buildServiceClient()
+    wire(service, 'guest')
+
+    const res = await POST(postRequest(validBody()), { params: params() })
+    const payload = (await res.json()) as { error: string }
+
+    expect(res.status).toBe(403)
+    expect(payload.error).toBe(WORKSPACE_PROJECT_ROLE_FLOOR_MESSAGE)
+    expect(service.calls.projectRow).toBeNull()
+    expect(service.calls.tables).not.toContain('vault_projects')
+  })
+
+  it.each(['owner', 'admin', 'member', 'contractor'])(
+    'still admits %s — the floor excludes guest and nobody else',
+    async role => {
+      const service = buildServiceClient()
+      wire(service, role)
+
+      const res = await POST(postRequest(validBody()), { params: params() })
+
+      expect(res.status).toBe(201)
+    }
+  )
 })
