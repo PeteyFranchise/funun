@@ -123,6 +123,70 @@ const OWNER_ROLE_GUARD =
 const OWNER_FLOOR =
   'CREATE OR REPLACE FUNCTION public.guard_workspace_never_zero_owners()'
 
+// ─── HARNESS 7 (plan 07) — isolate ONE statement ───────────────────────────
+// Slices `sql` from the first line of a statement to its terminating `;`, so
+// an assertion about one trigger, policy or REVOKE cannot be satisfied by
+// text belonging to the next one. functionBlock cannot do this job: these
+// statements have no `$$` body to close on.
+function statementBlock(header: string): string {
+  const start = sql.indexOf(header)
+  expect(start).toBeGreaterThanOrEqual(0)
+  const end = sql.indexOf(';', start)
+  expect(end).toBeGreaterThan(start)
+  return sql.slice(start, end + 1)
+}
+
+// ─── HARNESS 8 (plan 07) — the declared `RETURNS TABLE (...)` column list ──
+// The security contract itself, sliced away from the body so an assertion
+// about the contract cannot be satisfied (or tripped) by the body. Same
+// slicing rule as __tests__/migration-194.test.ts's `returnColumnList`.
+function returnColumnList(header: string): string {
+  const block = functionBlock(header)
+  const start = block.indexOf('RETURNS TABLE (')
+  expect(start).toBeGreaterThanOrEqual(0)
+  const end = block.indexOf('LANGUAGE sql', start)
+  expect(end).toBeGreaterThan(start)
+  return block.slice(start, end)
+}
+
+// The four function headers PLAN 07 installs (sections (e)-(h)), plus the
+// migration 186 helper it narrows.
+const APPEND_ONLY_GUARD =
+  'CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_append_only()'
+const PII_GUARD =
+  'CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_no_restricted_pii()'
+const AUDIT_ASSERTION =
+  'CREATE OR REPLACE FUNCTION public.assert_workspace_change_is_audited()'
+const AUDIT_PAGE = 'CREATE OR REPLACE FUNCTION public.workspace_audit_page('
+const AUDIT_VISIBLE =
+  'CREATE OR REPLACE FUNCTION public.workspace_audit_visible(p_row_id UUID, p_uid UUID)'
+
+// The reviewed restricted-key set section (f) refuses at any depth. Iterated
+// per key below so a key silently dropped from the SQL fails with a message
+// naming WHICH key, not a bare array mismatch.
+const RESTRICTED_PII_KEYS = [
+  'email',
+  'phone',
+  'contact_email',
+  'contact_phone',
+  'address',
+  'tax_id',
+  'token',
+  'token_hash',
+  'ipi',
+  'isni',
+] as const
+
+// The complete, reviewed return contract of public.workspace_audit_page.
+// Asserted verbatim and IN ORDER, so adding a column is a deliberate,
+// visible edit to this file — migration 194's rule, applied to the audit
+// surface. Ten columns; `changes_redacted` is the boolean that lets a reader
+// distinguish "withheld" from "genuinely empty" without a second query.
+const DECLARED_AUDIT_RETURN_LIST =
+  'RETURNS TABLE ( id UUID, actor_user_id UUID, subject_member_id UUID, ' +
+  'action TEXT, permission_relied_on TEXT, target_type TEXT, target_id UUID, ' +
+  'changes JSONB, changes_redacted BOOLEAN, created_at TIMESTAMPTZ )'
+
 describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', () => {
   // ══ Harness sanity — every negative assertion below depends on this ══
   describe('the stripped views are non-empty (no assertion passes vacuously)', () => {
@@ -639,6 +703,336 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
   })
 
   // ══ Negative structural guarantees — all against sql / executable ════
+  // ══ (e) The audit lockdown — S1 / WSR-26 ═════════════════════════════
+  describe('(e) the audit lockdown — three layers, each with its real scope', () => {
+    it('layer 1 revokes all THREE privileges and names service_role explicitly', () => {
+      const revoke = normalizeWhitespace(
+        statementBlock('REVOKE UPDATE, DELETE, TRUNCATE ON public.workspace_audit_log')
+      )
+      // The three privileges check A10 found service_role holding. TRUNCATE
+      // is the one migration 182's revoke did not even name.
+      for (const privilege of ['UPDATE', 'DELETE', 'TRUNCATE']) {
+        expect(revoke).toContain(privilege)
+      }
+      // And all four roles. service_role is the whole point: BYPASSRLS
+      // confers no table privileges, so this statement — not any policy —
+      // is what binds it, and a REVOKE from PUBLIC alone provably did not.
+      for (const role of ['PUBLIC', 'anon', 'authenticated', 'service_role']) {
+        expect(revoke).toContain(role)
+      }
+    })
+
+    it('deliberately retains SELECT and INSERT — neither is revoked on the audit table', () => {
+      // Revoking INSERT would silence the trail; revoking SELECT would
+      // delete D-50's both-sides read. Asserted against the comment-stripped
+      // view so the header prose explaining the choice cannot satisfy it.
+      expect(sql).not.toMatch(/REVOKE[^;]*\bSELECT\b[^;]*workspace_audit_log/i)
+      expect(sql).not.toMatch(/REVOKE[^;]*\bINSERT\b[^;]*workspace_audit_log/i)
+    })
+
+    it('the append-only guard refuses UNCONDITIONALLY — no branch, no exemption', () => {
+      const block = functionBlock(APPEND_ONLY_GUARD)
+      expect(block).toContain("USING ERRCODE = 'insufficient_privilege'")
+      expect((block.match(/RAISE EXCEPTION/g) ?? [])).toHaveLength(1)
+      // No conditional of any kind. An exemption here would admit every
+      // SECURITY DEFINER function this phase adds — the role-scoped
+      // exemption trap — and nothing legitimately rewrites an audit row.
+      expect(block).not.toMatch(/\bIF\b/)
+      expect(block).not.toMatch(/current_user/)
+      expect(block).not.toMatch(/TG_OP/)
+      expect(block).not.toMatch(/RETURN NEW/)
+      expect(block).toContain("SET search_path = ''")
+    })
+
+    it('installs BOTH triggers, and the TRUNCATE one is at STATEMENT level', () => {
+      const rowTrigger = normalizeWhitespace(
+        statementBlock('CREATE TRIGGER guard_workspace_audit_log_no_row_change')
+      )
+      expect(rowTrigger).toContain('BEFORE UPDATE OR DELETE ON public.workspace_audit_log')
+      expect(rowTrigger).toContain('FOR EACH ROW')
+      expect(rowTrigger).not.toContain('FOR EACH STATEMENT')
+
+      const truncateTrigger = normalizeWhitespace(
+        statementBlock('CREATE TRIGGER guard_workspace_audit_log_no_truncate')
+      )
+      expect(truncateTrigger).toContain('BEFORE TRUNCATE ON public.workspace_audit_log')
+      // THE ASSERTION THAT MATTERS. A row-level trigger does not fire for
+      // TRUNCATE — there are no rows to fire per — so if these two levels
+      // were ever swapped, TRUNCATE would walk straight past the guard and
+      // the whole lockdown would be silently reopened.
+      expect(truncateTrigger).toContain('FOR EACH STATEMENT')
+      expect(truncateTrigger).not.toContain('FOR EACH ROW')
+
+      // Both point at the same unconditional function.
+      for (const trigger of [rowTrigger, truncateTrigger]) {
+        expect(trigger).toContain(
+          'EXECUTE FUNCTION public.guard_workspace_audit_log_append_only()'
+        )
+      }
+    })
+
+    it('layer 3 is RESTRICTIVE, scoped to authenticated and anon only', () => {
+      const restrictive = [
+        ...sql.matchAll(/CREATE POLICY "([a-z_]+)" ON public\.workspace_audit_log\s+AS RESTRICTIVE\s+FOR (\w+) TO ([^\n]+)/g),
+      ]
+      expect(restrictive.map((entry) => entry[1]).sort()).toEqual([
+        'workspace_audit_log_no_delete',
+        'workspace_audit_log_no_update',
+      ])
+      for (const entry of restrictive) {
+        expect(normalizeWhitespace(entry[3])).toBe('authenticated, anon')
+      }
+    })
+
+    it('no RESTRICTIVE policy on the audit table is FOR ALL — that would kill SELECT', () => {
+      // RESEARCH §6.3 and the plan both wrote a single
+      // `AS RESTRICTIVE FOR ALL ... USING (false)`. A restrictive policy is
+      // AND-ed with the permissive ones for EVERY command it covers, and
+      // FOR ALL covers SELECT — so that one policy would have made
+      // workspace_audit_log unreadable to `authenticated`, silently deleting
+      // D-50's both-sides read and section (h)'s own recreated policy. This
+      // assertion is the lock that stops anyone "restoring" it.
+      expect(sql).not.toMatch(/AS RESTRICTIVE\s+FOR ALL/)
+      const commands = [...sql.matchAll(/AS RESTRICTIVE\s+FOR (\w+)/g)].map((m) => m[1])
+      expect(commands.sort()).toEqual(['DELETE', 'UPDATE'])
+    })
+
+    it('states the limit honestly: append-only to every application role, not immutable', () => {
+      expect(prose).toMatch(/"append-only to every application role", NOT "immutable"/)
+      // And names the three ways the database owner can still get around it,
+      // so the claim cannot later be read as stronger than it is.
+      expect(prose).toMatch(/None of them constrains the database owner/)
+      expect(prose).toMatch(/session_replication_role/)
+      expect(prose).toMatch(/DISABLE\s+TRIGGER/)
+    })
+
+    it('names check A10 and the ALTER DEFAULT PRIVILEGES bootstrap as the root cause', () => {
+      expect(prose).toMatch(/check\s+A10/)
+      expect(prose).toMatch(/ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES/)
+      expect(prose).toMatch(/a REVOKE from PUBLIC never touches a direct grant/)
+    })
+
+    it('says plainly that the policy half of S1 is not the enforcement', () => {
+      expect(prose).toMatch(/THE POLICY HALF IS INERT AGAINST service_role/)
+      expect(prose).toMatch(/BYPASSRLS/)
+    })
+  })
+
+  // ══ (f) The restricted-PII write guard — R-13 / WSR-19 ═══════════════
+  describe('(f) the restricted-PII write guard', () => {
+    it('recurses with jsonb_path_exists and NEVER uses the top-level-only ?| operator', () => {
+      const block = functionBlock(PII_GUARD)
+      expect(block).toContain('jsonb_path_exists')
+      // `changes ?| ARRAY[...]` inspects TOP-LEVEL KEYS ONLY, and this
+      // codebase already writes nested before/after diffs that would walk
+      // straight past it (the invitation-revoked call site is one).
+      expect(block).not.toContain('?|')
+      // The recursive member accessor: `$.**."key"` matches at every depth
+      // INCLUDING depth zero, so a top-level key is still caught.
+      expect(block).toContain('$.**."')
+      expect(block).toContain('::jsonpath')
+    })
+
+    it.each(RESTRICTED_PII_KEYS)('covers the restricted key %s', (key) => {
+      const block = functionBlock(PII_GUARD)
+      const keyList = block.slice(block.indexOf('FOREACH'), block.indexOf('] LOOP'))
+      expect(keyList.length).toBeGreaterThan(0)
+      // Named per key, so a key silently dropped from the SQL fails with a
+      // message that says WHICH one rather than a bare array mismatch.
+      expect(keyList).toContain(`'${key}'`)
+    })
+
+    it('covers exactly the reviewed key set — no more, no fewer', () => {
+      const block = functionBlock(PII_GUARD)
+      const keyList = block.slice(block.indexOf('FOREACH'), block.indexOf('] LOOP'))
+      const declared = [...keyList.matchAll(/'([a-z_]+)'/g)].map((entry) => entry[1])
+      expect(declared.sort()).toEqual([...RESTRICTED_PII_KEYS].sort())
+    })
+
+    it('raises check_violation and fires BEFORE INSERT, per row', () => {
+      const block = functionBlock(PII_GUARD)
+      expect(block).toContain("USING ERRCODE = 'check_violation'")
+      const trigger = normalizeWhitespace(
+        statementBlock('CREATE TRIGGER guard_workspace_audit_log_no_restricted_pii')
+      )
+      expect(trigger).toContain('BEFORE INSERT ON public.workspace_audit_log')
+      expect(trigger).toContain('FOR EACH ROW')
+    })
+
+    it('states the two things the guard does NOT claim', () => {
+      // It is a key-name guard, not a content classifier...
+      expect(prose).toMatch(/KEY-NAME guard, not a content classifier/)
+      // ...and its cost on the write path has never been measured, because
+      // the table is empty and no agent opened a database connection.
+      expect(prose).toMatch(/HAS NOT BEEN MEASURED/)
+      expect(prose).toMatch(/never to drop the guard/)
+    })
+
+    it('records where the invited address legitimately lives instead', () => {
+      expect(prose).toMatch(/workspace_invitations\.email/)
+      expect(prose).toMatch(/owner\/admin\s*only/)
+      expect(prose).toMatch(/should carry the role and nothing else/)
+    })
+  })
+
+  // ══ (g) The deferred audit-assertion triggers — R-06 / WSR-13 ════════
+  describe('(g) the deferred audit-assertion triggers', () => {
+    it('installs exactly four constraint triggers, all deferred and per-row', () => {
+      const statements = [...sql.matchAll(/CREATE CONSTRAINT TRIGGER[\s\S]*?;/g)].map((m) =>
+        normalizeWhitespace(m[0])
+      )
+      expect(statements).toHaveLength(4)
+      for (const statement of statements) {
+        // Deferred, so the check runs at COMMIT — after both the mutation
+        // and the audit row exist, whichever order the RPC wrote them in.
+        expect(statement).toContain('DEFERRABLE INITIALLY DEFERRED')
+        expect(statement).toContain('FOR EACH ROW')
+        expect(statement).toContain(
+          'EXECUTE FUNCTION public.assert_workspace_change_is_audited()'
+        )
+      }
+    })
+
+    it('scopes each trigger to the columns that define a consequential change', () => {
+      const pairs = [...sql.matchAll(/AFTER UPDATE OF ([a-z, ]+) ON public\.([a-z_]+)/g)].map(
+        (entry) => `${entry[2]}(${normalizeWhitespace(entry[1])})`
+      )
+      // Asserted as a SET, so an omitted table fails by name rather than by
+      // a count that a fifth trigger elsewhere could accidentally restore.
+      expect(pairs.sort()).toEqual([
+        'workspace_custody_transfers(state)',
+        'workspace_invitations(status)',
+        'workspace_members(role, status)',
+        'workspace_roster_relationships(state)',
+      ])
+    })
+
+    it('matches an audit row on BOTH target_id and created_at', () => {
+      const block = functionBlock(AUDIT_ASSERTION)
+      expect(block).toContain('FROM public.workspace_audit_log l')
+      expect(block).toContain('l.target_id = NEW.id')
+      // NOW() is transaction_timestamp() — one value per transaction — so
+      // with target_id this is an effectively exact "audited in THIS
+      // transaction" test. Dropping either half makes it meaningless.
+      expect(block).toContain('l.created_at = now()')
+      expect(block).toContain("USING ERRCODE = 'integrity_constraint_violation'")
+    })
+
+    it('records the contract on writers, the known offender, and the fallback', () => {
+      expect(prose).toMatch(/MUTATED ROW'S OWN id/)
+      expect(prose).toMatch(/invitations\/accept\/route\.ts/)
+      expect(prose).toMatch(/targetId: pendingSeat\?\.id \?\? null/)
+      // And it does not pretend R-06 alone bought this.
+      expect(prose).toMatch(/IT DOES NOT MAKE THE AUDIT NON-BYPASSABLE/)
+      expect(prose).toMatch(/It is a fallback, not the design/)
+    })
+
+    it('states the MEDIUM confidence and points at plan 17 as the proof', () => {
+      expect(prose).toMatch(/never been observed on a running\s+database/)
+      expect(prose).toMatch(/Plan 17's owner-run single-shot harness is the proof/)
+    })
+  })
+
+  // ══ (h) The redacted audit read — R-13 / R-27 / WSR-19 ═══════════════
+  describe('(h) the redacted audit read', () => {
+    it('declares the exact ten-column return contract, in order', () => {
+      expect(normalizeWhitespace(returnColumnList(AUDIT_PAGE))).toBe(DECLARED_AUDIT_RETURN_LIST)
+    })
+
+    it('binds p_uid to the caller and clamps the page to 200', () => {
+      const block = functionBlock(AUDIT_PAGE)
+      // The binding 38.0.1 Part B check B9 proved bites. The parameter is
+      // explicit but can only ever name the caller.
+      expect(block).toContain('AND p_uid = (SELECT auth.uid())')
+      expect(block).toContain('LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)')
+      expect(block).toContain('OFFSET GREATEST(COALESCE(p_offset, 0), 0)')
+      expect(block).toContain('LANGUAGE sql STABLE SECURITY DEFINER')
+      expect(block).toContain("SET search_path = ''")
+    })
+
+    it('reads the D-56 kill switch and requires a live seat', () => {
+      const block = functionBlock(AUDIT_PAGE)
+      expect(block).toContain('AND public.workspace_access_enabled()')
+      expect(block).toContain('AND public.workspace_member_role(l.workspace_id, p_uid) IS NOT NULL')
+    })
+
+    it('redacts by ALLOWLIST — the empty object, never a key subtraction', () => {
+      const block = functionBlock(AUDIT_PAGE)
+      expect(block).toContain("CASE WHEN v.full_view THEN l.changes ELSE '{}'::JSONB END")
+      // A subtraction leaks whatever a future writer adds under a key nobody
+      // thought to subtract — the same failure mode section (f) exists for.
+      expect(block).not.toMatch(/changes\s*-\s*(ARRAY|\[|')/)
+      expect(block).not.toMatch(/SELECT \*/)
+      // And the boolean, so a reader can tell withheld from genuinely empty.
+      expect(block).toContain('NOT v.full_view')
+      expect(block).toContain('COALESCE(')
+    })
+
+    it('grants EXECUTE to authenticated, not service_role — unlike migration 198s family', () => {
+      // Migration 198's WRITE RPCs are service-role-only (migration 123's
+      // posture) because no session client may reach them. THIS is a
+      // client-invoked READ, like migrations 193 and 194, so `authenticated`
+      // keeps EXECUTE. The two postures are different on purpose.
+      expect(sql).toContain(
+        'REVOKE EXECUTE ON FUNCTION public.workspace_audit_page(uuid, uuid, int, int)\n  FROM PUBLIC, anon, authenticated;'
+      )
+      expect(sql).toContain(
+        'GRANT  EXECUTE ON FUNCTION public.workspace_audit_page(uuid, uuid, int, int)\n  TO authenticated;'
+      )
+      expect(sql).not.toMatch(/GRANT[^;]*workspace_audit_page[^;]*service_role/)
+    })
+
+    it('narrows workspace_audit_log_select: the broad live-seat branch is gone', () => {
+      expect(sql).toContain(
+        'DROP POLICY IF EXISTS "workspace_audit_log_select" ON public.workspace_audit_log;'
+      )
+      const policy = normalizeWhitespace(
+        statementBlock('CREATE POLICY "workspace_audit_log_select"')
+      )
+      expect(policy).toContain('actor_user_id = (SELECT auth.uid())')
+      expect(policy).toContain('subject_member_id = (SELECT auth.uid())')
+      expect(policy).toContain(
+        "(SELECT public.workspace_member_role(workspace_id, auth.uid())) IN ('owner', 'admin')"
+      )
+      // Migration 186's third branch — anyone with a live seat — is what put
+      // a raw `changes` object in front of every member. It must be gone.
+      expect(policy).not.toMatch(/IS NOT NULL/)
+      expect(policy).not.toContain('workspace_audit_visible')
+    })
+
+    it('wraps every helper call in the recreated policy as a scalar subselect', () => {
+      const policy = statementBlock('CREATE POLICY "workspace_audit_log_select"')
+      const pattern = /public\.[a-z_]+\s*\(/g
+      const unwrapped: string[] = []
+      let match: RegExpExecArray | null
+      while ((match = pattern.exec(policy)) !== null) {
+        const preceding = policy.slice(Math.max(0, match.index - 8), match.index)
+        if (!preceding.endsWith('(SELECT ')) {
+          unwrapped.push(
+            policy.slice(Math.max(0, match.index - 40), match.index + 40).replace(/\s+/g, ' ')
+          )
+        }
+      }
+      expect(unwrapped).toEqual([])
+      // The sample is not empty — there IS a helper call to wrap.
+      expect(policy).toMatch(/public\.workspace_member_role\s*\(/)
+    })
+
+    it('narrows the migration 186 helper in lockstep with the policy', () => {
+      const block = functionBlock(AUDIT_VISIBLE)
+      expect(block).toContain(
+        "public.workspace_member_role(l.workspace_id, p_uid) IN ('owner', 'admin')"
+      )
+      expect(block).not.toMatch(/workspace_member_role\([^)]*\) IS NOT NULL/)
+    })
+
+    it('states the D-50 tension and that R-27 confirmed it, rather than glossing it', () => {
+      expect(prose).toMatch(/THE D-50 TENSION, STATED RATHER THAN GLOSSED/)
+      expect(prose).toMatch(/R-27 confirmed this is acceptable/)
+      expect(prose).toMatch(/NO APP SURFACE READS workspace_audit_log TODAY/)
+    })
+  })
+
   describe('negative structural guarantees', () => {
     it('drops and disables no trigger, and never touches session_replication_role', () => {
       expect(executable).not.toMatch(/DROP TRIGGER/i)
@@ -673,9 +1067,39 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(executable).not.toMatch(/UPDATE public\./i)
     })
 
-    it('does not flip the D-56 kill switch', () => {
-      expect(executable).not.toMatch(/workspace_access_enabled/)
+    // NARROWED BY PLAN 07 — the one plan-05 assertion this plan changed, and
+    // the reason is written here rather than only in the SUMMARY.
+    //
+    // Plan 05 wrote `expect(executable).not.toMatch(/workspace_access_enabled/)`
+    // for a file that never touched the switch. Section (h)'s redacted audit
+    // reader must CALL public.workspace_access_enabled() — reading the switch
+    // is precisely what makes that reader fail closed while the switch is off,
+    // and every workspace read surface in the codebase reads it (migrations
+    // 186, 192, 194). READING THE SWITCH IS NOT FLIPPING IT, and an assertion
+    // that forbids the read would forbid the correct behaviour.
+    //
+    // So the assertion is narrowed to what it was always meant to catch: a
+    // WRITE to the switch's backing table, or a REDEFINITION of the predicate
+    // itself. Both of those are how this file could actually flip the switch,
+    // and neither is possible now without failing here.
+    it('does not flip the D-56 kill switch — it may read it, never write it', () => {
+      expect(executable).not.toMatch(/workspace_access_config/)
+      expect(executable).not.toMatch(
+        /CREATE OR REPLACE FUNCTION public\.workspace_access_enabled/
+      )
       expect(executable).not.toMatch(/kill_switch/i)
+    })
+
+    it('every appearance of workspace_access_enabled is a CALL, never a definition', () => {
+      const appearances = executable.match(/workspace_access_enabled\s*\(/g) ?? []
+      // The sample is not empty — section (h) reads the switch, so a future
+      // edit that drops that conjunct fails the section (h) assertion below
+      // rather than passing here vacuously.
+      expect(appearances.length).toBeGreaterThanOrEqual(1)
+      for (const site of executable.matchAll(/(.{0,40})workspace_access_enabled/g)) {
+        expect(site[1]).not.toMatch(/FUNCTION public\.$/)
+        expect(site[1]).not.toMatch(/DROP\s*$/)
+      }
     })
 
     it('creates or alters no table outside the two it introduces', () => {
