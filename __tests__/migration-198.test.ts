@@ -7,6 +7,7 @@ import path from 'path'
 // owner-floor-message drift, prevented in the shape migration 197's suite
 // already uses for OWNERSHIP_TRANSFER_STATE_VALUES.
 import { OWNERSHIP_TRANSFER_STATE_VALUES } from '@/lib/workspaces/ownership-transfer'
+import { LEGAL_ROSTER_EDGES } from '@/lib/workspaces/roster'
 import { WORKSPACE_ROLE_VALUES } from '@/lib/workspaces/types'
 
 // ─── migration 198 — the transactional workspace RPC family ───────────────
@@ -685,6 +686,38 @@ describe('public.workspace_create — the first RPC stamped from the template', 
  * guarantee: a RAISE rolls the transaction back INCLUDING the audit row
  * written moments earlier in it.
  */
+/**
+ * The half `auditedRefusalViolation` does NOT check, found by mutation while
+ * writing plan 10 and added rather than left implied.
+ *
+ * That helper proves an audit INSERT precedes the refusal's RETURN and that
+ * no other branch's RETURN sits between them. It says nothing about a RAISE
+ * placed between the two — and a RAISE there is precisely the failure R-26
+ * exists to prevent: it rolls the transaction back and TAKES THE AUDIT ROW
+ * WITH IT, so the refusal this phase exists to be able to show someone later
+ * silently never happened. Every call site's test is named "…and raises in
+ * none of them"; this is the assertion that makes the name true.
+ */
+function raisingRefusalViolation(fn: string, code: string): string | null {
+  const block = functionBlock(fn)
+  const returnAt = block.indexOf(`RETURN QUERY SELECT '${code}'`)
+  if (returnAt < 0) return `public.${fn} has no branch returning the outcome '${code}'`
+
+  const insertAt = block.lastIndexOf('INSERT INTO public.workspace_audit_log', returnAt)
+  if (insertAt < 0) {
+    return `public.${fn}: the '${code}' refusal returns without any preceding audit INSERT (R-26)`
+  }
+
+  if (/\bRAISE\b/.test(block.slice(insertAt, returnAt))) {
+    return (
+      `public.${fn}: the '${code}' refusal RAISEs between writing its audit row and ` +
+      'returning — a RAISE rolls the transaction back and takes that audit row with ' +
+      'it, so the refusal is never recorded (R-26)'
+    )
+  }
+  return null
+}
+
 function auditedRefusalViolation(fn: string, code: string): string | null {
   const block = functionBlock(fn)
   const returnAt = block.indexOf(`RETURN QUERY SELECT '${code}'`)
@@ -1030,6 +1063,536 @@ describe('public.workspace_respond_ownership_nomination — WSR-08 / R-22', () =
 })
 
 // ══ Cross-module drift guards ════════════════════════════════════════════
+
+// ══ Section (f) — public.workspace_redeem_invitation ═════════════════════
+
+describe('public.workspace_redeem_invitation — WSR-10 / WSR-16 / F11', () => {
+  const block = () => functionBlock('workspace_redeem_invitation')
+
+  // Asserted as an iterated SET rather than one string match, so a missing
+  // literal NAMES ITSELF in the failure instead of collapsing nine outcomes
+  // into a single unhelpful boolean.
+  const OUTCOMES = [
+    'ok',
+    'not_found',
+    'not_in_cohort',
+    'expired',
+    'not_pending',
+    'email_mismatch',
+    'owner_invitation_forbidden',
+    'owner_seat_conflict',
+    'illegal_transition',
+  ]
+
+  it('returns every outcome code plan 14 must map', () => {
+    const body = block()
+    const missing = OUTCOMES.filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  it('accepts the token HASH and never the raw token, and asserts no authority', () => {
+    const body = block()
+    const params = body.slice(body.indexOf('(') + 1, body.indexOf('RETURNS TABLE'))
+    const declared = [...params.matchAll(/\bp_[a-z_]+\b/g)].map((m) => m[0])
+
+    // Lock the whole signature, not just the absence of one name. Two things
+    // fail here if a future edit widens it: a `p_token` carrying the RAW
+    // token, which must never reach SQL because it would then reach
+    // pg_stat_statements and any statement log; and a `p_actor_role` or
+    // equivalent letting a caller assert its own authority (R-21).
+    expect([...new Set(declared)].sort()).toEqual([
+      'p_actor_email',
+      'p_actor_id',
+      'p_require_cohort',
+      'p_token_hash',
+    ])
+  })
+
+  it('consults the cohort gate before it reads the invitation at all (R-24)', () => {
+    const body = block()
+    const gate = body.indexOf('public.workspace_access_permitted(')
+    const invitationRead = body.indexOf('FROM public.workspace_invitations')
+    expect(gate).toBeGreaterThan(0)
+    expect(invitationRead).toBeGreaterThan(0)
+
+    // Reading the invitation before the eligibility gate would leak its
+    // existence to an ineligible caller — and R-25 maps a cohort miss to
+    // 404 precisely so nobody outside the pilot learns the feature exists.
+    expect(gate).toBeLessThan(invitationRead)
+    expect(gate).toBeLessThan(body.indexOf('INSERT INTO'))
+    expect(gate).toBeLessThan(body.indexOf('UPDATE public.'))
+  })
+
+  it('passes p_require_cohort through rather than deciding the bound in SQL', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'FROM public.workspace_access_permitted(p_actor_id, p_require_cohort) a'
+    )
+  })
+
+  it('writes the seat as ONE statement — no lookup-then-update-or-insert fork (F11)', () => {
+    const body = block()
+
+    const inserts = [...body.matchAll(/INSERT INTO\s+public\.workspace_members\b/g)]
+    expect(inserts.length).toBe(1)
+
+    // `DO UPDATE SET` belongs to the INSERT above and is not a statement of
+    // its own; a standalone `UPDATE public.workspace_members` would be the
+    // fork returning, which is the half of F11 that let two concurrent
+    // redemptions both miss the seat and both take the INSERT branch.
+    const updates = [...body.matchAll(/\bUPDATE\s+public\.workspace_members\b/g)]
+    expect(updates).toEqual([])
+  })
+
+  it('infers the PARTIAL unique index by restating its predicate', () => {
+    // Without `WHERE user_id IS NOT NULL` PostgreSQL has no partial index to
+    // match and the statement does not plan at all. The predicate is not
+    // decoration.
+    expect(normalizeWhitespace(block())).toContain(
+      'ON CONFLICT (workspace_id, user_id) WHERE user_id IS NOT NULL DO UPDATE SET'
+    )
+  })
+
+  it('writes at least two audit rows, one per mutated table', () => {
+    const body = block()
+    const audits = [...body.matchAll(/INSERT INTO public\.workspace_audit_log\b/g)]
+
+    // Migration 197 installs its deferred constraint triggers PER TABLE and
+    // each matches on target_id = NEW.id, so one row cannot satisfy both the
+    // workspace_invitations assertion and the workspace_members one.
+    expect(audits.length).toBeGreaterThanOrEqual(2)
+    expect(body).toContain("'workspace.invitation.accepted', NULL, 'workspace_invitation', v_invitation_id")
+    expect(body).toContain("'workspace.member.activated', NULL, 'workspace_member', v_member_id")
+  })
+
+  it('never writes a null audit target — the shape that fails migration 197', () => {
+    const body = block()
+    // The route today writes `targetId: pendingSeat?.id ?? null`, which is
+    // null whenever no pending seat existed, and a null target_id matches no
+    // row in the deferred assertion. Every audit INSERT here names a v_ local
+    // holding a real row id.
+    const targets = [...body.matchAll(/'(workspace_invitation|workspace_member)',\s*(v_[a-z_]+)/g)]
+    expect(targets.length).toBeGreaterThan(0)
+    for (const target of targets) {
+      expect(target[2]).not.toBe('NULL')
+    }
+    expect(body).not.toMatch(/'workspace_(?:invitation|member)',\s*NULL/)
+  })
+
+  it('puts no restricted PII key in anything it builds (WSR-19)', () => {
+    const body = block()
+
+    // Migration 197 section (f) refuses these keys at ANY depth on
+    // workspace_audit_log.changes. Scanning EVERY quoted literal in the
+    // block is strictly stronger than scanning only the jsonb_build_object
+    // calls, and it costs nothing: no legitimate literal in this function is
+    // one of these words.
+    const literals = new Set([...body.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]))
+    const restricted = [
+      'email',
+      'phone',
+      'contact_email',
+      'contact_phone',
+      'address',
+      'tax_id',
+      'token',
+      'token_hash',
+      'ipi',
+      'isni',
+    ]
+    expect(restricted.filter((key) => literals.has(key))).toEqual([])
+  })
+
+  it('never reads auth.users or auth.uid — the identity comes from the route', () => {
+    const body = block()
+    expect(body).not.toContain('auth.users')
+    expect(body).not.toContain('auth.uid')
+  })
+
+  it('never sets updated_at by hand — update_updated_at() would overwrite it', () => {
+    expect(block()).not.toMatch(/updated_at\s*=/)
+  })
+
+  it('locks the workspace, then the seat, then the invitation (LO-1: 1 -> 2 -> 4)', () => {
+    expect(lockedTablesInOrder(block())).toEqual([
+      'workspaces',
+      'workspace_members',
+      'workspace_invitations',
+    ])
+  })
+
+  it('revalidates the invitation status AFTER the lock, so the CAS is structural', () => {
+    const body = block()
+    const invitationLock = body.indexOf(
+      'FOR NO KEY UPDATE',
+      body.indexOf('FROM public.workspace_invitations i\n   WHERE i.token_hash = p_token_hash\n     FOR NO KEY UPDATE')
+    )
+    const statusCheck = body.indexOf("IF v_invitation_status <> 'pending'")
+    expect(invitationLock).toBeGreaterThan(0)
+    expect(statusCheck).toBeGreaterThan(invitationLock)
+
+    // The route's `.eq('status', 'pending')` filter is gone because there is
+    // nothing left for it to do — and its result was never checked anyway,
+    // which is the whole of F11's first half. Asserted PER STATEMENT rather
+    // than across the body: a lazy match over the whole function would run
+    // past this UPDATE and find the seat subquery's own `status = 'pending'`,
+    // which is a different clause about a different table.
+    const statements = [...body.matchAll(/UPDATE\s+public\.workspace_invitations[\s\S]*?;/g)]
+    expect(statements.length).toBeGreaterThan(0)
+    for (const statement of statements) {
+      const flat = normalizeWhitespace(statement[0])
+      expect(flat).toContain('WHERE id = v_invitation_id;')
+      expect(flat).not.toMatch(/status\s*=\s*'pending'/)
+    }
+  })
+
+  it('audits every AUTHORITY refusal before returning its code, and raises in none of them', () => {
+    const codes = ['email_mismatch', 'owner_invitation_forbidden', 'owner_seat_conflict']
+    const violations = [
+      ...codes.map((code) => auditedRefusalViolation('workspace_redeem_invitation', code)),
+      ...codes.map((code) => raisingRefusalViolation('workspace_redeem_invitation', code)),
+    ].filter((violation): violation is string => violation !== null)
+    expect(violations).toEqual([])
+  })
+
+  it('audits the self-healed expiry, because that branch MUTATES', () => {
+    const body = block()
+    const update = body.indexOf("UPDATE public.workspace_invitations\n       SET status = 'expired'")
+    const audit = body.indexOf("'workspace.invitation.expired'")
+    const ret = body.indexOf("RETURN QUERY SELECT 'expired'")
+    expect(update).toBeGreaterThan(0)
+    expect(audit).toBeGreaterThan(update)
+    expect(ret).toBeGreaterThan(audit)
+
+    // A RAISE here would roll back the audit row AND the expiry write, and
+    // migration 197's deferred assertion on workspace_invitations would abort
+    // the transaction at COMMIT if the write committed unaudited.
+    expect(body.slice(update, ret)).not.toContain('RAISE')
+  })
+
+  it('does not audit the outcomes that are not authority refusals (R-26)', () => {
+    const body = block()
+    for (const code of ['not_pending', 'illegal_transition', 'not_in_cohort', 'not_found']) {
+      const returnAt = body.indexOf(`RETURN QUERY SELECT '${code}'`)
+      expect(returnAt).toBeGreaterThan(0)
+      // Both audit-id columns come back NULL because no audit row was written.
+      expect(body.slice(returnAt, returnAt + 200)).toContain('NULL::UUID')
+    }
+  })
+
+  it('refuses an owner-role invitation rather than trusting migration 197’s guard', () => {
+    const body = block()
+    // guard_workspace_owner_role_change's FIRST statement is
+    // `IF current_user IN ('postgres') THEN RETURN NEW`, and current_user IS
+    // postgres inside this postgres-owned definer function — so the trigger
+    // ADMITS an owner seat created here. The exemption is role-scoped.
+    expect(body).toContain("IF v_invitation_role = 'owner' THEN")
+    expect(body.indexOf("IF v_invitation_role = 'owner' THEN")).toBeLessThan(
+      body.indexOf('INSERT INTO public.workspace_members')
+    )
+  })
+
+  it('documents its lock order, preconditions, triggers and same-transaction audit', () => {
+    const comment = normalizeWhitespace(
+      sql.slice(sql.indexOf('COMMENT ON FUNCTION public.workspace_redeem_invitation'))
+    )
+    for (const phrase of [
+      'LOCK RANKS, IN ORDER',
+      'REVALIDATED AFTER THE LOCKS',
+      'TRIGGERS THAT FIRE',
+      'OUTCOME VOCABULARY',
+      'THE RAW TOKEN NEVER REACHES SQL',
+      'idx_workspace_members_unique_user',
+      'Granted to service_role only',
+    ]) {
+      expect(comment).toContain(phrase)
+    }
+  })
+})
+
+// ══ Section (g) — public.workspace_transition_roster_relationship ═════════
+
+describe('public.workspace_transition_roster_relationship — WSR-12 / F16', () => {
+  const block = () => functionBlock('workspace_transition_roster_relationship')
+
+  const OUTCOMES = ['ok', 'not_found', 'stale', 'forbidden', 'illegal_transition']
+
+  it('returns every outcome code plan 12 must map', () => {
+    const body = block()
+    const missing = OUTCOMES.filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  it('names every LEGAL_ROSTER_EDGES state and no state outside that union', () => {
+    const body = block()
+    const known = Object.keys(LEGAL_ROSTER_EDGES)
+    expect(known.length).toBeGreaterThan(0)
+
+    // Imported from source, never restated, so a future divergence between
+    // the TypeScript state machine and this SQL fails here instead of
+    // reaching production.
+    expect(known.filter((state) => !body.includes(`'${state}'`))).toEqual([])
+
+    const found = new Set<string>()
+    const comparison = /state\s*(?:=|<>|IS\s+(?:NOT\s+)?DISTINCT\s+FROM)\s*'([a-z_]+)'/gi
+    let match: RegExpExecArray | null
+    while ((match = comparison.exec(body)) !== null) found.add(match[1])
+
+    const membership = /state\s+(?:NOT\s+)?IN\s*\(([^)]*)\)/gi
+    while ((match = membership.exec(body)) !== null) {
+      for (const literal of match[1].matchAll(/'([a-z_]+)'/g)) found.add(literal[1])
+    }
+
+    expect(found.size).toBeGreaterThan(0)
+    expect([...found].filter((state) => !known.includes(state))).toEqual([])
+  })
+
+  it('handles all four actions and their four resulting states', () => {
+    const body = block()
+    for (const action of ['accept', 'refuse', 'block', 'end']) {
+      expect(body).toContain(`'${action}'`)
+    }
+    for (const state of ['accepted', 'refused', 'blocked', 'ended']) {
+      expect(body).toContain(`'${state}'`)
+    }
+  })
+
+  it('compares p_expected_state against the LOCKED row (F16)', () => {
+    const body = block()
+    const lock = body.indexOf(
+      'FOR NO KEY UPDATE',
+      body.indexOf('FROM public.workspace_roster_relationships r\n   WHERE r.id = p_relationship_id\n     FOR NO KEY UPDATE')
+    )
+    const cas = body.indexOf('p_expected_state IS NOT NULL')
+    expect(lock).toBeGreaterThan(0)
+    expect(cas).toBeGreaterThan(lock)
+
+    // A comparison made before the lock proves nothing at all: the routes
+    // read the row in one transaction and wrote in another with no condition
+    // on the state, so two concurrent PATCHes could both read `proposed` and
+    // the loser could overwrite the winner's terminal state.
+    expect(normalizeWhitespace(body)).toContain(
+      'v_relationship.state IS DISTINCT FROM p_expected_state'
+    )
+  })
+
+  it('upserts the block row AFTER the state change and INSIDE the same function', () => {
+    const body = block()
+    const update = body.indexOf("SET state      = 'blocked'")
+    const insert = body.indexOf('INSERT INTO public.workspace_roster_blocks')
+    expect(update).toBeGreaterThan(0)
+    expect(insert).toBeGreaterThan(0)
+
+    // Both offsets come from the same function body, so "inside the same
+    // transaction" is structural rather than asserted. A SEPARATE
+    // TRANSACTION IS EXACTLY WHAT F16'S SIDE-EFFECT HALF WAS: a crash between
+    // the two leaves a `blocked` relationship with no block row, and
+    // assertCanPropose reads the BLOCK TABLE and not the state, so the
+    // workspace would then be permitted to re-propose to a Member who had
+    // just blocked it.
+    expect(insert).toBeGreaterThan(update)
+    expect(normalizeWhitespace(body)).toContain(
+      'ON CONFLICT (workspace_id, member_user_id) DO NOTHING'
+    )
+  })
+
+  it('consults the kill switch only on the accept path', () => {
+    const body = block()
+    const branch = body.indexOf("IF p_action = 'accept' THEN")
+    const gate = body.indexOf('public.workspace_access_enabled()')
+    expect(branch).toBeGreaterThan(0)
+    expect(gate).toBeGreaterThan(branch)
+
+    // The asymmetry is DELIBERATE and must survive a tidy-up: refuse, block
+    // and end have to keep working while the platform control is off,
+    // because D-18 makes revocation unconditional and disabling a Member's
+    // escape hatch during an incident would trap them in exactly the
+    // relationship the control exists to contain. A guard hoisted to the top
+    // of the body would ban all four.
+    const branchEnd = body.indexOf('END IF;', body.indexOf('END IF;', gate) + 1)
+    expect(gate).toBeLessThan(branchEnd)
+    expect(body.slice(0, branch)).not.toContain('public.workspace_access_enabled()')
+  })
+
+  it('locks the workspace, the relationship, then the block row (LO-1: 1 -> 3 -> 3.5)', () => {
+    expect(lockedTablesInOrder(block())).toEqual([
+      'workspaces',
+      'workspace_roster_relationships',
+      'workspace_roster_blocks',
+    ])
+  })
+
+  it('re-derives the workspace-side authority from the database, active and unexpired', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'SELECT m.role INTO v_actor_role FROM public.workspace_members m ' +
+        'WHERE m.workspace_id = v_workspace_id AND m.user_id = p_actor_id ' +
+        "AND m.status = 'active' AND (m.expires_at IS NULL OR m.expires_at > now())"
+    )
+  })
+
+  it('accepts no parameter that would let a caller assert their own authority (R-21)', () => {
+    const body = block()
+    expect(body).not.toMatch(/p_actor_role\b/)
+
+    // p_actor_side names the calling SURFACE and selects which authority
+    // check runs; it never substitutes for one, and the signature lock is
+    // what stops a future edit from adding one that would.
+    const params = body.slice(body.indexOf('(') + 1, body.indexOf('RETURNS TABLE'))
+    const declared = [...params.matchAll(/\bp_[a-z_]+\b/g)].map((m) => m[0])
+    expect([...new Set(declared)].sort()).toEqual([
+      'p_action',
+      'p_actor_id',
+      'p_actor_side',
+      'p_expected_state',
+      'p_relationship_id',
+    ])
+  })
+
+  it('permits only `end` from the workspace surface', () => {
+    // A workspace may never accept, refuse or block on a Member's behalf:
+    // D-05 makes a proposal inert until the named Member affirms it, and a
+    // workspace that could accept its own proposal would make consent a
+    // formality.
+    expect(normalizeWhitespace(block())).toContain(
+      "v_authorized := v_actor_role IN ('owner', 'admin') AND p_action = 'end'"
+    )
+  })
+
+  it('updates one row per statement, always keyed on the primary key', () => {
+    const body = block()
+    const statements = [...body.matchAll(/UPDATE\s+public\.workspace_roster_relationships[\s\S]*?;/g)]
+    expect(statements.length).toBeGreaterThan(0)
+    for (const statement of statements) {
+      expect(normalizeWhitespace(statement[0])).toContain('WHERE id = v_relationship.id;')
+    }
+  })
+
+  it('never sets updated_at by hand — the table’s trigger would overwrite it', () => {
+    expect(block()).not.toMatch(/updated_at\s*=/)
+  })
+
+  it('audits the AUTHORITY refusal before returning its code, and raises in none of it', () => {
+    const fn = 'workspace_transition_roster_relationship'
+    expect(auditedRefusalViolation(fn, 'forbidden')).toBeNull()
+    expect(raisingRefusalViolation(fn, 'forbidden')).toBeNull()
+  })
+
+  it('does not audit the stale CAS or the illegal transition — neither is an authority refusal', () => {
+    const body = block()
+    for (const code of ['stale', 'illegal_transition']) {
+      const returnAt = body.indexOf(`RETURN QUERY SELECT '${code}'`)
+      expect(returnAt).toBeGreaterThan(0)
+      expect(body.slice(returnAt, returnAt + 160)).toContain('NULL::UUID')
+    }
+  })
+
+  it('keeps the audit action strings the two routes already emit', () => {
+    const body = block()
+    for (const action of [
+      'roster.accepted',
+      'roster.refused',
+      'roster.blocked',
+      'roster.ended',
+      'workspace.roster.ended',
+    ]) {
+      expect(body).toContain(`'${action}'`)
+    }
+  })
+
+  it('does not collapse blocked into refused at the write (R-23)', () => {
+    // R-23 collapses the two only in the WORKSPACE-FACING READ (migration
+    // 197's workspace_roster_page), so the workspace cannot distinguish a
+    // decline from a block while the Member's own view keeps the true state.
+    // Collapsing here would throw away a value migration 183's CHECK and
+    // LEGAL_ROSTER_EDGES both define.
+    expect(normalizeWhitespace(block())).toContain("WHEN 'block' THEN 'blocked'")
+  })
+
+  it('documents its lock order, the same-transaction side effect and its outcomes', () => {
+    const comment = normalizeWhitespace(
+      sql.slice(sql.indexOf('COMMENT ON FUNCTION public.workspace_transition_roster_relationship'))
+    )
+    for (const phrase of [
+      'LOCK RANKS, IN ORDER',
+      'REVALIDATED AFTER THE LOCK',
+      'SAME TRANSACTION AS THE STATE CHANGE',
+      'TRIGGERS THAT FIRE',
+      'OUTCOME VOCABULARY',
+      'Granted to service_role only',
+    ]) {
+      expect(comment).toContain(phrase)
+    }
+  })
+})
+
+// ══ Cross-function — the text-lock twin of migration 197's assertions ═════
+
+describe('every mutating function writes an audit row in the same transaction', () => {
+  // The text-lock twin of migration 197's four deferred constraint triggers.
+  // Written as a LOOP OVER functionNames() so plan 11's custody RPC inherits
+  // it the moment it is appended, with no edit to this block at all — the
+  // same affordance plan 06 built for the LO-1, LO-2, LO-4 and grant loops.
+  //
+  // R-06 alone does not buy this. Putting the audit INSERT inside the RPC
+  // makes the audit non-PARTIAL, not non-BYPASSABLE: a future author who
+  // simply omits it is caught by nothing at all, which is finding F14's
+  // shape moved one layer up.
+  const AUDITED_TABLES = [
+    'workspace_members',
+    'workspace_roster_relationships',
+    'workspace_invitations',
+    'workspace_custody_transfers',
+  ]
+
+  it('has at least one function mutating an audited table', () => {
+    const mutating = functionNames().filter((name) => {
+      const body = functionBlock(name)
+      return AUDITED_TABLES.some((table) =>
+        new RegExp(`(?:INSERT INTO|\\bUPDATE)\\s+public\\.${table}\\b`).test(body)
+      )
+    })
+    expect(mutating.length).toBeGreaterThan(0)
+  })
+
+  it('writes workspace_audit_log in every function that mutates one', () => {
+    const violations: string[] = []
+    for (const name of functionNames()) {
+      const body = functionBlock(name)
+      const mutated = AUDITED_TABLES.filter((table) =>
+        new RegExp(`(?:INSERT INTO|\\bUPDATE)\\s+public\\.${table}\\b`).test(body)
+      )
+      if (mutated.length === 0) continue
+      if (!/INSERT INTO public\.workspace_audit_log\b/.test(body)) {
+        violations.push(
+          `public.${name} mutates ${mutated.map((t) => `public.${t}`).join(', ')} ` +
+            'but never INSERTs into public.workspace_audit_log — migration 197’s ' +
+            'deferred constraint trigger would abort its transaction at COMMIT (WSR-13)'
+        )
+      }
+    }
+    expect(violations).toEqual([])
+  })
+
+  it('never lets a mutating function pass its own workspace id as an audit target', () => {
+    // Migration 197's assertion matches on target_id = NEW.id, the MUTATED
+    // ROW's own id. A workspace id there is the same defect as a null one:
+    // it matches no mutated row, so the transaction aborts at COMMIT.
+    const violations: string[] = []
+    for (const name of functionNames()) {
+      const body = functionBlock(name)
+      for (const match of body.matchAll(
+        /'(workspace_member|workspace_invitation|workspace_roster_relationship|workspace_custody_transfer|workspace_ownership_transfer)',\s*([A-Za-z_][\w.]*)/g
+      )) {
+        if (/^(?:v_workspace_id|p_workspace_id|NULL)$/.test(match[2])) {
+          violations.push(
+            `public.${name} audits target_type ${match[1]} with target_id ${match[2]}, ` +
+              'which is not the mutated row’s own id (WSR-13)'
+          )
+        }
+      }
+    }
+    expect(violations).toEqual([])
+  })
+})
 
 describe('the SQL and the TypeScript modules agree — imported, never restated', () => {
   it('handles every OWNERSHIP_TRANSFER_STATE_VALUES literal in the responder', () => {

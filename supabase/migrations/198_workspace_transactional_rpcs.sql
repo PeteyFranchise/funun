@@ -1812,6 +1812,12 @@ DECLARE
   v_cohort_ok             BOOLEAN;
   v_invitation_audit_id   UUID;
   v_member_audit_id       UUID;
+  -- Used by the AUDITED REFUSAL branches only. Named to match the
+  -- shared harness assertion in __tests__/migration-198.test.ts, which
+  -- checks that every refusal captures its audit row's id before
+  -- returning: one local for that job keeps the check meaningful across
+  -- every RPC in this file rather than per-function.
+  v_audit_id              UUID;
 BEGIN
   -- (0) LO-4: bound the wait.
   SET LOCAL lock_timeout = '3s';
@@ -2021,10 +2027,10 @@ BEGIN
       'workspace_invitation', v_invitation_id,
       jsonb_build_object('refusal', 'email_mismatch')
     )
-    RETURNING id INTO v_invitation_audit_id;
+    RETURNING id INTO v_audit_id;
 
     RETURN QUERY SELECT 'email_mismatch'::TEXT,
-      v_workspace_id, NULL::UUID, v_invitation_role, v_invitation_audit_id, NULL::UUID;
+      v_workspace_id, NULL::UUID, v_invitation_role, v_audit_id, NULL::UUID;
     RETURN;
   END IF;
 
@@ -2056,10 +2062,10 @@ BEGIN
       'workspace_invitation', v_invitation_id,
       jsonb_build_object('refusal', 'owner_invitation_forbidden')
     )
-    RETURNING id INTO v_invitation_audit_id;
+    RETURNING id INTO v_audit_id;
 
     RETURN QUERY SELECT 'owner_invitation_forbidden'::TEXT,
-      v_workspace_id, NULL::UUID, v_invitation_role, v_invitation_audit_id, NULL::UUID;
+      v_workspace_id, NULL::UUID, v_invitation_role, v_audit_id, NULL::UUID;
     RETURN;
   END IF;
 
@@ -2088,10 +2094,10 @@ BEGIN
       'workspace_member', v_seat.id,
       jsonb_build_object('refusal', 'owner_seat_conflict')
     )
-    RETURNING id INTO v_member_audit_id;
+    RETURNING id INTO v_audit_id;
 
     RETURN QUERY SELECT 'owner_seat_conflict'::TEXT,
-      v_workspace_id, v_seat.id, v_invitation_role, NULL::UUID, v_member_audit_id;
+      v_workspace_id, v_seat.id, v_invitation_role, NULL::UUID, v_audit_id;
     RETURN;
   END IF;
 
