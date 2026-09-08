@@ -27,10 +27,13 @@
 - `npm run build` passed and compiled the new article and API routes.
 - `git diff --check` passed.
 
+## Completed in Release 3
+
+- Restricted Mermaid rendering with strict configuration, DOMPurify and a second fail-closed SVG policy.
+- Idempotent review-reminder notifications backed by an atomic database function and unique reminder ledger.
+
 ## Deliberately deferred
 
-- Restricted Mermaid rendering. This needs a separately reviewed renderer and SVG sanitization boundary; unsafe or hand-rolled SVG injection is not acceptable.
-- Automated review-reminder notifications. Review dates and due-state visibility are present, but notification fan-out needs an idempotency record and scheduled-job design.
 - Bulk publication of the organizational doctrine package. The adoption workflow is ready, but publication remains a human-reviewed operation after schema reconciliation and migration application.
 - Any commit, push, migration application or deployment while Phase 38 work is still being merged.
 

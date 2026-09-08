@@ -100,6 +100,10 @@ CREATE INDEX IF NOT EXISTS idx_playbook_entries_pending_drafts
   ON public.playbook_entries (room_id, draft_author_id, draft_updated_at DESC)
   WHERE draft_content IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_playbook_entries_review_due
+  ON public.playbook_entries (review_due_at, id)
+  WHERE status = 'published' AND owner_id IS NOT NULL AND review_due_at IS NOT NULL;
+
 ALTER TABLE public.playbook_sub_groups
   ADD CONSTRAINT playbook_sub_groups_id_room_unique UNIQUE (id, room_id);
 
@@ -144,6 +148,82 @@ CREATE INDEX IF NOT EXISTS idx_playbook_game_plan_links_template
 
 ALTER TABLE public.playbook_entry_game_plan_links ENABLE ROW LEVEL SECURITY;
 REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_entry_game_plan_links FROM authenticated, anon;
+
+CREATE TABLE public.playbook_review_reminders (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id      UUID NOT NULL REFERENCES public.playbook_entries(id) ON DELETE CASCADE,
+  owner_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  review_due_at TIMESTAMPTZ NOT NULL,
+  notified_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (entry_id, owner_id, review_due_at)
+);
+
+ALTER TABLE public.playbook_review_reminders ENABLE ROW LEVEL SECURITY;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_review_reminders FROM authenticated, anon;
+
+CREATE OR REPLACE FUNCTION public.enqueue_due_playbook_review_reminders(p_limit INTEGER DEFAULT 100)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  queued_count INTEGER := 0;
+BEGIN
+  IF p_limit < 1 OR p_limit > 500 THEN
+    RAISE EXCEPTION 'p_limit must be between 1 and 500' USING ERRCODE = '22023';
+  END IF;
+
+  WITH due_entries AS (
+    SELECT entry.id, entry.owner_id, entry.review_due_at, entry.title, entry.slug, room.key AS room_key
+    FROM public.playbook_entries entry
+    JOIN public.playbook_rooms room ON room.id = entry.room_id
+    WHERE entry.status = 'published'
+      AND entry.owner_id IS NOT NULL
+      AND entry.review_due_at IS NOT NULL
+      AND entry.review_due_at <= now()
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.playbook_review_reminders reminder
+        WHERE reminder.entry_id = entry.id
+          AND reminder.owner_id = entry.owner_id
+          AND reminder.review_due_at = entry.review_due_at
+      )
+    ORDER BY entry.review_due_at, entry.id
+    LIMIT p_limit
+  ), claimed AS (
+    INSERT INTO public.playbook_review_reminders (entry_id, owner_id, review_due_at)
+    SELECT id, owner_id, review_due_at
+    FROM due_entries
+    ON CONFLICT (entry_id, owner_id, review_due_at) DO NOTHING
+    RETURNING id, entry_id, owner_id, review_due_at
+  ), inserted_notifications AS (
+    INSERT INTO public.notifications (user_id, type, title, body, link, data)
+    SELECT
+      claimed.owner_id,
+      'playbook_review_due',
+      'Playbook review due: ' || due.title,
+      'Review the published guidance and either confirm it remains current or propose an update.',
+      '/admin/playbook/' || due.room_key || '/' || due.slug,
+      jsonb_build_object(
+        'playbookEntryId', claimed.entry_id,
+        'reviewDueAt', claimed.review_due_at,
+        'reviewReminderId', claimed.id
+      )
+    FROM claimed
+    JOIN due_entries due ON due.id = claimed.entry_id
+    RETURNING id
+  )
+  SELECT count(*)::INTEGER INTO queued_count FROM inserted_notifications;
+
+  RETURN queued_count;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.enqueue_due_playbook_review_reminders(INTEGER)
+  FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.enqueue_due_playbook_review_reminders(INTEGER)
+  TO service_role;
 
 CREATE OR REPLACE FUNCTION public.set_playbook_entry_metadata(
   p_entry_id UUID,
@@ -338,5 +418,8 @@ COMMENT ON COLUMN public.playbook_entries.status IS
 
 COMMENT ON TABLE public.playbook_entry_game_plan_links IS
   'Approved connections from Playbook doctrine to reusable Member CRM Gameplan templates. Service-role access follows room authorization.';
+
+COMMENT ON TABLE public.playbook_review_reminders IS
+  'Idempotency ledger for one in-app owner reminder per Playbook entry, owner and exact review due time. Service role only.';
 
 NOTIFY pgrst, 'reload schema';

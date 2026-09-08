@@ -1,6 +1,6 @@
 # The Playbook Rich-Content Model Build Plan
 
-**Status:** OWNER-APPROVED — Releases 1 and 2 application work complete locally 2026-09-07; Mermaid, scheduled reminders and doctrine publication remain gated
+**Status:** OWNER-APPROVED — Releases 1–3 application work complete locally 2026-09-07; migration reconciliation and doctrine publication remain gated
 **Commit constraint:** Do not commit, push, migrate or deploy until Claude's concurrent work is reconciled.
 
 ## Outcome
@@ -116,11 +116,11 @@ Adoption is one-time, not bidirectional sync:
 
 ### Release 2 — Adoption and connected knowledge
 
-- Restricted Mermaid diagrams. **Deferred for a separately audited renderer and SVG sanitization boundary.**
+- Restricted Mermaid diagrams. **Complete locally with strict rendering, DOMPurify, a second SVG safety policy and source fallback.**
 - Repository document adoption and source-change notices. **Complete locally.**
 - Doctrine-to-Gameplan links. **Complete locally.**
 - Search and filtering. **Complete locally, including doctrine-body search.**
-- Review dates and due-state visibility. **Complete locally; scheduled notification delivery deferred.**
+- Review dates, due-state visibility and scheduled idempotent owner notifications. **Complete locally.**
 - Import and publication of the organizational doctrine package. **Workflow complete locally; human-reviewed production publication deferred.**
 
 ## Verification
