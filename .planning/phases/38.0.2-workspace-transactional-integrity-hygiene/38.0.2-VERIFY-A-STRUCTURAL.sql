@@ -458,14 +458,22 @@ WHERE p.policyname IN ('workspace_audit_log_no_update', 'workspace_audit_log_no_
 
 UNION ALL
 -- ══ A11 — THE RPC FAMILY: EXISTENCE, DEFINER, EMPTY search_path. ═════════
--- Migration 123's posture, not migration 046's. `SET search_path = ''`
--- renders in proconfig as the literal `search_path=`; anything else — a
--- missing entry, or `search_path=public` — means the function resolves
--- unqualified names against a mutable path inside a SECURITY DEFINER body.
+-- Migration 123's posture, not migration 046's. Postgres flattens
+-- `SET search_path = ''` into proconfig as `search_path=""` — the empty
+-- string, QUOTED, because search_path is a list-typed GUC — and older
+-- servers may render it bare as `search_path=`. Both mean the same thing.
+-- Accept either; anything else — a missing entry, or `search_path=public` —
+-- means the function resolves unqualified names against a mutable path
+-- inside a SECURITY DEFINER body. (Corrected 2026-09-08: the first version
+-- of this check compared against `search_path=` alone and reported all 12
+-- correctly-hardened functions as FAIL. The schema was right; the assertion
+-- was wrong. Verified against the migration source and against the
+-- known-good control `transfer_vault_project_custody` from migration 190.)
 SELECT 23, 'A11 RPC family (198): definer + empty search_path',
        p.proname || ' [' || coalesce(array_to_string(p.proconfig, ','), '(no proconfig)') || ']',
        CASE WHEN NOT p.prosecdef THEN '*** FAIL — not SECURITY DEFINER ***'
-            WHEN coalesce(array_to_string(p.proconfig, ','), '') <> 'search_path='
+            WHEN NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}'::text[])) cfg
+                              WHERE cfg IN ('search_path=', 'search_path=""'))
               THEN '*** FAIL — search_path is not empty ***'
             ELSE 'PASS' END
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -484,7 +492,8 @@ UNION ALL
 SELECT 25, 'A11c readers + gate (197): definer + empty search_path',
        p.proname || ' [' || coalesce(array_to_string(p.proconfig, ','), '(no proconfig)') || ']',
        CASE WHEN NOT p.prosecdef THEN '*** FAIL — not SECURITY DEFINER ***'
-            WHEN coalesce(array_to_string(p.proconfig, ','), '') <> 'search_path='
+            WHEN NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}'::text[])) cfg
+                              WHERE cfg IN ('search_path=', 'search_path=""'))
               THEN '*** FAIL — search_path is not empty ***'
             ELSE 'PASS' END
 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
