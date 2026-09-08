@@ -241,10 +241,39 @@ emergency stop", but **a cron does not respect a feature flag unless the route
 itself checks it.** Vercel calls the endpoint regardless of any activation
 control.
 
-**Gate before the next 13:00 UTC:** confirm both handlers check the same
-activation control and cohort gate as the rest of R27–31, and no-op when off.
-If they do not, people receive reminders about a feature that is supposed to be
-disabled — the one failure mode "default-off" was designed to prevent.
+### CHECKED 2026-09-08 — NEITHER HANDLER NOR RPC GATES ON ANYTHING
+
+Both handlers verify `CRON_SECRET` and then call an RPC directly. Neither RPC —
+`enqueue_due_playbook_review_reminders` (candidate 201) or
+`enqueue_playbook_reading_reminders` (candidate 202) — contains any activation,
+cohort, enabled, emergency, control or feature check. Both end in
+`INSERT INTO public.notifications (...)`, the real user-facing table.
+
+**Contained today, by accident rather than design.** Both RPCs exist ONLY in
+unapplied candidates, so production does not have them: the crons authenticate,
+call a missing function, receive `PGRST202`, and return 500. Nothing is sent.
+Side effect: two 500s per day in the logs from now on, which is noise that can
+mask a real failure later.
+
+**THE ORDERING HAZARD, stated precisely.** The reminder RPCs land in **201 and
+202 — first** in Codex's chain. The activation control table lands in
+**207 — last**. Between applying 202 and applying 207 the crons are live and
+completely ungated, and Vercel calls them daily at 13:00 and 14:00 UTC. Any
+reading assignment or review-due entry existing in that window produces real
+notifications to real users, with no control in existence to stop it.
+"Default-off with emergency stop" does not hold there, because the thing being
+defaulted off has not been created yet.
+
+**REQUIRED, pick one:**
+
+1. **Add the activation gate inside both RPCs before 201/202 are promoted** —
+   same revision pass as the Q3 `search_path` hardening. Gating in the RPC
+   rather than the handler is stronger: it holds regardless of caller.
+2. **Or** remove the two cron entries from `vercel.json` and deploy FIRST,
+   apply 201 → 207 in one window, confirm the gate, then restore them. This
+   closes the window mechanically rather than by timing.
+
+**Do not apply 201/202 alone and leave them.** That is the exposed state.
 
 ### Then
 
@@ -267,7 +296,8 @@ disabled — the one failure mode "default-off" was designed to prevent.
 | Promote 201/202/204/205/206 | **NO-GO** until the Q3 revisions land |
 | Promote 207 | **NO-GO** — it is ready itself, but depends on the five above |
 | Doctrine publication | **NO-GO** until schema installed and P1–P3 clean |
-| R27–31 activation | **NO-GO** until the cron gate in Q6 is confirmed |
+| R27–31 activation | **NO-GO** — cron gate CHECKED and ABSENT; see Q6 |
+| Apply 201/202 alone | **NO-GO** — leaves two ungated crons writing to `public.notifications` until 207 lands |
 | `supabase db push` | **NO-GO** until P0 is run |
 | Drop `public.zz_verify_b_results` | **GO** — my own leftover, no RLS |
 
