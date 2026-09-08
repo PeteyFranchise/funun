@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { logStaffAction } from '@/lib/staff/audit'
 import { requireRoomAccess } from '@/lib/playbook/rooms'
 import { isRoomLead, createEntry, listEntries } from '@/lib/playbook/entries'
+import { safeParsePlaybookContent } from '@/lib/playbook/content'
 
 // ─── /api/admin/playbook/entries — SOP/Topic authoring (31.2-04 Task 2) ────
 // POST: room-scoped, role-tiered create. isApprover is derived SERVER-side
@@ -15,9 +16,10 @@ const EntryCreateSchema = z
   .object({
     roomKey: z.string().trim().min(1),
     subGroupId: z.string().uuid().optional(),
-    entryType: z.enum(['sop', 'topic']),
+    entryType: z.enum(['sop', 'topic', 'document']),
     title: z.string().trim().min(1).max(300),
-    content: z.record(z.string(), z.unknown()),
+    content: z.unknown(),
+    publish: z.boolean().optional(),
   })
   .strict()
 
@@ -26,6 +28,10 @@ export async function POST(request: Request) {
   const parsed = EntryCreateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid playbook entry payload' }, { status: 400 })
+  }
+  const parsedContent = safeParsePlaybookContent(parsed.data.entryType, parsed.data.content)
+  if (!parsedContent.success) {
+    return NextResponse.json({ error: 'Invalid content for this playbook entry type' }, { status: 400 })
   }
 
   const auth = await requireRoomAccess(parsed.data.roomKey)
@@ -42,6 +48,16 @@ export async function POST(request: Request) {
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const roomId = (room as { id: string }).id
+  if (parsed.data.subGroupId) {
+    const { data: subgroup, error: subgroupError } = await service
+      .from('playbook_sub_groups')
+      .select('id')
+      .eq('id', parsed.data.subGroupId)
+      .eq('room_id', roomId)
+      .maybeSingle()
+    if (subgroupError) return NextResponse.json({ error: subgroupError.message }, { status: 500 })
+    if (!subgroup) return NextResponse.json({ error: 'Subgroup does not belong to this room' }, { status: 400 })
+  }
   const isApprover = auth.staffRole === 'leadership' || (await isRoomLead(service, roomId, auth.user.id))
 
   const { data, error } = await createEntry(service, {
@@ -49,8 +65,9 @@ export async function POST(request: Request) {
     subGroupId: parsed.data.subGroupId ?? null,
     entryType: parsed.data.entryType,
     title: parsed.data.title,
-    incoming: parsed.data.content,
+    incoming: parsedContent.data,
     isApprover,
+    publishRequested: parsed.data.publish,
     authorId: auth.user.id,
   })
 
@@ -65,6 +82,7 @@ export async function POST(request: Request) {
       roomKey: parsed.data.roomKey,
       entryType: parsed.data.entryType,
       status: (data as { status?: string } | null)?.status,
+      publishRequested: parsed.data.publish ?? null,
     },
   })
 
@@ -94,6 +112,10 @@ export async function GET(request: Request) {
   const { data, error } = await listEntries(service, {
     roomId: (room as { id: string }).id,
     viewerId: auth.user.id,
+    canReviewAll: Boolean(
+      auth.staffRole === 'leadership' ||
+        (await isRoomLead(service, (room as { id: string }).id, auth.user.id))
+    ),
   })
   if (error) return NextResponse.json({ error }, { status: 500 })
 

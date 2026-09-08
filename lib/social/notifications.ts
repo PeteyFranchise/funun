@@ -45,6 +45,14 @@ export const NOTIFICATION_TYPES = {
   sync_library_admitted: { icon: 'check-circle', inlineAction: null },
   sync_library_rejected: { icon: 'flag', inlineAction: null },
   sync_library_removed: { icon: 'alert-triangle', inlineAction: null },
+  // Playbook governance — one reminder per owner + exact review date.
+  playbook_review_due: { icon: 'book-open', inlineAction: null },
+  playbook_reading_assigned: { icon: 'book-open', inlineAction: null },
+  playbook_reading_due: { icon: 'book-open', inlineAction: null },
+  playbook_review_mention: { icon: 'message-circle', inlineAction: null },
+  playbook_change_requested: { icon: 'alert-triangle', inlineAction: null },
+  playbook_change_addressed: { icon: 'check-circle', inlineAction: null },
+  playbook_review_resubmitted: { icon: 'book-open', inlineAction: null },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES

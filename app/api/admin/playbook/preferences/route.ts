@@ -1,0 +1,7 @@
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { ALL_STAFF_ROLES, requireStaff } from '@/lib/admin/gate'
+import { isPlaybookEnablementSchemaMissing, isValidTimeZone } from '@/lib/playbook/enablement'
+import { createServiceClient } from '@/lib/supabase/server'
+const Schema=z.object({locale:z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/),timezone:z.string().trim().min(1).max(80),reducedMotion:z.boolean(),highContrast:z.boolean(),captionsPreferred:z.boolean()}).strict()
+export async function PATCH(request:Request){const parsed=Schema.safeParse(await request.json().catch(()=>({})));if(!parsed.success||!isValidTimeZone(parsed.success?parsed.data.timezone:''))return NextResponse.json({error:'Invalid global preferences'},{status:400});const auth=await requireStaff(ALL_STAFF_ROLES);if('error'in auth)return NextResponse.json({error:auth.error},{status:auth.status});const service=createServiceClient();const write=await service.from('playbook_user_preferences').upsert({user_id:auth.user.id,locale:parsed.data.locale,timezone:parsed.data.timezone,reduced_motion:parsed.data.reducedMotion,high_contrast:parsed.data.highContrast,captions_preferred:parsed.data.captionsPreferred,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(write.error){if(isPlaybookEnablementSchemaMissing(write.error))return NextResponse.json({error:'Global preferences are built but not activated yet.'},{status:503});return NextResponse.json({error:write.error.message},{status:500})}return NextResponse.json({data:{saved:true}})}

@@ -2,6 +2,8 @@
   "crons": [
     { "path": "/api/cron/curator-reach", "schedule": "0 6 * * 1" },
     { "path": "/api/cron/daily-observability-check", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/playbook-review-reminders", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/playbook-reading-reminders", "schedule": "0 13 * * *" },
     { "path": "/api/cron/cleanup-rate-limits", "schedule": "0 4 * * *" },
     { "path": "/api/cron/process-jobs", "schedule": "* * * * *" }
   ]

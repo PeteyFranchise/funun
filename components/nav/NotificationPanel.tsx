@@ -60,6 +60,12 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
       <path d="M13.7 21a2 2 0 0 1-3.4 0" />
     </>
   ),
+  'book-open': (
+    <>
+      <path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z" />
+      <path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z" />
+    </>
+  ),
 }
 
 function TypeIcon({ name, className }: { name: string; className?: string }) {

@@ -59,6 +59,12 @@ export type MemberGamePlanTemplate = {
   checklist: TemplateChecklistItem[]
   playbook_entry_id: string | null
   active: boolean
+  related_playbook_entries?: Array<{
+    id: string
+    title: string
+    href: string
+    relationshipKind: 'reference' | 'required_reading'
+  }>
 }
 
 export type MemberGamePlanRun = {

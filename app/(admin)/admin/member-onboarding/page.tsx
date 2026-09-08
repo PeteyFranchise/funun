@@ -30,6 +30,51 @@ export default async function MemberOnboardingPage() {
   if (runsError) throw new Error(`Failed to load onboarding call history: ${runsError.message}`)
 
   const authById = new Map((authUsers.data.users ?? []).map(user => [user.id, user]))
+  const templateRows = (templates ?? []) as MemberGamePlanTemplate[]
+  const templateIds = templateRows.map(template => template.id)
+  const { data: relatedLinks, error: relatedLinksError } = templateIds.length > 0
+    ? await service
+        .from('playbook_entry_game_plan_links')
+        .select('entry_id, member_template_id, relationship_kind')
+        .in('member_template_id', templateIds)
+    : { data: [], error: null }
+  if (relatedLinksError) throw new Error(`Failed to load connected Playbook entries: ${relatedLinksError.message}`)
+
+  const relatedEntryIds = Array.from(new Set((relatedLinks ?? []).map(link => link.entry_id)))
+  const { data: relatedEntries, error: relatedEntriesError } = relatedEntryIds.length > 0
+    ? await service
+        .from('playbook_entries')
+        .select('id, room_id, title, slug')
+        .in('id', relatedEntryIds)
+        .eq('entry_type', 'document')
+        .eq('status', 'published')
+    : { data: [], error: null }
+  if (relatedEntriesError) throw new Error(`Failed to load connected doctrine: ${relatedEntriesError.message}`)
+
+  const relatedRoomIds = Array.from(new Set((relatedEntries ?? []).map(entry => entry.room_id)))
+  const { data: relatedRooms, error: relatedRoomsError } = relatedRoomIds.length > 0
+    ? await service.from('playbook_rooms').select('id, key').in('id', relatedRoomIds)
+    : { data: [], error: null }
+  if (relatedRoomsError) throw new Error(`Failed to load connected Playbook rooms: ${relatedRoomsError.message}`)
+
+  const roomKeyById = new Map((relatedRooms ?? []).map(room => [room.id, room.key]))
+  const entryById = new Map((relatedEntries ?? []).map(entry => [entry.id, entry]))
+  const templatesWithDoctrine = templateRows.map(template => ({
+    ...template,
+    related_playbook_entries: (relatedLinks ?? []).flatMap(link => {
+      if (link.member_template_id !== template.id) return []
+      const entry = entryById.get(link.entry_id)
+      const roomKey = entry ? roomKeyById.get(entry.room_id) : null
+      if (!entry?.slug || !roomKey) return []
+      return [{
+        id: entry.id,
+        title: entry.title,
+        href: `/admin/playbook/${roomKey}/${entry.slug}`,
+        relationshipKind: link.relationship_kind as 'reference' | 'required_reading',
+      }]
+    }),
+  }))
+
   const members: OnboardingMember[] = (profiles ?? []).map(profile => {
     const user = authById.get(profile.id)
     const roles = Array.isArray(profile.roles) ? profile.roles as ProfileRole[] : []
@@ -48,7 +93,7 @@ export default async function MemberOnboardingPage() {
       <p className="mt-1 text-[13px] text-[color:var(--ink-3)]">Start a reusable game plan, guide the call, and preserve the completed checklist in the Member’s call log.</p>
       <MemberOnboardingCRM
         members={members}
-        templates={(templates ?? []) as MemberGamePlanTemplate[]}
+        templates={templatesWithDoctrine}
         initialRuns={(runs ?? []) as MemberGamePlanRun[]}
       />
     </main>

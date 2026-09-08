@@ -20,6 +20,18 @@ const nextConfig = {
   outputFileTracingIncludes: {
     'app/api/**/*': ['./assets/fonts/**'],
     'app/(admin)/playbook/**/*': ['./docs/observability/**'],
+    '/api/admin/playbook/publication/source': [
+      './.planning/deliberations/organizational-doctrine/functional-team-doctrines.md',
+      './.planning/deliberations/organizational-doctrine/workforce-and-commercial-scale-plan.md',
+      './.planning/deliberations/organizational-doctrine/first-six-month-launch-growth-plan.md',
+      './.planning/deliberations/sync-library-operating-model.md',
+    ],
+    '/api/admin/playbook/adopt': [
+      './.planning/deliberations/organizational-doctrine/functional-team-doctrines.md',
+      './.planning/deliberations/organizational-doctrine/workforce-and-commercial-scale-plan.md',
+      './.planning/deliberations/organizational-doctrine/first-six-month-launch-growth-plan.md',
+      './.planning/deliberations/sync-library-operating-model.md',
+    ],
   },
   // R5 (32-06): inlines the DSN into the client bundle at build time
   // WITHOUT a NEXT_PUBLIC_ prefix on the variable name — the SPEC's

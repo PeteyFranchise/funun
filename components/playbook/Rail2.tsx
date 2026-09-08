@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { IT_SUBPAGES } from '@/lib/playbook/nav'
 import type { PlaybookRoom } from '@/lib/playbook/rooms'
@@ -85,19 +85,58 @@ function CollapseButton({ collapsed, onClick }: { collapsed: boolean; onClick: (
 export function Rail2({
   rooms,
   isLeadership,
+  hasGovernanceScope,
+  hasLearningScope,
+  availableFeatures,
 }: {
   rooms: PlaybookRoom[]
   isLeadership: boolean
+  hasGovernanceScope: boolean
+  hasLearningScope: boolean
+  availableFeatures: string[]
 }) {
   const pathname = usePathname() ?? ''
   const itRoomActive = pathname.startsWith('/admin/playbook/it')
+  const myPlaybookActive = pathname === '/admin/playbook/my'
   const accessActive = pathname === '/admin/playbook/access'
   const playsActive = pathname === '/admin/playbook/plays'
+  const governanceActive = pathname === '/admin/playbook/governance'
+  const publicationActive = pathname === '/admin/playbook/publication'
+  const learningActive = pathname === '/admin/playbook/learning'
+  const updatesActive = pathname === '/admin/playbook/updates'
+  const searchActive = pathname === '/admin/playbook/search'
+  const askActive = pathname === '/admin/playbook/ask'
+  const learningPathsActive = pathname === '/admin/playbook/learning-paths'
+  const feedbackActive = pathname === '/admin/playbook/feedback'
+  const workflowsActive = pathname === '/admin/playbook/workflows'
+  const exceptionsActive = pathname === '/admin/playbook/exceptions'
+  const incidentsActive = pathname === '/admin/playbook/incidents'
+  const mediaActive = pathname === '/admin/playbook/media'
+  const readinessActive = pathname === '/admin/playbook/readiness'
+  const globalActive = pathname === '/admin/playbook/global'
+  const activationActive = pathname === '/admin/playbook/activation'
+  const inboxActive = pathname === '/admin/playbook/inbox'
+  const dependenciesActive = pathname === '/admin/playbook/dependencies'
+  const simulationsActive = pathname === '/admin/playbook/simulations'
+  const integrationsActive = pathname === '/admin/playbook/integrations'
+  const features = new Set(availableFeatures)
   const [collapsed, setCollapsed] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEY_COLLAPSED) === 'true') setCollapsed(true)
   }, [])
+
+  useEffect(() => {
+    const openSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (event.key !== '/' || target?.matches('input, textarea, select, [contenteditable="true"]')) return
+      event.preventDefault()
+      router.push('/admin/playbook/search')
+    }
+    window.addEventListener('keydown', openSearch)
+    return () => window.removeEventListener('keydown', openSearch)
+  }, [router])
 
   function toggle() {
     setCollapsed(prev => {
@@ -131,6 +170,46 @@ export function Rail2({
         Company wiki · SOPs, topics &amp; plays
       </div>
 
+      {hasLearningScope && (
+        <Link href="/admin/playbook/search" className={[ROOM_BASE_CLASS, 'mb-2 transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]', searchActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, searchActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : ''].join(' ')} />Knowledge Finder<span className="ml-auto rounded border border-[color:var(--border)] px-1.5 py-0.5 text-[8px] text-[color:var(--ink-3)]">/</span></Link>
+      )}
+
+      {hasLearningScope && features.has('sla_inbox') && <Link href="/admin/playbook/inbox" className={[ROOM_BASE_CLASS, inboxActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, inboxActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Inbox &amp; SLAs</Link>}
+      {hasLearningScope && features.has('simulations') && <Link href="/admin/playbook/simulations" className={[ROOM_BASE_CLASS, simulationsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, simulationsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Simulations</Link>}
+      {hasLearningScope && features.has('operational_integrations') && <Link href="/admin/playbook/integrations" className={[ROOM_BASE_CLASS, integrationsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, integrationsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Connected Work</Link>}
+
+      {hasLearningScope && <Link href="/admin/playbook/ask" className={[ROOM_BASE_CLASS, askActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, askActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Ask The Playbook</Link>}
+
+      {hasLearningScope && (
+        <Link
+          href="/admin/playbook/updates"
+          className={[
+            ROOM_BASE_CLASS,
+            'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            updatesActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+          ].join(' ')}
+        >
+          <span className={[ROOM_DOT_CLASS, updatesActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : ''].join(' ')} />
+          What’s New
+        </Link>
+      )}
+
+      {hasLearningScope && <><div className="my-2 border-t border-[color:var(--border)]" /><Link href="/admin/playbook/learning-paths" className={[ROOM_BASE_CLASS, learningPathsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, learningPathsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Learning Paths</Link><Link href="/admin/playbook/workflows" className={[ROOM_BASE_CLASS, workflowsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, workflowsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Workflow Workbench</Link><Link href="/admin/playbook/feedback" className={[ROOM_BASE_CLASS, feedbackActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, feedbackActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Reader Feedback</Link><Link href="/admin/playbook/media" className={[ROOM_BASE_CLASS, mediaActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, mediaActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Training Media</Link><Link href="/admin/playbook/global" className={[ROOM_BASE_CLASS, globalActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, globalActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Global Enablement</Link></>}
+
+      {hasLearningScope && (
+        <Link
+          href="/admin/playbook/my"
+          className={[
+            ROOM_BASE_CLASS,
+            'mb-2 transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            myPlaybookActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+          ].join(' ')}
+        >
+          <span className={[ROOM_DOT_CLASS, myPlaybookActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : ''].join(' ')} />
+          My Playbook
+        </Link>
+      )}
+
       {rooms.map(room => {
         // The `rooms` prop is already visibility-filtered by the caller.
         // IT keeps its bespoke sub-navigation; every other DB-activated
@@ -143,9 +222,71 @@ export function Rail2({
         return <LiveRoomEntry key={room.id} room={room} pathname={pathname} />
       })}
 
+      {hasLearningScope && (
+        <Link
+          href="/admin/playbook/learning"
+          className={[
+            ROOM_BASE_CLASS,
+            'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            learningActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+          ].join(' ')}
+        >
+          <span
+            className={[
+              ROOM_DOT_CLASS,
+              learningActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : '',
+            ].join(' ')}
+          />
+          My Required Reading
+        </Link>
+      )}
+
+      {hasGovernanceScope && (
+        <>
+          <div className="my-2 border-t border-[color:var(--border)]" />
+          <Link
+            href="/admin/playbook/governance"
+            className={[
+              ROOM_BASE_CLASS,
+              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              governanceActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                ROOM_DOT_CLASS,
+                governanceActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : '',
+              ].join(' ')}
+            />
+            Governance Inbox
+          </Link>
+          <Link
+            href="/admin/playbook/publication"
+            className={[
+              ROOM_BASE_CLASS,
+              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              publicationActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                ROOM_DOT_CLASS,
+                publicationActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : '',
+              ].join(' ')}
+            />
+            Doctrine Readiness
+          </Link>
+          <Link href="/admin/playbook/readiness" className={[ROOM_BASE_CLASS, readinessActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, readinessActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Readiness Console</Link>
+          <Link href="/admin/playbook/exceptions" className={[ROOM_BASE_CLASS, exceptionsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, exceptionsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Exceptions</Link>
+          <Link href="/admin/playbook/incidents" className={[ROOM_BASE_CLASS, incidentsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, incidentsActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Incident Mode</Link>
+          {features.has('dependency_map') && <Link href="/admin/playbook/dependencies" className={[ROOM_BASE_CLASS, dependenciesActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, dependenciesActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Doctrine Dependencies</Link>}
+        </>
+      )}
+
       {isLeadership && (
         <>
           <div className="my-2 border-t border-[color:var(--border)]" />
+          <Link href="/admin/playbook/activation" className={[ROOM_BASE_CLASS, activationActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, activationActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Beta Activation</Link>
           {/* Leadership-only chrome — UX visibility only; each page carries its
               own server guard (access → requireStaffPage(['leadership']) on the
               access page; plays → same guard on /admin/playbook/plays, 31.2-09). */}

@@ -1,0 +1,3 @@
+import { ALL_STAFF_ROLES, requireStaffPage } from '@/lib/admin/gate'
+import { AskPlaybook } from '@/components/playbook/AskPlaybook'
+export default async function AskPlaybookPage(){await requireStaffPage(ALL_STAFF_ROLES);return <main className="mx-auto w-full max-w-[900px] px-6 py-[30px] pb-[60px] lg:px-9"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-[color:var(--indigo)]">The Playbook · Grounded assistant</p><h1 className="mt-1 text-2xl font-extrabold text-[color:var(--ink)]">Ask The Playbook</h1><p className="mt-2 text-[13px] text-[color:var(--ink-3)]">Find an answer from approved guidance you are authorized to read—with the sources attached.</p><AskPlaybook /></main>}

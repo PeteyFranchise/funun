@@ -2,6 +2,8 @@ import { createServerClient, createServiceClient } from '@/lib/supabase/server'
 import { getStaffRoles, type StaffRole } from '@/lib/admin/gate'
 import { canAccessRoom, loadRooms } from '@/lib/playbook/rooms'
 import { readRoomGrants } from '@/lib/playbook/access-grants'
+import { resolveGovernanceRooms } from '@/lib/playbook/governance'
+import { loadAvailablePlaybookFeatures } from '@/lib/playbook/feature-access'
 import { Rail2 } from '@/components/playbook/Rail2'
 
 // Pure-CSS container reflow (Phase 33, 33-05, UI-SPEC "Responsive collapse")
@@ -13,6 +15,8 @@ import { Rail2 } from '@/components/playbook/Rail2'
 // is out of this plan's file set (created in 33-04).
 const PLAYBOOK_SHELL_CSS = `
 .pb-shell{display:flex;width:100%;}
+.pb-shell[data-high-contrast="true"]{--ink-3:#c7c9e8;--border:rgba(255,255,255,.3);}
+.pb-shell[data-reduced-motion="true"] *, .pb-shell[data-reduced-motion="true"] *::before, .pb-shell[data-reduced-motion="true"] *::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
 @media (max-width:1000px){
   .pb-shell{flex-direction:column;}
 }
@@ -68,11 +72,37 @@ export default async function PlaybookLayout({ children }: { children: React.Rea
     room => !room.sensitive || canAccessRoom(roles, grantedRolesByRoom.get(room.id) ?? [])
   )
 
+  const { data: leadData, error: leadError } = user && !roles.includes('leadership')
+    ? await service.from('playbook_room_leads').select('room_id').eq('user_id', user.id)
+    : { data: [], error: null }
+  if (leadError) throw new Error(`Failed to load Playbook governance scope: ${leadError.message}`)
+  const governanceRooms = resolveGovernanceRooms({
+    roles,
+    rooms,
+    grants: grantRows,
+    leadRoomIds: (leadData ?? []).map(row => row.room_id),
+  })
+  const accessibleRooms = rooms.filter(
+    room => canAccessRoom(roles, grantedRolesByRoom.get(room.id) ?? [])
+  )
+  const { data: preferenceData } = user
+    ? await service.from('playbook_user_preferences').select('reduced_motion, high_contrast').eq('user_id', user.id).maybeSingle()
+    : { data: null }
+  const featureAccess = user
+    ? await loadAvailablePlaybookFeatures(service, user.id)
+    : { keys: new Set<string>(), schemaReady: false }
+
   return (
     <>
       <style>{PLAYBOOK_SHELL_CSS}</style>
-      <div className="pb-shell">
-        <Rail2 rooms={visibleRooms} isLeadership={roles.includes('leadership')} />
+      <div className="pb-shell" data-reduced-motion={preferenceData?.reduced_motion === true} data-high-contrast={preferenceData?.high_contrast === true}>
+        <Rail2
+          rooms={visibleRooms}
+          isLeadership={roles.includes('leadership')}
+          hasGovernanceScope={governanceRooms.length > 0}
+          hasLearningScope={accessibleRooms.length > 0}
+          availableFeatures={[...featureAccess.keys]}
+        />
         <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </>

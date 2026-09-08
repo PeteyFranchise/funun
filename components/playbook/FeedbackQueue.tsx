@@ -1,0 +1,23 @@
+'use client'
+
+import Link from 'next/link'
+import { useMemo, useState } from 'react'
+import type { ReaderFeedbackStatus } from '@/lib/playbook/enablement'
+
+export type FeedbackQueueItem = { id: string; roomKey: string; roomLabel: string; entryTitle: string | null; entrySlug: string | null; revision: number | null; kind: string; body: string; status: ReaderFeedbackStatus; authorName: string; createdAt: string; canManage: boolean }
+
+export function FeedbackQueue({ initialItems, schemaReady }: { initialItems: FeedbackQueueItem[]; schemaReady: boolean }) {
+  const [items, setItems] = useState(initialItems)
+  const [state, setState] = useState<'all' | ReaderFeedbackStatus>('open')
+  const [query, setQuery] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const visible = useMemo(() => items.filter(item => (state === 'all' || item.status === state) && [item.entryTitle ?? '', item.body, item.roomLabel, item.kind].some(value => value.toLowerCase().includes(query.toLowerCase()))), [items, query, state])
+  async function transition(item: FeedbackQueueItem, status: ReaderFeedbackStatus) {
+    setBusy(item.id)
+    const response = await fetch(`/api/admin/playbook/feedback/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roomKey: item.roomKey, status, note: null }) })
+    if (response.ok) setItems(current => current.map(value => value.id === item.id ? { ...value, status } : value))
+    setBusy(null)
+  }
+  if (!schemaReady) return <p className="mt-6 rounded-xl border border-dashed border-[color:var(--border)] p-10 text-center text-[12px] text-[color:var(--ink-3)]">Reader feedback is built and awaiting candidate migration 206.</p>
+  return <div className="mt-6"><div className="grid gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--panel)] p-4 sm:grid-cols-[1fr_170px]"><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search feedback…" className="rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2 text-[12px]" /><select value={state} onChange={event => setState(event.target.value as typeof state)} className="rounded-lg border border-[color:var(--border)] bg-[color:var(--panel-2)] px-3 py-2 text-[12px]"><option value="all">All states</option><option value="open">Open</option><option value="triaged">Triaged</option><option value="resolved">Resolved</option><option value="declined">Declined</option></select></div><div className="mt-4 space-y-3">{visible.map(item => <article key={item.id} className="rounded-xl border border-[color:var(--border)] bg-[color:var(--panel)] p-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-[9.5px] font-bold uppercase tracking-[.1em] text-[color:var(--indigo)]">{item.kind.replaceAll('_',' ')} · {item.status}</p><time className="text-[10px] text-[color:var(--ink-3)]">{new Date(item.createdAt).toLocaleDateString('en-US')}</time></div><h2 className="mt-2 text-[13px] font-extrabold text-[color:var(--ink)]">{item.entryTitle ?? 'Missing doctrine request'}</h2><p className="mt-2 whitespace-pre-wrap text-[12px] leading-6 text-[color:var(--ink-2)]">{item.body}</p><p className="mt-2 text-[10px] text-[color:var(--ink-3)]">{item.roomLabel} · submitted by {item.authorName}{item.revision ? ` · revision ${item.revision}` : ''}</p><div className="mt-3 flex flex-wrap gap-2">{item.entrySlug && <Link href={`/admin/playbook/${item.roomKey}/${item.entrySlug}`} className="text-[11px] font-bold text-[color:var(--indigo)]">Open guidance</Link>}{item.canManage && item.status === 'open' && <button disabled={busy !== null} onClick={() => transition(item,'triaged')} className="text-[11px] font-bold text-amber-300">Triage</button>}{item.canManage && !['resolved','declined'].includes(item.status) && <button disabled={busy !== null} onClick={() => transition(item,'resolved')} className="text-[11px] font-bold text-[color:var(--green-fg)]">Resolve</button>}{item.canManage && !['resolved','declined'].includes(item.status) && <button disabled={busy !== null} onClick={() => transition(item,'declined')} className="text-[11px] font-bold text-rose-300">Decline</button>}{item.canManage && ['resolved','declined'].includes(item.status) && <button disabled={busy !== null} onClick={() => transition(item,'open')} className="text-[11px] font-bold text-[color:var(--indigo)]">Reopen</button>}</div></article>)}{visible.length === 0 && <p className="rounded-xl border border-dashed border-[color:var(--border)] p-10 text-center text-[12px] text-[color:var(--ink-3)]">No feedback matches this view.</p>}</div></div>
+}

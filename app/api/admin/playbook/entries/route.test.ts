@@ -64,6 +64,7 @@ function mockService(options: { room?: Record<string, unknown> | null } = {}) {
 beforeEach(() => {
   jest.clearAllMocks()
   ;(logStaffAction as jest.Mock).mockResolvedValue({ ok: true })
+  ;(isRoomLead as jest.Mock).mockResolvedValue(false)
   ;(createServiceClient as jest.Mock).mockReturnValue(mockService())
 })
 
@@ -74,7 +75,7 @@ describe('POST /api/admin/playbook/entries — room access gate', () => {
     const res = await POST(
       jsonRequest(
         'http://t.local/api/admin/playbook/entries',
-        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: { steps: ['a'] } },
+        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: { items: ['a'] } },
         'POST'
       )
     )
@@ -112,7 +113,13 @@ describe('POST /api/admin/playbook/entries — role-tiered publish gate', () => 
     const res = await POST(
       jsonRequest(
         'http://t.local/api/admin/playbook/entries',
-        { roomKey: 'ae-sales', entryType: 'topic', title: 'Coaching topic', content: { body: 'x' } },
+        {
+          roomKey: 'ae-sales',
+          entryType: 'topic',
+          title: 'Coaching topic',
+          content: { questions: ['What changed?'] },
+          publish: true,
+        },
         'POST'
       )
     )
@@ -121,6 +128,7 @@ describe('POST /api/admin/playbook/entries — role-tiered publish gate', () => 
     expect(createEntry).toHaveBeenCalledTimes(1)
     const call = (createEntry as jest.Mock).mock.calls[0][1]
     expect(call.isApprover).toBe(false)
+    expect(call.publishRequested).toBe(true)
     expect(logStaffAction).toHaveBeenCalledTimes(1)
   })
 
@@ -136,7 +144,7 @@ describe('POST /api/admin/playbook/entries — role-tiered publish gate', () => 
     const res = await POST(
       jsonRequest(
         'http://t.local/api/admin/playbook/entries',
-        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: { steps: ['a'] } },
+        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: { items: ['a'] } },
         'POST'
       )
     )
@@ -161,7 +169,7 @@ describe('POST /api/admin/playbook/entries — role-tiered publish gate', () => 
     const res = await POST(
       jsonRequest(
         'http://t.local/api/admin/playbook/entries',
-        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: {} },
+        { roomKey: 'ae-sales', entryType: 'sop', title: 'New SOP', content: { items: ['a'] } },
         'POST'
       )
     )
@@ -181,7 +189,7 @@ describe('POST /api/admin/playbook/entries — role-tiered publish gate', () => 
     const res = await POST(
       jsonRequest(
         'http://t.local/api/admin/playbook/entries',
-        { roomKey: 'nonexistent-room', entryType: 'sop', title: 'x', content: {} },
+        { roomKey: 'nonexistent-room', entryType: 'sop', title: 'x', content: { items: ['a'] } },
         'POST'
       )
     )
@@ -219,6 +227,10 @@ describe('GET /api/admin/playbook/entries', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data).toHaveLength(1)
-    expect(listEntries).toHaveBeenCalledWith(expect.anything(), { roomId: ROOM_UUID, viewerId: MEMBER_UUID })
+    expect(listEntries).toHaveBeenCalledWith(expect.anything(), {
+      roomId: ROOM_UUID,
+      viewerId: MEMBER_UUID,
+      canReviewAll: false,
+    })
   })
 })

@@ -63,6 +63,7 @@ export function MemberOnboardingCRM({
   const [notice, setNotice] = useState<string | null>(null)
 
   const selectedMember = members.find(member => member.id === selectedMemberId) ?? null
+  const selectedTemplate = templates.find(template => template.id === selectedTemplateId) ?? null
   const memberRuns = useMemo(
     () => runs.filter(run => run.member_id === selectedMemberId),
     [runs, selectedMemberId]
@@ -222,6 +223,20 @@ export function MemberOnboardingCRM({
         {selectedMember && selectedMember.roleLabels.length > 0 && (
           <p className="mt-2 text-[11px] text-[color:var(--ink-3)]">Roles: {selectedMember.roleLabels.join(', ')}</p>
         )}
+        {selectedTemplate && (selectedTemplate.related_playbook_entries ?? []).length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[color:var(--border)] pt-3">
+            <span className="text-[10.5px] font-bold uppercase tracking-[.06em] text-[color:var(--ink-3)]">Playbook</span>
+            {(selectedTemplate.related_playbook_entries ?? []).map(entry => (
+              <Link
+                key={entry.id}
+                href={entry.href}
+                className="rounded-full border border-[color:var(--border)] px-2.5 py-1 text-[11.5px] font-semibold text-[color:var(--indigo)] hover:underline"
+              >
+                {entry.relationshipKind === 'required_reading' ? 'Required: ' : ''}{entry.title}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && <p className="rounded-lg border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-[13px] text-rose-200">{error}</p>}
@@ -291,6 +306,7 @@ export function MemberOnboardingCRM({
             <button type="button" onClick={() => persistRun('save')} disabled={busy !== null} className="rounded-lg border border-[color:var(--border-2)] px-4 py-2 text-[13px] font-semibold text-[color:var(--ink-2)] disabled:opacity-50">{busy === 'save' ? 'Saving…' : 'Save progress'}</button>
             <button type="button" onClick={() => persistRun('complete')} disabled={busy !== null} className="rounded-lg bg-[image:var(--grad)] px-4 py-2 text-[13px] font-bold text-white disabled:opacity-50">{busy === 'complete' ? 'Logging…' : 'Complete & log call'}</button>
             <span className="text-[11px] text-[color:var(--ink-3)]">Pending or skipped steps do not block completion.</span>
+            <Link href={`/admin/playbook/integrations?entityType=member_onboarding&entityId=${encodeURIComponent(draftRun.id)}`} className="ml-auto text-[11px] font-semibold text-[color:var(--indigo)] hover:underline">Connect a Playbook workflow →</Link>
           </div>
         </div>
       )}
@@ -314,6 +330,7 @@ export function MemberOnboardingCRM({
                 <ul className="mt-3 space-y-1 text-[11px] text-[color:var(--ink-3)]">
                   {run.items.filter(item => item.status !== 'completed' || item.note).map(item => <li key={item.id}><b>{item.status}:</b> {item.label}{item.note ? ` — ${item.note}` : ''}</li>)}
                 </ul>
+                <Link href={`/admin/playbook/integrations?entityType=member_onboarding&entityId=${encodeURIComponent(run.id)}`} className="mt-3 inline-block text-[11px] font-semibold text-[color:var(--indigo)] hover:underline">Connect or open its Playbook workflow →</Link>
               </div>
             </details>
           ))}

@@ -1,0 +1,28 @@
+export const dynamic = 'force-dynamic'
+
+import { ALL_STAFF_ROLES, getStaffRoles, type StaffRole } from '@/lib/admin/gate'
+import { requireStaffPage } from '@/lib/admin/gate'
+import { readRoomGrants } from '@/lib/playbook/access-grants'
+import { isPlaybookEnablementSchemaMissing, staffTargetApplies } from '@/lib/playbook/enablement'
+import { canAccessRoom, loadRooms } from '@/lib/playbook/rooms'
+import { createServiceClient } from '@/lib/supabase/server'
+import { LearningPathsWorkspace, type LearningPathCard } from '@/components/playbook/LearningPathsWorkspace'
+import { LearningPathBuilder } from '@/components/playbook/LearningPathBuilder'
+import { isRoomLead } from '@/lib/playbook/entries'
+
+export default async function LearningPathsPage() {
+  const auth = await requireStaffPage(ALL_STAFF_ROLES); const roles = getStaffRoles(auth.user); const service = createServiceClient(); const [rooms, grants] = await Promise.all([loadRooms(service), readRoomGrants(service)]); const grantsByRoom = new Map<string, StaffRole[]>()
+  for (const grant of grants) grantsByRoom.set(grant.room_id, [...(grantsByRoom.get(grant.room_id) ?? []), grant.role as StaffRole])
+  const accessible = rooms.filter(room => canAccessRoom(roles, grantsByRoom.get(room.id) ?? [])); const roomIds = accessible.map(room => room.id)
+  const pathsResult = roomIds.length ? await service.from('playbook_learning_paths').select('id, room_id, title, description').in('room_id', roomIds).eq('status', 'published').order('published_at', { ascending: false }) : { data: [], error: null }
+  const schemaReady = !pathsResult.error || !isPlaybookEnablementSchemaMissing(pathsResult.error); if (pathsResult.error && schemaReady) throw new Error(`Failed to load learning paths: ${pathsResult.error.message}`)
+  const pathIds = (pathsResult.data ?? []).map(path => path.id as string); const assignments = pathIds.length ? await service.from('playbook_learning_assignments').select('path_id, target_kind, target_user_id, target_role, due_at').in('path_id', pathIds).is('revoked_at', null) : { data: [], error: null }
+  const applicablePathIds = new Set((assignments.data ?? []).filter(target => staffTargetApplies(target, auth.user.id, roles)).map(target => target.path_id as string)); const visiblePaths = (pathsResult.data ?? []).filter(path => applicablePathIds.has(path.id as string)); const visibleIds = visiblePaths.map(path => path.id as string)
+  const steps = visibleIds.length ? await service.from('playbook_learning_path_steps').select('id, path_id, entry_id, revision_number, label, knowledge_prompt, sort_order').in('path_id', visibleIds).order('sort_order') : { data: [], error: null }; const stepIds = (steps.data ?? []).map(step => step.id as string); const entryIds = Array.from(new Set((steps.data ?? []).map(step => step.entry_id as string)))
+  const [completions, entries] = await Promise.all([stepIds.length ? service.from('playbook_learning_step_completions').select('step_id').eq('user_id', auth.user.id).in('step_id', stepIds) : Promise.resolve({ data: [], error: null }), entryIds.length ? service.from('playbook_entries').select('id, slug, room_id').in('id', entryIds) : Promise.resolve({ data: [], error: null })]); const completed = new Set((completions.data ?? []).map(row => row.step_id as string)); const entryById = new Map((entries.data ?? []).map(row => [row.id as string, row])); const roomById = new Map(accessible.map(room => [room.id, room])); const dueByPath = new Map((assignments.data ?? []).filter(target => staffTargetApplies(target, auth.user.id, roles)).map(target => [target.path_id as string, target.due_at as string | null]))
+  const cards: LearningPathCard[] = visiblePaths.map(path => ({ id: path.id as string, title: String(path.title), description: String(path.description), roomLabel: roomById.get(path.room_id as string)?.label ?? 'Playbook', dueAt: dueByPath.get(path.id as string) ?? null, steps: (steps.data ?? []).filter(step => step.path_id === path.id).flatMap(step => { const entry = entryById.get(step.entry_id as string); const room = entry ? roomById.get(entry.room_id as string) : null; if (!entry?.slug || !room) return []; return [{ id: step.id as string, label: String(step.label), entryHref: `/admin/playbook/${room.key}/${entry.slug}`, revision: Number(step.revision_number), knowledgePrompt: step.knowledge_prompt as string | null, complete: completed.has(step.id as string) }] }) }))
+  const leadRooms = (await Promise.all(accessible.map(async room => ({ room, canLead: roles.includes('leadership') || await isRoomLead(service, room.id, auth.user.id) })))).filter(item => item.canLead).map(item => item.room)
+  const builderEntriesResult = leadRooms.length ? await service.from('playbook_entries').select('id, room_id, title').in('room_id', leadRooms.map(room => room.id)).eq('status','published').order('title') : { data: [], error: null }
+  const builderEntries = (builderEntriesResult.data ?? []).flatMap(entry => { const room = roomById.get(entry.room_id as string); return room ? [{ id: entry.id as string, title: String(entry.title), roomKey: room.key, roomLabel: room.label }] : [] })
+  return <main className="mx-auto w-full max-w-[1000px] px-6 py-[30px] pb-[60px] lg:px-9"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-[color:var(--indigo)]">The Playbook · Training</p><h1 className="mt-1 text-2xl font-extrabold text-[color:var(--ink)]">Learning Paths</h1><p className="mt-2 text-[13px] text-[color:var(--ink-3)]">Role-based onboarding and continuing education pinned to the exact doctrine revision you were assigned.</p><LearningPathBuilder entries={builderEntries} roles={ALL_STAFF_ROLES}/><LearningPathsWorkspace initialPaths={cards} schemaReady={schemaReady} /></main>
+}
