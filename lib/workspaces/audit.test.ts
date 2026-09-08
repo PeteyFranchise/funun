@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 
 const WORKSPACE_UUID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
@@ -121,5 +123,58 @@ describe('logWorkspaceAction', () => {
     })
 
     expect(result).toEqual({ ok: false, error: 'insert failed' })
+  })
+
+  // Phase 38.0.2 corrected this module's DOCTRINE, never its behaviour. The
+  // never-throws contract is retained on purpose — see the header — and this
+  // case exists so a reader of that correction cannot mistake it for a
+  // licence to change what the function does.
+  it('still never throws — a rejected promise here would be a behaviour change this phase did not make', async () => {
+    const service = mockService({ error: { message: 'append-only trigger refused the row' } })
+
+    await expect(
+      logWorkspaceAction(service as never, {
+        workspaceId: WORKSPACE_UUID,
+        actorId: ACTOR_UUID,
+        subjectMemberId: SUBJECT_UUID,
+        action: 'workspace.invitation.issued',
+        targetType: 'workspace_invitation',
+        targetId: TARGET_UUID,
+      })
+    ).resolves.toEqual({ ok: false, error: 'append-only trigger refused the row' })
+  })
+})
+
+// ─── WSR-13 — the doctrine comment itself ─────────────────────────────────
+// An unusual test: it reads this module's SOURCE and asserts on its header.
+// Worth it, and worth it here specifically. `logWorkspaceAction` used to
+// claim to be "the ONE write-through call every workspace-context write
+// invokes"; migration 198's transactional RPCs made that false for every
+// consequential path in the same phase. A stale doctrine comment in this
+// codebase is exactly how migration 139's wrong parenthetical reached
+// production and cost a day of broken custody transfer.
+describe('lib/workspaces/audit.ts header — the superseded claim is gone (WSR-13)', () => {
+  const source = readFileSync(join(process.cwd(), 'lib/workspaces/audit.ts'), 'utf8')
+
+  it('no longer claims to be the ONE write-through call every workspace-context write invokes', () => {
+    expect(source).not.toContain('ONE write-through call every workspace-context write')
+  })
+
+  it('names the transactional RPCs as the writer for consequential state changes', () => {
+    expect(source).toContain('198')
+    expect(source.toLowerCase()).toContain('consequential')
+  })
+
+  it('names all four surviving non-consequential uses', () => {
+    for (const use of ['invitation', 'evidence', 'kill-switch', 'configuration']) {
+      expect(source.toLowerCase()).toContain(use)
+    }
+  })
+
+  it('names the three migration 197 constraints this function now writes under', () => {
+    const lowered = source.toLowerCase()
+    expect(lowered).toContain('append-only')
+    expect(lowered).toContain('restricted')
+    expect(lowered).toContain('deferred')
   })
 })
