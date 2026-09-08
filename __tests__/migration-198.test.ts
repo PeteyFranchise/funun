@@ -70,6 +70,37 @@ const masked = migration
   .map((line) => (line.trimStart().startsWith('--') ? '' : line))
   .join('\n')
 
+// PRECISION FIX (plan 08), NOT A WEAKENING — read the next sentence before
+// changing it. `masked` strips `--` comment LINES but keeps every
+// COMMENT ON FUNCTION statement, whose string literal necessarily quotes
+// lock modes as documentation: section (c)'s comment says, correctly, "FOR
+// NO KEY UPDATE and not FOR UPDATE per LO-2". `lockSites()` read that prose
+// as two real `FOR UPDATE` clauses and reported an LO-2 violation on a file
+// whose every locking clause is FOR NO KEY UPDATE. That is the SAME
+// distinction plan 06 already drew for `executable` five lines above —
+// prose inside a string is not a clause this migration executes — applied
+// to the one view that had not yet been given it.
+//
+// The replacement preserves the LINE COUNT of what it blanks, so the line
+// numbers `lockSites()` reports still point at the real file. It removes no
+// executable statement: a genuine `FOR UPDATE` in a function body is
+// outside any COMMENT ON FUNCTION and is still scanned, still resolved to a
+// table, and still required to carry its justifying comment. Proved by
+// mutation both ways.
+const maskedExecutable = masked.replace(/COMMENT ON FUNCTION[\s\S]*?';\n/g, (block) =>
+  '\n'.repeat((block.match(/\n/g) ?? []).length)
+)
+
+// `IS DISTINCT FROM` and `IS NOT DISTINCT FROM` are null-safe COMPARISON
+// OPERATORS. The `FROM` in them introduces no relation, but it is
+// indistinguishable from a `FROM` clause to a regex that looks only at the
+// keyword — so `v_member.role IS DISTINCT FROM p_expected_role` was read as
+// a reference to an unqualified relation named `p_expected_role`. Stripped
+// before the schema-qualification scan for the same reason that scan
+// already strips LOCK_CLAUSE: "FOR NO KEY UPDATE" contains the token
+// UPDATE. Neither strip removes a real relation reference.
+const DISTINCT_FROM = /\bIS\s+(?:NOT\s+)?DISTINCT\s+FROM\b/gi
+
 const flatSql = normalizeWhitespace(sql)
 
 // ══ Shared harness — plans 08, 10 and 11 reuse all of this ═══════════════
@@ -161,8 +192,8 @@ function lockSites(): { line: number; mode: string }[] {
   const sites: { line: number; mode: string }[] = []
   LOCK_CLAUSE.lastIndex = 0
   let match: RegExpExecArray | null
-  while ((match = LOCK_CLAUSE.exec(masked)) !== null) {
-    const line = masked.slice(0, match.index).split('\n').length - 1
+  while ((match = LOCK_CLAUSE.exec(maskedExecutable)) !== null) {
+    const line = maskedExecutable.slice(0, match.index).split('\n').length - 1
     sites.push({ line, mode: normalizeWhitespace(match[1]).toUpperCase() })
   }
   return sites
@@ -484,8 +515,10 @@ describe('declaration posture — every function', () => {
     const violations: string[] = []
     for (const name of functionNames()) {
       // Strip locking clauses first: "FOR NO KEY UPDATE" contains the token
-      // UPDATE and would otherwise be read as an UPDATE target.
-      const body = functionBlock(name).replace(LOCK_CLAUSE, ' ')
+      // UPDATE and would otherwise be read as an UPDATE target. Strip the
+      // null-safe comparison operator for the identical reason — see
+      // DISTINCT_FROM's comment above. Neither strip hides a real relation.
+      const body = functionBlock(name).replace(LOCK_CLAUSE, ' ').replace(DISTINCT_FROM, ' ')
       const re = /(?:FROM|JOIN|INSERT INTO|UPDATE)\s+([A-Za-z_"][\w".]*)/g
       let match: RegExpExecArray | null
       while ((match = re.exec(body)) !== null) {
