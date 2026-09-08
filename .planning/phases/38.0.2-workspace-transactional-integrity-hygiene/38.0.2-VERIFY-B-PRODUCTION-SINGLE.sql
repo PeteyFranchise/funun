@@ -41,10 +41,15 @@
 --     plus cohort, invitation, custody-transfer and second
 --     roster-relationship fixtures.
 --  4. Assertions for WSR-07, WSR-08, WSR-09, WSR-10, WSR-11,
---     WSR-12, WSR-13, WSR-16, WSR-18, WSR-19 and WSR-26.
---  5. Teardown deletes from ELEVEN tables, disables the triggers
---     this phase installs, re-enables them, and asserts the
---     re-enable as its own result row.
+--     WSR-12, WSR-13, WSR-16, WSR-18, WSR-19, WSR-23 and WSR-26.
+--     WSR-21 is NOT here and cannot be: it is an application-layer
+--     rule with no SQL surface. 38.0.2-VALIDATION.md says so
+--     rather than borrowing credit from a database check.
+--  5. Teardown deletes from TWELVE tables — including the
+--     workspace check B28 creates, whose id the RPC allocates —
+--     disables the seven triggers this phase installs or relies
+--     on, re-enables them, and asserts the re-enable as its own
+--     result row.
 --
 -- ─── WHY THIS IS SAFE TO RUN ON PRODUCTION ────────────────────
 --   * Part A's population block gates it: all eleven workspace
@@ -195,6 +200,8 @@ DECLARE
   v_blocks BIGINT; v_audits BIGINT;
   v_uid UUID;
   v_txt TEXT;
+  v_ws2 UUID; v_slug2 TEXT;
+  v_red BOOLEAN; v_red2 BOOLEAN; v_chg JSONB;
 BEGIN
   -- ═══ GUARD: refuse if real workspace data exists ═══════════════
   -- 38.0.1's guard, WIDENED. It checked workspace_members only. This phase
@@ -1187,6 +1194,82 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (36,'B27 WSR-13 the RPCs wrote their audit rows',SQLSTATE||': '||left(SQLERRM,90),'*** ERROR ***'); END;
 
   -- ══════════════════════════════════════════════════════════════
+  -- ── B28 — WSR-23. CAN A WORKSPACE STILL BE CREATED AT ALL? ─────
+  --
+  -- THE HIGHEST-CONSEQUENCE CARRY-FORWARD IN THE PHASE, and it is a
+  -- behavioural question by construction.
+  --
+  -- Migration 197 section (c) refuses EVERY non-definer INSERT that seats an
+  -- `owner`. POST /api/workspaces seats the creator as owner at creation
+  -- time. So the moment 197 applies, if workspace_create is not a
+  -- postgres-owned SECURITY DEFINER function, NOBODY CAN CREATE A WORKSPACE
+  -- AT ALL — and the failure is silent until someone tries. That is why
+  -- WSR-23's atomic create is a PREREQUISITE for WSR-07 rather than an
+  -- independent hygiene item.
+  --
+  -- It is also what makes R-15's `created_by` visibility fallback
+  -- unnecessary: creation now seats the owner in the SAME transaction as the
+  -- container, so there is no window in which a creator holds no membership
+  -- row and needs a fallback to see their own workspace. Part A check A9
+  -- proves the fallback is gone from the policy; this proves removing it
+  -- broke nothing.
+  --
+  -- Three facts: the RPC returns `ok`, the container exists, and the creator
+  -- holds an ACTIVE OWNER SEAT on it.
+  BEGIN
+    SELECT r.outcome, r.workspace_id, r.slug INTO v_outcome, v_ws2, v_slug2
+      FROM public.workspace_create(
+             OWNER_, 'Part B created workspace', 'part-b-created-ffff0000',
+             'management', TRUE, FALSE, NULL::UUID) r;
+    SELECT count(*) INTO n FROM public.workspace_members m
+     WHERE m.workspace_id = v_ws2 AND m.user_id = OWNER_
+       AND m.role = 'owner' AND m.status = 'active';
+    INSERT INTO public.zz_verify_b_results VALUES (37,'B28 WSR-23 atomic workspace creation still works',
+      'outcome='||coalesce(v_outcome,'(null)')||' workspace='||coalesce(v_ws2::text,'(null)')
+      ||' slug='||coalesce(v_slug2,'(null)')||' owner_seats='||n,
+      CASE WHEN v_outcome <> 'ok' THEN '*** FAIL — creation refused: '||coalesce(v_outcome,'(null)')||' ***'
+           WHEN v_ws2 IS NULL THEN '*** FAIL — no workspace returned ***'
+           WHEN n <> 1 THEN '*** FAIL — NOBODY CAN CREATE A WORKSPACE: 197 s(c) refused the owner seat ***'
+           ELSE 'PASS — container and owner seat in one transaction' END);
+  EXCEPTION WHEN OTHERS THEN INSERT INTO public.zz_verify_b_results VALUES (37,'B28 WSR-23 atomic workspace creation still works',SQLSTATE||': '||left(SQLERRM,140),'*** ERROR — 42501 HERE MEANS WORKSPACE CREATION IS DEAD IN PRODUCTION ***'); END;
+
+  -- ── B29 — WSR-19 / R-13 / R-27. THE REDACTED AUDIT READ. ───────
+  -- The other half of WSR-19. B25 proves restricted keys cannot be WRITTEN;
+  -- this proves what an ordinary seat can READ.
+  --
+  -- D-50's intent — a workspace can audit itself — is preserved; only the
+  -- mechanism changes (R-27). Ordinary members reach the trail through this
+  -- redacted definer reader instead of the raw table, and `changes` comes
+  -- back as `{}` with `changes_redacted = TRUE`. An owner, an admin, and the
+  -- actor or subject of the row itself get the full view.
+  --
+  -- The GUEST is used as the ordinary seat: not the actor, not the subject,
+  -- and role `guest` is not in ('owner','admin'). If the flag comes back
+  -- NULL rather than TRUE, the COALESCE that makes the reader fail CLOSED
+  -- has been lost — a bare three-way OR returns NULL, not FALSE, for a
+  -- seatless caller.
+  BEGIN
+    PERFORM set_config('request.jwt.claims', json_build_object('sub',GUEST::text,'role','authenticated')::text, true);
+    SELECT a.changes_redacted, a.changes INTO v_red, v_chg
+      FROM public.workspace_audit_page(WS, GUEST, 5, 0) a LIMIT 1;
+    PERFORM set_config('request.jwt.claims', json_build_object('sub',OWNER_::text,'role','authenticated')::text, true);
+    SELECT b.changes_redacted INTO v_red2
+      FROM public.workspace_audit_page(WS, OWNER_, 5, 0) b LIMIT 1;
+    PERFORM set_config('request.jwt.claims', NULL, true);
+    INSERT INTO public.zz_verify_b_results VALUES (38,'B29 WSR-19 audit read is redacted by viewer class',
+      'guest_redacted='||coalesce(v_red::text,'(null/no row)')||' guest_changes='||coalesce(v_chg::text,'(null)')
+      ||' owner_redacted='||coalesce(v_red2::text,'(null/no row)'),
+      CASE WHEN v_red IS NULL THEN '*** FAIL — an ordinary seat reached NO audit row; D-50''s workspace-audits-itself read is gone ***'
+           WHEN v_red IS NOT TRUE THEN '*** FAIL — AN ORDINARY SEAT SAW THE RAW changes PAYLOAD ***'
+           WHEN v_chg IS DISTINCT FROM '{}'::JSONB THEN '*** FAIL — flagged redacted but the payload came through anyway ***'
+           WHEN v_red2 IS NULL THEN '*** FAIL — the OWNER reached no audit row at all ***'
+           WHEN v_red2 IS NOT FALSE THEN '*** FAIL — the owner''s own view is redacted too; the reader is not viewer-class aware ***'
+           ELSE 'PASS — guest redacted, owner full' END);
+  EXCEPTION WHEN OTHERS THEN
+    PERFORM set_config('request.jwt.claims', NULL, true);
+    INSERT INTO public.zz_verify_b_results VALUES (38,'B29 WSR-19 audit read is redacted by viewer class',SQLSTATE||': '||left(SQLERRM,110),'*** ERROR ***'); END;
+
+  -- ══════════════════════════════════════════════════════════════
   -- ── B30 — DRAIN THE DEFERRED QUEUE, AT THE OUTER LEVEL. ────────
   --
   -- DELIBERATELY **NOT** WRAPPED IN A SUBTRANSACTION, and the reason is the
@@ -1214,7 +1297,7 @@ BEGIN
   -- ══════════════════════════════════════════════════════════════
   EXECUTE 'SET CONSTRAINTS ALL IMMEDIATE';
 
-  INSERT INTO public.zz_verify_b_results VALUES (37,'B30 WSR-13 deferred queue drained clean','SET CONSTRAINTS ALL IMMEDIATE returned',
+  INSERT INTO public.zz_verify_b_results VALUES (39,'B30 WSR-13 deferred queue drained clean','SET CONSTRAINTS ALL IMMEDIATE returned',
     'PASS — every RPC mutation had its audit row in the same transaction');
 
   -- ═══ TEARDOWN — ALWAYS REACHED ═════════════════════════════════
@@ -1250,6 +1333,14 @@ BEGIN
   -- upserts, and every audit row. All carry gen_random_uuid() ids. A
   -- teardown keyed on the fixture uuid prefix alone would leave every one of
   -- them behind, in tables Part A asserts are empty.
+  -- B28's workspace is deleted FIRST and by its own returned id, because
+  -- workspace_create allocates it with gen_random_uuid(). If B28 failed,
+  -- v_ws2 is NULL and every one of these matches nothing — `= NULL` is never
+  -- true — which is the correct no-op rather than a wildcard.
+  DELETE FROM public.workspace_audit_log            WHERE workspace_id = v_ws2;
+  DELETE FROM public.workspace_members              WHERE workspace_id = v_ws2;
+  DELETE FROM public.workspaces                     WHERE id = v_ws2;
+
   DELETE FROM public.workspace_audit_log            WHERE workspace_id = WS;
   DELETE FROM public.workspace_grants               WHERE workspace_id = WS;
   DELETE FROM public.workspace_attachments          WHERE workspace_id = WS;
@@ -1280,7 +1371,7 @@ BEGIN
   -- append-only guards off would be worse than no harness: the table would
   -- silently stop being append-only and nothing would say so. 'D' = disabled.
   INSERT INTO public.zz_verify_b_results
-  SELECT 38, 'B31 all seven disabled triggers re-enabled',
+  SELECT 40, 'B31 all seven disabled triggers re-enabled',
          string_agg(t.tgname || '=' || t.tgenabled::text, ', ' ORDER BY t.tgname),
          CASE WHEN count(*) = 7 AND count(*) FILTER (WHERE t.tgenabled = 'D') = 0
               THEN 'PASS — all seven enabled'
