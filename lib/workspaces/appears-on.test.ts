@@ -6,6 +6,15 @@ const CALLER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const HOLDER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 const OTHER_HOLDER_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
 const WORKSPACE_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+// A second and third workspace, for the multi-workspace attachment cases
+// (R-09's second defect). Named so that `WORKSPACE_A` sorts BEFORE
+// `WORKSPACE_B` as a plain string, because the documented tie-break on an
+// equal `accepted_at` is `workspace_id` ascending.
+const WORKSPACE_A = 'eeee0000-0000-0000-0000-00000000000a'
+const WORKSPACE_B = 'eeee0000-0000-0000-0000-00000000000b'
+// The workspace the caller has NO accepted relationship on — delegated
+// access only. Nothing reached through it may ever earn a shelf row.
+const DELEGATED_ONLY_WORKSPACE_ID = 'ffff0000-0000-0000-0000-00000000000f'
 
 type Result<T> = { data: T | null; error: { message: string } | null }
 
@@ -65,7 +74,7 @@ describe('resolveAppearsOnRows', () => {
       },
       attachments: { data: [{ project_id: 'p2', workspace_id: WORKSPACE_ID }], error: null },
       profiles: { data: [{ id: HOLDER_ID, artist_name: 'Holder Name' }], error: null },
-      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Producer' }], error: null },
+      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Producer', accepted_at: '2026-01-01T00:00:00Z' }], error: null },
     })
 
     const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
@@ -83,7 +92,7 @@ describe('resolveAppearsOnRows', () => {
       },
       attachments: { data: [{ project_id: 'p3', workspace_id: WORKSPACE_ID }], error: null },
       profiles: { data: [{ id: HOLDER_ID, artist_name: 'Holder Name' }], error: null },
-      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Engineer' }], error: null },
+      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Engineer', accepted_at: '2026-01-01T00:00:00Z' }], error: null },
     })
 
     const rows = await resolveAppearsOnRows(asClient(fake), {
@@ -98,7 +107,7 @@ describe('resolveAppearsOnRows', () => {
       projects: { data: [{ id: 'p1', title: 'Rough Mix', user_id: HOLDER_ID }], error: null },
       attachments: { data: [{ project_id: 'p1', workspace_id: WORKSPACE_ID }], error: null },
       profiles: { data: [{ id: HOLDER_ID, artist_name: 'Maya Reyes' }], error: null },
-      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Mix Engineer' }], error: null },
+      relationships: { data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Mix Engineer', accepted_at: '2026-01-01T00:00:00Z' }], error: null },
     })
 
     const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
@@ -115,11 +124,31 @@ describe('resolveAppearsOnRows', () => {
   })
 
   it('every returned row is marked read-only', async () => {
+    // REWRITTEN for R-09 (38.0.2-04). This case previously passed NO
+    // attachment and NO relationship fixtures and still expected two rows
+    // back — which is precisely the defect: it asserted that a project the
+    // RLS client happened to return earns a shelf row on its own. The
+    // property under test here is `readOnly`, not admission, so the fixtures
+    // now grant both rows a genuine accepted relationship and the assertion
+    // keeps its original meaning.
     const fake = createFakeSupabase({
       projects: {
         data: [
           { id: 'p1', title: 'A', user_id: HOLDER_ID },
           { id: 'p2', title: 'B', user_id: OTHER_HOLDER_ID },
+        ],
+        error: null,
+      },
+      attachments: {
+        data: [
+          { project_id: 'p1', workspace_id: WORKSPACE_ID },
+          { project_id: 'p2', workspace_id: WORKSPACE_ID },
+        ],
+        error: null,
+      },
+      relationships: {
+        data: [
+          { workspace_id: WORKSPACE_ID, professional_role: 'Producer', accepted_at: '2026-01-01T00:00:00Z' },
         ],
         error: null,
       },
@@ -130,16 +159,32 @@ describe('resolveAppearsOnRows', () => {
     for (const row of rows) expect(row.readOnly).toBe(true)
   })
 
-  it('degrades to a null holder name and null contribution role when no attachment/profile row resolves', async () => {
+  it('keeps a row whose accepted relationship names no professional role, and degrades the holder name to null', async () => {
+    // REWRITTEN for R-09 (38.0.2-04), in the style 38.0.1-VERIFICATION.md
+    // used when it recorded that Part B check B3 was a defect in the TEST
+    // rather than in the code. The previous title was "degrades to a null
+    // holder name and null contribution role when no attachment/profile row
+    // resolves", and it passed no attachment and no relationship at all —
+    // i.e. it asserted that delegated access alone returns a row with a null
+    // contributionRole. That expectation encoded defect 1. The genuine
+    // degradation property is narrower and survives here: the RELATIONSHIP
+    // is what earns the shelf, the role is only a label on it, so an
+    // accepted relationship naming no professional_role still admits the
+    // row — and a missing profile row still degrades holderName to null.
     const fake = createFakeSupabase({
-      projects: { data: [{ id: 'p1', title: 'Orphaned Row', user_id: HOLDER_ID }], error: null },
+      projects: { data: [{ id: 'p1', title: 'Unlabelled Credit', user_id: HOLDER_ID }], error: null },
+      attachments: { data: [{ project_id: 'p1', workspace_id: WORKSPACE_ID }], error: null },
+      relationships: {
+        data: [{ workspace_id: WORKSPACE_ID, professional_role: null, accepted_at: '2026-01-01T00:00:00Z' }],
+        error: null,
+      },
     })
 
     const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
     expect(rows).toEqual([
       {
         projectId: 'p1',
-        title: 'Orphaned Row',
+        title: 'Unlabelled Credit',
         holderUserId: HOLDER_ID,
         holderName: null,
         contributionRole: null,
@@ -148,11 +193,226 @@ describe('resolveAppearsOnRows', () => {
     ])
   })
 
+  it('R-09/WSR-21: drops a project reachable only through delegated workspace access', async () => {
+    // THE defect, stated as a test. The RLS client DID return this row —
+    // `workspace_project_permission(..., 'view_summaries')` admitted it
+    // because the caller holds delegated access to the attaching workspace
+    // (a workspace admin, say). The module must still drop it: delegated
+    // workspace access is not contribution credit. Only `p_credited`, whose
+    // attaching workspace carries an accepted relationship NAMING the
+    // caller, earns the shelf.
+    const fake = createFakeSupabase({
+      projects: {
+        data: [
+          { id: 'p_delegated', title: 'Reached By Admin Grant', user_id: HOLDER_ID },
+          { id: 'p_credited', title: 'Actually Contributed To', user_id: HOLDER_ID },
+        ],
+        error: null,
+      },
+      attachments: {
+        data: [
+          { project_id: 'p_delegated', workspace_id: DELEGATED_ONLY_WORKSPACE_ID },
+          { project_id: 'p_credited', workspace_id: WORKSPACE_ID },
+        ],
+        error: null,
+      },
+      profiles: { data: [{ id: HOLDER_ID, artist_name: 'Holder Name' }], error: null },
+      relationships: {
+        data: [
+          { workspace_id: WORKSPACE_ID, professional_role: 'Producer', accepted_at: '2026-01-01T00:00:00Z' },
+        ],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows.map((r) => r.projectId)).toEqual(['p_credited'])
+  })
+
+  it('includes a multi-workspace project when the caller’s relationship is on the SECOND attachment returned', async () => {
+    // Defect 2, in its most damaging form: the old `new Map(rows.map(...))`
+    // kept only the LAST attachment, so had the caller's own workspace come
+    // back first it would have been overwritten and a genuine contributor
+    // would have seen contributionRole: null (or, now, no row at all).
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Co-Attached', user_id: HOLDER_ID }], error: null },
+      attachments: {
+        data: [
+          { project_id: 'p1', workspace_id: DELEGATED_ONLY_WORKSPACE_ID },
+          { project_id: 'p1', workspace_id: WORKSPACE_A },
+        ],
+        error: null,
+      },
+      relationships: {
+        data: [{ workspace_id: WORKSPACE_A, professional_role: 'Engineer', accepted_at: '2026-03-01T00:00:00Z' }],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows.map((r) => r.projectId)).toEqual(['p1'])
+    expect(rows[0].contributionRole).toBe('Engineer')
+  })
+
+  it('resolves a project attached to two of the caller’s workspaces to exactly ONE row (earliest accepted_at wins)', async () => {
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Two Workspaces', user_id: HOLDER_ID }], error: null },
+      attachments: {
+        data: [
+          { project_id: 'p1', workspace_id: WORKSPACE_A },
+          { project_id: 'p1', workspace_id: WORKSPACE_B },
+        ],
+        error: null,
+      },
+      relationships: {
+        data: [
+          { workspace_id: WORKSPACE_A, professional_role: 'Later Role', accepted_at: '2026-06-01T00:00:00Z' },
+          { workspace_id: WORKSPACE_B, professional_role: 'Earlier Role', accepted_at: '2026-02-01T00:00:00Z' },
+        ],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows.length).toBe(1)
+    expect(rows[0].contributionRole).toBe('Earlier Role')
+  })
+
+  it('returns the identical contributionRole when the attachment rows arrive in reversed order (end-to-end determinism)', async () => {
+    // Deliberately two real invocations of resolveAppearsOnRows rather than
+    // an assertion about the comparator in isolation: the property that
+    // matters to a human is that the shelf does not appear to change for no
+    // reason between two page loads that differ only in row order.
+    const projects = { data: [{ id: 'p1', title: 'Stable', user_id: HOLDER_ID }], error: null }
+    const relationships = {
+      data: [
+        { workspace_id: WORKSPACE_A, professional_role: 'Role A', accepted_at: '2026-04-01T00:00:00Z' },
+        { workspace_id: WORKSPACE_B, professional_role: 'Role B', accepted_at: '2026-05-01T00:00:00Z' },
+      ],
+      error: null,
+    }
+    const forward = [
+      { project_id: 'p1', workspace_id: WORKSPACE_A },
+      { project_id: 'p1', workspace_id: WORKSPACE_B },
+    ]
+
+    const first = await resolveAppearsOnRows(
+      asClient(createFakeSupabase({ projects, relationships, attachments: { data: forward, error: null } })),
+      { userId: CALLER_ID, excludeProjectIds: [] }
+    )
+    const second = await resolveAppearsOnRows(
+      asClient(
+        createFakeSupabase({
+          projects,
+          relationships,
+          attachments: { data: [...forward].reverse(), error: null },
+        })
+      ),
+      { userId: CALLER_ID, excludeProjectIds: [] }
+    )
+
+    expect(first).toEqual(second)
+    expect(first[0].contributionRole).toBe('Role A')
+  })
+
+  it('breaks an accepted_at tie on workspace_id ascending', async () => {
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Tied', user_id: HOLDER_ID }], error: null },
+      attachments: {
+        data: [
+          { project_id: 'p1', workspace_id: WORKSPACE_B },
+          { project_id: 'p1', workspace_id: WORKSPACE_A },
+        ],
+        error: null,
+      },
+      relationships: {
+        data: [
+          { workspace_id: WORKSPACE_B, professional_role: 'From B', accepted_at: '2026-02-01T00:00:00Z' },
+          { workspace_id: WORKSPACE_A, professional_role: 'From A', accepted_at: '2026-02-01T00:00:00Z' },
+        ],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows[0].contributionRole).toBe('From A')
+  })
+
+  it('treats a null accepted_at as later than any timestamp when choosing between two relationships', async () => {
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Undated', user_id: HOLDER_ID }], error: null },
+      attachments: {
+        data: [
+          { project_id: 'p1', workspace_id: WORKSPACE_A },
+          { project_id: 'p1', workspace_id: WORKSPACE_B },
+        ],
+        error: null,
+      },
+      relationships: {
+        data: [
+          { workspace_id: WORKSPACE_A, professional_role: 'Undated Role', accepted_at: null },
+          { workspace_id: WORKSPACE_B, professional_role: 'Dated Role', accepted_at: '2026-09-01T00:00:00Z' },
+        ],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows[0].contributionRole).toBe('Dated Role')
+  })
+
   it('returns an empty array on a query error rather than throwing', async () => {
     const fake = createFakeSupabase({ projects: { data: null, error: { message: 'db down' } } })
     await expect(
       resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
     ).resolves.toEqual([])
+  })
+
+  it('returns an empty array when the attachment query errors (fails closed, never partial)', async () => {
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Unknowable', user_id: HOLDER_ID }], error: null },
+      attachments: { data: null, error: { message: 'attachments unavailable' } },
+      relationships: {
+        data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Producer', accepted_at: '2026-01-01T00:00:00Z' }],
+        error: null,
+      },
+    })
+
+    await expect(
+      resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    ).resolves.toEqual([])
+  })
+
+  it('returns an empty array when the relationship query errors (fails closed, never partial)', async () => {
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Unknowable', user_id: HOLDER_ID }], error: null },
+      attachments: { data: [{ project_id: 'p1', workspace_id: WORKSPACE_ID }], error: null },
+      relationships: { data: null, error: { message: 'relationships unavailable' } },
+    })
+
+    await expect(
+      resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    ).resolves.toEqual([])
+  })
+
+  it('still returns an admitted row with a null holder name when only the profile lookup fails', async () => {
+    // The holder-name lookup is cosmetic and decides nothing about
+    // admission, so it degrades rather than emptying the shelf — the
+    // pre-existing guarantee this module documented from the start.
+    const fake = createFakeSupabase({
+      projects: { data: [{ id: 'p1', title: 'Nameless Holder', user_id: HOLDER_ID }], error: null },
+      attachments: { data: [{ project_id: 'p1', workspace_id: WORKSPACE_ID }], error: null },
+      profiles: { data: null, error: { message: 'profiles unavailable' } },
+      relationships: {
+        data: [{ workspace_id: WORKSPACE_ID, professional_role: 'Producer', accepted_at: '2026-01-01T00:00:00Z' }],
+        error: null,
+      },
+    })
+
+    const rows = await resolveAppearsOnRows(asClient(fake), { userId: CALLER_ID, excludeProjectIds: [] })
+    expect(rows.map((r) => r.projectId)).toEqual(['p1'])
+    expect(rows[0].holderName).toBeNull()
+    expect(rows[0].contributionRole).toBe('Producer')
   })
 
   it('returns an empty array for a missing userId without querying', async () => {
