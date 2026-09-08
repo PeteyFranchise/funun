@@ -1,0 +1,2132 @@
+[
+ {
+  "cls": "B",
+  "name": "resolve_profile_by_handle",
+  "why": "called with a USER-SCOPED client (1 site/s) \u2014 bind, do not relocate",
+  "mig": "133_handle_identity.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": false,
+  "grants": [
+   "anon",
+   "authenticated",
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/handles/available/route.ts",
+    "79",
+    "service"
+   ],
+   [
+    "lib//handles/resolve.ts",
+    "61",
+    "client"
+   ]
+  ]
+ },
+ {
+  "cls": "A",
+  "name": "workspace_project_permission",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 43,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "workspace_member_role",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "192_workspace_project_permission_v2.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 37,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "green_room_can_view_post",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "076_rename_artist_profiles_to_user_profiles.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 22,
+  "sites": [
+   [
+    "lib//trust-safety/reports.ts",
+    "179",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "A",
+  "name": "is_workspace_owner",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "192_workspace_project_permission_v2.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 19,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "no_block",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "035_connections_blocks.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 16,
+  "sites": [
+   [
+    "lib//green-room/placements-admin.ts",
+    "353",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "A",
+  "name": "green_room_post_matches_custom_audience",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "076_rename_artist_profiles_to_user_profiles.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 10,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "workspace_audit_visible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 10,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "custody_transfer_visible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "185_workspace_attachments_custody.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "is_green_room_eligible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "087_green_room_eligibility_security_definer.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "is_split_sheet_initiator",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "064_fix_split_sheet_rls_recursion.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "is_split_sheet_party",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "064_fix_split_sheet_rls_recursion.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "ownership_transfer_visible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "workspace_agreement_evidence_visible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "183_workspace_roster_relationships.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "workspace_attachment_visible",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "185_workspace_attachments_custody.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "A",
+  "name": "workspace_grant_visible_to_member",
+  "why": "uid param, never binds auth.uid(), no user-scoped call site",
+  "mig": "184_workspace_permissions_grants.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "REVIEW",
+  "name": "workspace_access_enabled",
+  "why": "needs reading",
+  "mig": "186_workspace_rls_extension.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 27,
+  "sites": []
+ },
+ {
+  "cls": "REVIEW",
+  "name": "transfer_vault_project_custody",
+  "why": "needs reading",
+  "mig": "190_vault_projects_user_id_immutable.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "(none stated)"
+  ],
+  "refs": 14,
+  "sites": []
+ },
+ {
+  "cls": "REVIEW",
+  "name": "workspace_grant_lineage_live",
+  "why": "needs reading",
+  "mig": "192_workspace_project_permission_v2.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 12,
+  "sites": []
+ },
+ {
+  "cls": "REVIEW",
+  "name": "calculate_vault_readiness",
+  "why": "needs reading",
+  "mig": "070_readiness_definer_privilege_sweep.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "(none stated)"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "REVIEW",
+  "name": "workspace_roster_relationship_is_live",
+  "why": "needs reading",
+  "mig": "183_workspace_roster_relationships.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "work_member_tier",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 84,
+  "sites": [
+   [
+    "lib//catalogue/access.ts",
+    "166",
+    "client"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "is_work_owner",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 81,
+  "sites": [
+   [
+    "lib//catalogue/access.ts",
+    "161",
+    "client"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "project_member_role",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 53,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "is_project_owner",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 44,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "is_buyer_org_member",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 20,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "can_read_song_passport",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "151_song_passport_foundation.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 13,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "idea_access_level",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "174_membership_helper_privacy.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 13,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "save_locked_lyric_block_text",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "145_writer_room_lyric_snapshots.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 6,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/route.ts",
+    "228",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "can_view_song_passport_value",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "151_song_passport_foundation.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "has_song_passport_grant",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "151_song_passport_foundation.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "discover_profile_id_by_email",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "149_green_room_people_search.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "lib//green-room/discover.ts",
+    "441",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "workspace_audit_page",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "workspace_catalogue_page",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "194_workspace_catalogue_rpc.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "lib//workspaces/catalogue.ts",
+    "173",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "workspace_read_assets",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "193_workspace_column_allowlist_rpcs.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "workspace_read_documents",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "193_workspace_column_allowlist_rpcs.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "workspace_read_tool_outputs",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "193_workspace_column_allowlist_rpcs.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "workspace_read_tracks",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "193_workspace_column_allowlist_rpcs.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "C",
+  "name": "workspace_roster_page",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": true,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "app//api/workspaces/[workspaceId]/roster/route.ts",
+    "395",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "claim_ai_usage",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "173_ai_and_selects_abuse_controls.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "lib//ai/admission.ts",
+    "43",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "claim_upload_admission",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "175_upload_admission.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "lib//security/upload-admission.ts",
+    "58",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "create_work_lyric_block_comment",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "146_writer_room_section_comments.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/comments/route.ts",
+    "200",
+    "supabase"
+   ],
+   [
+    "app//api/works/[workId]/studio-notes/route.ts",
+    "183",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "create_work_lyric_block_suggestion",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "161_writer_room_lyric_suggestions.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/suggestions/route.ts",
+    "132",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "create_work_studio_note",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "180_writer_room_studio_notes.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/studio-notes/route.ts",
+    "163",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "create_work_version_comment",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "160_writer_room_timed_track_comments.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/versions/[versionId]/comments/route.ts",
+    "194",
+    "supabase"
+   ],
+   [
+    "app//api/works/[workId]/studio-notes/route.ts",
+    "172",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "decide_work_lyric_block_suggestion",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "161_writer_room_lyric_suggestions.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/suggestions/[suggestionId]/route.ts",
+    "25",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "detach_lyric_block_with_text",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "145_writer_room_lyric_snapshots.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/route.ts",
+    "176",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "finish_ai_usage",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "173_ai_and_selects_abuse_controls.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "lib//ai/admission.ts",
+    "74",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "finish_upload_admission",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "175_upload_admission.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "lib//security/upload-admission.ts",
+    "90",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "restore_locked_lyric_block_snapshot",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "145_writer_room_lyric_snapshots.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/snapshots/[snapshotId]/restore/route.ts",
+    "28",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "review_work_version_comment_carry",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "160_writer_room_timed_track_comments.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/versions/[versionId]/comments/carry-forward/route.ts",
+    "28",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "set_work_lyric_block_comment_resolution",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "146_writer_room_section_comments.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/comments/[commentId]/route.ts",
+    "41",
+    "supabase"
+   ],
+   [
+    "app//api/works/[workId]/studio-notes/[noteId]/route.ts",
+    "58",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "set_work_studio_note_resolution",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "180_writer_room_studio_notes.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/studio-notes/[noteId]/route.ts",
+    "45",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "set_work_version_comment_resolution",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "160_writer_room_timed_track_comments.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/versions/[versionId]/comments/[commentId]/route.ts",
+    "38",
+    "supabase"
+   ],
+   [
+    "app//api/works/[workId]/studio-notes/[noteId]/route.ts",
+    "51",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "C",
+  "name": "toggle_work_note_reaction",
+  "why": "binds auth.uid() + names anon/authenticated",
+  "mig": "180_writer_room_studio_notes.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "authenticated"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/studio-notes/[noteId]/reactions/route.ts",
+    "29",
+    "supabase"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "claim_collaborators",
+  "why": "service-role only; already unreachable",
+  "mig": "076_rename_artist_profiles_to_user_profiles.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 20,
+  "sites": [
+   [
+    "app//api/claim-collaborators/route.ts",
+    "25",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "email_has_account",
+  "why": "service-role only; already unreachable",
+  "mig": "099_artist_signup_gate_fixes.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 8,
+  "sites": [
+   [
+    "lib//invites/allowlist.ts",
+    "72",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "add_idea_recording_to_work",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 7,
+  "sites": [
+   [
+    "app//api/ideas/[ideaId]/recordings/[recordingId]/add-to-work/route.ts",
+    "34",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "apply_to_opportunity_atomic",
+  "why": "service-role only; already unreachable",
+  "mig": "200_apply_to_opportunity_atomic_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 7,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "claim_next_job",
+  "why": "service-role only; already unreachable",
+  "mig": "123_job_claim_leases.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 7,
+  "sites": [
+   [
+    "lib//jobs/queue.ts",
+    "62",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "workspace_redeem_invitation",
+  "why": "service-role only; already unreachable",
+  "mig": "199_redeem_invitation_variable_conflict.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 7,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "backfill_claimed_collaborators",
+  "why": "service-role only; already unreachable",
+  "mig": "076_rename_artist_profiles_to_user_profiles.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 6,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "check_rate_limit",
+  "why": "service-role only; already unreachable",
+  "mig": "125_rate_limit_retention.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 6,
+  "sites": [
+   [
+    "lib//security/rate-limit.ts",
+    "44",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "claim_work_lyric_block_lock",
+  "why": "service-role only; already unreachable",
+  "mig": "145_writer_room_lyric_snapshots.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 6,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/lock/route.ts",
+    "62",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "workspace_access_permitted",
+  "why": "service-role only; already unreachable",
+  "mig": "197_workspace_structural_integrity.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 6,
+  "sites": [
+   [
+    "lib//workspaces/cohort.ts",
+    "133",
+    "client"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "find_auth_user_id_by_email",
+  "why": "service-role only; already unreachable",
+  "mig": "177_member_client_partner_coexistence.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 5,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "reorder_lyric_blocks",
+  "why": "service-role only; already unreachable",
+  "mig": "138_work_diary_events.sql",
+  "writes": true,
+  "binds": true,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 5,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/reorder/route.ts",
+    "66",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "apply_work_lyric_lift",
+  "why": "service-role only; already unreachable",
+  "mig": "171_writer_room_lyric_lift.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "app//api/works/[workId]/lyric-lifts/[liftId]/apply/route.ts",
+    "26",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "claim_idea_share_link",
+  "why": "service-role only; already unreachable",
+  "mig": "169_ideas_inbox.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "app//api/idea-invites/[token]/accept/route.ts",
+    "18",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "mint_or_rotate_artist_invite",
+  "why": "service-role only; already unreachable",
+  "mig": "101_atomic_invite_mint_rotate.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "lib//invites/mintInvite.ts",
+    "73",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "promote_idea_to_work",
+  "why": "service-role only; already unreachable",
+  "mig": "169_ideas_inbox.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "replace_split_sheet_parties_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "lib//catalogue/splits-io.ts",
+    "128",
+    "client"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "upsert_artist_waitlist",
+  "why": "service-role only; already unreachable",
+  "mig": "100_waitlist_atomic_upsert.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": [
+   [
+    "app//api/waitlist/route.ts",
+    "63",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "workspace_accept_custody_transfer",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_change_member_role_or_status",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_create",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_nominate_owner",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_respond_ownership_nomination",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_revoke_invitation",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "workspace_transition_roster_relationship",
+  "why": "service-role only; already unreachable",
+  "mig": "198_workspace_transactional_rpcs.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 4,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "add_idea_to_collection_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/ideas/[ideaId]/collections/route.ts",
+    "19",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "add_work_member_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "append_song_passport_revision",
+  "why": "service-role only; already unreachable",
+  "mig": "153_song_passport_trust_workflows.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/route.ts",
+    "329",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "branch_idea_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/ideas/[ideaId]/branch/route.ts",
+    "19",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "claim_blanket_agreement_completion",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "claim_docuseal_completion",
+  "why": "service-role only; already unreachable",
+  "mig": "124_docuseal_completion_claim.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "cleanup_rate_limit_hits",
+  "why": "service-role only; already unreachable",
+  "mig": "125_rate_limit_retention.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/cron/cleanup-rate-limits/route.ts",
+    "18",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "complete_blanket_agreement_completion",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "complete_docuseal_completion_claim",
+  "why": "service-role only; already unreachable",
+  "mig": "124_docuseal_completion_claim.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "complete_idea_recording_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/ideas/[ideaId]/recordings/complete/route.ts",
+    "40",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "create_song_passport_approval_snapshot",
+  "why": "service-role only; already unreachable",
+  "mig": "153_song_passport_trust_workflows.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/route.ts",
+    "130",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "designate_song_passport_master",
+  "why": "service-role only; already unreachable",
+  "mig": "154_song_passport_master_graduation.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/route.ts",
+    "157",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "graduate_song_passport_to_release",
+  "why": "service-role only; already unreachable",
+  "mig": "154_song_passport_master_graduation.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/route.ts",
+    "171",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "grant_song_passport_permission",
+  "why": "service-role only; already unreachable",
+  "mig": "153_song_passport_trust_workflows.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/route.ts",
+    "268",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "mark_producer_handoff_working",
+  "why": "service-role only; already unreachable",
+  "mig": "168_producer_handoff_workspace.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/producer-handoffs/[handoffId]/working/route.ts",
+    "30",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "nudge_producer_handoff",
+  "why": "service-role only; already unreachable",
+  "mig": "168_producer_handoff_workspace.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/producer-handoffs/[handoffId]/nudge/route.ts",
+    "30",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "persist_selects_ai_draft",
+  "why": "service-role only; already unreachable",
+  "mig": "173_ai_and_selects_abuse_controls.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "reconcile_blanket_agreement_listings",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ },
+ {
+  "cls": "D",
+  "name": "record_producer_handoff_activity",
+  "why": "service-role only; already unreachable",
+  "mig": "168_producer_handoff_workspace.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/producer-handoffs/[handoffId]/activity/route.ts",
+    "35",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "record_selects_engagement_event",
+  "why": "service-role only; already unreachable",
+  "mig": "173_ai_and_selects_abuse_controls.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/selects/[token]/engagement/route.ts",
+    "84",
+    "service"
+   ],
+   [
+    "app//api/selects/[token]/engagement/route.ts",
+    "123",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "release_blanket_agreement_completion",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/webhooks/docuseal/route.ts",
+    "122",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "release_docuseal_completion_claim",
+  "why": "service-role only; already unreachable",
+  "mig": "124_docuseal_completion_claim.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/webhooks/docuseal/route.ts",
+    "94",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "release_work_lyric_block_lock",
+  "why": "service-role only; already unreachable",
+  "mig": "144_writer_room_section_soft_locks.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/blocks/[blockId]/lock/route.ts",
+    "90",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "remove_idea_from_collection_transactional",
+  "why": "service-role only; already unreachable",
+  "mig": "172_audit_integrity_hardening.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/ideas/[ideaId]/collections/route.ts",
+    "36",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "reorder_launchpad_checklist",
+  "why": "service-role only; already unreachable",
+  "mig": "127_atomic_checklist_reorder.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/admin/checklist/route.ts",
+    "180",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "reorder_work_lyric_lift_sections",
+  "why": "service-role only; already unreachable",
+  "mig": "171_writer_room_lyric_lift.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/lyric-lifts/[liftId]/reorder/route.ts",
+    "37",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "review_producer_mix_return",
+  "why": "service-role only; already unreachable",
+  "mig": "167_returned_mix_review.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/producer-returns/[returnId]/review/route.ts",
+    "38",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "seed_song_passport_value",
+  "why": "service-role only; already unreachable",
+  "mig": "152_song_passport_discovery.sql",
+  "writes": true,
+  "binds": false,
+  "uidp": true,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": [
+   [
+    "app//api/works/[workId]/passport/discovery/route.ts",
+    "31",
+    "service"
+   ]
+  ]
+ },
+ {
+  "cls": "D",
+  "name": "selects_engagement_summaries",
+  "why": "service-role only; already unreachable",
+  "mig": "173_ai_and_selects_abuse_controls.sql",
+  "writes": false,
+  "binds": false,
+  "uidp": false,
+  "sp": "''",
+  "names_roles": true,
+  "grants": [
+   "service_role"
+  ],
+  "refs": 3,
+  "sites": []
+ }
+]
