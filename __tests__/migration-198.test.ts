@@ -934,7 +934,15 @@ describe('public.workspace_change_member_role_or_status — WSR-11 / WSR-07 / F1
       'no_self_role_change',
       'floor',
     ]
-      .map((code) => auditedRefusalViolation('workspace_change_member_role_or_status', code))
+      .flatMap((code) => [
+        auditedRefusalViolation('workspace_change_member_role_or_status', code),
+        // R-26 has two halves and auditedRefusalViolation only proves the first.
+        // A RAISE placed between the audit INSERT and the RETURN rolls that row
+        // back, so the refusal would be unaudited while still passing the audit
+        // check. Plan 10 found exactly that by mutation; this section predates
+        // the helper it added.
+        raisingRefusalViolation('workspace_change_member_role_or_status', code),
+      ])
       .filter((violation): violation is string => violation !== null)
     expect(violations).toEqual([])
   })
@@ -1037,7 +1045,10 @@ describe('public.workspace_nominate_owner — WSR-08 / R-22', () => {
 
   it('audits the two AUTHORITY refusals before returning their codes (R-26)', () => {
     const violations = ['forbidden', 'no_self_nomination']
-      .map((code) => auditedRefusalViolation('workspace_nominate_owner', code))
+      .flatMap((code) => [
+        auditedRefusalViolation('workspace_nominate_owner', code),
+        raisingRefusalViolation('workspace_nominate_owner', code),
+      ])
       .filter((violation): violation is string => violation !== null)
     expect(violations).toEqual([])
   })
@@ -1133,7 +1144,10 @@ describe('public.workspace_respond_ownership_nomination — WSR-08 / R-22', () =
 
   it('audits the accept-path authority refusals before returning their codes (R-26)', () => {
     const violations = ['nominator_no_longer_owner', 'successor_no_longer_a_member']
-      .map((code) => auditedRefusalViolation('workspace_respond_ownership_nomination', code))
+      .flatMap((code) => [
+        auditedRefusalViolation('workspace_respond_ownership_nomination', code),
+        raisingRefusalViolation('workspace_respond_ownership_nomination', code),
+      ])
       .filter((violation): violation is string => violation !== null)
     expect(violations).toEqual([])
   })

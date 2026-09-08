@@ -357,6 +357,14 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
     // `executable` empty, EVERY `not.toMatch` in this file would pass
     // silently and the text-lock would be worse than none. These three
     // assertions are what make the rest of the suite mean something.
+    it('points at migration 198 section (i), which re-scopes the custody assertion', () => {
+      // Item 2 of quick 260907-rev. Without this pointer a reader of 197 alone
+      // sees an unconditional custody assertion and cannot learn that 198 re-scopes
+      // it — the very confusion the comment exists to prevent. Locked so a future
+      // edit cannot delete it silently.
+      expect(migration).toMatch(/198 section \(i\)/)
+    })
+
     it('sql retains substantial executable content, and no comment lines', () => {
       expect(sql.length).toBeGreaterThan(4000)
       expect(sql.split('\n').filter((line) => line.trimStart().startsWith('--'))).toEqual([])
