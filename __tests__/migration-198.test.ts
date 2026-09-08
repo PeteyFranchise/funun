@@ -1,6 +1,14 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 
+// Cross-module drift guards (plan 08). These are imported from source, not
+// restated, so a future divergence between the TypeScript union and the SQL
+// literals fails this suite instead of reaching production — the Phase 38
+// owner-floor-message drift, prevented in the shape migration 197's suite
+// already uses for OWNERSHIP_TRANSFER_STATE_VALUES.
+import { OWNERSHIP_TRANSFER_STATE_VALUES } from '@/lib/workspaces/ownership-transfer'
+import { WORKSPACE_ROLE_VALUES } from '@/lib/workspaces/types'
+
 // ─── migration 198 — the transactional workspace RPC family ───────────────
 //
 // LIMITATION, STATED FIRST: a text-lock test proves what the SQL SAYS. It
@@ -637,6 +645,396 @@ describe('public.workspace_create — the first RPC stamped from the template', 
     expect(comment).toContain('guard_workspace_owner_role_change')
     expect(comment).toContain('created_by')
     expect(comment).toContain('service_role only')
+  })
+})
+
+// ══ Section (c) — public.workspace_change_member_role_or_status ══════════
+
+/**
+ * The audited-refusal shape, asserted the same way in sections (c), (d) and
+ * (e): the branch returning `code` must INSERT its audit row and capture the
+ * id into v_audit_id BEFORE returning, with no other RETURN QUERY in
+ * between — which is what proves the INSERT belongs to THIS branch rather
+ * than to an earlier one.
+ *
+ * This is the machine-checkable half of R-26. A refusal that RAISEs, or one
+ * that returns without auditing, loses the record this phase exists to
+ * guarantee: a RAISE rolls the transaction back INCLUDING the audit row
+ * written moments earlier in it.
+ */
+function auditedRefusalViolation(fn: string, code: string): string | null {
+  const block = functionBlock(fn)
+  const returnAt = block.indexOf(`RETURN QUERY SELECT '${code}'`)
+  if (returnAt < 0) return `public.${fn} has no branch returning the outcome '${code}'`
+
+  const insertAt = block.lastIndexOf('INSERT INTO public.workspace_audit_log', returnAt)
+  if (insertAt < 0) {
+    return `public.${fn}: the '${code}' refusal returns without any preceding audit INSERT (R-26)`
+  }
+
+  const between = block.slice(insertAt, returnAt)
+  if (!between.includes('RETURNING id INTO v_audit_id')) {
+    return `public.${fn}: the '${code}' refusal's audit INSERT does not capture its id into v_audit_id`
+  }
+  if (/RETURN QUERY SELECT/.test(between)) {
+    return (
+      `public.${fn}: the nearest audit INSERT before the '${code}' refusal belongs to an ` +
+      `earlier branch — this branch returns without auditing (R-26)`
+    )
+  }
+  return null
+}
+
+describe('public.workspace_change_member_role_or_status — WSR-11 / WSR-07 / F15', () => {
+  const block = () => functionBlock('workspace_change_member_role_or_status')
+
+  // Asserted as an iterated SET rather than one big string match, so a
+  // missing literal NAMES ITSELF in the failure instead of collapsing nine
+  // outcomes into a single unhelpful boolean.
+  const OUTCOMES = [
+    'ok',
+    'not_found',
+    'forbidden',
+    'forbidden_owner_row',
+    'promotion_requires_transfer',
+    'no_self_role_change',
+    'stale',
+    'illegal_transition',
+    'floor',
+  ]
+
+  it('returns every outcome code plan 12 must map', () => {
+    const body = block()
+    const missing = OUTCOMES.filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  it('accepts no parameter that would let a caller assert their own role (R-21)', () => {
+    const body = block()
+    expect(body).not.toMatch(/p_actor_role\b/)
+    expect(body).not.toMatch(/p_role\b/)
+
+    // Lock the whole signature, not just the absence of one name: any future
+    // parameter carrying an actor-supplied authority claim fails here.
+    const params = body.slice(body.indexOf('(') + 1, body.indexOf('RETURNS TABLE'))
+    const declared = [...params.matchAll(/\bp_[a-z_]+\b/g)].map((m) => m[0])
+    expect([...new Set(declared)].sort()).toEqual([
+      'p_actor_id',
+      'p_expected_role',
+      'p_expected_status',
+      'p_member_id',
+      'p_new_role',
+      'p_new_status',
+      'p_workspace_id',
+    ])
+  })
+
+  it('never sets updated_at by hand — update_updated_at() would overwrite it', () => {
+    expect(block()).not.toMatch(/updated_at\s*=/)
+  })
+
+  it('counts the owner floor AFTER the workspace_members row lock (F15)', () => {
+    const body = block()
+    // Anchored on the locked SELECT's FROM clause, NOT on the first
+    // occurrence of the table name — that one is the %ROWTYPE declaration
+    // in DECLARE, and searching forward from it would find the rank-1
+    // workspaces lock instead, making this assertion weaker than its name.
+    const memberLock = body.indexOf(
+      'FOR NO KEY UPDATE',
+      body.indexOf('FROM public.workspace_members m')
+    )
+    const floorCount = body.indexOf('SELECT count(*) INTO v_other_owners')
+    expect(memberLock).toBeGreaterThan(0)
+    expect(floorCount).toBeGreaterThan(0)
+
+    // The whole of F15 is that the count used to happen in a DIFFERENT
+    // transaction from the write. Counting before the lock would prove
+    // nothing at all — a precondition checked before the lock is a
+    // precondition about a row somebody else may already have changed.
+    expect(floorCount).toBeGreaterThan(memberLock)
+  })
+
+  it('counts the floor with expires_at honoured on both sides (R-28)', () => {
+    const flat = normalizeWhitespace(block())
+    expect(flat).toContain(
+      "SELECT count(*) INTO v_other_owners FROM public.workspace_members m " +
+        "WHERE m.workspace_id = p_workspace_id AND m.role = 'owner' AND m.status = 'active' " +
+        'AND (m.expires_at IS NULL OR m.expires_at > now()) AND m.id <> v_member.id'
+    )
+  })
+
+  it('audits every AUTHORITY refusal before returning its code, and raises in none of them', () => {
+    const violations = [
+      'forbidden',
+      'forbidden_owner_row',
+      'promotion_requires_transfer',
+      'no_self_role_change',
+      'floor',
+    ]
+      .map((code) => auditedRefusalViolation('workspace_change_member_role_or_status', code))
+      .filter((violation): violation is string => violation !== null)
+    expect(violations).toEqual([])
+  })
+
+  it('does not audit the stale CAS or the illegal transition — neither is an authority refusal', () => {
+    const body = block()
+    for (const code of ['stale', 'illegal_transition']) {
+      const returnAt = body.indexOf(`RETURN QUERY SELECT '${code}'`)
+      expect(returnAt).toBeGreaterThan(0)
+      // The returned audit id is NULL because no audit row was written.
+      expect(body.slice(returnAt, returnAt + 120)).toContain('NULL::UUID')
+    }
+  })
+
+  it('re-derives the actor authority from the database, active and unexpired', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'SELECT m.role INTO v_actor_role FROM public.workspace_members m ' +
+        'WHERE m.workspace_id = p_workspace_id AND m.user_id = p_actor_id ' +
+        "AND m.status = 'active' AND (m.expires_at IS NULL OR m.expires_at > now())"
+    )
+  })
+
+  it('updates one row keyed on the primary key — never a multi-row UPDATE', () => {
+    const body = block()
+    const statements = [...body.matchAll(/UPDATE\s+public\.workspace_members[\s\S]*?;/g)]
+    expect(statements.length).toBe(1)
+    expect(normalizeWhitespace(statements[0][0])).toBe(
+      'UPDATE public.workspace_members SET role = COALESCE(p_new_role, role), ' +
+        'status = COALESCE(p_new_status, status) WHERE id = v_member.id;'
+    )
+  })
+
+  it('consults the D-56 kill switch before any write', () => {
+    const body = block()
+    const gate = body.indexOf('public.workspace_access_enabled()')
+    expect(gate).toBeGreaterThan(0)
+    expect(gate).toBeLessThan(body.indexOf('INSERT INTO'))
+    expect(gate).toBeLessThan(body.indexOf('UPDATE public.'))
+  })
+})
+
+// ══ Section (d) — public.workspace_nominate_owner ════════════════════════
+
+describe('public.workspace_nominate_owner — WSR-08 / R-22', () => {
+  const block = () => functionBlock('workspace_nominate_owner')
+
+  const OUTCOMES = [
+    'ok',
+    'forbidden',
+    'no_self_nomination',
+    'successor_not_a_member',
+    'already_owner',
+    'nomination_open',
+  ]
+
+  it('returns every outcome code plan 12 must map', () => {
+    const body = block()
+    const missing = OUTCOMES.filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  it('locks rank 1 workspaces before rank 2 workspace_members', () => {
+    expect(lockedTablesInOrder(block())).toEqual(['workspaces', 'workspace_members'])
+  })
+
+  it('locks the two rank-2 seats in ascending id order (LO-1 within-table rule)', () => {
+    // Both the actor's seat and the successor's seat are rank 2, so LO-1's
+    // ordering rule cannot be satisfied by rank alone. Without ORDER BY,
+    // two nominations in opposite pairings take the same two rows in
+    // opposite orders — a textbook deadlock.
+    expect(normalizeWhitespace(block())).toContain(
+      'FROM public.workspace_members m WHERE m.workspace_id = p_workspace_id ' +
+        'AND m.user_id IN (p_actor_id, p_successor_user_id) ORDER BY m.id FOR NO KEY UPDATE'
+    )
+  })
+
+  it('checks for an open nomination explicitly rather than relying on the unique index', () => {
+    const flat = normalizeWhitespace(block())
+    expect(flat).toContain(
+      'SELECT t.id INTO v_open_nomination FROM public.workspace_ownership_transfers t ' +
+        "WHERE t.workspace_id = p_workspace_id AND t.state = 'offered'"
+    )
+    // The index stays the backstop; it must not be the user-visible error.
+    expect(block()).toContain("RETURN QUERY SELECT 'nomination_open'")
+  })
+
+  it('requires an ACTIVE unexpired owner seat, re-derived rather than parameterised (R-21)', () => {
+    const body = block()
+    expect(body).not.toMatch(/p_actor_role\b/)
+    expect(normalizeWhitespace(body)).toContain("IF v_actor_role IS DISTINCT FROM 'owner' THEN")
+  })
+
+  it('sets offered_by and from_user_id from the same re-derived actor', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'INSERT INTO public.workspace_ownership_transfers ( workspace_id, from_user_id, ' +
+        'to_user_id, offered_by, state ) VALUES ( p_workspace_id, p_actor_id, ' +
+        "p_successor_user_id, p_actor_id, 'offered' )"
+    )
+  })
+
+  it('audits the two AUTHORITY refusals before returning their codes (R-26)', () => {
+    const violations = ['forbidden', 'no_self_nomination']
+      .map((code) => auditedRefusalViolation('workspace_nominate_owner', code))
+      .filter((violation): violation is string => violation !== null)
+    expect(violations).toEqual([])
+  })
+})
+
+// ══ Section (e) — the write-order lock ═══════════════════════════════════
+
+describe('public.workspace_respond_ownership_nomination — WSR-08 / R-22', () => {
+  const block = () => functionBlock('workspace_respond_ownership_nomination')
+
+  const OUTCOMES = [
+    'ok',
+    'not_found',
+    'stale',
+    'already_resolved',
+    'forbidden',
+    'nominator_no_longer_owner',
+    'successor_no_longer_a_member',
+  ]
+
+  it('returns every outcome code plan 12 must map', () => {
+    const body = block()
+    const missing = OUTCOMES.filter((code) => !body.includes(`RETURN QUERY SELECT '${code}'`))
+    expect(missing).toEqual([])
+  })
+
+  // ─────────────────────────────────────────────────────────────────────
+  // THE MOST IMPORTANT ASSERTION IN PLAN 08.
+  //
+  // It compares SOURCE OFFSETS rather than trusting a reader's eye,
+  // because the failure it prevents is invisible on inspection and only
+  // appears at runtime, in production, as SQLSTATE 42501 on a path a
+  // person is standing in front of.
+  // ─────────────────────────────────────────────────────────────────────
+  it('promotes the successor BEFORE demoting the nominator', () => {
+    const body = block()
+    const promote = body.search(/UPDATE\s+public\.workspace_members\s+SET\s+role\s*=\s*'owner'/)
+    const demote = body.search(/UPDATE\s+public\.workspace_members\s+SET\s+role\s*=\s*'admin'/)
+
+    const ordered = promote >= 0 && demote >= 0 && promote < demote
+    const failure =
+      `public.workspace_respond_ownership_nomination writes the promotion at offset ${promote} ` +
+      `and the demotion at offset ${demote}. THE PROMOTION MUST COME FIRST. ` +
+      'guard_workspace_never_zero_owners runs inside this transaction and SEES ITS UNCOMMITTED ' +
+      'WRITES FROM EARLIER STATEMENTS: promoting first means the floor count that runs when the ' +
+      'demotion fires the guard counts the freshly-promoted successor and passes. Demote-then-' +
+      'promote counts ZERO remaining owners and raises SQLSTATE 42501, failing the whole ' +
+      'transfer. This is not a style preference — do not reorder these two statements (R-22).'
+
+    expect(ordered ? [] : [failure]).toEqual([])
+  })
+
+  it('transfers ownership rather than adding a second owner (R-22)', () => {
+    const body = block()
+    // The demotion must exist at all: without it the nominator stays an
+    // owner and the "transfer" has silently become an add-a-second-owner,
+    // which R-22 explicitly defers to a later phase.
+    expect(body).toMatch(/UPDATE\s+public\.workspace_members\s+SET\s+role\s*=\s*'admin'/)
+  })
+
+  it('mutates member rows one row per statement, keyed on the primary key', () => {
+    const statements = [...block().matchAll(/UPDATE\s+public\.workspace_members[\s\S]*?;/g)]
+    expect(statements.length).toBe(2)
+    for (const statement of statements) {
+      expect(normalizeWhitespace(statement[0])).toMatch(/WHERE id = v_\w+_member_id;$/)
+    }
+  })
+
+  it('writes three audit rows on the accept path — one per mutated row', () => {
+    const body = block()
+    const inserts = body.match(/INSERT INTO public\.workspace_audit_log/g) ?? []
+    // Migration 197's deferred constraint triggers are scoped per table and
+    // match on target_id = NEW.id, so each of the three mutated rows needs
+    // its own audit row naming it or the transaction fails at COMMIT.
+    expect(inserts.length).toBeGreaterThanOrEqual(3)
+
+    const acceptAudits = body.slice(body.indexOf("IF p_action = 'accept' THEN", body.indexOf('(5)')))
+    expect(acceptAudits).toContain("'workspace_member', v_successor_member_id")
+    expect(acceptAudits).toContain("'workspace_member', v_nominator_member_id")
+    expect(body).toContain("'workspace_ownership_transfer', p_transfer_id")
+  })
+
+  it('refuses the nominator accepting their own nomination, whatever else is true', () => {
+    const flat = normalizeWhitespace(block())
+    // The F1 attack shape at the ownership layer: one actor performing both
+    // sides of an act R-05 requires to be two-sided.
+    expect(flat).toContain(
+      "IF (p_action IN ('accept', 'decline') AND (p_actor_id <> v_to_user_id " +
+        'OR p_actor_id = v_offered_by OR p_actor_id = v_from_user_id))'
+    )
+    expect(auditedRefusalViolation('workspace_respond_ownership_nomination', 'forbidden')).toBeNull()
+  })
+
+  it('audits the accept-path authority refusals before returning their codes (R-26)', () => {
+    const violations = ['nominator_no_longer_owner', 'successor_no_longer_a_member']
+      .map((code) => auditedRefusalViolation('workspace_respond_ownership_nomination', code))
+      .filter((violation): violation is string => violation !== null)
+    expect(violations).toEqual([])
+  })
+
+  it('locks ranks 1 then 2 then 7, reading the transfer unlocked first', () => {
+    expect(lockedTablesInOrder(block())).toEqual([
+      'workspaces',
+      'workspace_members',
+      'workspace_ownership_transfers',
+    ])
+    // The unlocked pre-read is what makes ascending acquisition possible at
+    // all: the rank-1 and rank-2 rows are not known until the transfer has
+    // been read. It must therefore prove nothing — the locked re-read is
+    // what every precondition is decided against.
+    const body = block()
+    const preRead = body.indexOf('FROM public.workspace_ownership_transfers t')
+    const workspaceLock = body.indexOf('FROM public.workspaces w')
+    expect(preRead).toBeGreaterThan(0)
+    expect(preRead).toBeLessThan(workspaceLock)
+  })
+
+  it('locks the two rank-2 seats in ascending id order (LO-1 within-table rule)', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'FROM public.workspace_members m WHERE m.workspace_id = v_workspace_id ' +
+        'AND m.user_id IN (v_from_user_id, v_to_user_id) ORDER BY m.id FOR NO KEY UPDATE'
+    )
+  })
+
+  it('never sets updated_at by hand, but does set responded_at, which no trigger maintains', () => {
+    const body = block()
+    expect(body).not.toMatch(/updated_at\s*=/)
+    expect(body).toMatch(/responded_at\s*=\s*now\(\)/)
+  })
+})
+
+// ══ Cross-module drift guards ════════════════════════════════════════════
+
+describe('the SQL and the TypeScript modules agree — imported, never restated', () => {
+  it('handles every OWNERSHIP_TRANSFER_STATE_VALUES literal in the responder', () => {
+    const body = functionBlock('workspace_respond_ownership_nomination')
+    const missing = OWNERSHIP_TRANSFER_STATE_VALUES.filter(
+      (state) => !body.includes(`'${state}'`)
+    )
+    expect(missing).toEqual([])
+  })
+
+  it('uses only role literals from the WORKSPACE_ROLE_VALUES union', () => {
+    const known = new Set<string>(WORKSPACE_ROLE_VALUES)
+    const found = new Set<string>()
+
+    // `<something>role = 'x'`, `<something>role <> 'x'`, and the null-safe
+    // comparison — every shape this migration actually uses.
+    const comparison = /role\s*(?:=|<>|IS\s+(?:NOT\s+)?DISTINCT\s+FROM)\s*'([a-z_]+)'/gi
+    let match: RegExpExecArray | null
+    while ((match = comparison.exec(executable)) !== null) found.add(match[1])
+
+    // `<something>role IN ('a', 'b')` and its NOT form.
+    const membership = /role\s+(?:NOT\s+)?IN\s*\(([^)]*)\)/gi
+    while ((match = membership.exec(executable)) !== null) {
+      for (const literal of match[1].matchAll(/'([a-z_]+)'/g)) found.add(literal[1])
+    }
+
+    expect(found.size).toBeGreaterThan(0)
+    expect([...found].filter((role) => !known.has(role))).toEqual([])
   })
 })
 
