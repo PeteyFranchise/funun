@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceRole,
+  WORKSPACE_ACCESS_DISABLED,
+} from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { canManageWorkspaceMembers, isTimeBoxedRole } from '@/lib/workspaces/membership'
 import { WORKSPACE_ROLE_VALUES, type WorkspaceRole } from '@/lib/workspaces/types'
@@ -266,6 +270,98 @@ export async function GET(
 
 const RevokeInvitationSchema = z.object({ invitationId: z.string().uuid() }).strict()
 
+// ─── REVOCATION IS ONE TRANSACTION — public.workspace_revoke_invitation ────
+//
+// This handler used to issue THREE PostgREST calls, which are THREE
+// transactions: `.update({ status: 'revoked' })` on the invitation, then
+// `.update({ status: 'removed' })` on the paired pending seat, then one
+// `logWorkspaceAction`. Migration 197's `assert_workspace_change_is_audited`
+// is a DEFERRED constraint trigger that demands, at COMMIT, an audit row
+// whose `target_id` is the mutated row's own id and whose `created_at`
+// equals `now()` — and `NOW()` is `transaction_timestamp()`, one value per
+// transaction. So the single audit row landed in the THIRD transaction and
+// could never match the FIRST one's `now()`, and the seat update had no
+// audit row at all. Once 197 applies, BOTH mutations abort at COMMIT and
+// invitation revocation stops working outright.
+//
+// Migration 198 section (j) does all of it in one transaction: it locks in
+// LO-1 order (rank 1 `workspaces`, rank 2 the paired pending seats, rank 4
+// the invitation), revalidates every precondition under those locks,
+// re-derives the caller's authority from the database rather than trusting a
+// parameter (R-21), sweeps the seats one row per statement, and writes an
+// audit row per mutated row. Those two `.update()` calls were the LAST
+// route-side consequential writers outside the RPC family; this handler
+// writes nothing directly, and it no longer calls `logWorkspaceAction`.
+//
+// The read below is KEPT, in the shape
+// `app/api/workspaces/[workspaceId]/members/route.ts` uses: it produces the
+// friendly pre-refusals this route can make cheaply and supplies the
+// compare-and-set token the RPC checks against the LOCKED row. It writes
+// nothing — and it no longer selects `email` or `role`, because the pairing
+// is the RPC's business now and this route has no reason to hold a second
+// copy of somebody's address (WSR-19).
+//
+// The vocabulary below is migration 198 section (j)'s, in full:
+// ok, not_found, forbidden, not_pending, stale.
+const REVOKE_OUTCOMES: Record<string, { error: string; status: number }> = {
+  not_found: { error: 'Invitation not found.', status: 404 },
+  forbidden: {
+    error: 'Only owners and admins can revoke workspace invitations.',
+    status: 403,
+  },
+  // The sentence and status this handler has always returned for a
+  // non-pending invitation, preserved exactly.
+  not_pending: { error: 'Only a pending invitation can be revoked.', status: 400 },
+  stale: {
+    error: 'This invitation changed while you were viewing it. Reload and try again.',
+    status: 409,
+  },
+}
+
+const UNRECOGNISED_REVOKE_OUTCOME = {
+  error: 'That invitation could not be revoked.',
+  status: 400,
+}
+
+type RevokeInvitationOutcome = {
+  outcome: string
+  invitation_id: string | null
+  seats_removed: number | null
+  invitation_audit_id: string | null
+  member_audit_id: string | null
+}
+
+// ─── Postgres error code → response ─────────────────────────────────────────
+// Migration 198 sets `SET LOCAL lock_timeout = '3s'` in every RPC precisely so
+// that a blocked row lock becomes a bounded, retryable failure rather than a
+// hung request. `55P03` (lock not available) is that timeout arriving, and
+// `40P01` (deadlock detected) is the other bounded outcome; both mean "nothing
+// was written, ask again", which is a 409 the caller can act on — never a 500.
+//
+// `42501` is the RPC's own refusal when the D-56 control is off.
+// `requireWorkspaceAccess` above already answers that with a 503, so this
+// entry exists for the window where the switch flips BETWEEN the gate and the
+// RPC: the second layer must give the SAME answer as the first — and the same
+// sentence, which is why `WORKSPACE_ACCESS_DISABLED` is imported rather than
+// retyped.
+type PostgresLikeError = { message: string; code?: string }
+
+const RETRYABLE_LOCK_CODES: ReadonlySet<string> = new Set(['40P01', '55P03'])
+const ACCESS_DISABLED_CODE = '42501'
+
+const LOCK_CONTENTION_MESSAGE =
+  'This workspace was being changed by someone else. Nothing was saved — please try again.'
+
+function respondToPostgresError(error: PostgresLikeError): NextResponse {
+  if (error.code === ACCESS_DISABLED_CODE) {
+    return NextResponse.json({ error: WORKSPACE_ACCESS_DISABLED }, { status: 503 })
+  }
+  if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
+    return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
+  }
+  return NextResponse.json({ error: error.message }, { status: 500 })
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ workspaceId: string }> }
@@ -294,9 +390,13 @@ export async function DELETE(
   }
 
   const service = createServiceClient()
+
+  // The read-only pre-refusal layer. It writes nothing, and it reads only the
+  // two columns it needs: the id it was given back, and the status that
+  // becomes the RPC's compare-and-set token.
   const { data: target, error: targetError } = await service
     .from('workspace_invitations')
-    .select('id, status, email, role')
+    .select('id, status')
     .eq('id', parsed.data.invitationId)
     .eq('workspace_id', workspaceId)
     .maybeSingle()
@@ -308,33 +408,31 @@ export async function DELETE(
     return NextResponse.json({ error: 'Only a pending invitation can be revoked.' }, { status: 400 })
   }
 
-  const { error: updateError } = await service
-    .from('workspace_invitations')
-    .update({ status: 'revoked' })
-    .eq('id', target.id)
+  // ─── THE ONE WRITE ───────────────────────────────────────────────────────
+  // `p_actor_id` is the identity `requireWorkspaceAccess` already proved; the
+  // RPC re-derives that actor's authority itself and accepts no role
+  // parameter (R-21). `p_expected_status` is the status this route just read,
+  // so an invitation that moved between this read and the RPC's lock comes
+  // back as `'stale'` rather than overwriting somebody else's change. The
+  // paired pending seats are found, locked, swept and audited inside the same
+  // transaction — this route neither names them nor writes them.
+  const { data: rpcData, error: rpcError } = await service
+    .rpc('workspace_revoke_invitation', {
+      p_actor_id: gated.userId,
+      p_workspace_id: workspaceId,
+      p_invitation_id: target.id,
+      p_expected_status: target.status,
+    })
+    .single()
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (rpcError) return respondToPostgresError(rpcError as PostgresLikeError)
 
-  // Set the paired pending seat's status to 'removed' too — a revoked
-  // invitation must not leave a dangling pending seat behind (D-14: status
-  // update only, never a DELETE against workspace_members).
-  await service
-    .from('workspace_members')
-    .update({ status: 'removed' })
-    .eq('workspace_id', workspaceId)
-    .eq('invited_email', target.email)
-    .eq('role', target.role)
-    .eq('status', 'pending')
+  const result = (rpcData as RevokeInvitationOutcome | null) ?? null
+  if (!result || result.outcome !== 'ok') {
+    const mapped = REVOKE_OUTCOMES[result?.outcome ?? ''] ?? UNRECOGNISED_REVOKE_OUTCOME
+    return NextResponse.json({ error: mapped.error }, { status: mapped.status })
+  }
 
-  await logWorkspaceAction(service, {
-    workspaceId,
-    actorId: gated.userId,
-    subjectMemberId: null,
-    action: 'workspace.invitation.revoked',
-    targetType: 'workspace_invitation',
-    targetId: target.id,
-    changes: { status: { before: 'pending', after: 'revoked' } },
-  })
-
-  return NextResponse.json({ data: { id: target.id, status: 'revoked' } })
+  // The existing response shape, unchanged, so no client change is needed.
+  return NextResponse.json({ data: { id: result.invitation_id, status: 'revoked' } })
 }

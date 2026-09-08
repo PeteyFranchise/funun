@@ -332,11 +332,23 @@ describe('migration 198 — header states the doctrine every later plan copies',
   // rank table are held to. It is NOT a weakening: the assertion is stronger,
   // because it additionally requires the stale notice to be GONE rather than
   // merely contradicted further down.
-  it('declares itself COMPLETE as of plan 11, and keeps the staged-authorship record', () => {
+  // AMENDED AGAIN by the quick task .planning/quick/260907-revoke-rpc/, for
+  // the same reason and by the same discipline: the file grew a section (j),
+  // so a header still claiming the inventory stops at (i) would be false. The
+  // header and its twin test change together — NEVER the test alone, and
+  // never the header alone. It is NOT a weakening. Every clause the plan-11
+  // version asserted is still asserted verbatim, and one is ADDED: the
+  // reopening must be recorded in the header rather than folded in silently,
+  // so a reader who trusted "closed by plan 11" learns that it was reopened
+  // once, why, and by whom.
+  it('declares itself COMPLETE through section (j), and keeps the staged-authorship record', () => {
     expect(prose).toContain('THIS FILE IS COMPLETE')
-    expect(prose).toContain('Sections (a) through (i) all exist')
+    expect(prose).toContain('Sections (a) through (j) all exist')
     expect(prose).toMatch(/Plans 08, 10 and 11 APPENDed to this file/)
     expect(prose).not.toContain('THIS FILE IS INCOMPLETE')
+    // The reopening is on the record, not folded in silently.
+    expect(prose).toContain('THE ONE REOPENING, RECORDED RATHER THAN QUIETLY FOLDED IN')
+    expect(prose).toContain('.planning/quick/260907-revoke-rpc/')
     // Complete is not applied. The distinction is load-bearing: 198 pushes
     // with 197 and the plans 12-16 TypeScript in one window at plan 17.
     expect(prose).toContain('COMPLETE AND UNAPPLIED ARE DIFFERENT THINGS')
@@ -1967,6 +1979,230 @@ describe('the re-scoped custody audit assertion agrees with section (h)', () => 
   })
 })
 
+// ══ Section (j) — public.workspace_revoke_invitation ═════════════════════
+
+describe('public.workspace_revoke_invitation — WSR-10 / D-12 / D-14', () => {
+  const block = () => functionBlock('workspace_revoke_invitation')
+
+  // The vocabulary the DELETE handler of
+  // app/api/workspaces/[workspaceId]/invitations/route.ts maps to HTTP.
+  const OUTCOMES = ['ok', 'not_found', 'forbidden', 'not_pending', 'stale']
+
+  it('exists with the signature the revoke route maps to HTTP statuses', () => {
+    const flat = normalizeWhitespace(block())
+    expect(flat).toContain('CREATE OR REPLACE FUNCTION public.workspace_revoke_invitation(')
+    for (const parameter of [
+      'p_actor_id UUID',
+      'p_workspace_id UUID',
+      'p_invitation_id UUID',
+      'p_expected_status TEXT',
+    ]) {
+      expect(flat).toContain(parameter)
+    }
+    // R-21: no parameter through which a caller could assert its own role.
+    expect(flat).not.toContain('p_actor_role')
+  })
+
+  it('returns every outcome code the revoke route must map', () => {
+    const body = block()
+    for (const outcome of OUTCOMES) {
+      expect(body).toContain(`RETURN QUERY SELECT '${outcome}'`)
+    }
+  })
+
+  it('locks the workspace, the paired seats, then the invitation (LO-1: 1 -> 2 -> 4)', () => {
+    // Two mutated tables, so the ranked order is load-bearing rather than
+    // incidental. A future edit that locked the invitation before the seats
+    // would take rank 4 before rank 2 and invert LO-1.
+    expect(lockedTablesInOrder(block())).toEqual([
+      'workspaces',
+      'workspace_members',
+      'workspace_invitations',
+    ])
+  })
+
+  it('locks the paired seats in ascending id order (LO-1 within-table rule)', () => {
+    // Several pending seats can pair with one invited address, because
+    // idx_workspace_members_unique_user is PARTIAL and does not constrain
+    // NULL-user_id rows. Without ORDER BY, two concurrent revocations with
+    // overlapping seat sets take the same rows in opposite orders — a
+    // textbook deadlock, and the same hazard section (d) guards against.
+    expect(normalizeWhitespace(block())).toContain(
+      'PERFORM 1 FROM public.workspace_members m ' +
+        'WHERE m.workspace_id = p_workspace_id ' +
+        "AND m.status = 'pending' AND m.role = v_pre_role AND m.role <> 'owner' " +
+        'AND lower(m.invited_email) = lower(v_pre_email) ' +
+        'ORDER BY m.id FOR NO KEY UPDATE'
+    )
+  })
+
+  it('re-checks the unlocked pre-read against the LOCKED invitation row', () => {
+    // The pre-read exists only to NAME the rank-2 rows: the seats are paired
+    // to the invitation by address and role, and neither is known until the
+    // invitation has been read, so reading it unlocked is the only way to
+    // acquire rank 2 before rank 4. It therefore proves nothing, and this
+    // assertion is what keeps it proving nothing: if the locked row disagrees
+    // with the pre-read, the rank-2 locks are on the wrong rows and the
+    // function must return without mutating anything.
+    const flat = normalizeWhitespace(block())
+    expect(flat).toContain(
+      'IF lower(v_invitation_email) IS DISTINCT FROM lower(v_pre_email) ' +
+        'OR v_invitation_role IS DISTINCT FROM v_pre_role THEN'
+    )
+    const body = block()
+    const drift = body.indexOf('IF lower(v_invitation_email) IS DISTINCT FROM')
+    expect(drift).toBeGreaterThan(0)
+    // and it happens BEFORE the first mutation, so the drift branch cannot
+    // return having already written something.
+    expect(drift).toBeLessThan(body.indexOf('UPDATE public.workspace_invitations'))
+  })
+
+  it('re-derives the actor authority from the database, active and unexpired', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'SELECT m.role INTO v_actor_role FROM public.workspace_members m ' +
+        'WHERE m.workspace_id = p_workspace_id AND m.user_id = p_actor_id ' +
+        "AND m.status = 'active' AND (m.expires_at IS NULL OR m.expires_at > now())"
+    )
+    // canManageWorkspaceMembers, expressed where the locks are held.
+    expect(normalizeWhitespace(block())).toContain(
+      "IF v_actor_role IS NULL OR v_actor_role NOT IN ('owner', 'admin') THEN"
+    )
+  })
+
+  it('audits the AUTHORITY refusal before returning its code, and raises in none of it', () => {
+    const fn = 'workspace_revoke_invitation'
+    expect(auditedRefusalViolation(fn, 'forbidden')).toBeNull()
+    expect(raisingRefusalViolation(fn, 'forbidden')).toBeNull()
+  })
+
+  it('does not audit not_pending or the stale CAS — neither is an authority refusal', () => {
+    // R-26. Losing a race, or naming an invitation somebody already resolved,
+    // is a business outcome about the caller's stale copy. Auditing those
+    // would bury the refusal above that does belong on the record.
+    const body = block()
+    for (const outcome of ['not_pending', 'stale']) {
+      const returnAt = body.indexOf(`RETURN QUERY SELECT '${outcome}'`)
+      expect(returnAt).toBeGreaterThan(0)
+      // The audit id column is NULL on these paths.
+      expect(body.slice(returnAt, returnAt + 140)).toContain('NULL::UUID')
+    }
+  })
+
+  it('sweeps the seats one row per statement, keyed on the primary key', () => {
+    // A single statement touching two workspace_members rows would fire each
+    // BEFORE ROW guard twice, each invocation blind to the other's pending
+    // change — this file's header rule. And migration 197's deferred
+    // assertion is FOR EACH ROW matching target_id = NEW.id, so each seat
+    // needs its own audit row regardless.
+    const body = block()
+    const statements = [...body.matchAll(/UPDATE\s+public\.workspace_members[\s\S]*?;/g)]
+    expect(statements).toHaveLength(1)
+    expect(normalizeWhitespace(statements[0][0])).toBe(
+      "UPDATE public.workspace_members SET status = 'removed' WHERE id = v_seat_id;"
+    )
+    // …and it is inside the FOREACH, which is what makes "one row per
+    // statement" a sweep rather than a single-seat handler.
+    expect(body).toContain('FOREACH v_seat_id IN ARRAY v_seat_ids')
+  })
+
+  it('collects the seats from the LOCKED invitation, never from the pre-read', () => {
+    expect(normalizeWhitespace(block())).toContain(
+      'SELECT COALESCE(array_agg(m.id ORDER BY m.id), ARRAY[]::UUID[]) ' +
+        'INTO v_seat_ids FROM public.workspace_members m ' +
+        'WHERE m.workspace_id = p_workspace_id ' +
+        "AND m.status = 'pending' AND m.role = v_invitation_role " +
+        "AND m.role <> 'owner' " +
+        'AND lower(m.invited_email) = lower(v_invitation_email)'
+    )
+  })
+
+  it('never touches an owner seat from this path (R-05 / R-22)', () => {
+    // Owner seats move only at workspace creation or through the two-sided
+    // transfer. Migration 197's guard_workspace_owner_role_change returns at
+    // its postgres exemption inside this postgres-owned definer function and
+    // would therefore ADMIT the write, so the exclusion has to be explicit
+    // here — exactly as section (f) refuses an owner-role invitation rather
+    // than trusting the same guard. Both the locking statement and the
+    // collecting statement carry it: excluding it from only one would lock
+    // rows it then refused to name, or name rows it never locked.
+    const owners = [...normalizeWhitespace(block()).matchAll(/m\.role <> 'owner'/g)]
+    expect(owners).toHaveLength(2)
+  })
+
+  it('writes one audit row per mutated table, each targeting the mutated row', () => {
+    // Migration 197 installs its deferred assertions PER TABLE and each
+    // matches on target_id = NEW.id, so an invitation audit row cannot
+    // satisfy the workspace_members assertion and vice versa. This is the
+    // exact defect the route had: one log line for two mutated tables.
+    const body = block()
+    expect(body).toContain(
+      "'workspace.invitation.revoked', NULL,\n    'workspace_invitation', v_invitation_id"
+    )
+    expect(body).toContain(
+      "'workspace.member.status_changed', NULL,\n      'workspace_member', v_seat_id"
+    )
+    // No audit INSERT names a null target — the shape migration 197 refuses.
+    expect(body).not.toMatch(/'workspace_(?:invitation|member)',\s*NULL/)
+  })
+
+  it('never sets updated_at by hand — update_updated_at() would overwrite it', () => {
+    expect(block()).not.toMatch(/updated_at\s*=/)
+  })
+
+  it('consults the D-56 kill switch before any write', () => {
+    const body = block()
+    const gate = body.indexOf('public.workspace_access_enabled()')
+    expect(gate).toBeGreaterThan(0)
+    expect(gate).toBeLessThan(body.indexOf('INSERT INTO'))
+    expect(gate).toBeLessThan(body.indexOf('UPDATE public.'))
+  })
+
+  it('puts no restricted PII key in anything it builds (WSR-19)', () => {
+    const literals = new Set([...block().matchAll(/'([a-z_]+)'/g)].map((m) => m[1]))
+    const restricted = [
+      'email',
+      'phone',
+      'contact_email',
+      'contact_phone',
+      'address',
+      'tax_id',
+      'token',
+      'token_hash',
+      'ipi',
+      'isni',
+    ]
+    expect(restricted.filter((key) => literals.has(key))).toEqual([])
+  })
+
+  it('never reads auth.users or auth.uid — the identity comes from the route', () => {
+    expect(block()).not.toContain('auth.users')
+    expect(block()).not.toContain('auth.uid')
+  })
+
+  it('documents its lock order, preconditions, triggers and same-transaction audit', () => {
+    const comment = normalizeWhitespace(
+      sql.slice(
+        sql.indexOf('COMMENT ON FUNCTION public.workspace_revoke_invitation'),
+        sql.indexOf(
+          "';",
+          sql.indexOf('COMMENT ON FUNCTION public.workspace_revoke_invitation')
+        )
+      )
+    )
+    expect(comment).toContain('ONE transaction')
+    expect(comment).toContain('LOCK RANKS, IN ORDER')
+    expect(comment).toContain('FOR NO KEY UPDATE')
+    expect(comment).toContain('REVALIDATED AFTER THE LOCKS')
+    expect(comment).toContain('ONE-ROW STATEMENTS')
+    expect(comment).toContain('AN OWNER SEAT IS NEVER TOUCHED')
+    expect(comment).toContain('TRIGGERS THAT FIRE')
+    for (const outcome of OUTCOMES) {
+      expect(comment).toContain(outcome)
+    }
+    expect(comment).toContain('service_role only')
+  })
+})
+
 // ══ Whole-file completeness — the guard against a later truncation ═══════
 
 describe('migration 198 is COMPLETE — every function it should carry is present', () => {
@@ -1984,9 +2220,14 @@ describe('migration 198 is COMPLETE — every function it should carry is presen
     'workspace_transition_roster_relationship',
     'workspace_accept_custody_transfer',
     'guard_custody_transfer_transition',
+    // Section (j), appended by .planning/quick/260907-revoke-rpc/ after plan
+    // 11 closed the file. Added to the enumeration rather than left out of
+    // it: the whole point of this array is that a function which vanished in
+    // a later edit names itself, and one that is never listed cannot.
+    'workspace_revoke_invitation',
   ]
 
-  it('declares all eight functions plans 06, 08, 10 and 11 authored', () => {
+  it('declares all nine functions plans 06, 08, 10, 11 and the revoke quick task authored', () => {
     const present = new Set(functionNames())
     const missing = EXPECTED_FUNCTIONS.filter((name) => !present.has(name)).map(
       (name) =>
@@ -1997,9 +2238,9 @@ describe('migration 198 is COMPLETE — every function it should carry is presen
     expect(missing).toEqual([])
   })
 
-  it('declares seven RPCs and one trigger function, and nothing else', () => {
+  it('declares eight RPCs and one trigger function, and nothing else', () => {
     expect(functionNames().sort()).toEqual([...EXPECTED_FUNCTIONS].sort())
-    expect(rpcFunctionNames()).toHaveLength(7)
+    expect(rpcFunctionNames()).toHaveLength(8)
   })
 })
 
