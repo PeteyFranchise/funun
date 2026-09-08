@@ -1,7 +1,10 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 
-import { WORKSPACE_OWNER_FLOOR_MESSAGE } from '@/lib/workspaces/membership'
+import {
+  WORKSPACE_OWNER_FLOOR_MESSAGE,
+  WORKSPACE_PROJECT_ACCESS_ROLES,
+} from '@/lib/workspaces/membership'
 
 // ─── migration 197 — workspace structural integrity ────────────────────────
 //
@@ -187,6 +190,166 @@ const DECLARED_AUDIT_RETURN_LIST =
   'action TEXT, permission_relied_on TEXT, target_type TEXT, target_id UUID, ' +
   'changes JSONB, changes_redacted BOOLEAN, created_at TIMESTAMPTZ )'
 
+// ─── PLAN 09 — the function and policy headers sections (i)-(l) install ───
+const ROSTER_PAGE = 'CREATE OR REPLACE FUNCTION public.workspace_roster_page('
+const PROJECT_PERMISSION = 'CREATE OR REPLACE FUNCTION public.workspace_project_permission('
+const ACCESS_PERMITTED = 'CREATE OR REPLACE FUNCTION public.workspace_access_permitted('
+
+// Sliced lazily rather than at module scope: statementBlock asserts through
+// `expect`, which belongs inside a test.
+function rosterSelectPolicy(): string {
+  return statementBlock(
+    'CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster_relationships'
+  )
+}
+
+function workspacesSelectPolicy(): string {
+  return statementBlock('CREATE POLICY "workspaces_select_member" ON public.workspaces')
+}
+
+// ─── HARNESS 9 (plan 09) — the unwrapped-helper-call collector ────────────
+// The migration 186 idiom, lifted to module scope so sections (i) and (j)
+// can each apply it to their own policy. Plan 07 wrote the same logic inline
+// for the audit policy; that test is deliberately left exactly as it is, and
+// this is an independent copy rather than a refactor of it.
+//
+// The standing rule (078/136/182-186/192): every helper call inside a policy
+// body is wrapped as a scalar subselect `(SELECT public.f(...))`. Returns the
+// call sites that are NOT, with surrounding context, so a failure shows WHICH
+// call is bare rather than only that one is.
+function unwrappedHelperCalls(policy: string): string[] {
+  const pattern = /public\.[a-z_]+\s*\(/g
+  const unwrapped: string[] = []
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(policy)) !== null) {
+    const preceding = policy.slice(Math.max(0, match.index - 8), match.index)
+    if (!preceding.endsWith('(SELECT ')) {
+      unwrapped.push(
+        policy.slice(Math.max(0, match.index - 40), match.index + 40).replace(/\s+/g, ' ')
+      )
+    }
+  }
+  return unwrapped
+}
+
+// ─── HARNESS 10 (plan 09) — hop 2's role conjunct, isolated ───────────────
+// Sliced out of the function body so an assertion about WHICH roles clear the
+// floor cannot be satisfied by a role literal belonging to another statement
+// in the same file (section (c)'s owner guard names 'owner' repeatedly, and
+// section (h)'s audit predicate names 'owner' and 'admin').
+function roleConjunct(): string {
+  const block = functionBlock(PROJECT_PERMISSION)
+  const match = block.match(/AND m\.role IN \(([^)]*)\)/)
+  expect(match).not.toBeNull()
+  return match![1]
+}
+
+// ─── HARNESS 11 (plan 09) — a function body as trimmed, non-empty lines ───
+// For the line-by-line comparison of workspace_project_permission v3 against
+// migration 192's v2. Comment lines are already gone from `sql`; migration
+// 192 is read raw, so they are stripped here too.
+function bodyOf(source: string, header: string): string[] {
+  const start = source.indexOf(header)
+  expect(start).toBeGreaterThanOrEqual(0)
+  const bodyStart = source.indexOf('AS $$', start)
+  expect(bodyStart).toBeGreaterThan(start)
+  const end = source.indexOf('\n$$;', bodyStart)
+  expect(end).toBeGreaterThan(bodyStart)
+  return source
+    .slice(bodyStart, end)
+    .split('\n')
+    .filter((line) => line.trim().length > 0 && !line.trimStart().startsWith('--'))
+}
+
+// The FIFTEEN column names in ROSTER_COLUMNS in
+// app/api/workspaces/[workspaceId]/roster/route.ts, in the order that file
+// lists them. workspace_roster_page's declared return list must be a superset
+// of what the route renders, or plan 15's repoint drops a field.
+const ROSTER_COLUMN_NAMES = [
+  'id',
+  'workspace_id',
+  'member_user_id',
+  'professional_role',
+  'state',
+  'effective_from',
+  'terminates_on',
+  'proposed_by',
+  'accepted_at',
+  'refused_at',
+  'ended_at',
+  'ended_by',
+  'end_reason',
+  'created_at',
+  'updated_at',
+] as const
+
+// ─── The cohort RPC contract — a SQL/TypeScript drift guard ───────────────
+// lib/workspaces/cohort.ts (plan 02, wave 1) destructures the RPC result
+// through its WorkspaceAccessPermittedRow type. That type is not exported, so
+// the two field names are read from the module's SOURCE TEXT rather than
+// imported — the same technique plan 05 used for the ownership state
+// literals. A rename on either side now fails HERE.
+const COHORT_MODULE_SOURCE = readFileSync(
+  path.join(process.cwd(), 'lib/workspaces/cohort.ts'),
+  'utf8'
+)
+const COHORT_ROW_FIELDS = [
+  ...(COHORT_MODULE_SOURCE.match(
+    /type WorkspaceAccessPermittedRow = \{([\s\S]*?)\}/
+  )?.[1].matchAll(/^\s*([a-z_]+):/gm) ?? []),
+].map((entry) => entry[1])
+
+// ─── The completeness manifest — sections (a) through (l) ─────────────────
+// Migration 197 is authored by THREE plans appending to ONE file. This is the
+// guard that the file is whole: every section's principal object, enumerated
+// so an accidental truncation during a later edit fails by NAME.
+const MIGRATION_197_OBJECTS: ReadonlyArray<readonly [string, string]> = [
+  ['(a)', 'CREATE TABLE public.workspace_ownership_transfers'],
+  ['(a)', 'CREATE OR REPLACE FUNCTION public.ownership_transfer_visible'],
+  ['(a)', 'CREATE POLICY "workspace_ownership_transfers_select"'],
+  ['(a)', 'CREATE OR REPLACE FUNCTION public.guard_ownership_nomination_by_active_owner()'],
+  ['(a)', 'CREATE OR REPLACE FUNCTION public.guard_ownership_transfer_transition()'],
+  ['(b)', 'CREATE TABLE public.workspace_cohorts'],
+  ['(c)', 'CREATE OR REPLACE FUNCTION public.guard_workspace_owner_role_change()'],
+  ['(c)', 'CREATE TRIGGER guard_workspace_member_owner_role_change'],
+  ['(d)', 'CREATE OR REPLACE FUNCTION public.guard_workspace_never_zero_owners()'],
+  ['(e)', 'REVOKE UPDATE, DELETE, TRUNCATE ON public.workspace_audit_log'],
+  ['(e)', 'CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_append_only()'],
+  ['(e)', 'CREATE POLICY "workspace_audit_log_no_update"'],
+  ['(e)', 'CREATE POLICY "workspace_audit_log_no_delete"'],
+  ['(f)', 'CREATE OR REPLACE FUNCTION public.guard_workspace_audit_log_no_restricted_pii()'],
+  ['(g)', 'CREATE OR REPLACE FUNCTION public.assert_workspace_change_is_audited()'],
+  ['(g)', 'CREATE CONSTRAINT TRIGGER assert_workspace_member_change_audited'],
+  ['(h)', 'CREATE OR REPLACE FUNCTION public.workspace_audit_page('],
+  ['(h)', 'DROP POLICY IF EXISTS "workspace_audit_log_select"'],
+  ['(h)', 'CREATE POLICY "workspace_audit_log_select"'],
+  ['(h)', 'CREATE OR REPLACE FUNCTION public.workspace_audit_visible('],
+  ['(i)', 'DROP POLICY IF EXISTS "workspace_roster_relationships_select"'],
+  ['(i)', 'CREATE POLICY "workspace_roster_relationships_select"'],
+  ['(i)', 'CREATE OR REPLACE FUNCTION public.workspace_roster_page('],
+  ['(j)', 'DROP POLICY IF EXISTS "workspaces_select_member"'],
+  ['(j)', 'CREATE POLICY "workspaces_select_member"'],
+  ['(k)', 'CREATE OR REPLACE FUNCTION public.workspace_project_permission('],
+  ['(l)', 'CREATE OR REPLACE FUNCTION public.workspace_access_permitted('],
+] as const
+
+// The twelve section headings, in file order, as they read in the header
+// prose once de-wrapped.
+const SECTION_MARKERS = [
+  '(a) public.workspace_ownership_transfers',
+  '(b) public.workspace_cohorts',
+  '(c) public.guard_workspace_owner_role_change()',
+  '(d) public.guard_workspace_never_zero_owners(), REPLACED',
+  '(e) THE AUDIT LOCKDOWN',
+  '(f) THE RESTRICTED-PII WRITE GUARD',
+  '(g) THE DEFERRED AUDIT-ASSERTION TRIGGERS',
+  '(h) THE REDACTED AUDIT READ',
+  '(i) THE ROSTER PROPOSAL NARROWING',
+  '(j) workspaces_select_member, WITHOUT THE CREATOR FALLBACK',
+  '(k) workspace_project_permission v3',
+  '(l) public.workspace_access_permitted',
+] as const
+
 describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', () => {
   // ══ Harness sanity — every negative assertion below depends on this ══
   describe('the stripped views are non-empty (no assertion passes vacuously)', () => {
@@ -228,9 +391,29 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(prose).toMatch(/No agent opened a database connection of any kind/)
     })
 
-    it('states that the file is INCOMPLETE until plan 09 closes it', () => {
-      expect(prose).toMatch(/DELIBERATELY INCOMPLETE UNTIL PLAN 09/)
-      expect(prose).toMatch(/plans 07 and 09 APPEND/i)
+    // REWRITTEN BY PLAN 09, and the reason is here rather than only in the
+    // SUMMARY. Plan 05 wrote this assertion as
+    //   expect(prose).toMatch(/DELIBERATELY INCOMPLETE UNTIL PLAN 09/)
+    // to text-lock a sentence whose ENTIRE PURPOSE was to expire when plan
+    // 09 closed the file. Plan 09 is that plan. Keeping the old form would
+    // have required the finished migration to keep telling reviewers it was
+    // unfinished — the assertion would have been enforcing a lie.
+    //
+    // It is REPLACED, not deleted, and the replacement is STRICTLY STRONGER:
+    // it locks the closure claim, the three-plan authorship, the twelve-
+    // section inventory, and — the part that actually matters — that
+    // COMPLETE IS NOT THE SAME AS PUSHED. A future edit that appends a
+    // thirteenth section, or that quietly reads "complete" as "ready to
+    // apply", fails here.
+    it('states that the file is COMPLETE as of plan 09, and STILL UNAPPLIED', () => {
+      expect(prose).toMatch(/THE FILE IS NOW CLOSED/)
+      expect(prose).toMatch(/THIS FILE IS COMPLETE AS OF PLAN 09/)
+      expect(prose).toMatch(/NOTHING FURTHER IS APPENDED TO IT/)
+      expect(prose).toMatch(/COMPLETE IS NOT THE SAME AS PUSHED. IT REMAINS UNAPPLIED/)
+      expect(prose).toMatch(/Sections \(a\)-\(d\) are plan 05's, \(e\)-\(h\) are plan 07's, and \(i\)-\(l\) are plan 09's/)
+      expect(prose).toMatch(/THE TWELVE SECTIONS, IN FILE ORDER/)
+      // The sentence it replaced must be GONE, not merely outnumbered.
+      expect(prose).not.toMatch(/DELIBERATELY INCOMPLETE/)
     })
 
     it('states that 197 pushes WITH 198 and is never staged alone', () => {
@@ -1138,4 +1321,507 @@ describe('migration 197 — workspace structural integrity (plans 05, 07, 09)', 
       expect(migration.match(/HUMAN-GATED/g)?.length ?? 0).toBeGreaterThanOrEqual(1)
     })
   })
+
+  // ══ (i) the roster proposal narrowing — WSR-18 / R-12 ═════════════════
+  describe('(i) workspace_roster_relationships_select — the proposal narrowing', () => {
+    it('drops the migration 183 policy BEFORE recreating it', () => {
+      const dropIndex = sql.indexOf(
+        'DROP POLICY IF EXISTS "workspace_roster_relationships_select" ON public.workspace_roster_relationships;'
+      )
+      const createIndex = sql.indexOf(
+        'CREATE POLICY "workspace_roster_relationships_select" ON public.workspace_roster_relationships'
+      )
+      expect(dropIndex).toBeGreaterThanOrEqual(0)
+      expect(createIndex).toBeGreaterThan(dropIndex)
+    })
+
+    it('carries all four visibility branches', () => {
+      const policy = normalizeWhitespace(rosterSelectPolicy())
+      // 1 — the named Member, including while proposed (D-05).
+      expect(policy).toContain('member_user_id = (SELECT auth.uid())')
+      // 2 — the owner.
+      expect(policy).toContain('(SELECT public.is_workspace_owner(workspace_id, auth.uid()))')
+      // 3 — the admin proposal-management surface.
+      expect(policy).toContain(
+        "(SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin'"
+      )
+      // 4 — every other active seat, settled states only.
+      expect(policy).toContain("state IN ('accepted', 'ended')")
+    })
+
+    it('is byte-locked as a whole, so a silent widening names itself', () => {
+      expect(normalizeWhitespace(rosterSelectPolicy())).toBe(
+        'CREATE POLICY "workspace_roster_relationships_select" ' +
+          'ON public.workspace_roster_relationships FOR SELECT TO authenticated USING ( ' +
+          'member_user_id = (SELECT auth.uid()) ' +
+          'OR (SELECT public.is_workspace_owner(workspace_id, auth.uid())) ' +
+          "OR (SELECT public.workspace_member_role(workspace_id, auth.uid())) = 'admin' " +
+          "OR ( state IN ('accepted', 'ended') " +
+          'AND (SELECT public.workspace_member_role(workspace_id, auth.uid())) IS NOT NULL ) );'
+      )
+    })
+
+    it('has NO bare workspace_member_role(...) IS NOT NULL branch — the WSR-18 defect itself', () => {
+      // Migration 183's second branch was exactly that, unqualified by
+      // state, and it is what let a guest or contractor see every proposed
+      // row. The ONLY surviving IS NOT NULL must be the one guarded by the
+      // settled-state condition; a second occurrence means the broad branch
+      // came back.
+      const isNotNulls = rosterSelectPolicy().match(/IS NOT NULL/g) ?? []
+      const stateQualified =
+        normalizeWhitespace(rosterSelectPolicy()).match(
+          /state IN \('accepted', 'ended'\) AND \(SELECT public\.workspace_member_role\(workspace_id, auth\.uid\(\)\)\) IS NOT NULL/g
+        ) ?? []
+      expect(isNotNulls).toHaveLength(1)
+      expect(stateQualified).toHaveLength(1)
+    })
+
+    it('wraps every helper call in the recreated policy as a scalar subselect', () => {
+      const unwrapped = unwrappedHelperCalls(rosterSelectPolicy())
+      expect(unwrapped).toEqual([])
+      // The sample is not empty — there ARE helper calls to wrap.
+      expect(rosterSelectPolicy()).toMatch(/public\.workspace_member_role\s*\(/)
+      expect(rosterSelectPolicy()).toMatch(/public\.is_workspace_owner\s*\(/)
+    })
+
+    it('states both consequences in the header rather than leaving them to be discovered', () => {
+      expect(prose).toMatch(/NO LONGER SEES A `proposed` ROW AT ALL/)
+      expect(prose).toMatch(/a refusal is the Member's business/)
+    })
+  })
+
+  // ══ (i) workspace_roster_page — the R-23 collapse ═════════════════════
+  describe('(i) workspace_roster_page — blocked collapses to refused', () => {
+    it('declares every ROSTER_COLUMNS name, in the route order', () => {
+      const declared = returnColumnList(ROSTER_PAGE)
+      // Iterated rather than matched as one blob so a missing column names
+      // ITSELF in the failure output. These fifteen are ROSTER_COLUMNS in
+      // app/api/workspaces/[workspaceId]/roster/route.ts verbatim.
+      let cursor = -1
+      for (const column of ROSTER_COLUMN_NAMES) {
+        const at = declared.indexOf(`\n  ${column} `)
+        expect([column, at >= 0]).toEqual([column, true])
+        expect([column, at > cursor]).toEqual([column, true])
+        cursor = at
+      }
+      expect(ROSTER_COLUMN_NAMES).toHaveLength(15)
+    })
+
+    it('collapses blocked to refused, and collapses NOTHING else', () => {
+      const block = functionBlock(ROSTER_PAGE)
+      expect(normalizeWhitespace(block)).toContain(
+        "CASE WHEN r.state = 'blocked' THEN 'refused' ELSE r.state END"
+      )
+      // Exactly one CASE in the body — a second one would mean another
+      // column is being rewritten without review.
+      expect(block.match(/CASE WHEN/g) ?? []).toHaveLength(1)
+      // The other four roster states are passed through untouched.
+      for (const state of ['proposed', 'accepted', 'ended']) {
+        expect(normalizeWhitespace(block)).not.toContain(`THEN '${state}'`)
+      }
+    })
+
+    it('passes refused_at through unchanged, so the collapse leaves no fingerprint', () => {
+      const block = functionBlock(ROSTER_PAGE)
+      // A `refused` row with a NULL refusal timestamp would let a reader
+      // infer the collapse and therefore infer the block. The block write
+      // path already stamps refused_at, so a bare pass-through is correct
+      // AND sufficient — but a future edit that nulls it out must fail here.
+      expect(block).toContain('    r.refused_at,')
+      expect(block).not.toMatch(/refused_at[^,\n]*CASE/)
+      expect(prose).toMatch(/THE COLLAPSE MUST NOT LEAVE A FINGERPRINT/)
+    })
+
+    it('binds p_uid to the caller and clamps the page to 200', () => {
+      const block = normalizeWhitespace(functionBlock(ROSTER_PAGE))
+      expect(block).toContain('p_uid = (SELECT auth.uid())')
+      expect(block).toContain('LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)')
+      expect(block).toContain('OFFSET GREATEST(COALESCE(p_offset, 0), 0)')
+    })
+
+    it('reads the D-56 kill switch and requires a live seat in the workspace', () => {
+      const block = normalizeWhitespace(functionBlock(ROSTER_PAGE))
+      expect(block).toContain('public.workspace_access_enabled()')
+      expect(block).toContain('public.workspace_member_role(p_workspace_id, p_uid) IS NOT NULL')
+    })
+
+    it('repeats the policy visibility branches, so a definer read is not a way around the policy', () => {
+      const block = normalizeWhitespace(functionBlock(ROSTER_PAGE))
+      expect(block).toContain('r.member_user_id = p_uid')
+      expect(block).toContain('public.is_workspace_owner(r.workspace_id, p_uid)')
+      expect(block).toContain("public.workspace_member_role(r.workspace_id, p_uid) = 'admin'")
+      expect(block).toContain(
+        "r.state IN ('accepted', 'ended') AND public.workspace_member_role(r.workspace_id, p_uid) IS NOT NULL"
+      )
+    })
+
+    it('is STABLE SECURITY DEFINER with an empty search path', () => {
+      const block = normalizeWhitespace(functionBlock(ROSTER_PAGE))
+      expect(block).toContain('LANGUAGE sql STABLE SECURITY DEFINER')
+      expect(block).toContain("SET search_path = ''")
+    })
+
+    it('grants EXECUTE to authenticated, not service_role — it is a client read', () => {
+      const revokeIndex = sql.indexOf(
+        'REVOKE EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)'
+      )
+      const grantIndex = sql.indexOf(
+        'GRANT  EXECUTE ON FUNCTION public.workspace_roster_page(uuid, uuid, int, int)'
+      )
+      expect(revokeIndex).toBeGreaterThanOrEqual(0)
+      expect(grantIndex).toBeGreaterThan(revokeIndex)
+      expect(normalizeWhitespace(sql.slice(revokeIndex, grantIndex))).toContain(
+        'FROM PUBLIC, anon, authenticated;'
+      )
+      expect(normalizeWhitespace(sql.slice(grantIndex, grantIndex + 200))).toContain(
+        'TO authenticated;'
+      )
+      expect(sql).not.toMatch(
+        /GRANT\s+EXECUTE ON FUNCTION public\.workspace_roster_page\([^)]*\)\s+TO service_role/
+      )
+    })
+
+    it('records that the Member own surface keeps the TRUE state', () => {
+      const comment = sql.match(
+        /COMMENT ON FUNCTION public\.workspace_roster_page\(uuid, uuid, int, int\) IS[\s\S]*?';/
+      )
+      expect(comment).not.toBeNull()
+      expect(comment![0]).toMatch(/THE MEMBER''S OWN SURFACE DELIBERATELY DOES NOT USE THIS FUNCTION/)
+      expect(comment![0]).toMatch(/T-38-04-05/)
+      expect(comment![0]).toMatch(/assertCanPropose/)
+    })
+  })
+
+  // ══ (j) workspaces_select_member — WSR-23 / R-15 ══════════════════════
+  describe('(j) workspaces_select_member — the creator fallback is gone', () => {
+    it('drops the migration 182 policy BEFORE recreating it', () => {
+      const dropIndex = sql.indexOf(
+        'DROP POLICY IF EXISTS "workspaces_select_member" ON public.workspaces;'
+      )
+      const createIndex = sql.indexOf(
+        'CREATE POLICY "workspaces_select_member" ON public.workspaces'
+      )
+      expect(dropIndex).toBeGreaterThanOrEqual(0)
+      expect(createIndex).toBeGreaterThan(dropIndex)
+    })
+
+    it('keeps the membership branch and carries NO created_by reference', () => {
+      const policy = normalizeWhitespace(workspacesSelectPolicy())
+      expect(policy).toContain('(SELECT public.workspace_member_role(id, auth.uid())) IS NOT NULL')
+      expect(policy).not.toContain('created_by')
+    })
+
+    it('carries no created_by anywhere in the executable SQL of this file', () => {
+      // The whole point of R-15 is that visibility stops tracking a fact
+      // about the PAST. A created_by reference reappearing anywhere in this
+      // file's DDL is the defect returning under another name.
+      expect(executable).not.toMatch(/created_by = /)
+    })
+
+    it('wraps the surviving helper call as a scalar subselect', () => {
+      expect(unwrappedHelperCalls(workspacesSelectPolicy())).toEqual([])
+      expect(workspacesSelectPolicy()).toMatch(/public\.workspace_member_role\s*\(/)
+    })
+
+    it('records WHY the fallback existed and why removal is only now safe', () => {
+      expect(prose).toMatch(/THAT SECOND BRANCH OUTLIVES MEMBERSHIP/)
+      expect(prose).toMatch(/workspace_create \(MIGRATION 198, PLAN 06\) MAKES CREATION ONE TRANSACTION/)
+      expect(prose).toMatch(/SECOND REASON 197 AND 198 PUSH TOGETHER/)
+    })
+  })
+
+  // ══ (k) workspace_project_permission v3 — WSR-29 / R-20 ═══════════════
+  describe('(k) workspace_project_permission v3 — the role floor', () => {
+    it('names every role in WORKSPACE_PROJECT_ACCESS_ROLES, and only those', () => {
+      // THE SQL/TYPESCRIPT DRIFT GUARD. The constant is imported from
+      // lib/workspaces/membership.ts (plan 03, wave 1) rather than
+      // re-listed here, so changing one layer without the other fails HERE
+      // rather than in production. WSR-17 is what happens when these two
+      // layers disagree.
+      const conjunct = roleConjunct()
+      const literals = [...conjunct.matchAll(/'([a-z]+)'/g)].map((entry) => entry[1])
+      expect(literals).toEqual([...WORKSPACE_PROJECT_ACCESS_ROLES])
+      for (const role of WORKSPACE_PROJECT_ACCESS_ROLES) {
+        expect([role, conjunct.includes(`'${role}'`)]).toEqual([role, true])
+      }
+    })
+
+    it("does NOT name 'guest' in the role conjunct — that is the whole decision", () => {
+      expect(roleConjunct()).not.toContain('guest')
+      expect(WORKSPACE_PROJECT_ACCESS_ROLES).not.toContain('guest')
+    })
+
+    it('places the conjunct immediately after the expires_at clause on hop 2', () => {
+      // The position matters as much as the presence: on hop 2's
+      // workspace_members join, in the same position as
+      // 192_workspace_project_permission_v2.sql:252. Anywhere else and it
+      // would floor a different hop.
+      expect(normalizeWhitespace(functionBlock(PROJECT_PERMISSION))).toContain(
+        "AND (m.expires_at IS NULL OR m.expires_at > now()) " +
+          "AND m.role IN ('owner', 'admin', 'member', 'contractor')"
+      )
+    })
+
+    it('opens with the D-56 kill-switch conjunct, still first in the body', () => {
+      const block = functionBlock(PROJECT_PERMISSION)
+      const selectIndex = block.indexOf('AS $$')
+      const killSwitchIndex = block.indexOf('public.workspace_access_enabled()')
+      expect(killSwitchIndex).toBeGreaterThan(selectIndex)
+      expect(normalizeWhitespace(block.slice(selectIndex, killSwitchIndex))).toBe('AS $$ SELECT')
+    })
+
+    it('hop 1-2: a live attachment joined to an active, unexpired membership', () => {
+      const block = functionBlock(PROJECT_PERMISSION)
+      expect(block).toMatch(/FROM public\.workspace_attachments a/)
+      expect(block).toMatch(/JOIN public\.workspace_members m/)
+      expect(block).toContain("m.status = 'active'")
+      expect(block).toContain('(m.expires_at IS NULL OR m.expires_at > now())')
+    })
+
+    it('hop 3: the relationship join has NO nullable relationship_id fallback', () => {
+      const block = functionBlock(PROJECT_PERMISSION)
+      expect(block).toMatch(/JOIN public\.workspace_roster_relationships r/)
+      expect(block).toContain('r.id = a.relationship_id')
+      expect(block).not.toContain('a.relationship_id IS NULL')
+      expect(block).toContain("r.state = 'accepted'")
+    })
+
+    it('hop 4: the grant join has NO nullable relationship_id fallback', () => {
+      const block = functionBlock(PROJECT_PERMISSION)
+      expect(block).toMatch(/JOIN public\.workspace_grants g/)
+      expect(block).toContain('g.relationship_id = r.id')
+      expect(block).not.toContain('g.relationship_id IS NULL')
+      expect(block).toContain('g.revoked_at IS NULL')
+    })
+
+    it('hop 5: the vault_projects join keeps the custody bind', () => {
+      const block = functionBlock(PROJECT_PERMISSION)
+      expect(block).toMatch(/JOIN public\.vault_projects p/)
+      expect(block).toContain('p.id = a.project_id')
+      expect(block).toContain('p.user_id = r.member_user_id')
+    })
+
+    it('hop 6: still calls workspace_grant_lineage_live on the resolved grant', () => {
+      expect(functionBlock(PROJECT_PERMISSION)).toMatch(
+        /public\.workspace_grant_lineage_live\(g\.id\)/
+      )
+      expect(functionBlock(PROJECT_PERMISSION)).toContain('a.detached_at IS NULL')
+    })
+
+    it('changes NOTHING else — exactly one line differs from migration 192', () => {
+      // The strongest form of "nothing else changed": diff the two bodies
+      // line by line. Migration 192 is applied, reviewed and text-locked by
+      // its own suite, so it is the authority on what v3 must reproduce.
+      const v2 = readFileSync(
+        path.join(process.cwd(), 'supabase/migrations/192_workspace_project_permission_v2.sql'),
+        'utf8'
+      )
+      const v2Body = bodyOf(v2, 'CREATE OR REPLACE FUNCTION public.workspace_project_permission(')
+      const v3Body = bodyOf(sql, 'CREATE OR REPLACE FUNCTION public.workspace_project_permission(')
+      const added = v3Body.filter((line) => !v2Body.includes(line))
+      const removed = v2Body.filter((line) => !v3Body.includes(line))
+      expect(added).toEqual(["       AND m.role IN ('owner', 'admin', 'member', 'contractor')"])
+      expect(removed).toEqual([])
+    })
+
+    it('restates the REVOKE/GRANT pair, still to authenticated and never to anon', () => {
+      const revokeIndex = sql.indexOf(
+        'REVOKE EXECUTE ON FUNCTION public.workspace_project_permission(uuid, uuid, text) FROM PUBLIC, anon, authenticated;'
+      )
+      const grantIndex = sql.indexOf(
+        'GRANT  EXECUTE ON FUNCTION public.workspace_project_permission(uuid, uuid, text) TO authenticated;'
+      )
+      expect(revokeIndex).toBeGreaterThanOrEqual(0)
+      expect(grantIndex).toBeGreaterThan(revokeIndex)
+      expect(sql).not.toMatch(
+        /GRANT\s+EXECUTE ON FUNCTION public\.workspace_project_permission\([^)]*\)\s+TO\s+anon/
+      )
+    })
+
+    it('creates and drops NO policy — the ten callers are untouched', () => {
+      // Hop 2 is the single chokepoint precisely so nothing else has to
+      // change. If this section ever grows a policy statement, the claim
+      // that the floor propagates for free has stopped being true.
+      const policies = [...sql.matchAll(/CREATE POLICY "([a-z_]+)"/g)].map((entry) => entry[1])
+      expect(policies).not.toContain('vault_projects_select_workspace')
+      // Against `executable`, not `sql`: the COMMENT ON and the header both
+      // NAME the four workspace_read_* functions to explain why they need no
+      // edit, and naming them is the opposite of touching them. What must not
+      // appear is a definition.
+      expect(executable).not.toMatch(/workspace_read_/)
+    })
+
+    it('updates the COMMENT to describe hop 2 as carrying the floor, keeping every other sentence', () => {
+      const comment = sql.match(
+        /COMMENT ON FUNCTION public\.workspace_project_permission\(uuid, uuid, text\) IS[\s\S]*?';/
+      )
+      expect(comment).not.toBeNull()
+      expect(comment![0]).toMatch(/v3 \(migration 197\)/)
+      expect(comment![0]).toMatch(/WHOSE ROLE CLEARS THE PROJECT-ACCESS FLOOR/)
+      expect(comment![0]).toMatch(/HOP 2 IS THE SINGLE CHOKEPOINT/)
+      expect(comment![0]).toMatch(/WORKSPACE_PROJECT_ACCESS_ROLES/)
+      expect(comment![0]).toMatch(/Part B check B3/)
+      // Preserved from migration 192, verbatim — especially this one.
+      expect(comment![0]).toMatch(/never resolves, signs or returns a storage path or URL/)
+      expect(comment![0]).toMatch(/hop 5/)
+      expect(comment![0]).toMatch(/hop 6/)
+      expect(comment![0]).toContain('not a client-invoked RPC')
+    })
+
+    it('records the twin, the chokepoint and the WSR-17 lesson in the header', () => {
+      expect(prose).toMatch(/HOP 2 IS THE SINGLE CHOKEPOINT/)
+      expect(prose).toMatch(/THE TYPESCRIPT TWIN IS WORKSPACE_PROJECT_ACCESS_ROLES/)
+      expect(prose).toMatch(/IT IS A TWIN, NOT A DEDUPLICATION/)
+      expect(prose).toMatch(/WSR-17 EXISTS BECAUSE THESE EXACT TWO LAYERS ONCE DISAGREED/)
+    })
+  })
+
+  // ══ (l) workspace_access_permitted — WSR-16 / R-07 ════════════════════
+  describe('(l) workspace_access_permitted — one round trip, two booleans', () => {
+    it('declares access_enabled and cohort_ok, in that order', () => {
+      // THE SQL/TYPESCRIPT DRIFT GUARD for the gate. These are the two
+      // field names lib/workspaces/cohort.ts destructures from the RPC
+      // result (its WorkspaceAccessPermittedRow type). The names are read
+      // from that module's SOURCE, so a rename on either side fails HERE.
+      const declared = normalizeWhitespace(returnColumnList(ACCESS_PERMITTED))
+      expect(declared).toBe('RETURNS TABLE ( access_enabled BOOLEAN, cohort_ok BOOLEAN )')
+      expect(COHORT_ROW_FIELDS).toEqual(['access_enabled', 'cohort_ok'])
+    })
+
+    it('takes the exact signature lib/workspaces/cohort.ts already calls', () => {
+      const signature = normalizeWhitespace(
+        sql.slice(sql.indexOf(ACCESS_PERMITTED), sql.indexOf('RETURNS TABLE', sql.indexOf(ACCESS_PERMITTED)))
+      )
+      expect(signature).toContain('p_uid UUID')
+      expect(signature).toContain('p_require_cohort BOOLEAN')
+      // The module names both arguments in its rpc() call.
+      expect(COHORT_MODULE_SOURCE).toContain('p_uid: userId')
+      expect(COHORT_MODULE_SOURCE).toContain('p_require_cohort: requireCohort')
+      // EVERY rpc() name literal in that module must be this function, not
+      // merely one of them. lib/workspaces/cohort.ts names it TWICE — once in
+      // the WorkspaceCohortClient interface and once at the call site — and a
+      // `toContain` check is satisfied by either, so renaming one and not the
+      // other would slip through. Found by mutation, not by inspection.
+      const rpcNames = [
+        ...COHORT_MODULE_SOURCE.matchAll(/rpc\(\s*(?:fn:\s*)?'([a-z_]+)'/g),
+      ].map((entry) => entry[1])
+      expect(rpcNames.length).toBeGreaterThanOrEqual(2)
+      expect([...new Set(rpcNames)]).toEqual(['workspace_access_permitted'])
+    })
+
+    it('reports the D-56 switch as the first column', () => {
+      expect(normalizeWhitespace(functionBlock(ACCESS_PERMITTED))).toContain(
+        'SELECT public.workspace_access_enabled(),'
+      )
+    })
+
+    it('reproduces the migration 156 cohort window: enabled, starts_at, ends_at', () => {
+      const block = normalizeWhitespace(functionBlock(ACCESS_PERMITTED))
+      expect(block).toContain('FROM public.workspace_cohorts c')
+      expect(block).toContain('c.account_user_id = p_uid')
+      expect(block).toContain('c.enabled')
+      expect(block).toContain('c.starts_at <= now()')
+      expect(block).toContain('(c.ends_at IS NULL OR c.ends_at > now())')
+    })
+
+    it('fails CLOSED on a NULL p_require_cohort', () => {
+      // Without the COALESCE, `NOT p_require_cohort` is NULL for a NULL
+      // argument and cohort_ok comes back neither true nor false. TRUE
+      // means "cohort membership IS required", never "waive the bound" —
+      // the same fail-closed posture as workspace_access_enabled()'s own
+      // COALESCE(..., FALSE) in migration 186.
+      expect(normalizeWhitespace(functionBlock(ACCESS_PERMITTED))).toContain(
+        'NOT COALESCE(p_require_cohort, TRUE)'
+      )
+    })
+
+    it('is STABLE SECURITY DEFINER with an empty search path', () => {
+      const block = normalizeWhitespace(functionBlock(ACCESS_PERMITTED))
+      expect(block).toContain('LANGUAGE sql STABLE SECURITY DEFINER')
+      expect(block).toContain("SET search_path = ''")
+    })
+
+    it('grants EXECUTE to service_role, NOT authenticated — unlike the two readers here', () => {
+      // The difference from workspace_audit_page (h) and
+      // workspace_roster_page (i) is the design, not an oversight: the
+      // membership of a bounded pilot is itself information a non-cohort
+      // account should not have, so a definer function reachable by
+      // `authenticated` would hand every logged-in account a probe for it.
+      const revokeIndex = sql.indexOf(
+        'REVOKE EXECUTE ON FUNCTION public.workspace_access_permitted(uuid, boolean)'
+      )
+      const grantIndex = sql.indexOf(
+        'GRANT  EXECUTE ON FUNCTION public.workspace_access_permitted(uuid, boolean)'
+      )
+      expect(revokeIndex).toBeGreaterThanOrEqual(0)
+      expect(grantIndex).toBeGreaterThan(revokeIndex)
+      expect(normalizeWhitespace(sql.slice(revokeIndex, grantIndex))).toContain(
+        'FROM PUBLIC, anon, authenticated;'
+      )
+      expect(normalizeWhitespace(sql.slice(grantIndex, grantIndex + 200))).toContain(
+        'TO service_role;'
+      )
+      expect(sql).not.toMatch(
+        /GRANT\s+EXECUTE ON FUNCTION public\.workspace_access_permitted\([^)]*\)\s+TO authenticated/
+      )
+    })
+
+    it('records R-24, R-25 and R-29, and names all three kill-switch call sites', () => {
+      expect(prose).toMatch(/A NON-COHORT MEMBER RECEIVES 404, NOT 403/)
+      expect(prose).toMatch(/THE COHORT GATE APPLIES TO THE ACCEPTOR OF AN INVITATION/)
+      expect(prose).toMatch(/THERE IS NO COHORT ADMIN SURFACE THIS PHASE/)
+      expect(prose).toMatch(/requireWorkspaceAccess/)
+      expect(prose).toMatch(/POST \/api\/workspaces\b/)
+      expect(prose).toMatch(/POST \/api\/workspaces\/invitations\/accept/)
+      expect(prose).toMatch(/MISSING THE THIRD REPRODUCES THE EXACT SHAPE OF HOTFIX F7/)
+    })
+
+    it('explains why two booleans rather than one', () => {
+      expect(prose).toMatch(
+        /COLLAPSING THEM TO ONE BOOLEAN WOULD MAKE AN INCIDENT INDISTINGUISHABLE FROM AN ACCESS DECISION/
+      )
+    })
+  })
+
+  // ══ Whole-file completeness ══════════════════════════════════════════
+  describe('the file is COMPLETE — all twelve sections are present', () => {
+    it('contains every principal object, each named individually', () => {
+      // Enumerated as an array so an accidental truncation of the migration
+      // during a later edit fails LOUDLY and by name, rather than by some
+      // unrelated assertion going quiet. Migration 197 is authored by three
+      // plans appending to one file; this is the guard that the file is
+      // whole.
+      for (const [section, statement] of MIGRATION_197_OBJECTS) {
+        expect([section, statement, sql.includes(statement)]).toEqual([section, statement, true])
+      }
+    })
+
+    it('enumerates twelve sections, (a) through (l)', () => {
+      const sections = [...new Set(MIGRATION_197_OBJECTS.map(([section]) => section))]
+      expect(sections).toEqual([
+        '(a)',
+        '(b)',
+        '(c)',
+        '(d)',
+        '(e)',
+        '(f)',
+        '(g)',
+        '(h)',
+        '(i)',
+        '(j)',
+        '(k)',
+        '(l)',
+      ])
+    })
+
+    it('every section marker appears in the header prose, in order', () => {
+      let cursor = -1
+      for (const marker of SECTION_MARKERS) {
+        const at = prose.indexOf(marker)
+        expect([marker, at > cursor]).toEqual([marker, true])
+        cursor = at
+      }
+    })
+  })
+
 })
