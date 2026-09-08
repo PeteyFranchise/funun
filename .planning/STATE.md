@@ -759,6 +759,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 | 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 pushed and verified live |
 | 2026-09-07 | 260907-cust | migration 139's guard blocked the custody RPC; migration 196 applied and re-verified |
 | 2026-09-08 | migration-199-redeem-invitation-conflict | Part B B18 caught a 42702 in 198's `workspace_redeem_invitation` (ON CONFLICT inference takes PL/pgSQL variable substitution); migration 199 applied by owner and **verified** — Part B re-run 42/42 |
+| 2026-09-08 | consent-route-auth-before-switch | Consent route now authenticates before consulting D-56 (38.0.1 notes §1); header comment cited a FALSE precedent and was rewritten; 2 tests added, mutation-proved |
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|

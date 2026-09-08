@@ -1006,4 +1006,33 @@ describe('the D-56 kill switch fails every verb closed', () => {
     installClients(buildStore({ workspace_access_config: [] }), memberUser())
     expect((await GET(getRequest(), params())).status).toBe(503)
   })
+
+  // ─── Ordering: auth is decided BEFORE the switch (38.0.1 notes §1) ───────
+  //
+  // The four cases above all authenticate, so they pass under either ordering
+  // and cannot detect a regression here. This one can: while the switch is
+  // OFF, an unauthenticated caller must still be refused as UNAUTHENTICATED.
+  //
+  // A 503 here would mean the route consulted a platform-wide control, and
+  // performed a service-role database read, on behalf of somebody it had not
+  // identified — and would disclose whether workspace access is enabled to
+  // anyone who asked. Both statuses are refusals, so only the code tells them
+  // apart; assert it exactly rather than merely asserting "not 2xx".
+  it('an unauthenticated caller gets 401, not 503 — auth is decided before the switch', async () => {
+    installClients(disabledStore(), null)
+    const response = await GET(getRequest(), params())
+
+    expect(response.status).toBe(401)
+    expect(response.status).not.toBe(503)
+  })
+
+  it('an unauthenticated caller gets 401 on POST too, and writes nothing', async () => {
+    const store = disabledStore()
+    installClients(store, null)
+
+    const response = await POST(bodyRequest('POST', { permissions: ['view_metadata'] }), params())
+
+    expect(response.status).toBe(401)
+    expect(store.workspace_grants).toHaveLength(0)
+  })
 })

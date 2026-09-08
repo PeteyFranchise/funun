@@ -60,13 +60,30 @@ import type { RosterRelationshipState } from '@/lib/workspaces/types'
 // the seed the grant model never had — the one HTTP surface through which a
 // `source = 'member_consent'` root comes into being.
 //
-// FAILS CLOSED ON THE D-56 CONTROL. This path is not under
-// `/api/workspaces/[workspaceId]/**` and therefore inherits no kill-switch
-// consultation from anywhere else; every verb consults
-// `isWorkspaceAccessEnabled` as its first statement and returns 503,
-// copying `app/api/workspaces/invitations/accept/route.ts`. The check runs
-// before authentication deliberately: it is a platform-wide control whose
-// answer is identical for every caller and discloses nothing.
+// FAILS CLOSED ON THE D-56 CONTROL, BUT ONLY AFTER AUTHENTICATION. This path
+// is not under `/api/workspaces/[workspaceId]/**` and therefore inherits no
+// kill-switch consultation from anywhere else, so every verb consults
+// `isWorkspaceAccessEnabled` and returns 503 — after `requireMemberApiAccount`
+// has decided the caller, never before it.
+//
+// THE ORDER IS DELIBERATE AND THIS COMMENT USED TO ARGUE THE OPPOSITE, WRONGLY.
+// It previously read: the check "runs before authentication deliberately: it is
+// a platform-wide control whose answer is identical for every caller and
+// discloses nothing," and justified that by "copying
+// `app/api/workspaces/invitations/accept/route.ts`." That precedent was
+// FALSE — that route calls `auth.getUser()` and `requireMemberApiAccount`
+// first and consults no switch before either, as do the other three routes
+// using this helper. This file was the lone outlier among five while its own
+// comment claimed to be following them.
+//
+// Two things were actually wrong with switch-first, neither of them a hole
+// (the switch is still consulted before any workspace work, so nothing
+// unauthorised was ever reachable): an unauthenticated caller caused a
+// service-role client and a database read before anything had authenticated
+// them, and the 503-vs-401 split disclosed one global boolean — whether
+// workspace access is enabled at all — to anybody who asked. An unauthenticated
+// caller now gets 401 whether the switch is on or off, and learns nothing.
+// (38.0.1 orchestrator notes §1, applied 2026-09-08.)
 //
 // A MISS AND A MISMATCH ARE INDISTINGUISHABLE. A relationship that does not
 // exist and a relationship that names somebody else both return the same
@@ -299,15 +316,6 @@ async function openConsentContext(relationshipId: string): Promise<
   | { ok: true; row: RelationshipRow; userId: string; service: ReturnType<typeof createServiceClient> }
   | { ok: false; response: NextResponse }
 > {
-  const service = createServiceClient()
-
-  if (!(await isWorkspaceAccessEnabled(service))) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: ACCESS_DISABLED }, { status: 503 }),
-    }
-  }
-
   const supabase = await createApiClient()
   const {
     data: { user },
@@ -318,6 +326,19 @@ async function openConsentContext(relationshipId: string): Promise<
     return {
       ok: false,
       response: NextResponse.json({ error: gate.error }, { status: gate.status }),
+    }
+  }
+
+  // The switch is consulted here — after the caller is known, before any
+  // workspace work — so an unauthenticated request never reaches a service-role
+  // client and never learns whether workspace access is enabled. See the
+  // ordering note in this file's header.
+  const service = createServiceClient()
+
+  if (!(await isWorkspaceAccessEnabled(service))) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: ACCESS_DISABLED }, { status: 503 }),
     }
   }
 
