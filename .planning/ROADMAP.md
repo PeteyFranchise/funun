@@ -667,7 +667,7 @@ Plans:
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
 | 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Shipped (dark) + VERIFIED — Part A 35/35, Part B 12/12 | 2026-09-07 |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. **Vercel vars set 2026-09-08** (`WORKSPACE_ACCESS_GENERAL_ENABLED=false`, `WORKSPACE_COHORT_PILOT_ENABLED=true`, Config type, all three environments) — they bake in at BUILD time, so a deploy must run after this date before D-56 is flipped. `.env.example` documented (commit 321ce556). Remaining before D-56: the 54-box RLS smoke checklist carried over from 38.0.1 (0/54 ticked). | 2026-09-08 |
-| 38.0.3. RLS Helper API Exposure | 0/0 | **SCOPED 2026-09-08 — BLOCKS BETA (owner decision D1).** Scope is EVERY `SECURITY DEFINER` function in `public` (D3). **Inventory COMPLETE and live-verified 2026-09-08: 109 definers, 88 already correct, ZERO repo-vs-live divergence. The actionable set is 19 functions — 15 relocate, 1 bind, 3 to read — all read-only.** `apply_to_opportunity_atomic` revoked in production the same day, closing the one write-capable bypass. `discover_profile_id_by_email` checked and found already correct — out of scope (D2). A production grant sweep found `anon`/`authenticated` hold EXECUTE on ~18 read-only authorization predicates, so PostgREST exposes them as RPCs — the authorization graph (who holds what role/permission where, who blocked whom) is queryable with the public anon key. None write. **Blanket-revoking would take the app down**: RLS policy expressions are evaluated as the querying role and call these helpers from USING clauses. Two remedies — relocate pure policy helpers to a non-exposed schema, bind `p_uid` to `auth.uid()` for the ones the app genuinely calls. ~250 references across 97 migrations; Green Room/split sheets/works are LIVE with real data, so unlike 38.0.1/38.0.2 this phase cannot lean on empty tables. See `.planning/phases/38.0.3-rls-helper-api-exposure/38.0.3-SCOPE.md`. | - |
+| 38.0.3. RLS Helper API Exposure | 0/6 | **PLANNED 2026-09-08 — 6 plans across 6 waves. BLOCKS BETA (owner decision D1).** Research collapsed the shape: every RLS-policy call site of every in-scope helper passes `auth.uid()` — 73 sites, 200 migrations, zero exceptions — so the caller-identity bind closes the disclosure with **no relocation and no policy rewrites**. Three tiers in ship order: **T1 revoke ×4** (zero policy call sites; the documented exemption to the TRAP rule), **T2 bind ×13** (one migration, zero policy edits), **T3 relocate `no_block` only** (owner decision D4 — it is symmetric, so a bind re-opens T-08-03; 11 live policies). Migrations **207–209** (201–206 consumed by the parallel Playbook workstream). Behavioural harness mandatory and, unlike 38.0.1/38.0.2, needs **no fixture seeding** — a 100% read-only JWT-claim impersonation probe suffices. **SCOPED 2026-09-08.** Scope is EVERY `SECURITY DEFINER` function in `public` (D3). **Inventory COMPLETE and live-verified 2026-09-08: 109 definers, 88 already correct, ZERO repo-vs-live divergence. The actionable set is 19 functions — 15 relocate, 1 bind, 3 to read — all read-only.** `apply_to_opportunity_atomic` revoked in production the same day, closing the one write-capable bypass. `discover_profile_id_by_email` checked and found already correct — out of scope (D2). A production grant sweep found `anon`/`authenticated` hold EXECUTE on ~18 read-only authorization predicates, so PostgREST exposes them as RPCs — the authorization graph (who holds what role/permission where, who blocked whom) is queryable with the public anon key. None write. **Blanket-revoking would take the app down**: RLS policy expressions are evaluated as the querying role and call these helpers from USING clauses. Two remedies — relocate pure policy helpers to a non-exposed schema, bind `p_uid` to `auth.uid()` for the ones the app genuinely calls. ~250 references across 97 migrations; Green Room/split sheets/works are LIVE with real data, so unlike 38.0.1/38.0.2 this phase cannot lean on empty tables. See `.planning/phases/38.0.3-rls-helper-api-exposure/38.0.3-SCOPE.md`. | - |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | BLOCKED on 38.0.1 | - |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | BLOCKED on 38.0.1 | - |
 
@@ -2276,6 +2276,70 @@ Plans:
 - [ ] 38.0.2-15-PLAN.md — both roster surfaces onto the RPC + `logWorkspaceAction` doctrine correction
 - [ ] 38.0.2-16-PLAN.md — custody-transfers route onto the RPC (WSR-09 route half)
 - [ ] 38.0.2-17-PLAN.md — Part A structural probe, Part B behavioural harness, evidence map, **joint push**
+
+---
+
+### Phase 38.0.3: RLS Helper API Exposure
+
+**Goal:** No holder of the public anon key — and no ordinary authenticated user — can query the
+authorization graph about anyone but themselves. PostgREST exposes every executable function in
+`public` as an RPC, so ~18 read-only `SECURITY DEFINER` authorization predicates are live endpoints
+answering *"what role does user X hold in workspace Y", "did A block B", "can viewer V see post P",
+"is user U a party to split sheet S"*. None of them writes. All of them are closed here.
+
+**Requirements:** Q1-T1, Q1-T1b, Q1-T2, Q1-T2b, Q1-T2c, Q1-T2d, Q4, Q5, BEHAV-1..4, ENV-1, ENV-2,
+D3-CLOSEOUT, T3-1..T3-4 — derived in `38.0.3-RESEARCH.md` (no `REQUIREMENTS.md` IDs exist for this
+phase; the research's five questions are the requirement set).
+
+**Owner decisions (locked 2026-09-08, in `38.0.3-SCOPE.md`):** D1 blocks beta; D2
+`discover_profile_id_by_email` is already correct and out of scope; D3 scope is every definer of this
+kind; D4 `no_block` relocates rather than binds; D5 claim migration numbers from 207; D6 the Writer
+Room mention-stripping bug is out of scope.
+
+**Migrations:** **207** (T1 revokes), **208** (T2 binds), **209** (T3 relocation). 201–206 are
+consumed by the parallel Playbook workstream — four of them only in *untracked* test files, so
+re-verify against `ls supabase/migrations/` **and** `git status --porcelain` at execution time.
+
+**The finding that collapsed the phase.** The SCOPE planned for 15 relocations and 73 policy
+rewrites in lockstep. An exhaustive enumeration over all 200 migrations — comments stripped,
+dollar-quoted regions mapped, balanced argument lists extracted — found that **every** policy call
+site passes `auth.uid()` as the identity argument. Zero exceptions. So the bind is tautologically
+true on the policy path and **no policy is edited**. A second finding shrank it further: four helpers
+have *zero* policy call sites and are only reached from other definer bodies, which execute as the
+owner — so they can simply be revoked.
+
+**⚠ THE TRAP AND ITS ONE EXEMPTION.** The SCOPE says any plan opening with "REVOKE from anon,
+authenticated" is wrong and must be rejected — because RLS policy expressions are evaluated as the
+querying role. That rule stands. It applies to a helper **only if a policy names it**. Plan 01's four
+do not, and `__tests__/rls-helper-callsites.test.ts` proves it on every `npm test`. The restated rule:
+*no blanket revoke; a revoke is permitted only where the policy call-site count is proven zero, by a
+test in the repo rather than a claim in a plan.*
+
+**Watch-outs:** (a) The bind idiom keeps the `auth.role() = 'service_role'` branch — two service-client
+call sites (`lib/trust-safety/reports.ts:179`, `lib/green-room/placements-admin.ts:353`) pass a viewer
+who is not the caller, and `auth.uid()` is NULL on a service connection. (b) It **omits**
+`pg_trigger_depth() > 0`; migration 174 keeps it because migrations 146/160 have trigger-side callers.
+(c) All thirteen binds go in ONE migration — a partial rollout makes an outer helper return a silently
+*wrong* answer, not an error. (d) `service.rpc()` is PostgREST routing, not a privilege, so the
+`no_block` relocation needs the app decoupled and **deployed** first (plan 04). (e) `DROP FUNCTION`
+is self-verifying for policies but blind to string-literal function bodies — hence the pre-apply
+`pg_proc.prosrc` gate. (f) Two migration defects have shipped past a green text-lock suite (139's
+second trigger, 198's `ON CONFLICT`), so Part A + Part B are mandatory.
+
+**Depends on:** Phase 38.0.2 (applied and verified 2026-09-08)
+**Status:** **Planned 2026-09-08 — 6 plans across 6 waves, strictly sequential.** SCOPE, INVENTORY
+(109 definers, live cross-checked, zero divergence) and RESEARCH are complete and authoritative.
+
+**Plans:** 6 plans
+
+Plans:
+
+- [ ] 38.0.3-01-PLAN.md — T1: migration 207 revokes ×4, the standing call-site invariant test, inventory closeout
+- [ ] 38.0.3-02-PLAN.md — T2: migration 208 binds all 13 helpers in one file, zero policy edits
+- [ ] 38.0.3-03-PLAN.md — Part A structural + Part B behavioural harness for T1+T2 (read-only, no seeding)
+- [ ] 38.0.3-04-PLAN.md — T3 prep: decouple `placements-admin.ts` from the `no_block` RPC route (ships and deploys first)
+- [ ] 38.0.3-05-PLAN.md — T3: migration 209 relocates `no_block`, retargets 11 policies + 2 definer bodies, drops the exposed copy
+- [ ] 38.0.3-06-PLAN.md — T3 verification: pre-apply `prosrc` gate (Part A2) + before/after behavioural probe (Part B2)
 
 ---
 
