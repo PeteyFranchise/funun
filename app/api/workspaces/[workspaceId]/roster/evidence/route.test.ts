@@ -85,6 +85,14 @@ function buildServiceClient(opts: {
 
   const client = {
     calls,
+    // The D-56 kill switch and the D-55 cohort bound are resolved by
+    // `requireWorkspaceAccess` in ONE service-role call to
+    // `workspace_access_permitted` (migration 197). Answering it "permitted"
+    // is what lets these assertions be about the evidence rule rather than
+    // about the platform gate, which fails closed with a 503 otherwise.
+    rpc: jest.fn(() =>
+      Promise.resolve({ data: [{ access_enabled: true, cohort_ok: true }], error: null })
+    ),
     from: jest.fn((table: string) => {
       calls.tables.push(table)
 

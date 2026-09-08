@@ -75,6 +75,12 @@ function buildServiceClient(hits: number[]) {
       throw new Error(`unexpected table on the service client: ${table}`)
     }),
     rpc: jest.fn(async (fn: string, args: { p_max: number }) => {
+      // requireWorkspaceAccess now folds the D-56 switch and the D-55 cohort
+      // bound into one `workspace_access_permitted` call (migration 197).
+      // It must be answered BEFORE the unexpected-rpc throw below.
+      if (fn === 'workspace_access_permitted') {
+        return { data: [{ access_enabled: true, cohort_ok: true }], error: null }
+      }
       if (fn !== 'check_rate_limit') throw new Error(`unexpected rpc: ${fn}`)
       if (hits.length >= args.p_max) return { data: true, error: null }
       hits.push(Date.now())
@@ -188,6 +194,11 @@ function buildAuditServiceClient(opts: { revokeTarget?: Record<string, unknown> 
   return {
     audits,
     rpc: jest.fn(async (fn: string) => {
+      // See the note in buildServiceClient: the access decision is one RPC
+      // and must be answered before the unexpected-rpc throw below.
+      if (fn === 'workspace_access_permitted') {
+        return { data: [{ access_enabled: true, cohort_ok: true }], error: null }
+      }
       if (fn === 'check_rate_limit') return { data: false, error: null }
       if (fn === 'find_auth_user_id_by_email') return { data: null, error: null }
       throw new Error(`unexpected rpc: ${fn}`)

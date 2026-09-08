@@ -105,6 +105,18 @@ function buildServiceClient(
     tables,
     audits,
     rpc: jest.fn((fn: string, args: Record<string, unknown>) => {
+      // The D-56 switch and D-55 cohort bound are resolved by the GATE, in
+      // one service-role call to `workspace_access_permitted` (migration
+      // 197). It is answered ABOVE the recorder deliberately: the suite
+      // asserts the exact number of RPCs THIS ROUTE makes, and recording the
+      // gate's own call would inflate every one of those counts. Threading
+      // `accessEnabled` through it keeps the kill-switch cases honest.
+      if (fn === 'workspace_access_permitted') {
+        return thenable(() => ({
+          data: [{ access_enabled: opts.accessEnabled !== false, cohort_ok: true }],
+          error: null,
+        }))
+      }
       rpcCalls.push({ fn, args })
       return thenable(() =>
         opts.rpcError
