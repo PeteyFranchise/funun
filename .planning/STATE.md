@@ -758,7 +758,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 |---|---|---|
 | 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 pushed and verified live |
 | 2026-09-07 | 260907-cust | migration 139's guard blocked the custody RPC; migration 196 applied and re-verified |
-| 2026-09-08 | migration-199-redeem-invitation-conflict | Part B B18 caught a 42702 in 198's `workspace_redeem_invitation` (ON CONFLICT inference takes PL/pgSQL variable substitution); migration 199 authored, **not applied** — human-gated |
+| 2026-09-08 | migration-199-redeem-invitation-conflict | Part B B18 caught a 42702 in 198's `workspace_redeem_invitation` (ON CONFLICT inference takes PL/pgSQL variable substitution); migration 199 applied by owner and **verified** — Part B re-run 42/42 |
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
