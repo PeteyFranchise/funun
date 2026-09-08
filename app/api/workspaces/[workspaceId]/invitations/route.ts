@@ -30,6 +30,21 @@ import { workspaceSeatInviteEmail } from '@/lib/email/workspaceSeatInvite'
 // invitation waiting; this route never calls a user-creation API and never
 // touches the signup trigger (Phase 27 invite-only gate).
 //
+// ─── WSR-19 / R-13 — NOTHING RESTRICTED GOES IN `changes` ─────────────────
+// `workspace_audit_log.changes` is a BROADLY READABLE column: migration
+// 186's audit-visibility helper makes it reachable by every active seat on
+// the workspace, guests included. No handler in this file may put a
+// restricted key in it — email, phone, contact details, address, tax id,
+// token, token hash, IPI or ISNI — at any depth.
+//
+// THIS RULE IS ENFORCED, NOT MERELY CONVENTIONAL. Migration 197 section (f)
+// installs `guard_workspace_audit_log_no_restricted_pii` as a BEFORE INSERT
+// trigger that refuses those key names at ANY depth via a recursive
+// `jsonb_path_exists` walk — so reintroducing one does not leak quietly, it
+// makes the insert RAISE and the request fail. Where a restricted value
+// legitimately belongs is on its own row, reachable from the audit row
+// through `target_id`, behind that table's own policy.
+//
 // Role 'owner' is refused outright at issuance — ownership transfer is
 // promote-then-step-down (D-13), never an invitation. Because only an
 // owner or admin may reach this route at all (canManageWorkspaceMembers)
@@ -188,6 +203,17 @@ export async function POST(
     text: emailContent.text,
   })
 
+  // WSR-19 / R-13 — `changes` CARRIES THE ROLE AND NOTHING ELSE. It used to
+  // carry `email: normalizedEmail`, and `changes` is a BROADLY READABLE
+  // column: migration 186's audit-visibility helper makes it reachable by
+  // every active seat on this workspace, including a guest, so an invited
+  // person's address was in front of all of them.
+  //
+  // The address has not been lost, only narrowed to the people entitled to
+  // it. It lives on `workspace_invitations.email`, whose SELECT policy
+  // (migration 182) is owner/admin-only, and THIS AUDIT ROW ALREADY POINTS AT
+  // THAT ROW through `target_id` — so an owner or admin reading the trail can
+  // still resolve who was invited, and nobody else can.
   await logWorkspaceAction(service, {
     workspaceId,
     actorId: gated.userId,
@@ -195,7 +221,7 @@ export async function POST(
     action: 'workspace.invitation.issued',
     targetType: 'workspace_invitation',
     targetId: invitation?.id ?? null,
-    changes: { role, email: normalizedEmail },
+    changes: { role },
   })
 
   return NextResponse.json({
