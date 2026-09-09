@@ -282,7 +282,7 @@ export async function isDestinationVisible(
       .eq('is_public', true)
       .maybeSingle()
     if (!data) return false
-    return checkViewerBlock(client, viewerId, destinationId)
+    return checkViewerBlock(viewerId, destinationId)
   }
 
   if (destinationType === 'project') {
@@ -294,7 +294,7 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (data as { user_id?: string } | null)?.user_id
     if (!ownerId) return false
-    return checkViewerBlock(client, viewerId, ownerId)
+    return checkViewerBlock(viewerId, ownerId)
   }
 
   if (destinationType === 'track') {
@@ -313,7 +313,7 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (project as { user_id?: string } | null)?.user_id
     if (!ownerId) return false
-    return checkViewerBlock(client, viewerId, ownerId)
+    return checkViewerBlock(viewerId, ownerId)
   }
 
   if (destinationType === 'opportunity') {
@@ -325,7 +325,7 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (data as { created_by?: string } | null)?.created_by
     if (!ownerId) return false
-    return checkViewerBlock(client, viewerId, ownerId)
+    return checkViewerBlock(viewerId, ownerId)
   }
 
   if (destinationType === 'post') {
@@ -348,7 +348,7 @@ export async function isDestinationVisible(
       .eq('is_public', true)
       .maybeSingle()
     if (!author) return false
-    return checkViewerBlock(client, viewerId, authorId)
+    return checkViewerBlock(viewerId, authorId)
   }
 
   return false
@@ -407,16 +407,16 @@ function getBlockReadClient(): SupabaseClient | null {
 // The check is FAIL-CLOSED on error, deliberately, matching the RPC form.
 // Do NOT reuse `loadBlockedIds` from lib/green-room/discover.ts: it
 // discards its `error` and would flip this gate fail-open.
+//
+// This helper deliberately takes NO client parameter. It used to, and the
+// parameter was named `service` while the feed path passed a user-scoped
+// one — which is precisely how the fail-open above got written. A caller
+// cannot hand this function the wrong instrument if it cannot hand it one
+// at all.
 async function checkViewerBlock(
-  client: SupabaseClient,
   viewerId: string | undefined,
   ownerId: string
 ): Promise<boolean> {
-  // `client` is intentionally unused — see reason 2 above. It stays in the
-  // signature to make it explicit at every call site that the caller's
-  // client is the wrong instrument for this particular read.
-  void client
-
   if (!viewerId || viewerId === ownerId) return true
 
   const service = getBlockReadClient()
