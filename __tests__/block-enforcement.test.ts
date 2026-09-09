@@ -429,14 +429,26 @@ describe('migration content pins — already-enforced surfaces (verified, not pa
     )
   })
 
-  // Re-pointed by phase 38.0.3 plan 04. This pin used to assert the literal
-  // `service.rpc('no_block', { a: viewerId, b: ownerId })`. That RPC form was
-  // removed so `no_block` could leave the PostgREST-exposed schema (owner
-  // decision D4; PostgREST routes only to schemas in its `db-schemas` config,
-  // so an unexposed function has no RPC route regardless of EXECUTE grants).
-  // The pin now guards the PROPERTY the 13-03 audit cared about — a
-  // bidirectional, fail-closed block check — rather than the mechanism.
-  it('blocks table placement destination checks gate bidirectionally via a direct bidirectional `blocks` read in checkViewerBlock (lib/green-room/placements-admin.ts)', () => {
+  // Re-pointed by phase 38.0.3 plan 04, then tightened when review caught a
+  // fail-open regression in that plan's first cut. This pin used to assert
+  // the literal `service.rpc('no_block', { a: viewerId, b: ownerId })`. That
+  // RPC form was removed so `no_block` could leave the PostgREST-exposed
+  // schema (owner decision D4; PostgREST routes only to schemas in its
+  // `db-schemas` config, so an unexposed function has no RPC route
+  // regardless of EXECUTE grants).
+  //
+  // The pin guards the PROPERTY the 13-03 audit cared about — a
+  // bidirectional, fail-closed block check — rather than the mechanism. It
+  // now ALSO pins the PRIVILEGE the read runs with, because bidirectionality
+  // is meaningless if RLS silently drops one direction: `blocks_select_own`
+  // (migration 035) restricts SELECT to `blocker_id = auth.uid()`, and the
+  // only caller that reaches this query passes a user-scoped client
+  // (app/api/green-room/feed/route.ts -> ... -> filterVisiblePlacementRows).
+  // Reading `blocks` off that client returns zero rows for the
+  // owner-blocked-viewer direction and shows the placement to the blocked
+  // party. The read must therefore use the service role — the privilege
+  // equivalent of the SECURITY DEFINER function it replaced.
+  it('blocks table placement destination checks gate bidirectionally, fail closed, and read `blocks` with the SERVICE role (lib/green-room/placements-admin.ts)', () => {
     const source = readFileSync(
       path.join(process.cwd(), 'lib/green-room/placements-admin.ts'),
       'utf8'
@@ -461,6 +473,20 @@ describe('migration content pins — already-enforced surfaces (verified, not pa
 
     // Fail closed: a query error hides the destination.
     expect(helper).toMatch(/if \(error\) return false/)
+
+    // SERVICE ROLE, not the caller's client. The module imports
+    // createServiceClient, the helper obtains a client from the memoized
+    // accessor, fails closed when it cannot be built, and issues the read on
+    // THAT client — never on the `client` parameter it was handed.
+    expect(code).toMatch(/import \{ createServiceClient \} from '@\/lib\/supabase\/server'/)
+    expect(code).toMatch(/function getBlockReadClient\(\)[\s\S]*?createServiceClient\(\)/)
+    expect(helper).toMatch(/const service = getBlockReadClient\(\)/)
+    expect(helper).toMatch(/if \(!service\) return false/)
+    expect(helper).toMatch(/await service\s+\.from\('blocks'\)/)
+    // The caller-supplied client is never awaited inside this helper — the
+    // exact shape of the regression that was caught in review.
+    expect(helper).not.toMatch(/await client\b/)
+    expect(helper).not.toMatch(/client\s*\.from\(/)
   })
 })
 

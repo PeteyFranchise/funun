@@ -1,5 +1,5 @@
 import { GET } from '@/app/api/green-room/feed/route'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   buildFeedCursorPredicate,
   buildPlacementWindowPredicate,
@@ -19,6 +19,7 @@ const { loadGreenRoomFeed: loadGreenRoomFeedActual } = jest.requireActual(
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
+  createServiceClient: jest.fn(),
 }))
 
 jest.mock('@/lib/green-room/feed-query', () => {
@@ -48,8 +49,31 @@ function mockUserProfilesFrom(memberType: string | null = 'artist') {
   }))
 }
 
+// checkViewerBlock (lib/green-room/placements-admin.ts) reads `blocks` with a
+// SERVICE-role client, NOT with the client filterVisiblePlacementRows was
+// handed — that one is the request's user-scoped client, and migration 035's
+// `blocks_select_own` policy would hide the owner-blocked-viewer direction
+// from it, failing the gate open. It memoizes that client at module scope, so
+// this stub has to be a single stable object; the rows it serves are mutated
+// per test through `serviceBlocksResult`.
+const serviceBlocksResult: { data: unknown[]; error: unknown } = { data: [], error: null }
+const serviceClientStub = {
+  from: jest.fn((table: string) => {
+    if (table !== 'blocks') {
+      throw new Error(`the service client must only be used for the blocks read, got: ${table}`)
+    }
+    const b: Record<string, unknown> = {}
+    for (const m of ['select', 'or', 'limit', 'eq', 'is']) b[m] = () => b
+    b.then = (resolve: (v: unknown) => void) => resolve(serviceBlocksResult)
+    return b
+  }),
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
+  serviceBlocksResult.data = []
+  serviceBlocksResult.error = null
+  ;(createServiceClient as jest.Mock).mockReturnValue(serviceClientStub)
 })
 
 describe('GET /api/green-room/feed', () => {
@@ -130,18 +154,6 @@ describe('GET /api/green-room/feed', () => {
     })
   })
 })
-
-// Chainable stand-ins for the `blocks` read that checkViewerBlock performs
-// (38.0.3 plan 04 — replaced the no_block RPC). Thenable so they resolve
-// wherever the chain terminates.
-function blocksBuilder(rows: unknown[]) {
-  const b: Record<string, unknown> = {}
-  for (const m of ['select', 'or', 'limit', 'eq', 'is']) b[m] = () => b
-  b.then = (resolve: (v: unknown) => void) => resolve({ data: rows, error: null })
-  return b
-}
-const noBlocksBuilder = () => blocksBuilder([])
-const blockedBuilder = () => blocksBuilder([{ blocker_id: 'blocked-profile' }])
 
 describe('Green Room feed query helpers', () => {
   it('round-trips opaque cursors and builds a stable published_at/id predicate', () => {
@@ -230,11 +242,13 @@ describe('Green Room feed query helpers', () => {
       },
     ]
     // 38.0.3 plan 04: the block check reads `blocks` directly instead of
-    // calling the `no_block` RPC, so the builder needs .or()/.limit() and
-    // `blocks` has to resolve to an empty row set (nobody is blocked here).
+    // calling the `no_block` RPC — and, per that plan's review fix, it does
+    // so on the SERVICE client (serviceBlocksResult, empty here: nobody is
+    // blocked). The user-scoped client below must never be asked for
+    // `blocks`; under RLS it cannot see the direction that matters.
     const supabase = {
       from: jest.fn((table: string) => {
-        if (table === 'blocks') return noBlocksBuilder()
+        if (table === 'blocks') throw new Error('blocks must not be read on the user-scoped client')
         return {
           select: jest.fn(() => ({
             eq: jest.fn((_field: string, id: string) => ({
@@ -264,10 +278,13 @@ describe('Green Room feed query helpers', () => {
       },
     ]
     // 38.0.3 plan 04: the block is now expressed as a row in `blocks` rather
-    // than as a `no_block` RPC returning false.
+    // than as a `no_block` RPC returning false, and it is read with the
+    // SERVICE role. Seed the block on the service stub — seeding it on the
+    // user-scoped client below is exactly the fail-open bug review caught.
+    serviceBlocksResult.data = [{ blocker_id: 'blocked-profile' }]
     const supabase = {
       from: jest.fn((table: string) => {
-        if (table === 'blocks') return blockedBuilder()
+        if (table === 'blocks') throw new Error('blocks must not be read on the user-scoped client')
         return {
           select: jest.fn(() => ({
             eq: jest.fn((_field: string, id: string) => ({

@@ -5,6 +5,16 @@ import {
   isHttpUrl,
 } from '@/lib/green-room/placements-admin'
 
+// checkViewerBlock reads `blocks` with a SERVICE-role client, not with the
+// client it is handed — the caller passes a user-scoped, RLS-bound client on
+// the feed path and `blocks_select_own` (migration 035) would hide the
+// owner-blocked-viewer direction. Every test below that passes a viewerId
+// must therefore stub the service client, or it would pass vacuously via the
+// fail-closed branch that fires when no service client can be built.
+jest.mock('@/lib/supabase/server', () => ({
+  createServiceClient: jest.fn(),
+}))
+
 const UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
 function base(overrides: Record<string, unknown> = {}) {
@@ -218,21 +228,41 @@ describe('isDestinationVisible', () => {
   it('fails for a visible destination when the viewer is blocked by that owner', async () => {
     // 38.0.3 plan 04: the block is now expressed as a row in `blocks`, not
     // as an `no_block` RPC return — the RPC was removed so the function
-    // could leave the PostgREST-exposed schema (owner decision D4). The
-    // full behaviour matrix lives in
+    // could leave the PostgREST-exposed schema (owner decision D4). The read
+    // runs on a SERVICE client (review fix: a user-scoped client cannot see
+    // the owner-blocked-viewer direction under `blocks_select_own`), so the
+    // block row is seeded there, NOT on the client passed in. The full
+    // behaviour matrix lives in
     // __tests__/green-room-placements-block-check.test.ts.
-    const service = routedService({ user_profiles: { id: UUID } })
+    jest.resetModules()
+    const server = await import('@/lib/supabase/server')
+
     const blocked: Record<string, unknown> = {}
     for (const m of ['select', 'or', 'limit', 'eq', 'is']) blocked[m] = () => blocked
     blocked.then = (resolve: (v: unknown) => void) =>
       resolve({ data: [{ blocker_id: UUID }], error: null })
-    service.from = jest.fn((t: string) =>
-      t === 'blocks' ? blocked : routedService({ user_profiles: { id: UUID } }).from(t)
-    ) as never
+    ;(server.createServiceClient as jest.Mock).mockReturnValue({
+      from: jest.fn((t: string) => {
+        if (t !== 'blocks') throw new Error(`service client must only read blocks, got: ${t}`)
+        return blocked
+      }),
+    })
+
+    const fresh = await import('@/lib/green-room/placements-admin')
+    // The caller's client serves only the publicness read and must never be
+    // asked for `blocks`.
+    const caller = routedService({ user_profiles: { id: UUID } })
+    const seenTables: string[] = []
+    const callerFrom = caller.from
+    caller.from = jest.fn((t: string) => {
+      seenTables.push(t)
+      return callerFrom(t)
+    }) as never
 
     await expect(
-      isDestinationVisible(service as never, 'profile', UUID, null, 'viewer-1')
+      fresh.isDestinationVisible(caller as never, 'profile', UUID, null, 'viewer-1')
     ).resolves.toBe(false)
+    expect(seenTables).not.toContain('blocks')
   })
 
   it('returns false for a null internal destination id', async () => {
