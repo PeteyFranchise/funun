@@ -429,12 +429,38 @@ describe('migration content pins — already-enforced surfaces (verified, not pa
     )
   })
 
-  it('blocks table placement destination checks already gate on no_block() via checkViewerBlock (lib/green-room/placements-admin.ts)', () => {
+  // Re-pointed by phase 38.0.3 plan 04. This pin used to assert the literal
+  // `service.rpc('no_block', { a: viewerId, b: ownerId })`. That RPC form was
+  // removed so `no_block` could leave the PostgREST-exposed schema (owner
+  // decision D4; PostgREST routes only to schemas in its `db-schemas` config,
+  // so an unexposed function has no RPC route regardless of EXECUTE grants).
+  // The pin now guards the PROPERTY the 13-03 audit cared about — a
+  // bidirectional, fail-closed block check — rather than the mechanism.
+  it('blocks table placement destination checks gate bidirectionally via a direct bidirectional `blocks` read in checkViewerBlock (lib/green-room/placements-admin.ts)', () => {
     const source = readFileSync(
       path.join(process.cwd(), 'lib/green-room/placements-admin.ts'),
       'utf8'
     )
-    expect(source).toMatch(/service\.rpc\('no_block', \{ a: viewerId, b: ownerId \}\)/)
+    // Strip line comments so the pin matches real code, not the explanatory
+    // prose above the helper.
+    const code = source
+      .split('\n')
+      .map(line => line.replace(/^\s*\/\/.*$/, ''))
+      .join('\n')
+    const helper = code.slice(code.indexOf('async function checkViewerBlock'))
+    expect(helper).not.toBe('')
+
+    // Reads the table directly — no RPC route dependency.
+    expect(helper).toMatch(/\.from\('blocks'\)/)
+    expect(code).not.toMatch(/rpc\('no_block'/)
+
+    // BOTH directions of the pair. A block by EITHER party hides the
+    // destination, matching no_block()'s symmetric definition (migration 035).
+    expect(helper).toMatch(/and\(blocker_id\.eq\.\$\{viewerId\},blocked_id\.eq\.\$\{ownerId\}\)/)
+    expect(helper).toMatch(/and\(blocker_id\.eq\.\$\{ownerId\},blocked_id\.eq\.\$\{viewerId\}\)/)
+
+    // Fail closed: a query error hides the destination.
+    expect(helper).toMatch(/if \(error\) return false/)
   })
 })
 
