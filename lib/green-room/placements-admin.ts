@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/server'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Admin-curated Green Room placements (Plan 12-10)
@@ -251,10 +252,20 @@ export function validatePlacementPatch(body: Record<string, unknown>): Placement
 
 // ─── Destination visibility gate (activation guard) ──────────────────────
 // Confirms an internal destination is public/visible before a placement can
-// go active. Uses the service client (admin context) purely to read the
-// destination's public flag. External placements are gated by URL shape only.
+// go active. External placements are gated by URL shape only.
+//
+// ON THE `client` PARAMETER — it is NOT necessarily a service client. It is
+// whatever client the CALLER holds, and that differs per call site:
+//   • app/api/admin/green-room/placements/**  passes the SERVICE client
+//     (admin context, behind verifyAdmin()), and passes no viewerId.
+//   • lib/green-room/feed-query.ts -> filterVisiblePlacementRows passes the
+//     request's USER-SCOPED client (createApiClient), so every read below
+//     runs under RLS — and it DOES pass a viewerId.
+// For the `is_public` / `status` / `active` reads below that is fine and in
+// fact desirable: an RLS-hidden destination row resolves to null, which
+// fails closed. It is NOT fine for the block read — see checkViewerBlock.
 export async function isDestinationVisible(
-  service: SupabaseClient,
+  client: SupabaseClient,
   destinationType: PlacementDestinationType,
   destinationId: string | null,
   destinationUrl: string | null,
@@ -264,18 +275,18 @@ export async function isDestinationVisible(
   if (!destinationId) return false
 
   if (destinationType === 'profile') {
-    const { data } = await service
+    const { data } = await client
       .from('user_profiles')
       .select('id')
       .eq('id', destinationId)
       .eq('is_public', true)
       .maybeSingle()
     if (!data) return false
-    return checkViewerBlock(service, viewerId, destinationId)
+    return checkViewerBlock(client, viewerId, destinationId)
   }
 
   if (destinationType === 'project') {
-    const { data } = await service
+    const { data } = await client
       .from('vault_projects')
       .select('id, user_id')
       .eq('id', destinationId)
@@ -283,18 +294,18 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (data as { user_id?: string } | null)?.user_id
     if (!ownerId) return false
-    return checkViewerBlock(service, viewerId, ownerId)
+    return checkViewerBlock(client, viewerId, ownerId)
   }
 
   if (destinationType === 'track') {
-    const { data: track } = await service
+    const { data: track } = await client
       .from('tracks')
       .select('project_id')
       .eq('id', destinationId)
       .maybeSingle()
     const projectId = (track as { project_id?: string } | null)?.project_id
     if (!projectId) return false
-    const { data: project } = await service
+    const { data: project } = await client
       .from('vault_projects')
       .select('id, user_id')
       .eq('id', projectId)
@@ -302,11 +313,11 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (project as { user_id?: string } | null)?.user_id
     if (!ownerId) return false
-    return checkViewerBlock(service, viewerId, ownerId)
+    return checkViewerBlock(client, viewerId, ownerId)
   }
 
   if (destinationType === 'opportunity') {
-    const { data } = await service
+    const { data } = await client
       .from('opportunities')
       .select('id, created_by')
       .eq('id', destinationId)
@@ -314,11 +325,11 @@ export async function isDestinationVisible(
       .maybeSingle()
     const ownerId = (data as { created_by?: string } | null)?.created_by
     if (!ownerId) return false
-    return checkViewerBlock(service, viewerId, ownerId)
+    return checkViewerBlock(client, viewerId, ownerId)
   }
 
   if (destinationType === 'post') {
-    const { data } = await service
+    const { data } = await client
       .from('green_room_posts')
       .select('id, author_id')
       .eq('id', destinationId)
@@ -330,24 +341,45 @@ export async function isDestinationVisible(
     const authorId = (data as { author_id?: string } | null)?.author_id
     if (!authorId) return false
 
-    const { data: author } = await service
+    const { data: author } = await client
       .from('user_profiles')
       .select('id')
       .eq('id', authorId)
       .eq('is_public', true)
       .maybeSingle()
     if (!author) return false
-    return checkViewerBlock(service, viewerId, authorId)
+    return checkViewerBlock(client, viewerId, authorId)
   }
 
   return false
 }
 
+// Memoized service-role client, created lazily on first block check.
+//
+// filterVisiblePlacementRows fans isDestinationVisible out across every
+// placement row with Promise.all, so constructing a client per call would
+// build one per placement per feed request. One module-scoped instance is
+// enough: it is stateless and holds no session (persistSession: false).
+let blockReadClient: SupabaseClient | null = null
+
+function getBlockReadClient(): SupabaseClient | null {
+  if (blockReadClient) return blockReadClient
+  try {
+    blockReadClient = createServiceClient()
+  } catch {
+    // SUPABASE_SERVICE_ROLE_KEY (or the URL) unset — createClient throws
+    // synchronously. Return null so the caller FAILS CLOSED rather than
+    // throwing out of the whole feed request.
+    return null
+  }
+  return blockReadClient
+}
+
 // Bidirectional block gate for a placement destination.
 //
 // This used to call the `no_block` SECURITY DEFINER RPC. It now reads
-// `public.blocks` directly with the service client. Two reasons, and both
-// matter:
+// `public.blocks` directly WITH THE SERVICE ROLE. Three things to know, and
+// all three matter:
 //
 //   1. Routing. Owner decision D4 relocates `no_block` out of the
 //      PostgREST-exposed schema, because an exposed symmetric helper is an
@@ -357,21 +389,38 @@ export async function isDestinationVisible(
 //      the function moves there is no RPC route at all, whatever EXECUTE
 //      grants `service_role` holds. Routing and privilege are different
 //      questions.
-//   2. Visibility. The service role bypasses RLS. That is required here:
-//      `blocks_select_own` restricts SELECT to `blocker_id = auth.uid()`,
-//      so a user-scoped client can never see the direction where the OWNER
-//      blocked the VIEWER — which is precisely the direction that must be
-//      caught.
+//   2. Why the passed-in `client` MUST NOT be used for this read. Callers
+//      pass a user-scoped, RLS-bound client on the only path that reaches
+//      this query (the Green Room feed). Policy `blocks_select_own`
+//      (migration 035) restricts SELECT to `blocker_id = auth.uid()`, so
+//      under RLS the "OWNER blocked the VIEWER" disjunct below returns
+//      NOTHING — the query silently degrades to zero rows and the gate
+//      FAILS OPEN toward exactly the person the owner blocked. This was a
+//      real regression, caught in review of 38.0.3 plan 04. The service
+//      role bypasses RLS and is the privilege equivalent of the
+//      SECURITY DEFINER function it replaced.
+//   3. Why bypassing RLS here does not widen disclosure. The helper takes
+//      one specific (viewer, owner) pair and returns a boolean. No row
+//      content leaves this function, so it is not the T-08-03 enumeration
+//      oracle the table policy exists to prevent.
 //
 // The check is FAIL-CLOSED on error, deliberately, matching the RPC form.
 // Do NOT reuse `loadBlockedIds` from lib/green-room/discover.ts: it
 // discards its `error` and would flip this gate fail-open.
 async function checkViewerBlock(
-  service: SupabaseClient,
+  client: SupabaseClient,
   viewerId: string | undefined,
   ownerId: string
 ): Promise<boolean> {
+  // `client` is intentionally unused — see reason 2 above. It stays in the
+  // signature to make it explicit at every call site that the caller's
+  // client is the wrong instrument for this particular read.
+  void client
+
   if (!viewerId || viewerId === ownerId) return true
+
+  const service = getBlockReadClient()
+  if (!service) return false
 
   const { data, error } = await service
     .from('blocks')
