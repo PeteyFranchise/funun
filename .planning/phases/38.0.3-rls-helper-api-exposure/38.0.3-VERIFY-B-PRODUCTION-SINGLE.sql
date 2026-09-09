@@ -353,7 +353,7 @@ BEGIN
                                ELSE 'synthetic' END
       || ' | workspaces=' || coalesce(v_ws::text,'?')
       || ' workspace_members=' || coalesce(v_wsm::text,'?'),
-    'INFO — STRICT means the cross-user call would have answered TRUE before migration 209, so a FALSE below is the bind. LOOSE means it may have answered FALSE anyway; those rows downgrade themselves.'
+    'INFO — STRICT means the cross-user call would have answered TRUE before migration 209, so a FALSE below is the bind. LOOSE means it may have answered FALSE anyway — those rows downgrade themselves.'
   );
 
   -- ══════════════════════════════════════════════════════════════
@@ -387,10 +387,10 @@ BEGIN
       PERFORM set_config('request.jwt.claims', NULL, true);
       INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
         2, 'B1 POSITIVE CONTROL green_room_can_view_post(post, SELF)',
-        'impersonating the post''s real author; returned ' || coalesce(ok::text,'NULL'),
+        'impersonating the post''s real author — returned ' || coalesce(ok::text,'NULL'),
         CASE WHEN ok IS TRUE
-             THEN 'PASS — the author can still see their own post; the helper has NOT been broken into answering false to everybody'
-             ELSE '*** FAIL — THE POSITIVE CONTROL FAILED. The bound helper refuses the caller''s own row. Green Room reads are down. REVERT 208 AND 209; DO NOT DEBUG IN PLACE. ***' END);
+             THEN 'PASS — the author can still see their own post — the helper has NOT been broken into answering false to everybody'
+             ELSE '*** FAIL — THE POSITIVE CONTROL FAILED. The bound helper refuses the caller''s own row. Green Room reads are down. REVERT 208 AND 209 — DO NOT DEBUG IN PLACE. ***' END);
     EXCEPTION WHEN OTHERS THEN
       v_state := SQLSTATE; v_msg := left(SQLERRM, 120);
       RESET ROLE; PERFORM set_config('request.jwt.claims', NULL, true);
@@ -409,7 +409,7 @@ BEGIN
       INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
         3, 'B2 THE BIND green_room_can_view_post(post, OTHER)',
         'still impersonating the author, asking about viewer '
-          || coalesce(left(v_viewer::text,8),'(none)') || '; returned ' || coalesce(ok::text,'NULL')
+          || coalesce(left(v_viewer::text,8),'(none)') || ' — returned ' || coalesce(ok::text,'NULL')
           || CASE WHEN v_gr_strict
                   THEN ' [STRICT subject: public published post, public author, no block either way — this call returned TRUE before migration 209]'
                   ELSE ' [LOOSE subject: this call may have answered FALSE before 209 as well]' END,
@@ -458,10 +458,10 @@ BEGIN
       PERFORM set_config('request.jwt.claims', NULL, true);
       INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
         4, 'B3 POSITIVE CONTROL is_split_sheet_party(sheet, SELF)',
-        'impersonating a real party to a real sheet; returned ' || coalesce(ok::text,'NULL')
+        'impersonating a real party to a real sheet — returned ' || coalesce(ok::text,'NULL')
           || ' | identity parameter of this helper is `uid`, NOT `p_uid`',
         CASE WHEN ok IS TRUE
-             THEN 'PASS — a real party is still recognised as a party; the helper is not answering false to everybody'
+             THEN 'PASS — a real party is still recognised as a party — the helper is not answering false to everybody'
              ELSE '*** FAIL — THE POSITIVE CONTROL FAILED. Split-sheet reads are down: the policy "Parties can view split sheets" now admits nobody. REVERT. ***' END);
     EXCEPTION WHEN OTHERS THEN
       v_state := SQLSTATE; v_msg := left(SQLERRM, 120);
@@ -481,7 +481,7 @@ BEGIN
       INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
         5, 'B4 THE BIND is_split_sheet_party(sheet, OTHER)',
         'still impersonating the first party, asking about '
-          || coalesce(left(v_party2::text,8),'(none)') || '; returned ' || coalesce(ok::text,'NULL')
+          || coalesce(left(v_party2::text,8),'(none)') || ' — returned ' || coalesce(ok::text,'NULL')
           || CASE WHEN v_ss_strict
                   THEN ' [STRICT subject: the other id is a SECOND REAL PARTY TO THE SAME SHEET — this call returned TRUE before migration 209]'
                   ELSE ' [LOOSE subject: the other id is not a party, so this call answered FALSE before 209 too]' END
@@ -560,7 +560,7 @@ BEGIN
       6, 'B5 workspace_member_role(ws, SELF) — W1, NO POSITIVE CONTROL',
       v_state || ': ' || v_msg,
       CASE WHEN v_state = '42501'
-           THEN '*** FAIL — authenticated LOST EXECUTE on a Tier-2 helper. The TRAP was applied to the wrong tier; every policy calling it is about to raise 42501. REVERT. ***'
+           THEN '*** FAIL — authenticated LOST EXECUTE on a Tier-2 helper. The TRAP was applied to the wrong tier — every policy calling it is about to raise 42501. REVERT. ***'
            ELSE '*** ERROR ***' END);
   END;
 
@@ -573,7 +573,7 @@ BEGIN
     PERFORM set_config('request.jwt.claims', NULL, true);
     INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
       7, 'B6 workspace_member_role(ws, OTHER) — W1, WEAKER THAN B2/B4',
-      'impersonating u1, asking about u2; returned ' || coalesce(txt, 'NULL'),
+      'impersonating u1, asking about u2 — returned ' || coalesce(txt, 'NULL'),
       CASE WHEN txt IS NOT NULL
            THEN '*** FAIL — returned a role for another user. The CASE guard is not binding p_uid to auth.uid(). ***'
            ELSE 'INFO — NULL, as required, BUT THIS IS NOT A PASS. B6 is strictly weaker than B2 and B4: those two have a same-user positive control on the same real row and this one does not, because the workspace tables are empty while D-56 is off. A helper that returned NULL to EVERYBODY would produce this identical row while having taken down workspace_audit_log, workspace_roster_relationships and workspaces reads. RE-RUN AFTER D-56 IS ON.' END);
@@ -612,7 +612,7 @@ BEGIN
   IF v_post IS NULL OR v_viewer IS NULL OR NOT v_gr_strict THEN
     INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
       8, 'B7 service_role disjunct fires when auth.uid() is NULL',
-      'needs the STRICT Green Room subject (a post the OTHER viewer could genuinely see); not available',
+      'needs the STRICT Green Room subject (a post the OTHER viewer could genuinely see) — not available',
       'INFO — SKIPPED. Without a subject whose true answer is TRUE, a TRUE here would be unprovable and a FALSE ambiguous.');
   ELSE
     BEGIN
@@ -622,7 +622,7 @@ BEGIN
       PERFORM set_config('request.jwt.claims', NULL, true);
       INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
         8, 'B7 service_role disjunct fires when auth.uid() is NULL',
-        'claims role=service_role with NO sub, session role unchanged; same call B2 made; returned '
+        'claims role=service_role with NO sub, session role unchanged — same call B2 made — returned '
           || coalesce(ok::text,'NULL') || ' (B2 returned false for this same pair)',
         CASE WHEN ok IS TRUE
              THEN 'PASS — the service path gets the TRUE answer where a bound user session gets false. lib/trust-safety/reports.ts keeps working.'
@@ -671,7 +671,7 @@ BEGIN
         CASE v_state
           WHEN '42501' THEN 'PASS — 42501 insufficient_privilege. The revoke is real, not merely written.'
           WHEN '42883' THEN '*** FAIL — 42883: the FUNCTION IS GONE. Migration 208 revokes this one, it never drops it. Eleven definer bodies call it. ***'
-          ELSE '*** ERROR — unexpected SQLSTATE; expected 42501 ***' END);
+          ELSE '*** ERROR — unexpected SQLSTATE — expected 42501 ***' END);
     END IF;
   END;
 
@@ -694,8 +694,8 @@ BEGIN
         'SQLSTATE ' || v_state || ': ' || v_msg,
         CASE v_state
           WHEN '42501' THEN 'PASS — 42501 insufficient_privilege. The revoke is real.'
-          WHEN '42883' THEN '*** FAIL — 42883: the FUNCTION IS GONE. 208 revokes this one; green_room_can_view_post calls it from its own body. ***'
-          ELSE '*** ERROR — unexpected SQLSTATE; expected 42501 ***' END);
+          WHEN '42883' THEN '*** FAIL — 42883: the FUNCTION IS GONE. 208 revokes this one — green_room_can_view_post calls it from its own body. ***'
+          ELSE '*** ERROR — unexpected SQLSTATE — expected 42501 ***' END);
     END IF;
   END;
 
@@ -717,9 +717,9 @@ BEGIN
         11, 'B9b Tier-1 DROP: workspace_roster_relationship_is_live as authenticated',
         'SQLSTATE ' || v_state || ': ' || v_msg,
         CASE v_state
-          WHEN '42883' THEN 'PASS — 42883 undefined_function. The drop applied; the endpoint no longer exists rather than being guarded.'
+          WHEN '42883' THEN 'PASS — 42883 undefined_function. The drop applied — the endpoint no longer exists rather than being guarded.'
           WHEN '42501' THEN 'PASS (FALLBACK PATH) — 42501: still present but revoked. This is migration 208''s documented 2BP01 fallback. Confirm the owner took it deliberately, and cross-read Part A''s A2 row.'
-          ELSE '*** ERROR — unexpected SQLSTATE; expected 42883 (dropped) or 42501 (fallback) ***' END);
+          ELSE '*** ERROR — unexpected SQLSTATE — expected 42883 (dropped) or 42501 (fallback) ***' END);
     END IF;
   END;
 
@@ -861,10 +861,10 @@ BEGIN
           || '  |  comments visible to that author under RLS = ' || n,
         CASE
           WHEN v_base_comments = 0 AND n = 0
-            THEN 'INFO — no comments to read; this row cannot discriminate.'
+            THEN 'INFO — no comments to read — this row cannot discriminate.'
           WHEN n >= v_base_comments AND n > 0
             THEN 'PASS — green_room_comments_select_visible still admits rows. That policy calls BOTH green_room_can_view_post and no_block, so it also exercises the Tier-3 helper this phase does not change.'
-          ELSE '*** FAIL — the comment read collapsed. Its policy calls green_room_can_view_post; a bound helper answering false to everybody produces exactly this. ***'
+          ELSE '*** FAIL — the comment read collapsed. Its policy calls green_room_can_view_post — a bound helper answering false to everybody produces exactly this. ***'
         END);
     EXCEPTION WHEN OTHERS THEN
       v_state := SQLSTATE; v_msg := left(SQLERRM, 120);
@@ -926,14 +926,14 @@ BEGIN
   -- ══════════════════════════════════════════════════════════════
 
   INSERT INTO verify_b_38_0_3 (ord, check_name, detail, verdict) VALUES (
-    16, 'B13 session is clean; the harness wrote nothing',
+    16, 'B13 session is clean — the harness wrote nothing',
     'current_user=' || current_user || '  session_user=' || session_user
       || '  request.jwt.claims=' || coalesce(nullif(current_setting('request.jwt.claims', true), ''), '(unset)')
       || '  | this file created ONE temp table and no other object, and issued no INSERT, UPDATE or DELETE against any application table',
     CASE WHEN current_user = session_user
               AND coalesce(nullif(current_setting('request.jwt.claims', true), ''), '') = ''
          THEN 'PASS — role reset and impersonation cleared'
-         ELSE '*** FAIL — THE SESSION IS STILL IMPERSONATING. Every row above ran under uncertain identity; distrust all of them, close this connection and re-run in a fresh one. ***' END);
+         ELSE '*** FAIL — THE SESSION IS STILL IMPERSONATING. Every row above ran under uncertain identity — distrust all of them, close this connection and re-run in a fresh one. ***' END);
 
 END
 $BLOCK$;

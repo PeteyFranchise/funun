@@ -560,7 +560,7 @@ SELECT 100 + row_number() OVER (ORDER BY t.proname) AS ord,
          WHEN count(d.oid) = 0
            THEN '*** FAIL — FUNCTION IS GONE. 208 revokes, it never drops these three. ***'
          WHEN bool_or(d.anon_exec) OR bool_or(d.authed_exec)
-           THEN '*** FAIL — EXPOSED. EXPECTED IN THE PRE-RUN (this row is the disclosure evidence); a FAIL here in the POST-RUN means migration 208 did not apply. ***'
+           THEN '*** FAIL — EXPOSED. EXPECTED IN THE PRE-RUN (this row is the disclosure evidence) — a FAIL here in the POST-RUN means migration 208 did not apply. ***'
          ELSE 'PASS — anon and authenticated hold no EXECUTE'
        END AS verdict
 FROM tier1 t
@@ -587,7 +587,7 @@ SELECT 110,
          WHEN EXISTS (SELECT 1 FROM defs d WHERE d.proname = 'workspace_roster_relationship_is_live'
                         AND NOT d.anon_exec AND NOT d.authed_exec)
            THEN 'PASS (FALLBACK PATH) — still present but revoked from anon and authenticated. This is migration 208''s documented 2BP01 fallback. Confirm the owner took it deliberately.'
-         ELSE '*** FAIL — PRESENT AND STILL EXECUTABLE. Expected in the PRE-RUN; in the POST-RUN it means neither the drop nor the fallback revoke applied. ***'
+         ELSE '*** FAIL — PRESENT AND STILL EXECUTABLE. Expected in the PRE-RUN — in the POST-RUN it means neither the drop nor the fallback revoke applied. ***'
        END
 
 UNION ALL
@@ -613,7 +613,7 @@ SELECT 120 + row_number() OVER (ORDER BY t.proname),
        CASE
          WHEN count(d.oid) = 0 THEN '*** FAIL — FUNCTION IS MISSING ***'
          WHEN bool_or(d.anon_exec)
-           THEN '*** FAIL — anon can EXECUTE. 209 revokes anon explicitly; either it did not apply or something re-granted. ***'
+           THEN '*** FAIL — anon can EXECUTE. 209 revokes anon explicitly — either it did not apply or something re-granted. ***'
          WHEN NOT bool_and(d.authed_exec)
            THEN '*** FAIL — authenticated LOST EXECUTE. THE TRAP WAS APPLIED TO THE WRONG TIER. Every policy calling this helper is about to raise 42501. REVERT. ***'
          ELSE 'PASS — authenticated keeps EXECUTE (required), anon does not'
@@ -639,7 +639,7 @@ SELECT 139,
                                    || ' authed=' || d.authed_exec || ' service=' || d.service_exec, ' | ')
                    FROM defs d WHERE d.proname = 'no_block'),
                 '(no_block absent from pg_proc)'),
-       'INFO — no verdict. This phase does not change no_block. Record the value; plan 06 must reproduce Part B''s B12 outcome exactly after the relocation.'
+       'INFO — no verdict. This phase does not change no_block. Record the value — plan 06 must reproduce Part B''s B12 outcome exactly after the relocation.'
 
 UNION ALL
 -- A4 — the aggregate exposed-definer count, against a known baseline.
@@ -722,13 +722,13 @@ SELECT 200 + row_number() OVER (ORDER BY proname),
          || '  pg_trigger_depth=' || coalesce(has_trigger_depth::text, 'null'),
        CASE
          WHEN n_defs = 0 THEN '*** FAIL — FUNCTION IS MISSING FROM pg_proc ***'
-         WHEN n_defs > 1 THEN '*** FAIL — OVERLOADED. 209 replaces one signature; another exists and is unbound. ***'
+         WHEN n_defs > 1 THEN '*** FAIL — OVERLOADED. 209 replaces one signature — another exists and is unbound. ***'
          WHEN NOT has_bind
-           THEN '*** FAIL — NOT BOUND. Expected in the PRE-RUN; in the POST-RUN it means 209 did not apply, or applied against the WRONG PARAMETER NAME. ***'
+           THEN '*** FAIL — NOT BOUND. Expected in the PRE-RUN — in the POST-RUN it means 209 did not apply, or applied against the WRONG PARAMETER NAME. ***'
          WHEN NOT has_service_disjunct
            THEN '*** FAIL — bound but the auth.role()=service_role disjunct is absent. lib/trust-safety/reports.ts and lib/green-room/placements-admin.ts run on a connection where auth.uid() is NULL and will break. ***'
          WHEN has_trigger_depth
-           THEN '*** FAIL — carries migration 174''s pg_trigger_depth escape. 209 omits it deliberately; its presence means a body other than 209''s is deployed. ***'
+           THEN '*** FAIL — carries migration 174''s pg_trigger_depth escape. 209 omits it deliberately — its presence means a body other than 209''s is deployed. ***'
          ELSE 'PASS — bound to its own identity parameter, service-role disjunct present, no trigger-depth escape'
        END
 FROM t2chk
@@ -779,7 +779,7 @@ SELECT 300,
                 '(no handler body contains the string GRANT)'),
        CASE WHEN EXISTS (SELECT 1 FROM evt WHERE handler_src ILIKE '%grant%')
             THEN '*** FAIL — AN EVENT TRIGGER HANDLER CONTAINS A GRANT. STOP THE PHASE. Migrations 208 and 209 are not durable: the platform may re-grant EXECUTE after any DDL. Read the handler body before applying anything. ***'
-            ELSE 'PASS — no event-trigger handler body contains a grant; assumption A1 holds on this database' END
+            ELSE 'PASS — no event-trigger handler body contains a grant — assumption A1 holds on this database' END
 
 UNION ALL
 -- C2 — the full list, INFO, unconditionally. The answer goes ON THE RECORD
@@ -839,7 +839,7 @@ UNION ALL
 -- Something was dropped out of band, or a migration never applied.
 SELECT 430 + row_number() OVER (ORDER BY r.tablename, r.policyname, r.helper_name),
        'D2 MISSING policy: ' || r.tablename || '.' || r.policyname || ' -> ' || r.helper_name,
-       'the migration corpus produces this policy; production has no policy of that name on that table naming that helper',
+       'the migration corpus produces this policy — production has no policy of that name on that table naming that helper',
        '*** FAIL — expected policy absent from production. A read this policy gates is either wide open or default-deny. ***'
 FROM repo_pol r
 LEFT JOIN prod_named pn
@@ -864,7 +864,7 @@ SELECT 470,
                     ON lower(pn.tablename) = lower(r.tablename)
                    AND lower(pn.policyname) = lower(r.policyname)
                    AND pn.helper_name = r.helper_name) = 0
-            THEN '*** FAIL — ZERO MATCHES. The diff is VACUOUS; D1 and D2 mean nothing. Check that pg_policies is readable to this session. ***'
+            THEN '*** FAIL — ZERO MATCHES. The diff is VACUOUS — D1 and D2 mean nothing. Check that pg_policies is readable to this session. ***'
             WHEN (SELECT count(*) FROM repo_pol) = 44
                  AND (SELECT count(*) FROM repo_pol r JOIN prod_named pn
                         ON lower(pn.tablename) = lower(r.tablename)
@@ -907,7 +907,7 @@ SELECT 540,
        CASE WHEN (SELECT count(*) FROM ident_arg) = 0
             THEN '*** FAIL — the extraction produced NOTHING. D4 is vacuous. ***'
             WHEN (SELECT count(*) FROM ident_arg) < 40
-            THEN '*** FAIL — extraction produced far fewer arguments than the corpus contains; the scan is under-reporting. ***'
+            THEN '*** FAIL — extraction produced far fewer arguments than the corpus contains — the scan is under-reporting. ***'
             ELSE 'PASS — the extraction produced arguments to test' END
 
 -- ══════════════════════════════════════════════════════════════════════════
@@ -931,7 +931,7 @@ UNION ALL
 -- grant from the caller). Research counted 11, 2 and 1 respectively.
 SELECT 550 + row_number() OVER (ORDER BY helper, caller),
        'E1 body caller (INFO): ' || helper || ' <- ' || caller || '(' || caller_args || ')',
-       'reference found in pg_proc.prosrc; note prosrc includes comments, so a mention in a comment counts here',
+       'reference found in pg_proc.prosrc — note prosrc includes comments, so a mention in a comment counts here',
        'INFO — for the three REVOKED helpers this is expected and is why the revoke is safe (definer bodies run as the OWNER). For workspace_roster_relationship_is_live it is a BLOCKER — see E2.'
 FROM bodycaller
 
@@ -944,7 +944,7 @@ SELECT 590,
                 '(none)'),
        CASE WHEN EXISTS (SELECT 1 FROM bodycaller WHERE helper = 'workspace_roster_relationship_is_live')
             THEN '*** FAIL — DO NOT APPLY THE DROP. A string-literal function body references this helper. PostgreSQL records no dependency for that, so the drop would succeed and raise 42883 on the next live call. Use the revoke fallback in migration 208''s header. ***'
-            ELSE 'PASS — zero body callers; assumption A7 holds and the drop is safe' END
+            ELSE 'PASS — zero body callers — assumption A7 holds and the drop is safe' END
 
 UNION ALL
 -- E3 — anti-vacuity for E. If the prosrc scan matched nothing at all, E2 would
@@ -968,7 +968,7 @@ UNION ALL
 SELECT 600,
        'F1 PostgREST exposed schemas (INFO)',
        'pgrst.db_schemas = ' || coalesce(current_setting('pgrst.db_schemas', true), '(NULL — not visible at the database level)'),
-       'INFO — OWNER ACTION: also record the value shown in the Supabase dashboard under API settings -> Exposed schemas, and paste it into the verification record. The database-level setting is frequently NULL because PostgREST is configured out of band; the dashboard value is authoritative. Plans 04-06 depend on it.'
+       'INFO — OWNER ACTION: also record the value shown in the Supabase dashboard under API settings -> Exposed schemas, and paste it into the verification record. The database-level setting is frequently NULL because PostgREST is configured out of band — the dashboard value is authoritative. Plans 04-06 depend on it.'
 
 UNION ALL
 -- F2 — the leftover harness table from 38.0.1 and 38.0.2. A table in `public`
@@ -1007,7 +1007,7 @@ SELECT 610 + row_number() OVER (ORDER BY t),
        n || ' row(s)',
        CASE WHEN n = 0
             THEN 'INFO — EMPTY. Part B will skip the assertions that need a subject from this table and record INFO rows instead of inventing an id. It will still run.'
-            ELSE 'INFO — populated; Part B''s positive controls on this table will be meaningful' END
+            ELSE 'INFO — populated — Part B''s positive controls on this table will be meaningful' END
 FROM (
   SELECT 'user_profiles'         AS t, count(*) AS n FROM public.user_profiles
   UNION ALL SELECT 'green_room_posts',        count(*) FROM public.green_room_posts
