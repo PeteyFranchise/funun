@@ -968,7 +968,7 @@ UNION ALL
 SELECT 600,
        'F1 PostgREST exposed schemas (INFO)',
        'pgrst.db_schemas = ' || coalesce(current_setting('pgrst.db_schemas', true), '(NULL - not visible at the database level)'),
-       'INFO - OWNER ACTION: also record the value shown in the Supabase dashboard under API settings -> Exposed schemas, and paste it into the verification record. The database-level setting is frequently NULL because PostgREST is configured out of band - the dashboard value is authoritative. Plans 04-06 depend on it.'
+       'INFO - OWNER ACTION: also record the value shown in the Supabase dashboard under API settings -> Exposed schemas, and paste it in the verification record. The database-level setting is frequently NULL because PostgREST is configured out of band - the dashboard value is authoritative. Plans 04-06 depend on it.'
 
 UNION ALL
 -- F2 - the leftover harness table from 38.0.1 and 38.0.2. A table in `public`

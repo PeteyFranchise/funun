@@ -389,7 +389,7 @@ BEGIN
         2, 'B1 POSITIVE CONTROL green_room_can_view_post(post, SELF)',
         'impersonating the post''s real author - returned ' || coalesce(ok::text,'NULL'),
         CASE WHEN ok IS TRUE
-             THEN 'PASS - the author can still see their own post - the helper has NOT been broken into answering false to everybody'
+             THEN 'PASS - the author can still see their own post - the helper has NOT been broken toward answering false to everybody'
              ELSE '*** FAIL - THE POSITIVE CONTROL FAILED. The bound helper refuses the caller''s own row. Green Room reads are down. REVERT 208 AND 209 - DO NOT DEBUG IN PLACE. ***' END);
     EXCEPTION WHEN OTHERS THEN
       v_state := SQLSTATE; v_msg := left(SQLERRM, 120);
