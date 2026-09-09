@@ -6,7 +6,7 @@
 -- (.planning/phases/38.0.2-workspace-transactional-integrity-hygiene/
 -- 38.0.2-ORCHESTRATOR-NOTES.md) and deliberately NOT fixed there: it belongs to
 -- the Antenna opportunity subsystem, not to workspaces, and folding an
--- unrelated subsystem into a remediation phase for a different one is how a
+-- unrelated subsystem in with a remediation phase for a different one is how a
 -- review window stops being reviewable. The note said it could be acted on any
 -- time after 38.0.2's push window closed. That window closed 2026-09-08.
 --
