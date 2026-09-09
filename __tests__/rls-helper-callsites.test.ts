@@ -338,14 +338,36 @@ const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase()
 //
 // Locked per-helper counts. These are the measured baseline and they are
 // asserted EXACTLY, not as ">= 0", so that a parser which silently matches
-// nothing fails loudly instead of passing vacuously. Tier-2's counts are
-// stable across the rest of Phase 38.0.3: plan 02 replaces function BODIES
-// and touches no policy.
+// nothing fails loudly instead of passing vacuously.
+//
+// PLAN 02 (migration 209) LEFT THESE UNTOUCHED: it replaces function BODIES
+// and creates no policy. PLAN 05 (migration 210) DOES MOVE ONE OF THEM, and
+// the movement is expected rather than a regression.
+//
+// `green_room_can_view_post` went 12 -> 15. Migration 210 relocates `no_block`
+// to the `private` schema, which forces it to DROP and RECREATE the eleven
+// policies whose predicates name that helper. Three of the eleven —
+// green_room_comments_select_visible, green_room_reactions_select_visible and
+// green_room_reposts_select_visible (latest definitions in migration 060) —
+// ALSO name `green_room_can_view_post`, and their recreated predicates
+// reproduce that call verbatim because migration 210 changes the `no_block`
+// qualifier and nothing else. The corpus therefore now contains three more
+// textual policy call sites of `green_room_can_view_post`: 057's superseded
+// three, 060's three, and 210's three.
+//
+// WHAT MATTERS IS THAT THE INVARIANT ITSELF DID NOT MOVE. All three new sites
+// pass `auth.uid()` at identity index 1, so the assertion above — the one this
+// file exists for — is still satisfied with an empty offender list. Only the
+// anti-vacuity COUNT changed. Do not "fix" a future failure here by relaxing
+// the count to a range; re-derive it and record which migration moved it, as
+// this comment does.
 const TIER2_EXPECTED_SITES: Record<(typeof TIER2)[number], number> = {
   workspace_project_permission: 18,
   workspace_member_role: 13,
   is_workspace_owner: 6,
-  green_room_can_view_post: 12,
+  // 12 before migration 210; 060's three block-visibility policies are
+  // recreated there, each carrying its existing green_room_can_view_post call.
+  green_room_can_view_post: 15,
   workspace_audit_visible: 1,
   custody_transfer_visible: 1,
   ownership_transfer_visible: 1,
@@ -357,7 +379,7 @@ const TIER2_EXPECTED_SITES: Record<(typeof TIER2)[number], number> = {
   is_green_room_eligible: 1,
 }
 
-const TIER2_EXPECTED_TOTAL = 58
+const TIER2_EXPECTED_TOTAL = 61
 
 describe('(a) every RLS-policy call site passes auth.uid() as the identity argument', () => {
   it.each([...TIER2, ...TIER3])(
@@ -390,17 +412,27 @@ describe('(a) every RLS-policy call site passes auth.uid() as the identity argum
     }
   )
 
-  it('finds 58 Tier-2 policy call sites in total', () => {
+  it('finds 61 Tier-2 policy call sites in total', () => {
     const total = TIER2.reduce((n, fn) => n + policyCallSites(fn).length, 0)
     expect(total).toBe(TIER2_EXPECTED_TOTAL)
   })
 
-  it('finds no_block policy call sites (15 today; plan 05 relocates it)', () => {
-    // NOT locked to an exact number on purpose. Owner decision D4 relocates
-    // no_block to a non-exposed schema, which rewrites these policies to call
-    // private.no_block and will legitimately drive this count to zero in
-    // public. Until then it must not be zero, or assertion (a) above is
-    // vacuous for the one helper D4 says is the most sensitive.
+  it('finds no_block policy call sites, and every one still passes auth.uid()', () => {
+    // NOT locked to an exact number on purpose — it is the one helper whose
+    // call-site text this phase actively rewrites.
+    //
+    // It was 15 before migration 210 (12 live plus 057's three superseded
+    // green_room policies). Migration 210 recreates the eleven live policies
+    // calling `private.no_block`, which the parser below still counts: its
+    // opener accepts an optional `public.` qualifier and otherwise anchors on
+    // a word boundary, and the character before `no_block` in
+    // `private.no_block(` is a dot, not an identifier character.
+    //
+    // That is the WANTED behaviour, not an accident of the regex. The
+    // invariant this file defends is "the identity argument is the caller's
+    // own", and it must keep holding after the relocation — a version of this
+    // assertion that stopped seeing the relocated call sites would go quietly
+    // vacuous at exactly the moment the sensitive helper moved.
     expect(policyCallSites('no_block').length).toBeGreaterThan(0)
   })
 
