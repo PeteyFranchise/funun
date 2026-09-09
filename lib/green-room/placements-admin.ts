@@ -1,5 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
+import {
+  PLACEMENT_KIND_VALUES,
+  PLACEMENT_STATUS_VALUES,
+  PLACEMENT_DESTINATION_VALUES,
+  PLACEMENT_LABEL_MAX,
+  PLACEMENT_TITLE_MAX,
+  PLACEMENT_BODY_MAX,
+  PLACEMENT_PRIORITY_MIN,
+  PLACEMENT_PRIORITY_MAX,
+  type PlacementKind,
+  type PlacementStatus,
+  type PlacementDestinationType,
+} from '@/lib/green-room/placements-constants'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Admin-curated Green Room placements (Plan 12-10)
@@ -15,20 +28,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 // surfaced through a placement card.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const PLACEMENT_KIND_VALUES = ['featured', 'sponsored', 'partner', 'program', 'opportunity'] as const
-export type PlacementKind = (typeof PLACEMENT_KIND_VALUES)[number]
-
-export const PLACEMENT_STATUS_VALUES = ['draft', 'active', 'paused', 'archived'] as const
-export type PlacementStatus = (typeof PLACEMENT_STATUS_VALUES)[number]
-
-export const PLACEMENT_DESTINATION_VALUES = ['profile', 'project', 'track', 'opportunity', 'post', 'external'] as const
-export type PlacementDestinationType = (typeof PLACEMENT_DESTINATION_VALUES)[number]
-
-export const PLACEMENT_LABEL_MAX = 80
-export const PLACEMENT_TITLE_MAX = 160
-export const PLACEMENT_BODY_MAX = 500
-export const PLACEMENT_PRIORITY_MIN = -100
-export const PLACEMENT_PRIORITY_MAX = 100
+// Constants and types now live in `placements-constants.ts`, which is
+// client-safe. They are re-exported here so every existing server-side
+// import of this module keeps working unchanged. Client components must
+// import from `placements-constants` directly — this module reaches
+// `next/headers` through `@/lib/supabase/server` and cannot be bundled
+// for the browser.
+export * from '@/lib/green-room/placements-constants'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

@@ -7,7 +7,7 @@ import {
   type PlacementKind,
   type PlacementStatus,
   type PlacementDestinationType,
-} from '@/lib/green-room/placements-admin'
+} from '@/lib/green-room/placements-constants'
 
 // ─── PlacementAdmin (Plan 12-10) ──────────────────────────────────────────
 // Admin table + create form for the labeled Green Room placement cards.
