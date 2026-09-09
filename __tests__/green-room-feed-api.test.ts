@@ -131,6 +131,18 @@ describe('GET /api/green-room/feed', () => {
   })
 })
 
+// Chainable stand-ins for the `blocks` read that checkViewerBlock performs
+// (38.0.3 plan 04 — replaced the no_block RPC). Thenable so they resolve
+// wherever the chain terminates.
+function blocksBuilder(rows: unknown[]) {
+  const b: Record<string, unknown> = {}
+  for (const m of ['select', 'or', 'limit', 'eq', 'is']) b[m] = () => b
+  b.then = (resolve: (v: unknown) => void) => resolve({ data: rows, error: null })
+  return b
+}
+const noBlocksBuilder = () => blocksBuilder([])
+const blockedBuilder = () => blocksBuilder([{ blocker_id: 'blocked-profile' }])
+
 describe('Green Room feed query helpers', () => {
   it('round-trips opaque cursors and builds a stable published_at/id predicate', () => {
     const cursor = {
@@ -217,17 +229,22 @@ describe('Green Room feed query helpers', () => {
         destination_url: null,
       },
     ]
+    // 38.0.3 plan 04: the block check reads `blocks` directly instead of
+    // calling the `no_block` RPC, so the builder needs .or()/.limit() and
+    // `blocks` has to resolve to an empty row set (nobody is blocked here).
     const supabase = {
-      from: jest.fn((_table: string) => ({
-        select: jest.fn(() => ({
-          eq: jest.fn((_field: string, id: string) => ({
-            eq: jest.fn(() => ({
-              maybeSingle: jest.fn(async () => ({ data: id === 'visible-profile' ? { id } : null })),
+      from: jest.fn((table: string) => {
+        if (table === 'blocks') return noBlocksBuilder()
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn((_field: string, id: string) => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn(async () => ({ data: id === 'visible-profile' ? { id } : null })),
+              })),
             })),
           })),
-        })),
-      })),
-      rpc: jest.fn(async () => ({ data: true, error: null })),
+        }
+      }),
     }
 
     await expect(filterVisiblePlacementRows(supabase as never, 'viewer-1', rows as never)).resolves.toEqual([rows[0]])
@@ -246,17 +263,21 @@ describe('Green Room feed query helpers', () => {
         destination_url: null,
       },
     ]
+    // 38.0.3 plan 04: the block is now expressed as a row in `blocks` rather
+    // than as a `no_block` RPC returning false.
     const supabase = {
-      from: jest.fn((_table: string) => ({
-        select: jest.fn(() => ({
-          eq: jest.fn((_field: string, id: string) => ({
-            eq: jest.fn(() => ({
-              maybeSingle: jest.fn(async () => ({ data: { id }, error: null })),
+      from: jest.fn((table: string) => {
+        if (table === 'blocks') return blockedBuilder()
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn((_field: string, id: string) => ({
+              eq: jest.fn(() => ({
+                maybeSingle: jest.fn(async () => ({ data: { id }, error: null })),
+              })),
             })),
           })),
-        })),
-      })),
-      rpc: jest.fn(async () => ({ data: false, error: null })),
+        }
+      }),
     }
 
     await expect(filterVisiblePlacementRows(supabase as never, 'viewer-1', rows as never)).resolves.toEqual([])

@@ -23,9 +23,10 @@ import path from 'path'
 //   (c) no CURRENT trigger function calls a Tier-2 helper, which is what
 //       makes it safe for the Tier-2 binding migration to omit migration
 //       174's pg_trigger_depth() escape branch;
-//   (d) the only application .rpc() call sites are the two known
-//       service-client ones, which is what keeps the service_role disjunct
-//       in the Tier-2 bind honest.
+//   (d) the only application .rpc() call site is the one known
+//       service-client one, which is what keeps the service_role disjunct
+//       in the Tier-2 bind honest. (Was two until phase 38.0.3 plan 04
+//       removed the `no_block` call from lib/green-room/placements-admin.ts.)
 //
 // THE TRAP, AND THIS TEST'S ROLE IN IT. `38.0.3-SCOPE.md` states in capitals:
 // do NOT blanket-revoke EXECUTE from `authenticated`. RLS policy expressions
@@ -540,8 +541,8 @@ function sourceFiles(): string[] {
   return out.sort()
 }
 
-describe('(d) the only application .rpc() call sites are the two known service-client ones', () => {
-  it('finds exactly two, and they are the expected pair', () => {
+describe('(d) the only application .rpc() call site is the one known service-client one', () => {
+  it('finds exactly one, and it is the expected call site', () => {
     const found: string[] = []
     for (const file of sourceFiles()) {
       const text = readFileSync(file, 'utf8')
@@ -555,15 +556,23 @@ describe('(d) the only application .rpc() call sites are the two known service-c
     }
 
     // This assertion is what keeps the `auth.role() = 'service_role'` disjunct
-    // in the Tier-2 bind honest. Both known call sites use a SERVICE client,
+    // in the Tier-2 bind honest. The known call site uses a SERVICE client,
     // for which auth.uid() is NULL — so the bind must let service_role
-    // through. A THIRD call site appearing, especially one using a
+    // through. A NEW call site appearing, especially one using a
     // user-scoped client, is a decision somebody must make deliberately
     // rather than discover in production.
+    //
+    // Phase 38.0.3 plan 04 removed the second entry,
+    // `lib/green-room/placements-admin.ts -> no_block`. That call site now
+    // reads `public.blocks` directly, because owner decision D4 relocates
+    // `no_block` out of the PostgREST-exposed schema and PostgREST routes
+    // only to schemas in its `db-schemas` config — so the RPC route ceases
+    // to exist regardless of EXECUTE grants. `no_block` having ZERO
+    // application .rpc() call sites is now a precondition for that
+    // relocation, and this assertion is what proves it.
     expect(found.sort()).toEqual([
-      'lib/green-room/placements-admin.ts -> no_block',
       'lib/trust-safety/reports.ts -> green_room_can_view_post',
     ])
-    expect(found).toHaveLength(2)
+    expect(found).toHaveLength(1)
   })
 })
