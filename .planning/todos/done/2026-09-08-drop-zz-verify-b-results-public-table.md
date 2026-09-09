@@ -2,11 +2,12 @@
 created: 2026-09-08
 severity: low
 area: database
-status: pending
+status: done
+completed: 2026-09-09
 origin: 38.0.3 plan-check W4
 ---
 
-# Drop `public.zz_verify_b_results` — a public table with no RLS
+# DONE 2026-09-09 - Drop `public.zz_verify_b_results` — a public table with no RLS
 
 ## What it is
 
@@ -48,3 +49,18 @@ Phase 38.0.3's Part A and Part B harnesses use `TEMP` tables instead, and
 
 Any future owner-run harness in this repo must use `TEMP`, or enable RLS and
 revoke, before it writes anything to `public`.
+
+
+---
+
+## RESOLVED 2026-09-09
+
+Owner ran `DROP TABLE IF EXISTS public.zz_verify_b_results;` - "Success. No rows
+returned". Phase 38.0.3's Part A row F2 will now read
+"ABSENT - already dropped, nothing to do" on every future run.
+
+**One correction to this note's original claim.** It said the table had no RLS.
+Part A's pre-run (row 601) actually read `EXISTS rls_enabled=true`. `anon` did
+hold table grants, but with RLS enabled and no policies, access was denied - so
+it was untidy rather than readable. Recorded because the original write-up
+overstated the exposure.
