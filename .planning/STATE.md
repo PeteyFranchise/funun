@@ -6,9 +6,9 @@ current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
 stopped_at: Phase 38.0.1 SHIPPED AND VERIFIED. *** PHASE 38.0.2 CODE COMPLETE: all 17 plans merged plus 3 quick fixes. MIGRATIONS 197 AND 198 ARE APPLIED (2026-09-07) and all TypeScript is deployed; origin/main == local. 6280 tests green, tsc clean. *** VERIFICATION ARTEFACTS READY TO RUN, NOT YET RUN: 38.0.2-VERIFY-A-STRUCTURAL.sql (read-only, 0 write statements confirmed) and 38.0.2-VERIFY-B-PRODUCTION-SINGLE.sql (atomic DO block, 39 per-assertion handlers, 7 trigger disable/enable pairs, teardown after every handler, kill switch restored OFF). 38.0.2-VALIDATION.md maps all 14 requirements to evidence and marks WSR-21 as application-layer, not SQL-provable. *** PROCESS FAILURE TO REMEMBER: I pushed after every wave instead of holding for the joint push, which put five functions worth of deployed call sites into production before those functions existed. Contained only by empty workspace tables and the kill switch - luck, not design. Fixed by bringing the migration apply forward. THE JOINT PUSH EXISTS FOR THIS REASON; DO NOT PUSH REPOINTED ROUTES INCREMENTALLY AGAIN. *** A bare supabase db push would have applied Codex migrations 201 and 202, which are authored, HUMAN-GATED and deliberately unapplied - they were moved aside for the 197/198 apply and restored. Always check the pending list before pushing. *** D-56 KILL SWITCH IS OFF and must stay off until this phase is signed off. Still open: run Part A and Part B; the 57-box RLS smoke checklist from 38.0.1; plan 13's human check; the kill-switch-before-auth ordering in the consent route; .env.example needs two cohort vars added by hand (agents are permission-denied on that path, block is in 38.0.2-02-SUMMARY.md, and leaving them unset is SAFE because the gate defaults closed).
-last_updated: "2026-09-07T00:00:00.000Z"
-last_activity: 2026-09-08
-last_activity_desc: "Phase 38.0.2 code complete, migrations applied; verification artefacts ready to run"
+last_updated: "2026-09-09T20:20:00.000Z"
+last_activity: 2026-09-09
+last_activity_desc: "Phase 38.0.3 plan 04 complete — placements-admin decoupled from the no_block RPC (fail-closed direct blocks read). MUST BE MERGED TO main AND DEPLOYED before the migration that relocates no_block is applied."
 progress:
   total_phases: 42
   completed_phases: 33
