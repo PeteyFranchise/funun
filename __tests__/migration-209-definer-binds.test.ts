@@ -415,8 +415,28 @@ describe('migration 209 — assertion 6: DRIFT GUARD — body == predecessor + t
     // migration, the diff would still pass while the migration silently
     // reverted behaviour. This proves no migration below 209 redefines any of
     // the thirteen after its named source.
+    //
+    // THE CORPUS IS BOUNDED ABOVE BY 209 ITSELF, and that bound is the
+    // assertion's own stated intent ("no migration BELOW 209"), not a
+    // convenience. It also matches the precedent in
+    // `__tests__/migration-208-definer-revokes.test.ts`, whose latest-posture
+    // scan is bounded the same way.
+    //
+    // It became load-bearing in phase 38.0.3 plan 05: migration 210 relocates
+    // `no_block` and, in doing so, legitimately REPLACES
+    // `green_room_can_view_post` — carrying 209's bound body forward with the
+    // helper re-qualified. Without the bound, this assertion would report 210
+    // as the "wrong source" for a migration authored before 210 existed, which
+    // is a question about the future that 209 cannot answer.
+    //
+    // The forward direction is not left unguarded: that 210's replacement
+    // still carries 209's Tier-2 binding (rather than reverting to migration
+    // 076's body) is assertion 10 of
+    // `__tests__/migration-210-no-block-relocation.test.ts`. Any FUTURE
+    // migration that redefines one of the thirteen owes the repo the same
+    // treatment — its own drift guard, in its own test file.
     const files = readdirSync(MIGRATIONS_DIR)
-      .filter((f) => f.endsWith('.sql') && f !== MIG_209)
+      .filter((f) => f.endsWith('.sql') && f < MIG_209)
       .sort()
     for (const fn of BOUND) {
       const defining = files.filter((f) => findDefs(sourceSql(f), fn).length > 0)

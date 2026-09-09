@@ -380,7 +380,27 @@ describe('lib/social/comments.ts loadReleaseComments — read-side block filter'
 // These assertions turn the audit's per-surface findings into a regression
 // guard: if a future migration accidentally drops one of these clauses, the
 // suite fails instead of the gap going unnoticed again.
-describe('migration content pins — already-enforced surfaces (verified, not patched)', () => {
+//
+// HISTORICAL AS OF PHASE 38.0.3 (migration 210) — READ THIS BEFORE TRUSTING A
+// GREEN RUN OF THE BLOCK BELOW.
+//
+// Every pin in this describe reads migrations 038, 044, 057, 059 and 060.
+// Those files are NOT edited by migration 210 and their assertions therefore
+// stay literally true — but the policies they describe are NO LONGER THE LIVE
+// ONES. Migration 210 dropped and recreated all eleven of them so the helper
+// call points at `private.no_block` instead of the dropped `public.no_block`
+// (owner decision D4, threat T-08-03). A reader who saw only this block would
+// conclude from a green suite that nothing moved.
+//
+// The pins are kept, not deleted, and not rewritten. They remain a valid guard
+// against somebody editing an ALREADY-APPLIED migration file, which is its own
+// class of defect: an applied migration is a historical record, and changing
+// it makes the repo disagree with the database silently.
+//
+// THE LIVE PICTURE IS PINNED SEPARATELY, in the
+// "live block enforcement after the 38.0.3 relocation" describe further down.
+// Add new enforcement pins THERE.
+describe('migration content pins — already-enforced surfaces (HISTORICAL: superseded by migration 210)', () => {
   it('follows_insert_own already gates on no_block() (migration 038)', () => {
     const migration = readMigration('038_block_enforcement_existing_tables.sql')
     expect(migration).toMatch(/CREATE POLICY "follows_insert_own"[\s\S]*?no_block\(auth\.uid\(\), followee_id\)/)
@@ -499,5 +519,99 @@ describe('migration content pin — known gap (documented, not applied this plan
       .join('\n')
     const section = codeOnly.slice(codeOnly.indexOf('CREATE POLICY "rc_insert_author"'))
     expect(section.slice(0, section.indexOf(';'))).not.toMatch(/no_block\(/)
+  })
+})
+
+// ─── LIVE block enforcement, after phase 38.0.3 migration 210 ────────────
+//
+// The pins above describe HISTORY. These describe what production actually
+// runs. Owner decision D4 relocated `no_block` out of the PostgREST-exposed
+// schema (threat T-08-03: `no_block(a, b)` is symmetric, so any HTTP route to
+// it answers "did X block me?" for any X), which forced all eleven
+// block-enforcing policies to be dropped and recreated in migration 210 with
+// the helper re-qualified.
+//
+// Scope discipline: this block pins that the ELEVEN SURFACES STILL ENFORCE and
+// that the helper is still BIDIRECTIONAL. It does NOT re-prove the relocation
+// mechanics — section order, predicate drift, grant posture and the bare drop
+// are `__tests__/migration-210-no-block-relocation.test.ts`, and behaviour is
+// plan 06's owner-run `38.0.3-VERIFY-B2-NO-BLOCK.sql`. Neither this file nor
+// that one proves what a live PostgreSQL does.
+describe('live block enforcement after the 38.0.3 relocation (migration 210)', () => {
+  const MIG_210 = '210_no_block_relocation.sql'
+
+  // Line comments stripped so a pin matches real SQL, not the migration's
+  // (extensive) explanatory prose about the very clauses being pinned.
+  function code210(): string {
+    return readMigration(MIG_210)
+      .split('\n')
+      .map(line => line.replace(/^\s*--.*$/, ''))
+      .join('\n')
+  }
+
+  /** The single CREATE POLICY statement for `name`, up to its semicolon. */
+  function policy(name: string): string {
+    const sql = code210()
+    const start = sql.indexOf(`CREATE POLICY "${name}"`)
+    expect(start).toBeGreaterThan(-1)
+    const end = sql.indexOf(';', start)
+    expect(end).toBeGreaterThan(start)
+    return sql.slice(start, end + 1)
+  }
+
+  // The eleven, with the exact helper argument pair each one passes. The
+  // argument pair is the enforcement: a policy that calls the helper with the
+  // wrong second argument is enforcing a block between the wrong two people.
+  const LIVE: [string, string, RegExp][] = [
+    ['follows_insert_own', 'follows', /private\.no_block\(auth\.uid\(\), followee_id\)/],
+    ['wall_insert_author', 'wall_posts', /private\.no_block\(auth\.uid\(\), profile_id\)/],
+    ['endo_insert_author', 'endorsements', /private\.no_block\(auth\.uid\(\), profile_id\)/],
+    ['dmt_insert_participant', 'dm_threads', /private\.no_block\(auth\.uid\(\), CASE WHEN a_id = auth\.uid\(\) THEN b_id ELSE a_id END\)/],
+    ['dmm_insert_sender', 'dm_messages', /private\.no_block\(auth\.uid\(\), CASE WHEN t\.a_id = auth\.uid\(\) THEN t\.b_id ELSE t\.a_id END\)/],
+    ['connections_insert_own', 'connections', /private\.no_block\(auth\.uid\(\), addressee_id\)/],
+    ['green_room_comments_select_visible', 'green_room_comments', /private\.no_block\(auth\.uid\(\), author_id\)/],
+    ['green_room_reactions_select_visible', 'green_room_reactions', /private\.no_block\(auth\.uid\(\), user_id\)/],
+    ['green_room_reposts_select_visible', 'green_room_reposts', /private\.no_block\(auth\.uid\(\), author_id\)/],
+    ['rc_select_public', 'release_comments', /private\.no_block\(auth\.uid\(\), author_id\)/],
+    ['rc_insert_author', 'release_comments', /private\.no_block\(auth\.uid\(\), p\.user_id\)/],
+  ]
+
+  it('all eleven block-enforcing surfaces are accounted for', () => {
+    expect(LIVE).toHaveLength(11)
+  })
+
+  it.each(LIVE)('%s (public.%s) still gates on the relocated helper', (name, table, call) => {
+    const stmt = policy(name)
+    expect(stmt).toMatch(new RegExp(`ON public\\.${table}\\b`))
+    expect(stmt).toMatch(call)
+    // Region-scoped negative: no bare or `public.`-qualified call survives.
+    // Either would resolve to a function migration 210 drops in its section 5.
+    expect(stmt.replace(/private\.no_block/g, '')).not.toMatch(/no_block/)
+  })
+
+  it('rc_select_public keeps BOTH of its checks — viewer<->release owner AND viewer<->comment author', () => {
+    const stmt = policy('rc_select_public')
+    expect(stmt).toMatch(/private\.no_block\(auth\.uid\(\), p\.user_id\)/)
+    expect(stmt).toMatch(/private\.no_block\(auth\.uid\(\), author_id\)/)
+    expect(stmt.match(/private\.no_block\(/g)).toHaveLength(2)
+  })
+
+  it('the relocated helper is still BIDIRECTIONAL — the property this whole suite is about', () => {
+    const sql = code210()
+    const start = sql.indexOf('CREATE OR REPLACE FUNCTION private.no_block')
+    expect(start).toBeGreaterThan(-1)
+    const body = sql.slice(start, sql.indexOf('$$;', start))
+
+    // Migration 035's semantics, unchanged: a block placed by EITHER party
+    // hides both directions. A relocation that quietly dropped one disjunct
+    // would leave `blocks_select_own` (blocker_id = auth.uid()) as the only
+    // thing standing, and the blocked party would stop being blocked.
+    expect(body).toMatch(/blocker_id = a AND blocked_id = b/)
+    expect(body).toMatch(/blocker_id = b AND blocked_id = a/)
+    expect(body).toMatch(/SECURITY DEFINER/)
+  })
+
+  it('the public copy is dropped, so the "did X block me?" oracle has no HTTP route at all', () => {
+    expect(code210()).toMatch(/DROP FUNCTION public\.no_block\(uuid, uuid\);/)
   })
 })
