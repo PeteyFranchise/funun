@@ -343,6 +343,29 @@ export async function isDestinationVisible(
   return false
 }
 
+// Bidirectional block gate for a placement destination.
+//
+// This used to call the `no_block` SECURITY DEFINER RPC. It now reads
+// `public.blocks` directly with the service client. Two reasons, and both
+// matter:
+//
+//   1. Routing. Owner decision D4 relocates `no_block` out of the
+//      PostgREST-exposed schema, because an exposed symmetric helper is an
+//      oracle answering "did X block me?" for any pair — threat T-08-03,
+//      which migration 035 closed at the table level. PostgREST introspects
+//      and routes only to the schemas in its `db-schemas` config, so once
+//      the function moves there is no RPC route at all, whatever EXECUTE
+//      grants `service_role` holds. Routing and privilege are different
+//      questions.
+//   2. Visibility. The service role bypasses RLS. That is required here:
+//      `blocks_select_own` restricts SELECT to `blocker_id = auth.uid()`,
+//      so a user-scoped client can never see the direction where the OWNER
+//      blocked the VIEWER — which is precisely the direction that must be
+//      caught.
+//
+// The check is FAIL-CLOSED on error, deliberately, matching the RPC form.
+// Do NOT reuse `loadBlockedIds` from lib/green-room/discover.ts: it
+// discards its `error` and would flip this gate fail-open.
 async function checkViewerBlock(
   service: SupabaseClient,
   viewerId: string | undefined,
@@ -350,7 +373,18 @@ async function checkViewerBlock(
 ): Promise<boolean> {
   if (!viewerId || viewerId === ownerId) return true
 
-  const { data, error } = await service.rpc('no_block', { a: viewerId, b: ownerId })
+  const { data, error } = await service
+    .from('blocks')
+    .select('blocker_id')
+    .or(
+      `and(blocker_id.eq.${viewerId},blocked_id.eq.${ownerId}),` +
+        `and(blocker_id.eq.${ownerId},blocked_id.eq.${viewerId})`
+    )
+    .limit(1)
+
+  // FAIL CLOSED. The RPC form returned false on error and that must not
+  // regress — a database hiccup hides the destination rather than surfacing
+  // a blocked party's content.
   if (error) return false
-  return data === true
+  return ((data as unknown[] | null) ?? []).length === 0
 }

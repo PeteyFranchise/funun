@@ -216,8 +216,19 @@ describe('isDestinationVisible', () => {
   })
 
   it('fails for a visible destination when the viewer is blocked by that owner', async () => {
+    // 38.0.3 plan 04: the block is now expressed as a row in `blocks`, not
+    // as an `no_block` RPC return — the RPC was removed so the function
+    // could leave the PostgREST-exposed schema (owner decision D4). The
+    // full behaviour matrix lives in
+    // __tests__/green-room-placements-block-check.test.ts.
     const service = routedService({ user_profiles: { id: UUID } })
-    service.rpc = jest.fn(async () => ({ data: false, error: null }))
+    const blocked: Record<string, unknown> = {}
+    for (const m of ['select', 'or', 'limit', 'eq', 'is']) blocked[m] = () => blocked
+    blocked.then = (resolve: (v: unknown) => void) =>
+      resolve({ data: [{ blocker_id: UUID }], error: null })
+    service.from = jest.fn((t: string) =>
+      t === 'blocks' ? blocked : routedService({ user_profiles: { id: UUID } }).from(t)
+    ) as never
 
     await expect(
       isDestinationVisible(service as never, 'profile', UUID, null, 'viewer-1')
