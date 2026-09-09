@@ -654,3 +654,52 @@ describe('migration 209 — assertion 13: no cascading drop, and the reload noti
     expect(STATEMENTS_209[STATEMENTS_209.length - 1].trim()).toBe("NOTIFY pgrst, 'reload schema'")
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// FORWARD GUARD — the latest definition of each bound function, in whatever
+// migration defines it.
+//
+// WHY THIS EXISTS. Assertion 6 above deliberately scans only migrations BELOW
+// 209, because asking 209 to adjudicate a migration authored after it is a
+// question it cannot answer. That bound was narrowed on 2026-09-09 when
+// migration 210 legitimately replaced `green_room_can_view_post`. Narrowing it
+// removed the only automated check that a LATER migration had not quietly
+// reverted a bind, leaving a convention ("future migrations owe their own
+// drift guard") where enforcement used to be.
+//
+// Plan 06 calls a silent Tier-2 revert "the single most likely silent
+// regression in the whole phase". A convention is not a guard, so this is the
+// guard: whichever migration currently has the last word on one of the
+// thirteen, that definition must still bind the caller. It needs no
+// maintenance when a new migration lands — it simply follows the last word.
+//
+// LIMITATION, as everywhere in this file: this asserts what the SQL SAYS, not
+// what PostgreSQL DOES. Only the production harness proves the deployed
+// definition. See `.planning/phases/38.0.3-rls-helper-api-exposure/`.
+// ─────────────────────────────────────────────────────────────────────────
+describe('forward guard — the newest definition of each bound function still binds the caller', () => {
+  const allFiles = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+
+  it.each(BOUND)('%s: its highest-numbered definition still compares the identity param to auth.uid()', (fn) => {
+    const defining = allFiles.filter((f) => findDefs(sourceSql(f), fn).length > 0)
+    expect(defining.length).toBeGreaterThan(0)
+
+    const newest = defining[defining.length - 1]
+    // Never let the newest be 209's own predecessors only — if 209 is the last
+    // word the bind is 209's, which assertion 1 already proves.
+    const body = collapse(findDefs(sourceSql(newest), fn)[0].body)
+    const param = IDENTITY_PARAM[fn]
+
+    // Word-boundary anchored. `uid` is a substring of `p_uid`, so a plain
+    // includes() would pass on a function bound to the WRONG parameter — the
+    // exact trap recorded at line 299 of this file.
+    const bindRe = new RegExp(`(?<![A-Za-z0-9_])${param}\\s*=\\s*\\(\\s*SELECT\\s+auth\\.uid\\(\\)`, 'i')
+    expect({ fn, newest, bound: bindRe.test(body) }).toEqual({ fn, newest, bound: true })
+
+    // The service_role disjunct is load-bearing: auth.uid() is NULL for a
+    // service client, so dropping it breaks every server-side caller.
+    expect(body).toMatch(/auth\.role\(\)\s*\)?\s*=\s*'service_role'/i)
+  })
+})
