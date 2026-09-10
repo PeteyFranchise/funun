@@ -14,8 +14,8 @@ import {
 } from '@/lib/metadata/schema'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { rightsBadge, RIGHTS_BADGE_TO_CATALOG_RIGHTS, type CatalogRightsCode } from '@/lib/sync-library/gate'
-import { isSyncEntryComplete } from '@/lib/sync-library/readiness'
-import type { ReadinessItem } from '@/types'
+import { isSyncEntryComplete, isSyncEligibleProjectType } from '@/lib/sync-library/readiness'
+import type { ReadinessItem, VaultProjectType } from '@/types'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
@@ -65,6 +65,13 @@ export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: bo
 // That is the entire point of the change, and lib/deals/catalog.test.ts
 // pins it as a named test.
 //
+// A FOURTH condition joined the gate on the second pass of 2026-09-10: the
+// project's TYPE must be a released format (SYNC_ELIGIBLE_PROJECT_TYPES —
+// 'single' | 'ep' | 'album'). That is not a new restriction in behaviour,
+// it is the same restriction stated out loud: 'snippet' and 'unreleased'
+// were already excluded, but only accidentally, via the readiness
+// registry's applies_to tables. See the check itself below.
+//
 // The OTHER two conditions are unchanged: admission, and
 // computeStage3().canContinue. Worth knowing before anyone touches either:
 // canContinue is itself `vault_readiness_score >= 60 && !sampleBlock`
@@ -104,8 +111,21 @@ export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: bo
 // against the six-item entry gate is a product decision, not a refactor.
 export const CATALOG_READINESS_THRESHOLD = 60
 
+// ─── ADDED 2026-09-10 (second pass): the project-TYPE condition ──────────
+// `type` is REQUIRED, not optional, on purpose — the same discipline
+// SyncReadinessInput.assets adopted earlier the same day. An optional
+// `type` would let a caller silently omit it and get a default, which for
+// a fail-OPEN field means shipping an ineligible project to buyers. A
+// required field makes tsc, not production, find the caller that forgot;
+// that requirement is precisely what surfaced the four call sites here.
+//
+// It is the RAW project type, never a caller-computed "isEligible" boolean
+// — "which types may be licensed" stays inside this authority (and its
+// SYNC_ELIGIBLE_PROJECT_TYPES constant) rather than being re-decided at
+// four call sites.
 export type CatalogProjectLike = {
   has_admitted_sync_listing: boolean | null
+  type: VaultProjectType
 }
 
 export function isRightsReady(
@@ -113,6 +133,17 @@ export function isRightsReady(
   stage3: Stage3Result,
   readinessItems: ReadinessItem[]
 ): boolean {
+  // FIRST, and deliberately so: the sync catalogue licenses released-format
+  // recordings ('single' | 'ep' | 'album'). 'snippet' is a promo clip;
+  // 'unreleased' was confirmed out of scope by the owner on 2026-09-09.
+  // Before this line, both were excluded only as a SIDE EFFECT of the
+  // readiness registry's applies_to tables not emitting four of the six
+  // entry items for them — see SYNC_ELIGIBLE_PROJECT_TYPES
+  // (lib/sync-library/readiness.ts) for why that was unsafe to rely on.
+  // This check is independent of `readinessItems` entirely: even if the
+  // registry started emitting all six items complete for an 'unreleased'
+  // project, the gate still refuses.
+  if (!isSyncEligibleProjectType(project.type)) return false
   if (!isAdmittedToSyncLibrary(project)) return false
   // The six decided entry items, all 'complete'. isSyncEntryComplete fails
   // closed on an absent key, on 'warning', and on an empty list — so a

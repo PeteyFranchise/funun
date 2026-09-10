@@ -1,6 +1,9 @@
 import { readinessItemsForProject } from '@/lib/vault/readiness'
+import type { VaultProjectType } from '@/types'
 import {
   SYNC_READINESS_KEYS,
+  SYNC_ELIGIBLE_PROJECT_TYPES,
+  isSyncEligibleProjectType,
   syncReadinessForTrack,
   missingSyncItems,
   isSyncEntryComplete,
@@ -81,6 +84,51 @@ describe('SYNC_READINESS_KEYS', () => {
       'visual_asset',
     ])
     expect(SYNC_READINESS_KEYS).toHaveLength(6)
+  })
+})
+
+describe('SYNC_ELIGIBLE_PROJECT_TYPES', () => {
+  // ─── DRIFT GUARD ───────────────────────────────────────────────────────
+  // Mirrors the SYNC_READINESS_KEYS guard above. This array decides WHO may
+  // be licensed through the sync catalogue at all — adding 'unreleased' or
+  // 'snippet' is an owner decision (the owner confirmed on 2026-09-09 that
+  // unreleased work is out of scope), never a quiet edit.
+  it('is exactly the three released formats', () => {
+    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toEqual(['single', 'ep', 'album'])
+    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toHaveLength(3)
+  })
+
+  it('covers every VaultProjectType — the ineligible two are named, not merely absent', () => {
+    const ALL_TYPES: VaultProjectType[] = ['single', 'snippet', 'ep', 'album', 'unreleased']
+    const eligible = ALL_TYPES.filter(isSyncEligibleProjectType)
+    const ineligible = ALL_TYPES.filter(t => !isSyncEligibleProjectType(t))
+    expect(eligible).toEqual(['single', 'ep', 'album'])
+    expect(ineligible).toEqual(['snippet', 'unreleased'])
+  })
+
+  it('isSyncEligibleProjectType fails closed on snippet and unreleased', () => {
+    expect(isSyncEligibleProjectType('snippet')).toBe(false)
+    expect(isSyncEligibleProjectType('unreleased')).toBe(false)
+  })
+
+  // The rule must not be re-derived from the readiness registry — that
+  // accidental coupling is exactly what this constant replaced.
+  it('is independent of the readiness registry: the six items say nothing about type', () => {
+    const allSixComplete = readinessItemsForProject({
+      type: 'single',
+      tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeTrackMetadata() }],
+      assets: [{ type: 'cover_art' }],
+      documents: [
+        { type: 'copyright_registration', status: 'signed' },
+        { type: 'hire_right', status: 'signed' },
+        { type: 'split_sheet', status: 'signed' },
+      ],
+    })
+    // isSyncEntryComplete answers ONLY "are the six done?" — it is true here
+    // regardless of which project the items came from. The type rule lives
+    // one layer up, in isRightsReady (lib/deals/catalog.test.ts pins it).
+    expect(isSyncEntryComplete(allSixComplete)).toBe(true)
+    expect(isSyncEligibleProjectType('unreleased')).toBe(false)
   })
 })
 

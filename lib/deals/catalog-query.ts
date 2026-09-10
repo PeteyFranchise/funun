@@ -293,13 +293,26 @@ export async function loadCatalogPage(
     // supplies the per-item readiness the Wave 1 engine computes. Computed
     // ONCE per project here and reused by the staff layer below — never a
     // second, independently-derived readiness signal.
+    // vault_projects.type is TEXT in the row shape; narrowed ONCE here and
+    // reused by the readiness engine, the isRightsReady gate and the staff
+    // layer below, so all three read the same value.
+    const projectType = project.type as VaultProjectType
     const readinessItems = readinessItemsForProject({
-      type: project.type as VaultProjectType,
+      type: projectType,
       tracks,
       assets: project.vault_assets ?? [],
       documents: project.vault_documents ?? [],
     })
-    if (!isRightsReady({ ...project, has_admitted_sync_listing: hasAdmittedSyncListing }, stage3, readinessItems))
+    // `type` is passed EXPLICITLY after the spread, not left to it: the row
+    // shape types `type` as string, and isRightsReady requires the narrowed
+    // VaultProjectType so its SYNC_ELIGIBLE_PROJECT_TYPES check is total.
+    if (
+      !isRightsReady(
+        { ...project, has_admitted_sync_listing: hasAdmittedSyncListing, type: projectType },
+        stage3,
+        readinessItems
+      )
+    )
       continue
 
     if (!projectMatchesKeyBpm(tracks, filter)) continue
@@ -347,7 +360,7 @@ export async function loadCatalogPage(
         readinessStatus = 'admitted'
       } else if (representativeTrack) {
         const items = syncReadinessForTrack({
-          type: project.type as VaultProjectType,
+          type: projectType,
           track: {
             id: representativeTrack.id,
             isrc: representativeTrack.isrc,

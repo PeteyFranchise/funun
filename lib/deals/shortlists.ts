@@ -126,14 +126,24 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
         project.vault_documents ?? [],
         project.vault_readiness_score ?? 0
       )
+      // vault_projects.type is TEXT in the row shape; narrowed ONCE and
+      // reused by both the readiness engine and the isRightsReady gate.
+      const projectType = project.type as VaultProjectType
       const readinessItems = readinessItemsForProject({
-        type: project.type as VaultProjectType,
+        type: projectType,
         tracks: project.tracks ?? [],
         assets: project.vault_assets ?? [],
         documents: project.vault_documents ?? [],
       })
+      // `type` passed EXPLICITLY after the spread — the row shape types it
+      // as string, and isRightsReady requires the narrowed VaultProjectType
+      // for its SYNC_ELIGIBLE_PROJECT_TYPES check.
       stillRightsReady = isRightsReady(
-        { ...project, has_admitted_sync_listing: admittedProjectIds.has(project.id) },
+        {
+          ...project,
+          has_admitted_sync_listing: admittedProjectIds.has(project.id),
+          type: projectType,
+        },
         stage3,
         readinessItems
       )

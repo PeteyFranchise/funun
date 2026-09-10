@@ -12,10 +12,15 @@ import {
   type CatalogProjectLike,
   type CatalogTrackWithMetadata,
 } from './catalog'
-import type { ReadinessItem } from '@/types'
+import type { ReadinessItem, VaultProjectType } from '@/types'
 import type { Stage3Result } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
-import { SYNC_READINESS_KEYS } from '@/lib/sync-library/readiness'
+import {
+  SYNC_READINESS_KEYS,
+  SYNC_ELIGIBLE_PROJECT_TYPES,
+  isSyncEligibleProjectType,
+  isSyncEntryComplete,
+} from '@/lib/sync-library/readiness'
 
 function stage3(canContinue: boolean): Stage3Result {
   return {
@@ -71,6 +76,8 @@ describe('isAdmittedToSyncLibrary', () => {
 const RELEASE_ADMIN_KEYS = ['isrc_codes', 'pro_registration', 'mlc_registration', 'distributor']
 
 type EntryGateOverrides = {
+  /** The project type handed to the REAL readiness engine. */
+  type?: VaultProjectType
   tracks?: {
     id: string
     isrc: string | null
@@ -87,7 +94,7 @@ function completeComposers(): Record<string, unknown> {
 
 function entryGateItems(overrides: EntryGateOverrides = {}): ReadinessItem[] {
   return readinessItemsForProject({
-    type: 'single',
+    type: overrides.type ?? 'single',
     // Release admin, deliberately absent — the gate must not care.
     distributor: null,
     tracks: overrides.tracks ?? [
@@ -108,7 +115,7 @@ function entryGateItemsWith(key: string, status: ReadinessItem['status']): Readi
 }
 
 describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 decision)', () => {
-  const ADMITTED: CatalogProjectLike = { has_admitted_sync_listing: true }
+  const ADMITTED: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'single' }
 
   it('fixture is honest: the six entry items read complete, the release-admin items do not', () => {
     const statusByKey = Object.fromEntries(entryGateItems().map(i => [i.key, i.status]))
@@ -136,8 +143,12 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
   })
 
   it('is false when the project is not admitted to the sync library, however complete the six are', () => {
-    expect(isRightsReady({ has_admitted_sync_listing: false }, stage3(true), entryGateItems())).toBe(false)
-    expect(isRightsReady({ has_admitted_sync_listing: null }, stage3(true), entryGateItems())).toBe(false)
+    expect(
+      isRightsReady({ has_admitted_sync_listing: false, type: 'single' }, stage3(true), entryGateItems())
+    ).toBe(false)
+    expect(
+      isRightsReady({ has_admitted_sync_listing: null, type: 'single' }, stage3(true), entryGateItems())
+    ).toBe(false)
   })
 
   it('is false when stage3.canContinue is false', () => {
@@ -169,6 +180,7 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
   it('PASSES with all six items complete but a LOW aggregate readiness score (50 — no distributor, no ISRC)', () => {
     const projectWithLowAggregateScore = {
       has_admitted_sync_listing: true,
+      type: 'single' as const,
       vault_readiness_score: 50,
     }
     expect(projectWithLowAggregateScore.vault_readiness_score).toBeLessThan(CATALOG_READINESS_THRESHOLD)
@@ -188,10 +200,9 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
     expect(isRightsReady(ADMITTED, stage3(true), withoutReleaseAdmin)).toBe(true)
   })
 
-  it('an unreleased project can never enter the catalogue — four of the six items do not apply to it', () => {
-    // readinessItemsForProject filters by applies_to: 'unreleased' gates on
-    // audio_files + split_sheets only. Fails closed, matching the old
-    // behaviour (an unreleased project could not reach 60 either).
+  it('fails closed when an entry item is ABSENT because the registry did not emit it', () => {
+    // readinessItemsForProject filters by applies_to. This is the BACKSTOP
+    // path, no longer the type rule — see the project-type describe below.
     const unreleasedItems = readinessItemsForProject({
       type: 'unreleased',
       tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() }],
@@ -204,6 +215,88 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
     })
     expect(unreleasedItems.some(i => i.key === 'visual_asset')).toBe(false)
     expect(isRightsReady(ADMITTED, stage3(true), unreleasedItems)).toBe(false)
+  })
+})
+
+// ─── The project-TYPE condition (2026-09-10, second pass) ─────────────────
+// The sync catalogue licenses released-format recordings. Owner confirmed
+// 2026-09-09 that 'unreleased' has nothing to do with it; 'snippet' is a
+// promo clip, not a licensable recording.
+//
+// Every test below hands isRightsReady an item list in which ALL SIX entry
+// items read 'complete' — deliberately, so the verdict can only come from
+// the type rule. Nothing here is allowed to pass or fail incidentally on a
+// missing readiness item.
+describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TYPES)', () => {
+  const INELIGIBLE_TYPES: VaultProjectType[] = ['snippet', 'unreleased']
+
+  function admitted(type: VaultProjectType): CatalogProjectLike {
+    return { has_admitted_sync_listing: true, type }
+  }
+
+  it.each([...SYNC_ELIGIBLE_PROJECT_TYPES])(
+    'a project of type %s with all six items complete PASSES the gate',
+    type => {
+      const items = entryGateItems({ type })
+      const statusByKey = Object.fromEntries(items.map(i => [i.key, i.status]))
+      for (const key of SYNC_READINESS_KEYS) {
+        expect(statusByKey[key]).toBe('complete')
+      }
+      expect(isRightsReady(admitted(type), stage3(true), items)).toBe(true)
+    }
+  )
+
+  // ─── THE REGRESSION THIS EXISTS TO PREVENT ─────────────────────────────
+  // Before SYNC_ELIGIBLE_PROJECT_TYPES, 'snippet'/'unreleased' were kept
+  // out of the catalogue ONLY as a side effect of the readiness registry's
+  // applies_to tables (types/index.ts READINESS_ITEMS) not emitting four of
+  // the six entry items for them. Adding `applies_to: [... 'unreleased']`
+  // to any one of those items — a perfectly reasonable future edit made for
+  // release-readiness reasons — would silently have made unreleased
+  // projects catalogue-eligible.
+  //
+  // This test SIMULATES that future edit: the item list is built from a
+  // 'single' (so the registry emits, and completes, all six) and then handed
+  // to the gate with an ineligible project type. It stands in for "the
+  // registry started emitting all six items for this type." The gate must
+  // still refuse, on the type rule alone.
+  //
+  // MUTATION-VERIFIED 2026-09-10: deleting the
+  // `if (!isSyncEligibleProjectType(project.type)) return false` line from
+  // lib/deals/catalog.ts turns exactly these cases red and leaves the rest
+  // of this file green.
+  it.each(INELIGIBLE_TYPES)(
+    'type %s is REFUSED even when the readiness registry supplies all six items complete',
+    type => {
+      // Built as a 'single' on purpose — every one of the six is present
+      // and 'complete', which is precisely what today's registry would NOT
+      // produce for this type. That is the point.
+      const allSixComplete = entryGateItems()
+      const statusByKey = Object.fromEntries(allSixComplete.map(i => [i.key, i.status]))
+      for (const key of SYNC_READINESS_KEYS) {
+        expect(statusByKey[key]).toBe('complete')
+      }
+      // Sanity: the ONLY thing standing between this and a pass is the type.
+      expect(isSyncEntryComplete(allSixComplete)).toBe(true)
+      expect(isRightsReady(admitted('single'), stage3(true), allSixComplete)).toBe(true)
+
+      expect(isRightsReady(admitted(type), stage3(true), allSixComplete)).toBe(false)
+    }
+  )
+
+  it.each(INELIGIBLE_TYPES)(
+    'type %s is refused even on an ADMITTED project with the six complete',
+    type => {
+      expect(isSyncEligibleProjectType(type)).toBe(false)
+      expect(isRightsReady(admitted(type), stage3(true), entryGateItems())).toBe(false)
+    }
+  )
+
+  it('the allowlist is the only difference — same items, same stage3, opposite verdicts', () => {
+    const items = entryGateItems()
+    const s3 = stage3(true)
+    expect(isRightsReady(admitted('album'), s3, items)).toBe(true)
+    expect(isRightsReady(admitted('unreleased'), s3, items)).toBe(false)
   })
 })
 

@@ -193,8 +193,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       project.vault_documents ?? [],
       project.vault_readiness_score ?? 0
     )
+    // CandidateProjectRow already types `type` as VaultProjectType (the
+    // select below narrows it), so no cast is needed here — but the field
+    // IS required by CatalogProjectLike so the six-item gate's
+    // SYNC_ELIGIBLE_PROJECT_TYPES check can run. Note this pool is ordered
+    // rights-ready-FIRST rather than hard-filtered (D-11), so an
+    // unreleased/snippet candidate is not dropped from the model's view —
+    // it simply never sorts as rights-ready.
     const projectLike: CatalogProjectLike = {
       has_admitted_sync_listing: admittedProjectIds.has(project.id),
+      type: project.type,
     }
     // Computed ONCE per project and shared across its candidate tracks —
     // readiness is a project-level signal, exactly like stage3 above.

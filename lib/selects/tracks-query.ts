@@ -150,18 +150,28 @@ export async function resolveTracksWithRightsReady(
         )
         stage3ByProject.set(project.id, stage3)
       }
+      // vault_projects.type is TEXT in the row shape; narrowed ONCE and
+      // reused by both the readiness engine and the isRightsReady gate.
+      const projectType = project.type as VaultProjectType
       let readinessItems = readinessByProject.get(project.id)
       if (!readinessItems) {
         readinessItems = readinessItemsForProject({
-          type: project.type as VaultProjectType,
+          type: projectType,
           tracks: tracks.filter(t => t.project_id === project.id),
           assets: project.vault_assets ?? [],
           documents: project.vault_documents ?? [],
         })
         readinessByProject.set(project.id, readinessItems)
       }
+      // `type` passed EXPLICITLY after the spread — the row shape types it
+      // as string, and isRightsReady requires the narrowed VaultProjectType
+      // for its SYNC_ELIGIBLE_PROJECT_TYPES check.
       rightsReady = isRightsReady(
-        { ...project, has_admitted_sync_listing: admittedProjectIds.has(project.id) },
+        {
+          ...project,
+          has_admitted_sync_listing: admittedProjectIds.has(project.id),
+          type: projectType,
+        },
         stage3,
         readinessItems
       )

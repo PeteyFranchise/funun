@@ -55,6 +55,51 @@ export const SYNC_READINESS_KEYS = [
 
 export type SyncReadinessKey = (typeof SYNC_READINESS_KEYS)[number]
 
+// ─── SYNC_ELIGIBLE_PROJECT_TYPES — WHICH projects may enter, at all ──────
+// The sync catalogue licenses RECORDINGS in released formats. Of the five
+// VaultProjectType values, exactly three qualify:
+//
+//   'single' | 'ep' | 'album'  — released-format works. Eligible.
+//   'snippet'                  — a promo clip, not a licensable recording.
+//   'unreleased'               — owner confirmed 2026-09-09 that unreleased
+//                                work has nothing to do with the sync
+//                                catalogue. Out of scope, full stop.
+//
+// ─── WHY THIS EXISTS: it REPLACES AN ACCIDENTAL EXCLUSION ────────────────
+// Before this constant, 'snippet' and 'unreleased' were kept out of the
+// catalogue only as a SIDE EFFECT of the readiness registry's `applies_to`
+// tables (types/index.ts READINESS_ITEMS). Four of the six entry keys
+// (copyright, hire_right, metadata, visual_asset) do not apply to
+// 'unreleased', and five of the six do not apply to 'snippet', so
+// readinessItemsForProject() never emitted them, and isSyncEntryComplete()'s
+// every() failed on the absent keys.
+//
+// That is a coincidence of a table maintained for a DIFFERENT purpose — the
+// Wave 1 release-readiness checklist — not a stated rule. Adding
+// `applies_to: [... 'unreleased']` to any one of those four items for an
+// unrelated release-readiness reason (a perfectly reasonable future edit)
+// would have silently made unreleased projects catalogue-eligible, and
+// nobody would have noticed until a buyer saw one.
+//
+// The rule is now EXPLICIT and independently enforced: isRightsReady()
+// (lib/deals/catalog.ts) checks this allowlist BEFORE it looks at any
+// readiness item, so the gate holds no matter what the registry emits.
+// Changing this array changes who may be licensed — it is an owner
+// decision, not a refactor, and lib/sync-library/readiness.test.ts pins it.
+export const SYNC_ELIGIBLE_PROJECT_TYPES = ['single', 'ep', 'album'] as const
+
+export type SyncEligibleProjectType = (typeof SYNC_ELIGIBLE_PROJECT_TYPES)[number]
+
+/**
+ * True only for a released-format project type ('single' | 'ep' | 'album').
+ * Fails closed: 'snippet', 'unreleased', and any value that is not a
+ * VaultProjectType at all (a row read straight from the DB's unconstrained
+ * `type` column) all return false.
+ */
+export function isSyncEligibleProjectType(type: VaultProjectType): boolean {
+  return (SYNC_ELIGIBLE_PROJECT_TYPES as readonly string[]).includes(type)
+}
+
 /** The one track this Sync Readiness check is for. */
 export type SyncReadinessTrack = {
   id?: string
@@ -124,13 +169,23 @@ export function missingSyncItems(items: ReadinessItem[]): ReadinessItem[] {
 // it deliberately lives HERE, next to SYNC_READINESS_KEYS, so the list and
 // the "all of them, complete" rule can never drift apart.
 //
+// SCOPE: this predicate answers "are the six items done?" and NOTHING
+// else. It deliberately does not know the project's TYPE — whether a
+// project is even the kind of work the catalogue licenses is
+// SYNC_ELIGIBLE_PROJECT_TYPES' question, checked separately and FIRST by
+// isRightsReady(). Keeping the two apart is what makes the type rule
+// enforced rather than emergent: this function's behaviour no longer
+// carries any of the load for excluding 'snippet'/'unreleased'.
+//
 // FAILS CLOSED in three ways, all intentional:
 //   1. A key ABSENT from `items` is not complete. readinessItemsForProject()
-//      filters by applies_to, so an 'unreleased' project (which gates on
-//      only audio_files + split_sheets) is missing four of the six and can
-//      never enter the catalogue. That matches the pre-2026-09-10 behaviour
-//      — an unreleased project could not reach the old score threshold
-//      either — and is the safe direction to be wrong in.
+//      filters by applies_to, so a project type that does not gate on all
+//      six will be missing some of them and fail here too. Do NOT rely on
+//      that as the exclusion rule for 'snippet'/'unreleased' — it is a
+//      property of a table maintained for release readiness, and it was
+//      exactly the accidental coupling SYNC_ELIGIBLE_PROJECT_TYPES was
+//      added to replace. This clause is a backstop for a genuinely
+//      incomplete item list, not a type gate.
 //   2. 'warning' is not 'complete'. A roster-picked composer with no IPI
 //      downgrades `metadata` to 'warning'; a partially-covered split sheet
 //      downgrades `split_sheets` to 'warning'. Both fail the gate. This is
