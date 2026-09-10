@@ -12,7 +12,10 @@ import {
   type CatalogProjectLike,
   type CatalogTrackWithMetadata,
 } from './catalog'
+import type { ReadinessItem } from '@/types'
 import type { Stage3Result } from '@/lib/vault/stage3'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
+import { SYNC_READINESS_KEYS } from '@/lib/sync-library/readiness'
 
 function stage3(canContinue: boolean): Stage3Result {
   return {
@@ -58,37 +61,149 @@ describe('isAdmittedToSyncLibrary', () => {
   })
 })
 
-describe('isRightsReady', () => {
-  const readyProject: CatalogProjectLike = {
-    has_admitted_sync_listing: true,
-    vault_readiness_score: CATALOG_READINESS_THRESHOLD,
-  }
+// ─── Entry-gate fixture (2026-09-10) ─────────────────────────────────────
+// A single with every signature signed and a finished master, and
+// DELIBERATELY no distributor, no ISRC and no ISWC — exactly the song the
+// owner named on 2026-09-09 as the one the old aggregate-score gate got
+// wrong. Items come from the REAL Wave 1 engine (readinessItemsForProject),
+// never hand-built, so a change to how any item is derived surfaces here
+// instead of being masked by a fixture that agrees with itself.
+const RELEASE_ADMIN_KEYS = ['isrc_codes', 'pro_registration', 'mlc_registration', 'distributor']
 
-  it('is false when the project is not admitted to the sync library, regardless of readiness', () => {
-    expect(isRightsReady({ ...readyProject, has_admitted_sync_listing: false }, stage3(true))).toBe(false)
-    expect(isRightsReady({ ...readyProject, has_admitted_sync_listing: null }, stage3(true))).toBe(false)
+type EntryGateOverrides = {
+  tracks?: {
+    id: string
+    isrc: string | null
+    iswc: string | null
+    metadata: Record<string, unknown> | null
+  }[]
+  assets?: { type: string }[]
+  documents?: { type: string; status: string }[]
+}
+
+function completeComposers(): Record<string, unknown> {
+  return { composers: [{ name: 'Jane Writer', role: 'composer_lyricist', pro: 'ascap', split: 100 }] }
+}
+
+function entryGateItems(overrides: EntryGateOverrides = {}): ReadinessItem[] {
+  return readinessItemsForProject({
+    type: 'single',
+    // Release admin, deliberately absent — the gate must not care.
+    distributor: null,
+    tracks: overrides.tracks ?? [
+      { id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() },
+    ],
+    assets: overrides.assets ?? [{ type: 'cover_art' }],
+    documents: overrides.documents ?? [
+      { type: 'copyright_registration', status: 'signed' },
+      { type: 'hire_right', status: 'signed' },
+      { type: 'split_sheet', status: 'signed' },
+    ],
+  })
+}
+
+/** The complete six, with exactly ONE item forced to a given status. */
+function entryGateItemsWith(key: string, status: ReadinessItem['status']): ReadinessItem[] {
+  return entryGateItems().map(i => (i.key === key ? { ...i, status } : i))
+}
+
+describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 decision)', () => {
+  const ADMITTED: CatalogProjectLike = { has_admitted_sync_listing: true }
+
+  it('fixture is honest: the six entry items read complete, the release-admin items do not', () => {
+    const statusByKey = Object.fromEntries(entryGateItems().map(i => [i.key, i.status]))
+    for (const key of SYNC_READINESS_KEYS) {
+      expect(statusByKey[key]).toBe('complete')
+    }
+    for (const key of RELEASE_ADMIN_KEYS) {
+      expect(statusByKey[key]).toBe('missing')
+    }
   })
 
-  it('is false when admitted but readiness is below the threshold', () => {
-    const project = { ...readyProject, vault_readiness_score: CATALOG_READINESS_THRESHOLD - 1 }
-    expect(isRightsReady(project, stage3(true))).toBe(false)
+  it('is true when admitted, all six entry items complete, and stage3.canContinue', () => {
+    expect(isRightsReady(ADMITTED, stage3(true), entryGateItems())).toBe(true)
   })
 
-  it('is false when admitted and at/above threshold but stage3.canContinue is false', () => {
-    expect(isRightsReady(readyProject, stage3(false))).toBe(false)
+  // Six separate cases — one per decided entry item.
+  it.each([...SYNC_READINESS_KEYS])('is false when the "%s" entry item is missing', key => {
+    expect(isRightsReady(ADMITTED, stage3(true), entryGateItemsWith(key, 'missing'))).toBe(false)
   })
 
-  it('is true when admitted, at/above threshold, and stage3.canContinue is true', () => {
-    expect(isRightsReady(readyProject, stage3(true))).toBe(true)
+  // 'warning' is not 'complete' — the SAME rule missingSyncItems() applies
+  // to the staff worklist, so the two surfaces agree on what "done" means.
+  it.each([...SYNC_READINESS_KEYS])('is false when the "%s" entry item reads warning', key => {
+    expect(isRightsReady(ADMITTED, stage3(true), entryGateItemsWith(key, 'warning'))).toBe(false)
   })
 
-  it('is true exactly at the threshold boundary (inclusive comparison)', () => {
-    const project = { ...readyProject, vault_readiness_score: CATALOG_READINESS_THRESHOLD }
-    expect(isRightsReady(project, stage3(true))).toBe(true)
+  it('is false when the project is not admitted to the sync library, however complete the six are', () => {
+    expect(isRightsReady({ has_admitted_sync_listing: false }, stage3(true), entryGateItems())).toBe(false)
+    expect(isRightsReady({ has_admitted_sync_listing: null }, stage3(true), entryGateItems())).toBe(false)
   })
 
-  it('fails closed on a missing/null readiness score', () => {
-    expect(isRightsReady({ ...readyProject, vault_readiness_score: null }, stage3(true))).toBe(false)
+  it('is false when stage3.canContinue is false', () => {
+    expect(isRightsReady(ADMITTED, stage3(false), entryGateItems())).toBe(false)
+  })
+
+  it('fails closed on an empty readiness-item list — "nothing to check" is never "ready"', () => {
+    expect(isRightsReady(ADMITTED, stage3(true), [])).toBe(false)
+  })
+
+  it('fails closed when an entry item is ABSENT from the list rather than incomplete', () => {
+    const missingVisualAsset = entryGateItems().filter(i => i.key !== 'visual_asset')
+    expect(isRightsReady(ADMITTED, stage3(true), missingVisualAsset)).toBe(false)
+  })
+
+  // ─── THE NAMED TEST — the entire reason this gate changed ───────────────
+  // Owner decision 2026-09-09: "a song with every signature in place and a
+  // finished master reads as unlicensable because nobody picked a
+  // distributor." All six entry items complete; aggregate readiness score
+  // 50, TEN POINTS BELOW the old CATALOG_READINESS_THRESHOLD of 60,
+  // precisely because there is no distributor and no ISRC. It must PASS.
+  //
+  // The score is carried on the project row on purpose. isRightsReady no
+  // longer reads it — CatalogProjectLike does not even declare the field —
+  // and this test exists to prove that. Reverting the middle condition to
+  // `vault_readiness_score >= CATALOG_READINESS_THRESHOLD` turns exactly
+  // this test red and leaves the rest of this file green (mutation-verified
+  // 2026-09-10).
+  it('PASSES with all six items complete but a LOW aggregate readiness score (50 — no distributor, no ISRC)', () => {
+    const projectWithLowAggregateScore = {
+      has_admitted_sync_listing: true,
+      vault_readiness_score: 50,
+    }
+    expect(projectWithLowAggregateScore.vault_readiness_score).toBeLessThan(CATALOG_READINESS_THRESHOLD)
+    expect(isRightsReady(projectWithLowAggregateScore, stage3(true), entryGateItems())).toBe(true)
+  })
+
+  it('ignores isrc_codes, pro_registration, mlc_registration and distributor entirely', () => {
+    // Present-and-missing (the fixture) already passes above. Flipping all
+    // four release-admin items to complete changes nothing...
+    const releaseAdminComplete = entryGateItems().map(i =>
+      RELEASE_ADMIN_KEYS.includes(i.key) ? { ...i, status: 'complete' as const } : i
+    )
+    expect(isRightsReady(ADMITTED, stage3(true), releaseAdminComplete)).toBe(true)
+
+    // ...and neither does dropping them from the list altogether.
+    const withoutReleaseAdmin = entryGateItems().filter(i => !RELEASE_ADMIN_KEYS.includes(i.key))
+    expect(isRightsReady(ADMITTED, stage3(true), withoutReleaseAdmin)).toBe(true)
+  })
+
+  it('an unreleased project can never enter the catalogue — four of the six items do not apply to it', () => {
+    // readinessItemsForProject filters by applies_to: 'unreleased' gates on
+    // audio_files + split_sheets only. Fails closed, matching the old
+    // behaviour (an unreleased project could not reach 60 either).
+    const unreleasedItems = readinessItemsForProject({
+      type: 'unreleased',
+      tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() }],
+      assets: [{ type: 'cover_art' }],
+      documents: [
+        { type: 'copyright_registration', status: 'signed' },
+        { type: 'hire_right', status: 'signed' },
+        { type: 'split_sheet', status: 'signed' },
+      ],
+    })
+    expect(unreleasedItems.some(i => i.key === 'visual_asset')).toBe(false)
+    expect(isRightsReady(ADMITTED, stage3(true), unreleasedItems)).toBe(false)
   })
 })
 

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { VaultProjectType } from '@/types'
 import { computeStage3 } from '@/lib/vault/stage3'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { isRightsReady } from '@/lib/deals/catalog'
 
 // ─── loadShortlistEntries (D-14c) ──────────────────────────────────────────
@@ -36,6 +38,7 @@ type ShortlistProjectRow = {
   tracks: {
     id: string
     title: string | null
+    metadata: Record<string, unknown> | null
     writers: string[] | null
     producers: string[] | null
     mixing_engineer: string | null
@@ -50,6 +53,11 @@ type ShortlistProjectRow = {
     track_id: string | null
     document_data: Record<string, unknown> | null
   }[]
+  // 2026-09-10: the six-item entry gate reads `visual_asset` from
+  // vault_assets (cover_art_url is only a display mirror), and `metadata`
+  // from tracks.metadata — both newly selected below so a saved shortlist
+  // entry does not fail closed on data this query simply never fetched.
+  vault_assets: { id: string; type: string }[]
 }
 
 export async function loadShortlistEntries(service: SupabaseClient, orgId: string): Promise<ShortlistEntry[]> {
@@ -68,8 +76,9 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
     .select(
       `
       id, title, type, vault_readiness_score, content_id_registered, content_id_dismissed_until,
-      tracks (id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
-      vault_documents (id, type, status, track_id, document_data)
+      tracks (id, title, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+      vault_documents (id, type, status, track_id, document_data),
+      vault_assets (id, type)
       `
     )
     .in('id', projectIds)
@@ -117,9 +126,16 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
         project.vault_documents ?? [],
         project.vault_readiness_score ?? 0
       )
+      const readinessItems = readinessItemsForProject({
+        type: project.type as VaultProjectType,
+        tracks: project.tracks ?? [],
+        assets: project.vault_assets ?? [],
+        documents: project.vault_documents ?? [],
+      })
       stillRightsReady = isRightsReady(
         { ...project, has_admitted_sync_listing: admittedProjectIds.has(project.id) },
-        stage3
+        stage3,
+        readinessItems
       )
     }
     return {

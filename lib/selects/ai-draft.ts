@@ -12,6 +12,7 @@
 // near-rights-ready track is never dropped from its view — the AE reviews
 // and curates the draft before send.
 import Anthropic from '@anthropic-ai/sdk'
+import type { ReadinessItem } from '@/types'
 import type { Stage3Result } from '@/lib/vault/stage3'
 import { isRightsReady, type CatalogProjectLike } from '@/lib/deals/catalog'
 import { type Brief } from '@/lib/buyer/brief'
@@ -29,9 +30,13 @@ export const AI_DRAFT_TRACK_TARGET = 10
 export const AI_DRAFT_CANDIDATE_CAP = 60
 
 // A single catalogue track as a draft candidate. Carries the raw project +
-// stage3 shapes (not a precomputed boolean) so orderCandidatesRightsReadyFirst
-// calls the single isRightsReady authority itself, rather than trusting a
-// caller-computed flag.
+// stage3 + readinessItems shapes (not a precomputed boolean) so
+// orderCandidatesRightsReadyFirst calls the single isRightsReady authority
+// itself, rather than trusting a caller-computed flag. readinessItems was
+// added 2026-09-10 when isRightsReady moved from the aggregate readiness
+// score to the six decided entry items — it is the project's per-item
+// readiness from readinessItemsForProject(), shared by every candidate
+// track of that project.
 export type AiDraftCandidate = {
   trackId: string
   projectId: string
@@ -44,6 +49,7 @@ export type AiDraftCandidate = {
   instruments: string[]
   project: CatalogProjectLike
   stage3: Stage3Result
+  readinessItems: ReadinessItem[]
 }
 
 export type DraftedTrack = { trackId: string; reason: string; rightsReady: boolean }
@@ -58,7 +64,7 @@ export function orderCandidatesRightsReadyFirst(
   candidates: AiDraftCandidate[]
 ): AiDraftCandidate[] {
   return candidates
-    .map((c, index) => ({ c, index, ready: isRightsReady(c.project, c.stage3) }))
+    .map((c, index) => ({ c, index, ready: isRightsReady(c.project, c.stage3, c.readinessItems) }))
     .sort((a, b) => {
       if (a.ready !== b.ready) return a.ready ? -1 : 1
       return a.index - b.index
@@ -140,7 +146,9 @@ export async function draftSelectsFromBrief(
   }
 
   const ordered = orderCandidatesRightsReadyFirst(candidatePool)
-  const readyById = new Map(ordered.map(c => [c.trackId, isRightsReady(c.project, c.stage3)]))
+  const readyById = new Map(
+    ordered.map(c => [c.trackId, isRightsReady(c.project, c.stage3, c.readinessItems)])
+  )
   const byId = new Map(ordered.map(c => [c.trackId, c]))
 
   const apiKey = process.env.ANTHROPIC_API_KEY

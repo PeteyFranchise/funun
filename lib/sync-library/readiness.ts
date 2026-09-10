@@ -1,4 +1,4 @@
-// ─── Sync Readiness — per-track subset of the Wave 1 readiness engine ────
+// ─── Sync Readiness — the sync-catalogue subset of the Wave 1 readiness engine
 // (Phase 30, 30-CONTEXT.md "Sync Readiness (the completion pipeline)")
 //
 // CONTEXT.md locks this: "A sync-specific readiness checklist — a SUBSET of
@@ -19,19 +19,38 @@
 import type { ReadinessItem, VaultProjectType } from '@/types'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 
-// The sync-relevant subset of READINESS_ITEMS. Release-only items
-// (visual_asset, distributor, epk, caption_copy, tiktok_strategy) are
-// deliberately excluded — a licensed track needs no distributor and no
-// TikTok seeding plan to be sync-ready.
+// ─── SYNC_READINESS_KEYS — the sync-catalogue ENTRY requirements ─────────
+// Owner decision 2026-09-09 (.planning/deliberations/sync-catalogue-entry-
+// and-samples.md, "DECIDED — what it takes to enter the sync catalogue").
+// Exactly SIX items, and deliberately NOT the aggregate
+// vault_readiness_score: that score was designed for releasing on Spotify,
+// and 30 of its 100 points (isrc_codes, distributor, pro_registration,
+// mlc_registration) are release admin a music supervisor has no stake in.
+// Under a score threshold a song with every signature signed and a finished
+// master reads as unlicensable because nobody picked a distributor.
+//
+// Removed from the pre-2026-09-10 eight-key list: isrc_codes,
+// pro_registration, mlc_registration (release admin — explicitly NOT
+// required). Added: visual_asset (cover art — "shop-window quality, not a
+// licensing blocker", but required to be listed).
+//
+// This ONE list drives BOTH:
+//   1. isRightsReady() (lib/deals/catalog.ts) — the buyer-visible catalogue
+//      gate, via isSyncEntryComplete() below.
+//   2. the STAFF pending_admit / needs_completion label
+//      (lib/deals/catalog-query.ts ~line 320, lib/sync-library/worklist.ts)
+//      via missingSyncItems().
+// That coupling is DELIBERATE and was called out when this list changed:
+// staff should see exactly the bar the catalogue enforces, so a track that
+// reads pending_admit to staff is a track that will pass the buyer gate the
+// moment it is admitted. Changing this array moves both surfaces at once.
 export const SYNC_READINESS_KEYS = [
-  'audio_files',
   'split_sheets',
   'copyright',
-  'isrc_codes',
-  'pro_registration',
-  'mlc_registration',
   'hire_right',
+  'audio_files',
   'metadata',
+  'visual_asset',
 ] as const
 
 export type SyncReadinessKey = (typeof SYNC_READINESS_KEYS)[number]
@@ -46,17 +65,27 @@ export type SyncReadinessTrack = {
 
 /**
  * Everything syncReadinessForTrack() needs — the track itself, plus its
- * project's SHARED, document/project-level readiness signals (copyright,
- * hire_right, and the split-sheet legacy/coverage/pipeline data). These are
- * passed straight through to readinessItemsForProject() unchanged; only
- * `tracks` is narrowed to the single track (that narrowing is what makes
- * the isrc_codes/pro_registration/mlc_registration/metadata items resolve
+ * project's SHARED, project-level readiness signals (cover art via
+ * `assets`, copyright, hire_right, and the split-sheet legacy/coverage/
+ * pipeline data). These are passed straight through to
+ * readinessItemsForProject() unchanged; only `tracks` is narrowed to the
+ * single track (that narrowing is what makes the metadata item resolve
  * per-track instead of per-project).
  */
 export type SyncReadinessInput = {
   /** The project's type — same VaultProjectType the Wave 1 engine gates on. */
   type: VaultProjectType
   track: SyncReadinessTrack
+  /**
+   * The PROJECT's vault_assets rows (cover art / snippet visual / lyric
+   * card). REQUIRED, not optional, on purpose: `visual_asset` joined
+   * SYNC_READINESS_KEYS on 2026-09-10, and an omitted `assets` would make
+   * that item read 'missing' for every track forever — silently pinning
+   * the staff label to needs_completion and the buyer gate to false. A
+   * required field makes tsc, not production, find the caller that forgot.
+   * Pass [] only when the project genuinely has no assets.
+   */
+  assets: { type: string }[]
   documents?: { type: string; status: string }[]
   split_sheets?: { status: string }[]
   track_split_sheet_attachments?: { track_id: string; statuses: string[] }[]
@@ -66,12 +95,14 @@ export type SyncReadinessInput = {
  * Per-track Sync Readiness. Delegates ALL status computation to
  * readinessItemsForProject() — this function only assembles a single-track
  * ReadinessInput and filters the result to SYNC_READINESS_KEYS. Never
- * returns a release-only key.
+ * returns a release-admin key (isrc_codes/pro_registration/
+ * mlc_registration/distributor/epk).
  */
 export function syncReadinessForTrack(input: SyncReadinessInput): ReadinessItem[] {
   const projectInput: Parameters<typeof readinessItemsForProject>[0] = {
     type: input.type,
     tracks: [input.track],
+    assets: input.assets,
     documents: input.documents,
     split_sheets: input.split_sheets,
     track_split_sheet_attachments: input.track_split_sheet_attachments,
@@ -87,9 +118,53 @@ export function missingSyncItems(items: ReadinessItem[]): ReadinessItem[] {
   return items.filter(i => i.status !== 'complete')
 }
 
-// The metadata-family keys — the "tags, splits, ISRCs, etc." CONTEXT.md
-// names under the gate's "metadata complete" check.
-const METADATA_FAMILY_KEYS = ['metadata', 'isrc_codes', 'pro_registration', 'mlc_registration'] as const
+// ─── isSyncEntryComplete — the catalogue ENTRY gate predicate ─────────────
+// The six-item rule from the 2026-09-09 owner decision, expressed once.
+// lib/deals/catalog.ts's isRightsReady() is its only production consumer;
+// it deliberately lives HERE, next to SYNC_READINESS_KEYS, so the list and
+// the "all of them, complete" rule can never drift apart.
+//
+// FAILS CLOSED in three ways, all intentional:
+//   1. A key ABSENT from `items` is not complete. readinessItemsForProject()
+//      filters by applies_to, so an 'unreleased' project (which gates on
+//      only audio_files + split_sheets) is missing four of the six and can
+//      never enter the catalogue. That matches the pre-2026-09-10 behaviour
+//      — an unreleased project could not reach the old score threshold
+//      either — and is the safe direction to be wrong in.
+//   2. 'warning' is not 'complete'. A roster-picked composer with no IPI
+//      downgrades `metadata` to 'warning'; a partially-covered split sheet
+//      downgrades `split_sheets` to 'warning'. Both fail the gate. This is
+//      the SAME rule missingSyncItems() already applies to the staff
+//      worklist — one definition of "done", not two.
+//   3. An empty list is not complete.
+export function isSyncEntryComplete(items: ReadinessItem[]): boolean {
+  const statusByKey = new Map(items.map(i => [i.key, i.status]))
+  return SYNC_READINESS_KEYS.every(key => statusByKey.get(key) === 'complete')
+}
+
+// ─── METADATA_FAMILY_KEYS — collapsed 2026-09-10, deliberately kept ───────
+// This constant used to group four keys: metadata + isrc_codes +
+// pro_registration + mlc_registration ("tags, splits, ISRCs, etc." per
+// 30-CONTEXT.md's gate description). The 2026-09-09 entry decision removed
+// three of those four from SYNC_READINESS_KEYS as release admin a sync
+// buyer has no stake in, so they can no longer appear in the `items` this
+// function is ever handed (syncReadinessForTrack filters to
+// SYNC_READINESS_KEYS). Leaving the four-key list in place would have been
+// dead weight that silently narrowed to one member anyway.
+//
+// It is COLLAPSED rather than deleted because isSyncMetadataComplete() is a
+// published input to lib/sync-library/gate.ts's GateSignal.metadataComplete
+// — the staff admit gate in app/api/sync-library/admin/[listingId]/route.ts.
+// Deleting the helper would have forced that gate to re-derive "metadata
+// complete" itself, i.e. a second definition. Keeping the helper with a
+// one-member family preserves the seam (and the fails-closed-on-empty
+// discipline) while telling the truth about what it now checks.
+//
+// CONSEQUENCE, stated rather than left to be discovered: the staff admit
+// gate no longer refuses to admit a song for a missing ISRC/ISWC. That is
+// the decision working as intended — those are release admin, not
+// licensing blockers.
+const METADATA_FAMILY_KEYS = ['metadata'] as const
 
 /**
  * True only when every metadata-family item PRESENT in `items` reads

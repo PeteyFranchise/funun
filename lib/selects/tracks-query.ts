@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { VaultProjectType } from '@/types'
 import { computeStage3, type Stage3Result } from '@/lib/vault/stage3'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { isRightsReady } from '@/lib/deals/catalog'
 import type { SelectsTrack } from './types'
 
@@ -28,6 +30,7 @@ type TrackRow = {
   id: string
   project_id: string
   title: string | null
+  metadata: Record<string, unknown> | null
   writers: string[] | null
   producers: string[] | null
   mixing_engineer: string | null
@@ -50,6 +53,11 @@ type ProjectRow = {
     track_id: string | null
     document_data: Record<string, unknown> | null
   }[]
+  // 2026-09-10 entry-gate change: `visual_asset` resolves from vault_assets
+  // (cover_art_url is only a display mirror) and `metadata` from
+  // tracks.metadata — both newly selected so a Selects track does not read
+  // rights_ready: false purely because this query never fetched the inputs.
+  vault_assets: { id: string; type: string }[]
 }
 
 export type SelectsTrackWithRights = SelectsTrack & {
@@ -77,7 +85,7 @@ export async function resolveTracksWithRightsReady(
   const { data: trackRows } = await service
     .from('tracks')
     .select(
-      'id, project_id, title, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details'
+      'id, project_id, title, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details'
     )
     .in('id', trackIds)
   const tracks = (trackRows ?? []) as TrackRow[]
@@ -89,7 +97,7 @@ export async function resolveTracksWithRightsReady(
       ? await service
           .from('vault_projects')
           .select(
-            'id, title, type, content_id_registered, content_id_dismissed_until, vault_readiness_score, vault_documents (id, type, status, track_id, document_data)'
+            'id, title, type, content_id_registered, content_id_dismissed_until, vault_readiness_score, vault_documents (id, type, status, track_id, document_data), vault_assets (id, type)'
           )
           .in('id', projectIds)
       : { data: [] as ProjectRow[] }
@@ -112,6 +120,13 @@ export async function resolveTracksWithRightsReady(
   )
 
   const stage3ByProject = new Map<string, Stage3Result>()
+  // Per-project readiness items for the six-item entry gate, memoized on
+  // the SAME per-project basis as stage3 above — a Selects usually holds
+  // several tracks from one project, and neither signal is per-track.
+  // Like the stage3 call it sits beside, this sees only the project tracks
+  // this Selects actually references, not necessarily every track on the
+  // project — a pre-existing property of this read path, unchanged here.
+  const readinessByProject = new Map<string, ReturnType<typeof readinessItemsForProject>>()
 
   return rows.map(row => {
     const trackRow = trackById.get(row.track_id)
@@ -135,9 +150,20 @@ export async function resolveTracksWithRightsReady(
         )
         stage3ByProject.set(project.id, stage3)
       }
+      let readinessItems = readinessByProject.get(project.id)
+      if (!readinessItems) {
+        readinessItems = readinessItemsForProject({
+          type: project.type as VaultProjectType,
+          tracks: tracks.filter(t => t.project_id === project.id),
+          assets: project.vault_assets ?? [],
+          documents: project.vault_documents ?? [],
+        })
+        readinessByProject.set(project.id, readinessItems)
+      }
       rightsReady = isRightsReady(
         { ...project, has_admitted_sync_listing: admittedProjectIds.has(project.id) },
-        stage3
+        stage3,
+        readinessItems
       )
     }
 

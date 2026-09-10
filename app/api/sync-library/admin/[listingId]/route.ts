@@ -60,7 +60,8 @@ const PROJECT_GATE_COLUMNS = `
   id, title, type, vault_readiness_score,
   content_id_registered, content_id_dismissed_until,
   tracks (id, title, isrc, iswc, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
-  vault_documents (id, type, status, track_id, document_data)
+  vault_documents (id, type, status, track_id, document_data),
+  vault_assets (id, type)
 `
 
 type GateProjectRow = {
@@ -90,6 +91,9 @@ type GateProjectRow = {
     track_id: string | null
     document_data: Record<string, unknown> | null
   }[]
+  // 2026-09-10: `visual_asset` joined SYNC_READINESS_KEYS, and it resolves
+  // from vault_assets (cover_art_url is only a display mirror).
+  vault_assets: { id: string; type: string }[]
 }
 
 export async function POST(
@@ -194,6 +198,7 @@ export async function POST(
     const syncItems = syncReadinessForTrack({
       type: project.type,
       track: { id: track.id, isrc: track.isrc, iswc: track.iswc, metadata: track.metadata },
+      assets: project.vault_assets ?? [],
       documents: project.vault_documents ?? [],
     })
     const metadataComplete = isSyncMetadataComplete(syncItems)

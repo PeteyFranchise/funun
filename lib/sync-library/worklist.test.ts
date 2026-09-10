@@ -30,6 +30,9 @@ const COMPLETE_TRACK: WorklistTrackInput = {
 const COMPLETE_PROJECT: WorklistProjectInput = {
   title: 'Golden EP',
   type: 'single',
+  // 2026-09-10: cover art is an entry requirement, and it resolves from the
+  // project's vault_assets rows.
+  assets: [{ type: 'cover_art' }],
   documents: [
     { type: 'copyright_registration', status: 'signed' },
     { type: 'hire_right', status: 'signed' },
@@ -63,7 +66,7 @@ function lookupsFor(
 // ─── shapeWorklistRow ───────────────────────────────────────────────────
 
 describe('shapeWorklistRow', () => {
-  it('derives missing[] via missingSyncItems(syncReadinessForTrack(...)) — an ISRC-less track surfaces isrc_codes', () => {
+  it('derives missing[] via missingSyncItems(syncReadinessForTrack(...)) — a project with no cover art surfaces visual_asset', () => {
     const row = shapeWorklistRow({
       listing: {
         id: 'listing-1',
@@ -73,12 +76,33 @@ describe('shapeWorklistRow', () => {
         qualityOk: null,
         staffNotes: null,
       },
-      track: { ...COMPLETE_TRACK, isrc: null },
+      track: COMPLETE_TRACK,
+      project: { ...COMPLETE_PROJECT, assets: [] },
+      artistName: 'Jane Doe',
+    })
+    expect(row.missing.some(m => m.key === 'visual_asset')).toBe(true)
+    expect(row.missing.find(m => m.key === 'visual_asset')?.label).toBe('Visual asset ready')
+  })
+
+  // CONSEQUENCE of the 2026-09-10 entry-gate change, pinned deliberately:
+  // the staff worklist is derived from the SAME SYNC_READINESS_KEYS the
+  // buyer catalogue gate uses, so an ISRC-less track no longer appears as
+  // incomplete to staff. Staff see exactly the bar the catalogue enforces.
+  it('an ISRC-less, ISWC-less track is NOT flagged — release admin left the checklist', () => {
+    const row = shapeWorklistRow({
+      listing: {
+        id: 'listing-1',
+        status: 'pending_admit',
+        trackId: 'track-1',
+        appliedAt: '2026-08-01T00:00:00Z',
+        qualityOk: null,
+        staffNotes: null,
+      },
+      track: { ...COMPLETE_TRACK, isrc: null, iswc: null },
       project: COMPLETE_PROJECT,
       artistName: 'Jane Doe',
     })
-    expect(row.missing.some(m => m.key === 'isrc_codes')).toBe(true)
-    expect(row.missing.find(m => m.key === 'isrc_codes')?.label).toBe('ISRC codes assigned')
+    expect(row.missing).toEqual([])
   })
 
   it('a fully-complete track yields an empty missing[]', () => {
@@ -124,16 +148,16 @@ describe('shapeWorklistRow', () => {
 // ─── buildWorklist ────────────────────────────────────────────────────────
 
 describe('buildWorklist', () => {
-  it('yields a WorklistRow for a pending_admit listing whose track lacks an ISRC, with missing including isrc_codes', () => {
+  it('yields a WorklistRow for a pending_admit listing whose project has no cover art, with missing including visual_asset', () => {
     const listings: WorklistListingRow[] = [{ ...BASE_LISTING }]
     const lookups = lookupsFor(
-      { 'track-1': { ...COMPLETE_TRACK, isrc: null } },
-      { 'project-1': COMPLETE_PROJECT },
+      { 'track-1': COMPLETE_TRACK },
+      { 'project-1': { ...COMPLETE_PROJECT, assets: [] } },
       { 'artist-1': 'Jane Doe' }
     )
     const rows = buildWorklist(listings, lookups)
     expect(rows).toHaveLength(1)
-    expect(rows[0].missing.some(m => m.key === 'isrc_codes')).toBe(true)
+    expect(rows[0].missing.some(m => m.key === 'visual_asset')).toBe(true)
   })
 
   it('excludes admitted and terminal (rejected/withdrawn/removed) listings', () => {

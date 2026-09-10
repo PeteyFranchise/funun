@@ -43,10 +43,17 @@ export type WorklistListingInput = {
 /** The listing's track — the same shape syncReadinessForTrack() consumes, plus a title. */
 export type WorklistTrackInput = SyncReadinessTrack & { title: string | null }
 
-/** The listing's project — type + title + the shared documents syncReadinessForTrack() needs. */
+/**
+ * The listing's project — type + title + the shared, project-level signals
+ * syncReadinessForTrack() needs. `assets` (vault_assets rows) is REQUIRED
+ * for the same reason it is required on SyncReadinessInput: `visual_asset`
+ * joined SYNC_READINESS_KEYS on 2026-09-10, and an omitted list would pin
+ * every worklist row to "Visual asset ready — missing" forever.
+ */
 export type WorklistProjectInput = {
   title: string | null
   type: VaultProjectType
+  assets: { type: string }[]
   documents?: { type: string; status: string }[]
 }
 
@@ -66,6 +73,7 @@ export function shapeWorklistRow(input: ShapeWorklistRowInput): WorklistRow {
   const items = syncReadinessForTrack({
     type: input.project.type,
     track: input.track,
+    assets: input.project.assets,
     documents: input.project.documents,
   })
   const missing: WorklistMissingItem[] = missingSyncItems(items).map(i => ({

@@ -87,8 +87,13 @@ export default async function AdminSyncLibraryPage() {
   // vault_documents query for the shared, project-level readiness signals
   // syncReadinessForTrack() needs (mirrors GET /api/sync-library/worklist's
   // own batching exactly).
-  const [{ data: trackRows }, { data: projectRows }, { data: artistProfiles }, { data: documentRows }] =
-    await Promise.all([
+  const [
+    { data: trackRows },
+    { data: projectRows },
+    { data: artistProfiles },
+    { data: documentRows },
+    { data: assetRows },
+  ] = await Promise.all([
       trackIds.length > 0
         ? service.from('tracks').select('id, title, isrc, iswc, metadata').in('id', trackIds)
         : Promise.resolve({
@@ -103,6 +108,12 @@ export default async function AdminSyncLibraryPage() {
       projectIds.length > 0
         ? service.from('vault_documents').select('project_id, type, status').in('project_id', projectIds)
         : Promise.resolve({ data: [] as { project_id: string | null; type: string; status: string }[] }),
+      // 2026-09-10: `visual_asset` (cover art) joined SYNC_READINESS_KEYS,
+      // and readinessItemsForProject derives it from vault_assets — one more
+      // batched query on the SAME project ids, never a per-listing lookup.
+      projectIds.length > 0
+        ? service.from('vault_assets').select('project_id, type').in('project_id', projectIds)
+        : Promise.resolve({ data: [] as { project_id: string | null; type: string }[] }),
     ])
 
   const trackTitleById = new Map((trackRows ?? []).map(t => [t.id, t.title]))
@@ -129,10 +140,23 @@ export default async function AdminSyncLibraryPage() {
       { id: t.id, title: t.title, isrc: t.isrc, iswc: t.iswc, metadata: t.metadata },
     ])
   )
+  const assetsByProject = new Map<string, { type: string }[]>()
+  for (const asset of assetRows ?? []) {
+    if (!asset.project_id) continue
+    const list = assetsByProject.get(asset.project_id) ?? []
+    list.push({ type: asset.type })
+    assetsByProject.set(asset.project_id, list)
+  }
+
   const worklistProjectsById = new Map<string, WorklistProjectInput>(
     (projectRows ?? []).map(p => [
       p.id,
-      { title: p.title, type: p.type, documents: documentsByProject.get(p.id) ?? [] },
+      {
+        title: p.title,
+        type: p.type,
+        assets: assetsByProject.get(p.id) ?? [],
+        documents: documentsByProject.get(p.id) ?? [],
+      },
     ])
   )
 

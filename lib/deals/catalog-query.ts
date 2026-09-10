@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { VaultProjectType } from '@/types'
 import type { StaffRole } from '@/lib/admin/staff-role'
 import { computeStage3 } from '@/lib/vault/stage3'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
 import { loadBlockedIds } from '@/lib/green-room/discover'
 import { readDescriptors } from '@/lib/metadata/schema'
@@ -78,7 +79,8 @@ const PROJECT_COLUMNS = `
   id, title, type, genre, vault_readiness_score, user_id,
   cover_art_url, content_id_registered, content_id_dismissed_until,
   tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details, isrc, iswc),
-  vault_documents (id, type, status, track_id, document_data)
+  vault_documents (id, type, status, track_id, document_data),
+  vault_assets (id, type)
 `
 
 type CatalogProjectRow = {
@@ -113,6 +115,14 @@ type CatalogProjectRow = {
     track_id: string | null
     document_data: Record<string, unknown> | null
   }[]
+  // 2026-09-10: the six-item catalogue entry gate includes `visual_asset`
+  // (cover art), which readinessItemsForProject() derives from vault_assets
+  // — NOT from vault_projects.cover_art_url, which is only a denormalized
+  // display mirror written alongside the asset row (see
+  // app/api/vault/[projectId]/assets/route.ts). Selecting the asset rows is
+  // what keeps this gate reading the same source the readiness engine and
+  // migration 070's DB trigger already read.
+  vault_assets: { id: string; type: string }[]
 }
 
 // ─── CatalogStaffLayer (30-08) ─────────────────────────────────────────
@@ -123,6 +133,14 @@ type CatalogProjectRow = {
 // syncReadinessForTrack (30-01, the sync-specific subset of the Wave 1
 // engine) — 'needs_completion' when anything is missing, 'pending_admit'
 // when the track's own readiness checklist is clear but not yet admitted.
+// CONSEQUENCE OF THE 2026-09-10 ENTRY-GATE CHANGE, stated rather than left
+// to surprise someone: this label is derived from SYNC_READINESS_KEYS, the
+// SAME list isRightsReady() now gates on, so narrowing that list to the six
+// decided entry items moved this label too. A track missing only an ISRC
+// used to read needs_completion and now reads pending_admit. That is
+// intended — staff should see exactly the bar the catalogue enforces, so
+// 'pending_admit' means "will be visible to buyers the moment it is
+// admitted" rather than "clear on a checklist the catalogue disagrees with".
 // rightsDetail summarizes the SAME stage3 already computed above for the
 // isRightsReady gate (never a second rights definition). artistNotes is
 // sync_listings.staff_notes (migration 107). inProgress flags a project
@@ -270,7 +288,19 @@ export async function loadCatalogPage(
     const tracks = project.tracks ?? []
     const stage3 = computeStage3(project, tracks, project.vault_documents ?? [], project.vault_readiness_score ?? 0)
     const hasAdmittedSyncListing = admittedProjectIds.has(project.id)
-    if (!isRightsReady({ ...project, has_admitted_sync_listing: hasAdmittedSyncListing }, stage3)) continue
+    // 2026-09-10: isRightsReady now gates on the SIX decided entry items
+    // (SYNC_READINESS_KEYS) instead of vault_readiness_score, so the caller
+    // supplies the per-item readiness the Wave 1 engine computes. Computed
+    // ONCE per project here and reused by the staff layer below — never a
+    // second, independently-derived readiness signal.
+    const readinessItems = readinessItemsForProject({
+      type: project.type as VaultProjectType,
+      tracks,
+      assets: project.vault_assets ?? [],
+      documents: project.vault_documents ?? [],
+    })
+    if (!isRightsReady({ ...project, has_admitted_sync_listing: hasAdmittedSyncListing }, stage3, readinessItems))
+      continue
 
     if (!projectMatchesKeyBpm(tracks, filter)) continue
     if (!projectMatchesDescriptors(tracks, filter)) continue
@@ -324,6 +354,7 @@ export async function loadCatalogPage(
             iswc: representativeTrack.iswc,
             metadata: representativeTrack.metadata,
           },
+          assets: project.vault_assets ?? [],
           documents: project.vault_documents ?? [],
         })
         readinessStatus = missingSyncItems(items).length > 0 ? 'needs_completion' : 'pending_admit'

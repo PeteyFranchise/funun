@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
+import type { VaultProjectType } from '@/types'
 import { computeStage3 } from '@/lib/vault/stage3'
+import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { descriptorsToDisplay, type CatalogProjectLike } from '@/lib/deals/catalog'
 import { coerceBrief, type Brief } from '@/lib/buyer/brief'
 import {
@@ -36,7 +38,8 @@ const CANDIDATE_PROJECT_CAP = AI_DRAFT_CANDIDATE_CAP * 2
 const CANDIDATE_PROJECT_COLUMNS = `
   id, title, type, genre, vault_readiness_score, user_id,
   tracks (id, title, bpm, key_signature, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details, isrc, iswc),
-  vault_documents (id, type, status, track_id, document_data)
+  vault_documents (id, type, status, track_id, document_data),
+  vault_assets (id, type)
 `
 
 type CandidateTrackRow = {
@@ -58,7 +61,7 @@ type CandidateTrackRow = {
 type CandidateProjectRow = {
   id: string
   title: string
-  type: string
+  type: VaultProjectType
   genre: string | null
   vault_readiness_score: number | null
   user_id: string
@@ -70,6 +73,10 @@ type CandidateProjectRow = {
     track_id: string | null
     document_data: Record<string, unknown> | null
   }[]
+  // 2026-09-10: the six-item entry gate isRightsReady now applies reads
+  // `visual_asset` from vault_assets (cover_art_url is only a display
+  // mirror), so the candidate fetch carries the asset rows too.
+  vault_assets: { id: string; type: string }[]
 }
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -188,8 +195,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     )
     const projectLike: CatalogProjectLike = {
       has_admitted_sync_listing: admittedProjectIds.has(project.id),
-      vault_readiness_score: project.vault_readiness_score,
     }
+    // Computed ONCE per project and shared across its candidate tracks —
+    // readiness is a project-level signal, exactly like stage3 above.
+    const readinessItems = readinessItemsForProject({
+      type: project.type,
+      tracks,
+      assets: project.vault_assets ?? [],
+      documents: project.vault_documents ?? [],
+    })
     for (const track of tracks) {
       const display = descriptorsToDisplay(track)
       candidates.push({
@@ -204,6 +218,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         instruments: display.instruments,
         project: projectLike,
         stage3,
+        readinessItems,
       })
     }
   }

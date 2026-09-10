@@ -14,6 +14,8 @@ import {
 } from '@/lib/metadata/schema'
 import { ALL_GENRE_SLUGS } from '@/lib/genres'
 import { rightsBadge, RIGHTS_BADGE_TO_CATALOG_RIGHTS, type CatalogRightsCode } from '@/lib/sync-library/gate'
+import { isSyncEntryComplete } from '@/lib/sync-library/readiness'
+import type { ReadinessItem } from '@/types'
 
 // ─── isAdmittedToSyncLibrary (26-06) ──────────────────────────────────────
 // The SINGLE admission-authority predicate for buyer-catalogue membership,
@@ -35,30 +37,87 @@ export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: bo
 
 // ─── isRightsReady (D-16, RESEARCH Open Question 3 / Assumption A4) ──────
 // The SINGLE named helper expressing the rights-ready definition for buyer
-// catalog browse. CATALOG_READINESS_THRESHOLD is deliberately TUNABLE in
-// this one place — the beta definition is sync-library ADMITTED (26-06,
-// replacing the old is_public placeholder) AND readiness at or above the
-// threshold AND computeStage3().canContinue, and product may raise or
-// lower the threshold after observing how much catalog surfaces.
-// Deliberately NOT a boolean flag column on vault_projects (RESEARCH
-// Don't Hand-Roll) — a parallel flag would desync from the readiness
-// pipeline the first time either changes.
+// catalogue browse. Six live call sites depend on it — the buyer catalogue
+// (lib/deals/catalog-query.ts), AE shortlists (lib/deals/shortlists.ts),
+// Selects track queries (lib/selects/tracks-query.ts) and the Selects AI
+// draft (lib/selects/ai-draft.ts, x2). Deliberately NOT a boolean flag
+// column on vault_projects (RESEARCH Don't Hand-Roll) — a parallel flag
+// would desync from the readiness pipeline the first time either changed,
+// and there must never be a second rights definition.
 //
-// Pure: accepts an already-fetched project shape and an already-computed
-// Stage3Result, so callers do the I/O (see lib/deals/catalog-query.ts,
-// lib/deals/request-target.ts, lib/deals/shortlists.ts) and this stays
-// unit-testable without a DB.
+// ─── CHANGED 2026-09-10: six specific items, not the aggregate score ─────
+// The beta definition was: sync-library ADMITTED (26-06) AND
+// vault_readiness_score >= CATALOG_READINESS_THRESHOLD AND
+// computeStage3().canContinue. The MIDDLE condition is what changed.
+//
+// Owner decision 2026-09-09 (.planning/deliberations/sync-catalogue-entry-
+// and-samples.md): the aggregate readiness score is the WRONG INSTRUMENT
+// and is not used. It was designed for releasing on Spotify; 30 of its 100
+// points (isrc_codes, distributor, pro_registration, mlc_registration) are
+// release admin a music supervisor has no stake in. Under the old rule a
+// song with every signature signed and a finished master read as
+// unlicensable because nobody had picked a distributor.
+//
+// The gate is now the SIX items in SYNC_READINESS_KEYS
+// (lib/sync-library/readiness.ts) — split sheets, copyright, producer
+// agreements, audio files, metadata, cover art — every one of them
+// 'complete'. A song can now pass this gate on an aggregate score of 50.
+// That is the entire point of the change, and lib/deals/catalog.test.ts
+// pins it as a named test.
+//
+// The OTHER two conditions are unchanged: admission, and
+// computeStage3().canContinue. Worth knowing before anyone touches either:
+// canContinue is itself `vault_readiness_score >= 60 && !sampleBlock`
+// (lib/vault/stage3.ts CONTINUE_THRESHOLD), so the aggregate score has not
+// vanished from this gate — it survives transitively. It is REDUNDANT
+// rather than binding, though: the DB scoring function (migration 070)
+// awards 10+10+15+15+10+10 = 70 for exactly the six entry items, so any
+// project passing isSyncEntryComplete() already scores at or above 60 (60
+// in the floor case where the visual asset is a lyric_card/snippet_visual,
+// which the TS engine counts and the DB trigger does not). canContinue can
+// therefore never reject a project the six-item check accepted, and it is
+// left in place for the !sampleBlock half — which is what actually keeps an
+// uncleared sampled track out of the buyer catalogue today.
+//
+// The practical consequence of this change is therefore the REVERSE of the
+// motivating anecdote: it does not admit songs the old bar rejected (there
+// were none — six complete always cleared 60), it REJECTS songs the old bar
+// admitted, e.g. a project at 85 that reached the threshold on ISRC + ISWC
+// + distributor while having no cover art and no signed split sheet.
+//
+// Pure: accepts an already-fetched project shape, an already-computed
+// Stage3Result and an already-computed ReadinessItem[], so callers do the
+// I/O and this stays unit-testable without a DB. The third parameter is
+// the RAW item list, never a caller-computed boolean — "which items, and
+// what counts as done" stays inside this authority rather than being
+// re-decided at four call sites.
+
+// ─── CATALOG_READINESS_THRESHOLD — no longer the catalogue gate ──────────
+// NOT DEAD, but no longer used by isRightsReady(). Its one remaining
+// consumer is computeArtistReadinessPassRate() in lib/deals/metrics.ts
+// (GTM-06, artist readiness pass rate). Kept, and kept exported, because
+// that metric still measures something real — how many requested projects
+// clear the RELEASE-readiness bar — but the two have DIVERGED: this
+// constant is no longer "a simplified proxy of isRightsReady()" as
+// metrics.ts's comment used to claim. Flagged rather than removed, and
+// rather than silently repurposed: whether GTM-06 should be re-specified
+// against the six-item entry gate is a product decision, not a refactor.
 export const CATALOG_READINESS_THRESHOLD = 60
 
 export type CatalogProjectLike = {
   has_admitted_sync_listing: boolean | null
-  vault_readiness_score: number | null
 }
 
-export function isRightsReady(project: CatalogProjectLike, stage3: Stage3Result): boolean {
+export function isRightsReady(
+  project: CatalogProjectLike,
+  stage3: Stage3Result,
+  readinessItems: ReadinessItem[]
+): boolean {
   if (!isAdmittedToSyncLibrary(project)) return false
-  if (project.vault_readiness_score == null) return false // fail closed on missing readiness
-  if (project.vault_readiness_score < CATALOG_READINESS_THRESHOLD) return false
+  // The six decided entry items, all 'complete'. isSyncEntryComplete fails
+  // closed on an absent key, on 'warning', and on an empty list — so a
+  // caller that forgets to pass readiness items gets false, never true.
+  if (!isSyncEntryComplete(readinessItems)) return false
   return stage3.canContinue
 }
 

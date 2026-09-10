@@ -35,6 +35,14 @@ function shortlistRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
+// 2026-09-10: isRightsReady gates on the SIX decided entry items
+// (split sheets, copyright, producer agreements, audio files, metadata,
+// cover art) instead of vault_readiness_score, so a fixture project must
+// now actually carry those inputs to be catalogue-visible. The old
+// `tracks: [] / vault_documents: []` shape passed only because the gate
+// read a rolled-up number. Note there is deliberately NO distributor and
+// NO isrc/iswc here — this fixture IS the "every signature signed, no
+// release admin" song the new gate exists to admit.
 function projectRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'proj-1',
@@ -43,8 +51,27 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     vault_readiness_score: 100,
     content_id_registered: false,
     content_id_dismissed_until: null,
-    tracks: [],
-    vault_documents: [],
+    tracks: [
+      {
+        id: 'track-1',
+        title: 'Test Track',
+        metadata: {
+          composers: [{ name: 'Jane Writer', role: 'composer_lyricist', pro: 'ascap', split: 100 }],
+        },
+        writers: null,
+        producers: null,
+        mixing_engineer: null,
+        mastering_engineer: null,
+        has_sample: false,
+        sample_details: null,
+      },
+    ],
+    vault_documents: [
+      { id: 'doc-1', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+      { id: 'doc-2', type: 'hire_right', status: 'signed', track_id: null, document_data: null },
+      { id: 'doc-3', type: 'split_sheet', status: 'signed', track_id: null, document_data: null },
+    ],
+    vault_assets: [{ id: 'asset-1', type: 'cover_art' }],
     ...overrides,
   }
 }
