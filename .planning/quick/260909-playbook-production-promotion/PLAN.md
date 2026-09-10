@@ -4,6 +4,10 @@
 
 Promote Playbook migration candidates 201, 202, 204, 205, 206, and 207 into the active migration directory without renumbering or applying them, and prepare owner-run read-only pre-apply and post-apply verification plus a dependency-safe paste sequence.
 
+The production portion was subsequently authorized and completed by Peter on
+2026-09-10. The historical objective above describes the promotion stage; the
+production outcome and remaining behavioral UAT are recorded in `SUMMARY.md`.
+
 ## Scope
 
 - Reconfirm candidate search-path hardening and independence from migrations 200 and 208–210.
@@ -12,6 +16,9 @@ Promote Playbook migration candidates 201, 202, 204, 205, 206, and 207 into the 
 - Add a production pre-apply gate using object identity lookups.
 - Add an owner-run apply sequence with explicit dependency and pause guidance.
 - Add a read-only post-apply verification covering table existence, RLS, grants, functions, routes, and the storage bucket.
+- Repair the production browser-role table-grant defect discovered after 204:
+  harden unapplied migrations 205–207 and add migration 213 for the twelve
+  tables already created by 201, 202, and 204.
 - Check every promoted migration and SQL verification artifact for the Supabase SQL Editor's false-positive `INTO <word>` pattern.
 
 ## Files Expected to Change
@@ -32,6 +39,18 @@ Promote Playbook migration candidates 201, 202, 204, 205, 206, and 207 into the 
 - `.planning/quick/260909-playbook-production-promotion/APPLY-SEQUENCE.md`
 - `.planning/quick/260909-playbook-production-promotion/POST-APPLY-VERIFY.sql`
 - `.planning/quick/260909-playbook-production-promotion/SUMMARY.md`
+- `supabase/migrations/213_playbook_browser_table_grant_hardening.sql`
+- `.planning/quick/260909-playbook-production-promotion/PRE-APPLY-GATE-213.sql`
+- `__tests__/migration-213-playbook-browser-grants.test.ts`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-202.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-204.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-204-GRANTS.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-201-204-GRANTS.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-205.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-206.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-207-ROLLBACK.sql`
+- `.planning/quick/260909-playbook-production-promotion/VERIFY-207.sql`
+- `.planning/phases/38.0.3-rls-helper-api-exposure/38.0.3-VERIFY-A2-NO-BLOCK.sql`
 
 ## Validation
 

@@ -23,9 +23,11 @@ describe('Playbook enablement migration 206', () => {
     expect(migration).toContain('runbook_revision_number INTEGER CHECK')
   })
 
-  it('enables RLS and revokes browser CRUD for every new table through a closed list', () => {
+  it('enables RLS and revokes every browser privilege for every new table through a closed list', () => {
     expect(migration).toContain('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY')
-    expect(migration).toContain('REVOKE SELECT, INSERT, UPDATE, DELETE ON public.%I FROM authenticated, anon')
+    expect(migration).toContain(
+      'REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, authenticated, anon'
+    )
     expect(migration).toContain("'playbook_user_preferences'")
   })
 

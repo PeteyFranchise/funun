@@ -91,7 +91,9 @@
 --                                         bind AND calls private.no_block
 --   discover_profile_id_by_email ........ retargeted to private.no_block
 --   exposed public definers ............. 48
---   all public definers ................. 107
+--   all public definers ................. 114 (107 after migration 210,
+--                                         plus seven internal/service-only
+--                                         Playbook functions from 201-207)
 --
 -- --- 3. RESOLVE OBJECTS BY IDENTITY, NEVER BY A RENDERED STRING ---
 -- THIS FILE'S SINGLE MOST IMPORTANT DESIGN RULE, and it is written
@@ -810,19 +812,23 @@ UNION ALL
 --     53  baseline 2026-09-08
 --     -4  Tier 1 (migration 208): three revokes and one drop   -> 49
 --     -1  Tier 3 (migration 210): no_block relocated           -> 48
+--
+-- The total-definer count is now 114 after the Playbook production apply on
+-- 2026-09-10. Its seven additional definers are internal/service-only, so the
+-- security-sensitive exposed count remains unchanged at 48.
 SELECT 501,
        'X2 exposed public definers (anon or authenticated)',
        'exposed_count=' || (SELECT count(*) FROM exposed)
          || '  expected=48'
          || '  delta_from_expected=' || ((SELECT count(*) FROM exposed) - 48)
          || '  |  all_public_definers=' || (SELECT count(*) FROM defs)
-         || '  expected=107'
-         || '  |  2026-09-08 baseline was 53 exposed of 109 total',
+         || '  expected=114'
+         || '  |  2026-09-08 baseline was 53 exposed of 109 total; migration 210 left 48 of 107; Playbook added seven non-exposed definers',
        CASE
-         WHEN (SELECT count(*) FROM exposed) = 48 AND (SELECT count(*) FROM defs) = 107
-           THEN 'PASS - 48 exposed of 107, exactly the 2026-09-09 post-apply reading. Both numbers close arithmetically and independently.'
+         WHEN (SELECT count(*) FROM exposed) = 48 AND (SELECT count(*) FROM defs) = 114
+           THEN 'PASS - 48 exposed of 114 after the Playbook apply. The seven new definers are not browser-exposed.'
          WHEN (SELECT count(*) FROM exposed) = 48
-           THEN 'PARTIAL - the exposed count is right at 48 but the total definer count is not 107. A definer was added or removed by another workstream. Not this phase, but read X3.'
+           THEN 'PARTIAL - the exposed count is right at 48 but the total definer count is not 114. A definer was added or removed by another workstream. Read X3 before accepting the drift.'
          WHEN (SELECT count(*) FROM exposed) = 63
            THEN '*** FAIL - 63 is the number the BROKEN predicate produced on 2026-09-09. If you are reading 63 you are not running the `defs` CTE in this file. Check that both filters survived: prorettype <> trigger, and the pg_depend deptype = ''e'' exclusion. ***'
          WHEN (SELECT count(*) FROM exposed) > 48
@@ -906,7 +912,9 @@ ORDER BY 1;
 --      API, Exposed schemas by eye and confirm `private` is absent.
 --      That is the control the whole of Tier 3 rests on and it is a
 --      dashboard setting, not a database one.
---   3. X2 must read 48 exposed of 107 total. A reading of 63 means
+--   3. X2 must read 48 exposed of 114 total. The seven-function increase from
+--      the post-210 total of 107 is the non-exposed Playbook workstream. A
+--      reading of 63 exposed means
 --      the `defs` CTE was altered, not that the database changed.
 --   4. B1 is the row to read twice. Blocks P and D can all pass
 --      while migration 210 has quietly reverted migration 209's

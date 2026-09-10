@@ -268,8 +268,8 @@ trigger_checks AS (
 ),
 column_checks AS (
   SELECT
-    4000 + row_number() OVER (ORDER BY column_name) AS ord,
-    'M201 column is free: public.playbook_entries.' || column_name AS check_name,
+    4000 + row_number() OVER (ORDER BY expected_columns.column_name) AS ord,
+    'M201 column is free: public.playbook_entries.' || expected_columns.column_name AS check_name,
     COALESCE(existing.data_type, 'NULL') AS raw_value,
     CASE WHEN existing.column_name IS NULL THEN 'PASS' ELSE 'STOP' END AS verdict
   FROM expected_columns

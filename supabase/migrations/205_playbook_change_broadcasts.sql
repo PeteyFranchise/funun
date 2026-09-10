@@ -71,8 +71,8 @@ CREATE INDEX idx_playbook_change_broadcast_reads_user
 ALTER TABLE public.playbook_change_broadcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playbook_change_broadcast_reads ENABLE ROW LEVEL SECURITY;
 
-REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_change_broadcasts FROM authenticated, anon;
-REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_change_broadcast_reads FROM authenticated, anon;
+REVOKE ALL PRIVILEGES ON TABLE public.playbook_change_broadcasts FROM PUBLIC, authenticated, anon;
+REVOKE ALL PRIVILEGES ON TABLE public.playbook_change_broadcast_reads FROM PUBLIC, authenticated, anon;
 
 CREATE OR REPLACE FUNCTION public.prevent_playbook_change_broadcast_mutation()
 RETURNS trigger

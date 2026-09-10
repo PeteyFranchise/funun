@@ -287,7 +287,7 @@ BEGIN
     'playbook_entry_translations','playbook_glossary_terms','playbook_user_preferences'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', table_name);
-    EXECUTE format('REVOKE SELECT, INSERT, UPDATE, DELETE ON public.%I FROM authenticated, anon', table_name);
+    EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, authenticated, anon', table_name);
   END LOOP;
 END $$;
 

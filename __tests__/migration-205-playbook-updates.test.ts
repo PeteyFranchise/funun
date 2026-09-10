@@ -22,10 +22,12 @@ describe('Playbook migration 205', () => {
     expect(migration).toContain('CREATE TABLE public.playbook_change_broadcast_reads')
   })
 
-  it('keeps browser roles away from service-mediated update data', () => {
+  it('removes every browser-role privilege from service-mediated update data', () => {
     for (const table of ['playbook_change_broadcasts', 'playbook_change_broadcast_reads']) {
       expect(migration).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`)
-      expect(migration).toContain(`REVOKE SELECT, INSERT, UPDATE, DELETE ON public.${table} FROM authenticated, anon`)
+      expect(migration).toContain(
+        `REVOKE ALL PRIVILEGES ON TABLE public.${table} FROM PUBLIC, authenticated, anon`
+      )
     }
   })
 

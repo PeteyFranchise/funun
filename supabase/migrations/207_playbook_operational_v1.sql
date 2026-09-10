@@ -88,7 +88,7 @@ CREATE TABLE public.playbook_sla_rules (
 );
 
 CREATE UNIQUE INDEX playbook_sla_rules_scope_unique
-  ON public.playbook_sla_rules NULLS NOT DISTINCT (work_kind, room_id, severity);
+  ON public.playbook_sla_rules (work_kind, room_id, severity) NULLS NOT DISTINCT;
 
 -- R29: source doctrine is always revision-pinned. Targets are polymorphic
 -- by design because they include both Playbook tables and external systems.
@@ -314,7 +314,7 @@ BEGIN
     'playbook_operational_links','playbook_operational_link_events'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', table_name);
-    EXECUTE format('REVOKE SELECT, INSERT, UPDATE, DELETE ON public.%I FROM authenticated, anon', table_name);
+    EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, authenticated, anon', table_name);
   END LOOP;
 END $$;
 

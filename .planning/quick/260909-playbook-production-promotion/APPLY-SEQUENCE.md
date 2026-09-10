@@ -19,9 +19,10 @@ Verify each local file against this SHA-256 value immediately before copying it:
 | 1 | `supabase/migrations/201_playbook_rich_documents.sql` | `1f20a14231f2a7d1dc874994f968981b332ec09bbd46584a510c94804ad22465` |
 | 2 | `supabase/migrations/202_playbook_reading_operations.sql` | `f7d20a7fadf3c8b172ebc72e4566daa62f79d0aac34ab04aaf4318914b5f1259` |
 | 3 | `supabase/migrations/204_playbook_review_threads.sql` | `f69564acf1e315f803d9908672b33aa9c80795719ff5806cfacc1c39f0666221` |
-| 4 | `supabase/migrations/205_playbook_change_broadcasts.sql` | `5a0ea52baba52c0748ad4220cd3f16981f5dae04ab94fb1dc44ae5237080b6e4` |
-| 5 | `supabase/migrations/206_playbook_enablement_platform.sql` | `09dfae2bc71fcc2e3e01a7234f8eb6b7696c83d69af2a245242c2af05a0aa0cd` |
-| 6 | `supabase/migrations/207_playbook_operational_v1.sql` | `647490f77af96d90e2f46723fdd0acda3445de37edd7c5f3f49b229477052375` |
+| 4 | `supabase/migrations/205_playbook_change_broadcasts.sql` | `b018490f316eacb31856a5f87d874b9a9383cebc77d7e6abb376e26661090ba5` |
+| 5 | `supabase/migrations/206_playbook_enablement_platform.sql` | `d338a03f31a051dd8e53120deb248bcd639c56cce80212ee2fe5b4682636274a` |
+| 6 | `supabase/migrations/207_playbook_operational_v1.sql` | `835e1c9ccfd7995844ad8d7bdb5f64327dfb678ce0634abdcdf7d52fd589b502` |
+| 7 | `supabase/migrations/213_playbook_browser_table_grant_hardening.sql` | `966691e818dd07b41273508b7722a8158fee3f2ffa97b97d914f5025a2cc417c` |
 
 ## Dependency Order and Pause Points
 
@@ -67,6 +68,36 @@ Final pause: safe after its successful `COMMIT`. Every feature remains disabled 
 - The order is strict. Migration 205 requires 202, and migration 207 requires all five earlier Playbook migrations.
 - Treat 201 through 205 as one maintenance-window objective because production already serves the eight dependent admin routes.
 - Prefer completing all six in one supervised window. A successful transaction boundary is a technically safe pause, but it is not feature-launch approval.
+
+## 2026-09-10 Production Recovery Checkpoint
+
+The production gate passed 279/279. Migrations 201 and 202 then committed,
+passed their stage checks, and were registered. Migration 204 committed but its
+stage check found that `anon` and `authenticated` retained the Supabase default
+`REFERENCES`, `TRIGGER`, and `TRUNCATE` grants on all twelve tables created by
+201, 202, and 204. The window stopped, migration 213 repaired the grants, and
+the zero-grant verification passed before 204 and 213 were registered. Hardened
+migrations 205–207 then committed and were registered. The first 207 attempt
+failed on invalid `NULLS NOT DISTINCT` index syntax and rolled back completely;
+the corrected retry passed its seven-part stage check. The complete post-apply
+verifier then passed **114/114** with zero `STOP` or `FAIL` rows.
+
+Recovery sequence:
+
+1. Run `PRE-APPLY-GATE-213.sql`; require every row to say `PASS` with the exact
+   observed residual grants.
+2. Apply migration 213. It is one transaction and changes privileges only. An
+   error rolls the entire repair back; stop rather than continuing.
+3. Re-run `VERIFY-201-204-GRANTS.sql`; it must return zero browser-role rows.
+4. Register migrations 204 and 213 as applied.
+5. Apply the now-hardened 205, 206, and 207 individually. Each revokes every
+   table privilege from `PUBLIC`, `anon`, and `authenticated` at creation time.
+6. Run the complete post-apply verifier and behavioral route checks.
+
+For a fresh database, normal numeric order remains correct: 205–207 create
+their tables with the hardened posture, and 213 later makes the older-table
+repair idempotent. The out-of-order 213 application is specific to this stopped
+production window and is recorded here.
 
 ## Required Verification
 
