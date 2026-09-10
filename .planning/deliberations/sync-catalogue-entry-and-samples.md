@@ -235,3 +235,89 @@ Without it, B does not actually authorize anything and the whole model rests on 
   is how B grows over time — but it must be an OFFER, not a toll gate, or C stops being a
   fallback and the supply problem returns.
 - What happens to an already-listed song when a co-owner withdraws authorization.
+
+---
+
+# RESOLVED 2026-09-10 — the two decisions had contradicted each other in code
+
+Two decisions on this page were both implemented, and **they cancelled each other out in
+production**:
+
+- **"Sampled tracks ARE included, in the default browse"** shipped its label. `rightsBadge()`
+  returns `'contact'` when `stage3.sampleBlock` is true, `RIGHTS_BADGE_TO_CATALOG_RIGHTS` maps
+  that to `'req'`, and `components/buyer/CatalogBrowserLight.tsx` renders it as
+  *"Contains a sample"* (commit `37c7737a`).
+- **The entry gate** — `isRightsReady()` in `lib/deals/catalog.ts`, the single buyer-visibility
+  authority — ended `return stage3.canContinue`, and `canContinue` is
+  `readinessScore >= CONTINUE_THRESHOLD && !sampleBlock` (`lib/vault/stage3.ts`).
+
+So the gate rejected sampled songs **before the badge ever ran**. The "Contains a sample" state
+was **unreachable in production**: we had shipped copy for a state the gate forbade. Nobody saw
+it, because the only way to notice is to trace the gate and the label together — the label's own
+tests passed, and the gate's own tests passed.
+
+## The resolution, and the reasoning that matters more than the diff
+
+**`canContinue` conflates two different questions, and the sync gate must not borrow it.**
+
+| Consumer | Question it asks | Must an uncleared sample block? |
+|---|---|---|
+| The artist's release pipeline (`computeStage3`, Stage 3 → Stage 4) | *"May this artist advance to Generate Assets and distribute?"* | **YES** — you cannot distribute a track with an uncleared sample |
+| The sync catalogue (`isRightsReady`) | *"May a supervisor see this song and start a conversation about it?"* | **NO** — decided on this page |
+
+One boolean cannot answer both. The defect was never `canContinue` itself; it was that the sync
+gate reached for a signal built to answer somebody else's question.
+
+**What changed:** `stage3.canContinue` was **removed from `isRightsReady()` only**. `computeStage3()`
+and `canContinue` are untouched — an uncleared sample still returns `canContinue: false` and still
+blocks the artist's distribution path, and there is now a test asserting exactly that, so nobody
+"simplifies" the sample rule out of the release path on the strength of the decision above.
+
+Both halves of `canContinue` were wrong for sync anyway:
+
+- `readinessScore >= 60` was **redundant**. Migration 070 awards 10+10+15+15+10+10 = 70 for exactly
+  the six entry items, so anything passing `isSyncEntryComplete()` already cleared 60. It could
+  never reject a project the six-item check accepted.
+- `!sampleBlock` **was the contradiction**.
+
+**The label then works by itself.** With the gate no longer rejecting them, a sampled track enters
+the catalogue and `catalogRightsFromStage3()` marks it `'req'` — *"Contains a sample."* The gate
+decides **whether** a buyer sees the song; the badge decides **what it says** about its rights.
+Those are two jobs and they now live in two places. No new rights condition belongs in the gate.
+
+## The `stage3` parameter went with the condition
+
+`isRightsReady(project, readinessItems)` — two parameters, not three. The parameter was **removed,
+not kept-and-ignored**: an unread parameter is invisible to `tsc` and to the tests, it makes every
+call site look like it is feeding the gate a rights signal when it is not, and it leaves `stage3`
+sitting in the signature as an invitation to reach for `canContinue` again. (A silently-unused
+parameter caused a separate fail-open bug earlier the same day.)
+
+That cost four call sites, and paid for itself: only **one** of them still needs a `Stage3Result`
+at all — `loadCatalogPage` (`lib/deals/catalog-query.ts`), for the badge and the staff
+`rightsDetail` string. The other three (`lib/deals/shortlists.ts`, `lib/selects/tracks-query.ts`,
+`app/api/admin/selects/[id]/ai-draft/route.ts`) were assembling a full `Stage3Result` per project
+**solely** to feed this parameter. Those `computeStage3()` calls are now gone, along with
+`AiDraftCandidate.stage3`.
+
+## Pinned by tests
+
+`lib/deals/catalog.test.ts`, describe block *"a sampled track is LISTED, not hidden"*:
+
+1. A sampled track with all six entry items complete, an eligible type and admitted → gate
+   **passes**. **Mutation-verified**: restoring `return stage3.canContinue` turns exactly this
+   test red and leaves the other 66 in the file green.
+2. That same `Stage3Result` reads `rightsBadge() === 'contact'` / `catalogRightsFromStage3() === 'req'`
+   — proving the "Contains a sample" label is now reachable end to end.
+3. A clean track with the same six reads `'ready'` / `'ok'` — listing sampled tracks did not
+   flatten the two buyer-visible states into one.
+4. `computeStage3()` still returns `canContinue: false` on an uncleared sample — the release
+   pipeline is unchanged.
+
+**No migration and no schema change**, consistent with "Consequences for the build" above.
+
+## Still open, unchanged by this
+
+The **"clear, facilitate, or partner?"** question above remains deliberately undecided. Nothing
+here builds a clearance service or promises a timeline; a sampled track is listed, honestly
+labelled, and its call to action opens a conversation.
