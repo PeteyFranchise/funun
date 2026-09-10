@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { VaultProjectType } from '@/types'
-import { computeStage3 } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { isRightsReady } from '@/lib/deals/catalog'
 
@@ -120,12 +119,14 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
     let projectTitle = 'Unknown project'
     if (project) {
       projectTitle = project.title
-      const stage3 = computeStage3(
-        project,
-        project.tracks ?? [],
-        project.vault_documents ?? [],
-        project.vault_readiness_score ?? 0
-      )
+      // 2026-09-10 (third pass): the computeStage3() call that used to sit
+      // here is GONE, not merely unused. isRightsReady stopped consuming
+      // canContinue (see lib/deals/catalog.ts) so that a track with an
+      // uncleared sample is listed-and-labelled rather than hidden, and
+      // this read path never wanted a Stage3Result for anything else — a
+      // shortlist row shows stillRightsReady, not a rights badge. Assembling
+      // one per project was pure dead work.
+      //
       // vault_projects.type is TEXT in the row shape; narrowed ONCE and
       // reused by both the readiness engine and the isRightsReady gate.
       const projectType = project.type as VaultProjectType
@@ -144,7 +145,6 @@ export async function loadShortlistEntries(service: SupabaseClient, orgId: strin
           has_admitted_sync_listing: admittedProjectIds.has(project.id),
           type: projectType,
         },
-        stage3,
         readinessItems
       )
     }

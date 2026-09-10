@@ -72,32 +72,65 @@ export function isAdmittedToSyncLibrary(project: { has_admitted_sync_listing: bo
 // were already excluded, but only accidentally, via the readiness
 // registry's applies_to tables. See the check itself below.
 //
-// The OTHER two conditions are unchanged: admission, and
-// computeStage3().canContinue. Worth knowing before anyone touches either:
-// canContinue is itself `vault_readiness_score >= 60 && !sampleBlock`
-// (lib/vault/stage3.ts CONTINUE_THRESHOLD), so the aggregate score has not
-// vanished from this gate — it survives transitively. It is REDUNDANT
-// rather than binding, though: the DB scoring function (migration 070)
-// awards 10+10+15+15+10+10 = 70 for exactly the six entry items, so any
-// project passing isSyncEntryComplete() already scores at or above 60 (60
-// in the floor case where the visual asset is a lyric_card/snippet_visual,
-// which the TS engine counts and the DB trigger does not). canContinue can
-// therefore never reject a project the six-item check accepted, and it is
-// left in place for the !sampleBlock half — which is what actually keeps an
-// uncleared sampled track out of the buyer catalogue today.
-//
 // The practical consequence of this change is therefore the REVERSE of the
 // motivating anecdote: it does not admit songs the old bar rejected (there
 // were none — six complete always cleared 60), it REJECTS songs the old bar
 // admitted, e.g. a project at 85 that reached the threshold on ISRC + ISWC
 // + distributor while having no cover art and no signed split sheet.
 //
-// Pure: accepts an already-fetched project shape, an already-computed
-// Stage3Result and an already-computed ReadinessItem[], so callers do the
-// I/O and this stays unit-testable without a DB. The third parameter is
-// the RAW item list, never a caller-computed boolean — "which items, and
-// what counts as done" stays inside this authority rather than being
-// re-decided at four call sites.
+// ─── REMOVED 2026-09-10 (third pass): computeStage3().canContinue ────────
+// This gate used to end `return stage3.canContinue`. It no longer does, and
+// the reason matters more than the diff.
+//
+// Two owner decisions of 2026-09-09 CONTRADICTED EACH OTHER IN CODE:
+//   (a) "sampled tracks ARE included, in the default browse", carrying a
+//       label reading "Contains a sample — licensing needs clearance
+//       first" and promising no timeline; and
+//   (b) this gate, which ended on canContinue, which is
+//       `readinessScore >= CONTINUE_THRESHOLD && !sampleBlock`
+//       (lib/vault/stage3.ts).
+// The label shipped (rightsBadge() returns 'contact' -> 'req' on
+// sampleBlock, and the buyer Crate renders it) but the gate rejected those
+// songs BEFORE the badge ever ran, so the "Contains a sample" state was
+// UNREACHABLE in production. We had shipped copy for a state the gate
+// forbade.
+//
+// The defect was not canContinue. It was that this gate BORROWED a signal
+// built to answer a different question. canContinue answers the ARTIST's
+// question — "may this project advance to Stage 4, Generate Assets?" — and
+// for that question an uncleared sample MUST keep blocking, because you
+// cannot distribute a track with an uncleared sample. The sync catalogue
+// asks the BUYER's question — "may a supervisor see and license-enquire
+// about this?" — and there the owner decided a sample must NOT block
+// listing. One boolean cannot answer both. computeStage3() and canContinue
+// are therefore DELIBERATELY UNCHANGED (lib/vault/stage3.test.ts pins that
+// an uncleared sample still returns canContinue: false); only the SYNC gate
+// stopped consuming them.
+//
+// Both halves of canContinue were wrong for sync anyway:
+//   - `readinessScore >= 60` was REDUNDANT. The DB scoring function
+//     (migration 070) awards 10+10+15+15+10+10 = 70 for exactly the six
+//     entry items, so any project passing isSyncEntryComplete() already
+//     scores at or above 60 (60 in the floor case where the visual asset is
+//     a lyric_card/snippet_visual, which the TS engine counts and the DB
+//     trigger does not). It could never reject a project the six-item check
+//     accepted.
+//   - `!sampleBlock` WAS the contradiction.
+//
+// The label now works on its own: a sampled track enters the catalogue and
+// catalogRightsFromStage3() (below) marks it 'req' — "Contains a sample".
+// The gate decides WHETHER a buyer sees the song; the badge decides WHAT it
+// says about its rights. Keeping those two jobs in two places is the whole
+// point of this change. Do not reintroduce a rights CONDITION here.
+//
+// The `stage3` PARAMETER was removed with the condition rather than left
+// unread — see the signature note below.
+//
+// Pure: accepts an already-fetched project shape and an already-computed
+// ReadinessItem[], so callers do the I/O and this stays unit-testable
+// without a DB. The second parameter is the RAW item list, never a
+// caller-computed boolean — "which items, and what counts as done" stays
+// inside this authority rather than being re-decided at four call sites.
 
 // ─── CATALOG_READINESS_THRESHOLD — no longer the catalogue gate ──────────
 // NOT DEAD, but no longer used by isRightsReady(). Its one remaining
@@ -128,9 +161,26 @@ export type CatalogProjectLike = {
   type: VaultProjectType
 }
 
+// ─── The signature: no `stage3` parameter, on purpose ────────────────────
+// When `return stage3.canContinue` went, the parameter went with it. It was
+// not kept-but-unread: an unread parameter is invisible to tsc and to the
+// tests, it makes every call site look like it is feeding this gate a
+// rights signal when it is not, and — the practical reason — it leaves
+// `stage3` sitting in the signature as an invitation for the next reader to
+// reach for `canContinue` again, which is exactly the mistake being undone.
+// A conflated signal that is HARD to reach for is the fix; one that is
+// merely unused is the same bug with a comment on it.
+//
+// Cost of removing it: four call sites. Only ONE of them (loadCatalogPage
+// in lib/deals/catalog-query.ts) still needs a Stage3Result at all, for
+// catalogRightsFromStage3() and the staff rightsDetail string. The other
+// three (lib/deals/shortlists.ts, lib/selects/tracks-query.ts and
+// app/api/admin/selects/[id]/ai-draft/route.ts) were computing a full
+// Stage3Result — document assembly over every vault_document on the project
+// — SOLELY to feed this parameter, so removing it deleted real dead work
+// rather than just shortening an argument list.
 export function isRightsReady(
   project: CatalogProjectLike,
-  stage3: Stage3Result,
   readinessItems: ReadinessItem[]
 ): boolean {
   // FIRST, and deliberately so: the sync catalogue licenses released-format
@@ -149,7 +199,13 @@ export function isRightsReady(
   // closed on an absent key, on 'warning', and on an empty list — so a
   // caller that forgets to pass readiness items gets false, never true.
   if (!isSyncEntryComplete(readinessItems)) return false
-  return stage3.canContinue
+  // No rights condition beyond this point, and deliberately none. A track
+  // with an UNCLEARED SAMPLE reaches here and PASSES (owner decision
+  // 2026-09-09): it is listed, and catalogRightsFromStage3() labels it
+  // "Contains a sample". Sample clearance still blocks the ARTIST's
+  // distribution path via computeStage3().canContinue — a different
+  // question, asked and answered elsewhere.
+  return true
 }
 
 // ─── normalizeKeySignature (D-16b) ────────────────────────────────────────

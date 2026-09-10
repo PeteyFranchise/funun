@@ -306,10 +306,16 @@ export async function loadCatalogPage(
     // `type` is passed EXPLICITLY after the spread, not left to it: the row
     // shape types `type` as string, and isRightsReady requires the narrowed
     // VaultProjectType so its SYNC_ELIGIBLE_PROJECT_TYPES check is total.
+    //
+    // 2026-09-10 (third pass): `stage3` is NO LONGER passed to the gate —
+    // it stopped consuming computeStage3().canContinue so that a track with
+    // an uncleared sample is LISTED and labelled rather than hidden (owner
+    // decision 2026-09-09). This is the ONE call site that still computes a
+    // Stage3Result, and it does so for the BADGE (catalogRightsFromStage3
+    // below) and the staff rightsDetail string — never for admission.
     if (
       !isRightsReady(
         { ...project, has_admitted_sync_listing: hasAdmittedSyncListing, type: projectType },
-        stage3,
         readinessItems
       )
     )

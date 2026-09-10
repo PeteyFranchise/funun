@@ -13,7 +13,6 @@
 // and curates the draft before send.
 import Anthropic from '@anthropic-ai/sdk'
 import type { ReadinessItem } from '@/types'
-import type { Stage3Result } from '@/lib/vault/stage3'
 import { isRightsReady, type CatalogProjectLike } from '@/lib/deals/catalog'
 import { type Brief } from '@/lib/buyer/brief'
 
@@ -30,13 +29,19 @@ export const AI_DRAFT_TRACK_TARGET = 10
 export const AI_DRAFT_CANDIDATE_CAP = 60
 
 // A single catalogue track as a draft candidate. Carries the raw project +
-// stage3 + readinessItems shapes (not a precomputed boolean) so
+// readinessItems shapes (not a precomputed boolean) so
 // orderCandidatesRightsReadyFirst calls the single isRightsReady authority
 // itself, rather than trusting a caller-computed flag. readinessItems was
 // added 2026-09-10 when isRightsReady moved from the aggregate readiness
 // score to the six decided entry items — it is the project's per-item
 // readiness from readinessItemsForProject(), shared by every candidate
 // track of that project.
+//
+// The `stage3: Stage3Result` field was REMOVED on 2026-09-10 (third pass)
+// when isRightsReady stopped consuming computeStage3().canContinue — see
+// lib/deals/catalog.ts. This candidate shape existed only to feed that
+// gate, so the field became dead weight the moment the parameter went; the
+// route no longer assembles a Stage3Result per project either.
 export type AiDraftCandidate = {
   trackId: string
   projectId: string
@@ -48,7 +53,6 @@ export type AiDraftCandidate = {
   vocal: string
   instruments: string[]
   project: CatalogProjectLike
-  stage3: Stage3Result
   readinessItems: ReadinessItem[]
 }
 
@@ -64,7 +68,7 @@ export function orderCandidatesRightsReadyFirst(
   candidates: AiDraftCandidate[]
 ): AiDraftCandidate[] {
   return candidates
-    .map((c, index) => ({ c, index, ready: isRightsReady(c.project, c.stage3, c.readinessItems) }))
+    .map((c, index) => ({ c, index, ready: isRightsReady(c.project, c.readinessItems) }))
     .sort((a, b) => {
       if (a.ready !== b.ready) return a.ready ? -1 : 1
       return a.index - b.index
@@ -147,7 +151,7 @@ export async function draftSelectsFromBrief(
 
   const ordered = orderCandidatesRightsReadyFirst(candidatePool)
   const readyById = new Map(
-    ordered.map(c => [c.trackId, isRightsReady(c.project, c.stage3, c.readinessItems)])
+    ordered.map(c => [c.trackId, isRightsReady(c.project, c.readinessItems)])
   )
   const byId = new Map(ordered.map(c => [c.trackId, c]))
 

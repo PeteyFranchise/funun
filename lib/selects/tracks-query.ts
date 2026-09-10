@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { VaultProjectType } from '@/types'
-import { computeStage3, type Stage3Result } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { isRightsReady } from '@/lib/deals/catalog'
 import type { SelectsTrack } from './types'
@@ -119,12 +118,18 @@ export async function resolveTracksWithRightsReady(
     ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
   )
 
-  const stage3ByProject = new Map<string, Stage3Result>()
-  // Per-project readiness items for the six-item entry gate, memoized on
-  // the SAME per-project basis as stage3 above — a Selects usually holds
-  // several tracks from one project, and neither signal is per-track.
-  // Like the stage3 call it sits beside, this sees only the project tracks
-  // this Selects actually references, not necessarily every track on the
+  // 2026-09-10 (third pass): the stage3ByProject memo and its
+  // computeStage3() call are GONE, not merely unused. isRightsReady stopped
+  // consuming canContinue (see lib/deals/catalog.ts) so that a track with an
+  // uncleared sample is listed-and-labelled rather than hidden, and this
+  // read path never wanted a Stage3Result for anything else — a Selects row
+  // carries rights_ready, not a rights badge. Assembling one per project was
+  // pure dead work.
+  //
+  // Per-project readiness items for the six-item entry gate, memoized
+  // per-project — a Selects usually holds several tracks from one project,
+  // and this signal is not per-track. It sees only the project tracks this
+  // Selects actually references, not necessarily every track on the
   // project — a pre-existing property of this read path, unchanged here.
   const readinessByProject = new Map<string, ReturnType<typeof readinessItemsForProject>>()
 
@@ -139,17 +144,6 @@ export async function resolveTracksWithRightsReady(
     const project = projectById.get(trackRow.project_id)
     let rightsReady = false
     if (project) {
-      let stage3 = stage3ByProject.get(project.id)
-      if (!stage3) {
-        const projectTracks = tracks.filter(t => t.project_id === project.id)
-        stage3 = computeStage3(
-          project,
-          projectTracks,
-          project.vault_documents ?? [],
-          project.vault_readiness_score ?? 0
-        )
-        stage3ByProject.set(project.id, stage3)
-      }
       // vault_projects.type is TEXT in the row shape; narrowed ONCE and
       // reused by both the readiness engine and the isRightsReady gate.
       const projectType = project.type as VaultProjectType
@@ -172,7 +166,6 @@ export async function resolveTracksWithRightsReady(
           has_admitted_sync_listing: admittedProjectIds.has(project.id),
           type: projectType,
         },
-        stage3,
         readinessItems
       )
     }

@@ -3,7 +3,6 @@ import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { isAssignedToOrg } from '@/lib/staff/scope'
 import type { VaultProjectType } from '@/types'
-import { computeStage3 } from '@/lib/vault/stage3'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 import { descriptorsToDisplay, type CatalogProjectLike } from '@/lib/deals/catalog'
 import { coerceBrief, type Brief } from '@/lib/buyer/brief'
@@ -187,12 +186,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const candidates: AiDraftCandidate[] = []
   for (const project of projects) {
     const tracks = project.tracks ?? []
-    const stage3 = computeStage3(
-      project,
-      tracks,
-      project.vault_documents ?? [],
-      project.vault_readiness_score ?? 0
-    )
+    // 2026-09-10 (third pass): the computeStage3() call that stood here is
+    // GONE. isRightsReady stopped consuming canContinue (see
+    // lib/deals/catalog.ts) so that a track with an uncleared sample is
+    // listed-and-labelled rather than hidden, and the draft candidate pool
+    // never wanted a Stage3Result for anything else.
+    //
     // CandidateProjectRow already types `type` as VaultProjectType (the
     // select below narrows it), so no cast is needed here — but the field
     // IS required by CatalogProjectLike so the six-item gate's
@@ -205,7 +204,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       type: project.type,
     }
     // Computed ONCE per project and shared across its candidate tracks —
-    // readiness is a project-level signal, exactly like stage3 above.
+    // readiness is a project-level signal, not a per-track one.
     const readinessItems = readinessItemsForProject({
       type: project.type,
       tracks,
@@ -225,7 +224,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         vocal: display.vocal,
         instruments: display.instruments,
         project: projectLike,
-        stage3,
         readinessItems,
       })
     }

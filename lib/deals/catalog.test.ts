@@ -13,7 +13,8 @@ import {
   type CatalogTrackWithMetadata,
 } from './catalog'
 import type { ReadinessItem, VaultProjectType } from '@/types'
-import type { Stage3Result } from '@/lib/vault/stage3'
+import { computeStage3, STAGE3_CONTINUE_THRESHOLD, type Stage3Result } from '@/lib/vault/stage3'
+import { rightsBadge } from '@/lib/sync-library/gate'
 import { readinessItemsForProject } from '@/lib/vault/readiness'
 import {
   SYNC_READINESS_KEYS,
@@ -127,41 +128,42 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
     }
   })
 
-  it('is true when admitted, all six entry items complete, and stage3.canContinue', () => {
-    expect(isRightsReady(ADMITTED, stage3(true), entryGateItems())).toBe(true)
+  it('is true when admitted, of an eligible type, and all six entry items complete', () => {
+    expect(isRightsReady(ADMITTED, entryGateItems())).toBe(true)
   })
 
   // Six separate cases — one per decided entry item.
   it.each([...SYNC_READINESS_KEYS])('is false when the "%s" entry item is missing', key => {
-    expect(isRightsReady(ADMITTED, stage3(true), entryGateItemsWith(key, 'missing'))).toBe(false)
+    expect(isRightsReady(ADMITTED, entryGateItemsWith(key, 'missing'))).toBe(false)
   })
 
   // 'warning' is not 'complete' — the SAME rule missingSyncItems() applies
   // to the staff worklist, so the two surfaces agree on what "done" means.
   it.each([...SYNC_READINESS_KEYS])('is false when the "%s" entry item reads warning', key => {
-    expect(isRightsReady(ADMITTED, stage3(true), entryGateItemsWith(key, 'warning'))).toBe(false)
+    expect(isRightsReady(ADMITTED, entryGateItemsWith(key, 'warning'))).toBe(false)
   })
 
   it('is false when the project is not admitted to the sync library, however complete the six are', () => {
     expect(
-      isRightsReady({ has_admitted_sync_listing: false, type: 'single' }, stage3(true), entryGateItems())
+      isRightsReady({ has_admitted_sync_listing: false, type: 'single' }, entryGateItems())
     ).toBe(false)
     expect(
-      isRightsReady({ has_admitted_sync_listing: null, type: 'single' }, stage3(true), entryGateItems())
+      isRightsReady({ has_admitted_sync_listing: null, type: 'single' }, entryGateItems())
     ).toBe(false)
   })
 
-  it('is false when stage3.canContinue is false', () => {
-    expect(isRightsReady(ADMITTED, stage3(false), entryGateItems())).toBe(false)
-  })
+  // The `is false when stage3.canContinue is false` case that stood here
+  // was DELETED on 2026-09-10 (third pass), not fixed up: canContinue is no
+  // longer an input to this gate at all. The reason it went, and the test
+  // that replaced it, are in the "sampled tracks" describe block below.
 
   it('fails closed on an empty readiness-item list — "nothing to check" is never "ready"', () => {
-    expect(isRightsReady(ADMITTED, stage3(true), [])).toBe(false)
+    expect(isRightsReady(ADMITTED, [])).toBe(false)
   })
 
   it('fails closed when an entry item is ABSENT from the list rather than incomplete', () => {
     const missingVisualAsset = entryGateItems().filter(i => i.key !== 'visual_asset')
-    expect(isRightsReady(ADMITTED, stage3(true), missingVisualAsset)).toBe(false)
+    expect(isRightsReady(ADMITTED, missingVisualAsset)).toBe(false)
   })
 
   // ─── THE NAMED TEST — the entire reason this gate changed ───────────────
@@ -184,7 +186,7 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
       vault_readiness_score: 50,
     }
     expect(projectWithLowAggregateScore.vault_readiness_score).toBeLessThan(CATALOG_READINESS_THRESHOLD)
-    expect(isRightsReady(projectWithLowAggregateScore, stage3(true), entryGateItems())).toBe(true)
+    expect(isRightsReady(projectWithLowAggregateScore, entryGateItems())).toBe(true)
   })
 
   it('ignores isrc_codes, pro_registration, mlc_registration and distributor entirely', () => {
@@ -193,11 +195,11 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
     const releaseAdminComplete = entryGateItems().map(i =>
       RELEASE_ADMIN_KEYS.includes(i.key) ? { ...i, status: 'complete' as const } : i
     )
-    expect(isRightsReady(ADMITTED, stage3(true), releaseAdminComplete)).toBe(true)
+    expect(isRightsReady(ADMITTED, releaseAdminComplete)).toBe(true)
 
     // ...and neither does dropping them from the list altogether.
     const withoutReleaseAdmin = entryGateItems().filter(i => !RELEASE_ADMIN_KEYS.includes(i.key))
-    expect(isRightsReady(ADMITTED, stage3(true), withoutReleaseAdmin)).toBe(true)
+    expect(isRightsReady(ADMITTED, withoutReleaseAdmin)).toBe(true)
   })
 
   it('fails closed when an entry item is ABSENT because the registry did not emit it', () => {
@@ -214,7 +216,7 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
       ],
     })
     expect(unreleasedItems.some(i => i.key === 'visual_asset')).toBe(false)
-    expect(isRightsReady(ADMITTED, stage3(true), unreleasedItems)).toBe(false)
+    expect(isRightsReady(ADMITTED, unreleasedItems)).toBe(false)
   })
 })
 
@@ -242,7 +244,7 @@ describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TY
       for (const key of SYNC_READINESS_KEYS) {
         expect(statusByKey[key]).toBe('complete')
       }
-      expect(isRightsReady(admitted(type), stage3(true), items)).toBe(true)
+      expect(isRightsReady(admitted(type), items)).toBe(true)
     }
   )
 
@@ -278,9 +280,9 @@ describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TY
       }
       // Sanity: the ONLY thing standing between this and a pass is the type.
       expect(isSyncEntryComplete(allSixComplete)).toBe(true)
-      expect(isRightsReady(admitted('single'), stage3(true), allSixComplete)).toBe(true)
+      expect(isRightsReady(admitted('single'), allSixComplete)).toBe(true)
 
-      expect(isRightsReady(admitted(type), stage3(true), allSixComplete)).toBe(false)
+      expect(isRightsReady(admitted(type), allSixComplete)).toBe(false)
     }
   )
 
@@ -288,15 +290,120 @@ describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TY
     'type %s is refused even on an ADMITTED project with the six complete',
     type => {
       expect(isSyncEligibleProjectType(type)).toBe(false)
-      expect(isRightsReady(admitted(type), stage3(true), entryGateItems())).toBe(false)
+      expect(isRightsReady(admitted(type), entryGateItems())).toBe(false)
     }
   )
 
-  it('the allowlist is the only difference — same items, same stage3, opposite verdicts', () => {
+  it('the allowlist is the only difference — same items, opposite verdicts', () => {
     const items = entryGateItems()
-    const s3 = stage3(true)
-    expect(isRightsReady(admitted('album'), s3, items)).toBe(true)
-    expect(isRightsReady(admitted('unreleased'), s3, items)).toBe(false)
+    expect(isRightsReady(admitted('album'), items)).toBe(true)
+    expect(isRightsReady(admitted('unreleased'), items)).toBe(false)
+  })
+})
+
+// ─── Sampled tracks (owner decision 2026-09-09, wired 2026-09-10) ─────────
+// ".planning/deliberations/sync-catalogue-entry-and-samples.md — DECIDED:
+// sampled tracks ARE included, in the default browse", carrying a label
+// reading "Contains a sample — licensing needs clearance first" and
+// promising no timeline.
+//
+// That decision and the entry gate CONTRADICTED EACH OTHER IN CODE until
+// this block was written. The gate ended `return stage3.canContinue`, and
+// canContinue is `readinessScore >= CONTINUE_THRESHOLD && !sampleBlock`
+// (lib/vault/stage3.ts). So an uncleared sample failed the gate, the song
+// never reached a buyer, and the "Contains a sample" label — which had
+// ALREADY SHIPPED, rendered by components/buyer/CatalogBrowserLight.tsx —
+// was unreachable in production. Copy for a state the gate forbade.
+//
+// The tests below pin BOTH halves of the resolution: the sampled track now
+// enters the catalogue, AND it arrives carrying the right label.
+describe('isRightsReady — a sampled track is LISTED, not hidden (2026-09-09 decision)', () => {
+  const ADMITTED_SINGLE: CatalogProjectLike = { has_admitted_sync_listing: true, type: 'single' }
+
+  // A Stage3Result for a song whose sample clearance is NOT signed. Every
+  // other rights document IS signed (requiredComplete === requiredTotal),
+  // so nothing but the sample can be responsible for a verdict here.
+  // canContinue is false because that is what computeStage3 really returns
+  // for this song — the fixture must not flatter the gate.
+  function sampleBlockedStage3(): Stage3Result {
+    return stage3WithRequirements({
+      requiredComplete: 3,
+      requiredTotal: 3,
+      canContinue: false,
+      sampleBlock: true,
+    })
+  }
+
+  // ─── THE TEST THIS CHANGE EXISTS FOR ───────────────────────────────────
+  // MUTATION-VERIFIED 2026-09-10: restoring `return stage3.canContinue` as
+  // the last line of isRightsReady (and its `stage3` parameter) turns
+  // exactly this test red.
+  it('PASSES the gate with an UNCLEARED SAMPLE — all six entry items complete, eligible type, admitted', () => {
+    const items = entryGateItems()
+    // Sanity: nothing but the sample rule could decide this case.
+    expect(isSyncEntryComplete(items)).toBe(true)
+    expect(isSyncEligibleProjectType('single')).toBe(true)
+    expect(sampleBlockedStage3().sampleBlock).toBe(true)
+
+    expect(isRightsReady(ADMITTED_SINGLE, items)).toBe(true)
+  })
+
+  // The other half: being listed is only correct if the buyer is TOLD. This
+  // proves the "Contains a sample" label is now reachable end to end — the
+  // same Stage3Result the artist's pipeline treats as blocking maps, on the
+  // buyer side, to the 'req' code CatalogBrowserLight renders as "Contains
+  // a sample".
+  it('and reads as the "Contains a sample" rights code — the label is now REACHABLE', () => {
+    const s3 = sampleBlockedStage3()
+    expect(rightsBadge(s3)).toBe('contact')
+    expect(catalogRightsFromStage3(s3)).toBe('req')
+  })
+
+  // The contrast case: a clean song with the same six items reads 'ready'/
+  // 'ok'. Listing a sampled track did not flatten the two states into one.
+  it('a CLEAN track with the same six items passes and reads "ready"/"ok"', () => {
+    const items = entryGateItems()
+    expect(isRightsReady(ADMITTED_SINGLE, items)).toBe(true)
+
+    const cleanStage3 = stage3WithRequirements({
+      requiredComplete: 3,
+      requiredTotal: 3,
+      canContinue: true,
+      sampleBlock: false,
+    })
+    expect(rightsBadge(cleanStage3)).toBe('ready')
+    expect(catalogRightsFromStage3(cleanStage3)).toBe('ok')
+  })
+
+  // ─── The guard that keeps this fix from becoming a different bug ────────
+  // canContinue answers the ARTIST's question — "may this project advance
+  // to Stage 4, Generate Assets?" — and an uncleared sample MUST keep
+  // blocking there, because you cannot distribute a track with an uncleared
+  // sample. Only the SYNC gate stopped borrowing it. If someone later
+  // "simplifies" the sample rule out of computeStage3 on the strength of
+  // the decision above, this fails.
+  it('does NOT weaken the release pipeline: computeStage3 still returns canContinue: false on an uncleared sample', () => {
+    const project = {
+      id: 'p1',
+      title: 'Sampled single',
+      type: 'single',
+      content_id_registered: false,
+      content_id_dismissed_until: null,
+    }
+    const tracks = [
+      {
+        id: 'track-1',
+        title: 'Sampled single',
+        has_sample: true,
+        sample_details: 'Four bars from an uncleared 1974 break',
+      },
+    ]
+    // A readiness score WELL above STAGE3_CONTINUE_THRESHOLD, so the only
+    // thing that can make canContinue false is the sample.
+    const result = computeStage3(project, tracks, [], 100)
+    expect(100).toBeGreaterThanOrEqual(STAGE3_CONTINUE_THRESHOLD)
+    expect(result.sampleBlock).toBe(true)
+    expect(result.canContinue).toBe(false)
   })
 })
 
