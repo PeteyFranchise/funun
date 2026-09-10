@@ -94,11 +94,27 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
   Length: ['Under 1:00', '1:00–2:30', '2:30–4:00', 'Over 4:00'],
   Instruments: ['Piano', 'Strings', 'Guitar', 'Synth', 'Brass'],
   Genres: ['Alt-Pop', 'Electronic', 'Soul', 'Folk', 'Indie Rock', 'Cinematic', 'Jazz', 'Acoustic', 'Ambient', 'Synthwave', 'Downtempo', 'Singer-Songwriter', 'Alternative', 'Pop'],
-  Rights: ['Rights ready', 'Partial', 'Contact required'],
+  // TWO buyer-facing rights states, not three. A track only reaches the Crate
+  // once every required document is signed, every owner has authorized
+  // licensing, and staff have admitted it — which leaves 'Rights ready' and
+  // 'Contact required' (a sample to clear) as the only states a buyer can
+  // ever see. 'Partial' is deliberately NOT offered here: an always-empty
+  // filter option reads as broken.
+  // See .planning/deliberations/sync-catalogue-entry-and-samples.md.
+  Rights: ['Rights ready', 'Contact required'],
 }
 const FILTER_KEYS = Object.keys(FILTER_OPTIONS) as FilterKey[]
 const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as const
 
+// Both maps keep the `part` key even though FILTER_OPTIONS.Rights no longer
+// offers 'Partial' and the help page no longer defines it. rightsBadge()
+// (lib/sync-library/gate.ts) still returns 'partial' — staff Crate review
+// needs it for a part-way, unadmitted submission — so a legacy or
+// mid-migration row can still arrive here carrying `rights: 'part'`. Keeping
+// the Record<CatalogRights, string> exhaustive means such a row renders a
+// label instead of `undefined`, and never matches an active Rights filter
+// (which is correct: it is not one of the two buyer states).
+// Do NOT narrow CatalogRights to two members.
 const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contact required' }
 const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
@@ -179,6 +195,10 @@ function DynGlyph({ shape }: { shape: Dynamics }) {
   return (<svg className="dyn" width="104" height="26" viewBox="0 0 104 26" aria-hidden>{paths[shape]}</svg>)
 }
 
+// Renders all three codes. 'part' is not a state a buyer-visible row should
+// reach (see FILTER_OPTIONS.Rights above), but a legacy row carrying it must
+// still render a real badge rather than fall through to the 'req' envelope
+// icon and mislabel itself. Retained deliberately, not offered as a filter.
 function RightsBadge({ rights }: { rights: CatalogRights }) {
   const icon = rights === 'ok'
     ? (<><path d="M12 3 4 7v6c0 5 3.4 7.4 8 8 4.6-.6 8-3 8-8V7z" /><path d="m9 12 2 2 4-4" /></>)
