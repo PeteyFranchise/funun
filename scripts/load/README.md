@@ -1,162 +1,291 @@
-# k6 capacity load harness (R7)
+# Load & capacity harness (k6)
 
-Phase 32 (`production-observability-capacity-incident-readiness`), plan 09.
-A repeatable, **non-production-only** load test that ramps 25 → 50 → 100 →
-250 → 500 concurrent VUs across Funūn's high-traffic routes, enforces
-mid-run stop conditions, and produces the measured data
-`docs/observability/CAPACITY-REPORT.md` is written from.
+A repeatable load test that ramps **25 → 50 → 100 → 250 → 500 concurrent
+users** across Funūn's highest-traffic routes and records where the app
+actually breaks — so capacity is a measured number rather than a guess.
 
-**Status: scripts drafted, not yet run.** See `32-09-DRAFT.md` in this
-phase's planning directory for what's deferred and why — in short: this
-harness has never been executed (no k6 install, no staging target exist
-yet in this environment), so no capacity numbers exist to report.
+> ### Status: authored, never run
+>
+> These scripts have **never been executed**. k6 is not installed on any
+> machine here, and the non-production environment they require does not
+> exist yet. Consequently
+> [`docs/observability/CAPACITY-REPORT.md`](../../docs/observability/CAPACITY-REPORT.md)
+> is an **empty template** — every measurement cell reads `UNMEASURED`.
+> There are no capacity numbers for Funūn yet. The setup below is what
+> someone has to do before there are.
 
-## What this is NOT
+---
 
-- **Not an npm package.** k6 is a standalone Go binary. `npm install k6`
-  installs an unrelated/wrong package — do not run it, and nothing in this
-  directory is ever added to `package.json`.
-- **Not imported by the app.** Nothing under `app/` or `lib/` imports
-  anything in `scripts/load/` — this is dev-only tooling, invoked directly
-  via the k6 CLI, never bundled into the Next.js runtime.
-- **Not a production tool.** `target.js`'s `resolveTarget()` throws if the
-  target hostname is `funun.studio` or any `funun.studio` subdomain. A
-  production load test requires separate written owner authorization that
-  is entirely outside this harness's scope — there is no flag or override
-  to bypass the refusal.
+## 1. What this thing refuses to do
 
-## Install (NOT `npm install`)
+**It will not load-test production.** `target.js` resolves the target URL
+and throws if the hostname is `funun.studio` or any subdomain of it. That
+refusal is by construction, not by convention — a 500-VU ramp against live
+production is a self-inflicted outage, so the guard fails closed:
 
-Pick one:
+| Target | Result |
+|---|---|
+| `https://my-preview.vercel.app` | ✅ runs |
+| `http://localhost:3000` | ✅ runs (loopback and private LAN ranges allowed) |
+| `https://funun.studio` | ❌ refused — production |
+| `https://www.funun.studio` | ❌ refused — production subdomain |
+| `https://FUNUN.STUDIO` | ❌ refused — case is normalized |
+| `https://funun.studio.` | ❌ refused — trailing-dot FQDN form is the same host |
+| `https://staging.example@funun.studio` | ❌ refused — real host is after the last `@` |
+| `http://203.0.113.10` | ❌ refused — a public IP literal has no hostname to check |
+| `funun.studio` (no scheme) | ❌ refused — unparseable, so unprovable |
+| `ftp://preview.vercel.app` | ❌ refused — only `http` / `https` |
 
-- **macOS dev:** `brew install k6`
-- **Docker (any OS / CI):** use the official `grafana/k6` image, e.g.
-  `docker run --rm -e K6_TARGET_URL=... -v "$(pwd)":/work -w /work grafana/k6 run scripts/load/run-ramp.js`
-- **CI (GitHub Actions):** use the official `grafana/k6-action`, or the
-  Docker image above in a workflow step.
+Anything the guard cannot positively parse **and** positively show to be
+non-production is refused. Running against production requires separate
+written owner authorization and is out of scope for this tool — there is
+no flag, env var, or override that unlocks it.
 
-Confirm the install with:
+The guard's behaviour is pinned by `target.test.ts` (runs under `npx jest`,
+needs no k6 and no network).
 
-```bash
-k6 version
-```
+---
 
-## Prerequisites: a non-production target
+## 2. Owner setup — do these in order
 
-R7 (and D-11) require a **separate, non-production** target — never the
-production Supabase project or the production Vercel deployment:
+Nothing below is automated. All three steps are one-time.
 
-1. A separate staging Supabase project (free tier is fine), seeded with
-   representative data.
-2. A Vercel Preview deploy pointed at that staging Supabase project (not
-   production env vars).
+### Step 1 — Install k6 (NOT via npm)
 
-This provisioning is owner-performed, out-of-band work (see this plan's
-Task 1 checkpoint) — nothing in this harness creates or manages that
-environment.
-
-## Running the harness
+k6 is a standalone Go binary. It is **not** an npm package and must never
+be added to `package.json`:
 
 ```bash
-k6 run -e K6_TARGET_URL=https://<your-preview-deploy>.vercel.app scripts/load/run-ramp.js
+brew install k6     # macOS
+k6 version          # confirm it prints a version
 ```
 
-`K6_TARGET_URL` is the **only** required env var. If it's unset, or it
-resolves to a production hostname, `run-ramp.js` fails immediately (before
-a single request is sent) with a clear error — see `target.js`.
+Other options: the official `grafana/k6` Docker image, or the official k6
+GitHub Action in CI.
 
-### What it measures
+> **Why this matters:** `npm install k6` will install *something* from the
+> registry, but it is not the load tester. Pulling an unrelated
+> similarly-named package into the dependency tree is a supply-chain
+> hazard, so `no-runtime-import.test.ts` fails the build if the string
+> `k6` ever appears in `package.json`.
 
-Each iteration hits every high-traffic route once (see `scenarios.js` for
-the full list and file-level source references: public catalogue browse,
-sign-in page, invite-eligibility check, authenticated dashboard, vault
-reads, search/filter, Green Room reads, and `/api/health`), tagged with
-both the route name and the current ramp stage (`s25` … `s500`).
+### Step 2 — Create a separate staging Supabase project
 
-At the end of the run, `handleSummary` in `run-ramp.js` prints a per-stage
-capacity table to stdout (VUs, RPS, p50/p95/p99, failed rate, request
-count) and writes the full k6 metrics payload to
-`scripts/load/last-run-summary.json` (gitignored — a local run artifact,
-not committed).
+Not a branch of production. A **new, separate project** (free tier is
+fine).
 
-### Authenticated coverage (known limitation)
+1. Supabase Dashboard → **New project**.
+2. Apply the repo's migrations to it so the schema matches production.
+3. Seed **representative** data — enough rows that queries hit realistic
+   index and planner behaviour. A near-empty database will report
+   flattering numbers that mean nothing, because every query is a trivial
+   scan.
+4. Note the project ref and its anon / service-role keys.
 
-`/dashboard`, `/vault`, and `/api/buyer/catalog` (the search/filter route)
-require a signed-in Supabase session. This harness does not currently carry
-one — each `check()` only asserts "responded, not a 5xx" so an expected
-401/redirect never itself fails the run. Injecting a seeded staging session
-per VU (a login flow + cookie-jar management) is a follow-up enhancement,
-not part of this draft.
+The load test will hammer this database and may exhaust its connection
+pool. That is the point, and it is why it must not be production.
 
-## Stop conditions (mid-run abort)
+### Step 3 — Point a Vercel Preview deploy at it
 
-`run-ramp.js`'s `thresholds` set `abortOnFail: true` on:
+1. Push a branch (any branch that is not `main` — `main` deploys to
+   production).
+2. In Vercel → the Preview deployment → **Environment Variables**, set the
+   Supabase URL and keys to the **staging** project from step 2.
+3. Redeploy the preview so it picks the new values up.
+4. Confirm it is really talking to staging before generating any load:
 
-- `http_req_failed` — overall failure rate `< 5%`
-- `http_req_duration` — overall p95 `< 3000ms`
+```bash
+curl -s https://<your-preview>.vercel.app/api/health
+```
 
-If either trips **at any point during the ramp**, k6 halts the entire run
-immediately — it does not wait for the current stage or the full 500-VU
-stage to complete. This is the required stop-condition backstop for R7's
-"a latency/error/DB-pressure/spend breach aborts the ramp mid-run" must-have.
+**Double-check the Supabase project ref in that preview's env vars.** A
+preview accidentally left pointing at the production database is the one
+way to damage production through this harness that the hostname guard
+cannot catch — the guard checks the URL you type, not which database sits
+behind it.
 
-Per-stage thresholds (`http_req_duration{stage:s25}`, etc.) also exist in
-`options.thresholds`, but those are deliberately unreachable-false
-(`p(95)<600000`, `rate<=1`, `count>=0`) — their only purpose is telling k6
-to materialize that stage's tagged submetric for the summary table; they
-never abort anything themselves.
+---
 
-### Abort rehearsal procedure
+## 3. Running it
 
-Before treating a real run's data as trustworthy, rehearse that the abort
-actually fires — this is Task 3's required rehearsal step:
+Set the target once per shell:
 
-1. Open `run-ramp.js` and temporarily tighten one of the two overall
-   thresholds, e.g. change:
-   ```js
-   http_req_duration: [{ threshold: 'p(95)<3000', abortOnFail: true }],
+```bash
+export TARGET=https://<your-preview>.vercel.app
+```
+
+### Full ramp (25 → 50 → 100 → 250 → 500, ~10 minutes)
+
+```bash
+k6 run -e K6_TARGET_URL="$TARGET" scripts/load/run-ramp.js
+```
+
+### One ramp level only
+
+Useful for re-measuring a single tier without sitting through the earlier
+stages:
+
+```bash
+k6 run -e K6_TARGET_URL="$TARGET" -e K6_ONLY_STAGE=100 scripts/load/run-ramp.js
+```
+
+`K6_ONLY_STAGE` accepts exactly one of `25`, `50`, `100`, `250`, `500`.
+
+### Have these open while it runs
+
+k6 only sees HTTP responses. Four of the capacity report's columns are
+invisible to it, and two of the stop conditions are **yours**, not the
+tool's:
+
+- **Supabase Dashboard** → Database health: CPU, memory, connections,
+  pooler connections, slow queries.
+- **Vercel Dashboard** → the preview project: function invocations,
+  throttles, and spend.
+
+**Hit `Ctrl-C` if** CPU pins at 100%, connections approach the pool limit,
+Vercel starts throttling, or spend moves in a way you did not expect. k6
+will not stop for any of those — it cannot see them.
+
+---
+
+## 4. Abort rehearsal (do this before trusting the run)
+
+The harness aborts mid-ramp if latency, error rate, or database health
+breaches a threshold. A stop condition that has never fired is one you do
+not know works — so fire it deliberately, once, against the real target.
+
+`K6_REHEARSE_ABORT=1` swaps in an impossible latency ceiling (p95 < 1ms,
+which no network request can satisfy). It is a fixed preset that can only
+make the threshold **stricter** — there is deliberately no way to loosen or
+disable an abort — so rehearsing needs no source edit and cannot leave a
+weakened threshold behind.
+
+**Procedure:**
+
+1. Confirm your target resolves and is non-production:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' "$TARGET/api/health"
    ```
-   to:
-   ```js
-   http_req_duration: [{ threshold: 'p(95)<1', abortOnFail: true }],
+2. Start the **full** ramp with the rehearsal flag (full ramp, not a single
+   stage — the point is to prove it stops *before* reaching 500 VUs):
+   ```bash
+   k6 run -e K6_TARGET_URL="$TARGET" -e K6_REHEARSE_ABORT=1 scripts/load/run-ramp.js
    ```
-   (an unreachable 1ms p95 — the very first request will exceed it).
-2. Run the harness against the staging target as normal.
-3. Confirm k6's output shows the threshold failing and the run stopping
-   **before** the final (`s500`) stage completes — k6 prints something
-   like `thresholds on metrics 'http_req_duration' have been crossed;
-   ending the test prematurely...` and exits early.
-4. **Revert the threshold change** back to `p(95)<3000` before committing
-   or re-running for real capacity data — the tightened value is for the
-   rehearsal only.
+3. Watch the output.
 
-Record the rehearsal outcome (confirmed it fired mid-ramp) alongside the
-real run's numbers — `docs/observability/CAPACITY-REPORT.md` (Task 4)
-notes both.
+**Expected observable outcome:**
 
-## Files
+- The run **stops during the first stage** (`s25`, within roughly the first
+  10–30 seconds), never reaching the 50/100/250/500 stages.
+- k6 prints a threshold-crossed line for `http_req_duration` and a message
+  that the test was aborted by a failed threshold.
+- k6 exits with a **non-zero exit code** (check with `echo $?`).
+- The printed summary table shows requests only against the first stage;
+  later stages are empty.
 
-| File | Purpose |
-|------|---------|
-| `target.js` | Resolves + validates the target URL; refuses a production hostname by construction. CommonJS on purpose — loadable identically by k6 and by plain Node (see its header comment), which is what makes the "unit-style guard" test possible without installing k6. |
-| `scenarios.js` | Per-route request functions + custom Trend/Rate metrics. |
-| `run-ramp.js` | The k6 entry point: `options` (ramping-vus stages + thresholds), the default (per-iteration) function, and `handleSummary`. This is the file you pass to `k6 run`. |
-| `last-run-summary.json` | Generated by a real run; gitignored. Not present until the harness has actually been executed. |
+If instead the run climbs to 500 VUs and finishes normally, the abort path
+is **not working** — stop and fix it before running a real ramp, because
+the safety backstop is the only thing standing between a saturated target
+and a ten-minute pile-on.
 
-## Deferred (owner action required)
+4. Re-run without the flag for the real measurement:
+   ```bash
+   k6 run -e K6_TARGET_URL="$TARGET" scripts/load/run-ramp.js
+   ```
+5. Record the rehearsal outcome in `CAPACITY-REPORT.md`'s "Abort rehearsal"
+   section (date, that it fired, and at which stage).
 
-This draft ships the harness only. Still outstanding, in order:
+---
 
-1. `brew install k6` (or the Docker/CI equivalent) — Task 1.
-2. Provision a non-production staging Supabase project + point a Vercel
-   Preview deploy at it — Task 1.
-3. Run the harness against that target, capture Vercel
-   invocations/throttles + Supabase CPU/memory/connections/slow-query
-   deltas + third-party failures + estimated cost alongside k6's own
-   output, and rehearse the abort (procedure above) — Task 3.
-4. Write `docs/observability/CAPACITY-REPORT.md` from that measured
-   evidence — Task 4. This file does not exist yet; it must never contain
-   fabricated numbers.
+## 5. Filling in the capacity report
 
-See `32-09-DRAFT.md` in this phase's planning directory for the full
-handoff note.
+After a completed run, `docs/observability/CAPACITY-REPORT.md` gets filled
+in **by hand** from two sources.
+
+**From k6** — the stdout table, and `scripts/load/last-run-summary.json`
+(gitignored) which the run writes automatically:
+
+- RPS, p50 / p95 / p99, 4xx, 5xx, timeouts — per ramp level.
+
+**From the dashboards**, read for *the same wall-clock window as the run*
+— k6 cannot supply any of these:
+
+- Vercel: function invocations, throttles, estimated cost.
+- Supabase: CPU %, memory %, DB connections, pooler connections,
+  slow-query count delta (before vs. after).
+- Any third-party failures (Resend, Stripe, Anthropic, DocuSeal) in the
+  same window.
+
+Then fill in the two conclusions the report exists to produce:
+
+- **The real constraint** — the first ramp level that breached a stop
+  condition, and *which* condition. This is the answer to "how many users
+  can Funūn take?", and it must cite the measured run.
+- **Do not** restate Vercel's ~30,000 function-execution figure as a
+  simultaneous-user capacity. It is not one, and the report says so
+  explicitly.
+
+Replace every `UNMEASURED` cell you have a real number for. Leave the rest
+as `UNMEASURED` — a blank is honest, a plausible guess is not, because
+Plan 08's alert thresholds and Plan 10's monthly capacity report both cite
+this document as measured evidence.
+
+---
+
+## 6. Known limitations — read before interpreting results
+
+These are properties of the current harness, not of the app. Any report
+generated from this harness must repeat them.
+
+**The load generator is one IP, and two routes react to that:**
+
+- `/api/signup/check-invite` is rate-limited to **5 requests per IP per 15
+  minutes** (`lib/security/rate-limit.ts`). From roughly the sixth request
+  of the entire run onward this route returns **429** and is measuring the
+  rate limiter, not invite eligibility. Still a genuine database-pressure
+  signal (each hit is one `check_rate_limit` RPC) — just not a measurement
+  of the invite path.
+- Distributed load from many IPs would behave differently. This harness
+  does not simulate that.
+
+**No route is exercised while authenticated:**
+
+- `/api/buyer/catalog` returns **401** — measuring middleware plus the auth
+  check's Supabase round-trip, not the catalogue query.
+- `/dashboard`, `/vault`, `/green-room` **redirect** to `/signin` for an
+  unauthenticated request, and k6 follows redirects, so the timing is
+  "protected page + redirect + sign-in render", not the real authenticated
+  page cost.
+- **All authenticated-page numbers are therefore a lower bound.** Real
+  logged-in traffic will be heavier. Carrying a seeded staging session per
+  virtual user (a login flow plus per-VU cookie handling) is unbuilt work.
+
+**Expected 4xx is not counted as failure.** `scenarios.js` narrows k6's
+default "any status ≥ 400 is a failure" to 5xx and transport errors only —
+otherwise the expected 401 and 429 above would peg the failure rate near
+25% and abort stage 1 on every run. 4xx is tracked in its own column
+instead.
+
+**Threshold values are unvalidated.** `rate<0.05`, `p(95)<3000`,
+`rate<0.10` are starting guesses chosen before any measurement existed.
+Retune them from the first real baseline, and keep them consistent with
+Plan 08's baseline-adjusted thresholds.
+
+---
+
+## 7. Files
+
+| File | Role |
+|---|---|
+| `target.js` | Resolves `K6_TARGET_URL`; refuses production and anything unprovable. |
+| `scenarios.js` | One request function per route, plus per-route metrics. |
+| `run-ramp.js` | k6 entry point: the five-stage ramp, stop conditions, summary. |
+| `target.test.ts` | Pins the production-refusal guard, including bypass attempts. |
+| `no-runtime-import.test.ts` | Asserts `scripts/load` never enters the app bundle and k6 never enters `package.json`. |
+
+The `.test.ts` files run under `npx jest scripts/load` and need neither k6
+nor a network.
+
+These scripts are **dev-only tooling**. They `require()` k6 built-ins
+(`k6/http`, `k6/metrics`) that do not exist in Node or the browser, and
+nothing in `app/` or `lib/` may import them.
