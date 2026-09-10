@@ -71,3 +71,55 @@ and it vanished" becomes a support conversation with an artist in it.
 - `.planning/deliberations/sync-catalogue-entry-and-samples.md` — the decisions
 - `.planning/quick/260910-sync-entry-gate-six-items/` — the six-item gate
 - Commit `ca919cf2` — where the rule is enforced today, and its reasoning
+
+---
+
+## RESOLVED 2026-09-10 — commit `e2ad7bab`
+
+Both surfaces now reuse `isSyncEligibleProjectType()` through a new
+`syncIneligibleTypeReason()` (`lib/sync-library/readiness.ts`) — one definition
+of the rule, one definition of the explanation. No migration, no schema change.
+
+**Admit route** (`app/api/sync-library/admin/[listingId]/route.ts`) — refuses an
+ineligible type with **409** and leaves the listing's status untouched (refusing
+to admit is not rejecting; `reject` is deliberately NOT gated on type). The check
+runs BEFORE `evaluateInclusionGate()`.
+
+> This song can't be admitted — it's an unreleased work, and the sync catalogue
+> lists singles, EPs and albums only. It can be submitted again once its project
+> is set up as a single, EP or album.
+
+> This song can't be admitted — it's a snippet, a promo clip rather than a
+> licensable recording, and the sync catalogue lists singles, EPs and albums
+> only. Submit the full recording from a single, EP or album project instead.
+
+**Worklist** (`lib/sync-library/worklist.ts`) — `WorklistRow` gains
+`syncEligible` + `ineligibleReason`; `SyncReadinessWorklist.tsx` renders
+"Not sync-eligible" plus the reason INSTEAD of the status label and the
+"Checklist complete" chip. Ineligible rows are **shown, not filtered out**: a
+live submission still awaiting a human decision must not vanish from the one
+surface that explains why a song is stuck, and the same admin page's listing
+queue still offers an Admit button for it.
+
+**One premise in this todo was wrong, and it strengthens the case rather than
+weakening it.** "Nothing stops an ineligible project being ADMITTED" was not
+true as of today's registry: the `metadata` readiness item's `applies_to` does
+not include `snippet`/`unreleased`, so `isSyncMetadataComplete()` failed closed
+and the gate already returned 409 — with the message *"This track needs to
+finish the Sync Readiness checklist"*, for a checklist that can never be
+finished. So the live defect was a **misleading refusal**, held up by exactly
+the accidental `applies_to` coupling `SYNC_ELIGIBLE_PROJECT_TYPES` was created
+to replace — one `applies_to` edit away from becoming the fail-open this todo
+described. Verified by mutation: with the new check removed, the route returns
+the checklist message, not a 200.
+
+**Tests** build every case with all six entry items complete, asserted inline.
+Mutation-verified: removing the route check turns exactly its 2 tests red
+(16 pass); removing the worklist check turns exactly its 4 tests red (15 pass).
+
+**Still not enforced (third door):** `components/admin/SyncLibraryAdmin.tsx` —
+the listing queue on the same admin page renders an Admit button for any
+`pending_admit` row, because `SyncLibraryQueueRow` does not carry the project
+type. The click now fails safely with the named 409, and the worklist beneath
+explains why, but the button still invites it. Carrying `syncEligible` onto the
+queue row would close it.
