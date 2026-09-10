@@ -97,11 +97,11 @@ const FILTER_OPTIONS: Record<FilterKey, string[]> = {
   // TWO buyer-facing rights states, not three. A track only reaches the Crate
   // once every required document is signed, every owner has authorized
   // licensing, and staff have admitted it — which leaves 'Rights ready' and
-  // 'Contact required' (a sample to clear) as the only states a buyer can
+  // 'Contains a sample' as the only states a buyer can
   // ever see. 'Partial' is deliberately NOT offered here: an always-empty
   // filter option reads as broken.
   // See .planning/deliberations/sync-catalogue-entry-and-samples.md.
-  Rights: ['Rights ready', 'Contact required'],
+  Rights: ['Rights ready', 'Contains a sample'],
 }
 const FILTER_KEYS = Object.keys(FILTER_OPTIONS) as FilterKey[]
 const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as const
@@ -115,8 +115,13 @@ const SORTS = ['Best match', 'Newest', 'Most licensed', 'Shortest first'] as con
 // label instead of `undefined`, and never matches an active Rights filter
 // (which is correct: it is not one of the two buyer states).
 // Do NOT narrow CatalogRights to two members.
-const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contact required' }
-const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contact required' }
+const RIGHTS_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial rights', req: 'Contains a sample' }
+// COUPLING: matchesFilters() does `sel.Rights.has(RIGHTS_FILTER_LABEL[row.rights])`,
+// so every value offered in FILTER_OPTIONS.Rights must appear here VERBATIM.
+// Change one without the other and the filter silently matches nothing — it
+// looks like an empty catalogue, not like a bug. Guarded by
+// __tests__/buyer-rights-two-states.test.ts.
+const RIGHTS_FILTER_LABEL: Record<CatalogRights, string> = { ok: 'Rights ready', part: 'Partial', req: 'Contains a sample' }
 const DYN_LABEL: Record<Dynamics, string> = { build: 'Builds', steady: 'Steady', twin: 'Two peaks', peak: 'Two peaks', fade: 'Fades' }
 // 30-08: staff-only readinessStatus display labels — falls back to the raw
 // value for any status this map doesn't recognize (never throws).

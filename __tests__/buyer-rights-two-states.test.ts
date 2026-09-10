@@ -57,7 +57,7 @@ describe('help page publishes two buyer rights states', () => {
     expect(clsCount).toBe(2)
   })
 
-  it('describes the "Contact required" state as a sample that needs clearing', () => {
+  it('describes the "Contains a sample" state as a sample that needs clearing', () => {
     const copy = badgeCopy('req') as string
     expect(copy.toLowerCase()).toContain('sample')
     expect(copy.toLowerCase()).toContain('clear')
@@ -98,7 +98,7 @@ describe('buyer Rights filter offers two states', () => {
   it('does not offer Partial — an always-empty option reads as broken', () => {
     expect(filterLine).not.toContain("'Partial'")
     expect(filterLine).toContain("'Rights ready'")
-    expect(filterLine).toContain("'Contact required'")
+    expect(filterLine).toContain("'Contains a sample'")
     expect(filterLine.match(/'/g)?.length).toBe(4) // exactly two quoted options
   })
 
@@ -185,5 +185,37 @@ describe('the public catalogue fixture carries only buyer states', () => {
   it('still demonstrates both buyer states', () => {
     expect(SAMPLE_CATALOG_ROWS.some(r => r.rights === 'ok')).toBe(true)
     expect(SAMPLE_CATALOG_ROWS.some(r => r.rights === 'req')).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// COUPLING GUARD — the Rights filter matches on the LABEL STRING.
+//
+// `matchesFilters()` does `sel.Rights.has(RIGHTS_FILTER_LABEL[row.rights])`,
+// so every option offered in FILTER_OPTIONS.Rights must appear VERBATIM as a
+// value in RIGHTS_FILTER_LABEL. Rename one without the other and the filter
+// silently matches nothing — which renders as an empty catalogue, not as an
+// error. Nobody sees a stack trace; a buyer just concludes you have no music.
+//
+// This nearly happened renaming 'Contact required' to 'Contains a sample'
+// (2026-09-10): four constants across two files had to move together.
+// ─────────────────────────────────────────────────────────────────────────
+describe('Rights filter options stay coupled to the label map', () => {
+  const optionsLine = crate.split('\n').find(l => l.trim().startsWith('Rights: ['))
+  const filterMapLine = crate.split('\n').find(l => l.includes('const RIGHTS_FILTER_LABEL'))
+
+  it('finds both sides of the coupling', () => {
+    expect(optionsLine).toBeTruthy()
+    expect(filterMapLine).toBeTruthy()
+  })
+
+  it('every offered Rights option exists verbatim in RIGHTS_FILTER_LABEL', () => {
+    const offered = [...(optionsLine ?? '').matchAll(/'([^']+)'/g)].map(m => m[1])
+    const mapped = [...(filterMapLine ?? '').matchAll(/:\s*'([^']+)'/g)].map(m => m[1])
+    expect(offered.length).toBeGreaterThan(0)
+    // Report the actual strings on failure, not just a boolean — a rename is
+    // diagnosed instantly when both lists are visible.
+    expect({ offered, unmatched: offered.filter(o => !mapped.includes(o)) })
+      .toEqual({ offered, unmatched: [] })
   })
 })
