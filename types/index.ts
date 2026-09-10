@@ -111,6 +111,32 @@ export type ReadinessItem = {
   // so a coverage-incomplete widget must NOT render next to a "Passed"
   // gate it would otherwise contradict.
   splitSheetSource?: 'legacy' | 'coverage' | 'pipeline' | 'none'
+  // ─── notApplicable (2026-09-10, defect 1) ──────────────────────────────
+  // "No agreement is required" and "an agreement is missing" are DIFFERENT
+  // FACTS, and this checklist could only say the second one. A self-produced
+  // recording has no hired collaborator, therefore correctly has no producer
+  // agreement, and read 'missing' forever — which blocked it out of the sync
+  // catalogue (the six-item entry gate requires 'complete').
+  //
+  // Expressed as `status: 'complete'` PLUS this flag PLUS a `note` carrying
+  // the reason, rather than as a fourth `status` member. Two reasons:
+  //   1. Every existing consumer already treats 'complete' as "nothing
+  //      outstanding", which is exactly right for a requirement that does
+  //      not apply. A fourth status value would silently read as
+  //      not-complete at every `status !== 'complete'` site — including
+  //      isSyncEntryComplete() and missingSyncItems() — re-creating the
+  //      very block this fixes, in a new place.
+  //   2. The full four-state rights model (required-complete /
+  //      required-incomplete / not-applicable-with-a-reason / needs-review)
+  //      across ALL requirements is the redesign phase's job. This flag is
+  //      the ONE item that could not wait, and it carries the reason so
+  //      "not applicable" is never a silent tick.
+  //
+  // ONLY 'hire_right' populates this today. It is set ONLY when the caller
+  // supplied the hire-credit columns AND no hired collaborator is derivable
+  // AND no hire_right document exists — never inferred from data the caller
+  // simply did not fetch. See readinessItemsForProject().
+  notApplicable?: true
 }
 
 // Full checklist — applies_to controls which types each item gates

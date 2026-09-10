@@ -237,7 +237,7 @@ export default async function VaultPage() {
         .select(
           `
         *,
-        tracks (id, isrc, iswc, metadata),
+        tracks (id, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer),
         vault_assets (id, type),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug)
@@ -316,7 +316,7 @@ export default async function VaultPage() {
         .select(
           `
         *,
-        tracks (id, isrc, iswc, metadata),
+        tracks (id, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer),
         vault_assets (id, type),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug)
@@ -369,7 +369,7 @@ export default async function VaultPage() {
           .select(
             `
         *,
-        tracks (id, isrc, iswc, metadata),
+        tracks (id, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer),
         vault_assets (id, type),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug)

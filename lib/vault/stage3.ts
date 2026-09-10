@@ -1,4 +1,5 @@
 import { readEsignState } from '@/lib/esign/provider'
+import { hireCreditsOf } from '@/lib/vault/hire-credits'
 
 // ─── Stage 3 — Complete the Documentation ────────────────────────────
 // The legal gate between uploading files (Stage 2) and generating assets
@@ -217,21 +218,21 @@ export function computeStage3(
   // Gather hired people across all tracks, grouped by name so a producer
   // who worked on several tracks shows once.
   const hires = new Map<string, { role: string; trackIds: string[]; trackTitles: string[] }>()
-  const addHire = (name: string | null | undefined, role: string, t: TrackLike) => {
-    const n = (name ?? '').trim()
-    if (!n) return
-    const existing = hires.get(n)
+  const addHire = (name: string, role: string, t: TrackLike) => {
+    const existing = hires.get(name)
     if (existing) {
       existing.trackIds.push(t.id)
       existing.trackTitles.push(t.title ?? 'Untitled track')
     } else {
-      hires.set(n, { role, trackIds: [t.id], trackTitles: [t.title ?? 'Untitled track'] })
+      hires.set(name, { role, trackIds: [t.id], trackTitles: [t.title ?? 'Untitled track'] })
     }
   }
+  // hireCreditsOf() is the single definition of who counts as hired — the
+  // readiness engine's `hire_right` item reads the SAME derivation (see the
+  // note on hireCreditsOf above). The blank-name skip that used to live in
+  // addHire moved into it, unchanged.
   for (const t of tracks) {
-    for (const p of t.producers ?? []) addHire(p, 'Producer', t)
-    addHire(t.mixing_engineer, 'Mixing engineer', t)
-    addHire(t.mastering_engineer, 'Mastering engineer', t)
+    for (const credit of hireCreditsOf(t)) addHire(credit.name, credit.role, t)
   }
   for (const [name, info] of hires) {
     const docs = byType('hire_right').filter(

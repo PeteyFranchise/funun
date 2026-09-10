@@ -137,7 +137,7 @@ export default async function VaultProjectPage({
       .select(
         `
         *,
-        tracks (id, title, track_number, isrc, iswc, metadata, duration_seconds, audio_file_url, explicit),
+        tracks (id, title, track_number, isrc, iswc, metadata, duration_seconds, audio_file_url, explicit, producers, mixing_engineer, mastering_engineer),
         vault_assets (id, type, url),
         vault_documents (id, type, status),
         tool_outputs (id, tool_slug, title, output)

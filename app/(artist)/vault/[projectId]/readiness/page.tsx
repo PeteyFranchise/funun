@@ -94,7 +94,7 @@ async function loadProject(projectId: string): Promise<{ project: VaultProjectRo
     supabase
       .from('vault_projects')
       .select(
-        `*, tracks (id, title, isrc, iswc, metadata), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug), split_sheets (status), split_sheet_attachments (track_id, split_sheets (status))`
+        `*, tracks (id, title, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer), vault_assets (id, type), vault_documents (id, type, status), tool_outputs (id, tool_slug), split_sheets (status), split_sheet_attachments (track_id, split_sheets (status))`
       )
       .eq('id', projectId)
       .eq('user_id', user?.id ?? '')

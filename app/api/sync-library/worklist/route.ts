@@ -55,6 +55,15 @@ type TrackRow = {
   isrc: string | null
   iswc: string | null
   metadata: Record<string, unknown> | null
+  // 2026-09-10: the hire-credit columns. The readiness engine uses them to
+  // tell "no producer agreement is required" (a self-produced recording)
+  // apart from "a producer agreement is missing". Omitting them would keep
+  // this worklist showing "Producer agreements — missing" against songs the
+  // admit route now admits without one — sending a staff member hunting for
+  // a document that does not need to exist.
+  producers: string[] | null
+  mixing_engineer: string | null
+  mastering_engineer: string | null
 }
 
 type ProjectRow = {
@@ -118,7 +127,10 @@ export async function GET() {
     { data: assetRows },
     { data: artistRows },
   ] = await Promise.all([
-    service.from('tracks').select('id, title, isrc, iswc, metadata').in('id', trackIds),
+    service
+      .from('tracks')
+      .select('id, title, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer')
+      .in('id', trackIds),
     service.from('vault_projects').select('id, title, type').in('id', projectIds),
     service.from('vault_documents').select('project_id, type, status').in('project_id', projectIds),
     service.from('vault_assets').select('project_id, type').in('project_id', projectIds),
@@ -128,7 +140,16 @@ export async function GET() {
   const tracksById = new Map<string, WorklistTrackInput>(
     ((trackRows ?? []) as TrackRow[]).map(t => [
       t.id,
-      { id: t.id, title: t.title, isrc: t.isrc, iswc: t.iswc, metadata: t.metadata },
+      {
+        id: t.id,
+        title: t.title,
+        isrc: t.isrc,
+        iswc: t.iswc,
+        metadata: t.metadata,
+        producers: t.producers,
+        mixing_engineer: t.mixing_engineer,
+        mastering_engineer: t.mastering_engineer,
+      },
     ])
   )
 

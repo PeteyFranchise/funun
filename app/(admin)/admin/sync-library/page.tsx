@@ -95,9 +95,26 @@ export default async function AdminSyncLibraryPage() {
     { data: assetRows },
   ] = await Promise.all([
       trackIds.length > 0
-        ? service.from('tracks').select('id, title, isrc, iswc, metadata').in('id', trackIds)
+        ? service
+            .from('tracks')
+            // 2026-09-10: producers/mixing_engineer/mastering_engineer are
+            // the hire-credit columns the readiness engine needs to tell "no
+            // producer agreement is required" (self-produced) apart from "a
+            // producer agreement is missing". Without them this page shows
+            // staff a missing item against songs the admit route admits.
+            .select('id, title, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer')
+            .in('id', trackIds)
         : Promise.resolve({
-            data: [] as { id: string; title: string | null; isrc: string | null; iswc: string | null; metadata: Record<string, unknown> | null }[],
+            data: [] as {
+              id: string
+              title: string | null
+              isrc: string | null
+              iswc: string | null
+              metadata: Record<string, unknown> | null
+              producers: string[] | null
+              mixing_engineer: string | null
+              mastering_engineer: string | null
+            }[],
           }),
       projectIds.length > 0
         ? service.from('vault_projects').select('id, title, type').in('id', projectIds)
@@ -137,7 +154,16 @@ export default async function AdminSyncLibraryPage() {
   const worklistTracksById = new Map<string, WorklistTrackInput>(
     (trackRows ?? []).map(t => [
       t.id,
-      { id: t.id, title: t.title, isrc: t.isrc, iswc: t.iswc, metadata: t.metadata },
+      {
+        id: t.id,
+        title: t.title,
+        isrc: t.isrc,
+        iswc: t.iswc,
+        metadata: t.metadata,
+        producers: t.producers,
+        mixing_engineer: t.mixing_engineer,
+        mastering_engineer: t.mastering_engineer,
+      },
     ])
   )
   const assetsByProject = new Map<string, { type: string }[]>()

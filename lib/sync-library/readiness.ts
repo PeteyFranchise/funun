@@ -148,6 +148,18 @@ export type SyncReadinessTrack = {
   isrc?: string | null
   iswc?: string | null
   metadata?: Record<string, unknown> | null
+  // ─── Hire credits (2026-09-10, defect 1) ──────────────────────────────
+  // Passed straight through to readinessItemsForProject(), which uses them
+  // (via hireCreditsOf) to tell "no producer agreement is REQUIRED" apart
+  // from "a producer agreement is MISSING". OPTIONAL, and the difference
+  // between an absent property and a present-but-empty one is load-bearing:
+  // a caller that omits them keeps the pre-2026-09-10 behaviour, where a
+  // self-produced recording reads hire_right 'missing' forever. Selecting
+  // `producers, mixing_engineer, mastering_engineer` and passing them here
+  // is what lets a self-produced song clear the checklist.
+  producers?: string[] | null
+  mixing_engineer?: string | null
+  mastering_engineer?: string | null
 }
 
 /**
@@ -237,6 +249,53 @@ export function missingSyncItems(items: ReadinessItem[]): ReadinessItem[] {
 export function isSyncEntryComplete(items: ReadinessItem[]): boolean {
   const statusByKey = new Map(items.map(i => [i.key, i.status]))
   return SYNC_READINESS_KEYS.every(key => statusByKey.get(key) === 'complete')
+}
+
+// ─── SYNC_RIGHTS_KEYS / isSyncRightsClear (2026-09-10, defect 2) ─────────
+// The sync-specific answer to "are this song's RIGHTS documents in order?",
+// for the STAFF admit gate's GateSignal.rightsClear
+// (app/api/sync-library/admin/[listingId]/route.ts).
+//
+// ─── WHY THIS EXISTS: the admit route was borrowing canContinue ──────────
+// That route used to compute `rightsClear = computeStage3(...).canContinue`,
+// and canContinue is `readinessScore >= 60 && !sampleBlock`
+// (lib/vault/stage3.ts). It is the ARTIST's release-pipeline signal, and it
+// answers a different question: "may this project advance to Generate
+// Assets and be distributed?" — for which an uncleared sample MUST keep
+// blocking, because you cannot distribute a track with an uncleared sample.
+//
+// The BUYER gate (isRightsReady, lib/deals/catalog.ts) stopped borrowing
+// that signal on 2026-09-10 so a sampled track is LISTED and labelled
+// "Contains a sample" instead of hidden (owner decision 2026-09-09,
+// .planning/deliberations/sync-catalogue-entry-and-samples.md). The ADMIT
+// route was not changed at the same time, so the two halves cancelled out:
+// staff could not admit a sampled track, nothing sampled was ever admitted,
+// and the label the buyer gate had just been fixed to show was still
+// unreachable for anything newly reviewed. Half the fix had shipped.
+//
+// This is the other half, and it follows the same reasoning rather than
+// copying the same code: the sync gate gets its OWN rights verdict, derived
+// from the SAME readiness engine every other sync surface reads, and never
+// from the release pipeline's boolean. computeStage3() and canContinue are
+// DELIBERATELY UNCHANGED — lib/vault/stage3.test.ts pins that an uncleared
+// sample still returns canContinue: false, so nobody "simplifies" the
+// sample rule out of the artist's distribution path on the strength of the
+// catalogue decision.
+//
+// SCOPE: exactly the RIGHTS-bearing subset of SYNC_READINESS_KEYS. The
+// other three entry keys are not rights: `metadata` is the gate's separate
+// metadataComplete signal, and `audio_files`/`visual_asset` are asset
+// readiness. Sample clearance is deliberately ABSENT — that is the owner
+// decision above, stated once, here, rather than as a `!sampleBlock` that
+// looks like an accident.
+//
+// Fails closed exactly as isSyncEntryComplete does: an absent key is not
+// complete, 'warning' is not complete, an empty list is not complete.
+export const SYNC_RIGHTS_KEYS = ['split_sheets', 'copyright', 'hire_right'] as const
+
+export function isSyncRightsClear(items: ReadinessItem[]): boolean {
+  const statusByKey = new Map(items.map(i => [i.key, i.status]))
+  return SYNC_RIGHTS_KEYS.every(key => statusByKey.get(key) === 'complete')
 }
 
 // ─── METADATA_FAMILY_KEYS — collapsed 2026-09-10, deliberately kept ───────
