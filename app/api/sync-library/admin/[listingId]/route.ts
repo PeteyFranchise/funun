@@ -9,7 +9,11 @@ import {
 } from '@/lib/social/notifications'
 import { isValidTransition } from '@/lib/sync-library/submission'
 import { evaluateInclusionGate, type GateSignal } from '@/lib/sync-library/gate'
-import { syncReadinessForTrack, isSyncMetadataComplete } from '@/lib/sync-library/readiness'
+import {
+  syncReadinessForTrack,
+  isSyncMetadataComplete,
+  syncIneligibleTypeReason,
+} from '@/lib/sync-library/readiness'
 import { computeStage3 } from '@/lib/vault/stage3'
 import type { VaultProjectType } from '@/types'
 
@@ -184,6 +188,42 @@ export async function POST(
       return NextResponse.json(
         { error: "This song's project could not be loaded — cannot evaluate the inclusion gate." },
         { status: 500 }
+      )
+    }
+
+    // ─── The project-TYPE gate, FIRST and deliberately so ────────────────
+    // (2026-09-10, .planning/todos "Enforce the sync project-type rule at
+    // the staff surfaces".) The sync catalogue licenses released-format
+    // recordings — SYNC_ELIGIBLE_PROJECT_TYPES, 'single' | 'ep' | 'album'.
+    // isRightsReady() (lib/deals/catalog.ts) has enforced that at the BUYER
+    // gate since ca919cf2; this route did not, so a 'snippet' or
+    // 'unreleased' project could be admitted and then never render to a
+    // buyer — "staff admitted it and it vanished", explained to an artist
+    // after the fact.
+    //
+    // It runs BEFORE evaluateInclusionGate() on purpose. Today those two
+    // types ALSO fail the gate below, but only by accident: the `metadata`
+    // readiness item's applies_to table does not include them, so
+    // isSyncMetadataComplete() fails closed on an empty family and the
+    // refusal reads "needs to finish the Sync Readiness checklist" — a
+    // checklist that can never be finished, sending staff hunting for a
+    // missing item that does not exist. That accidental coupling is exactly
+    // what SYNC_ELIGIBLE_PROJECT_TYPES was added to replace, and it would
+    // vanish the moment anyone added 'unreleased' to that applies_to list
+    // for an unrelated release-readiness reason. This check is independent
+    // of the readiness registry entirely.
+    //
+    // Same discipline as the gate refusal below: 409, and the listing's
+    // status is left UNTOUCHED — refusing to admit is not rejecting. Staff
+    // can still reject the listing explicitly; only `admit` is gated.
+    const ineligibleReason = syncIneligibleTypeReason(project.type)
+    if (ineligibleReason) {
+      return NextResponse.json(
+        {
+          error: ineligibleReason,
+          data: { listingId, status: row.status, projectType: project.type },
+        },
+        { status: 409 }
       )
     }
 

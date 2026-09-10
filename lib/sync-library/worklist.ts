@@ -13,7 +13,12 @@
 // never throw" convention so this stays unit-testable without a DB.
 import type { SyncListingStatus, VaultProjectType } from '@/types'
 import { isTerminal } from './submission'
-import { syncReadinessForTrack, missingSyncItems, type SyncReadinessTrack } from './readiness'
+import {
+  syncReadinessForTrack,
+  missingSyncItems,
+  syncIneligibleTypeReason,
+  type SyncReadinessTrack,
+} from './readiness'
 
 export type WorklistMissingItem = { key: string; label: string }
 
@@ -26,6 +31,23 @@ export type WorklistRow = {
   artistName: string | null
   appliedAt: string
   missing: WorklistMissingItem[]
+  // ─── The project-TYPE verdict (2026-09-10) ──────────────────────────────
+  // `missing` answers "what is left to do?". It CANNOT answer "is this the
+  // kind of work the catalogue lists at all?", and before these two fields
+  // it silently claimed the wrong answer: for an 'unreleased' project the
+  // readiness registry emits only audio_files + split_sheets of the six
+  // entry keys, so with both complete missingSyncItems() returned [] and a
+  // pending_admit row rendered as "Ready to admit / Checklist complete" —
+  // for a song the buyer catalogue will never show (isRightsReady() refuses
+  // the type outright).
+  //
+  // Derived from isSyncEligibleProjectType() via syncIneligibleTypeReason()
+  // — the SAME authority the buyer gate and the admit route use, never a
+  // second copy of the rule.
+  /** False when the project's TYPE is outside SYNC_ELIGIBLE_PROJECT_TYPES. */
+  syncEligible: boolean
+  /** Why, in staff-facing words. Non-null exactly when syncEligible is false. */
+  ineligibleReason: string | null
   qualityOk: boolean | null
   staffNotes: string | null
 }
@@ -81,6 +103,14 @@ export function shapeWorklistRow(input: ShapeWorklistRowInput): WorklistRow {
     label: i.label,
   }))
 
+  // An ineligible type is shown, not hidden — a submission a human still
+  // has to decide about (reject it, or tell the artist) must not silently
+  // vanish from the one surface that explains why a song is stuck. `missing`
+  // is still computed truthfully; it is simply no longer the whole story,
+  // and SyncReadinessWorklist.tsx renders this reason INSTEAD of the status
+  // label and the "Checklist complete" chip.
+  const ineligibleReason = syncIneligibleTypeReason(input.project.type)
+
   return {
     listingId: input.listing.id,
     status: input.listing.status,
@@ -90,6 +120,8 @@ export function shapeWorklistRow(input: ShapeWorklistRowInput): WorklistRow {
     artistName: input.artistName,
     appliedAt: input.listing.appliedAt,
     missing,
+    syncEligible: ineligibleReason === null,
+    ineligibleReason,
     qualityOk: input.listing.qualityOk,
     staffNotes: input.listing.staffNotes,
   }

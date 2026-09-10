@@ -23,12 +23,22 @@ const MISSING_CHIP =
 // Open-status label for a worklist row — the worklist route only ever
 // returns non-terminal, non-admitted listings (buildWorklist's own filter),
 // so this covers every status that can appear here.
+//
+// 2026-09-10: this map is only consulted for a SYNC-ELIGIBLE row. A row
+// whose project type the catalogue refuses ('snippet' / 'unreleased') reads
+// INELIGIBLE_LABEL instead — otherwise a pending_admit listing on an
+// ineligible project rendered "Ready to admit", which is the opposite of
+// true: isRightsReady() (lib/deals/catalog.ts) will never show it to a
+// buyer, and the admit route now refuses it outright. The staff worklist
+// must show exactly the bar the catalogue enforces.
 const STATUS_LABEL: Record<string, string> = {
   applied: 'Applied',
   invited: 'Invited',
   agreement_pending: 'Agreement pending',
   pending_admit: 'Ready to admit',
 }
+
+const INELIGIBLE_LABEL = 'Not sync-eligible'
 
 // Reused verbatim from SyncLibraryAdmin.tsx (DealsQueue.tsx origin,
 // 26-PATTERNS.md — "reuse verbatim per UI-SPEC Screen F").
@@ -160,30 +170,46 @@ export function SyncReadinessWorklist({
                   <p className="mt-0.5 truncate text-[12px] text-[color:var(--ink-3)]">
                     {row.artistName ?? 'Unnamed account'} · {row.projectTitle}
                   </p>
-                  <p className="mt-1 text-[11px] text-[color:var(--ink-3)]">
-                    {STATUS_LABEL[row.status] ?? row.status} · Submitted {formatTimeSince(row.appliedAt)}
+                  <p
+                    className="mt-1 text-[11px] text-[color:var(--ink-3)]"
+                    data-sync-eligible={row.syncEligible ? 'true' : 'false'}
+                  >
+                    {row.syncEligible ? STATUS_LABEL[row.status] ?? row.status : INELIGIBLE_LABEL} ·
+                    Submitted {formatTimeSince(row.appliedAt)}
                   </p>
                 </div>
                 <span className={`${CHIP_BASE} ${badge.className}`}>{badge.label}</span>
               </div>
 
-              {/* Exactly what's missing — the worklist route's missing[], never
-                  recomputed here. */}
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {row.missing.length === 0 ? (
-                  <span
-                    className={`${CHIP_BASE} border-[color:var(--green-line)] bg-[color:var(--green-bg)] text-[color:var(--green-fg)]`}
-                  >
-                    Checklist complete
-                  </span>
-                ) : (
-                  row.missing.map(item => (
-                    <span key={item.key} className={MISSING_CHIP}>
-                      {item.label}
+              {/* An ineligible project type is not a checklist gap — there is
+                  no item to finish. It replaces the checklist entirely, so
+                  "Checklist complete" can never appear next to a song the
+                  catalogue refuses. The row is SHOWN rather than filtered out
+                  because it is still a live submission awaiting a human
+                  decision. */}
+              {!row.syncEligible ? (
+                <p className="mt-3 rounded-lg border border-[color:var(--rose-line)] bg-[color:var(--rose-bg)] px-3 py-2 text-[12px] text-[color:var(--rose-fg)]">
+                  {row.ineligibleReason}
+                </p>
+              ) : (
+                /* Exactly what's missing — the worklist route's missing[], never
+                   recomputed here. */
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {row.missing.length === 0 ? (
+                    <span
+                      className={`${CHIP_BASE} border-[color:var(--green-line)] bg-[color:var(--green-bg)] text-[color:var(--green-fg)]`}
+                    >
+                      Checklist complete
                     </span>
-                  ))
-                )}
-              </div>
+                  ) : (
+                    row.missing.map(item => (
+                      <span key={item.key} className={MISSING_CHIP}>
+                        {item.label}
+                      </span>
+                    ))
+                  )}
+                </div>
+              )}
 
               {isLeadership ? (
                 <div className="mt-3 flex flex-col gap-2 border-t border-[color:var(--border)] pt-3">

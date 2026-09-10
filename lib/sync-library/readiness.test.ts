@@ -4,6 +4,7 @@ import {
   SYNC_READINESS_KEYS,
   SYNC_ELIGIBLE_PROJECT_TYPES,
   isSyncEligibleProjectType,
+  syncIneligibleTypeReason,
   syncReadinessForTrack,
   missingSyncItems,
   isSyncEntryComplete,
@@ -109,6 +110,39 @@ describe('SYNC_ELIGIBLE_PROJECT_TYPES', () => {
   it('isSyncEligibleProjectType fails closed on snippet and unreleased', () => {
     expect(isSyncEligibleProjectType('snippet')).toBe(false)
     expect(isSyncEligibleProjectType('unreleased')).toBe(false)
+  })
+
+  // ─── syncIneligibleTypeReason — the ONE explanation (2026-09-10) ────────
+  // The staff surfaces (the admit route's refusal, the Sync Readiness
+  // worklist) must say WHY and WHAT WOULD CHANGE IT, not merely "not
+  // eligible" — a refusal without a reason sends a person hunting. Both
+  // consume this one function, so the wording cannot drift between them.
+  describe('syncIneligibleTypeReason', () => {
+    it('returns null for every eligible type — null means "not refused"', () => {
+      expect(syncIneligibleTypeReason('single')).toBeNull()
+      expect(syncIneligibleTypeReason('ep')).toBeNull()
+      expect(syncIneligibleTypeReason('album')).toBeNull()
+    })
+
+    it('names what the work is, why it is out of scope, and what would change it', () => {
+      const snippet = syncIneligibleTypeReason('snippet')
+      expect(snippet).toContain('snippet')
+      expect(snippet).toContain('singles, EPs and albums')
+      expect(snippet).toContain('Submit the full recording')
+
+      const unreleased = syncIneligibleTypeReason('unreleased')
+      expect(unreleased).toContain('unreleased work')
+      expect(unreleased).toContain('singles, EPs and albums')
+      expect(unreleased).toContain('once its project is set up as a single, EP or album')
+    })
+
+    it('fails closed on a type that is not a VaultProjectType at all', () => {
+      const reason = syncIneligibleTypeReason('bootleg' as VaultProjectType)
+      expect(reason).not.toBeNull()
+      expect(reason).toContain('singles, EPs and albums')
+      // The raw, unvalidated DB value is never echoed back into copy.
+      expect(reason).not.toContain('bootleg')
+    })
   })
 
   // The rule must not be re-derived from the readiness registry — that

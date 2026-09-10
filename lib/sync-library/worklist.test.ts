@@ -6,6 +6,7 @@ import {
   type WorklistProjectInput,
   type WorklistTrackInput,
 } from './worklist'
+import { syncReadinessForTrack, isSyncEntryComplete } from './readiness'
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────
 // Mirrors lib/sync-library/readiness.test.ts's COMPLETE_INPUT convention —
@@ -217,6 +218,85 @@ describe('buildWorklist', () => {
     expect(rows[0].staffNotes).toBe('Failed quality bar')
     expect(rows[1].qualityOk).toBe(true)
     expect(rows[1].staffNotes).toBe('Looks good')
+  })
+
+  // ─── The project-TYPE rule at the staff worklist (2026-09-10) ───────────
+  // Before this, the worklist label could CONTRADICT the catalogue: for an
+  // 'unreleased' project the readiness registry emits only audio_files +
+  // split_sheets of the six entry keys, so with both complete
+  // missingSyncItems() returned [] and a pending_admit row rendered as
+  // "Ready to admit / Checklist complete" — for a song isRightsReady()
+  // (lib/deals/catalog.ts) will never show a buyer. Staff must see exactly
+  // the bar the catalogue enforces.
+  //
+  // Built with ALL SIX entry items complete (the ca919cf2 pattern), asserted
+  // INLINE below, so these tests prove the TYPE rule is doing the work
+  // rather than an incidentally missing item.
+  describe.each(['snippet', 'unreleased'] as const)('an ineligible %s project', type => {
+    it('is NOT presented as ready to admit, even with every entry item complete', () => {
+      // INLINE PROOF: the very same track/project data reads all SIX entry
+      // items complete when its type is 'single'. The ONLY difference below
+      // is `type`.
+      const asEligibleType = syncReadinessForTrack({
+        type: 'single',
+        track: COMPLETE_TRACK,
+        assets: COMPLETE_PROJECT.assets,
+        documents: COMPLETE_PROJECT.documents,
+      })
+      expect(asEligibleType).toHaveLength(6)
+      expect(isSyncEntryComplete(asEligibleType)).toBe(true)
+
+      const listings: WorklistListingRow[] = [{ ...BASE_LISTING, status: 'pending_admit' }]
+      const lookups = lookupsFor(
+        { 'track-1': COMPLETE_TRACK },
+        { 'project-1': { ...COMPLETE_PROJECT, type } },
+        { 'artist-1': 'Jane Doe' }
+      )
+      const rows = buildWorklist(listings, lookups)
+      expect(rows).toHaveLength(1)
+      const row = rows[0]
+
+      // The readiness engine reports NOTHING missing — this is precisely the
+      // state that used to render "Ready to admit / Checklist complete".
+      expect(row.missing).toEqual([])
+      expect(row.status).toBe('pending_admit')
+
+      // ...and the type rule is the only thing stopping it.
+      expect(row.syncEligible).toBe(false)
+      expect(row.ineligibleReason).toContain('singles, EPs and albums')
+    })
+
+    it('is SHOWN with an explicit reason rather than filtered out — a live submission still needs a human decision', () => {
+      const row = shapeWorklistRow({
+        listing: {
+          id: 'listing-1',
+          status: 'pending_admit',
+          trackId: 'track-1',
+          appliedAt: '2026-08-01T00:00:00Z',
+          qualityOk: null,
+          staffNotes: null,
+        },
+        track: COMPLETE_TRACK,
+        project: { ...COMPLETE_PROJECT, type },
+        artistName: 'Jane Doe',
+      })
+      expect(row.syncEligible).toBe(false)
+      expect(row.ineligibleReason).toContain(type === 'snippet' ? 'snippet' : 'unreleased work')
+      expect(row.ineligibleReason).toContain("can't be admitted")
+    })
+  })
+
+  it.each(['single', 'ep', 'album'] as const)('leaves an eligible %s project untouched — syncEligible with no reason', type => {
+    const listings: WorklistListingRow[] = [{ ...BASE_LISTING }]
+    const lookups = lookupsFor(
+      { 'track-1': COMPLETE_TRACK },
+      { 'project-1': { ...COMPLETE_PROJECT, type } },
+      { 'artist-1': 'Jane Doe' }
+    )
+    const rows = buildWorklist(listings, lookups)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].syncEligible).toBe(true)
+    expect(rows[0].ineligibleReason).toBeNull()
   })
 
   it('skips a listing whose track or project lookup is missing, rather than throwing', () => {

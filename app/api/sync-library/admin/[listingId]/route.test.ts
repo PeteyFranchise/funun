@@ -2,6 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { createNotification } from '@/lib/notifications'
+import { syncReadinessForTrack, isSyncEntryComplete } from '@/lib/sync-library/readiness'
+import type { VaultProjectType } from '@/types'
 import { POST } from './route'
 
 // ─── POST /api/sync-library/admin/[listingId] — the single admit/reject ───
@@ -125,6 +127,45 @@ const INCOMPLETE_PROJECT_ROW = {
       metadata: {},
     },
   ],
+}
+
+// ─── The project-TYPE gate fixture (2026-09-10) ───────────────────────────
+// READY_PROJECT_ROW above clears the ADMIT gate (rights + quality +
+// metadata) but does not carry the documents/assets the six ENTRY items
+// need. This one does: every one of SYNC_READINESS_KEYS reads 'complete'
+// when the type is 'single' — asserted inline by
+// expectAllSixEntryItemsComplete() below, so the type tests prove the TYPE
+// rule is what refuses, not an incidentally missing readiness item
+// (the ca919cf2 pattern).
+const ENTRY_COMPLETE_PROJECT_ROW = {
+  ...READY_PROJECT_ROW,
+  vault_documents: [
+    { id: 'doc-copyright', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+    { id: 'doc-hire-right', type: 'hire_right', status: 'signed', track_id: null, document_data: null },
+    { id: 'doc-split-sheet', type: 'split_sheet', status: 'signed', track_id: null, document_data: null },
+  ],
+  vault_assets: [{ id: 'asset-cover', type: 'cover_art' }],
+}
+
+function entryCompleteProjectOfType(type: VaultProjectType) {
+  return { ...ENTRY_COMPLETE_PROJECT_ROW, type }
+}
+
+/**
+ * INLINE PROOF for the type tests: this exact project data reads ALL SIX
+ * entry items complete when its type is 'single'. The only difference in
+ * the refusal cases below is `type`.
+ */
+function expectAllSixEntryItemsComplete() {
+  const track = ENTRY_COMPLETE_PROJECT_ROW.tracks[0]
+  const items = syncReadinessForTrack({
+    type: 'single',
+    track: { id: track.id, isrc: track.isrc, iswc: track.iswc, metadata: track.metadata },
+    assets: ENTRY_COMPLETE_PROJECT_ROW.vault_assets,
+    documents: ENTRY_COMPLETE_PROJECT_ROW.vault_documents,
+  })
+  expect(items).toHaveLength(6)
+  expect(isSyncEntryComplete(items)).toBe(true)
 }
 
 beforeEach(() => {
@@ -309,6 +350,95 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     const body = await res.json()
     expect(body.data.gate).toEqual({ rightsClear: true, qualityOk: false, metadataComplete: true })
     expect(logStaffAction).not.toHaveBeenCalled()
+  })
+
+  // ─── The project-TYPE gate (2026-09-10) ─────────────────────────────────
+  // The sync catalogue licenses released-format recordings. isRightsReady()
+  // (lib/deals/catalog.ts) has enforced that at the BUYER gate since
+  // ca919cf2; this route did not, so an ineligible project could be admitted
+  // and then never render to a buyer.
+  describe.each(['snippet', 'unreleased'] as const)('an ineligible %s project', type => {
+    it('cannot be admitted, and the refusal NAMES the reason — with all six entry items complete', async () => {
+      // INLINE PROOF (ca919cf2 pattern): this same project data reads all six
+      // entry items complete as a 'single'. Only `type` differs below, so the
+      // refusal cannot be blamed on an incidentally missing item.
+      expectAllSixEntryItemsComplete()
+
+      ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+      const service = mockService({
+        sync_listings: [{ data: PENDING_ADMIT_ROW, error: null }], // load only — no write expected
+        tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+        vault_projects: [{ data: entryCompleteProjectOfType(type), error: null }],
+      })
+      ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+      const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+      expect(res.status).toBe(409)
+      const body = await res.json()
+
+      // Says NO, says WHY, says WHAT WOULD CHANGE IT.
+      expect(body.error).toContain("can't be admitted")
+      expect(body.error).toContain(type === 'snippet' ? 'snippet' : 'unreleased work')
+      expect(body.error).toContain('singles, EPs and albums')
+      expect(body.error).toContain(
+        type === 'snippet' ? 'Submit the full recording' : 'once its project is set up as a single, EP or album'
+      )
+
+      // NOT the generic checklist refusal — that message would send staff
+      // hunting for a missing item that does not exist.
+      expect(body.error).not.toContain('Sync Readiness checklist')
+
+      // Refusing to admit is not rejecting: status untouched, no write, no audit.
+      expect(body.data).toEqual({
+        listingId: LISTING_UUID,
+        status: 'pending_admit',
+        projectType: type,
+      })
+      expect(service.builders.sync_listings).toHaveLength(1)
+      expect(logStaffAction).not.toHaveBeenCalled()
+      expect(createNotification).not.toHaveBeenCalled()
+    })
+
+    it('can still be REJECTED explicitly — only admit is gated on type', async () => {
+      ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+      const service = mockService({
+        sync_listings: [
+          { data: PENDING_ADMIT_ROW, error: null },
+          { data: null, error: null },
+        ],
+        tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+        vault_projects: [{ data: entryCompleteProjectOfType(type), error: null }],
+      })
+      ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+      const res = await POST(jsonRequest({ decision: 'reject', reason: 'Not a catalogue format' }), params())
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toEqual({ listingId: LISTING_UUID, status: 'rejected' })
+    })
+  })
+
+  it('admits an ELIGIBLE single with the same entry-complete project data — the type is the only difference', async () => {
+    expectAllSixEntryItemsComplete()
+    ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+    const service = mockService({
+      sync_listings: [
+        { data: PENDING_ADMIT_ROW, error: null },
+        { data: null, error: null },
+        { data: [{ id: LISTING_UUID }], error: null },
+      ],
+      tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+      vault_projects: [{ data: entryCompleteProjectOfType('single'), error: null }],
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+    const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toEqual({ listingId: LISTING_UUID, status: 'admitted' })
   })
 
   it('rejects a listing with an optional reason, surfaces it to the artist, and audits', async () => {

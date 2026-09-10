@@ -100,6 +100,48 @@ export function isSyncEligibleProjectType(type: VaultProjectType): boolean {
   return (SYNC_ELIGIBLE_PROJECT_TYPES as readonly string[]).includes(type)
 }
 
+// ─── syncIneligibleTypeReason — the ONE staff-facing explanation ─────────
+// isSyncEligibleProjectType() answers "may this be licensed?" with a
+// boolean. The STAFF surfaces additionally have to answer "why not, and
+// what would change it?" — the admit route
+// (app/api/sync-library/admin/[listingId]/route.ts) when it refuses, and
+// the Sync Readiness worklist (lib/sync-library/worklist.ts) when it shows
+// a submission that can never reach the catalogue.
+//
+// Both consume THIS function rather than writing their own sentence, for
+// the same reason they both consume isSyncEligibleProjectType() rather
+// than their own allowlist: two copies of the explanation drift, and a
+// refusal that only says "not eligible" sends a person hunting.
+//
+// It deliberately does NOT re-derive eligibility — it delegates to
+// isSyncEligibleProjectType(), so SYNC_ELIGIBLE_PROJECT_TYPES stays the
+// single definition of the rule and this stays the single definition of
+// how we explain it.
+const SYNC_INELIGIBLE_TYPE_REASON: Record<'snippet' | 'unreleased', string> = {
+  snippet:
+    "This song can't be admitted — it's a snippet, a promo clip rather than a licensable recording, and the sync catalogue lists singles, EPs and albums only. Submit the full recording from a single, EP or album project instead.",
+  unreleased:
+    "This song can't be admitted — it's an unreleased work, and the sync catalogue lists singles, EPs and albums only. It can be submitted again once its project is set up as a single, EP or album.",
+}
+
+// Fails closed on a value that is not a VaultProjectType at all (a row read
+// straight from the DB's unconstrained `type` column): ineligible, with a
+// generic sentence. The raw value is deliberately NOT interpolated — an
+// unvalidated DB string does not belong in copy we hand to a browser.
+const SYNC_INELIGIBLE_TYPE_REASON_FALLBACK =
+  "This song can't be admitted — its project type isn't one the sync catalogue lists. The sync catalogue lists singles, EPs and albums only."
+
+/**
+ * Why an ineligible project type cannot enter the sync catalogue, phrased
+ * for a staff member: what it is, why that is out of scope, and what would
+ * change it. Returns null for an ELIGIBLE type — so `if (reason)` reads as
+ * "is this refused?" at both call sites without a second predicate.
+ */
+export function syncIneligibleTypeReason(type: VaultProjectType): string | null {
+  if (isSyncEligibleProjectType(type)) return null
+  return SYNC_INELIGIBLE_TYPE_REASON[type as 'snippet' | 'unreleased'] ?? SYNC_INELIGIBLE_TYPE_REASON_FALLBACK
+}
+
 /** The one track this Sync Readiness check is for. */
 export type SyncReadinessTrack = {
   id?: string
