@@ -12,9 +12,9 @@ import { evaluateInclusionGate, type GateSignal } from '@/lib/sync-library/gate'
 import {
   syncReadinessForTrack,
   isSyncMetadataComplete,
+  isSyncRightsClear,
   syncIneligibleTypeReason,
 } from '@/lib/sync-library/readiness'
-import { computeStage3 } from '@/lib/vault/stage3'
 import type { VaultProjectType } from '@/types'
 
 // ─── POST /api/sync-library/admin/[listingId] ──────────────────────────
@@ -32,9 +32,26 @@ import type { VaultProjectType } from '@/types'
 //
 // Gate precondition (30-04): admitting ADDITIONALLY requires
 // evaluateInclusionGate() (lib/sync-library/gate.ts) to return
-// 'admit_eligible' — computed server-side from computeStage3() (rights),
+// 'admit_eligible' — computed server-side from isSyncRightsClear() (rights),
 // the listing's persisted quality_ok (quality), and
 // isSyncMetadataComplete(syncReadinessForTrack(...)) (metadata complete).
+//
+// ─── 2026-09-10: rightsClear no longer borrows computeStage3().canContinue
+// This route used to compute `rightsClear = computeStage3(...).canContinue`.
+// canContinue is `readinessScore >= 60 && !sampleBlock` — the ARTIST's
+// release-pipeline signal, which must keep blocking on an uncleared sample
+// because you cannot distribute one. The sync catalogue asks a different
+// question, and the owner decided on 2026-09-09 that a sampled track IS
+// listed, labelled "Contains a sample". The BUYER gate stopped borrowing
+// canContinue that day; this route did not, so staff could not admit a
+// sampled track and the label stayed unreachable for anything newly
+// reviewed — half a fix. rightsClear now comes from isSyncRightsClear()
+// (lib/sync-library/readiness.ts), the sync-specific verdict over the SAME
+// readiness engine every other sync surface reads. computeStage3() is
+// untouched and is no longer called here at all: the parameters that fed it
+// (vault_readiness_score, has_sample/sample_details, writers, the ContentID
+// columns) left PROJECT_GATE_COLUMNS with it, rather than being kept and
+// ignored — an unread input is an invitation to reach for canContinue again.
 // A 'needs_completion' verdict returns 409 and leaves the listing's
 // status UNCHANGED — never auto-rejected (30-CONTEXT.md "Incomplete ≠
 // rejected": incomplete tracks stay in the completion pipeline, not a
@@ -56,37 +73,38 @@ type ListingRow = {
 }
 type TrackRow = { title: string }
 
-// Gate-input columns for a single project — mirrors lib/deals/catalog-
-// query.ts's PROJECT_COLUMNS (the batched shape computeStage3 already
-// consumes), plus isrc/iswc which syncReadinessForTrack additionally
-// needs (catalog-query.ts's rights-only query doesn't select those).
+// Gate-input columns for a single project — EXACTLY what
+// syncReadinessForTrack() reads, and nothing else. It got shorter on
+// 2026-09-10: vault_readiness_score, the ContentID columns, and the tracks'
+// writers/has_sample/sample_details were inputs to the computeStage3() call
+// that used to produce rightsClear, and they left with it.
+//
+// producers/mixing_engineer/mastering_engineer STAYED, and are now load-
+// bearing for a different reason: the readiness engine uses them (via
+// hireCreditsOf) to tell "no producer agreement is required" apart from "a
+// producer agreement is missing". Dropping them here would silently pin
+// every self-produced song's hire_right item back to 'missing' — the exact
+// defect this change fixes — because the engine treats an ABSENT hire-credit
+// property as "unknown, assume the requirement applies".
 const PROJECT_GATE_COLUMNS = `
-  id, title, type, vault_readiness_score,
-  content_id_registered, content_id_dismissed_until,
-  tracks (id, title, isrc, iswc, metadata, writers, producers, mixing_engineer, mastering_engineer, has_sample, sample_details),
+  id, type,
+  tracks (id, title, isrc, iswc, metadata, producers, mixing_engineer, mastering_engineer),
   vault_documents (id, type, status, track_id, document_data),
   vault_assets (id, type)
 `
 
 type GateProjectRow = {
   id: string
-  title: string
   type: VaultProjectType
-  vault_readiness_score: number | null
-  content_id_registered: boolean | null
-  content_id_dismissed_until: string | null
   tracks: {
     id: string
     title: string | null
     isrc: string | null
     iswc: string | null
     metadata: Record<string, unknown> | null
-    writers: string[] | null
     producers: string[] | null
     mixing_engineer: string | null
     mastering_engineer: string | null
-    has_sample: boolean | null
-    sample_details: string | null
   }[]
   vault_documents: {
     id: string
@@ -227,20 +245,30 @@ export async function POST(
       )
     }
 
-    const stage3 = computeStage3(
-      project,
-      project.tracks,
-      project.vault_documents ?? [],
-      project.vault_readiness_score ?? 0
-    )
-    const rightsClear = stage3.canContinue
-
+    // ONE readiness computation feeds BOTH gate signals — the rights
+    // verdict and the metadata verdict read the same items, so staff can
+    // never be told the rights are clear on a checklist the metadata answer
+    // disagrees with. The hire-credit columns are passed through explicitly
+    // (see PROJECT_GATE_COLUMNS): without them a self-produced recording's
+    // hire_right item reads 'missing' and rightsClear is false forever.
     const syncItems = syncReadinessForTrack({
       type: project.type,
-      track: { id: track.id, isrc: track.isrc, iswc: track.iswc, metadata: track.metadata },
+      track: {
+        id: track.id,
+        isrc: track.isrc,
+        iswc: track.iswc,
+        metadata: track.metadata,
+        producers: track.producers,
+        mixing_engineer: track.mixing_engineer,
+        mastering_engineer: track.mastering_engineer,
+      },
       assets: project.vault_assets ?? [],
       documents: project.vault_documents ?? [],
     })
+    // Sync-specific, and deliberately NOT computeStage3().canContinue — see
+    // the header note. An uncleared sample does not appear in this verdict
+    // at all, which is what makes "Contains a sample" reachable.
+    const rightsClear = isSyncRightsClear(syncItems)
     const metadataComplete = isSyncMetadataComplete(syncItems)
 
     const qualityOk = row.quality_ok === true

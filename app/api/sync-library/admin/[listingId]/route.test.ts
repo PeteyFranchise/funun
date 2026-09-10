@@ -85,17 +85,29 @@ const PENDING_ADMIT_ROW = {
   quality_ok: true,
 }
 
-// A gate-eligible project/track — rightsClear (readiness >= 60, no sample
-// block) AND metadataComplete (isrc/iswc present, composer splits total
-// 100%) so evaluateInclusionGate() returns 'admit_eligible' when combined
-// with PENDING_ADMIT_ROW's quality_ok: true.
+// A gate-eligible project/track — rightsClear AND metadataComplete
+// (isrc/iswc present, composer splits total 100%) so
+// evaluateInclusionGate() returns 'admit_eligible' when combined with
+// PENDING_ADMIT_ROW's quality_ok: true.
+//
+// ─── 2026-09-10: this fixture had to grow rights DOCUMENTS ───────────────
+// It used to carry `vault_documents: []` and clear the gate anyway, because
+// rightsClear was computeStage3().canContinue — i.e. `vault_readiness_score
+// >= 60`, a rolled-up number that says nothing about whether a split sheet
+// was ever signed. rightsClear is now isSyncRightsClear(): split sheets,
+// copyright and producer agreements, each read from the readiness engine.
+// A project with no documents is no longer rights-clear, which is the point
+// — the staff admit bar and the buyer catalogue bar now agree, so staff can
+// no longer admit something the buyer gate would then hide.
+//
+// NOTE what is deliberately still absent: any hire_right document. This
+// track credits no producer and no engineer (`producers: []`,
+// mixing/mastering null), so no producer agreement is REQUIRED and the
+// hire_right item reads not-applicable-complete. That is defect 1's fix
+// visible at the admit route, and the named test below pins it directly.
 const READY_PROJECT_ROW = {
   id: PROJECT_UUID,
-  title: 'Midnight Run EP',
   type: 'single',
-  vault_readiness_score: 100,
-  content_id_registered: false,
-  content_id_dismissed_until: null,
   tracks: [
     {
       id: TRACK_UUID,
@@ -103,15 +115,16 @@ const READY_PROJECT_ROW = {
       isrc: 'US1234567890',
       iswc: 'T-034524680-1',
       metadata: { composers: [{ name: 'Artist One', split: 100 }] },
-      writers: ['Artist One'],
       producers: [],
       mixing_engineer: null,
       mastering_engineer: null,
-      has_sample: false,
-      sample_details: null,
     },
   ],
-  vault_documents: [],
+  vault_documents: [
+    { id: 'doc-copyright', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+    { id: 'doc-split-sheet', type: 'split_sheet', status: 'signed', track_id: null, document_data: null },
+  ],
+  vault_assets: [{ id: 'asset-cover', type: 'cover_art' }],
 }
 
 // Same project, but with no ISRC/ISWC/composer splits captured — fails
@@ -130,21 +143,20 @@ const INCOMPLETE_PROJECT_ROW = {
 }
 
 // ─── The project-TYPE gate fixture (2026-09-10) ───────────────────────────
-// READY_PROJECT_ROW above clears the ADMIT gate (rights + quality +
-// metadata) but does not carry the documents/assets the six ENTRY items
-// need. This one does: every one of SYNC_READINESS_KEYS reads 'complete'
-// when the type is 'single' — asserted inline by
-// expectAllSixEntryItemsComplete() below, so the type tests prove the TYPE
-// rule is what refuses, not an incidentally missing readiness item
-// (the ca919cf2 pattern).
+// Every one of SYNC_READINESS_KEYS reads 'complete' for this row when the
+// type is 'single' — asserted inline by expectAllSixEntryItemsComplete()
+// below, so the type tests prove the TYPE rule is what refuses, not an
+// incidentally missing readiness item (the ca919cf2 pattern). It differs
+// from READY_PROJECT_ROW only by carrying an explicit SIGNED hire_right
+// document, so the six items are complete WITHOUT relying on the
+// not-applicable branch — these tests are about project type, and should
+// not quietly depend on defect 1's fix.
 const ENTRY_COMPLETE_PROJECT_ROW = {
   ...READY_PROJECT_ROW,
   vault_documents: [
-    { id: 'doc-copyright', type: 'copyright_registration', status: 'signed', track_id: null, document_data: null },
+    ...READY_PROJECT_ROW.vault_documents,
     { id: 'doc-hire-right', type: 'hire_right', status: 'signed', track_id: null, document_data: null },
-    { id: 'doc-split-sheet', type: 'split_sheet', status: 'signed', track_id: null, document_data: null },
   ],
-  vault_assets: [{ id: 'asset-cover', type: 'cover_art' }],
 }
 
 function entryCompleteProjectOfType(type: VaultProjectType) {
@@ -439,6 +451,113 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data).toEqual({ listingId: LISTING_UUID, status: 'admitted' })
+  })
+
+  // ─── A SAMPLED track can be ADMITTED (2026-09-10, defect 2) ────────────
+  // The owner decided on 2026-09-09 that sampled tracks ARE listed, carrying
+  // a "Contains a sample — licensing needs clearance first" label. The BUYER
+  // gate was fixed for that (isRightsReady stopped consuming
+  // computeStage3().canContinue, commit e946855e). THIS route was not: it
+  // still computed `rightsClear = stage3.canContinue`, and canContinue is
+  // `readinessScore >= 60 && !sampleBlock`. So staff could not admit a
+  // sampled track, nothing sampled ever became admitted, and the label the
+  // buyer gate had just been fixed to show stayed unreachable for anything
+  // newly reviewed. Half the fix had shipped; this is the other half.
+  describe('a sampled track', () => {
+    // Otherwise fully eligible: rights documents signed, cover art, splits
+    // captured, quality passed. The ONLY thing wrong with it is an
+    // uncleared sample — which is a licensing CONVERSATION, not a reason to
+    // keep a supervisor from ever seeing the song.
+    const SAMPLED_PROJECT_ROW = {
+      ...ENTRY_COMPLETE_PROJECT_ROW,
+      // Present so a reader can see what this fixture IS, and so restoring
+      // the old `rightsClear = computeStage3(...).canContinue` line makes
+      // this test fail rather than silently pass on missing inputs. The
+      // route itself no longer reads any of them.
+      vault_readiness_score: 100,
+      content_id_registered: false,
+      content_id_dismissed_until: null,
+      tracks: [
+        {
+          ...ENTRY_COMPLETE_PROJECT_ROW.tracks[0],
+          writers: ['Artist One'],
+          has_sample: true,
+          sample_details: 'Amen break, 4 bars',
+        },
+      ],
+      // No sample_clearance document anywhere — the sample is UNCLEARED.
+    }
+
+    it('is ADMITTED — the admit gate does not refuse on rights for an uncleared sample', async () => {
+      // The fixture really is uncleared, otherwise this asserts nothing.
+      expect(SAMPLED_PROJECT_ROW.tracks[0].has_sample).toBe(true)
+      expect(
+        SAMPLED_PROJECT_ROW.vault_documents.some(d => d.type === 'sample_clearance')
+      ).toBe(false)
+
+      ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+      const service = mockService({
+        sync_listings: [
+          { data: PENDING_ADMIT_ROW, error: null },
+          { data: null, error: null },
+          { data: [{ id: LISTING_UUID }], error: null },
+        ],
+        tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+        vault_projects: [{ data: SAMPLED_PROJECT_ROW, error: null }],
+      })
+      ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+      const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        data: { listingId: LISTING_UUID, status: 'admitted' },
+      })
+
+      // And the audited gate signal says rights were CLEAR — not "we
+      // admitted it despite a rights failure".
+      expect(logStaffAction).toHaveBeenCalledWith(
+        service,
+        expect.objectContaining({
+          action: 'sync_library.admit',
+          changes: expect.objectContaining({
+            gate: { rightsClear: true, qualityOk: true, metadataComplete: true },
+          }),
+        })
+      )
+    })
+
+    it('is still refused when its RIGHTS documents are incomplete — the sample is not a free pass', async () => {
+      ;(requireStaff as jest.Mock).mockResolvedValue({ user: { id: LEADERSHIP_UUID }, staffRole: 'leadership' })
+      const service = mockService({
+        sync_listings: [{ data: PENDING_ADMIT_ROW, error: null }],
+        tracks: [{ data: { title: 'Midnight Run' }, error: null }],
+        vault_projects: [
+          {
+            data: {
+              ...SAMPLED_PROJECT_ROW,
+              vault_documents: SAMPLED_PROJECT_ROW.vault_documents.map(d =>
+                d.type === 'split_sheet' ? { ...d, status: 'pending' } : d
+              ),
+            },
+            error: null,
+          },
+        ],
+      })
+      ;(createServiceClient as jest.Mock).mockReturnValue(service)
+
+      const res = await POST(jsonRequest({ decision: 'admit' }), params())
+
+      expect(res.status).toBe(409)
+      const body = await res.json()
+      expect(body.data.gate).toEqual({
+        rightsClear: false,
+        qualityOk: true,
+        metadataComplete: true,
+      })
+      expect(service.builders.sync_listings).toHaveLength(1)
+      expect(logStaffAction).not.toHaveBeenCalled()
+    })
   })
 
   it('rejects a listing with an optional reason, surfaces it to the artist, and audits', async () => {
