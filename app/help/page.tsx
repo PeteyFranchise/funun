@@ -20,10 +20,19 @@ const STEPS: { t: string; d: string }[] = [
   { t: 'Get your files', d: 'The licensed master is delivered, cleared for the exact use you agreed to.' },
 ]
 
+// Buyer-facing rights states are TWO, not three. Entering the catalogue means
+// every required document is signed and every owner authorized licensing, so
+// 'part' ("some rights in place") has no condition left to describe for a
+// buyer — see .planning/deliberations/sync-catalogue-entry-and-samples.md.
+// rightsBadge() in lib/sync-library/gate.ts still returns all three: staff
+// Crate review needs 'partial' for an unadmitted, part-way submission.
+//
+// The 'req' copy must NEVER carry a timeline. Sample clearance is a third
+// party's decision on a third party's schedule; it routinely takes months and
+// a meaningful share never clears at all. Any number here would be invented.
 const BADGES: { cls: string; label: string; d: string }[] = [
   { cls: 'ok', label: 'Rights ready', d: 'Cleared and ready to license — the fastest path from request to signed deal.' },
-  { cls: 'part', label: 'Partial rights', d: 'Most rights are in place; a detail or two may need confirming before signing.' },
-  { cls: 'req', label: 'Contact required', d: 'Licensing needs a conversation first — for example a co-writer or a sample to clear.' },
+  { cls: 'req', label: 'Contact required', d: 'There’s a sample in here, so licensing starts with clearing it — a third party’s call, on a third party’s clock, so we won’t quote you a date. Send the request anyway: clearance is one way this lands, and an original cut to the same brief is the other.' },
 ]
 
 const FAQ: { q: string; a: string }[] = [
@@ -143,7 +152,9 @@ const HELP_CSS = `
 .fnbl .help-badge p{font-size:15.5px;line-height:1.55;color:var(--ink-2);margin:0;}
 .fnbl .rb{flex:none;display:inline-flex;align-items:center;font-size:13px;font-weight:800;letter-spacing:.02em;border-radius:999px;padding:7px 14px;white-space:nowrap;min-width:150px;justify-content:center;}
 .fnbl .rb.ok{color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-line);}
-.fnbl .rb.part{color:var(--part-fg);background:var(--part-bg);border:1px solid var(--part-line);}
+/* No .rb.part rule: BADGES no longer publishes a Partial-rights definition.
+   The --part-* tokens stay live in FNBL_CSS for the catalogue's own
+   .rights.part chip, which is retained for legacy rows. */
 .fnbl .rb.req{color:var(--req-fg);background:var(--req-bg);border:1px solid var(--req-line);}
 .fnbl .help-faq{display:flex;flex-direction:column;gap:20px;}
 .fnbl .help-qa h3{font-size:17px;font-weight:800;margin:0 0 6px;}
