@@ -272,6 +272,33 @@ when numbers eventually land:
 | Drop public-IP-literal refusal | 6 |
 | Userinfo uses first `@` instead of last | 1 |
 
+**A test that never worked, caught by mutation testing.** The first version
+of `no-runtime-import.test.ts` used `git grep` with the pattern
+`@/(app|lib)/`. `git grep` defaults to **basic** regex, where `(` and `|`
+are literal characters — so the pattern matched only the literal text
+`@/(app|lib)/`, i.e. its own source line and nothing else. It reported green
+while being incapable of detecting any real violation, and it began *failing*
+the moment the file was committed (git grep only searches tracked files, so
+the self-match appeared then). Fixed by passing `-E`, excluding the test
+files via a `:!` pathspec, and adding a positive-form assertion that
+enumerates every `require()` in the harness's runtime files and allows only
+`k6*` built-ins and relative siblings. All seven violation classes are now
+mutation-verified:
+
+| Mutation | Tests failed |
+|---|---|
+| Harness imports lib via `@/` alias | 2 |
+| Harness imports lib via relative climb-out | 1 |
+| Harness requires a third-party package (`zod`) | 1 |
+| `lib/` mentions `scripts/load` as a bare string | 1 |
+| `lib/` requires the harness via `@/` alias | 2 |
+| `lib/` imports the harness relatively | 2 |
+| `k6` added to `devDependencies` | 2 |
+
+Both greps in the *first* two assertions happened to work under basic regex
+by accident. The lesson worth keeping: a grep-based guard test is worthless
+until a real violation has been shown to fail it.
+
 Nothing was run against any database; no `supabase` command was issued; k6
 was never invoked (it is not installed).
 
