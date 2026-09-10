@@ -77,12 +77,26 @@ describe('help page publishes two buyer rights states', () => {
     expect(copy).not.toMatch(durations)
   })
 
-  // An uncleared sample is a demand signal, not a dead end — the buyer's route
-  // may be a commissioned original built to the same brief.
-  it('opens the forward path instead of leaving a dead end', () => {
+  // An uncleared sample is a demand signal, not a dead end. But HOW that
+  // demand gets served is undecided: `clear vs facilitate vs partner` is an
+  // OPEN sub-decision, and whether Funūn reliably commissions originals is
+  // downstream of it. So this asserts the copy opens a CONVERSATION, and
+  // deliberately does NOT pin the word "original" — an earlier version stated
+  // a commissioned original as confidently as the clearance route, which
+  // promised a capability the business has not committed to.
+  it('opens the forward path without promising a specific deliverable', () => {
     const copy = (badgeCopy('req') as string).toLowerCase()
-    expect(copy).toContain('original')
     expect(copy).toContain('brief')
+    // An invitation to talk, not a stated outcome.
+    expect(copy).toMatch(/tell us|send the request|talk/)
+  })
+
+  it('does not commit Funūn to producing an original', () => {
+    const copy = (badgeCopy('req') as string).toLowerCase()
+    // "we'll write you one" / "an original is the other way" — a promise that
+    // outruns the open clear/facilitate/partner decision.
+    expect(copy).not.toMatch(/we('|’)ll (write|make|produce|create|cut)/)
+    expect(copy).not.toMatch(/original (cut|track|is the other)/)
   })
 })
 

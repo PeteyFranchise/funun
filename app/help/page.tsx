@@ -32,7 +32,7 @@ const STEPS: { t: string; d: string }[] = [
 // a meaningful share never clears at all. Any number here would be invented.
 const BADGES: { cls: string; label: string; d: string }[] = [
   { cls: 'ok', label: 'Rights ready', d: 'Cleared and ready to license — the fastest path from request to signed deal.' },
-  { cls: 'req', label: 'Contains a sample', d: 'There’s a sample in here, so licensing starts with clearing it — a third party’s call, on a third party’s clock, so we won’t quote you a date. Send the request anyway: clearance is one way this lands, and an original cut to the same brief is the other.' },
+  { cls: 'req', label: 'Contains a sample', d: 'There’s a sample in here, so licensing starts with clearing it — a third party’s call, on a third party’s clock, so we won’t quote you a date. Send the request anyway. Clearance is one way this lands — and if the clock doesn’t suit, tell us the brief and we’ll see what else we can put in front of you.' },
 ]
 
 const FAQ: { q: string; a: string }[] = [
