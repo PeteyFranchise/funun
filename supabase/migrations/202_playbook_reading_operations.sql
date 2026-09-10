@@ -1,11 +1,14 @@
 -- ============================================================
 -- Funūn — Playbook Reading Operations
--- CANDIDATE migration 202 (reserved by the live migration ledger)
+-- Migration 202 — HUMAN-GATED; DO NOT APPLY AUTOMATICALLY
 --
--- DEPENDS ON migration 201. HUMAN-GATED: authored and text-
--- tested only. The repository owner must explicitly apply this
+-- DEPENDS ON migration 201. Promoted and text-tested only.
+-- The repository owner must explicitly apply this
 -- migration after 201; agents must not apply it automatically.
 -- ============================================================
+
+BEGIN;
+
 CREATE TABLE public.playbook_reading_assignments (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entry_id          UUID NOT NULL REFERENCES public.playbook_entries(id) ON DELETE CASCADE,
@@ -92,7 +95,7 @@ BEGIN
     RAISE EXCEPTION 'p_limit must be between 1 and 500' USING ERRCODE = '22023';
   END IF;
 
-  -- Candidate 207 owns activation. Until its complete schema exists, reminders
+  -- Migration 207 owns activation. Until its complete schema exists, reminders
   -- fail closed without creating cron noise or touching either write table.
   IF pg_catalog.to_regclass('public.playbook_feature_controls') IS NULL
      OR pg_catalog.to_regclass('public.playbook_feature_cohort_grants') IS NULL
@@ -205,3 +208,5 @@ COMMENT ON TABLE public.playbook_reading_reminders IS
 
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;

@@ -1,15 +1,14 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 
-const migration = readFileSync(path.join(process.cwd(), '.planning/quick/260908-playbook-releases-17-26/206_playbook_enablement_platform.sql'), 'utf8')
+const migration = readFileSync(path.join(process.cwd(), 'supabase/migrations/206_playbook_enablement_platform.sql'), 'utf8')
 
-describe('Playbook enablement candidate 206', () => {
-  it('stays human-gated behind the reconciled candidate sequence', () => {
-    expect(migration).toContain('CANDIDATE migration 206')
-    expect(migration).toContain('DEPENDS ON candidates 201, 202, 204, and 205')
+describe('Playbook enablement migration 206', () => {
+  it('stays human-gated behind the reconciled migration sequence', () => {
+    expect(migration).toContain('Migration 206 — HUMAN-GATED')
+    expect(migration).toContain('DEPENDS ON migrations 201, 202, 204, and 205')
     expect(migration).toContain('HUMAN-GATED')
-    expect(migration).toContain('Migration 200 is taken')
-    expect(migration).toContain('migration 203 is permanently retired')
+    expect(migration).toContain('Migration 203 is permanently')
   })
 
   it('contains the durable state for releases 17 through 26', () => {

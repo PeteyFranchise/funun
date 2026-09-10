@@ -2,16 +2,15 @@ import { readFileSync } from 'fs'
 import path from 'path'
 
 const migration = readFileSync(
-  path.join(process.cwd(), '.planning/quick/260908-playbook-change-broadcast/205_playbook_change_broadcasts.sql'),
+  path.join(process.cwd(), 'supabase/migrations/205_playbook_change_broadcasts.sql'),
   'utf8'
 )
 
-describe('Playbook migration candidate 205', () => {
-  it('stays human-gated and records the reserved dependency sequence', () => {
-    expect(migration).toContain('CANDIDATE migration 205')
-    expect(migration).toContain('DEPENDS ON Playbook candidates 201, 202, and 204')
-    expect(migration).toContain('Migration 200 is taken')
-    expect(migration).toContain('migration 203 is permanently retired')
+describe('Playbook migration 205', () => {
+  it('stays human-gated and records the dependency sequence', () => {
+    expect(migration).toContain('Migration 205 — HUMAN-GATED')
+    expect(migration).toContain('DEPENDS ON Playbook migrations 201, 202, and 204')
+    expect(migration).toContain('Migration 203 is')
     expect(migration).toContain('HUMAN-GATED')
   })
 

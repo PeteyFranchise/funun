@@ -1,11 +1,9 @@
 -- ============================================================
 -- Funūn — Internal Playbook Change Broadcasts
--- CANDIDATE migration 205
+-- Migration 205 — HUMAN-GATED; DO NOT APPLY AUTOMATICALLY
 --
--- DEPENDS ON Playbook candidates 201, 202, and 204. Migration 200 is taken
--- and migration 203 is permanently retired. HUMAN-GATED:
--- keep outside supabase/migrations until the owner reconciles
--- the production ledger and explicitly approves application.
+-- DEPENDS ON Playbook migrations 201, 202, and 204. Migration 203 is
+-- permanently retired. The owner must run the Playbook pre-apply gate.
 -- ============================================================
 
 BEGIN;

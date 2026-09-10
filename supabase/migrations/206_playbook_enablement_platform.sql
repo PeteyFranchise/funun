@@ -1,11 +1,9 @@
 -- ============================================================
 -- Funūn — Playbook Enablement Platform (Releases 17–26)
--- CANDIDATE migration 206
+-- Migration 206 — HUMAN-GATED; DO NOT APPLY AUTOMATICALLY
 --
--- DEPENDS ON candidates 201, 202, 204, and 205. Migration 200 is taken
--- and migration 203 is permanently retired. HUMAN-GATED:
--- do not move into supabase/migrations or apply until the owner
--- reconciles the production migration ledger and approves it.
+-- DEPENDS ON migrations 201, 202, 204, and 205. Migration 203 is permanently
+-- retired. The owner must run the Playbook pre-apply gate before application.
 -- ============================================================
 
 BEGIN;

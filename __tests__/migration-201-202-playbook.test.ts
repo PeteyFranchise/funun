@@ -1,14 +1,14 @@
 import { readFileSync } from 'fs'
 import path from 'path'
 
-const candidateRoot = '.planning/quick/260907-playbook-doctrine-publication-uat'
-const migration201 = readFileSync(path.join(process.cwd(), candidateRoot, '201_playbook_rich_documents.sql'), 'utf8')
-const migration202 = readFileSync(path.join(process.cwd(), candidateRoot, '202_playbook_reading_operations.sql'), 'utf8')
+const migrationRoot = 'supabase/migrations'
+const migration201 = readFileSync(path.join(process.cwd(), migrationRoot, '201_playbook_rich_documents.sql'), 'utf8')
+const migration202 = readFileSync(path.join(process.cwd(), migrationRoot, '202_playbook_reading_operations.sql'), 'utf8')
 
 describe('Playbook migrations 201–202', () => {
-  it('uses the live-ledger reservation and stays human-gated', () => {
-    expect(migration201).toContain('CANDIDATE migration 201 (reserved by the live migration ledger)')
-    expect(migration202).toContain('CANDIDATE migration 202 (reserved by the live migration ledger)')
+  it('uses the settled migration numbers and stays human-gated', () => {
+    expect(migration201).toContain('Migration 201 — HUMAN-GATED')
+    expect(migration202).toContain('Migration 202 — HUMAN-GATED')
     expect(migration201).toContain('HUMAN-GATED')
     expect(migration202).toContain('HUMAN-GATED')
     expect(migration202).toContain('DEPENDS ON migration 201')

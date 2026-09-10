@@ -1,11 +1,9 @@
 -- ============================================================
 -- Funūn — Playbook Operational v1 (Releases 27–31)
--- CANDIDATE migration 207
+-- Migration 207 — HUMAN-GATED; DO NOT APPLY AUTOMATICALLY
 --
--- DEPENDS ON candidate migrations 201, 202, 204, 205, 206.
--- HUMAN-GATED: keep outside supabase/migrations. Do not apply
--- until the owner reconciles the production ledger and approves
--- the complete Playbook candidate chain.
+-- DEPENDS ON migrations 201, 202, 204, 205, and 206. The owner must run the
+-- Playbook pre-apply gate and approve the complete chain before application.
 -- ============================================================
 
 BEGIN;
@@ -74,7 +72,7 @@ CREATE TABLE public.playbook_feature_control_events (
 );
 
 -- R28: SLAs describe expectations. Inbox rows are derived at read time from
--- their authoritative tables and are never copied into a shadow task table.
+-- their authoritative tables and are never copied to a shadow task table.
 CREATE TABLE public.playbook_sla_rules (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   work_kind TEXT NOT NULL CHECK (work_kind IN ('reading','learning','feedback','workflow','exception','incident','simulation')),

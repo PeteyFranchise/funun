@@ -1,12 +1,13 @@
 -- ============================================================
 -- Funūn — Playbook Rich Documents, Governance & Review
--- CANDIDATE migration 201 (reserved by the live migration ledger)
+-- Migration 201 — HUMAN-GATED; DO NOT APPLY AUTOMATICALLY
 --
--- HUMAN-GATED: authored and text-tested only. The repository
--- owner must explicitly apply this migration after reviewing
--- migrations 199–200 and confirming production ledger order.
+-- Promoted and text-tested only. The repository owner must
+-- explicitly apply this migration after running the Playbook pre-apply gate.
 -- Agents must not run db push, reset, migration up, or db query.
 -- ============================================================
+
+BEGIN;
 
 -- The publication map approved these enduring rooms. Grants are deliberately
 -- functional rather than seniority-based; Leadership remains structural and
@@ -247,7 +248,7 @@ BEGIN
     RAISE EXCEPTION 'p_limit must be between 1 and 500' USING ERRCODE = '22023';
   END IF;
 
-  -- Candidate 207 owns activation. Until its complete schema exists, reminders
+  -- Migration 207 owns activation. Until its complete schema exists, reminders
   -- fail closed without creating cron noise or touching either write table.
   IF pg_catalog.to_regclass('public.playbook_feature_controls') IS NULL
      OR pg_catalog.to_regclass('public.playbook_feature_cohort_grants') IS NULL
@@ -529,3 +530,5 @@ COMMENT ON TABLE public.playbook_review_reminders IS
   'Idempotency ledger for one in-app owner reminder per Playbook entry, owner and exact review due time. Service role only.';
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;

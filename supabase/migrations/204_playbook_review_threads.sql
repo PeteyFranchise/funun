@@ -1,7 +1,6 @@
--- HUMAN-GATED MIGRATION CANDIDATE — DO NOT APPLY AUTOMATICALLY.
--- Depends on Playbook candidates 201 and 202. Migration 200 is taken and
--- migration 203 is permanently retired; keep this candidate outside
--- supabase/migrations until the owner explicitly approves the sequence.
+-- HUMAN-GATED MIGRATION — DO NOT APPLY AUTOMATICALLY.
+-- Depends on Playbook migrations 201 and 202. Migration 203 is permanently
+-- retired; the owner must run the Playbook pre-apply gate before application.
 
 BEGIN;
 

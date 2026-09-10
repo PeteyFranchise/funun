@@ -1,12 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const migration = fs.readFileSync(path.join(process.cwd(), '.planning/quick/260908-playbook-releases-27-31/207_playbook_operational_v1.sql'), 'utf8')
+const migration = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/207_playbook_operational_v1.sql'), 'utf8')
 
-describe('Playbook operational-v1 candidate 207', () => {
-  it('is explicitly human-gated and depends on the complete candidate chain', () => {
+describe('Playbook operational-v1 migration 207', () => {
+  it('is explicitly human-gated and depends on the complete migration chain', () => {
     expect(migration).toContain('HUMAN-GATED')
-    expect(migration).toContain('201, 202, 204, 205, 206')
+    expect(migration).toContain('201, 202, 204, 205, and 206')
   })
 
   it('defaults every feature off with emergency disable winning by default', () => {
