@@ -1920,6 +1920,15 @@ Plans:
 - [x] 32-07-PLAN.md — Better Stack external uptime monitor + status page (R3)
 - [x] 32-08-PLAN.md — Thresholds table + SEV-1..4 model doc (R8)
 - [ ] 32-09-PLAN.md — k6 non-prod load harness + capacity report (R7)
+  - **Harness authored, awaiting an environment (2026-09-09).** `scripts/load/*` is written,
+    hardened and unit-tested (85 tests; production-hostname guard mutation-tested), but has
+    **never been run** — and `docs/observability/CAPACITY-REPORT.md` is a TEMPLATE whose every
+    measurement cell reads `UNMEASURED`. **Funūn has no measured capacity figure**, so Plan 08's
+    baseline-adjusted thresholds and Plan 10's upgrade trigger still have no baseline.
+    Outstanding owner setup (no agent can do these): install k6 (`brew install k6`, never npm);
+    create a separate staging Supabase project seeded with representative data; point a Vercel
+    Preview deploy at it; then run the abort rehearsal + full ramp per `scripts/load/README.md`.
+    Deliberately left unchecked — see `32-09-SUMMARY.md`.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
