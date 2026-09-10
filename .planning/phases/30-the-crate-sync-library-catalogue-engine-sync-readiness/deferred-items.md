@@ -4,7 +4,32 @@ Out-of-scope discoveries made during plan execution that were NOT fixed
 (per the executor's scope-boundary rule: only auto-fix issues directly
 caused by the current task's changes). Logged here for owner triage.
 
-## [CRITICAL] `tracks.has_sample` / `tracks.sample_details` missing on the live remote — discovered during 30-04
+## [RESOLVED 2026-09-10] ~~[CRITICAL]~~ `tracks.has_sample` / `tracks.sample_details` missing on the live remote — discovered during 30-04
+
+> **RESOLVED — THIS IS NO LONGER TRUE. Do not act on the analysis below.**
+>
+> Re-checked against production 2026-09-10 by an owner-run read-only query
+> resolving `public.tracks` by `to_regclass` and reading `pg_attribute`:
+>
+> | column | live type | verdict |
+> |---|---|---|
+> | `has_sample` | `boolean` | **PRESENT** |
+> | `sample_details` | `text` | **PRESENT** |
+> | (total columns on `tracks`) | 25 | — |
+>
+> Both columns exist. `loadCatalogPage()` is NOT broken and the admit route was
+> not 500-ing for this reason. Whatever produced the original failure — a stale
+> PostgREST schema cache, a different project, or a since-corrected state — the
+> drift is gone.
+>
+> **Why this note is annotated rather than deleted:** it was cited as live on
+> 2026-09-10 during unrelated work and cost a round of investigation. A stale
+> `[CRITICAL]` is worse than no note, because it is believed. If a future reader
+> hits a `has_sample` error, re-run the check rather than assuming this finding.
+
+<details>
+<summary>Original 2026-09 analysis, kept for the record — superseded</summary>
+
 
 **Found during:** 30-04 Task 1 (wiring `evaluateInclusionGate()` into the admit route), while performing the DB round-trip verification specified in the plan.
 
@@ -33,3 +58,5 @@ catalog-query.ts EXACT PROJECT_COLUMNS select (loadCatalogPage): ERROR: column t
 **Recommended next step for the owner:** Run `ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS has_sample BOOLEAN DEFAULT false, ADD COLUMN IF NOT EXISTS sample_details TEXT;` directly against the remote (idempotent, matches migration 005's original DDL exactly) via `supabase db push` after confirming the actual cause, then re-verify `GET /api/buyer/catalog` and the 30-04 admit flow. Also worth an audit of whether any *other* migration in the 001-096 range has a similar migration-history-vs-actual-schema mismatch, given this one went undetected until now.
 
 **Verification method:** Direct service-role queries against the live remote (read-only column probes; a temporary scratch `sync_listings` row was inserted, exercised, and deleted for the quality-route round-trip — see 30-04-SUMMARY.md). No schema was altered by this session.
+
+</details>
