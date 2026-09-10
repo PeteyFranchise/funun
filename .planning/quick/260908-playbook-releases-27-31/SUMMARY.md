@@ -6,7 +6,7 @@ Releases 27–31 are implemented locally as a coordinated, default-off operation
 
 ## Completed releases
 
-- **R27 — Controlled Activation & Beta Cohorts:** leadership activation console, explicit cohorts and capability grants, revocation, emergency stop, server-authoritative evaluation, and append-only control events.
+- **R27 — Controlled Activation & Beta Cohorts:** leadership activation console, explicit cohorts and capability grants, revocation, emergency stop, server-authoritative evaluation, append-only control events, and recipient-level gates for review/reading reminder jobs.
 - **R28 — Playbook Inbox & SLA Center:** permission-filtered reading, learning, feedback, workflow, exception, incident, and simulation work; configurable SLAs; source-derived due dates; urgency filtering and sorting.
 - **R29 — Doctrine Dependency Map:** revision-pinned dependency records, room-lead authoring, visible stale links, and a publish-impact confirmation that prevents silent downstream breakage.
 - **R30 — Training Simulations & Certification:** published-doctrine scenarios, role assignments, complete-prompt validation, human review, remediation and retries, expiring certificates, and atomic review/certification/audit recording.

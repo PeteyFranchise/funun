@@ -83,13 +83,22 @@ REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_reading_reminders FROM 
 CREATE OR REPLACE FUNCTION public.enqueue_playbook_reading_reminders(p_limit INTEGER DEFAULT 200)
 RETURNS INTEGER
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   queued_count INTEGER := 0;
 BEGIN
   IF p_limit < 1 OR p_limit > 500 THEN
     RAISE EXCEPTION 'p_limit must be between 1 and 500' USING ERRCODE = '22023';
+  END IF;
+
+  -- Candidate 207 owns activation. Until its complete schema exists, reminders
+  -- fail closed without creating cron noise or touching either write table.
+  IF pg_catalog.to_regclass('public.playbook_feature_controls') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_feature_cohort_grants') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_beta_cohorts') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_beta_cohort_members') IS NULL THEN
+    RETURN 0;
   END IF;
 
   WITH candidates AS (
@@ -120,6 +129,24 @@ BEGIN
       AND assignment.due_at IS NOT NULL
       AND assignment.due_at <= now() + interval '48 hours'
       AND entry.status = 'published'
+      AND EXISTS (
+        SELECT 1
+        FROM public.playbook_feature_controls control
+        JOIN public.playbook_feature_cohort_grants feature_grant
+          ON feature_grant.feature_key = control.feature_key
+         AND feature_grant.revoked_at IS NULL
+        JOIN public.playbook_beta_cohorts cohort
+          ON cohort.id = feature_grant.cohort_id
+         AND cohort.status = 'active'
+        JOIN public.playbook_beta_cohort_members cohort_member
+          ON cohort_member.cohort_id = cohort.id
+         AND cohort_member.user_id = staff.user_id
+         AND cohort_member.revoked_at IS NULL
+         AND (cohort_member.expires_at IS NULL OR cohort_member.expires_at > now())
+        WHERE control.feature_key = 'reading_reminders'
+          AND control.enabled
+          AND NOT control.emergency_disabled
+      )
       AND NOT EXISTS (
         SELECT 1
         FROM public.playbook_reading_acknowledgements acknowledgement

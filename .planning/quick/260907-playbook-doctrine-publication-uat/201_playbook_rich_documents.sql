@@ -238,13 +238,22 @@ REVOKE SELECT, INSERT, UPDATE, DELETE ON public.playbook_review_reminders FROM a
 CREATE OR REPLACE FUNCTION public.enqueue_due_playbook_review_reminders(p_limit INTEGER DEFAULT 100)
 RETURNS INTEGER
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   queued_count INTEGER := 0;
 BEGIN
   IF p_limit < 1 OR p_limit > 500 THEN
     RAISE EXCEPTION 'p_limit must be between 1 and 500' USING ERRCODE = '22023';
+  END IF;
+
+  -- Candidate 207 owns activation. Until its complete schema exists, reminders
+  -- fail closed without creating cron noise or touching either write table.
+  IF pg_catalog.to_regclass('public.playbook_feature_controls') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_feature_cohort_grants') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_beta_cohorts') IS NULL
+     OR pg_catalog.to_regclass('public.playbook_beta_cohort_members') IS NULL THEN
+    RETURN 0;
   END IF;
 
   WITH due_entries AS (
@@ -255,6 +264,24 @@ BEGIN
       AND entry.owner_id IS NOT NULL
       AND entry.review_due_at IS NOT NULL
       AND entry.review_due_at <= now()
+      AND EXISTS (
+        SELECT 1
+        FROM public.playbook_feature_controls control
+        JOIN public.playbook_feature_cohort_grants feature_grant
+          ON feature_grant.feature_key = control.feature_key
+         AND feature_grant.revoked_at IS NULL
+        JOIN public.playbook_beta_cohorts cohort
+          ON cohort.id = feature_grant.cohort_id
+         AND cohort.status = 'active'
+        JOIN public.playbook_beta_cohort_members cohort_member
+          ON cohort_member.cohort_id = cohort.id
+         AND cohort_member.user_id = entry.owner_id
+         AND cohort_member.revoked_at IS NULL
+         AND (cohort_member.expires_at IS NULL OR cohort_member.expires_at > now())
+        WHERE control.feature_key = 'review_reminders'
+          AND control.enabled
+          AND NOT control.emergency_disabled
+      )
       AND NOT EXISTS (
         SELECT 1
         FROM public.playbook_review_reminders reminder
@@ -309,7 +336,7 @@ CREATE OR REPLACE FUNCTION public.set_playbook_entry_metadata(
 )
 RETURNS public.playbook_entries
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   updated_entry public.playbook_entries;
@@ -362,7 +389,7 @@ GRANT EXECUTE ON FUNCTION public.set_playbook_entry_metadata(UUID, UUID, TIMESTA
 CREATE OR REPLACE FUNCTION public.prepare_playbook_entry_publication()
 RETURNS trigger
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
@@ -390,6 +417,9 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.prepare_playbook_entry_publication()
+  FROM PUBLIC, authenticated, anon;
+
 DROP TRIGGER IF EXISTS prepare_playbook_entry_publication ON public.playbook_entries;
 CREATE TRIGGER prepare_playbook_entry_publication
   BEFORE INSERT OR UPDATE ON public.playbook_entries
@@ -398,7 +428,7 @@ CREATE TRIGGER prepare_playbook_entry_publication
 CREATE OR REPLACE FUNCTION public.capture_playbook_entry_revision()
 RETURNS trigger
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
   action_name TEXT;
@@ -445,6 +475,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.capture_playbook_entry_revision()
+  FROM PUBLIC, authenticated, anon;
 
 DROP TRIGGER IF EXISTS capture_playbook_entry_revision ON public.playbook_entries;
 CREATE TRIGGER capture_playbook_entry_revision

@@ -24,6 +24,8 @@ CREATE TABLE public.playbook_feature_controls (
 
 INSERT INTO public.playbook_feature_controls (feature_key, label)
 VALUES
+  ('review_reminders', 'Playbook Doctrine Review Reminders'),
+  ('reading_reminders', 'Playbook Required Reading Reminders'),
   ('sla_inbox', 'Playbook Inbox & SLA Center'),
   ('dependency_map', 'Doctrine Dependency Map'),
   ('simulations', 'Training Simulations & Certification'),
@@ -322,6 +324,9 @@ CREATE OR REPLACE FUNCTION public.prevent_playbook_operational_event_mutation()
 RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $$
 BEGIN RAISE EXCEPTION 'Playbook operational history is append-only'; END;
 $$;
+
+REVOKE ALL ON FUNCTION public.prevent_playbook_operational_event_mutation()
+  FROM PUBLIC, authenticated, anon;
 
 CREATE TRIGGER protect_playbook_feature_events BEFORE UPDATE OR DELETE ON public.playbook_feature_control_events FOR EACH ROW EXECUTE FUNCTION public.prevent_playbook_operational_event_mutation();
 CREATE TRIGGER protect_playbook_simulation_events BEFORE UPDATE OR DELETE ON public.playbook_simulation_events FOR EACH ROW EXECUTE FUNCTION public.prevent_playbook_operational_event_mutation();

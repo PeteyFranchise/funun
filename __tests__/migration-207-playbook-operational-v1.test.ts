@@ -12,6 +12,8 @@ describe('Playbook operational-v1 candidate 207', () => {
   it('defaults every feature off with emergency disable winning by default', () => {
     expect(migration).toContain('enabled BOOLEAN NOT NULL DEFAULT false')
     expect(migration).toContain('emergency_disabled BOOLEAN NOT NULL DEFAULT true')
+    expect(migration).toContain("('review_reminders', 'Playbook Doctrine Review Reminders')")
+    expect(migration).toContain("('reading_reminders', 'Playbook Required Reading Reminders')")
     expect(migration).not.toMatch(/rollout_percentage|random\(\)/)
   })
 
@@ -40,5 +42,9 @@ describe('Playbook operational-v1 candidate 207', () => {
     expect(migration).toContain('ENABLE ROW LEVEL SECURITY')
     expect(migration).toContain('REVOKE SELECT, INSERT, UPDATE, DELETE')
     expect(migration.match(/BEFORE UPDATE OR DELETE/g)).toHaveLength(3)
+  })
+
+  it('does not expose the operational event trigger to browser roles', () => {
+    expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.prevent_playbook_operational_event_mutation\(\)[\s\S]*FROM PUBLIC, authenticated, anon;/)
   })
 })

@@ -6,7 +6,7 @@ Complete the Playbook operational-v1 horizon with controlled activation, one act
 
 ## Release scope
 
-1. **R27 — Controlled Activation & Beta Cohorts:** server-authoritative feature flags for Releases 28–31, explicit beta cohort membership, percentage-free rollout, emergency disable, activation audit events, and a leadership console. Earlier capabilities retain their existing activation boundaries.
+1. **R27 — Controlled Activation & Beta Cohorts:** server-authoritative feature flags for Releases 28–31 and the user-facing review/reading reminder jobs, explicit beta cohort membership, percentage-free rollout, emergency disable, activation audit events, and a leadership console. Earlier capabilities retain their existing activation boundaries unless they can initiate outbound effects.
 2. **R28 — Playbook Inbox & SLA Center:** permission-filtered work aggregation across reading, learning, feedback, workflows, exceptions, incidents, and simulations; explicit SLA rules, due-state calculation, and direct action links.
 3. **R29 — Doctrine Dependency Map:** typed, revision-aware links between entries, learning paths, workflows, simulations, and external operational surfaces; publish-impact warnings and a room-authorized graph view.
 4. **R30 — Training Simulations & Certification:** room-lead scenario authoring, role assignment, attempts, human review, time-bounded certification, remediation state, and immutable assessment events.
