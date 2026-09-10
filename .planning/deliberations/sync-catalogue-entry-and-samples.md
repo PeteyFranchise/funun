@@ -4,6 +4,59 @@
 **Supersedes:** the tri-state question in `tri-state-rights-mapping.md` (2026-09-09), which
 asked the wrong question. Kept for its data mapping, which remains accurate.
 **Unblocks:** Phase 22 · plan 22-05.
+**Corrected 2026-09-10** — see "Two corrections" below. One factual premise in the original
+draft was wrong; the decisions survive it.
+
+---
+
+## Two corrections (2026-09-10)
+
+### 1. The tri-state IS computed. The earlier draft said it was not.
+
+This document was written on the premise that "partial rights" was a label nobody had built
+yet. **That is wrong.** `rightsBadge()` in `lib/sync-library/gate.ts` has computed the
+tri-state since Phase 30-01, `RIGHTS_BADGE_TO_CATALOG_RIGHTS` maps it to the catalogue's
+`'ok' | 'part' | 'req'` code, and `catalogRightsFromStage3()` in `lib/deals/catalog.ts`
+composes the two. The buyer Crate has been rendering all three since 22-02.
+
+**The decisions above survive the correction, but the reason changes.** "Partial rights" is
+not an unbuilt label — it is a **computed state the entry gate makes unreachable for a
+buyer**. Given every required document signed and every owner authorized, `rightsBadge()`
+cannot return `'partial'` for anything a buyer can see: `requiredComplete === 0` is gated
+out, and "some but not all required docs" is gated out. `'contact'` remains reachable only
+through `sampleBlock`.
+
+So the change is **unreachable, not wrong** — which is a materially different instruction:
+
+- **Do NOT delete `'partial'` from the engine.** `rightsBadge()` returns three states and
+  must keep returning three. Staff Crate review (30-08 `READINESS_STATUS_LABEL`,
+  `needs_completion` / `pending_admit`) legitimately needs `'partial'` to describe a
+  part-way submission that has not been admitted.
+- **Only the BUYER surfaces stop advertising it** — the help page definition, the Rights
+  filter option, and the public sample fixture. `RIGHTS_LABEL` and `RIGHTS_FILTER_LABEL`
+  stay exhaustive over `CatalogRights` so a legacy row still renders a real label.
+
+Shipped 2026-09-10, quick `260910-buyer-rights-two-states`, with a mutation-tested drift
+guard (`__tests__/buyer-rights-two-states.test.ts`) on exactly this distinction.
+
+### 2. Unlocking is not listing. There are THREE steps, not two.
+
+The draft below conflates "the artist unlocks eligibility" with "the song is in the
+catalogue". **Owner clarification:**
+
+1. **The artist unlocks eligibility** by completing the six sync requirements and securing
+   every owner's licensing authorization. This is the gamified readiness experience — the
+   artist's own work.
+2. **The artist submits** the song for consideration. Eligible is not the same as offered;
+   the artist still chooses.
+3. **A Funūn team member admits it to The Crate.** Nothing reaches a buyer without a human
+   admit decision. This is the curation step, and it is what makes "being listed is the
+   guarantee" true.
+
+**Owner's point about invites:** a Funūn invite to a named opportunity gives the artist a
+concrete reason to finish the gate quickly. An abstract checklist gets deferred; "this brief
+is open and your song qualifies once the split sheet is signed" does not. The invite is the
+forcing function that converts eligibility work from housekeeping into a deadline.
 
 ---
 
@@ -113,10 +166,11 @@ agreed to anything. The honest label above is what makes that survivable.
 - **22-05 is unblocked.** The catalogue query filters on the six entry requirements plus
   all-owners-authorized. `isRightsReady()` in `lib/deals/catalog.ts` is already the single named
   home for this definition — deliberately not a flag column — so the change has one site.
-- **Two states, not three.** Listed-and-licensable, and listed-with-a-sample. "Partial rights"
-  as a distinct state has no remaining condition to express; the UI in
-  `components/buyer/CatalogBrowserLight.tsx` and the copy in `app/help/page.tsx` both need
-  revisiting to match.
+- **Two states for the BUYER, three in the engine.** The buyer sees
+  listed-and-licensable, or listed-with-a-sample. "Partial rights" has no remaining
+  condition a buyer can reach — but it is still computed, and staff review still needs it
+  (correction 1 above). `components/buyer/CatalogBrowserLight.tsx` and `app/help/page.tsx`
+  stopped advertising it on 2026-09-10; `rightsBadge()` was deliberately left untouched.
 - **No schema change and no migration** is implied by any decision above. Every condition is
   already computed by `computeStage3()` and the readiness item registry.
 - **Aggregate interest in uncleerable tracks must be captured** — see Phase 39 in the roadmap.
