@@ -176,3 +176,62 @@ agreed to anything. The honest label above is what makes that survivable.
 - **Aggregate interest in uncleerable tracks must be captured** — see Phase 39 in the roadmap.
   If six supervisors save the same sampled track, that is a commissioned original with proven
   demand behind it, not six dead ends. Left to individual conversations, that signal evaporates.
+
+---
+
+# DECIDED 2026-09-09 — how "all owners authorized" is satisfied
+
+The entry gate requires every owner to authorize licensing before a song is listed. **No such
+record existed.** Verified: `sync_listings` carries one `artist_user_id` and one
+`blanket_agreement_document_id`; `mint-agreement.ts` renders for a single artist, sign-once;
+split-sheet writers are `{ name, role, pro, ipi?, email?, split }` with **no Funūn user id** and
+an optional email.
+
+Option A — treating a signed split sheet as sufficient — was **rejected**. Agreeing to a 25%
+split is not agreeing to license to a car commercial; inferring consent from a different
+document is the version that costs you in a dispute.
+
+## The model: B preferred, C as the fallback
+
+**B is the goal.** A co-owner who is on Funūn signs their own blanket agreement, once, and is
+done. This is the preferred path because it brings co-writers onto the platform — and given
+Funūn is invite-gated, a co-written song is a warm introduction to a writer who already has a
+reason to be here.
+
+**C is the escape hatch.** A co-owner who will not or cannot join signs a **per-song licensing
+authorization** sent by email. This reuses the machinery that already sends split sheets to
+co-writers for e-signature, so it works with people who are not users.
+
+**Why both, rather than one:** B alone means a song stays dark until every co-writer signs up —
+trading catalogue supply for user growth. C alone gets the authorization but never brings the
+writer onto the platform. Together, the default brings people in and the fallback stops adoption
+from blocking supply.
+
+Both paths answer the same question: **has every writer on this song's split sheet authorized
+this song?**
+
+## Required change for B: the blanket agreement's scope
+
+The agreement text currently reads *"it covers each Song the Artist submits to and that Funūn
+admits into the Sync Library"*. A co-writer signing that authorizes songs **they** submit — not
+the song their collaborator submitted, which is the case that matters.
+
+**The scope must cover songs the artist holds a share in, whoever submits them.** One clause.
+Without it, B does not actually authorize anything and the whole model rests on C.
+
+## What this costs
+
+- **B:** the agreement scope clause above, plus resolving a split-sheet writer to a Funūn account.
+  Composer email is OPTIONAL today, so matching is best-effort and the fallback carries the rest.
+- **C:** one new `vault_documents.type` value. `vault_documents.type` is CHECK-constrained, so
+  that is a **human-gated migration** — small, but a migration. E-sign signers ride
+  `document_data.esign` (JSONB) and need no schema change.
+- **Neither** requires a new table.
+
+## Open, smaller
+
+- Does an authorization request to a non-user co-writer also mint a Funūn invite (`artist_invites`
+  / `collaborator_invites` already carry token machinery)? Making the signing moment an on-ramp
+  is how B grows over time — but it must be an OFFER, not a toll gate, or C stops being a
+  fallback and the supply problem returns.
+- What happens to an already-listed song when a co-owner withdraws authorization.
