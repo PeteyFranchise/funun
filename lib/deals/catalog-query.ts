@@ -192,17 +192,31 @@ export async function loadCatalogPage(
   // at least one ADMITTED song, mapped onto each project before the
   // isRightsReady gate runs below — replaces the removed `.eq('is_public',
   // true)` membership filter above.
+  //
+  // 2026-09-10 (defect 4): this query also selects `track_id`. Admission is
+  // SONG-level — staff admit one track, not a project — and the card the
+  // buyer reads has to describe THAT song. See admittedTrackIdsByProject
+  // below and its use at the representative-track choice.
   const { data: admittedRows } = await service
     .from('sync_listings')
-    .select('vault_project_id')
+    .select('vault_project_id, track_id')
     .eq('status', 'admitted')
     .in(
       'vault_project_id',
       projects.map(p => p.id)
     )
-  const admittedProjectIds = new Set(
-    ((admittedRows ?? []) as { vault_project_id: string }[]).map(r => r.vault_project_id)
-  )
+  const admittedListingRows = (admittedRows ?? []) as {
+    vault_project_id: string
+    track_id: string | null
+  }[]
+  const admittedProjectIds = new Set(admittedListingRows.map(r => r.vault_project_id))
+  const admittedTrackIdsByProject = new Map<string, Set<string>>()
+  for (const r of admittedListingRows) {
+    if (!r.track_id) continue
+    const set = admittedTrackIdsByProject.get(r.vault_project_id) ?? new Set<string>()
+    set.add(r.track_id)
+    admittedTrackIdsByProject.set(r.vault_project_id, set)
+  }
 
   // 30-08: staff-layer batch — ONE additional batched query, scoped to this
   // page's project ids, run ONLY when staffMode is a server-resolved role.
@@ -325,12 +339,38 @@ export async function loadCatalogPage(
     if (!projectMatchesDescriptors(tracks, filter)) continue
     if (!projectMatchesUsageCleared(preclearedProjectIds.has(project.id), filter)) continue
 
-    // 30-07: enriched display fields — the representative track is the
-    // FIRST track carrying confirmed descriptors (readDescriptors non-null),
-    // falling back to the project's first track (blank display) when none
-    // of its tracks are tagged yet. rights reuses the SAME stage3 already
-    // computed above for the isRightsReady gate — never recomputed.
-    const representativeTrack = tracks.find(t => readDescriptors(t.metadata) != null) ?? tracks[0]
+    // ─── The representative track (2026-09-10, defect 4) ────────────────
+    // This is the song whose mood/energy/vocal/instruments the buyer reads
+    // on the card, and — via repListing below — whose staff readiness label
+    // and notes are shown.
+    //
+    // It used to be `tracks.find(t => readDescriptors(t.metadata) != null)`:
+    // chosen purely by which track happened to be TAGGED, with no relation
+    // to which track was actually ADMITTED. On a multi-track project that
+    // shows a buyer one song's descriptors for a project admitted on a
+    // DIFFERENT song — the card says "sparse, ambient, no vocal" about a
+    // recording nobody may license. Admission is song-level (26-06); the
+    // card must follow admission, not tagging.
+    //
+    // Order of preference, most specific first:
+    //   1. an ADMITTED track that is also descriptor-tagged — correct AND
+    //      it has something to display;
+    //   2. any ADMITTED track — correct, even if it renders blank
+    //      descriptors. A blank field is honest; another song's data is not;
+    //   3. the pre-2026-09-10 rule (first tagged track, else the first
+    //      track). Reached only when NO admitted track id resolves against
+    //      this project's rows — a listing whose track_id is null, or a
+    //      track that has since been deleted from the project. The gate
+    //      above has already established the project IS admitted, so
+    //      returning no card at all would hide a listed song over a display
+    //      detail; the old behaviour is the safer fallback.
+    const admittedTrackIds = admittedTrackIdsByProject.get(project.id) ?? new Set<string>()
+    const admittedTracks = tracks.filter(t => admittedTrackIds.has(t.id))
+    const representativeTrack =
+      admittedTracks.find(t => readDescriptors(t.metadata) != null) ??
+      admittedTracks[0] ??
+      tracks.find(t => readDescriptors(t.metadata) != null) ??
+      tracks[0]
     const display = representativeTrack
       ? descriptorsToDisplay(representativeTrack)
       : { mood: '', energy: '', vocal: '', instruments: [] }
@@ -372,6 +412,12 @@ export async function loadCatalogPage(
             isrc: representativeTrack.isrc,
             iswc: representativeTrack.iswc,
             metadata: representativeTrack.metadata,
+            // 2026-09-10 (defect 1): without these the hire_right item reads
+            // 'missing' on a self-produced recording, and this staff label
+            // would say needs_completion for a song the buyer gate admits.
+            producers: representativeTrack.producers,
+            mixing_engineer: representativeTrack.mixing_engineer,
+            mastering_engineer: representativeTrack.mastering_engineer,
           },
           assets: project.vault_assets ?? [],
           documents: project.vault_documents ?? [],

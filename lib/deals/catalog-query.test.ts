@@ -88,14 +88,24 @@ function projectRow(overrides: Record<string, unknown> = {}) {
 // admittedProjectIds defaults to the id of every project row passed in —
 // tests that want to exercise the NOT-admitted branch pass an explicit
 // (possibly empty) list.
+//
+// 2026-09-10: a caller may pass `{ id, trackId }` instead of a bare project
+// id, because the admitted-listings query now also selects `track_id` —
+// admission is SONG-level, and the card must describe the admitted song.
+// A bare id still yields `track_id: null`, which is exactly the "no admitted
+// track resolves" shape the fallback path handles.
 function makeService(
   projects: unknown[],
   ownerRows: unknown[],
-  admittedProjectIds?: string[]
+  admittedProjectIds?: (string | { id: string; trackId: string })[]
 ) {
   const admitted = (
     admittedProjectIds ?? (projects as { id: string }[]).map(p => p.id)
-  ).map(id => ({ vault_project_id: id }))
+  ).map(entry =>
+    typeof entry === 'string'
+      ? { vault_project_id: entry, track_id: null }
+      : { vault_project_id: entry.id, track_id: entry.trackId }
+  )
 
   return {
     from: jest.fn((table: string) => {
@@ -227,6 +237,113 @@ describe('loadCatalogPage — the six-item entry gate, not the aggregate score',
     const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
 
     expect(result.data).toEqual([])
+  })
+})
+
+// ─── The representative track follows ADMISSION (2026-09-10, defect 4) ───
+// The card's mood/energy/vocal/instruments used to come from
+// `tracks.find(t => readDescriptors(t.metadata) != null) ?? tracks[0]` —
+// whichever track happened to be TAGGED, chosen with no reference to which
+// track staff actually admitted. On a multi-track project that shows a
+// buyer one song's descriptors for a project admitted on a different song.
+describe('loadCatalogPage — the card describes the ADMITTED track', () => {
+  // Two tagged tracks. The OLD rule picks track-a (first tagged); the
+  // admitted song is track-b. If the card carries track-a's data, a
+  // supervisor is reading the wrong song.
+  const TRACK_A = {
+    ...ENTRY_COMPLETE_TRACKS[0],
+    id: 'track-a',
+    title: 'Not The Admitted Song',
+    metadata: {
+      ...ENTRY_COMPLETE_TRACKS[0].metadata,
+      descriptors: { moods: ['peaceful'], energy: 'low', vocal: 'instrumental' },
+    },
+  }
+  const TRACK_B = {
+    ...ENTRY_COMPLETE_TRACKS[0],
+    id: 'track-b',
+    title: 'The Admitted Song',
+    metadata: {
+      ...ENTRY_COMPLETE_TRACKS[0].metadata,
+      descriptors: { moods: ['driving'], energy: 'high', vocal: 'vocal' },
+    },
+  }
+
+  it('carries the admitted track\'s descriptors, not the first tagged track\'s', async () => {
+    const project = projectRow({ tracks: [TRACK_A, TRACK_B] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [{ id: 'proj-1', trackId: 'track-b' }]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].mood).toBe('Driving')
+    expect(result.data[0].energy).toBe('High energy')
+    expect(result.data[0].vocal).toBe('Vocal')
+
+    // The OLD rule's answer, spelled out so this test cannot pass by
+    // accident if the fixtures are ever made identical.
+    expect(TRACK_A.metadata.descriptors.energy).toBe('low')
+    expect(result.data[0].energy).not.toBe('Low energy')
+  })
+
+  it('prefers an admitted track that is TAGGED over an admitted track that is not', async () => {
+    // Composers intact (so the entry gate still passes) but NO descriptors.
+    const untaggedAdmitted = { ...ENTRY_COMPLETE_TRACKS[0], id: 'track-c' }
+    const project = projectRow({ tracks: [untaggedAdmitted, TRACK_B] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      // BOTH tracks admitted; only one has anything to display.
+      [
+        { id: 'proj-1', trackId: 'track-c' },
+        { id: 'proj-1', trackId: 'track-b' },
+      ]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data[0].mood).toBe('Driving')
+  })
+
+  it('shows an admitted track\'s BLANK descriptors rather than another song\'s', async () => {
+    // The admitted song is untagged. A blank field is honest; borrowing
+    // track-a's mood would not be.
+    // Composers intact (so the entry gate still passes) but NO descriptors.
+    const untaggedAdmitted = { ...ENTRY_COMPLETE_TRACKS[0], id: 'track-c' }
+    const project = projectRow({ tracks: [TRACK_A, untaggedAdmitted] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      [{ id: 'proj-1', trackId: 'track-c' }]
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].mood).toBe('')
+    expect(result.data[0].energy).toBe('')
+  })
+
+  it('falls back to the first tagged track when NO admitted track id resolves', async () => {
+    // A listing whose track_id is null, or whose track has since been
+    // deleted from the project. The gate has already established the
+    // project IS admitted, so the card still renders — hiding a listed song
+    // over a display detail would be worse than the old behaviour.
+    const project = projectRow({ tracks: [TRACK_A, TRACK_B] })
+    const service = makeService(
+      [project],
+      [{ id: 'owner-1', profile_visibility: 'public' }],
+      ['proj-1'] // bare id -> track_id null
+    )
+
+    const result = await loadCatalogPage(service as never, null, BASE_FILTER, 1)
+
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].mood).toBe('Peaceful')
   })
 })
 
