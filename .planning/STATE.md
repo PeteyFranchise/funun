@@ -6,15 +6,15 @@ current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
 stopped_at: Phase 39 UI-SPEC verified
-last_updated: "2026-09-12T18:20:57.365Z"
+last_updated: "2026-09-12T18:22:18.921Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 46
+  total_phases: 47
   completed_phases: 36
   total_plans: 312
   completed_plans: 308
-  percent: 78
+  percent: 77
 ---
 
 # Project State
@@ -451,6 +451,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 - Roadmap/folder reconcile (2026-08-13): materialized empty phase folders for the two scoped-but-unbuilt headings — Phase 29 (Self-Serve Flat-Price Sync) and Phase 31 (AE Client Workspace + Selects) — so folders match ROADMAP headings 8–31. Required because `phase.add` numbers by folder (max was 30) and first collided at 31; with 29/31 materialized it correctly assigned 32. The auto-inserted heading landed mid-roadmap (stale "current milestone" = Green Room) and was relocated to the end after Phase 31.
 - Phase 33 added (2026-08-17): **The Playbook shell + IT Team monitoring dashboard (read-only v1)** — appended to the roadmap tail via `/gsd-phase`; folder `.planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/`. Read-only reading shell (double-sidebar Playbook nav + IT room + live single-pane Monitoring Dashboard, rendering the existing docs/observability/ docs); in-app authoring/RBAC-editing + Observability Dashboard v2 (live metrics) deferred to follow-ons. Design refs in `docs/design/`. Next: `/gsd-discuss-phase 33`.
 - Phase 39 added: Writer's Room — the take as a real review surface (real waveform peaks, range comments, private pins, keyboard shortcuts, playback speed)
+- Phase 40 added: Writer's Room — DAW marker export (Audition, Audacity, CSV); promoted from 39-CONTEXT.md deferred ideas at owner request
 
 ### Decisions
 
