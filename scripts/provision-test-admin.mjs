@@ -6,10 +6,12 @@
 // promotes an existing user, idempotently.
 //
 // Usage:
-//   node scripts/provision-test-admin.mjs --email admin-test@example.com [--password <pw>] [--demote]
+//   FUNUN_TEST_ADMIN_PASSWORD='<password>' node scripts/provision-test-admin.mjs \
+//     --email admin-test@example.com [--demote]
 //
 // Env (read from your shell or `.env.local` — NEVER hardcoded here):
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+//   FUNUN_TEST_ADMIN_PASSWORD (optional; use the reset-password flow when omitted)
 //   Tip: set -a; source .env.local; set +a; node scripts/provision-test-admin.mjs --email ...
 //
 // Safety: run this against a development/test project. Promoting real
@@ -24,15 +26,16 @@ function arg(name) {
 }
 const email = arg('email')
 const demote = args.includes('--demote')
-let password = arg('password')
+let password = process.env.FUNUN_TEST_ADMIN_PASSWORD ?? null
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!email || !url || !serviceKey) {
   console.error(
-    'Usage: node scripts/provision-test-admin.mjs --email <email> [--password <pw>] [--demote]\n' +
+    'Usage: node scripts/provision-test-admin.mjs --email <email> [--demote]\n' +
       'Requires env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY\n' +
+      'Optional env: FUNUN_TEST_ADMIN_PASSWORD\n' +
       '(e.g. `set -a; source .env.local; set +a` first)'
   )
   process.exit(1)
@@ -96,8 +99,9 @@ if (existing) {
   if (!res.ok) throw new Error(`Create failed: ${res.status} ${await res.text()}`)
   const user = await res.json()
   console.log(`Created admin test user ${email} (${user.id}) — is_admin=true`)
-  console.log(`Password: ${password}`)
-  console.log('Store it in your password manager; this is the only time it is printed.')
+  if (!process.env.FUNUN_TEST_ADMIN_PASSWORD) {
+    console.log('Use the Funūn forgot-password flow to choose the account password.')
+  }
 }
 
 console.log('\nVerify: sign in at /signin, then /admin/green-room-placements should render (non-admins are redirected).')

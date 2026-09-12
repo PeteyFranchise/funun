@@ -2,6 +2,21 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const CLAIM_ORIGIN_HOSTS = new Set(['funun.studio', 'www.funun.studio'])
+
+function trustedClaimEndpoint(): string | null {
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (!configured) return null
+
+  try {
+    const base = new URL(configured)
+    if (base.protocol !== 'https:' || !CLAIM_ORIGIN_HOSTS.has(base.hostname)) return null
+    return new URL('/api/claim-collaborators', base).toString()
+  } catch {
+    return null
+  }
+}
+
 export async function middleware(req: NextRequest) {
   // Per-request nonce: Next reads the CSP from the forwarded request headers
   // and applies this nonce to its framework/runtime scripts. Keeping CSP here
@@ -107,12 +122,15 @@ export async function middleware(req: NextRequest) {
       // Fire-and-forget — non-blocking; retries on next navigation if it fails.
       // Cookie header is forwarded so the API route can re-validate the session
       // server-side. User id is never passed in a custom header (T-04-01).
-      fetch(`${req.nextUrl.origin}/api/claim-collaborators`, {
-        method: 'POST',
-        headers: { cookie: req.headers.get('cookie') ?? '' },
-      }).catch(() => {
-        // Non-blocking — will retry on next navigation
-      })
+      const claimEndpoint = trustedClaimEndpoint()
+      if (claimEndpoint) {
+        fetch(claimEndpoint, {
+          method: 'POST',
+          headers: { cookie: req.headers.get('cookie') ?? '' },
+        }).catch(() => {
+          // Non-blocking — will retry on next navigation
+        })
+      }
     }
   }
 
