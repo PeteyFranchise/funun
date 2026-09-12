@@ -11,7 +11,10 @@ describe('migration 216 atomic e-sign mint claims', () => {
     expect(sql).toContain('HUMAN-GATED')
     expect(sql).toContain('ALTER TABLE public.esign_mint_claims ENABLE ROW LEVEL SECURITY')
     expect(sql).toContain(
-      'REVOKE ALL ON public.esign_mint_claims FROM PUBLIC, anon, authenticated'
+      'REVOKE ALL ON public.esign_mint_claims FROM PUBLIC, anon, authenticated, service_role'
+    )
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON public.esign_mint_claims TO service_role'
     )
     expect(sql).toContain(
       'PRIMARY KEY (instrument_kind, subject_id)'

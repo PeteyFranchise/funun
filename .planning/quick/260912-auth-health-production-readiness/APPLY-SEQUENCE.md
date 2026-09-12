@@ -1,6 +1,7 @@
 # Migration 218 owner apply sequence
 
-Migration 218 remains human-gated. Do not run this sequence without Peter's explicit approval and a production verification window.
+Migration 218 was human-approved, applied, and structurally verified on
+2026-09-12. Retain this sequence as the release record and recovery reference.
 
 ## Candidate
 

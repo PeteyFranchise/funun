@@ -46,7 +46,7 @@ WITH expected_columns(column_name) AS (
   UNION ALL
   SELECT 50, '218', 'Service table privileges are insert and select only',
          COALESCE((
-           SELECT array_agg(privilege_type ORDER BY privilege_type)
+           SELECT array_agg(privilege_type::text ORDER BY privilege_type::text)
            FROM information_schema.role_table_grants
            WHERE table_schema = 'public'
              AND table_name = 'auth_diagnostic_events'
@@ -62,13 +62,26 @@ WITH expected_columns(column_name) AS (
              AND p.proname = 'prune_auth_diagnostic_events'
              AND p.pronargs = 0
              AND p.prosecdef
-             AND p.proconfig = ARRAY['search_path=']::text[]
+             AND EXISTS (
+               SELECT 1
+                 FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg(value)
+                WHERE cfg.value IN ('search_path=', 'search_path=""')
+             )
          ),
          true, 'SECURITY DEFINER with an empty search path is required.'
   UNION ALL
   SELECT 70, '218', 'Retention function is service-only',
          to_regprocedure('public.prune_auth_diagnostic_events()') IS NOT NULL
-           AND NOT has_function_privilege('PUBLIC', 'public.prune_auth_diagnostic_events()', 'EXECUTE')
+           AND NOT EXISTS (
+             SELECT 1
+               FROM pg_catalog.pg_proc p
+               CROSS JOIN LATERAL pg_catalog.aclexplode(
+                 COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+               ) AS acl
+              WHERE p.oid = to_regprocedure('public.prune_auth_diagnostic_events()')
+                AND acl.grantee = 0
+                AND acl.privilege_type = 'EXECUTE'
+           )
            AND NOT has_function_privilege('anon', 'public.prune_auth_diagnostic_events()', 'EXECUTE')
            AND NOT has_function_privilege('authenticated', 'public.prune_auth_diagnostic_events()', 'EXECUTE')
            AND has_function_privilege('service_role', 'public.prune_auth_diagnostic_events()', 'EXECUTE'),

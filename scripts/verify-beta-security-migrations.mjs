@@ -138,7 +138,7 @@ if (!probeSql['PRE-APPLY-GATE.sql'].includes('GROUP BY user_id HAVING count(*) >
 if (!probeSql['POST-APPLY-VERIFY.sql'].includes("a.grantee = 0 OR r.rolname IN ('anon', 'authenticated')")) {
   fail('Post-apply verifier no longer inspects PUBLIC/anon/authenticated function ACLs')
 }
-if (!probeSql['POST-APPLY-VERIFY.sql'].includes("ARRAY['search_path=']::text[]")) {
+if (!probeSql['POST-APPLY-VERIFY.sql'].includes("WHERE cfg.value IN ('search_path=', 'search_path=\"\"')")) {
   fail('Post-apply verifier no longer proves empty definer search paths')
 }
 if (!probeSql['FAILED-APPLY-CHECK.sql'].includes('PARTIAL_OR_LEDGER_MISMATCH')) {
@@ -221,7 +221,7 @@ for (const [file, sql] of Object.entries(authProbes)) {
   }
   if (!sql.includes("'218'")) fail(`Auth Health ${file} does not account for migration 218`)
 }
-if (!authProbes['POST-APPLY-VERIFY.sql'].includes("ARRAY['search_path=']::text[]")) {
+if (!authProbes['POST-APPLY-VERIFY.sql'].includes("WHERE cfg.value IN ('search_path=', 'search_path=\"\"')")) {
   fail('Auth Health post-apply verifier no longer proves an empty definer search path')
 }
 if (!authProbes['POST-APPLY-VERIFY.sql'].includes("grantee IN ('PUBLIC', 'anon', 'authenticated')")) {

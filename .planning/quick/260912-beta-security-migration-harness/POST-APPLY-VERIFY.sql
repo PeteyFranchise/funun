@@ -51,6 +51,16 @@ checks(ord, migration, check_name, ok, blocking, detail) AS (
          ),
          true, 'PUBLIC, anon, and authenticated must hold no table privilege.'
   UNION ALL
+  SELECT 35, '214', 'Verified-claim ledger is append-only to service_role',
+         COALESCE((
+           SELECT array_agg(g.privilege_type::text ORDER BY g.privilege_type::text)
+             FROM information_schema.role_table_grants g
+            WHERE g.table_schema = 'public'
+              AND g.table_name = 'verified_signup_invite_claims'
+              AND g.grantee = 'service_role'
+         ), ARRAY[]::text[]) = ARRAY['INSERT', 'SELECT']::text[],
+         true, 'service_role must hold INSERT and SELECT only.'
+  UNION ALL
   SELECT 40, '215', 'Checkout columns exist with expected types',
          NOT EXISTS (
            SELECT 1 FROM target_columns t
@@ -89,6 +99,16 @@ checks(ord, migration, check_name, ok, blocking, detail) AS (
          ),
          true, 'PUBLIC, anon, and authenticated must hold no table privilege.'
   UNION ALL
+  SELECT 75, '216', 'E-sign claim ledger has only required service privileges',
+         COALESCE((
+           SELECT array_agg(g.privilege_type::text ORDER BY g.privilege_type::text)
+             FROM information_schema.role_table_grants g
+            WHERE g.table_schema = 'public'
+              AND g.table_name = 'esign_mint_claims'
+              AND g.grantee = 'service_role'
+         ), ARRAY[]::text[]) = ARRAY['DELETE', 'INSERT', 'SELECT', 'UPDATE']::text[],
+         true, 'service_role must not inherit REFERENCES, TRIGGER, or TRUNCATE.'
+  UNION ALL
   SELECT 80, '216', 'Both e-sign uniqueness barriers exist',
          EXISTS (
            SELECT 1 FROM pg_catalog.pg_index i
@@ -116,7 +136,11 @@ checks(ord, migration, check_name, ok, blocking, detail) AS (
            LEFT JOIN pg_catalog.pg_proc p ON p.oid = f.oid
             WHERE f.oid IS NULL
                OR NOT p.prosecdef
-               OR NOT (COALESCE(p.proconfig, ARRAY[]::text[]) @> ARRAY['search_path=']::text[])
+               OR NOT EXISTS (
+                 SELECT 1
+                   FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg(value)
+                  WHERE cfg.value IN ('search_path=', 'search_path=""')
+               )
          ),
          true, 'SECURITY DEFINER and exact empty search_path are required.'
   UNION ALL

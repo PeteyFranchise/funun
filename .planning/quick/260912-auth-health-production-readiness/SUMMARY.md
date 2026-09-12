@@ -2,7 +2,8 @@
 
 ## Completed
 
-- Kept migration 218 human-gated and unapplied.
+- Kept migration 218 human-gated and unapplied during implementation; it was
+  later applied only in the owner-approved production window recorded below.
 - Added a hardened `prune_auth_diagnostic_events()` definer with an empty search path, an exact 30-day boundary, and execute permission restricted to `service_role`.
 - Removed direct diagnostic-table deletion permission and per-sign-in cleanup work; service access is now insert/select only.
 - Added a protected daily retention route that fails closed on authentication, returns stable errors, and safely reports inactive before migration 218 exists.
@@ -22,7 +23,13 @@
 - Diff integrity: passed.
 - Production bundle: passed. The initial sandboxed run exposed blocked DNS access to `fonts.googleapis.com`; a clean network-enabled build completed successfully after the repository's unusually long local compile. Next emitted only the existing Supabase Edge-runtime compatibility warning and webpack cache-size performance warnings.
 
-## Production state
+## Production state — updated 2026-09-12
 
-- Migration 218 was not applied, repaired, pushed, or registered.
-- No commit, push, or deployment was performed as part of this build.
+- The application package was committed, merged, and deployed before the
+  database window.
+- Migration 218 passed its four-row production preflight and exact dry run.
+- Migration 218 was applied through `supabase db push`, registered by the CLI,
+  and passed every row of the hardened post-apply verifier.
+- The final ledger showed local and remote version 218 aligned.
+- Live Auth Health console, cron-route, accessibility, and support-reference
+  behavior checks remain deferred to `HUMAN-TESTING-TODO.md`.
