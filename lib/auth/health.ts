@@ -15,6 +15,12 @@ export type AuthHealthData = {
   events: AuthHealthEvent[]
 }
 
+export type AuthHealthFilters = {
+  period: '24h' | '7d'
+  eventCode: string | 'all'
+  workspaceIntent: AuthHealthEvent['workspace_intent'] | 'all'
+}
+
 export async function loadAuthHealth(
   service: SupabaseClient,
   now = Date.now()
@@ -33,6 +39,25 @@ export async function loadAuthHealth(
   } catch {
     return { activated: false, events: [] }
   }
+}
+
+export function filterAuthHealthEvents(
+  events: AuthHealthEvent[],
+  filters: AuthHealthFilters,
+  now = Date.now()
+) {
+  const windowMs = filters.period === '24h' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+  const cutoff = now - windowMs
+
+  return events.filter(event => {
+    const createdAt = Date.parse(event.created_at)
+    if (!Number.isFinite(createdAt) || createdAt < cutoff || createdAt > now) return false
+    if (filters.eventCode !== 'all' && event.event_code !== filters.eventCode) return false
+    if (filters.workspaceIntent !== 'all' && event.workspace_intent !== filters.workspaceIntent) {
+      return false
+    }
+    return true
+  })
 }
 
 export function summarizeAuthHealth(events: AuthHealthEvent[], now = Date.now()) {

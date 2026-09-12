@@ -1,4 +1,8 @@
-import { summarizeAuthHealth, type AuthHealthEvent } from '@/lib/auth/health'
+import {
+  filterAuthHealthEvents,
+  summarizeAuthHealth,
+  type AuthHealthEvent,
+} from '@/lib/auth/health'
 
 const now = Date.parse('2026-09-12T12:00:00.000Z')
 const events: AuthHealthEvent[] = [
@@ -31,5 +35,30 @@ describe('auth health summary', () => {
       topSurface: 'signin',
       byEvent: [['sign_in_failed', 2]],
     })
+  })
+
+  it('filters by bounded time window, event code, and workspace intent', () => {
+    expect(filterAuthHealthEvents(events, {
+      period: '24h',
+      eventCode: 'sign_in_failed',
+      workspaceIntent: 'personal',
+    }, now)).toEqual([events[0]])
+
+    expect(filterAuthHealthEvents(events, {
+      period: '7d',
+      eventCode: 'all',
+      workspaceIntent: null,
+    }, now)).toEqual([events[1]])
+  })
+
+  it('excludes invalid and future timestamps from operational filters', () => {
+    expect(filterAuthHealthEvents([
+      { ...events[0], created_at: 'not-a-date' },
+      { ...events[0], created_at: '2026-09-12T13:00:00.000Z' },
+    ], {
+      period: '7d',
+      eventCode: 'all',
+      workspaceIntent: 'all',
+    }, now)).toEqual([])
   })
 })

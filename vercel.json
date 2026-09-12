@@ -5,6 +5,7 @@
     { "path": "/api/cron/playbook-review-reminders", "schedule": "0 14 * * *" },
     { "path": "/api/cron/playbook-reading-reminders", "schedule": "0 13 * * *" },
     { "path": "/api/cron/cleanup-rate-limits", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/auth-diagnostics-retention", "schedule": "30 4 * * *" },
     { "path": "/api/cron/process-jobs", "schedule": "* * * * *" }
   ]
 }

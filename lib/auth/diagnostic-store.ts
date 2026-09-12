@@ -22,11 +22,6 @@ export async function recordAuthDiagnosticEvent(
       runtime: parsed.data.runtime,
     })
     if (error) return false
-
-    // Bounded retention is best-effort and never allowed to interfere with the
-    // authentication flow this telemetry exists to observe.
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-    await service.from('auth_diagnostic_events').delete().lt('created_at', cutoff)
     return true
   } catch {
     return false

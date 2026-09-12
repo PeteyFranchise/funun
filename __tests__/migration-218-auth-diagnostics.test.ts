@@ -16,7 +16,14 @@ describe('migration 218 auth diagnostics', () => {
 
   it('revokes all browser grants and grants only the minimum service operations', () => {
     expect(sql).toContain('FROM PUBLIC, anon, authenticated, service_role')
-    expect(sql).toContain('GRANT SELECT, INSERT, DELETE ON TABLE public.auth_diagnostic_events TO service_role')
+    expect(sql).toContain('GRANT SELECT, INSERT ON TABLE public.auth_diagnostic_events TO service_role')
+    expect(sql).not.toContain('GRANT SELECT, INSERT, DELETE ON TABLE public.auth_diagnostic_events TO service_role')
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.prune_auth_diagnostic_events()')
+    expect(sql).toContain('SECURITY DEFINER')
+    expect(sql).toContain("SET search_path = ''")
+    expect(sql).toContain("WHERE created_at < now() - interval '30 days'")
+    expect(sql).toContain('FROM PUBLIC, anon, authenticated, service_role')
+    expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.prune_auth_diagnostic_events()')
     expect(sql).not.toContain('GRANT UPDATE')
   })
 
