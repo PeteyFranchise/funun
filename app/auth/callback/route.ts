@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { User } from '@supabase/supabase-js'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { completeSignupClaim } from '@/lib/invites/completeSignupClaim'
@@ -35,9 +36,32 @@ export async function GET(request: Request) {
     return NextResponse.redirect(failureRedirect)
   }
 
-  const supabase = await createApiClient()
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error) {
+  let supabase: Awaited<ReturnType<typeof createApiClient>>
+  try {
+    supabase = await createApiClient()
+  } catch {
+    return NextResponse.redirect(failureRedirect)
+  }
+
+  async function clearCallbackSession() {
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // The callback is already failing closed. Do not replace the stable
+      // recovery path with an infrastructure error if cleanup also fails.
+    }
+  }
+
+  let user: User
+  try {
+    const result = await supabase.auth.exchangeCodeForSession(code)
+    if (result.error || !result.data.user) {
+      await clearCallbackSession()
+      return NextResponse.redirect(failureRedirect)
+    }
+    user = result.data.user
+  } catch {
+    await clearCallbackSession()
     return NextResponse.redirect(failureRedirect)
   }
 
@@ -45,13 +69,19 @@ export async function GET(request: Request) {
   // invitation/collaborator identity. The RPC independently requires the
   // verified auth.users record and exact signup capability; recovery and
   // ordinary magic-link callbacks simply return completed=false.
-  if (!isRecovery && data.user) {
-    const claim = await completeSignupClaim(createServiceClient(), data.user.id)
-    if (!claim.ok) {
+  if (!isRecovery) {
+    try {
+      const claim = await completeSignupClaim(createServiceClient(), user.id)
+      if (!claim.ok) {
+        await clearCallbackSession()
+        return NextResponse.redirect(`${origin}/signin?error=invite-claim`)
+      }
+    } catch {
+      await clearCallbackSession()
       return NextResponse.redirect(`${origin}/signin?error=invite-claim`)
     }
   }
 
-  const destination = postSignInPath({ user: data.user, next: rawNext })
+  const destination = postSignInPath({ user, next: rawNext })
   return NextResponse.redirect(`${origin}${destination}`)
 }

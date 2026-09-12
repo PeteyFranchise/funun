@@ -30,7 +30,7 @@ describe('verified signup invitation flow', () => {
 
   it('completes claims from the verified auth callback', () => {
     const callback = read('app/auth/callback/route.ts')
-    expect(callback).toContain('completeSignupClaim(createServiceClient(), data.user.id)')
+    expect(callback).toContain('completeSignupClaim(createServiceClient(), user.id)')
     expect(callback).toContain("signin?error=invite-claim")
   })
 })

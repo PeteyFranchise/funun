@@ -34,9 +34,23 @@ describe('Team and Personal account-switch integration', () => {
     expect(signIn).toContain('userId: data.user.id')
   })
 
-  it('clears the tab identity marker during ordinary sign-out', () => {
+  it('clears the tab identity marker only after ordinary sign-out succeeds', () => {
     const signOut = source('components/auth/SignOutButton.tsx')
-    expect(signOut).toContain('clearTabIdentity()')
-    expect(signOut).toContain("signOut({ scope: 'local' })")
+    const providerSignOutAt = signOut.indexOf("signOut({ scope: 'local' })")
+    const clearMarkerAt = signOut.indexOf('clearTabIdentity()')
+
+    expect(providerSignOutAt).toBeGreaterThan(-1)
+    expect(clearMarkerAt).toBeGreaterThan(providerSignOutAt)
+    expect(signOut).toContain("window.location.assign('/signin?error=signout')")
+  })
+
+  it('preserves the account-switch intent and exposes a stable cleanup failure', () => {
+    const accountSwitch = source('components/auth/AccountContextSwitch.tsx')
+    const beginAt = accountSwitch.indexOf('beginAccountSwitch(targetContext)')
+    const signOutAt = accountSwitch.indexOf("signOut({ scope: 'local' })")
+
+    expect(beginAt).toBeGreaterThan(-1)
+    expect(signOutAt).toBeGreaterThan(beginAt)
+    expect(accountSwitch).toContain('error=switch-signout')
   })
 })

@@ -47,8 +47,18 @@ export function AccountContextSwitch({
     beginAccountSwitch(targetContext)
 
     const supabase = createClient()
-    await supabase.auth.signOut({ scope: 'local' })
-    window.location.assign(`/signin?switchTo=${targetContext}`)
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      window.location.assign(
+        error
+          ? `/signin?switchTo=${targetContext}&error=switch-signout`
+          : `/signin?switchTo=${targetContext}`
+      )
+    } catch {
+      window.location.assign(
+        `/signin?switchTo=${targetContext}&error=switch-signout`
+      )
+    }
   }
 
   return (

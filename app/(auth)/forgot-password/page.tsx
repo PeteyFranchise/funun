@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { publicAuthError } from '@/lib/auth/public-errors'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -24,21 +25,28 @@ export default function ForgotPasswordPage() {
     // falls back to the current origin for local dev. The recovery link routes
     // through /auth/callback, which exchanges the code for a session and then
     // forwards to /update-password.
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
-    })
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
+        }
+      )
 
-    if (error) {
-      setError(error.message)
+      if (recoveryError) {
+        setError(publicAuthError('password-recovery', recoveryError))
+        return
+      }
+
+      // Do NOT reveal whether the email is registered — Supabase returns the
+      // same successful result and this page keeps the confirmation neutral.
+      setSent(true)
+    } catch {
+      setError(publicAuthError('password-recovery', null))
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    // Do NOT reveal whether the email is registered — always show the same
-    // confirmation to avoid account enumeration.
-    setSent(true)
-    setSubmitting(false)
   }
 
   if (sent) {

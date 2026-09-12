@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearTabIdentity } from '@/lib/auth/session-identity'
 
@@ -29,14 +28,20 @@ function SignOutIcon({ className = '' }: { className?: string }) {
 }
 
 export function SignOutButton({ appearance = 'text', collapsed = false }: Props) {
-  const router = useRouter()
   const supabase = createClient()
 
   async function signOut() {
-    clearTabIdentity()
-    await supabase.auth.signOut({ scope: 'local' })
-    router.push('/signin')
-    router.refresh()
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) {
+        window.location.assign('/signin?error=signout')
+        return
+      }
+      clearTabIdentity()
+      window.location.assign('/signin')
+    } catch {
+      window.location.assign('/signin?error=signout')
+    }
   }
 
   if (appearance === 'nav') {
