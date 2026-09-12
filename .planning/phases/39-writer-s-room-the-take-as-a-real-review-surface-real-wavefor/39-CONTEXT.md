@@ -34,11 +34,12 @@ credits, splits, rights, approvals, delivery state or membership.
   - The schema already agrees: `work_version_comments`, `work_lyric_block_comments`,
     `idea_comments`. Only user-facing copy drifted.
   - **Fix in this phase.** The copy inventory is larger than first estimated (corrected
-    2026-09-12 during UI research): roughly **27 user-facing strings across three files**, not
-    four across two. `TimedTrackPlayer.tsx` carries the bulk (~12) including the most prominent
-    ones — `"View {n} unresolved notes"` (:342), `"Bring notes forward from…"` (:443),
-    `"Note {n} of {m}"` (:490) and the composer placeholder `"Leave a note at {time}"` (:553) —
-    plus `VersionComparisonPanel.tsx` (~8) and `RecordOverBeatStudio.tsx` (~5).
+    2026-09-12 during UI research): **21 user-facing strings across three files**, not four
+    across two — `TimedTrackPlayer.tsx` (12), `VersionComparisonPanel.tsx` (6),
+    `RecordOverBeatStudio.tsx` (3). The most prominent are in `TimedTrackPlayer.tsx`:
+    `"View {n} unresolved notes"` (:342 — the exact string the 2027 doc singles out),
+    `"Bring notes forward from…"` (:443), `"Note {n} of {m}"` (:490), and the composer
+    placeholder `"Leave a note at {time}"` (:553).
     **The authoritative row-by-row inventory lives in `39-UI-SPEC.md`** — use that, not this
     summary, when doing the rename.
   - **Studio Notes keeps its name.** It is the *surface* where comments gather, not a record
