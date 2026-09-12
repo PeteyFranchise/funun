@@ -12,6 +12,7 @@
     "typecheck:strict": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
     "db:push": "supabase db push",
+    "security:migrations:verify": "node scripts/verify-beta-security-migrations.mjs",
     "break-glass": "tsx scripts/break-glass.ts",
     "playbook:activation-check": "tsx scripts/check-playbook-activation.ts"
   },

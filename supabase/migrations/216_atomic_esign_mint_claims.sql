@@ -5,6 +5,8 @@
 -- behavior must be verified in a sandbox before production enablement.
 -- ============================================================
 
+BEGIN;
+
 CREATE TABLE public.esign_mint_claims (
   instrument_kind TEXT NOT NULL CHECK (instrument_kind IN ('split_sheet', 'blanket_agreement')),
   subject_id UUID NOT NULL,
@@ -21,11 +23,11 @@ ALTER TABLE public.esign_mint_claims ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.esign_mint_claims FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.esign_mint_claims TO service_role;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_esign_envelopes_one_active_per_sheet
+CREATE UNIQUE INDEX idx_esign_envelopes_one_active_per_sheet
   ON public.esign_envelopes (split_sheet_id)
   WHERE status IN ('pending', 'completing');
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_vault_documents_one_blanket_agreement
+CREATE UNIQUE INDEX idx_vault_documents_one_blanket_agreement
   ON public.vault_documents (user_id)
   WHERE type = 'blanket_agreement' AND status IN ('pending', 'signed', 'verified');
 
@@ -176,3 +178,5 @@ GRANT EXECUTE ON FUNCTION public.release_esign_mint_claim(TEXT, UUID, UUID) TO s
 GRANT EXECUTE ON FUNCTION public.complete_esign_mint_claim(TEXT, UUID, UUID, TEXT) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;

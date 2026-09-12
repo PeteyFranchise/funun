@@ -18,7 +18,9 @@
 --   5. Browser roles cannot call the redemption function or read its ledger.
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS public.verified_signup_invite_claims (
+BEGIN;
+
+CREATE TABLE public.verified_signup_invite_claims (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   source      TEXT NOT NULL CHECK (source IN ('artist_invite', 'collaborator_invite')),
@@ -157,6 +159,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
+-- This function is invoked by its auth.users trigger, never as an application
+-- RPC. Keep direct execution unavailable even if an older deployment left the
+-- function's default PUBLIC privilege intact.
+REVOKE ALL ON FUNCTION public.handle_new_user()
+  FROM PUBLIC, anon, authenticated, service_role;
+
 -- Returns true only when the account is verified and either already completed
 -- this claim or atomically consumes its exact pending capability now.
 CREATE OR REPLACE FUNCTION public.complete_verified_signup_claim(
@@ -290,3 +298,5 @@ UPDATE public.user_profiles
    AND id IN (SELECT id FROM auth.users);
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;

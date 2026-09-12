@@ -3,6 +3,8 @@
 -- HUMAN-GATED: owner review and explicit apply required.
 -- ============================================================
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.mutate_playbook_feature_control(
   p_feature_key TEXT,
   p_action TEXT,
@@ -127,3 +129,5 @@ GRANT EXECUTE ON FUNCTION public.mutate_playbook_feature_control(TEXT, TEXT, UUI
 GRANT EXECUTE ON FUNCTION public.open_playbook_incident(UUID, UUID, INTEGER, TEXT, INTEGER, TEXT, UUID, TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION public.change_playbook_incident_status(UUID, UUID, TEXT, TEXT, UUID, TEXT) TO service_role;
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;

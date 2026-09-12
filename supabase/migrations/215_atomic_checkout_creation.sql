@@ -5,12 +5,14 @@
 -- review, apply, and run the accompanying production verifier explicitly.
 -- ============================================================
 
+BEGIN;
+
 ALTER TABLE public.license_requests
-  ADD COLUMN IF NOT EXISTS checkout_claim_token UUID,
-  ADD COLUMN IF NOT EXISTS checkout_claimed_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS checkout_economics_fingerprint TEXT,
-  ADD COLUMN IF NOT EXISTS stripe_checkout_economics_fingerprint TEXT,
-  ADD COLUMN IF NOT EXISTS stripe_checkout_url TEXT;
+  ADD COLUMN checkout_claim_token UUID,
+  ADD COLUMN checkout_claimed_at TIMESTAMPTZ,
+  ADD COLUMN checkout_economics_fingerprint TEXT,
+  ADD COLUMN stripe_checkout_economics_fingerprint TEXT,
+  ADD COLUMN stripe_checkout_url TEXT;
 
 ALTER TABLE public.license_requests
   DROP CONSTRAINT IF EXISTS license_requests_payment_status_check;
@@ -209,3 +211,5 @@ GRANT EXECUTE ON FUNCTION public.release_license_checkout_claim(UUID, UUID) TO s
 GRANT EXECUTE ON FUNCTION public.complete_license_checkout(UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, INTEGER, TEXT) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
