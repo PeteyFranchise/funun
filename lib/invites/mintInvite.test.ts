@@ -105,7 +105,7 @@ describe('mintOrRotateInvite', () => {
       invitedByUserId: 'user-1',
     })
 
-    expect(result).toEqual({ ok: false, error: 'connection failed' })
+    expect(result).toEqual({ ok: false, error: 'Invitation could not be created.' })
   })
 
   it('returns an error when the RPC returns no row and no error', async () => {

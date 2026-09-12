@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('id', id)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!existing) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
 
   const curator = existing as Curator
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .select()
       .maybeSingle()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     return NextResponse.json({ data })
   }
 
@@ -66,7 +66,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .select()
       .maybeSingle()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!data) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
     return NextResponse.json({ data, claimUrl: `/curators/claim/${token}` })
   }
@@ -153,7 +153,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (error.code === '23505') {
       return NextResponse.json({ error: 'A curator with this email already exists' }, { status: 409 })
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!data) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
 
@@ -177,7 +177,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const service = createServiceClient()
   const { data, error } = await service.from('curators').delete().eq('id', id).select('id').maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
 
   return NextResponse.json({ ok: true })

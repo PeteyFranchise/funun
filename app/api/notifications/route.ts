@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   }
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Fresh unread head-count — recomputed on every call (never cached).
   const { count } = await supabase
@@ -70,7 +70,7 @@ export async function PATCH() {
     .update({ read: true })
     .eq('user_id', filter.user_id)
     .eq('read', filter.read)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: { ok: true } })
 }

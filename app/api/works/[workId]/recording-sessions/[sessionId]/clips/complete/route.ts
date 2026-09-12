@@ -74,7 +74,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       }
     }
     await service.storage.from(BUCKET).remove([path])
-    return NextResponse.json({ error: error?.message ?? 'Could not retain the vocal clip.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not retain the vocal clip.' }, { status: 500 })
   }
   return NextResponse.json({ data }, { status: 201 })
 }

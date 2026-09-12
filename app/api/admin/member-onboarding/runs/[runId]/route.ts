@@ -36,7 +36,7 @@ export async function PATCH(
     .eq('id', runId)
     .maybeSingle()
 
-  if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 })
+  if (currentError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!currentData) return NextResponse.json({ error: 'Game plan not found.' }, { status: 404 })
   const current = currentData as MemberGamePlanRun
   if (current.status !== 'open') {
@@ -53,7 +53,7 @@ export async function PATCH(
     items = mergeChecklistUpdates(currentItems.data, parsed.data.items)
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'The checklist changed. Refresh and try again.' },
+      { error: 'The checklist changed. Refresh and try again.' },
       { status: 409 }
     )
   }
@@ -72,7 +72,7 @@ export async function PATCH(
     .select('*')
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'This game plan was changed in another tab.' }, { status: 409 })
   return NextResponse.json({ data: data as MemberGamePlanRun })
 }

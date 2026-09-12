@@ -24,6 +24,6 @@ export async function GET(request: Request) {
     const data = await loadReportsForAdmin(service, parsed.value)
     return NextResponse.json({ data })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to load reports' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load reports' }, { status: 500 })
   }
 }

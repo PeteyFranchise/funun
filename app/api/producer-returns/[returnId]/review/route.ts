@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   })
   const review = Array.isArray(data) ? data[0] : data
   if (error || !review) {
-    return NextResponse.json({ error: error?.message ?? 'Could not save the returned-mix review.' }, { status: 409 })
+    return NextResponse.json({ error: 'Could not save the returned-mix review.' }, { status: 409 })
   }
 
   return NextResponse.json({ data: review })

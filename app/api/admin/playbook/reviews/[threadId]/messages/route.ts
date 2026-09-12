@@ -23,11 +23,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ thr
   const { data: thread, error: threadError } = await service
     .from('playbook_review_threads').select('id, entry_id, room_id, created_by').eq('id', threadId).eq('room_id', room.id).maybeSingle()
   if (isReviewSchemaMissing(threadError)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
-  if (threadError) return NextResponse.json({ error: threadError.message }, { status: 500 })
+  if (threadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!thread) return NextResponse.json({ error: 'Review thread not found in this room' }, { status: 404 })
   const { data: entry, error: entryError } = await service
     .from('playbook_entries').select('author_id, draft_author_id, title').eq('id', thread.entry_id).maybeSingle()
-  if (entryError || !entry) return NextResponse.json({ error: entryError?.message ?? 'Entry not found' }, { status: entryError ? 500 : 404 })
+  if (entryError || !entry) return NextResponse.json({ error: 'Entry not found' }, { status: entryError ? 500 : 404 })
   const { data: messageRows } = await service.from('playbook_review_messages').select('id').eq('thread_id', threadId)
   const messageIds = (messageRows ?? []).map(row => row.id as string)
   const { data: priorMentions } = messageIds.length
@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ thr
     p_mentioned_user_ids: validIds,
   })
   if (isReviewSchemaMissing(error)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   await Promise.all(validIds.map(userId => createNotification(service, {
     userId,
     type: 'playbook_review_mention',

@@ -43,7 +43,7 @@ export async function GET(_request: Request, context: RouteCtx) {
     })
     return NextResponse.json({ data: view })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not load the Song Passport' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not load the Song Passport' }, { status: 500 })
   }
 }
 
@@ -203,7 +203,7 @@ export async function POST(request: Request, routeContext: RouteCtx) {
         label: `Final mix from ${project?.title ?? 'Release Report'}`,
         performers: [],
       }).select('id').single()
-      if (error || !version) throw new Error(error?.message ?? 'Could not attach the final mix')
+      if (error || !version) throw new Error('Could not attach the final mix')
       return NextResponse.json({ data: { versionId: version.id, created: true } }, { status: 201 })
     }
 
@@ -221,7 +221,7 @@ export async function POST(request: Request, routeContext: RouteCtx) {
         details: { evidence: operation.evidence, acknowledged: true },
         actor_user_id: context.actorUserId,
       }).select('id').single()
-      if (proposalError || !proposed) throw new Error(proposalError?.message ?? 'Could not record the transfer proposal')
+      if (proposalError || !proposed) throw new Error('Could not record the transfer proposal')
       const { data: completed, error: transferError } = await service.from('song_passport_custody_events').insert({
         passport_id: context.passportId,
         master_designation_id: (await latestMasterId(service, context.passportId)),
@@ -232,7 +232,7 @@ export async function POST(request: Request, routeContext: RouteCtx) {
         details: { evidence: operation.evidence, proposalEventId: proposed.id, acknowledged: true },
         actor_user_id: context.actorUserId,
       }).select('id').single()
-      if (transferError || !completed) throw new Error(transferError?.message ?? 'Could not complete the custody record')
+      if (transferError || !completed) throw new Error('Could not complete the custody record')
       await service.from('song_passport_tasks').insert({
         passport_id: context.passportId,
         rule_key: 'custody.review_access_after_transfer',
@@ -253,7 +253,7 @@ export async function POST(request: Request, routeContext: RouteCtx) {
         reason: operation.reason ?? null,
         requested_by: context.actorUserId,
       }).select('id').single()
-      if (error || !data) throw new Error(error?.message ?? 'Could not create the retention request')
+      if (error || !data) throw new Error('Could not create the retention request')
       await service.from('song_passport_custody_events').insert({
         passport_id: context.passportId,
         event_type: 'retention_requested',
@@ -302,7 +302,7 @@ export async function POST(request: Request, routeContext: RouteCtx) {
       Sentry.captureException(error, { tags: { feature: 'song-passport', operation: parsed.data.operation } })
     }
     const status = error instanceof PassportAuthorizationError ? error.status : 400
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not complete the Passport action' }, { status })
+    return NextResponse.json({ error: 'Could not complete the Passport action' }, { status })
   }
 }
 

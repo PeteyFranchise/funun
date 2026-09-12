@@ -52,7 +52,7 @@ export async function POST(
     .maybeSingle()
 
   if (loadError) {
-    return NextResponse.json({ error: loadError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!grant) {
     return NextResponse.json({ error: 'Grant not found.' }, { status: 404 })
@@ -87,7 +87,7 @@ export async function POST(
         .update(profileUpdate)
         .eq('id', grant.profile_id)
       if (profileError) {
-        return NextResponse.json({ error: profileError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
       }
     }
 
@@ -102,7 +102,7 @@ export async function POST(
       })
       .eq('id', grant.id)
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     return NextResponse.json({ data: { grantId: grant.id, status: 'approved' as const } })
@@ -119,7 +119,7 @@ export async function POST(
     .eq('id', grant.id)
 
   if (denyError) {
-    return NextResponse.json({ error: denyError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { grantId: grant.id, status: 'denied' as const } })

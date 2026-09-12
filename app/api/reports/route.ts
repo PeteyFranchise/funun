@@ -23,7 +23,7 @@ export async function GET() {
     .select('id, target_type, status, created_at')
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const rows = (data ?? []) as { id: string; target_type: string; status: string; created_at: string }[]
   return NextResponse.json({ data: rows.map(toReportStatusView) })
 }
@@ -76,6 +76,6 @@ export async function POST(request: Request) {
     .select('id, target_type, status, created_at')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: toReportStatusView(data) }, { status: 201 })
 }

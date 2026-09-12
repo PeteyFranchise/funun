@@ -35,7 +35,7 @@ export async function POST(_request: Request, { params }: RouteCtx) {
     )
     .select('handoff_id, acknowledged_at')
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 409 })
   const data = inserted ?? (await service
     .from('work_recording_handoff_receipts')
     .select('handoff_id, acknowledged_at')

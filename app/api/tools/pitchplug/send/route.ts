@@ -23,6 +23,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sending is disabled in demo mode' }, { status: 400 })
   }
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const b = (await request.json().catch(() => ({}))) as {
     projectId?: string
     curatorType?: string
@@ -38,12 +44,6 @@ export async function POST(request: Request) {
   if (!b.recipientEmail || !EMAIL_RE.test(b.recipientEmail)) {
     return NextResponse.json({ error: 'A valid recipient email is required' }, { status: 400 })
   }
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Ownership + reply-to address.
   const { data: project } = await supabase
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   })
   if (!sent.ok) {
     return NextResponse.json(
-      { error: sent.error ?? 'Could not send the email' },
+      { error: 'Could not send the email' },
       { status: 502 }
     )
   }

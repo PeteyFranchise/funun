@@ -55,7 +55,7 @@ export async function GET() {
     return NextResponse.json({ data: state })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to read workspace access state' },
+      { error: 'Failed to read workspace access state' },
       { status: 500 }
     )
   }
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to update workspace access state' },
+      { error: 'Failed to update workspace access state' },
       { status: 400 }
     )
   }

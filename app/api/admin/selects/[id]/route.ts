@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ data: updated })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to update Selects' },
+      { error: 'Failed to update Selects' },
       { status: 500 }
     )
   }
@@ -78,7 +78,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to delete Selects' },
+      { error: 'Failed to delete Selects' },
       { status: 500 }
     )
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
-import { uploadSignedPdf } from '@/lib/vault/documents'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
+import { MAX_DOC_SIZE, uploadSignedPdf } from '@/lib/vault/documents'
 
 // POST /api/vault/[projectId]/documents/[docId]/upload
 // Accepts a multipart PDF, stores it in the release-documents bucket,
@@ -18,12 +19,6 @@ export async function POST(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const formData = await request.formData()
-  const file = formData.get('file') as File | null
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  }
-
   // Verify ownership before touching storage
   const { data: existing } = await supabase
     .from('vault_documents')
@@ -37,6 +32,20 @@ export async function POST(
     return NextResponse.json({ error: 'Document not found' }, { status: 404 })
   }
 
+  const parsed = await parseAdmittedFormData(supabase, request, {
+    operation: 'vault:signed-document',
+    maxBodyBytes: MAX_DOC_SIZE + 512 * 1024,
+    dailyCountLimit: 30,
+    dailyByteLimit: 100 * 1024 * 1024,
+  })
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+  }
+  const file = parsed.form.get('file')
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  }
+
   let url: string
   try {
     const result = await uploadSignedPdf({ file, userId: user.id, projectId, docId })
@@ -44,7 +53,10 @@ export async function POST(
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Upload failed'
     const isValidation = message.startsWith('Document must')
-    return NextResponse.json({ error: message }, { status: isValidation ? 400 : 500 })
+    return NextResponse.json(
+      { error: isValidation ? message : 'Document upload failed.' },
+      { status: isValidation ? 400 : 500 }
+    )
   }
 
   const { data: doc, error: updateError } = await supabase
@@ -62,7 +74,7 @@ export async function POST(
     .single()
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Document status could not be saved.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: doc })

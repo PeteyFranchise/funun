@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const service = createServiceClient()
   const { data, error } = await service.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: false })
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? 'Could not prepare upload' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not prepare upload' }, { status: 500 })
   }
 
   return NextResponse.json({

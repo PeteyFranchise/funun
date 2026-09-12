@@ -95,7 +95,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       { handoff_id: handoffId, work_id: handoff.work_id, recipient_user_id: user.id },
       { onConflict: 'handoff_id', ignoreDuplicates: true }
     )
-  if (receiptError) return NextResponse.json({ error: receiptError.message }, { status: 409 })
+  if (receiptError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 409 })
 
   const { data, error } = await service
     .from('work_recording_handoff_returns')
@@ -110,7 +110,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     })
     .select('id, version_id')
     .single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'The mix saved, but could not be linked to the handoff.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'The mix saved, but could not be linked to the handoff.' }, { status: 409 })
 
   const [{ data: actor }, { data: work }] = await Promise.all([
     service.from('user_profiles').select('artist_name, handle, avatar_url').eq('id', user.id).maybeSingle(),

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   if (accessibleRooms.length === 0) return NextResponse.json({ data: [] })
 
   const entries = await service.from('playbook_entries').select('id, room_id, entry_type, title, slug, content, revision_number, published_at, updated_at').in('room_id', accessibleRooms.map(room => room.id)).eq('status', 'published').limit(1000)
-  if (entries.error) return NextResponse.json({ error: entries.error.message }, { status: 500 })
+  if (entries.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const roomById = new Map(accessibleRooms.map(room => [room.id, room]))
   const searchable = (entries.data ?? []).flatMap(row => {
     const room = roomById.get(row.room_id as string)

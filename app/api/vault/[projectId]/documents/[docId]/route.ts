@@ -15,16 +15,16 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; docId: string }> }
 ) {
   const { projectId, docId } = await params
-  const body = (await request.json()) as Record<string, unknown>
-  const status = body.status as PatchableDocStatus
-  if (!PATCHABLE_DOC_STATUSES.includes(status)) {
-    return NextResponse.json(
-      { error: 'Signed or verified documents must come from an uploaded PDF or verification flow' },
-      { status: 400 }
-    )
-  }
 
   if (DEMO) {
+    const body = (await request.json()) as Record<string, unknown>
+    const status = body.status as PatchableDocStatus
+    if (!PATCHABLE_DOC_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: 'Signed or verified documents must come from an uploaded PDF or verification flow' },
+        { status: 400 }
+      )
+    }
     const project = await updateDemoDocument(projectId, docId, { status })
     if (!project) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     return NextResponse.json({ data: project })
@@ -35,6 +35,15 @@ export async function PATCH(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = (await request.json()) as Record<string, unknown>
+  const status = body.status as PatchableDocStatus
+  if (!PATCHABLE_DOC_STATUSES.includes(status)) {
+    return NextResponse.json(
+      { error: 'Signed or verified documents must come from an uploaded PDF or verification flow' },
+      { status: 400 }
+    )
+  }
 
   const { data, error } = await supabase
     .from('vault_documents')
@@ -48,7 +57,7 @@ export async function PATCH(
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
   return NextResponse.json({ data })
 }
@@ -81,7 +90,7 @@ export async function DELETE(
     .select('id')
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Document not found' }, { status: 404 })
   return NextResponse.json({ data })
 }

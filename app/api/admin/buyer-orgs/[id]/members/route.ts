@@ -31,7 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const members = await Promise.all(
     (data ?? []).map(async row => {
@@ -77,7 +77,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('id', orgId)
     .maybeSingle()
   if (organizationError) {
-    return NextResponse.json({ error: organizationError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!organization) {
     return NextResponse.json({ error: 'Client Partner organization not found.' }, { status: 404 })
@@ -125,7 +125,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'This email has already been invited.' }, { status: 409 })
     }
     if (err instanceof IncompatibleClientPartnerIdentityError) {
-      return NextResponse.json({ error: err.message }, { status: 409 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 409 })
     }
     return NextResponse.json(
       { error: 'Something went wrong — please try again.' },

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (await checkRateLimit(`playbook-media:${auth.user.id}`, { maxAttempts: 20, windowMs: 24 * 60 * 60 * 1000 })) return NextResponse.json({ error: 'Daily training-media upload limit reached.' }, { status: 429 })
   const service = createServiceClient()
   const { data: room, error: roomError } = await service.from('playbook_rooms').select('id').eq('key', parsed.data.roomKey).maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const extension = parsed.data.mimeType === 'video/mp4' ? 'mp4' : 'webm'
   const assetId = randomUUID()
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
   const { error: assetError } = await service.from('playbook_media_assets').insert({ id: assetId, room_id: room.id, storage_path: storagePath, title: parsed.data.title, caption: parsed.data.caption || null, transcript: parsed.data.transcript || null, mime_type: parsed.data.mimeType, size_bytes: parsed.data.sizeBytes, created_by: auth.user.id })
   if (assetError) {
     if (isPlaybookEnablementSchemaMissing(assetError)) return NextResponse.json({ error: 'Private Playbook media is built but not activated yet.' }, { status: 503 })
-    return NextResponse.json({ error: assetError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const { data, error } = await service.storage.from(BUCKET).createSignedUploadUrl(storagePath, { upsert: false })
   if (error || !data) {
     await service.from('playbook_media_assets').update({ status: 'failed' }).eq('id', assetId)
-    return NextResponse.json({ error: error?.message ?? 'Could not prepare upload' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not prepare upload' }, { status: 500 })
   }
   return NextResponse.json({ data: { assetId, path: storagePath, token: data.token, contentType: parsed.data.mimeType } })
 }

@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { randomUUID } from 'node:crypto'
 import { docusealProvider } from '@/lib/esign/docuseal'
 import { renderBlanketAgreement } from '@/lib/vault/pdf/blanket-agreement'
 import { partyRoleTag } from '@/lib/vault/pdf/split-sheet'
@@ -111,7 +112,7 @@ export async function mintOrGetBlanketAgreement(
     .maybeSingle()
 
   if (existingError) {
-    return { status: 500, body: { error: existingError.message } }
+    return { status: 500, body: { error: 'Agreement status could not be loaded.' } }
   }
 
   const existing = existingRaw as BlanketAgreementDocRow | null
@@ -152,7 +153,7 @@ export async function mintOrGetBlanketAgreement(
     .limit(1)
 
   if (cohortError) {
-    return { status: 500, body: { error: cohortError.message } }
+    return { status: 500, body: { error: 'Agreement eligibility could not be checked.' } }
   }
   if (!cohortRows || cohortRows.length === 0) {
     return { status: 409, body: { error: 'No pending sync-library submissions to sign for.' } }
@@ -171,12 +172,30 @@ export async function mintOrGetBlanketAgreement(
   let pdfBytes: Buffer
   try {
     pdfBytes = await renderBlanketAgreement({ artistName, artistEmail, agreementDate: new Date() })
-  } catch (e) {
+  } catch {
     return {
       status: 500,
       body: {
-        error: `Could not render the blanket agreement: ${e instanceof Error ? e.message : 'unknown error'}`,
+        error: 'Could not render the blanket agreement.',
       },
+    }
+  }
+
+  const mintClaimToken = randomUUID()
+  const { data: claimOutcome, error: claimError } = await service.rpc('claim_esign_mint', {
+    p_instrument_kind: 'blanket_agreement',
+    p_subject_id: userId,
+    p_actor_user_id: userId,
+    p_claim_token: mintClaimToken,
+    p_lease_seconds: 900,
+  })
+  if (claimError) {
+    return { status: 503, body: { error: 'Signature setup is temporarily unavailable.' } }
+  }
+  if (claimOutcome !== 'claimed') {
+    return {
+      status: 409,
+      body: { error: 'Your agreement is already being created or requires reconciliation.' },
     }
   }
 
@@ -202,13 +221,30 @@ export async function mintOrGetBlanketAgreement(
       embedded: true,
       replyTo: (process.env.ESIGN_FROM_EMAIL ?? '').trim() || undefined,
     })
-  } catch (e) {
+  } catch {
+    await service.rpc('release_esign_mint_claim', {
+      p_instrument_kind: 'blanket_agreement',
+      p_subject_id: userId,
+      p_claim_token: mintClaimToken,
+    })
     return {
       status: 502,
-      body: {
-        error: `Could not create the signature request: ${e instanceof Error ? e.message : 'unknown error'}`,
-      },
+      body: { error: 'Could not create the signature request.' },
     }
+  }
+
+  const { data: providerRecorded, error: providerRecordError } = await service.rpc(
+    'record_esign_mint_provider',
+    {
+      p_instrument_kind: 'blanket_agreement',
+      p_subject_id: userId,
+      p_claim_token: mintClaimToken,
+      p_provider_request_id: created.requestId,
+      p_provider_template_id: created.templateId ?? null,
+    }
+  )
+  if (providerRecordError || providerRecorded !== true) {
+    return { status: 503, body: { error: 'Signature request created but requires reconciliation.' } }
   }
 
   // ── 5. Persist — a single vault_documents row, allowlisted columns only ─
@@ -247,8 +283,7 @@ export async function mintOrGetBlanketAgreement(
     return {
       status: 500,
       body: {
-        error: `Signature request created but could not be recorded: ${insertError?.message ?? 'unknown error'}`,
-        docusealSubmissionId: created.requestId,
+        error: 'Signature request created but could not be recorded. Contact support.',
       },
     }
   }
@@ -269,6 +304,13 @@ export async function mintOrGetBlanketAgreement(
   if (toAdvance.length > 0) {
     await service.from('sync_listings').update({ status: 'agreement_pending' }).in('id', toAdvance)
   }
+
+  await service.rpc('complete_esign_mint_claim', {
+    p_instrument_kind: 'blanket_agreement',
+    p_subject_id: userId,
+    p_claim_token: mintClaimToken,
+    p_provider_request_id: created.requestId,
+  })
 
   return {
     status: 200,

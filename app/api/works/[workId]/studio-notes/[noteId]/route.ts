@@ -64,9 +64,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   if (result.error || !result.data) {
-    const message = result.error?.message ?? 'Could not update Studio Note'
-    const status = message.includes('not_allowed') ? 403 : message.includes('not_found') ? 404 : 500
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: 'Could not update Studio Note' }, { status: 500 })
   }
   return NextResponse.json({ data: result.data })
 }

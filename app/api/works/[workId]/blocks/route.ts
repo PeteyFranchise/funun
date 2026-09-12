@@ -98,7 +98,7 @@ async function shiftForInsert(
       .from('lyric_blocks')
       .update({ position: block.position + 1 })
       .eq('id', block.id)
-    if (error) return { error: error.message }
+    if (error) return { error: 'Request could not be completed.' }
   }
 
   return { position: insertPosition }
@@ -153,7 +153,7 @@ export async function POST(
     .eq('work_id', workId)
     .order('position', { ascending: true })
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const currentBlocks: ExistingBlock[] = existing ?? []
 
   // PERFORMER RULE, writer half: the ✍ badge is automatic and non-negotiable
@@ -194,7 +194,7 @@ export async function POST(
 
     if (insertError || !created) {
       return NextResponse.json(
-        { error: insertError?.message ?? 'Could not create block' },
+        { error: 'Could not create block' },
         { status: 500 }
       )
     }
@@ -215,7 +215,7 @@ export async function POST(
       .eq('work_id', workId)
       .maybeSingle()
 
-    if (sourceError) return NextResponse.json({ error: sourceError.message }, { status: 500 })
+    if (sourceError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!source) {
       return NextResponse.json({ error: 'Source block not found on this work' }, { status: 404 })
     }
@@ -241,7 +241,7 @@ export async function POST(
 
     if (insertError || !created) {
       return NextResponse.json(
-        { error: insertError?.message ?? 'Could not create repeat block' },
+        { error: 'Could not create repeat block' },
         { status: 500 }
       )
     }
@@ -288,7 +288,7 @@ export async function POST(
 
   if (insertError || !created) {
     return NextResponse.json(
-      { error: insertError?.message ?? 'Could not create blocks from paste' },
+      { error: 'Could not create blocks from paste' },
       { status: 500 }
     )
   }

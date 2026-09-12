@@ -20,11 +20,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const { data: entry, error: entryError } = await service
     .from('playbook_entries').select('id, room_id, title').eq('id', id).eq('room_id', room.id).maybeSingle()
-  if (entryError || !entry) return NextResponse.json({ error: entryError?.message ?? 'Entry not found in this room' }, { status: entryError ? 500 : 404 })
+  if (entryError || !entry) return NextResponse.json({ error: 'Entry not found in this room' }, { status: entryError ? 500 : 404 })
   const { data: previousRound, error: roundError } = await service
     .from('playbook_review_rounds').select('id').eq('id', parsed.data.previousRoundId).eq('entry_id', id).eq('room_id', room.id).maybeSingle()
   if (isReviewSchemaMissing(roundError)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
-  if (roundError) return NextResponse.json({ error: roundError.message }, { status: 500 })
+  if (roundError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!previousRound) return NextResponse.json({ error: 'Previous review round not found in this room' }, { status: 404 })
 
   const { data: newRoundId, error } = await service.rpc('resubmit_playbook_review_round', {
@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (isReviewSchemaMissing(error)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
   if (error) {
     const status = /changed|newer draft|requested change/i.test(error.message) ? 409 : /Only the draft author/i.test(error.message) ? 403 : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status })
   }
   const { data: reviewers } = await service
     .from('playbook_review_threads').select('created_by').eq('review_round_id', parsed.data.previousRoundId)

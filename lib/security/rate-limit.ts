@@ -8,11 +8,10 @@
 // EXECUTE), so call sites just `await checkRateLimit('ip:'+ip)` with no plumbing.
 // Namespacing dimensions is done by key prefix ('ip:' / 'email:').
 //
-// FAIL-OPEN: on any limiter-backend error (including the RPC not yet existing
-// before migration 116 is pushed) it returns false — a rare backend blip must
-// not lock legitimate users out of signup/waitlist. These surfaces are
-// abuse-annoyance, not catastrophic if briefly unlimited; failing closed would
-// break onboarding on a transient DB hiccup.
+// Callers choose the failure posture. Low-cost onboarding checks retain the
+// default fail-open behavior so a limiter outage does not lock out legitimate
+// signups. Abuse-sensitive or fan-out writes pass `failClosed: true`, preventing
+// a database/limiter outage from turning into an unlimited messaging channel.
 
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -24,7 +23,7 @@ const RATE_LIMIT_MAX_ATTEMPTS_LIMIT = 10_000
 
 export async function checkRateLimit(
   key: string,
-  options: { windowMs?: number; maxAttempts?: number } = {}
+  options: { windowMs?: number; maxAttempts?: number; failClosed?: boolean } = {}
 ): Promise<boolean> {
   const windowMs = options.windowMs ?? RATE_LIMIT_WINDOW_MS
   const maxAttempts = options.maxAttempts ?? RATE_LIMIT_MAX_ATTEMPTS
@@ -46,10 +45,10 @@ export async function checkRateLimit(
       p_window_seconds: Math.ceil(windowMs / 1000),
       p_max: maxAttempts,
     })
-    if (error) return false // fail-open (see header)
+    if (error) return options.failClosed === true
     return data === true
   } catch {
-    return false // fail-open
+    return options.failClosed === true
   }
 }
 

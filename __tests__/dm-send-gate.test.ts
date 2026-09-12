@@ -16,6 +16,9 @@ jest.mock('@/lib/supabase/server', () => ({
 jest.mock('@/lib/notifications', () => ({
   createNotification: jest.fn(),
 }))
+jest.mock('@/lib/security/rate-limit', () => ({
+  checkRateLimit: jest.fn(async () => false),
+}))
 jest.mock('@/lib/social/dm', () => {
   const actual = jest.requireActual('@/lib/social/dm')
   return {
@@ -140,12 +143,16 @@ describe('POST /api/dm/send — gate call order', () => {
     jest.clearAllMocks()
   })
 
-  it('rejects a non-UUID recipient before auth or send-gate queries', async () => {
+  it('authenticates before rejecting a non-UUID recipient or running send-gate queries', async () => {
+    const getUser = jest.fn().mockResolvedValue({ data: { user: { id: ME_ID } } })
+    ;(createApiClient as jest.Mock).mockResolvedValue({ auth: { getUser } })
+
     const res = await POST(jsonRequest({ toUserId: 'not-a-uuid),requester_id.eq.evil', body: 'hello' }))
 
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'Invalid recipient' })
-    expect(createApiClient).not.toHaveBeenCalled()
+    expect(createApiClient).toHaveBeenCalledTimes(1)
+    expect(getUser).toHaveBeenCalledTimes(1)
     expect(isConnected).not.toHaveBeenCalled()
     expect(ensureThread).not.toHaveBeenCalled()
   })

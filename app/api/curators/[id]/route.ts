@@ -88,7 +88,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     )
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Curator not found' }, { status: 404 })
 
   return NextResponse.json({ data })

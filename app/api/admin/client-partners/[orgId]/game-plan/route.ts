@@ -94,7 +94,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ orgI
     .select(GAME_PLAN_COLUMNS)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -140,7 +140,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     )
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to log conversation' },
+      { error: 'Failed to log conversation' },
       { status: 500 }
     )
   }

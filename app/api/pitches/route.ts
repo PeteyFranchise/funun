@@ -182,7 +182,7 @@ export async function POST(request: Request) {
         { status: 409 }
       )
     }
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // ── Send emails — best-effort; a send failure does not roll back the ───

@@ -174,7 +174,7 @@ export async function GET(
     .eq('relationship_id', relationshipId)
     .order('uploaded_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: ((data ?? []) as EvidenceRow[]).map(presentEvidence) })
 }
@@ -222,7 +222,7 @@ export async function PATCH(
     .eq('relationship_id', relationshipId)
     .maybeSingle()
 
-  if (evidenceError) return NextResponse.json({ error: evidenceError.message }, { status: 500 })
+  if (evidenceError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const evidence = evidenceData as EvidenceRow | null
   if (!evidence) {
@@ -263,7 +263,7 @@ export async function PATCH(
     .select(EVIDENCE_COLUMNS)
     .single()
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Both identities are the Member: they acted, and they are the subject
   // (D-50). `changes` carries the evidence id and the declared scope only —

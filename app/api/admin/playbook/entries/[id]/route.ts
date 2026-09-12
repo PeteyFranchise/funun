@@ -78,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('id, room_id, entry_type')
     .eq('id', id)
     .maybeSingle()
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
 
   const roomId = (entry as { room_id: string }).room_id
@@ -88,7 +88,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('key')
     .eq('id', roomId)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const auth = await requireRoomAccess((room as { key: string }).key)
@@ -98,7 +98,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const willPublish = isApprover && (parsed.data.action === 'approve' || (parsed.data.action === 'edit' && parsed.data.publish !== false))
   if (willPublish && !parsed.data.confirmDependencyImpact) {
     const dependencyResult = await service.from('playbook_doctrine_dependencies').select('active, source_revision_number, target_kind').eq('source_entry_id', id).eq('active', true)
-    if (dependencyResult.error && !isOperationalV1SchemaMissing(dependencyResult.error)) return NextResponse.json({ error: dependencyResult.error.message }, { status: 500 })
+    if (dependencyResult.error && !isOperationalV1SchemaMissing(dependencyResult.error)) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     const impact = dependencyImpact((dependencyResult.data ?? []).map(row => ({ active: row.active, sourceRevisionNumber: Number(row.source_revision_number), targetKind: String(row.target_kind) })), (parsed.data.expectedRevision ?? 1) + 1)
     if (impact.blocksSilentPublish) return NextResponse.json({ error: `This change affects ${impact.affected} registered downstream ${impact.affected === 1 ? 'dependency' : 'dependencies'}. Review the Dependency Map before publishing.`, dependencyImpact: impact }, { status: 409 })
   }

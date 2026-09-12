@@ -29,11 +29,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ th
     .select('id, entry_id, created_by, feedback_kind, status')
     .eq('id', threadId).eq('room_id', room.id).maybeSingle()
   if (isReviewSchemaMissing(threadError)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
-  if (threadError) return NextResponse.json({ error: threadError.message }, { status: 500 })
+  if (threadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!thread) return NextResponse.json({ error: 'Review thread not found in this room' }, { status: 404 })
   const { data: entry, error: entryError } = await service
     .from('playbook_entries').select('author_id, draft_author_id, title').eq('id', thread.entry_id).maybeSingle()
-  if (entryError || !entry) return NextResponse.json({ error: entryError?.message ?? 'Entry not found' }, { status: entryError ? 500 : 404 })
+  if (entryError || !entry) return NextResponse.json({ error: 'Entry not found' }, { status: entryError ? 500 : 404 })
   const isApprover = auth.staffRole === 'leadership' || await isRoomLead(service, room.id as string, auth.user.id)
   const isAddressAction = parsed.data.status === 'addressed'
   if (isAddressAction) {
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ th
     p_new_status: parsed.data.status,
   })
   if (isReviewSchemaMissing(error)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
-  if (error) return NextResponse.json({ error: error.message }, { status: /changed/i.test(error.message) ? 409 : 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: /changed/i.test(error.message) ? 409 : 500 })
   await logStaffAction(service, {
     actorId: auth.user.id,
     action: parsed.data.status === 'resolved'

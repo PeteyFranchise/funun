@@ -86,7 +86,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ data: track }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to add track' },
+      { error: 'Failed to add track' },
       { status: 500 }
     )
   }
@@ -126,7 +126,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ data: updated })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to update track' },
+      { error: 'Failed to update track' },
       { status: 500 }
     )
   }
@@ -156,7 +156,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ ok: true })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to remove track' },
+      { error: 'Failed to remove track' },
       { status: 500 }
     )
   }

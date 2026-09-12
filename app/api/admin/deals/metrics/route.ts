@@ -24,7 +24,7 @@ export async function GET() {
     .from('license_requests')
     .select('stage, created_at, updated_at, gross_fee_cents, buyer_org_id, admin_notes, vault_project_id')
 
-  if (dealError) return NextResponse.json({ error: dealError.message }, { status: 500 })
+  if (dealError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const rows = (dealRows ?? []) as (GtmRawDealRow & { vault_project_id: string })[]
   const metrics = computeGtmMetrics(rows.map(mapRawDealRow))
@@ -38,7 +38,7 @@ export async function GET() {
       ? await service.from('vault_projects').select('is_public, vault_readiness_score').in('id', projectIds)
       : { data: [] as { is_public: boolean | null; vault_readiness_score: number | null }[], error: null }
 
-  if (projectError) return NextResponse.json({ error: projectError.message }, { status: 500 })
+  if (projectError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const readiness = computeArtistReadinessPassRate(
     (projectRows ?? []).map(p => ({ isPublic: p.is_public, readinessScore: p.vault_readiness_score }))

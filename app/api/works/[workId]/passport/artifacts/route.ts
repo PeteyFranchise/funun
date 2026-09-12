@@ -27,13 +27,13 @@ type RouteCtx = { params: Promise<{ workId: string }> }
 
 export async function POST(request: Request, context: RouteCtx) {
   const { workId } = await context.params
-  const parsed = BodySchema.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid Passport artifact request' }, { status: 400 })
-
   const supabase = await createApiClient()
   const { data: { user } } = await supabase.auth.getUser()
   const access = await resolveWorkAccess(createWorkAccessDeps(supabase), workId, user?.id ?? null, 'contribute')
   if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
+
+  const parsed = BodySchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid Passport artifact request' }, { status: 400 })
 
   const service = createServiceClient()
   if (!await isSongPassportAvailableForWork(service as unknown as SongPassportCohortClient, workId, user!.id)) {
@@ -125,7 +125,7 @@ export async function POST(request: Request, context: RouteCtx) {
       payload_sha256: snapshotHash,
       created_by: actor.actorUserId,
     }).select('id').single()
-    if (snapshotError || !snapshot) throw new Error(snapshotError?.message ?? 'Could not freeze the export snapshot')
+    if (snapshotError || !snapshot) throw new Error('Could not freeze the export snapshot')
 
     const artifactId = randomUUID()
     const sourceDirectory = version ? version.audio_path.slice(0, Math.max(0, version.audio_path.lastIndexOf('/') + 1)) : `${workId}/`
@@ -237,6 +237,6 @@ export async function POST(request: Request, context: RouteCtx) {
     if (!(error instanceof PassportAuthorizationError)) {
       Sentry.captureException(error, { tags: { feature: 'song-passport', operation: 'artifact-generation' } })
     }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not create the Passport artifact' }, { status: error instanceof PassportAuthorizationError ? 403 : 400 })
+    return NextResponse.json({ error: 'Could not create the Passport artifact' }, { status: error instanceof PassportAuthorizationError ? 403 : 400 })
   }
 }

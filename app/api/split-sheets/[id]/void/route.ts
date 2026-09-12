@@ -90,7 +90,7 @@ export async function POST(
     } catch (e) {
       return NextResponse.json(
         {
-          error: `Could not withdraw the signature request: ${e instanceof Error ? e.message : 'unknown error'}`,
+          error: 'Could not withdraw the signature request.',
         },
         { status: 502 }
       )
@@ -111,7 +111,7 @@ export async function POST(
 
   if (voidError) {
     return NextResponse.json(
-      { error: `Signature request withdrawn but could not be recorded: ${voidError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }

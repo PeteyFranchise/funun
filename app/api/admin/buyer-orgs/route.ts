@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   }
   const { data, error } = await query
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const orgs = await Promise.all(
     (data ?? []).map(async row => {
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
   if (orgError || !org) {
     return NextResponse.json(
-      { error: orgError?.message ?? 'Failed to create company.' },
+      { error: 'Failed to create company.' },
       { status: 500 }
     )
   }
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
     if (err instanceof IncompatibleClientPartnerIdentityError) {
       return NextResponse.json(
         {
-          error: err.message,
+          error: 'Request could not be completed.',
           data: { org: { ...org, memberCount: 0 } },
         },
         { status: 409 }

@@ -9,7 +9,7 @@ import { createNotification } from '@/lib/notifications'
 import { DEAL_STAGE_VALUES, type LicenseRequestAdmin } from '@/lib/deals/schema'
 
 const ADMIN_DEAL_COLUMNS =
-  'id, buyer_org_id, created_by, vault_project_id, usage_types, territories, term_months, exclusivity, budget_cents, need_by, buyer_notes, stage, matched_precleared, gross_fee_cents, contract_document_id, owner_id, admin_notes, commission_pct, artist_net_cents, created_at, updated_at'
+  'id, buyer_org_id, created_by, vault_project_id, usage_types, territories, term_months, exclusivity, budget_cents, need_by, buyer_notes, stage, matched_precleared, gross_fee_cents, contract_document_id, owner_id, admin_notes, commission_pct, artist_net_cents, payment_status, created_at, updated_at'
 
 const DealPatchBodySchema = z
   .object({
@@ -51,9 +51,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('id', id)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!existing) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
-  const current = existing as LicenseRequestAdmin
+  const current = existing as LicenseRequestAdmin & { payment_status: string }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const parsed = DealPatchBodySchema.safeParse(body)
@@ -64,6 +64,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     )
   }
   const input = parsed.data
+
+  if (
+    (input.gross_fee_cents !== undefined || input.commission_pct !== undefined) &&
+    (current.payment_status === 'creating_payment' || current.payment_status === 'awaiting_payment')
+  ) {
+    return NextResponse.json(
+      { error: 'Cancel or complete the active payment session before changing deal economics.' },
+      { status: 409 }
+    )
+  }
 
   const update: Record<string, unknown> = {}
 
@@ -151,7 +161,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select(ADMIN_DEAL_COLUMNS)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!updated) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
 
   // Best-effort stage-change notifications — AFTER the primary write,

@@ -16,26 +16,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   const service = createServiceClient()
   const { data: room, error: roomError } = await service.from('playbook_rooms').select('id').eq('key', roomKey).maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const roomId = (room as { id: string }).id
   const canManage = auth.staffRole === 'leadership' || (await isRoomLead(service, roomId, auth.user.id))
   if (!canManage) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { data: entry, error: entryError } = await service.from('playbook_entries').select('id').eq('id', id).eq('room_id', roomId).maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found in this room' }, { status: 404 })
 
   const [assignmentResult, staffResult] = await Promise.all([
     service.from('playbook_reading_assignments').select('id, entry_id, target_kind, target_user_id, target_role, required_revision, required, due_at, assigned_by, created_at, revoked_at').eq('entry_id', id).is('revoked_at', null),
     service.from('funun_staff').select('user_id, display_name, staff_role, staff_roles'),
   ])
-  if (assignmentResult.error) return NextResponse.json({ error: assignmentResult.error.message }, { status: 500 })
-  if (staffResult.error) return NextResponse.json({ error: staffResult.error.message }, { status: 500 })
+  if (assignmentResult.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+  if (staffResult.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const assignments = (assignmentResult.data ?? []) as ReadingAssignment[]
   const acknowledgementResult = assignments.length > 0
     ? await service.from('playbook_reading_acknowledgements').select('assignment_id, user_id, revision_number, acknowledged_at').in('assignment_id', assignments.map(item => item.id))
     : { data: [], error: null }
-  if (acknowledgementResult.error) return NextResponse.json({ error: acknowledgementResult.error.message }, { status: 500 })
+  if (acknowledgementResult.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const staff = (staffResult.data ?? []).map(row => ({
     userId: row.user_id as string,
     label: (row.display_name as string | null)?.trim() || 'Team Member',

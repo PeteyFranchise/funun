@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     .eq('original_post_id', postId)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -69,7 +69,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   }
 
   const { error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: { ok: true } })
 }
 

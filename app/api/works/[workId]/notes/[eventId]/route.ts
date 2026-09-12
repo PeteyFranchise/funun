@@ -54,7 +54,7 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
     .eq('id', eventId)
     .maybeSingle()
 
-  if (loadError) return NextResponse.json({ error: loadError.message }, { status: 500 })
+  if (loadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   // A row in another work is indistinguishable from a missing one — never
   // confirm the existence of a diary entry the caller can't see.
   if (!row || row.work_id !== workId) {
@@ -78,7 +78,7 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
     .eq('kind', 'note')
     .eq('actor_user_id', user.id)
 
-  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+  if (deleteError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }

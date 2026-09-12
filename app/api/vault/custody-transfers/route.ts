@@ -176,7 +176,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
     return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 // POST — offer a custody transfer. NOT moved to an RPC, unlike PATCH: the
@@ -289,7 +289,7 @@ export async function GET() {
     .select(TRANSFER_COLUMNS)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -318,7 +318,7 @@ export async function PATCH(request: Request) {
     .eq('id', transferId)
     .maybeSingle()
 
-  if (transferError) return NextResponse.json({ error: transferError.message }, { status: 500 })
+  if (transferError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!transfer) return NextResponse.json({ error: 'Custody transfer not found.' }, { status: 404 })
 
   const row = transfer as TransferRow
@@ -402,6 +402,6 @@ export async function PATCH(request: Request) {
     .eq('id', transferId)
     .maybeSingle()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: resolved })
 }

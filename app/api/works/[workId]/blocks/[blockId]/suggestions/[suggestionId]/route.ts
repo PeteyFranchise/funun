@@ -29,7 +29,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     p_action: parsed.data.action,
   })
   if (error || !data) {
-    const message = error?.message ?? 'Could not update lyric suggestion.'
+    const message = 'Could not update lyric suggestion.'
     return NextResponse.json({ error: message }, { status: lyricSuggestionErrorStatus(message) })
   }
 

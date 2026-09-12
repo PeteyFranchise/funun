@@ -73,7 +73,7 @@ export async function GET(
   }
 
   const { token } = await params
-  if (!token) return notFound()
+  if (!/^[a-f0-9]{64}$/i.test(token)) return notFound()
 
   const service = createServiceClient()
 
@@ -81,6 +81,7 @@ export async function GET(
     .from('artist_invites')
     .select('email, token_expires_at, invited_by_user_id')
     .eq('invite_token', token)
+    .eq('status', 'pending')
     .maybeSingle()
 
   if (artistInvite) {
@@ -101,6 +102,7 @@ export async function GET(
     .from('collaborator_invites')
     .select('invited_email, token_expires_at, inviting_user_id')
     .eq('invite_token', token)
+    .eq('status', 'pending')
     .maybeSingle()
 
   if (collaboratorInvite) {

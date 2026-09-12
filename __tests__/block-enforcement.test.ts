@@ -15,6 +15,10 @@ import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
 
+jest.mock('@/lib/security/rate-limit', () => ({
+  checkRateLimit: jest.fn(async () => false),
+}))
+
 function readMigration(file: string): string {
   return readFileSync(path.join(process.cwd(), 'supabase/migrations', file), 'utf8')
 }

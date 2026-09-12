@@ -9,8 +9,8 @@ const signupPage = readFileSync(
   path.join(process.cwd(), 'app/(auth)/signup/page.tsx'),
   'utf8'
 )
-const migration133 = readFileSync(
-  path.join(process.cwd(), 'supabase/migrations/133_handle_identity.sql'),
+const migration214 = readFileSync(
+  path.join(process.cwd(), 'supabase/migrations/214_verified_invite_claim_hardening.sql'),
   'utf8'
 )
 
@@ -33,11 +33,15 @@ describe("Writer's Room invitation destination", () => {
     expect(signupPage).toContain('router.replace(destination)')
   })
 
-  it('creates the user profile before claiming the collaborator identity', () => {
-    const profileInsert = migration133.indexOf('INSERT INTO public.user_profiles (id, handle)')
-    const claim = migration133.indexOf('PERFORM public.claim_collaborators(NEW.id, NEW.email)')
+  it('creates the user profile at signup but defers collaborator identity until verified redemption', () => {
+    const profileInsert = migration214.indexOf('INSERT INTO public.user_profiles (id, handle)')
+    const completionFunction = migration214.indexOf(
+      'CREATE OR REPLACE FUNCTION public.complete_verified_signup_claim'
+    )
+    const claim = migration214.indexOf('PERFORM public.claim_collaborators(p_user_id, v_email)')
     expect(profileInsert).toBeGreaterThan(-1)
-    expect(claim).toBeGreaterThan(profileInsert)
+    expect(completionFunction).toBeGreaterThan(profileInsert)
+    expect(claim).toBeGreaterThan(completionFunction)
   })
 
   it('asks only for the account identity needed to write and defers rights-profile details', () => {
@@ -45,6 +49,9 @@ describe("Writer's Room invitation destination", () => {
     expect(signupPage).toContain(
       'You can fill in your profile and rights details later—we’ll help you stay on top of it. For now, let’s write.'
     )
-    expect(signupPage).toContain('data: { handle: handle.trim() }')
+    expect(signupPage).toContain('handle: handle.trim()')
+    expect(signupPage).toContain('signup_invite_token: deepLink.token')
+    expect(signupPage).not.toContain('legal_name:')
+    expect(signupPage).not.toContain('ipi:')
   })
 })

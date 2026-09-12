@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   ensureThread,
@@ -11,6 +12,7 @@ import {
 } from '@/lib/social/dm'
 import { buildMessageRequestNotification, buildNewDmNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 // A direct-message notification is suppressed when the recipient's read
@@ -47,6 +49,12 @@ async function loadActor(
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { toUserId, body } = (await request.json().catch(() => ({}))) as {
     toUserId?: string
     body?: string
@@ -59,12 +67,33 @@ export async function POST(request: Request) {
   if (!text) return NextResponse.json({ error: 'Message is empty' }, { status: 400 })
   if (text.length > 4000) return NextResponse.json({ error: 'Message too long' }, { status: 400 })
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === toUserId) return NextResponse.json({ error: 'Cannot message yourself' }, { status: 400 })
+
+  const repeatedContent = createHash('sha256').update(text.toLocaleLowerCase()).digest('hex')
+  const limited =
+    (await checkRateLimit(`social:dm:burst:${user.id}`, {
+      maxAttempts: 20,
+      windowMs: 60_000,
+      failClosed: true,
+    })) ||
+    (await checkRateLimit(`social:dm:daily:${user.id}`, {
+      maxAttempts: 300,
+      windowMs: 24 * 60 * 60 * 1000,
+      failClosed: true,
+    })) ||
+    (await checkRateLimit(`social:dm:recipient:${user.id}:${toUserId}`, {
+      maxAttempts: 40,
+      windowMs: 24 * 60 * 60 * 1000,
+      failClosed: true,
+    })) ||
+    (await checkRateLimit(`social:dm:repeat:${user.id}:${repeatedContent}`, {
+      maxAttempts: 3,
+      windowMs: 60 * 60 * 1000,
+      failClosed: true,
+    }))
+  if (limited) {
+    return NextResponse.json({ error: 'Message limit reached. Try again later.' }, { status: 429 })
+  }
 
   const service = createServiceClient()
 
@@ -100,7 +129,7 @@ export async function POST(request: Request) {
       .insert({ thread_id: threadId, sender_id: user.id, body: text })
       .select('id, body, created_at')
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Message could not be delivered.' }, { status: 500 })
 
     // new_dm notification — suppressed when the recipient's read marker for
     // this thread is fresher than the 60s window, so an active
@@ -215,7 +244,7 @@ export async function POST(request: Request) {
     .insert({ thread_id: threadId, sender_id: user.id, body: text })
     .select('id, body, created_at')
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Message could not be delivered.' }, { status: 500 })
 
   // message_request notification fires once per cold thread only — never
   // re-fired for stacked messages on an already-pending request.

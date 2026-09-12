@@ -58,7 +58,7 @@ export async function GET(_request: Request, { params }: RouteCtx) {
     .eq('work_id', workId)
 
   if (membersError) {
-    return NextResponse.json({ error: membersError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { work, members: members ?? [] } })
@@ -145,6 +145,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

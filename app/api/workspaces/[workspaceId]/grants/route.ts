@@ -69,7 +69,7 @@ async function loadRelationship(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (error) return { row: null, error: error.message }
+  if (error) return { row: null, error: 'Request could not be completed.' }
   return { row: (data as RosterRelationshipRow | null) ?? null }
 }
 
@@ -114,7 +114,7 @@ export async function POST(
     workspaceId,
     relationshipId
   )
-  if (relationshipError) return NextResponse.json({ error: relationshipError }, { status: 500 })
+  if (relationshipError) return NextResponse.json({ error: 'Workspace relationship could not be loaded.' }, { status: 500 })
   if (!relationship) {
     return NextResponse.json({ error: 'Roster relationship not found.' }, { status: 404 })
   }
@@ -203,7 +203,7 @@ export async function POST(
     // means the permission is already live, which this route treats as
     // success rather than an error.
     if (insertError && insertError.code !== '23505') {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     const acting = buildActingContext({
@@ -253,7 +253,7 @@ export async function GET(
     .is('revoked_at', null)
     .order('created_at', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   type GrantRow = { relationship_id: string; project_id: string | null }
   const grouped = new Map<string, { relationshipId: string; projectId: string | null; grants: unknown[] }>()
@@ -311,7 +311,7 @@ export async function DELETE(
     workspaceId,
     relationshipId
   )
-  if (relationshipError) return NextResponse.json({ error: relationshipError }, { status: 500 })
+  if (relationshipError) return NextResponse.json({ error: 'Workspace relationship could not be loaded.' }, { status: 500 })
   if (!relationship) {
     return NextResponse.json({ error: 'Roster relationship not found.' }, { status: 404 })
   }
@@ -330,7 +330,7 @@ export async function DELETE(
     query = projectId === null ? query.is('project_id', null) : query.eq('project_id', projectId)
 
     const { data: updated, error: updateError } = await query.select('id').maybeSingle()
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!updated) continue
 
     await logWorkspaceAction(service, {

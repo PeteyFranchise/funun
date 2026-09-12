@@ -105,7 +105,7 @@ export async function GET() {
     .in('status', OPEN_STATUSES)
     .order('applied_at', { ascending: true })
   if (listingsError) {
-    return NextResponse.json({ error: listingsError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const listings = (listingsRaw ?? []) as ListingRow[]
 

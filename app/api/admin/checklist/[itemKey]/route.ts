@@ -101,7 +101,7 @@ export async function PATCH(
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
   return NextResponse.json({ data })
@@ -135,7 +135,7 @@ export async function DELETE(
     .select('key')
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
   return NextResponse.json({ ok: true })

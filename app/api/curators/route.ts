@@ -57,7 +57,7 @@ export async function GET(request: Request) {
   if (genres.length > 0) query = query.overlaps('genre_focus', genres)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const rows = (data ?? []) as unknown as DirectoryRow[]
   const rates = await computeResponseRates(

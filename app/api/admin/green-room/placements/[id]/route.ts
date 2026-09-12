@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq('id', id)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!existing) return NextResponse.json({ error: 'Placement not found' }, { status: 404 })
   const row = existing as PlacementRow
 
@@ -78,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Placement not found' }, { status: 404 })
   return NextResponse.json({ data })
 }
@@ -100,7 +100,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     .eq('id', id)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!existing) return NextResponse.json({ error: 'Placement not found' }, { status: 404 })
   const row = existing as PlacementDeleteRow
   if (row.status !== 'draft' && row.status !== 'archived') {
@@ -117,7 +117,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     .select('id')
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Placement not found' }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

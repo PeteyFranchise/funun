@@ -40,17 +40,18 @@ async function loadActor(
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true, status: 'pending' } })
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { addresseeId, note } = (await request.json().catch(() => ({}))) as {
     addresseeId?: string
     note?: string | null
   }
   if (!addresseeId) return NextResponse.json({ error: 'Missing addresseeId' }, { status: 400 })
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === addresseeId) {
     return NextResponse.json({ error: 'You cannot send a connection request to yourself.' }, { status: 400 })
   }
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   try {
     payload = buildConnectRequest(user.id, addresseeId, note)
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 400 })
   }
 
   // Friendly pre-check for the unordered active-pair invariant enforced by
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     .in('status', ACTIVE_CONNECTION_STATUSES)
     .limit(1)
     .maybeSingle()
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (existingActive) {
     const status = (existingActive as { status: string }).status
     return NextResponse.json(
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
         { status: 409 }
       )
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Cross-user notify via service client, best-effort (non-fatal): the
@@ -154,7 +155,7 @@ export async function PATCH(request: Request) {
   try {
     target = buildRespondTransition(action ?? '')
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 400 })
   }
 
   const supabase = await createApiClient()
@@ -176,7 +177,7 @@ export async function PATCH(request: Request) {
     .eq('status', 'pending')
     .select('id, requester_id, addressee_id')
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!updated) {
     // Zero rows: the caller isn't authorized for this transition, or the row
     // is no longer pending — RLS filtered it out.

@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     idea_id: ideaId, token_hash: tokenHash, permission: parsed.data.permission,
     created_by: user.id, expires_at: expiresAt,
   }).select('id').single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not create the private link.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not create the private link.' }, { status: 409 })
   const origin = new URL(request.url).origin
   return NextResponse.json({ data: { id: data.id, url: `${origin}/ideas/join/${token}`, expiresAt } }, { status: 201 })
 }
@@ -42,6 +42,6 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid private link.' }, { status: 400 })
   const { error } = await createServiceClient().from('idea_share_links')
     .update({ revoked_at: new Date().toISOString() }).eq('id', parsed.data.id).eq('idea_id', ideaId).eq('created_by', user.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 409 })
   return NextResponse.json({ ok: true })
 }

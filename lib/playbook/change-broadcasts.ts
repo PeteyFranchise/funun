@@ -74,7 +74,7 @@ export async function loadVisibleChangeBroadcasts(
     .limit(Math.max(1, Math.min(args.limit ?? 200, 500)))
   if (result.error) {
     if (isChangeBroadcastSchemaMissing(result.error)) return { schemaReady: false, data: [] }
-    return { schemaReady: true, data: [], error: result.error.message }
+    return { schemaReady: true, data: [], error: 'Playbook updates could not be loaded.' }
   }
 
   const broadcasts = ((result.data ?? []) as ChangeBroadcastRow[]).filter(item =>
@@ -94,7 +94,7 @@ export async function loadVisibleChangeBroadcasts(
   const firstError = entries.error ?? rooms.error ?? publishers.error ?? reads.error
   if (firstError) {
     if (isChangeBroadcastSchemaMissing(firstError)) return { schemaReady: false, data: [] }
-    return { schemaReady: true, data: [], error: firstError.message }
+    return { schemaReady: true, data: [], error: 'Playbook updates could not be loaded.' }
   }
 
   const entryById = new Map((entries.data ?? []).map(row => [row.id as string, row]))

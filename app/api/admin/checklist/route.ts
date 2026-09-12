@@ -22,7 +22,7 @@ export async function GET() {
     .select('*')
     .order('sort_order')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     if (error.code === '23505') {
       return NextResponse.json({ error: `Item with key "${key}" already exists` }, { status: 409 })
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data }, { status: 201 })
@@ -187,7 +187,7 @@ export async function PATCH(request: Request) {
         { status: 409 }
       )
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

@@ -19,6 +19,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     p_idea_id: ideaId, p_actor: user.id, p_target_work_id: parsed.data.targetWorkId ?? null,
   })
   const result = Array.isArray(data) ? data[0] : data
-  if (error || !result?.work_id) return NextResponse.json({ error: error?.message ?? 'Could not open the Writer’s Room.' }, { status: 409 })
+  if (error || !result?.work_id) return NextResponse.json({ error: 'Could not open the Writer’s Room.' }, { status: 409 })
   return NextResponse.json({ data: { workId: result.work_id, created: Boolean(result.created) } })
 }

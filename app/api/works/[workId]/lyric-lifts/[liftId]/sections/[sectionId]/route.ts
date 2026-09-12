@@ -73,7 +73,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .update(update)
     .eq('id', sectionId)
     .eq('lift_id', liftId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const view = await loadLyricLiftView(service, { workId, liftId })
   return NextResponse.json({ data: view })
 }

@@ -118,16 +118,14 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
-  const body = (await request.json()) as Record<string, unknown>
-  const result = sanitize(body)
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 400 })
-  }
-  if (Object.keys(result).length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
-  }
 
   if (DEMO) {
+    const body = (await request.json()) as Record<string, unknown>
+    const result = sanitize(body)
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+    if (Object.keys(result).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
     const project = await updateDemoProject(projectId, result)
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     return NextResponse.json({ data: project })
@@ -139,6 +137,13 @@ export async function PATCH(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const body = (await request.json()) as Record<string, unknown>
+  const result = sanitize(body)
+  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+  if (Object.keys(result).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from('vault_projects')
     .update(result)
@@ -147,7 +152,7 @@ export async function PATCH(
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
   // Auto-emit a 'release' activity when a project goes live.
@@ -190,7 +195,7 @@ export async function DELETE(
     .select('id')
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   return NextResponse.json({ data })
 }

@@ -244,9 +244,9 @@ export async function sendSignatureInvite(
     if (result.error === 'Email not configured') {
       return { email: to, ok: false, notConfigured: true, error: result.error }
     }
-    return { email: to, ok: false, error: result.error }
-  } catch (e) {
-    return { email: to, ok: false, error: e instanceof Error ? e.message : 'Invite send failed' }
+    return { email: to, ok: false, error: 'Signature invitation could not be sent' }
+  } catch {
+    return { email: to, ok: false, error: 'Signature invitation could not be sent' }
   }
 }
 

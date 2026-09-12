@@ -225,7 +225,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
     return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 /** Best-effort display copy for the effect sentence. Never throws — a blank
@@ -288,7 +288,7 @@ export async function POST(
     .maybeSingle()
 
   if (successorError) {
-    return NextResponse.json({ error: successorError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   const seat = successorSeat as {
@@ -374,7 +374,7 @@ export async function GET(
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -422,7 +422,7 @@ export async function PATCH(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (transferError) return NextResponse.json({ error: transferError.message }, { status: 500 })
+  if (transferError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const transfer = (transferData as TransferRow | null) ?? null
   if (!transfer) {

@@ -335,7 +335,7 @@ export async function createPermissionRequest(
       })
       if (existing) return { ok: true, request: existing, created: false }
     }
-    return { ok: false, status: 500, error: insertError.message }
+    return { ok: false, status: 500, error: 'Permission request could not be created.' }
   }
 
   const request = insertedData ? toPermissionRequest(insertedData as RequestRow) : null
@@ -414,7 +414,7 @@ export async function withdrawPermissionRequest(
     .select(REQUEST_COLUMNS)
     .maybeSingle()
 
-  if (updateError) return { ok: false, status: 500, error: updateError.message }
+  if (updateError) return { ok: false, status: 500, error: 'Permission request could not be updated.' }
 
   const request = updatedData ? toPermissionRequest(updatedData as RequestRow) : null
   if (!request) {
@@ -578,7 +578,7 @@ export async function decidePermissionRequest(
     .select(REQUEST_COLUMNS)
     .maybeSingle()
 
-  if (updateError) return { ok: false, status: 500, error: updateError.message }
+  if (updateError) return { ok: false, status: 500, error: 'Permission request could not be updated.' }
 
   const request = updatedData ? toPermissionRequest(updatedData as RequestRow) : null
   if (!request) {

@@ -39,7 +39,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     .update({ do_not_pitch: true })
     .eq('id', pitch.curator_id)
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

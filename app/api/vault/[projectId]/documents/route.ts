@@ -36,7 +36,7 @@ export async function GET(
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -46,6 +46,16 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
+  const supabase = DEMO ? null : await createApiClient()
+  let authenticatedUserId: string | null = null
+  if (supabase) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    authenticatedUserId = user.id
+  }
+
   const body = (await request.json()) as Record<string, unknown>
   const type = String(body.type ?? '')
   const requestedStatus = typeof body.status === 'string' ? body.status : 'pending'
@@ -66,24 +76,22 @@ export async function POST(
     return NextResponse.json({ data: project })
   }
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!supabase || !authenticatedUserId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { data: project } = await supabase
     .from('vault_projects')
     .select('id')
     .eq('id', projectId)
-    .eq('user_id', user.id)
+    .eq('user_id', authenticatedUserId)
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
   const { data, error } = await supabase
     .from('vault_documents')
     .insert({
-      user_id: user.id,
+      user_id: authenticatedUserId,
       project_id: projectId,
       type,
       status: 'pending',
@@ -92,6 +100,6 @@ export async function POST(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

@@ -103,7 +103,7 @@ describe('GET /api/network', () => {
 
     const res = await GET()
     expect(res.status).toBe(500)
-    await expect(res.json()).resolves.toEqual({ error: 'boom' })
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to load your network' })
   })
 })
 

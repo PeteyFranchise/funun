@@ -102,7 +102,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // ─── The authority write has committed. Everything below is best-effort
   // (D-07) — a failure here must never fail this response. ───────────────

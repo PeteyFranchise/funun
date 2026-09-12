@@ -53,7 +53,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const result = data as { id?: string; created?: boolean } | null
   if (error || !result?.id) {
     await service.storage.from(BUCKET).remove([input.path])
-    return NextResponse.json({ error: error?.message ?? 'Could not save the idea recording.' }, { status: 409 })
+    return NextResponse.json({ error: 'Could not save the idea recording.' }, { status: 409 })
   }
   if (result.created && access.permission !== 'owner') {
     const [{ data: actor }, { data: idea }] = await Promise.all([

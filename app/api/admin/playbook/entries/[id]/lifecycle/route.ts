@@ -25,7 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('room_id')
     .eq('id', id)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
   const roomId = (entry as { room_id: string }).room_id
 
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('key')
     .eq('id', roomId)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const auth = await requireRoomAccess((room as { key: string }).key)

@@ -29,6 +29,12 @@ function demoNote(trackTitle: string, playlistName: string | null): string {
 // POST /api/pitches/draft — AI-draft a 150-word playlist-specific pitch note.
 // DRAFT-ONLY: this route never writes pitch_history and never sends email.
 export async function POST(request: Request) {
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await request.json().catch(() => ({}))) as {
     projectId?: string
     trackId?: string
@@ -42,12 +48,6 @@ export async function POST(request: Request) {
       { status: 400 }
     )
   }
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: project } = await supabase
     .from('vault_projects')
@@ -113,9 +113,8 @@ export async function POST(request: Request) {
       .join('')
     parsed = extractJson(text)
     generationSucceeded = parsed !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Pitch generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }

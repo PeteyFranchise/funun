@@ -33,7 +33,7 @@ export async function POST(
   })
 
   if (error || !data) {
-    const message = error?.message ?? 'Could not restore this lyric version.'
+    const message = 'Could not restore this lyric version.'
     const status = message.includes('lyric_snapshot_not_found')
       ? 404
       : message.includes('lyric_lock_required') || message.includes('lyric_block_not_editable')

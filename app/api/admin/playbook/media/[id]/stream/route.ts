@@ -11,11 +11,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
   const service = createServiceClient()
   const asset = await service.from('playbook_media_assets').select('room_id, storage_path, status').eq('id', parsed.data).maybeSingle()
-  if (asset.error) return NextResponse.json({ error: asset.error.message }, { status: 500 })
+  if (asset.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!asset.data || asset.data.status !== 'ready') return NextResponse.json({ error: 'Media not found' }, { status: 404 })
   const grants = await service.from('playbook_room_role_grants').select('role').eq('room_id', asset.data.room_id)
   if (!canAccessRoom(getStaffRoles(auth.user), (grants.data ?? []).map(row => row.role))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const signed = await service.storage.from('playbook-media').createSignedUrl(asset.data.storage_path, 300)
-  if (signed.error || !signed.data) return NextResponse.json({ error: signed.error?.message ?? 'Playback unavailable' }, { status: 500 })
+  if (signed.error || !signed.data) return NextResponse.json({ error: 'Playback unavailable' }, { status: 500 })
   return NextResponse.redirect(signed.data.signedUrl, 302)
 }

@@ -162,7 +162,7 @@ export async function GET(
     .eq('vault_project_id', projectId)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: (terms as ProjectLicenseTerms | null) ?? null })
 }
@@ -207,6 +207,6 @@ export async function PATCH(
     .select(TERMS_COLUMNS)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

@@ -163,7 +163,7 @@ export async function POST(
     .single()
 
   if (insertInvitationError) {
-    return NextResponse.json({ error: insertInvitationError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Never create an auth.users row and never call an admin user-creation
@@ -180,7 +180,7 @@ export async function POST(
   })
 
   if (insertSeatError) {
-    return NextResponse.json({ error: insertSeatError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Best-effort display niceties for the email — a missing workspace name
@@ -264,7 +264,7 @@ export async function GET(
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -359,7 +359,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
     return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 export async function DELETE(
@@ -401,7 +401,7 @@ export async function DELETE(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (targetError) return NextResponse.json({ error: targetError.message }, { status: 500 })
+  if (targetError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!target) return NextResponse.json({ error: 'Invitation not found.' }, { status: 404 })
 
   if (target.status !== 'pending') {

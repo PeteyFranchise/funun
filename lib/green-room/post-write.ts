@@ -162,7 +162,7 @@ export async function createGreenRoomPost(
     .select('id, author_id, post_type, body, visibility, status, linked_object_type, linked_object_id, allow_resharing, published_at, created_at')
     .single()
 
-  if (error) return { ok: false, error: error.message, status: 500 }
+  if (error) return { ok: false, error: 'Post could not be created.', status: 500 }
 
   const row = data as {
     id: string
@@ -190,7 +190,7 @@ export async function createGreenRoomPost(
     const { error: audienceError } = await supabase.from('green_room_post_audiences').insert(audienceInsert)
     if (audienceError) {
       await supabase.from('green_room_posts').delete().eq('id', row.id)
-      return { ok: false, error: audienceError.message, status: 500 }
+      return { ok: false, error: 'Post audience could not be saved.', status: 500 }
     }
   }
 

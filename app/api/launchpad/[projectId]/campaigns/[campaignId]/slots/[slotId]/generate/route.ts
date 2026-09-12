@@ -127,9 +127,8 @@ export async function POST(
       .join('')
     output = extractJson(text)
     generationSucceeded = output !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Content generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }

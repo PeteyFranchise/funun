@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     .eq('work_id', workId)
     .eq('block_id', blockId)
     .maybeSingle()
-  if (commentError) return NextResponse.json({ error: commentError.message }, { status: 500 })
+  if (commentError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!comment) return NextResponse.json({ error: 'Comment not found.' }, { status: 404 })
 
   const { data, error } = await supabase.rpc('set_work_lyric_block_comment_resolution', {
@@ -45,7 +45,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     p_resolved: parsed.data.resolved,
   })
   if (error || !data) {
-    const message = error?.message ?? 'Could not update comment'
+    const message = 'Could not update comment'
     const status = message.includes('comment_resolution_not_allowed')
       ? 403
       : message.includes('comment_reply_not_resolvable')

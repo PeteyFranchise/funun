@@ -110,11 +110,11 @@ describe('applyContentAction', () => {
     expect(chain.update).toHaveBeenCalledWith({ status: 'archived' })
   })
 
-  it('surfaces a DB error as { ok: false }', async () => {
+  it('returns a stable public error when the database update fails', async () => {
     const chain = updateEq({ message: 'db exploded' })
     const service = { from: jest.fn(() => chain) } as unknown as import('@supabase/supabase-js').SupabaseClient
     const result = await applyContentAction(service, 'green_room_post', UUID_A, 'hide')
-    expect(result).toEqual({ ok: false, error: 'db exploded' })
+    expect(result).toEqual({ ok: false, error: 'Report action could not be completed.' })
   })
 
   it('rejects a content action for a target_type with no takedown mechanism', async () => {

@@ -45,8 +45,7 @@ export async function GET(request: Request) {
     const service = createServiceClient()
     const data = await loadDiscoverResults(supabase, service, user.id, filters, cursor, limit)
     return NextResponse.json(data)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to search people'
-    return NextResponse.json({ error: message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to search people' }, { status: 500 })
   }
 }

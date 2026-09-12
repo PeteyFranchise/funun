@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { CONFIG_ROW_ID } from '@/lib/client-partners/health-rules-config'
 import { bytesMatchClaimedImageType } from '@/lib/storage/sniff-image'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
 
 // ─── POST /api/admin/health-rules/prospect-image — swap the D-31.1-08 mark ─
 // Mirrors app/api/admin/staff/[id]/avatar/route.ts's shape exactly (vault-
@@ -26,7 +27,17 @@ export async function POST(request: Request) {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
-  const form = await request.formData()
+  const userClient = await createApiClient()
+  const parsed = await parseAdmittedFormData(userClient, request, {
+    operation: 'admin:prospect-image',
+    maxBodyBytes: MAX_BYTES + 1024 * 1024,
+    dailyCountLimit: 20,
+    dailyByteLimit: 200 * 1024 * 1024,
+  })
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+  }
+  const form = parsed.form
   const file = form.get('file')
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -57,7 +68,7 @@ export async function POST(request: Request) {
   const { error: uploadError } = await service.storage
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+  if (uploadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const {
     data: { publicUrl },
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
     .from('health_rules_config')
     .update({ prospect_image_url: publicUrl })
     .eq('id', CONFIG_ROW_ID)
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

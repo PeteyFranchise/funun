@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const { data: collection, error } = await service.rpc('add_idea_to_collection_transactional', {
     p_idea_id: ideaId, p_actor: user.id, p_name: parsed.data.name,
   })
-  if (error || !collection) return NextResponse.json({ error: error?.message ?? 'Could not create the collection.' }, { status: 409 })
+  if (error || !collection) return NextResponse.json({ error: 'Could not create the collection.' }, { status: 409 })
   return NextResponse.json({ data: collection }, { status: 201 })
 }
 

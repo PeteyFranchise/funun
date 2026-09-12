@@ -34,11 +34,10 @@ export async function POST(
     return NextResponse.json({ error: 'This tool is coming soon' }, { status: 400 })
   }
 
-  const body = (await request.json()) as { projectId?: string }
-  const projectId = body.projectId
-  if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
-
   if (DEMO) {
+    const body = (await request.json()) as { projectId?: string }
+    const projectId = body.projectId
+    if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     const project = await addDemoToolOutput(projectId, { tool_slug: slug, title: tool.name })
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     return NextResponse.json({ data: { demo: true } })
@@ -49,6 +48,10 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = (await request.json()) as { projectId?: string }
+  const projectId = body.projectId
+  if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
 
   const { data: project } = await supabase
     .from('vault_projects')
@@ -116,9 +119,8 @@ export async function POST(
       .join('')
     output = extractJson(text)
     generationSucceeded = output !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Tool generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
@@ -140,6 +142,6 @@ export async function POST(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

@@ -112,7 +112,7 @@ export const markdownComponents: Components = {
       />
     )
   },
-  img: ({ node, alt }) => (
+  img: ({ alt }) => (
     <span className="text-[12px] italic text-[color:var(--ink-3)]">
       {alt ? `[Image blocked: ${alt}]` : '[Remote image blocked]'}
     </span>

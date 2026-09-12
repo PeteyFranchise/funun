@@ -62,7 +62,7 @@ export async function GET() {
     .select(STAGE_COLUMNS)
     .order('sort_order', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       .order('sort_order', { ascending: false })
       .limit(1)
       .maybeSingle()
-    if (maxError) return NextResponse.json({ error: maxError.message }, { status: 500 })
+    if (maxError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     const currentMax = (maxRow as { sort_order: number } | null)?.sort_order ?? -1
     fields.sort_order = currentMax + 1
   }
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     .select(STAGE_COLUMNS)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,
@@ -147,7 +147,7 @@ export async function PATCH(request: Request) {
     .select(STAGE_COLUMNS)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Pipeline stage not found' }, { status: 404 })
 
   await logStaffAction(service, {
@@ -183,11 +183,11 @@ export async function DELETE(request: Request) {
     .from('buyer_orgs')
     .select('id')
     .eq('pipeline_stage_id', parsed.data.id)
-  if (affectedError) return NextResponse.json({ error: affectedError.message }, { status: 500 })
+  if (affectedError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const affectedOrgIds = ((affectedRows ?? []) as { id: string }[]).map(row => row.id)
 
   const { error } = await service.from('pipeline_stages').delete().eq('id', parsed.data.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   if (affectedOrgIds.length > 0) {
     const { error: clearError } = await service
@@ -195,7 +195,7 @@ export async function DELETE(request: Request) {
       .update({ stage_entered_at: null })
       .in('id', affectedOrgIds)
       .not('stage_entered_at', 'is', null)
-    if (clearError) return NextResponse.json({ error: clearError.message }, { status: 500 })
+    if (clearError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   await logStaffAction(service, {

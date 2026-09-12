@@ -202,7 +202,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
     return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 type RosterTransitionOutcome = {
@@ -224,7 +224,7 @@ async function loadTargetRelationship(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (error) return { row: null, error: error.message }
+  if (error) return { row: null, error: 'Request could not be completed.' }
   return { row: (data as RosterRelationshipRow | null) ?? null }
 }
 
@@ -301,7 +301,7 @@ export async function POST(
     .select(ROSTER_COLUMNS)
     .single()
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  if (insertError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const { data: workspaceRow } = await service
     .from('workspaces')
@@ -399,7 +399,7 @@ export async function GET(
     p_offset: clampOffset(searchParams.get('offset')),
   })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const service = createServiceClient()
   const rows = await Promise.all(
@@ -468,7 +468,7 @@ export async function PATCH(
     workspaceId,
     parsed.data.relationshipId
   )
-  if (targetError) return NextResponse.json({ error: targetError }, { status: 500 })
+  if (targetError) return NextResponse.json({ error: 'Roster relationship could not be loaded.' }, { status: 500 })
   if (!target) return NextResponse.json({ error: 'Roster relationship not found.' }, { status: 404 })
 
   if (parsed.data.action === 'end') {
@@ -514,7 +514,7 @@ export async function PATCH(
       .eq('id', target.id)
       .maybeSingle()
 
-    if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+    if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
     return NextResponse.json({ data: updated })
   }
@@ -551,7 +551,7 @@ export async function PATCH(
     .select(ROSTER_COLUMNS)
     .single()
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logWorkspaceAction(service, {
     workspaceId,

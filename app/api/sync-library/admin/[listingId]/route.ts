@@ -158,7 +158,7 @@ export async function POST(
     .eq('id', listingId)
     .maybeSingle()
   if (listingError) {
-    return NextResponse.json({ error: listingError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const row = listingRaw as ListingRow | null
   if (!row) {
@@ -198,7 +198,7 @@ export async function POST(
       .eq('id', row.vault_project_id)
       .maybeSingle()
     if (projectError) {
-      return NextResponse.json({ error: projectError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
     const project = projectRaw as unknown as GateProjectRow | null
     const track = project?.tracks?.find(t => t.id === row.track_id) ?? null
@@ -301,7 +301,7 @@ export async function POST(
       })
       .eq('id', listingId)
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     // SYNCLIB-14: the new-feature-highlight fires ONLY on the artist's
@@ -352,7 +352,7 @@ export async function POST(
     })
     .eq('id', listingId)
   if (rejectError) {
-    return NextResponse.json({ error: rejectError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   try {

@@ -33,6 +33,12 @@ export async function POST(request: Request) {
     )
   }
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await request.json().catch(() => null)) as
     | { scheme?: unknown; projectId?: unknown; trackId?: unknown }
     | null
@@ -49,12 +55,6 @@ export async function POST(request: Request) {
   if (scheme === 'isrc' && !trackId) {
     return NextResponse.json({ error: 'trackId is required for isrc.' }, { status: 400 })
   }
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Ownership: project must belong to the caller. No column-level
   // privilege restriction is in force on vault_projects (migration 082

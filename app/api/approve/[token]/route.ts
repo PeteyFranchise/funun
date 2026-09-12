@@ -93,7 +93,7 @@ export async function POST(
       .eq('id', party.id)
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     // Reuse on future sheets (deliberation §7): OVERWRITE the linked
@@ -128,7 +128,7 @@ export async function POST(
       .maybeSingle()
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
     if (!updatedParty) {
       return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })
@@ -185,7 +185,7 @@ export async function POST(
     .maybeSingle()
 
   if (counterError) {
-    return NextResponse.json({ error: counterError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!updatedParty) {
     return NextResponse.json({ error: 'This link has already been used' }, { status: 410 })

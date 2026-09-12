@@ -83,7 +83,7 @@ export async function PATCH(
     .eq('user_id', user.id)
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: updatedSlot })

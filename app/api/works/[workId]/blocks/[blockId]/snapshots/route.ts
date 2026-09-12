@@ -35,7 +35,7 @@ export async function GET(
     .eq('work_id', workId)
     .maybeSingle()
 
-  if (blockError) return NextResponse.json({ error: blockError.message }, { status: 500 })
+  if (blockError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!block) return NextResponse.json({ error: 'Block not found.' }, { status: 404 })
 
   const { data, error } = await supabase
@@ -46,7 +46,7 @@ export async function GET(
     .order('created_at', { ascending: false })
     .limit(50)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const snapshots = ((data ?? []) as SnapshotRow[])
   const actorIds = Array.from(

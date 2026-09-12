@@ -28,7 +28,7 @@ export async function GET() {
     .select(STAFF_COLUMNS)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const staff = await Promise.all(
     (data ?? []).map(async row => {

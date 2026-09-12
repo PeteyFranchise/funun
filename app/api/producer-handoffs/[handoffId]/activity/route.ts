@@ -39,6 +39,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     p_version_id: parsed.data.versionId,
   })
   const activity = Array.isArray(data) ? data[0] : data
-  if (error || !activity) return NextResponse.json({ error: error?.message ?? 'Could not save that room activity.' }, { status: 409 })
+  if (error || !activity) return NextResponse.json({ error: 'Could not save that room activity.' }, { status: 409 })
   return NextResponse.json({ data: activity })
 }

@@ -110,7 +110,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     bpm = normalizeProducerBpm(input.bpm)
   } catch (cause) {
     await service.storage.from(BUCKET).remove([input.path])
-    return NextResponse.json({ error: cause instanceof Error ? cause.message : 'Invalid production brief.' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid production brief.' }, { status: 400 })
   }
   const note = input.note === null ? null : normalizeHandoffNote(input.note)
   const roundLabel = normalizeHandoffRoundLabel(input.roundLabel ?? '')
@@ -181,7 +181,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .single()
   if (error || !data) {
     await service.storage.from(BUCKET).remove([input.path])
-    return NextResponse.json({ error: error?.message ?? 'Could not save the producer handoff.' }, { status: 409 })
+    return NextResponse.json({ error: 'Could not save the producer handoff.' }, { status: 409 })
   }
 
   const { data: actor } = await service.from('user_profiles').select('artist_name, handle, avatar_url').eq('id', user.id).maybeSingle()

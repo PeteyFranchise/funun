@@ -198,7 +198,7 @@ async function loadRelationship(
     .eq('id', relationshipId)
     .maybeSingle()
 
-  if (error) return { row: null, error: error.message }
+  if (error) return { row: null, error: 'Request could not be completed.' }
   return { row: (data as RelationshipRow | null) ?? null }
 }
 

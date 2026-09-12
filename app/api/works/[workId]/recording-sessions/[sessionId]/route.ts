@@ -47,6 +47,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     .eq('created_by', user.id)
     .select('id')
     .maybeSingle()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not finish the recording session.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not finish the recording session.' }, { status: 409 })
   return NextResponse.json({ data })
 }

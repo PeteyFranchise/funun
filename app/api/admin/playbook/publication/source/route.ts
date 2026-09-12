@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     .select('id')
     .eq('key', item.roomKey)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const roomId = (room as { id: string }).id
 
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     .eq('room_id', roomId)
     .eq('key', item.subgroupKey)
     .maybeSingle()
-  if (subgroupError) return NextResponse.json({ error: subgroupError.message }, { status: 500 })
+  if (subgroupError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!subgroup) return NextResponse.json({ error: 'Target subgroup is not installed' }, { status: 409 })
 
   try {
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     )
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unable to load the approved publication source' },
+      { error: 'Unable to load the approved publication source' },
       { status: 500 }
     )
   }

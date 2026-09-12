@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('id, entry_id, target_kind, target_user_id, target_role, required_revision, required, due_at, assigned_by, created_at, revoked_at')
     .eq('id', id)
     .maybeSingle()
-  if (assignmentError) return NextResponse.json({ error: assignmentError.message }, { status: 500 })
+  if (assignmentError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!assignmentData) return NextResponse.json({ error: 'Reading assignment not found' }, { status: 404 })
   const assignment = assignmentData as ReadingAssignment
 
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('room_id, status')
     .eq('id', assignment.entry_id)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry || (entry as { status: string }).status !== 'published') {
     return NextResponse.json({ error: 'Published Playbook entry not found' }, { status: 404 })
   }
@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('key', parsed.data.roomKey)
     .eq('id', (entry as { room_id: string }).room_id)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const roles = getStaffRoles(auth.user)
@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('user_id', auth.user.id)
     .eq('revision_number', assignment.required_revision)
     .maybeSingle()
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (existing) return NextResponse.json({ data: existing })
 
   const { data, error } = await service
@@ -72,7 +72,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .insert(acknowledgement)
     .select('*')
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: error.code === '23505' ? 409 : 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: error.code === '23505' ? 409 : 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

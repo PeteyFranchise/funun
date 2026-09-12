@@ -39,7 +39,7 @@ export async function GET() {
   if (orgIds) query = query.in('buyer_org_id', orgIds)
 
   const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: (data ?? []) as Selects[] })
 }
 
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: created }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to create Selects' },
+      { error: 'Failed to create Selects' },
       { status: 500 }
     )
   }

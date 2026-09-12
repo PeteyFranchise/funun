@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { createApiClient } from '@/lib/supabase/server'
 import { parseAdmittedFormData } from '@/lib/security/upload-admission'
+import { bytesMatchClaimedImageType } from '@/lib/storage/sniff-image'
 
 const BUCKET = 'vault-assets'
 const MAX_BYTES = 10 * 1024 * 1024
@@ -65,6 +66,9 @@ export async function POST(request: Request) {
   if (!ext) {
     return NextResponse.json({ error: 'Image must be JPG, PNG, or WebP' }, { status: 400 })
   }
+  if (!bytesMatchClaimedImageType(new Uint8Array(await file.arrayBuffer()), file.type)) {
+    return NextResponse.json({ error: 'File content does not match a valid image' }, { status: 400 })
+  }
 
   const column = type === 'avatar' ? 'avatar_url' : 'banner_url'
   const { data: current, error: currentError } = await supabase
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
   if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   const {

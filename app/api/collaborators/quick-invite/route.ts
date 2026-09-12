@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     if (insertError || !inserted) {
       return NextResponse.json(
-        { error: insertError?.message ?? 'Could not create collaborator' },
+        { error: 'Could not create collaborator' },
         { status: 500 }
       )
     }

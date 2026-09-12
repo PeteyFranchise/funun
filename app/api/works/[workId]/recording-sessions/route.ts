@@ -96,6 +96,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .insert({ work_id: workId, base_version_id: baseVersionId, created_by: user.id })
     .select('id')
     .single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not start the recording session.' }, { status: 500 })
+  if (error || !data) return NextResponse.json({ error: 'Could not start the recording session.' }, { status: 500 })
   return NextResponse.json({ data }, { status: 201 })
 }

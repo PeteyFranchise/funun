@@ -38,7 +38,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   })
   if (linkErr || !link?.properties?.action_link) {
     return NextResponse.json(
-      { error: linkErr?.message ?? 'Could not generate an invite link.' },
+      { error: 'Could not generate an invite link.' },
       { status: 500 }
     )
   }

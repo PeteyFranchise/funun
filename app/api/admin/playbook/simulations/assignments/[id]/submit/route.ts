@@ -29,6 +29,9 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireStaff(ALL_STAFF_ROLES)
+  if ('error' in auth)
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
   const id = z
     .string()
     .uuid()
@@ -39,9 +42,6 @@ export async function POST(
       { error: 'Invalid simulation response' },
       { status: 400 }
     )
-  const auth = await requireStaff(ALL_STAFF_ROLES)
-  if ('error' in auth)
-    return NextResponse.json({ error: auth.error }, { status: auth.status })
   const service = createServiceClient()
   if (!(await playbookFeatureAvailable(service, auth.user.id, 'simulations'))) {
     return NextResponse.json(
@@ -140,7 +140,7 @@ export async function POST(
     .select('id')
     .single()
   if (write.error)
-    return NextResponse.json({ error: write.error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   await service.from('playbook_simulation_events').insert({
     scenario_id: nested.scenario_id,
     assignment_id: id.data,

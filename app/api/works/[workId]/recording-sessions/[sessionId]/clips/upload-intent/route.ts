@@ -41,6 +41,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const path = `${workId}/recording-sessions/${sessionId}/${clipId}.${audioType.ext}`
   const service = createServiceClient()
   const { data, error } = await service.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: false })
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not prepare the vocal upload.' }, { status: 500 })
+  if (error || !data) return NextResponse.json({ error: 'Could not prepare the vocal upload.' }, { status: 500 })
   return NextResponse.json({ data: { clipId, path, token: data.token, contentType: audioType.contentType } })
 }

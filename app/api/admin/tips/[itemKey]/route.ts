@@ -45,7 +45,7 @@ export async function PATCH(
       .eq('key', itemKey)
       .maybeSingle()
 
-    if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+    if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!row) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
     // Admin may optionally provide edited tip text in the request body
@@ -69,7 +69,7 @@ export async function PATCH(
       .select()
       .maybeSingle()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!data) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
     return NextResponse.json({ data })
@@ -83,7 +83,7 @@ export async function PATCH(
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Item not found' }, { status: 404 })
 
   return NextResponse.json({ data })

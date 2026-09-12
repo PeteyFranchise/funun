@@ -96,7 +96,7 @@ export async function POST(
     .maybeSingle()
 
   if (relationshipError) {
-    return NextResponse.json({ error: relationshipError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const relationshipRow = relationship as RosterRelationshipRow | null
   if (!relationshipRow) {
@@ -154,7 +154,7 @@ export async function POST(
     .select('id, user_id, title, type, release_date, genre, status, vault_readiness_score, created_at')
     .single()
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  if (insertError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Attached immediately, in the SAME handler — there is no window in which
   // the project exists but the workspace cannot see what it just made; no
@@ -165,7 +165,7 @@ export async function POST(
     relationship_id: relationshipId,
     attached_by: access.userId,
   })
-  if (attachError) return NextResponse.json({ error: attachError.message }, { status: 500 })
+  if (attachError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // vault_projects has no dedicated diary table of its own (unlike `works`,
   // whose work_diary_events is a separate mechanism this route deliberately

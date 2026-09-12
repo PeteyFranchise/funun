@@ -49,6 +49,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   const nextTrimEnd = trimEndMs ?? clip.trim_end_ms
   if (nextTrimStart + nextTrimEnd >= clip.duration_ms) return NextResponse.json({ error: 'Trim must leave some audible vocal.' }, { status: 400 })
   const { data, error } = await supabase.from('work_recording_clips').update(update).eq('id', clipId).eq('session_id', sessionId).select('id').maybeSingle()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not update the vocal section.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not update the vocal section.' }, { status: 409 })
   return NextResponse.json({ data })
 }

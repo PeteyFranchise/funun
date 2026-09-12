@@ -149,9 +149,8 @@ export async function POST(
         .join('')
       output = extractJson(text)
       generationSucceeded = output !== null
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Generation failed'
-      return NextResponse.json({ error: msg }, { status: 502 })
+    } catch {
+      return NextResponse.json({ error: 'Calendar generation is temporarily unavailable.' }, { status: 502 })
     } finally {
       await finishAiUsage(supabase, admission.claimId, generationSucceeded)
     }
@@ -184,7 +183,7 @@ export async function POST(
       .single()
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     return NextResponse.json({ data: updatedCampaign })
@@ -216,9 +215,8 @@ export async function POST(
       .join('')
     output = extractJson(text)
     generationSucceeded = output !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Calendar generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
@@ -268,7 +266,7 @@ export async function POST(
     .single()
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: newCampaign }, { status: 201 })
@@ -295,7 +293,7 @@ export async function GET(
     .order('is_active', { ascending: false })
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Run each campaign's posts through readPosts() for type safety
   const sanitized = ((campaigns ?? []) as SocialCampaign[]).map(c => ({
@@ -349,7 +347,7 @@ export async function PATCH(
     .single()
 
   if (activateError) {
-    return NextResponse.json({ error: activateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: activeCampaign })
@@ -397,7 +395,7 @@ export async function DELETE(
     .eq('user_id', user.id)
 
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { deleted: true } })

@@ -13,6 +13,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
 }))
 
+jest.mock('@/lib/security/rate-limit', () => ({
+  checkRateLimit: jest.fn(async () => false),
+}))
+
 jest.mock('@/lib/green-room/post-write', () => {
   const actual = jest.requireActual('@/lib/green-room/post-write')
   return {

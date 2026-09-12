@@ -82,6 +82,6 @@ export async function POST(
     p_needs_remediation: parsed.data.needsRemediation,
     p_note: parsed.data.note,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

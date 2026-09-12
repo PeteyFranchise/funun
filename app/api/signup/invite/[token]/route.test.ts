@@ -42,22 +42,22 @@ function mockService(options: {
   const from = jest.fn((table: string) => {
     if (table === 'artist_invites') {
       artistInvitesSpy()
+      const builder: any = {
+        eq: jest.fn(() => builder),
+        maybeSingle: jest.fn(async () => ({ data: artistInvite, error: null })),
+      }
       return {
-        select: jest.fn(() => ({
-          eq: jest.fn(() => ({
-            maybeSingle: jest.fn(async () => ({ data: artistInvite, error: null })),
-          })),
-        })),
+        select: jest.fn(() => builder),
       }
     }
     if (table === 'collaborator_invites') {
       collaboratorInvitesSpy()
+      const builder: any = {
+        eq: jest.fn(() => builder),
+        maybeSingle: jest.fn(async () => ({ data: collaboratorInvite, error: null })),
+      }
       return {
-        select: jest.fn(() => ({
-          eq: jest.fn(() => ({
-            maybeSingle: jest.fn(async () => ({ data: collaboratorInvite, error: null })),
-          })),
-        })),
+        select: jest.fn(() => builder),
       }
     }
     if (table === 'user_profiles') {
@@ -82,6 +82,9 @@ beforeEach(() => {
 })
 
 describe('GET /api/signup/invite/[token]', () => {
+  const artistToken = 'a'.repeat(64)
+  const collaboratorToken = 'b'.repeat(64)
+
   it('resolves a token found in artist_invites with inviter name + not expired', async () => {
     const futureIso = new Date(Date.now() + 1000 * 60 * 60).toISOString()
     const service = mockService({
@@ -94,7 +97,7 @@ describe('GET /api/signup/invite/[token]', () => {
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await jsonGet('tok-artist-1', { 'x-forwarded-for': '40.0.0.1' })
+    const res = await jsonGet(artistToken, { 'x-forwarded-for': '40.0.0.1' })
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -119,7 +122,7 @@ describe('GET /api/signup/invite/[token]', () => {
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await jsonGet('tok-collab-1', { 'x-forwarded-for': '40.0.0.2' })
+    const res = await jsonGet(collaboratorToken, { 'x-forwarded-for': '40.0.0.2' })
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -136,7 +139,7 @@ describe('GET /api/signup/invite/[token]', () => {
     const service = mockService({ artistInvite: null, collaboratorInvite: null })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await jsonGet('tok-unknown', { 'x-forwarded-for': '40.0.0.3' })
+    const res = await jsonGet('c'.repeat(64), { 'x-forwarded-for': '40.0.0.3' })
 
     expect(res.status).toBe(404)
   })
@@ -152,7 +155,7 @@ describe('GET /api/signup/invite/[token]', () => {
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await jsonGet('tok-expired', { 'x-forwarded-for': '40.0.0.4' })
+    const res = await jsonGet('d'.repeat(64), { 'x-forwarded-for': '40.0.0.4' })
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -174,7 +177,7 @@ describe('GET /api/signup/invite/[token]', () => {
     })
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
-    const res = await jsonGet('tok-no-inviter', { 'x-forwarded-for': '40.0.0.5' })
+    const res = await jsonGet('e'.repeat(64), { 'x-forwarded-for': '40.0.0.5' })
 
     expect(res.status).toBe(200)
     const body = await res.json()

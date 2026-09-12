@@ -11,6 +11,12 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { profileId, body } = (await request.json().catch(() => ({}))) as {
     profileId?: string
     body?: string
@@ -20,11 +26,6 @@ export async function POST(request: Request) {
   if (!text) return NextResponse.json({ error: 'Endorsement is empty' }, { status: 400 })
   if (text.length > 1000) return NextResponse.json({ error: 'Endorsement too long' }, { status: 400 })
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (user.id === profileId) return NextResponse.json({ error: 'You cannot endorse yourself' }, { status: 400 })
 
   // 13-03 hard-block-enforcement audit: endo_insert_author RLS (migration
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     )
     .select()
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Best-effort side effect: notify the endorsed member (profileId). The
   // endorsement deep-link anchors on the owner's OWN profile
@@ -76,20 +77,20 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
-  const { profileId } = (await request.json().catch(() => ({}))) as { profileId?: string }
-  if (!profileId) return NextResponse.json({ error: 'Missing profileId' }, { status: 400 })
-
   const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { profileId } = (await request.json().catch(() => ({}))) as { profileId?: string }
+  if (!profileId) return NextResponse.json({ error: 'Missing profileId' }, { status: 400 })
+
   const { error } = await supabase
     .from('endorsements')
     .delete()
     .eq('profile_id', profileId)
     .eq('author_id', user.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: { ok: true } })
 }

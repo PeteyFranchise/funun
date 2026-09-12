@@ -41,6 +41,15 @@ function demoPitches(curatorTypes: CuratorType[], title: string): PitchPlugOutpu
 
 // POST /api/tools/pitchplug — generate cold-outreach emails per curator type.
 export async function POST(request: Request) {
+  if (!DEMO) {
+    const supabase = await createApiClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return generatePitches(request, supabase, user.id)
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     projectId?: string
     curatorTypes?: CuratorType[]
@@ -53,21 +62,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Select at least one recipient type' }, { status: 400 })
   }
 
-  if (DEMO) {
-    return NextResponse.json({ data: demoPitches(curatorTypes, 'Your Track') })
-  }
+  return NextResponse.json({ data: demoPitches(curatorTypes, 'Your Track') })
+}
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+async function generatePitches(
+  request: Request,
+  supabase: Awaited<ReturnType<typeof createApiClient>>,
+  userId: string
+) {
+  const body = (await request.json().catch(() => ({}))) as {
+    projectId?: string
+    curatorTypes?: CuratorType[]
+  }
+  const projectId = body.projectId
+  const curatorTypes = (body.curatorTypes ?? []).filter(t => getCurator(t)) as CuratorType[]
+  if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
+  if (curatorTypes.length === 0) {
+    return NextResponse.json({ error: 'Select at least one recipient type' }, { status: 400 })
+  }
 
   const { data: project } = await supabase
     .from('vault_projects')
     .select('id, title, type, genre, sub_genre, release_date, notes, tracks (title)')
     .eq('id', projectId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
@@ -79,7 +97,7 @@ export async function POST(request: Request) {
   const { data: profile } = await service
     .from('user_profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   const ctx: PitchPlugProjectContext = {
@@ -124,9 +142,8 @@ export async function POST(request: Request) {
       .join('')
     parsed = extractJson(text)
     generationSucceeded = parsed !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Pitch generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }

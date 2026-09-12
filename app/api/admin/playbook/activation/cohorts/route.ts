@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       .select('id')
       .single()
     if (write.error)
-      return NextResponse.json({ error: write.error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     return NextResponse.json({ data: { id: write.data.id } })
   }
   if (
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
             .select('cohort_id')
             .maybeSingle()
     if (write.error)
-      return NextResponse.json({ error: write.error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!write.data)
       return NextResponse.json({ error: 'Active cohort membership not found' }, { status: 404 })
     const event = await service
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
         .select('cohort_id')
         .single()
   if (write.error)
-    return NextResponse.json({ error: write.error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!write.data)
     return NextResponse.json({ error: 'Active cohort capability not found' }, { status: 404 })
   const event = await service

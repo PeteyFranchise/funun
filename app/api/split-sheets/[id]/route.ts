@@ -249,7 +249,7 @@ export async function PATCH(
     )
     if (transactionError || !saved) {
       return NextResponse.json(
-        { error: transactionError?.message ?? 'Could not save the split sheet' },
+        { error: 'Could not save the split sheet' },
         { status: 500 }
       )
     }
@@ -316,7 +316,7 @@ export async function PATCH(
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     return NextResponse.json({ data })
   }
 
@@ -328,7 +328,7 @@ export async function PATCH(
     .eq('initiator_user_id', user.id)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -377,6 +377,6 @@ export async function DELETE(
     .eq('id', id)
     .eq('initiator_user_id', user.id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

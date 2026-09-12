@@ -118,7 +118,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       // overridden by is_admin===true (getStaffRoles treats it as leadership).
       app_metadata: { staff_roles: roles, staff_role: primary, is_admin: false },
     })
-    if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
+    if (authError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // ── funun_staff write (DISPLAY COPY) ────────────────────────────────────────
@@ -189,7 +189,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   }
 
   const { error } = await service.auth.admin.deleteUser(id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

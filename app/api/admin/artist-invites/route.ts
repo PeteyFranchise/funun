@@ -39,8 +39,8 @@ export async function GET() {
       service.from('artist_invites').select(INVITE_COLUMNS).order('created_at', { ascending: false }),
     ])
 
-  if (waitlistError) return NextResponse.json({ error: waitlistError.message }, { status: 500 })
-  if (invitesError) return NextResponse.json({ error: invitesError.message }, { status: 500 })
+  if (waitlistError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+  if (invitesError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ waitlist: waitlist ?? [], invites: invites ?? [] })
 }

@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const { data, error } = await service.from('idea_members').upsert({
     idea_id: ideaId, user_id: parsed.data.userId, permission: parsed.data.permission, added_by: user.id,
   }, { onConflict: 'idea_id,user_id' }).select('id').single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not share the idea.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not share the idea.' }, { status: 409 })
   await createNotification(service, {
     userId: parsed.data.userId, type: 'idea_invite', title: 'An idea was shared with you',
     body: idea?.title ?? 'Private idea', link: `/ideas?idea=${ideaId}`,
@@ -48,6 +48,6 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
   if (!parsed.success) return NextResponse.json({ error: 'Choose a collaborator.' }, { status: 400 })
   const { error } = await createServiceClient().from('idea_members').delete()
     .eq('idea_id', ideaId).eq('user_id', parsed.data.userId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 409 })
   return NextResponse.json({ ok: true })
 }

@@ -88,6 +88,13 @@ beforeEach(() => {
   jest.clearAllMocks()
   ;(createNotification as jest.Mock).mockResolvedValue(undefined)
   ;(sendEmail as jest.Mock).mockResolvedValue({ ok: true })
+  ;(createApiClient as jest.Mock).mockResolvedValue({
+    auth: {
+      getUser: jest.fn(async () => ({
+        data: { user: { id: 'artist-1', email: 'artist@test.local' } },
+      })),
+    },
+  })
 })
 
 describe('document signing state guard', () => {

@@ -32,17 +32,17 @@ type RouteCtx = { params: Promise<{ workId: string; memberId: string }> }
 export async function POST(request: Request, { params }: RouteCtx) {
   const { workId, memberId } = await params
 
-  // Optional body: the writer's DDEX/PRO designation, captured at the moment
-  // of promotion. Anything not in the designation set (or an absent body) is
-  // a null designation — an honest "not stated", never a fabricated role.
-  const body = (await request.json().catch(() => null)) as { designation?: unknown } | null
-  const designation = asWriterDesignation(body?.designation)
-
   const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   const userId = user?.id ?? null
+
+  // Optional body: the writer's DDEX/PRO designation, captured at the moment
+  // of promotion. Anything not in the designation set (or an absent body) is
+  // a null designation — an honest "not stated", never a fabricated role.
+  const body = (await request.json().catch(() => null)) as { designation?: unknown } | null
+  const designation = asWriterDesignation(body?.designation)
 
   // Same administer-tier gate plan 05's members route uses — promoting a
   // writer changes who owns the composition, which is a membership-tier

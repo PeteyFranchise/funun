@@ -56,7 +56,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .eq('block_id', blockId)
       .order('created_at', { ascending: false })
       .limit(100)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
     const suggestions = (data ?? []) as LyricBlockSuggestion[]
     const participantIds = await loadWorkParticipantIds(workId)
@@ -87,7 +87,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not load lyric suggestions.' },
+      { error: 'Could not load lyric suggestions.' },
       { status: 500 }
     )
   }
@@ -137,7 +137,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       p_mentioned_user_ids: mentionedUserIds,
     })
     if (error || !data) {
-      const message = error?.message ?? 'Could not save lyric suggestion.'
+      const message = 'Could not save lyric suggestion.'
       return NextResponse.json({ error: message }, { status: lyricSuggestionErrorStatus(message) })
     }
 
@@ -162,7 +162,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: inserted }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not save lyric suggestion.' },
+      { error: 'Could not save lyric suggestion.' },
       { status: 500 }
     )
   }

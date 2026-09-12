@@ -87,7 +87,7 @@ export async function setRoomGrant(
       { room_id: args.roomId, role: args.role, created_by: args.actorId },
       { onConflict: 'room_id,role' }
     )
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: 'Playbook access could not be updated.' }
 
   // Unconditional — mirrors D-04's "log even idempotent actions" discipline.
   await logStaffAction(service, {
@@ -114,7 +114,7 @@ export async function removeRoomGrant(
     .delete()
     .eq('room_id', args.roomId)
     .eq('role', args.role)
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: 'Playbook access could not be updated.' }
 
   await logStaffAction(service, {
     actorId: args.actorId,

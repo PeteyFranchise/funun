@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('id', { count: 'exact', head: true })
     .eq('selects_id', id)
     .is('removed_at', null)
-  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 })
+  if (countError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!count || count === 0) {
     return NextResponse.json(
       { error: 'This Selects has no tracks yet — add at least one before sending.' },
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .maybeSingle()
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? 'Failed to send Selects' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to send Selects' }, { status: 500 })
   }
 
   const sent = data as { share_token: string }

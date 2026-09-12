@@ -11,6 +11,12 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 export async function POST(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { projectId, body, parentId } = (await request.json().catch(() => ({}))) as {
     projectId?: string
     body?: string
@@ -20,12 +26,6 @@ export async function POST(request: Request) {
   if (!projectId) return NextResponse.json({ error: 'Missing projectId' }, { status: 400 })
   if (!text) return NextResponse.json({ error: 'Comment is empty' }, { status: 400 })
   if (text.length > 2000) return NextResponse.json({ error: 'Comment too long' }, { status: 400 })
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // 13-03 hard-block-enforcement audit: unlike wall_posts/endorsements,
   // rc_insert_author (migration 012) was never wired with no_block() at the
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     .insert({ project_id: projectId, author_id: user.id, parent_id: parentId ?? null, body: text })
     .select()
     .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Best-effort side effect: notify the PROJECT OWNER (not the commenter).
   // Skip the notify when the commenter IS the owner (don't notify someone
@@ -88,16 +88,16 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   if (DEMO) return NextResponse.json({ data: { ok: true } })
 
-  const { commentId } = (await request.json().catch(() => ({}))) as { commentId?: string }
-  if (!commentId) return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
-
   const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { commentId } = (await request.json().catch(() => ({}))) as { commentId?: string }
+  if (!commentId) return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
+
   const { error } = await supabase.from('release_comments').delete().eq('id', commentId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: { ok: true } })
 }

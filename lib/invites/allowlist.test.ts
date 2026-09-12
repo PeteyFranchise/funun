@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { isArtistEmailAllowed, emailHasExistingAccount } from '@/lib/invites/allowlist'
+import {
+  emailHasExistingAccount,
+  isArtistEmailAllowed,
+  isSignupInviteValid,
+} from '@/lib/invites/allowlist'
 import { INVITE_ALLOWLIST_SCENARIOS, type InviteAllowlistScenario } from '@/lib/invites/invite-fixtures'
 
 // ─── Fake service-role client ─────────────────────────────────────────────
@@ -184,5 +188,50 @@ describe('emailHasExistingAccount', () => {
     const service = { from: jest.fn(), rpc } as unknown as SupabaseClient
     expect(await emailHasExistingAccount(service, '  ')).toBe(false)
     expect(rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('isSignupInviteValid', () => {
+  function serviceWithCounts(artistCount: number, collaboratorCount: number) {
+    return {
+      from: jest.fn((table: string) => {
+        const builder: any = {
+          select: jest.fn(() => builder),
+          eq: jest.fn(() => builder),
+          ilike: jest.fn(() => builder),
+          or: jest.fn(() => builder),
+          gt: jest.fn(() => builder),
+          then: (resolve: (value: { count: number; error: null }) => void) =>
+            resolve({
+              count: table === 'artist_invites' ? artistCount : collaboratorCount,
+              error: null,
+            }),
+        }
+        return builder
+      }),
+    } as unknown as SupabaseClient
+  }
+
+  it('rejects missing or malformed capabilities without querying', async () => {
+    const service = serviceWithCounts(1, 1)
+
+    expect(await isSignupInviteValid(service, 'member@example.test', 'short')).toBe(false)
+    expect(service.from).not.toHaveBeenCalled()
+  })
+
+  it('accepts a matching active artist invitation capability', async () => {
+    const service = serviceWithCounts(1, 0)
+
+    expect(await isSignupInviteValid(service, 'member@example.test', 'a'.repeat(64))).toBe(true)
+    expect(service.from).toHaveBeenCalledTimes(1)
+    expect(service.from).toHaveBeenCalledWith('artist_invites')
+  })
+
+  it('falls back to a matching collaborator invitation capability', async () => {
+    const service = serviceWithCounts(0, 1)
+
+    expect(await isSignupInviteValid(service, 'member@example.test', 'b'.repeat(64))).toBe(true)
+    expect(service.from).toHaveBeenNthCalledWith(1, 'artist_invites')
+    expect(service.from).toHaveBeenNthCalledWith(2, 'collaborator_invites')
   })
 })

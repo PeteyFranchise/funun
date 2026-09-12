@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     .eq('id', profileId)
     .maybeSingle()
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const profile = profileRaw as ProfileRow | null
   if (!profile || profile.member_type !== 'artist') {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     .in('status', ACTIVE_GRANT_STATUSES)
     .maybeSingle()
   if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const existing = existingRaw as GrantRow | null
   if (existing) {
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (insertError || !grantRaw) {
     return NextResponse.json(
-      { error: insertError?.message ?? 'Failed to create invite.' },
+      { error: 'Failed to create invite.' },
       { status: 500 }
     )
   }

@@ -141,7 +141,7 @@ export async function POST(
 
   if (insertError || !flag) {
     return NextResponse.json(
-      { error: insertError?.message ?? 'Could not save the correction flag' },
+      { error: 'Could not save the correction flag' },
       { status: 500 }
     )
   }

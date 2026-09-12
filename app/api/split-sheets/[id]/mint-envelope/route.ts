@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { renderSplitSheet, partyRoleTag } from '@/lib/vault/pdf/split-sheet'
 import type { SplitSheetAgreementInput } from '@/lib/vault/pdf/split-sheet'
@@ -190,13 +191,10 @@ export async function POST(
   // throws in production while AGREEMENT_CLAUSES is unreviewed.
   try {
     assertCounselReviewedForProduction()
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       {
-        error:
-          e instanceof Error
-            ? e.message
-            : 'Split-sheet operative language has not cleared attorney review',
+        error: 'Split-sheet operative language has not cleared attorney review',
       },
       { status: 503 }
     )
@@ -215,7 +213,7 @@ export async function POST(
 
   if (historyError) {
     return NextResponse.json(
-      { error: `Could not verify the monthly sending limit: ${historyError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }
@@ -288,8 +286,31 @@ export async function POST(
     pdfBytes = await renderSplitSheet(agreementInput)
   } catch (e) {
     return NextResponse.json(
-      { error: `Could not render the split sheet: ${e instanceof Error ? e.message : 'unknown error'}` },
+      { error: 'Could not render the split sheet.' },
       { status: 500 }
+    )
+  }
+
+  const mintClaimToken = randomUUID()
+  const { data: claimOutcome, error: claimError } = await service.rpc('claim_esign_mint', {
+    p_instrument_kind: 'split_sheet',
+    p_subject_id: id,
+    p_actor_user_id: user.id,
+    p_claim_token: mintClaimToken,
+    p_lease_seconds: 900,
+  })
+  if (claimError) {
+    return NextResponse.json({ error: 'Signature setup is temporarily unavailable.' }, { status: 503 })
+  }
+  if (claimOutcome !== 'claimed') {
+    const retryable = claimOutcome === 'busy'
+    return NextResponse.json(
+      {
+        error: retryable
+          ? 'This signature request is already being created. Try again shortly.'
+          : 'This split sheet already has a signature request or needs reconciliation.',
+      },
+      { status: 409 }
     )
   }
 
@@ -315,9 +336,31 @@ export async function POST(
       replyTo: (process.env.ESIGN_FROM_EMAIL ?? '').trim() || undefined,
     })
   } catch (e) {
+    await service.rpc('release_esign_mint_claim', {
+      p_instrument_kind: 'split_sheet',
+      p_subject_id: id,
+      p_claim_token: mintClaimToken,
+    })
     return NextResponse.json(
-      { error: `Could not create the signature request: ${e instanceof Error ? e.message : 'unknown error'}` },
+      { error: 'Could not create the signature request.' },
       { status: 502 }
+    )
+  }
+
+  const { data: providerRecorded, error: providerRecordError } = await service.rpc(
+    'record_esign_mint_provider',
+    {
+      p_instrument_kind: 'split_sheet',
+      p_subject_id: id,
+      p_claim_token: mintClaimToken,
+      p_provider_request_id: created.requestId,
+      p_provider_template_id: created.templateId ?? null,
+    }
+  )
+  if (providerRecordError || providerRecorded !== true) {
+    return NextResponse.json(
+      { error: 'Signature request created but requires reconciliation.' },
+      { status: 503 }
     )
   }
 
@@ -345,8 +388,7 @@ export async function POST(
     // the only handle left for reconciliation.
     return NextResponse.json(
       {
-        error: `Signature request created but could not be recorded: ${envelopeError?.message ?? 'unknown error'}`,
-        docusealSubmissionId: created.requestId,
+        error: 'Signature request created but could not be recorded. Contact support.',
       },
       { status: 500 }
     )
@@ -371,8 +413,7 @@ export async function POST(
   if (signersError) {
     return NextResponse.json(
       {
-        error: `Signature request created but signer rows could not be recorded: ${signersError.message}`,
-        docusealSubmissionId: created.requestId,
+        error: 'Signature request created but signer records require reconciliation.',
       },
       { status: 500 }
     )
@@ -466,6 +507,13 @@ export async function POST(
   const invitesSent = inviteResults.filter(r => r.ok).length
   const invitesFailed = inviteResults.filter(r => !r.ok && !r.notConfigured).map(r => r.email)
   const invitesNotConfigured = inviteResults.some(r => r.notConfigured)
+
+  await service.rpc('complete_esign_mint_claim', {
+    p_instrument_kind: 'split_sheet',
+    p_subject_id: id,
+    p_claim_token: mintClaimToken,
+    p_provider_request_id: created.requestId,
+  })
 
   return NextResponse.json({
     ok: true,

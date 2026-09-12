@@ -23,22 +23,10 @@ import {
   isSyncEntryComplete,
 } from '@/lib/sync-library/readiness'
 
-function stage3(canContinue: boolean): Stage3Result {
-  return {
-    required: [],
-    recommended: [],
-    complete: [],
-    requiredComplete: 0,
-    requiredTotal: 0,
-    canContinue,
-    sampleBlock: false,
-  }
-}
-
 // Builds a Stage3Result exercising rightsBadge's three branches directly
 // (requiredComplete/requiredTotal/sampleBlock/canContinue), rather than
-// reusing the zero-requirements `stage3()` fixture above which always reads
-// as 'contact' (requiredComplete === 0).
+// reusing a zero-requirements fixture, which would always read as 'contact'
+// (requiredComplete === 0).
 function stage3WithRequirements(opts: {
   requiredComplete: number
   requiredTotal: number

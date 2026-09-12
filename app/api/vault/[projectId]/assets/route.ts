@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
 import { addDemoAsset } from '@/lib/vault/demo-store'
 import { parseAdmittedFormData } from '@/lib/security/upload-admission'
+import { bytesMatchClaimedImageType } from '@/lib/storage/sniff-image'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const BUCKET = 'vault-assets'
@@ -70,6 +71,9 @@ export async function POST(
   if (!ext) {
     return NextResponse.json({ error: 'Unsupported file type' }, { status: 400 })
   }
+  if (!bytesMatchClaimedImageType(new Uint8Array(await file.arrayBuffer()), file.type)) {
+    return NextResponse.json({ error: 'File content does not match a valid image' }, { status: 400 })
+  }
 
   if (DEMO) {
     const project = await addDemoAsset(projectId, { type })
@@ -94,7 +98,7 @@ export async function POST(
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
   if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   const {
@@ -118,7 +122,7 @@ export async function POST(
   if (insertError) {
     // Roll back the orphaned object so storage doesn't drift from the table.
     await supabase.storage.from(BUCKET).remove([path])
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Cover art doubles as the project's display image.

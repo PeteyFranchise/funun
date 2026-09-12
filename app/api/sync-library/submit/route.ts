@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     .select('id')
     .eq('project_id', projectId)
   if (tracksError) {
-    return NextResponse.json({ error: tracksError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const ownedTrackIds = new Set((projectTracks ?? []).map(t => (t as { id: string }).id))
   const invalidTrackId = trackIds.find(id => !ownedTrackIds.has(id))
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
       .insert(rows)
       .select('id, track_id')
     if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
     created = (inserted ?? []) as { id: string; track_id: string }[]
   }

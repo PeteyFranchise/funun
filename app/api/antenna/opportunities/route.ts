@@ -34,7 +34,7 @@ export async function GET() {
     .select('*')
     .eq('created_by', user.id)
     .order('created_at', { ascending: false })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await supabase.from('opportunities').insert(insert).select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Fan out matches with the service client (reads across all artists).
   try {

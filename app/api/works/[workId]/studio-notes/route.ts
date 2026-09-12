@@ -116,7 +116,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not load Studio Notes' },
+      { error: 'Could not load Studio Notes' },
       { status: 500 }
     )
   }
@@ -192,7 +192,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     if (error || !inserted) {
-      const message = error?.message ?? 'Could not save Studio Note'
+      const message = 'Could not save Studio Note'
       const status = message.includes('resolved') ? 409 : message.includes('not_found') ? 404 : 500
       return NextResponse.json({ error: message }, { status })
     }
@@ -221,7 +221,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: inserted }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not save Studio Note' },
+      { error: 'Could not save Studio Note' },
       { status: 500 }
     )
   }

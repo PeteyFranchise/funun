@@ -354,7 +354,7 @@ describe('migration 186 — the RLS workspace branch + the D-56 disable control'
 
     it.each(childTables)(
       '$table: write policy (FOR ALL) keeps co-owner/editor + nullable fallback in BOTH USING and WITH CHECK',
-      ({ table, writePolicy, nullableFallback }) => {
+      ({ writePolicy, nullableFallback }) => {
         const start = sqlOnly.indexOf(`CREATE POLICY "${writePolicy}"`)
         expect(start).toBeGreaterThanOrEqual(0)
         const nextBoundary = sqlOnly.indexOf('\n\n-- ', start + 10)

@@ -9,6 +9,7 @@ import {
   accountWorkspaceForUser,
   accountWorkspaceHome,
   accountWorkspaceLabel,
+  finishAccountSwitch,
   type AccountWorkspace,
 } from '@/lib/auth/session-identity'
 
@@ -18,13 +19,14 @@ const inputClass =
 function SignInForm() {
   const searchParams = useSearchParams()
   const next = searchParams.get('next')
+  const inviteToken = searchParams.get('invite')
   const switchToRaw = searchParams.get('switchTo')
   const switchTo: AccountWorkspace | null =
     switchToRaw === 'personal' || switchToRaw === 'team' ? switchToRaw : null
   const accountChanged = searchParams.get('accountChanged') === '1'
   const supabase = createClient()
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +43,8 @@ function SignInForm() {
       return
     }
 
-    if (switchTo && accountWorkspaceForUser(data.user) !== switchTo) {
+    const signedInContext = accountWorkspaceForUser(data.user)
+    if (switchTo && signedInContext !== switchTo) {
       await supabase.auth.signOut({ scope: 'local' })
       setError(
         switchTo === 'team'
@@ -51,6 +54,29 @@ function SignInForm() {
       setSubmitting(false)
       return
     }
+
+    if (inviteToken) {
+      const claimResponse = await fetch('/api/claim-collaborators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteToken }),
+      })
+      if (!claimResponse.ok) {
+        setError('You are signed in, but this invitation could not be claimed. Ask the sender for a new invite and try again.')
+        setSubmitting(false)
+        return
+      }
+    }
+
+    // Reaching this point means this tab explicitly authenticated this user.
+    // Replace any stale per-tab identity before the protected layout mounts;
+    // otherwise SessionIdentityGuard can mistake this intentional sign-in for
+    // a cross-tab session takeover and immediately block the Member workspace.
+    finishAccountSwitch({
+      userId: data.user.id,
+      context: signedInContext,
+      label: data.user.email || accountWorkspaceLabel(signedInContext),
+    })
 
     // Role-aware landing (25-11): staff → admin surface, others → vault; an
     // explicit same-origin ?next= deep link wins. postSignInPath guards against

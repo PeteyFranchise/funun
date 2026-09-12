@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     .select()
     .single()
 
-  if (sheetError) return NextResponse.json({ error: sheetError.message }, { status: 500 })
+  if (sheetError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Insert split_sheet_parties rows (denormalized snapshot)
   const partyRows = parties.map(p => ({
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
   const { error: partiesError } = await supabase.from('split_sheet_parties').insert(partyRows)
 
-  if (partiesError) return NextResponse.json({ error: partiesError.message }, { status: 500 })
+  if (partiesError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: sheet })
 }

@@ -23,7 +23,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!canTransitionFeedback(feedback.data.status as ReaderFeedbackStatus, parsed.data.status)) return NextResponse.json({ error: 'Invalid feedback transition' }, { status: 409 })
   const terminal = ['resolved','declined'].includes(parsed.data.status)
   const update = await service.from('playbook_reader_feedback').update({ status: parsed.data.status, resolved_at: terminal ? new Date().toISOString() : null }).eq('id', id)
-  if (update.error) return NextResponse.json({ error: update.error.message }, { status: 500 })
+  if (update.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   await service.from('playbook_reader_feedback_events').insert({ feedback_id: id, event_type: parsed.data.status === 'open' ? 'reopened' : parsed.data.status, actor_id: auth.user.id, note: parsed.data.note })
   return NextResponse.json({ data: { id, status: parsed.data.status } })
 }

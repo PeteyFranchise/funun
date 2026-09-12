@@ -37,6 +37,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   if (parsed.data.archived !== undefined) update.archived_at = parsed.data.archived ? new Date().toISOString() : null
   const { data, error } = await service.from('idea_recordings').update(update)
     .eq('id', recordingId).eq('idea_id', ideaId).select().single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not update the recording.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not update the recording.' }, { status: 409 })
   return NextResponse.json({ data })
 }

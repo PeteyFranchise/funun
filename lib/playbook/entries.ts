@@ -182,7 +182,7 @@ export async function listEntries(
     .eq('room_id', args.roomId)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
-  if (publishedError) return { data: [], error: publishedError.message }
+  if (publishedError) return { data: [], error: 'Playbook entries could not be loaded.' }
 
   let draftsQuery = service
     .from('playbook_entries')
@@ -192,7 +192,7 @@ export async function listEntries(
     .order('created_at', { ascending: false })
   if (!args.canReviewAll) draftsQuery = draftsQuery.eq('draft_author_id', args.viewerId)
   const { data: visibleDrafts, error: draftsError } = await draftsQuery
-  if (draftsError) return { data: [], error: draftsError.message }
+  if (draftsError) return { data: [], error: 'Playbook entries could not be loaded.' }
 
   let retired: PlaybookEntryRow[] = []
   if (args.canReviewAll) {
@@ -202,7 +202,7 @@ export async function listEntries(
       .eq('room_id', args.roomId)
       .in('status', ['archived', 'superseded'])
       .order('updated_at', { ascending: false })
-    if (retiredError) return { data: [], error: retiredError.message }
+    if (retiredError) return { data: [], error: 'Playbook entries could not be loaded.' }
     retired = (retiredData as PlaybookEntryRow[] | null) ?? []
   }
 
@@ -241,7 +241,7 @@ export async function setEntryLifecycle(
   const { data, error } = await query
     .select()
     .maybeSingle()
-  if (error) return { data: null, error: error.message }
+  if (error) return { data: null, error: 'Playbook entry could not be loaded.' }
   if (!data) {
     return {
       data: null,
@@ -284,7 +284,7 @@ export async function approveEntry(
     .select('draft_content, revision_number, draft_version, source_hash, draft_source_hash')
     .eq('id', args.id)
     .maybeSingle()
-  if (fetchError) return { data: null, error: fetchError.message }
+  if (fetchError) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!row) return { data: null, error: 'Entry not found' }
 
   let mutation: ApprovalMutation
@@ -318,7 +318,7 @@ export async function approveEntry(
     .select()
     .maybeSingle()
 
-  if (error) return { data: null, error: error.message }
+  if (error) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!data) return { data: null, error: 'This entry changed in another session. Refresh before approving.' }
   return { data: data as PlaybookEntryRow }
 }
@@ -332,7 +332,7 @@ export async function rejectEntry(
     .select('status, revision_number, draft_version, draft_content')
     .eq('id', args.id)
     .maybeSingle()
-  if (fetchError) return { data: null, error: fetchError.message }
+  if (fetchError) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!row) return { data: null, error: 'Entry not found' }
   if (!(row as { draft_content: EntryContent | null }).draft_content) {
     return { data: null, error: 'Entry has no pending draft to reject' }
@@ -355,7 +355,7 @@ export async function rejectEntry(
     .select()
     .maybeSingle()
 
-  if (error) return { data: null, error: error.message }
+  if (error) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!data) return { data: null, error: 'This entry changed in another session. Refresh before rejecting.' }
   return { data: data as PlaybookEntryRow }
 }
@@ -381,7 +381,7 @@ export async function editEntry(
     .select('status, revision_number, draft_version')
     .eq('id', args.id)
     .maybeSingle()
-  if (fetchError) return { data: null, error: fetchError.message }
+  if (fetchError) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!current) return { data: null, error: 'Entry not found' }
 
   const mutation = resolveWrite({
@@ -418,7 +418,7 @@ export async function editEntry(
     .select()
     .maybeSingle()
 
-  if (error) return { data: null, error: error.message }
+  if (error) return { data: null, error: 'Playbook entry could not be updated.' }
   if (!data) return { data: null, error: 'This entry changed in another session. Refresh before saving.' }
   return { data: data as PlaybookEntryRow }
 }

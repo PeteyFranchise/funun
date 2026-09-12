@@ -1,4 +1,9 @@
-import { buildExpressAccountParams, buildDestinationChargeParams, type PayableDeal } from './connect'
+import {
+  buildExpressAccountParams,
+  buildDestinationChargeParams,
+  checkoutEconomicsFingerprint,
+  type PayableDeal,
+} from './connect'
 
 describe('buildExpressAccountParams', () => {
   it('sets the account type to express', () => {
@@ -19,6 +24,33 @@ describe('buildExpressAccountParams', () => {
   it('passes through the requested country', () => {
     const params = buildExpressAccountParams('CA')
     expect(params.country).toBe('CA')
+  })
+})
+
+describe('checkoutEconomicsFingerprint', () => {
+  const params = {
+    amountCents: 50_000,
+    currency: 'usd' as const,
+    applicationFeeAmountCents: 7_500,
+    transferDestination: 'acct_test_123',
+  }
+
+  it('is deterministic for the same deal economics', () => {
+    expect(checkoutEconomicsFingerprint('deal-1', params)).toBe(
+      checkoutEconomicsFingerprint('deal-1', { ...params })
+    )
+  })
+
+  it('changes when payment-critical data changes', () => {
+    const baseline = checkoutEconomicsFingerprint('deal-1', params)
+    expect(checkoutEconomicsFingerprint('deal-2', params)).not.toBe(baseline)
+    expect(checkoutEconomicsFingerprint('deal-1', { ...params, amountCents: 50_001 })).not.toBe(baseline)
+    expect(
+      checkoutEconomicsFingerprint('deal-1', { ...params, applicationFeeAmountCents: 7_501 })
+    ).not.toBe(baseline)
+    expect(
+      checkoutEconomicsFingerprint('deal-1', { ...params, transferDestination: 'acct_other' })
+    ).not.toBe(baseline)
   })
 })
 

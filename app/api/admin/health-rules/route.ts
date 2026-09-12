@@ -104,7 +104,7 @@ export async function GET() {
     .eq('id', CONFIG_ROW_ID)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Health rules config not found' }, { status: 404 })
 
   return NextResponse.json({ data })
@@ -133,7 +133,7 @@ export async function PATCH(request: Request) {
     .eq('id', CONFIG_ROW_ID)
     .maybeSingle()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!current) return NextResponse.json({ error: 'Health rules config not found' }, { status: 404 })
 
   const candidate: ThresholdCandidate = {
@@ -161,7 +161,7 @@ export async function PATCH(request: Request) {
     .select(CONFIG_COLUMNS)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Unconditional — mirrors grantOrRevokeVerification's "log even
   // idempotent actions" discipline (D-04).

@@ -10,7 +10,7 @@ const src = readFileSync(path.join(process.cwd(), 'app/api/earnings/import/route
 describe('earnings import — auth + rate-limit before parse (audit #9)', () => {
   it('checks auth and 401s before reading the request body', () => {
     const authIdx = src.indexOf('auth.getUser()')
-    const bodyIdx = src.indexOf('request.formData()')
+    const bodyIdx = src.indexOf('parseAdmittedFormData(supabase, request')
     expect(authIdx).toBeGreaterThan(-1)
     expect(bodyIdx).toBeGreaterThan(-1)
     expect(authIdx).toBeLessThan(bodyIdx)

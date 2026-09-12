@@ -77,7 +77,7 @@ export async function POST(
     .eq('id', listingId)
     .maybeSingle()
   if (listingError) {
-    return NextResponse.json({ error: listingError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const row = listingRaw as ListingRow | null
   if (!row) {
@@ -101,7 +101,7 @@ export async function POST(
     .update(update)
     .eq('id', listingId)
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // T-30-05: UNCONDITIONAL, after the write.

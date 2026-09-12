@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
+import { completeSignupClaim } from '@/lib/invites/completeSignupClaim'
 
 // GET /auth/callback — exchanges the email-confirmation / password-recovery /
 // magic-link code for a session, then redirects into the app. Supabase appends
@@ -38,6 +39,17 @@ export async function GET(request: Request) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     return NextResponse.redirect(failureRedirect)
+  }
+
+  // A confirmation callback is the earliest safe place to attach existing
+  // invitation/collaborator identity. The RPC independently requires the
+  // verified auth.users record and exact signup capability; recovery and
+  // ordinary magic-link callbacks simply return completed=false.
+  if (!isRecovery && data.user) {
+    const claim = await completeSignupClaim(createServiceClient(), data.user.id)
+    if (!claim.ok) {
+      return NextResponse.redirect(`${origin}/signin?error=invite-claim`)
+    }
   }
 
   const destination = postSignInPath({ user: data.user, next: rawNext })

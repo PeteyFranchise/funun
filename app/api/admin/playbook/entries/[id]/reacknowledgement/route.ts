@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const service = createServiceClient()
   const { data: room, error: roomError } = await service
     .from('playbook_rooms').select('id').eq('key', parsed.data.roomKey).maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const roomId = (room as { id: string }).id
   const canManage = auth.staffRole === 'leadership' || (await isRoomLead(service, roomId, auth.user.id))
@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('id', id)
     .eq('room_id', roomId)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry || (entry as { status: string }).status !== 'published') {
     return NextResponse.json({ error: 'Published Playbook entry not found' }, { status: 404 })
   }
@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('id, entry_id, target_kind, target_user_id, target_role, required_revision, required, due_at, assigned_by, created_at, revoked_at')
     .eq('entry_id', id)
     .is('revoked_at', null)
-  if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 })
+  if (currentError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const currentAssignments = (currentData ?? []) as ReadingAssignment[]
   const changedAssignments = currentAssignments.filter(assignment => assignment.required_revision !== revisionNumber)
   const { data, error } = await service
@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('entry_id', id)
     .is('revoked_at', null)
     .select('id')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

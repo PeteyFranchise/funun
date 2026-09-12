@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     idea_id: ideaId, author_user_id: user.id, body: parsed.data.body,
     recording_id: parsed.data.recordingId ?? null, timestamp_ms: parsed.data.timestampMs ?? null,
   }).select('id').single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not save the comment.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not save the comment.' }, { status: 409 })
   if (access.permission !== 'owner') {
     const [{ data: actor }, { data: idea }] = await Promise.all([
       service.from('user_profiles').select('artist_name, handle, avatar_url').eq('id', user.id).maybeSingle(),

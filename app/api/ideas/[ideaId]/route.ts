@@ -39,6 +39,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     update.snoozed_until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   }
   const { data, error } = await createServiceClient().from('ideas').update(update).eq('id', ideaId).eq('user_id', user.id).select().single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not update the idea.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not update the idea.' }, { status: 409 })
   return NextResponse.json({ data })
 }

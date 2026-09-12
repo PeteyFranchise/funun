@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff, getStaffRoles, type StaffRole } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { isAvatarSelfEditEnabled } from '@/lib/staff/avatarSelfEdit'
+import { parseAdmittedFormData } from '@/lib/security/upload-admission'
+import { bytesMatchClaimedImageType } from '@/lib/storage/sniff-image'
 
 // Team management is leadership + TMS (people ops) — same gate as the other
 // /api/admin/staff mutations.
@@ -38,7 +40,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const form = await request.formData()
+  const userClient = await createApiClient()
+  const parsed = await parseAdmittedFormData(userClient, request, {
+    operation: 'staff:avatar',
+    maxBodyBytes: MAX_BYTES + 1024 * 1024,
+    dailyCountLimit: 20,
+    dailyByteLimit: 200 * 1024 * 1024,
+  })
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+  }
+  const form = parsed.form
   const file = form.get('file')
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -49,6 +61,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const ext = EXT_BY_MIME[file.type]
   if (!ext) {
     return NextResponse.json({ error: 'Image must be JPG, PNG, or WebP' }, { status: 400 })
+  }
+  if (!bytesMatchClaimedImageType(new Uint8Array(await file.arrayBuffer()), file.type)) {
+    return NextResponse.json({ error: 'File content does not match a valid image' }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -65,7 +80,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { error: uploadError } = await service.storage
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+  if (uploadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const {
     data: { publicUrl },
@@ -75,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .from('funun_staff')
     .update({ avatar_url: publicUrl })
     .eq('user_id', id)
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

@@ -31,7 +31,7 @@ export async function PATCH(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
@@ -63,7 +63,7 @@ export async function DELETE(
     .is('claimed_by', null)
     .select()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // If zero rows were deleted, the row either doesn't exist, isn't owned by this
   // user, or was claimed concurrently. Re-query only to distinguish the 409 case.

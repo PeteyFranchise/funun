@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createApiClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const COMMENT_MAX = 2000
@@ -26,7 +27,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Comments could not be loaded.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -40,6 +41,16 @@ export async function POST(request: Request, { params }: RouteContext) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (
+    await checkRateLimit(`social:green-room-comment:${user.id}`, {
+      maxAttempts: 60,
+      windowMs: 60 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
+    return NextResponse.json({ error: 'Comment limit reached. Try again later.' }, { status: 429 })
+  }
 
   const { postId } = await params
   const payload = (await request.json().catch(() => ({}))) as { body?: unknown; parentId?: unknown }
@@ -59,7 +70,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     .select('id, post_id, author_id, body, created_at, updated_at')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Comment could not be created.' }, { status: 500 })
   return NextResponse.json({ data }, { status: 201 })
 }
 
@@ -86,7 +97,6 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     .eq('id', payload.commentId.trim())
     .eq('post_id', postId)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Comment could not be removed.' }, { status: 500 })
   return NextResponse.json({ data: { ok: true } })
 }
-

@@ -31,7 +31,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     .maybeSingle<PitchRow>()
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!pitch) {
     const { data: existing } = await service

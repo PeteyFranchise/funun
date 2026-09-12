@@ -164,7 +164,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code && RETRYABLE_LOCK_CODES.has(error.code)) {
     return NextResponse.json({ error: LOCK_CONTENTION_MESSAGE }, { status: 409 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 // A read, kept: it produces the friendly pre-refusals this route can make
@@ -183,7 +183,7 @@ async function loadTargetMember(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (error) return { row: null, error: error.message }
+  if (error) return { row: null, error: 'Request could not be completed.' }
   return { row: (data as WorkspaceMemberRow | null) ?? null }
 }
 
@@ -211,7 +211,7 @@ export async function GET(
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -245,7 +245,7 @@ export async function PATCH(
   const { memberId, role, status } = parsed.data
   const service = createServiceClient()
   const { row: target, error: targetError } = await loadTargetMember(service, workspaceId, memberId)
-  if (targetError) return NextResponse.json({ error: targetError }, { status: 500 })
+  if (targetError) return NextResponse.json({ error: 'Workspace member could not be loaded.' }, { status: 500 })
   if (!target) return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
 
   if (status !== undefined && status !== target.status) {
@@ -315,7 +315,7 @@ export async function PATCH(
     .eq('id', target.id)
     .maybeSingle()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: updated })
 }
 
@@ -352,7 +352,7 @@ export async function DELETE(
     workspaceId,
     parsed.data.memberId
   )
-  if (targetError) return NextResponse.json({ error: targetError }, { status: 500 })
+  if (targetError) return NextResponse.json({ error: 'Workspace member could not be loaded.' }, { status: 500 })
   if (!target) return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
 
   // `removed` is terminal (D-14), so this refusal is the route's own and is
@@ -403,6 +403,6 @@ export async function DELETE(
     .eq('id', target.id)
     .maybeSingle()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: updated })
 }

@@ -139,7 +139,7 @@ export async function applyContentAction(
     const table = targetType === 'green_room_post' ? 'green_room_posts' : 'green_room_comments'
     const moderationStatus = action === 'hide' ? 'hidden' : 'removed'
     const { error } = await service.from(table).update({ moderation_status: moderationStatus }).eq('id', targetId)
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: 'Report action could not be completed.' }
     return { ok: true }
   }
 
@@ -148,14 +148,14 @@ export async function applyContentAction(
       .from('green_room_reposts')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', targetId)
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: 'Report action could not be completed.' }
     return { ok: true }
   }
 
   if (targetType === 'green_room_placement') {
     const status = action === 'pause' ? 'paused' : 'archived'
     const { error } = await service.from('green_room_placements').update({ status }).eq('id', targetId)
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: 'Report action could not be completed.' }
     return { ok: true }
   }
 

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   const service = createServiceClient()
 
   const roomResult = await service.from('playbook_rooms').select('id, key').eq('key', parsed.data.roomKey).maybeSingle()
-  if (roomResult.error) return NextResponse.json({ error: roomResult.error.message }, { status: 500 })
+  if (roomResult.error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!roomResult.data) return NextResponse.json({ error: 'Playbook room not found' }, { status: 404 })
   const roomId = (roomResult.data as { id: string }).id
   const canPublish = auth.staffRole === 'leadership' || (await isRoomLead(service, roomId, auth.user.id))
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     service.from('funun_staff').select('user_id, staff_role, staff_roles'),
   ])
   const loadError = entryResult.error ?? grantsResult.error ?? staffResult.error
-  if (loadError) return NextResponse.json({ error: loadError.message }, { status: 500 })
+  if (loadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entryResult.data) return NextResponse.json({ error: 'Entry not found in this room' }, { status: 404 })
   const entry = entryResult.data as { id: string; title: string; slug: string; status: string; revision_number: number }
   if (entry.status !== 'published') return NextResponse.json({ error: 'Only published guidance can be broadcast' }, { status: 409 })
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     if (isChangeBroadcastSchemaMissing(publish.error)) {
       return NextResponse.json({ error: 'Playbook updates are built but their candidate migration has not been applied yet.' }, { status: 503 })
     }
-    return NextResponse.json({ error: publish.error.code === '23505' ? 'This revision already has an update for that audience.' : publish.error.message }, { status: publish.error.code === '23505' ? 409 : 500 })
+    return NextResponse.json({ error: publish.error.code === '23505' ? 'This revision already has an update for that audience.' : 'The update could not be published.' }, { status: publish.error.code === '23505' ? 409 : 500 })
   }
   const broadcastId = String(publish.data)
 

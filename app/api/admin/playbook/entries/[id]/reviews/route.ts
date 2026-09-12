@@ -36,13 +36,13 @@ type EntryRow = {
 async function loadEntryContext(service: ReturnType<typeof createServiceClient>, id: string, roomKey: string) {
   const { data: room, error: roomError } = await service
     .from('playbook_rooms').select('id, key').eq('key', roomKey).maybeSingle()
-  if (roomError) return { error: roomError.message, status: 500 as const }
+  if (roomError) return { error: 'Request could not be completed.', status: 500 as const }
   if (!room) return { error: 'Room not found', status: 404 as const }
   const { data: entry, error: entryError } = await service
     .from('playbook_entries')
     .select('id, room_id, entry_type, title, slug, content, draft_content, author_id, draft_author_id, revision_number, draft_version')
     .eq('id', id).eq('room_id', room.id).maybeSingle()
-  if (entryError) return { error: entryError.message, status: 500 as const }
+  if (entryError) return { error: 'Request could not be completed.', status: 500 as const }
   if (!entry) return { error: 'Entry not found in this room', status: 404 as const }
   return { room: room as { id: string; key: string }, entry: entry as EntryRow }
 }
@@ -58,7 +58,7 @@ async function validMentionIds(
     service.from('funun_staff').select('user_id, staff_role, staff_roles').in('user_id', unique),
     service.from('playbook_room_role_grants').select('role').eq('room_id', roomId),
   ])
-  if (staffError || grantsError) return { error: staffError?.message ?? grantsError?.message }
+  if (staffError || grantsError) return { error: 'Request could not be completed.' }
   const granted = (grants ?? []).map(row => row.role as StaffRole)
   const allowed = (staff ?? []).filter(row => {
     const roles = Array.isArray(row.staff_roles) && row.staff_roles.length > 0
@@ -86,11 +86,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (isReviewSchemaMissing(threadError)) {
     return NextResponse.json({ available: false, error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
   }
-  if (threadError) return NextResponse.json({ error: threadError.message }, { status: 500 })
+  if (threadError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const threads = (threadData ?? []) as PlaybookReviewThread[]
   const { data: roundData, error: roundError } = await service
     .from('playbook_review_rounds').select('*').eq('entry_id', id).order('created_at', { ascending: false })
-  if (roundError) return NextResponse.json({ error: roundError.message }, { status: 500 })
+  if (roundError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const rounds = (roundData ?? []) as PlaybookReviewRound[]
   const roundIds = rounds.map(round => round.id)
   const { data: summaryEvents, error: summaryError } = roundIds.length
@@ -101,7 +101,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         .eq('event_type', 'decision_summary')
         .order('created_at', { ascending: false })
     : { data: [], error: null }
-  if (summaryError) return NextResponse.json({ error: summaryError.message }, { status: 500 })
+  if (summaryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const summaryByRound = new Map<string, string>()
   for (const event of summaryEvents ?? []) {
     const details = event.details as { summary?: unknown } | null
@@ -115,13 +115,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { data: messageData, error: messageError } = threadIds.length
     ? await service.from('playbook_review_messages').select('*').in('thread_id', threadIds).order('created_at')
     : { data: [], error: null }
-  if (messageError) return NextResponse.json({ error: messageError.message }, { status: 500 })
+  if (messageError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const messages = (messageData ?? []) as PlaybookReviewMessage[]
   const messageIds = messages.map(message => message.id)
   const { data: mentionData, error: mentionError } = messageIds.length
     ? await service.from('playbook_review_mentions').select('message_id, user_id').in('message_id', messageIds)
     : { data: [], error: null }
-  if (mentionError) return NextResponse.json({ error: mentionError.message }, { status: 500 })
+  if (mentionError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const mentionsByMessage = new Map<string, string[]>()
   for (const mention of mentionData ?? []) {
@@ -208,7 +208,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (isReviewSchemaMissing(error)) return NextResponse.json({ error: REVIEW_SCHEMA_UNAVAILABLE }, { status: 503 })
   if (error) {
     const status = /changed|no longer/i.test(error.message) ? 409 : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status })
   }
 
   const recipients = new Set(mentionResult.ids ?? [])

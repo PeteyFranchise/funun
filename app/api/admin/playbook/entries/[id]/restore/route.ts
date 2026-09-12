@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('id, room_id, entry_type, draft_content')
     .eq('id', id)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
   if ((entry as { draft_content: unknown | null }).draft_content !== null) {
     return NextResponse.json(
@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .select('key')
     .eq('id', roomId)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const auth = await requireRoomAccess((room as { key: string }).key)
@@ -55,7 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('entry_id', id)
     .eq('revision_number', parsed.data.revisionNumber)
     .maybeSingle()
-  if (revisionError) return NextResponse.json({ error: revisionError.message }, { status: 500 })
+  if (revisionError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!revision) return NextResponse.json({ error: 'Revision not found' }, { status: 404 })
 
   const content = safeParsePlaybookContent(

@@ -85,7 +85,7 @@ export async function POST() {
     .is('unsubscribed_at', null)
     .is('notified_reopen_at', null)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const eligible = (rows ?? []) as { id: string; email: string; unsubscribe_token: string }[]
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''

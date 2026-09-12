@@ -13,6 +13,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
 }))
 
+jest.mock('@/lib/security/rate-limit', () => ({
+  checkRateLimit: jest.fn(async () => false),
+}))
+
 function jsonRequest(body: unknown) {
   return new Request('http://test.local/api/green-room/posts/post-1/comments', {
     method: 'POST',

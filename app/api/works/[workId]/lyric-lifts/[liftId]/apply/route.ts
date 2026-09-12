@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       : error.code === '23514' || error.code === '22023'
         ? 400
         : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status })
   }
   const applied = await loadLyricLiftView(service, { workId, liftId })
   return NextResponse.json({ data: applied, importedCount: Number(data ?? 0) })

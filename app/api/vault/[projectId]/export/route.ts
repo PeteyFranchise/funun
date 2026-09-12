@@ -114,7 +114,7 @@ export async function POST(
   } catch (err) {
     return NextResponse.json(
       {
-        error: `Could not assemble the export pack: ${err instanceof Error ? err.message : String(err)}`,
+        error: 'Could not assemble the export pack.',
       },
       { status: 502 }
     )

@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   // Oldest first: the request-age clock plan 16-10 aggregates, and the D-15a
   // founder-led motion works the longest-waiting unmatched request first.
   const { data, error } = await query.order('created_at', { ascending: true })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const requests = (data ?? []) as LicenseRequestAdmin[]
 

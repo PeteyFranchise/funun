@@ -78,7 +78,7 @@ export async function mintOrRotateInvite(
     p_new_expires_at: candidateExpiresAt,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: 'Invitation could not be created.' }
 
   const row = (Array.isArray(data) ? data[0] : data) as MintRpcRow | undefined | null
   if (!row) return { ok: false, error: 'Failed to create invite.' }

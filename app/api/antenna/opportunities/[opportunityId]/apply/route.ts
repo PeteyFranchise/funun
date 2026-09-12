@@ -35,7 +35,7 @@ export async function POST(
     })
     .single()
 
-  if (applyError) return NextResponse.json({ error: applyError.message }, { status: 500 })
+  if (applyError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const result = applyResult as {
     result: string

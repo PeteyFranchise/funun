@@ -85,7 +85,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         .eq('source', 'audio')
         .limit(2000),
     ])
-    if (error || reactionError) throw new Error(error?.message ?? reactionError?.message)
+    if (error || reactionError) throw new Error(reactionError?.message)
 
     const comments = (data ?? []) as WorkVersionComment[]
     const reactions = (reactionData ?? []) as WorkNoteReaction[]
@@ -156,7 +156,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: presented, participants, carryOffer })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not load timed comments' },
+      { error: 'Could not load timed comments' },
       { status: 500 }
     )
   }
@@ -200,7 +200,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       p_mentioned_user_ids: mentionedUserIds,
     })
     if (error || !data) {
-      const message = error?.message ?? 'Could not save timed comment'
+      const message = 'Could not save timed comment'
       const status = message.includes('comment_thread_resolved') ? 409 : message.includes('timestamp') ? 400 : 500
       return NextResponse.json({ error: message }, { status })
     }
@@ -231,7 +231,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: inserted }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not save timed comment' },
+      { error: 'Could not save timed comment' },
       { status: 500 }
     )
   }

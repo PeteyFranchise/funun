@@ -174,6 +174,9 @@ export async function POST(
           targetId: id,
           changes: {
             reason: 'mint_failed',
+            // This is staff-only operational evidence, never a client response.
+            // Preserve the database error detail so a failed claim release can
+            // actually be diagnosed from the audit trail.
             releaseError: release.error?.message ?? null,
             casMiss: !release.error && !release.data,
           },

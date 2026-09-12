@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     p_source_comment_ids: parsed.data.sourceCommentIds,
   })
   if (error || !data) {
-    const message = error?.message ?? 'Could not save the carry-forward choice'
+    const message = 'Could not save the carry-forward choice'
     const status = message.includes('duplicate key') ? 409 : message.includes('invalid_comments') ? 400 : 500
     return NextResponse.json({ error: message }, { status })
   }

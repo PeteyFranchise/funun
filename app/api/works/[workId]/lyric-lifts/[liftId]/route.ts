@@ -44,7 +44,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     .in('status', ['queued', 'processing', 'review', 'failed'])
     .select('id')
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!discarded) {
     return NextResponse.json({ error: 'This lyric draft is no longer open.' }, { status: 409 })
   }

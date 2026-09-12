@@ -42,7 +42,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('id, room_id')
     .eq('id', id)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
 
   const roomId = (entry as { room_id: string }).room_id
@@ -51,7 +51,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .select('key')
     .eq('id', roomId)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
 
   const auth = await requireRoomAccess((room as { key: string }).key)
@@ -65,7 +65,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .select('user_id')
       .eq('user_id', parsed.data.ownerId)
       .limit(1)
-    if (ownerError) return NextResponse.json({ error: ownerError.message }, { status: 500 })
+    if (ownerError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!ownerRows?.length) return NextResponse.json({ error: 'Owner must be a Funūn Team Member' }, { status: 400 })
   }
 
@@ -75,7 +75,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from('member_game_plan_templates')
       .select('id')
       .in('id', templateIds)
-    if (templatesError) return NextResponse.json({ error: templatesError.message }, { status: 500 })
+    if (templatesError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if ((templates ?? []).length !== templateIds.length) {
       return NextResponse.json({ error: 'One or more Gameplan templates do not exist' }, { status: 400 })
     }
@@ -94,13 +94,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     p_actor_id: auth.user.id,
     p_mark_reviewed: parsed.data.markReviewed ?? false,
   })
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const { data: links, error: linksError } = await service
     .from('playbook_entry_game_plan_links')
     .select('member_template_id, relationship_kind')
     .eq('entry_id', id)
-  if (linksError) return NextResponse.json({ error: linksError.message }, { status: 500 })
+  if (linksError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

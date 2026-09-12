@@ -68,7 +68,7 @@ export async function POST(
   })
   if (error) {
     const status = error.message.includes('lyric_block_not_found') ? 404 : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status })
   }
   const row = (data as LockRpcRow[] | null)?.[0]
   if (!row) return NextResponse.json({ error: 'Could not resolve section lock' }, { status: 500 })
@@ -93,6 +93,6 @@ export async function DELETE(
     p_uid: auth.user.id,
     p_session_id: parsed.data.session_id,
   })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: { released: data === true, blockId } })
 }

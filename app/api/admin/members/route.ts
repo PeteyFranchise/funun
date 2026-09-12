@@ -25,7 +25,7 @@ export async function GET() {
     .eq('member_type', 'industry')
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // artist_profiles has no email column (it lives on auth.users) — attach it
   // per-row via the admin API so the list can render "{email} · Joined {date}"

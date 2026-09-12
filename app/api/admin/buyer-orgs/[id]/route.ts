@@ -118,7 +118,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const { data, error } = await writeQuery.select().maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Unconditional — mirrors grantOrRevokeVerification's "log even

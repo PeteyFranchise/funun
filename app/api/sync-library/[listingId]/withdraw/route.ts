@@ -30,7 +30,7 @@ export async function POST(
     .eq('id', listingId)
     .maybeSingle()
   if (listingError) {
-    return NextResponse.json({ error: listingError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const row = listing as { id: string; status: string; artist_user_id: string } | null
   // 404 (not 403) for absent OR non-owned — avoids an existence leak
@@ -54,7 +54,7 @@ export async function POST(
     .update({ status: 'withdrawn', withdrawn_at: nowIso, updated_at: nowIso })
     .eq('id', listingId)
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { listingId, status: 'withdrawn' as const } })

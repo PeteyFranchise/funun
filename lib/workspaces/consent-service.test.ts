@@ -310,6 +310,6 @@ describe('revokeMemberConsent', () => {
       permissions: ['view_metadata'],
     })
 
-    expect(result).toEqual({ ok: false, status: 500, error: 'db down' })
+    expect(result).toEqual({ ok: false, status: 500, error: 'Consent decision could not be recorded.' })
   })
 })

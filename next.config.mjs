@@ -1,7 +1,24 @@
 import { withSentryConfig } from '@sentry/nextjs'
 
+if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_VAULT_DEMO === 'true') {
+  throw new Error('NEXT_PUBLIC_VAULT_DEMO must never be enabled in production')
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), payment=(self), microphone=(self)' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+        ],
+      },
+    ]
+  },
   // registerFunuunPdfFonts() (lib/vault/pdf/fonts.ts) resolves the
   // vendored Noto Sans TTFs via an absolute path built from
   // process.cwd() at runtime. Next.js 15's file tracing only bundles

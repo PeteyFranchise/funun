@@ -45,7 +45,7 @@ async function loadParticipantIds(workId: string): Promise<string[]> {
     service.from('work_members').select('user_id').eq('work_id', workId).not('user_id', 'is', null),
   ])
   if (workError || membersError || !work) {
-    throw new Error(workError?.message ?? membersError?.message ?? 'Work not found')
+    throw new Error('Work not found')
   }
   return Array.from(new Set([work.user_id, ...(members ?? []).map(member => member.user_id as string)]))
 }
@@ -108,7 +108,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
         .eq('source', 'lyrics')
         .limit(2000),
     ])
-    if (error || reactionError) return NextResponse.json({ error: error?.message ?? reactionError?.message }, { status: 500 })
+    if (error || reactionError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
     const comments = (data ?? []) as LyricBlockComment[]
     const reactions = (reactionData ?? []) as WorkNoteReaction[]
@@ -160,7 +160,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: presented, participants })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not load comments' },
+      { error: 'Could not load comments' },
       { status: 500 }
     )
   }
@@ -205,7 +205,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       p_mentioned_user_ids: mentionedUserIds,
     })
     if (error || !data) {
-      const message = error?.message ?? 'Could not save comment'
+      const message = 'Could not save comment'
       const status = message.includes('comment_thread_resolved') ? 409 : 500
       return NextResponse.json({ error: message }, { status })
     }
@@ -238,7 +238,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ data: inserted }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not save comment' },
+      { error: 'Could not save comment' },
       { status: 500 }
     )
   }

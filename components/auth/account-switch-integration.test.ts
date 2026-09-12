@@ -17,10 +17,21 @@ describe('Team and Personal account-switch integration', () => {
 
   it('requires target-class verification after an intentional switch sign-in', () => {
     const signIn = source('app/(auth)/signin/page.tsx')
-    expect(signIn).toContain('accountWorkspaceForUser(data.user) !== switchTo')
+    expect(signIn).toContain('signedInContext !== switchTo')
     expect(signIn).toContain("supabase.auth.signOut({ scope: 'local' })")
     expect(signIn).toContain('accountWorkspaceHome(switchTo)')
     expect(signIn).toContain('window.location.assign(')
+  })
+
+  it('accepts an intentional ordinary sign-in as the new identity for that tab', () => {
+    const signIn = source('app/(auth)/signin/page.tsx')
+    const finalizeAt = signIn.indexOf('finishAccountSwitch({')
+    const navigateAt = signIn.indexOf('window.location.assign(')
+
+    expect(finalizeAt).toBeGreaterThan(-1)
+    expect(navigateAt).toBeGreaterThan(finalizeAt)
+    expect(signIn).toContain('context: signedInContext')
+    expect(signIn).toContain('userId: data.user.id')
   })
 
   it('clears the tab identity marker during ordinary sign-out', () => {

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     .eq('id', trackId)
     .maybeSingle()
   if (trackError) {
-    return NextResponse.json({ error: trackError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const track = trackRaw as TrackRow | null
   if (!track) {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     .update({ metadata: nextMetadata })
     .eq('id', trackId)
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // T-30-05: UNCONDITIONAL, after the write.

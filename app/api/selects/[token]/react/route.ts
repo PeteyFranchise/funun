@@ -100,7 +100,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (parsed.data.reaction === null) {
     if (existing) {
       const { error } = await service.from('selects_reactions').delete().eq('id', (existing as { id: string }).id)
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
     return NextResponse.json({ data: { reaction: null } })
   }
@@ -110,7 +110,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
       .from('selects_reactions')
       .update({ reaction: parsed.data.reaction })
       .eq('id', (existing as { id: string }).id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   } else {
     const { error } = await service.from('selects_reactions').insert({
       selects_track_id: track.id,
@@ -123,7 +123,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
         { status: 409 }
       )
     }
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { reaction: parsed.data.reaction } })

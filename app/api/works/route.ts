@@ -38,7 +38,7 @@ export async function GET() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (ownedError) return NextResponse.json({ error: ownedError.message }, { status: 500 })
+  if (ownedError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // work_members' SELECT policy (migration 136) returns a contributor's own
   // row and the owner's whole roster — either way this query, scoped to the
@@ -49,7 +49,7 @@ export async function GET() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
+  if (memberError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // Exclude the caller's own works from the "member of" list — the owner's
   // own work_members row (created by POST below) would otherwise duplicate
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     .single()
 
   if (workError || !work) {
-    return NextResponse.json({ error: workError?.message ?? 'Could not create work' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not create work' }, { status: 500 })
   }
 
   // ── 2 & 3. Service role for both follow-up writes. ───────────────────
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     // work back rather than leaving it stranded.
     await supabase.from('works').delete().eq('id', work.id).eq('user_id', user.id)
     return NextResponse.json(
-      { error: (memberError ?? sheetError)?.message ?? 'Could not fully create the work' },
+      { error: 'Could not fully create the work' },
       { status: 500 }
     )
   }

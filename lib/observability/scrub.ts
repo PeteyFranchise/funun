@@ -7,7 +7,8 @@
 // defends the path where arbitrary data DOES arrive and must be redacted
 // after the fact.
 //
-// Key-based, not value-based: a field is redacted because its KEY matches
+// Key and value based: sensitive keys are fully replaced, and strings are
+// scrubbed for common credential and PII forms even under innocuous keys.
 // a known-sensitive pattern, regardless of what the value contains or how
 // it's encoded (SPEC R5 encoding edge — a non-ASCII legal name like
 // "Funūn Holdings Ltd." under a `legal_name` key is redacted exactly like
@@ -43,6 +44,13 @@ export const SENSITIVE_KEY_PATTERNS: RegExp[] = [
   /royalt/i,
 ]
 
+export const SENSITIVE_VALUE_PATTERNS: RegExp[] = [
+  /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
+  /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi,
+  /\b(?:sk|pk|whsec|sbp)_(?:live|test)?_?[A-Za-z0-9_-]{12,}\b/gi,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+]
+
 /** Top-level request fields that are always fully removed, not redacted-in-place. */
 const REQUEST_FIELDS_TO_DELETE = ['cookies', 'headers', 'query_string']
 
@@ -59,6 +67,12 @@ function scrubValue(value: unknown): unknown {
   if (value === null || value === undefined) return value
   if (Array.isArray(value)) return value.map(scrubValue)
   if (isPlainObject(value)) return scrubObject(value)
+  if (typeof value === 'string') {
+    return SENSITIVE_VALUE_PATTERNS.reduce(
+      (scrubbed, pattern) => scrubbed.replace(pattern, REDACTION_PLACEHOLDER),
+      value
+    )
+  }
   return value
 }
 

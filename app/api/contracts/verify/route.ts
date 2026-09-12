@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   })
   if (upErr) {
     await finishAiUsage(supabase, admission.claimId, false)
-    return NextResponse.json({ error: `Upload failed: ${upErr.message}` }, { status: 500 })
+    return NextResponse.json({ error: "Request could not be completed." }, { status: 500 })
   }
 
   // Run AI verification.

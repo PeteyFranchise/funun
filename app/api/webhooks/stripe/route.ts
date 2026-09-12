@@ -50,39 +50,37 @@ export async function POST(request: Request) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
+    const dealId = session.metadata?.license_request_id?.trim() ?? ''
+    const economicsFingerprint = session.metadata?.economics_fingerprint?.trim() ?? ''
     const paymentIntentId =
       typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null)
-
-    const { data: deal, error: dealError } = await service
-      .from('license_requests')
-      .select('id, payment_status')
-      .eq('stripe_checkout_session_id', session.id)
-      .maybeSingle()
-
-    // A transient DB read error must NOT be swallowed as "unknown session"
-    // — return a retryable 5xx so Stripe redelivers, rather than
-    // permanently leaving a paid deal marked unpaid (audit #9).
-    if (dealError) {
-      return NextResponse.json({ error: 'Persistence unavailable' }, { status: 503 })
+    if (!dealId || !economicsFingerprint || !paymentIntentId || session.payment_status !== 'paid') {
+      return NextResponse.json({ error: 'Payment event is missing required reconciliation data.' }, { status: 400 })
     }
 
-    // Idempotent: no deal found (unknown session) or already paid ->
-    // no-op, falls through to the 200 below either way (T-16-37).
-    if (deal && deal.payment_status !== 'paid') {
-      const { error: paidError } = await service
-        .from('license_requests')
-        .update({
-          payment_status: 'paid',
-          stripe_payment_intent_id: paymentIntentId,
-          paid_at: new Date().toISOString(),
-        })
-        .eq('id', deal.id)
-
-      // Persisting the paid state is the whole point of this event — if it
-      // fails, 5xx so Stripe retries instead of losing the payment record.
-      if (paidError) {
-        return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
-      }
+    let paymentIntent: Stripe.PaymentIntent
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    } catch {
+      return NextResponse.json({ error: 'Payment verification unavailable' }, { status: 503 })
+    }
+    const destination = paymentIntent.transfer_data?.destination
+    const destinationId = typeof destination === 'string' ? destination : destination?.id
+    const { data: completed, error: paidError } = await service.rpc('complete_license_checkout', {
+      p_deal_id: dealId,
+      p_checkout_session_id: session.id,
+      p_economics_fingerprint: economicsFingerprint,
+      p_payment_intent_id: paymentIntentId,
+      p_amount_cents: session.amount_total ?? -1,
+      p_currency: session.currency ?? '',
+      p_application_fee_cents: paymentIntent.application_fee_amount ?? -1,
+      p_transfer_destination: destinationId ?? '',
+    })
+    if (paidError) {
+      return NextResponse.json({ error: 'Persistence failed' }, { status: 503 })
+    }
+    if (completed !== true) {
+      return NextResponse.json({ error: 'Payment reconciliation mismatch' }, { status: 409 })
     }
   }
 

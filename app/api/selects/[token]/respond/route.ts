@@ -58,7 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     .select('id, status')
     .maybeSingle()
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!data) {
     // 0 rows updated = the status changed under us (a concurrent response, or the

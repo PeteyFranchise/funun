@@ -107,7 +107,7 @@ export async function POST(
     .maybeSingle()
 
   if (relationshipError) {
-    return NextResponse.json({ error: relationshipError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   const relationshipRow = relationship as RosterRelationshipRow | null
   if (!relationshipRow) {
@@ -143,7 +143,7 @@ export async function POST(
     .eq('id', projectId)
     .maybeSingle()
 
-  if (projectError) return NextResponse.json({ error: projectError.message }, { status: 500 })
+  if (projectError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const projectRow = project as ProjectCustodyRow | null
   if (!projectRow) {
     return NextResponse.json({ error: 'Project not found.' }, { status: 404 })
@@ -169,7 +169,7 @@ export async function POST(
   })
 
   if (insertError && insertError.code !== '23505') {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   await logWorkspaceAction(service, {
@@ -245,7 +245,7 @@ export async function DELETE(
     .is('detached_at', null)
     .maybeSingle()
 
-  if (attachmentError) return NextResponse.json({ error: attachmentError.message }, { status: 500 })
+  if (attachmentError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!attachment) {
     return NextResponse.json(
       { error: 'No live attachment found for this project in this workspace.' },
@@ -294,7 +294,7 @@ export async function DELETE(
     .update({ detached_at: new Date().toISOString(), detached_by: user.id })
     .eq('id', attachmentRow.id)
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logWorkspaceAction(service, {
     workspaceId,

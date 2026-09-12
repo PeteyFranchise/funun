@@ -26,7 +26,7 @@ export async function GET() {
     .eq('id', user.id)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   if (!profile?.stripe_connect_account_id) {
     return NextResponse.json({ status: 'not_started' })
@@ -63,7 +63,7 @@ export async function GET() {
       payoutsEnabled: profile.stripe_connect_payouts_enabled,
       detailsSubmitted: profile.stripe_connect_details_submitted,
       stale: true,
-      error: err instanceof Error ? err.message : 'Stripe status check failed',
+      error: 'Stripe status check failed',
     })
   }
 }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     .eq('id', user.id)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   let accountId = profile?.stripe_connect_account_id ?? null
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       account = await createExpressAccount(country)
     } catch (err) {
       return NextResponse.json(
-        { error: err instanceof Error ? err.message : 'Could not create a Stripe Connect account.' },
+        { error: 'Could not create a Stripe Connect account.' },
         { status: 400 }
       )
     }
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       .update({ stripe_connect_account_id: accountId })
       .eq('id', user.id)
 
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   const origin = new URL(request.url).origin
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     )
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Could not create the Stripe onboarding link.' },
+      { error: 'Could not create the Stripe onboarding link.' },
       { status: 400 }
     )
   }

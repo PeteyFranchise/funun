@@ -47,6 +47,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to publish play' }, { status: 400 })
+    return NextResponse.json({ error: 'Failed to publish play' }, { status: 400 })
   }
 }

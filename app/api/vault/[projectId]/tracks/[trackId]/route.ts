@@ -100,6 +100,12 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     )
   }
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await request.json()) as Record<string, unknown>
   const update = sanitize(body)
   if (Object.keys(update).length === 0) {
@@ -110,12 +116,6 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
   // even when THIS PATCH never touched it (the reverse-sync gate below
   // must fire only on an actual composer edit).
   const touchesComposers = !!(update.metadata && 'composers' in update.metadata)
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Merge the metadata JSONB so we don't clobber keys we didn't touch.
   if (update.metadata) {
@@ -141,7 +141,7 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
 
   // ─── Reverse sync: project composers → linked living-draft sheet parties ──

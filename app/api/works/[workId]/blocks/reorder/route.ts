@@ -72,7 +72,7 @@ export async function POST(
     // 22023 (invalid_parameter_value): the payload was malformed, incomplete
     // or didn't name every current block exactly once.
     if (error.code === '22023') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 400 })
     }
     // 40001 (serialization_failure): the row count drifted between the
     // completeness check and the update — a real, expected outcome in a
@@ -83,7 +83,7 @@ export async function POST(
         { status: 409 }
       )
     }
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // No diary row written here — the RPC emits exactly one reorder event for

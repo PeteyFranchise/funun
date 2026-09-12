@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const service = createServiceClient()
 
   const { data: playRow, error: playError } = await service.from('plays').select('id, title').eq('id', playId).maybeSingle()
-  if (playError) return NextResponse.json({ error: playError.message }, { status: 500 })
+  if (playError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!playRow) return NextResponse.json({ error: 'Play not found' }, { status: 404 })
 
   const { data: assignmentRows, error: assignmentsError } = await service
@@ -36,7 +36,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     .select('id, title, kind')
     .eq('play_id', playId)
     .order('sort_order', { ascending: true })
-  if (assignmentsError) return NextResponse.json({ error: assignmentsError.message }, { status: 500 })
+  if (assignmentsError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const assignments = (assignmentRows ?? []) as { id: string; title: string; kind: AssignmentKind }[]
   const assignmentIds = assignments.map(a => a.id)

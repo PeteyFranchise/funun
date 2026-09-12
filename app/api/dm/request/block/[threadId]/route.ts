@@ -40,7 +40,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
   // so this must be the caller's own session, never the service client.
   const { error: blockError } = await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: otherId })
   if (blockError && blockError.code !== '23505') {
-    return NextResponse.json({ error: blockError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Move the thread out of the Requests section either way (idempotent on

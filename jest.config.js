@@ -52,6 +52,10 @@ const config = {
     '/.next/',
     worktreeIgnorePattern,
   ],
+  // Jest 30's haste map indexes package.json files before applying test path
+  // filters. Mirror the worktree exclusion here so sibling agent checkouts do
+  // not collide with this checkout's package name.
+  modulePathIgnorePatterns: [worktreeIgnorePattern],
   transformIgnorePatterns: [
     `/node_modules/(?!(${esmPdfDeps})/)`,
   ],

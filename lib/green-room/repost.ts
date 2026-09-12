@@ -49,7 +49,7 @@ export async function createGreenRoomRepost(
     .eq('id', postId)
     .maybeSingle()
 
-  if (originalError) return { ok: false, error: originalError.message, status: 500 }
+  if (originalError) return { ok: false, error: 'Request could not be completed.', status: 500 }
   if (!original) return { ok: false, error: 'Original post not found or not visible', status: 404 }
 
   const post = original as OriginalPostRow
@@ -81,7 +81,7 @@ export async function createGreenRoomRepost(
     .select('id, original_post_id, author_id, quote_body, created_at')
     .single()
 
-  if (error) return { ok: false, error: error.message, status: 500 }
+  if (error) return { ok: false, error: 'Request could not be completed.', status: 500 }
 
   const row = data as {
     id: string

@@ -54,7 +54,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ th
     .or(`a_id.eq.${user.id},b_id.eq.${user.id}`)
     .select('id, requester_id, a_id, b_id')
     .maybeSingle()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!updated) return NextResponse.json({ error: 'Request not found or not permitted' }, { status: 404 })
 
   const updatedRow = updated as { id: string; requester_id: string | null; a_id: string; b_id: string }

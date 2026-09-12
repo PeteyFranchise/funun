@@ -93,6 +93,13 @@ function mockServiceClient(
   const syncListingsUpdateSpy = jest.fn(() => makeQuery({ data: null, error: null }))
 
   const userProfilesSelectSpy = jest.fn(() => makeQuery({ data: profile, error: null }))
+  const rpc = jest.fn(async (name: string) => {
+    if (name === 'claim_esign_mint') return { data: 'claimed', error: null }
+    if (name === 'record_esign_mint_provider') return { data: true, error: null }
+    if (name === 'release_esign_mint_claim') return { data: true, error: null }
+    if (name === 'complete_esign_mint_claim') return { data: true, error: null }
+    throw new Error(`unexpected service rpc: ${name}`)
+  })
 
   const from = jest.fn((table: string) => {
     if (table === 'vault_documents') return { select: vaultDocsSelectSpy, insert: vaultDocsInsertSpy }
@@ -103,6 +110,7 @@ function mockServiceClient(
 
   return {
     from,
+    rpc,
     vaultDocsSelectSpy,
     vaultDocsInsertSpy,
     syncListingsSelectSpy,
@@ -232,6 +240,14 @@ describe('POST /api/sync-library/mint-agreement', () => {
 
     expect(res.status).toBe(200)
     expect(docusealProvider.createRequest).toHaveBeenCalledTimes(1)
+    expect(service.rpc).toHaveBeenCalledWith(
+      'claim_esign_mint',
+      expect.objectContaining({
+        p_instrument_kind: 'blanket_agreement',
+        p_subject_id: USER_UUID,
+        p_actor_user_id: USER_UUID,
+      })
+    )
     const call = (docusealProvider.createRequest as jest.Mock).mock.calls[0][0]
     expect(call.title).toBe(getCurrentBlanketAgreement().title)
     expect(call.embedded).toBe(true)
@@ -261,6 +277,14 @@ describe('POST /api/sync-library/mint-agreement', () => {
       agreementVersion: BLANKET_AGREEMENT_VERSION,
       embed: { slug: 'slug-abc', src: 'https://docuseal.com/s/slug-abc' },
     })
+    expect(service.rpc).toHaveBeenCalledWith(
+      'complete_esign_mint_claim',
+      expect.objectContaining({
+        p_instrument_kind: 'blanket_agreement',
+        p_subject_id: USER_UUID,
+        p_provider_request_id: 'req-123',
+      })
+    )
   })
 
   it('never creates an esign_envelopes row (lightweight document_data.esign path only)', async () => {

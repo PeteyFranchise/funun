@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     p_reaction: parsed.data.reaction,
   })
   if (error || !data) {
-    const message = error?.message ?? 'Could not update reaction'
+    const message = 'Could not update reaction'
     return NextResponse.json({ error: message }, { status: message.includes('not_found') ? 404 : 500 })
   }
   return NextResponse.json({ data })

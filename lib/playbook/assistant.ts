@@ -18,5 +18,7 @@ export async function answerFromPlaybook(question: string, sources: readonly Pla
     const answer = message.content.filter((block): block is Anthropic.TextBlock => block.type === 'text').map(block => block.text).join('').trim()
     if (!answer || answer === 'NO_APPROVED_ANSWER') return { ok: false, noAnswer: true, error: 'The approved guidance retrieved does not establish an answer.' }
     return { ok: true, answer, citations: [...sources], model, inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens }
-  } catch (caught) { return { ok: false, noAnswer: false, error: caught instanceof Error ? caught.message : 'Ask The Playbook could not answer right now.' } }
+  } catch {
+    return { ok: false, noAnswer: false, error: 'Ask The Playbook could not answer right now.' }
+  }
 }

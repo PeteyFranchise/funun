@@ -87,7 +87,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       .eq('id', versionId)
       .eq('work_id', workId)
       .maybeSingle()
-    if (versionError) return NextResponse.json({ error: versionError.message }, { status: 500 })
+    if (versionError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!v) return NextResponse.json({ error: 'versionId does not belong to this work' }, { status: 400 })
     targetVersion = v as { id: string; created_at: string }
   }
@@ -115,7 +115,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       .eq('id', humanSourceVersionId)
       .eq('work_id', workId)
       .maybeSingle()
-    if (humanSourceError) return NextResponse.json({ error: humanSourceError.message }, { status: 500 })
+    if (humanSourceError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!hv) {
       return NextResponse.json(
         { error: 'humanSourceVersionId does not belong to this work' },
@@ -131,7 +131,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       .eq('version_id', humanSourceVersionId)
       .limit(1)
       .maybeSingle()
-    if (sourceAiError) return NextResponse.json({ error: sourceAiError.message }, { status: 500 })
+    if (sourceAiError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (sourceAiEntry) {
       return NextResponse.json(
         { error: 'The human source must be an earlier take without an AI entry.' },
@@ -206,7 +206,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
 
   if (insertError || !inserted) {
     return NextResponse.json(
-      { error: insertError?.message ?? 'Could not file the AI entry' },
+      { error: 'Could not file the AI entry' },
       { status: 500 }
     )
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createGreenRoomPost } from '@/lib/green-room/post-write'
 import { createApiClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -17,10 +18,19 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  if (
+    await checkRateLimit(`social:green-room-post:${user.id}`, {
+      maxAttempts: 30,
+      windowMs: 60 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
+    return NextResponse.json({ error: 'Post limit reached. Try again later.' }, { status: 429 })
+  }
+
   const body = await request.json().catch(() => null)
   const result = await createGreenRoomPost(supabase, user.id, body)
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
 
   return NextResponse.json({ data: result.post }, { status: 201 })
 }
-

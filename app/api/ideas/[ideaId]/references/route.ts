@@ -31,6 +31,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
     idea_id: ideaId, created_by: user.id, kind: parsed.data.kind,
     value: parsed.data.value, label: parsed.data.label?.trim() || null,
   }).select('id').single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not add the reference.' }, { status: 409 })
+  if (error || !data) return NextResponse.json({ error: 'Could not add the reference.' }, { status: 409 })
   return NextResponse.json({ data }, { status: 201 })
 }

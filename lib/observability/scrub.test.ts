@@ -1,4 +1,9 @@
-import { scrubKnownSensitiveKeys, SENSITIVE_KEY_PATTERNS, REDACTION_PLACEHOLDER } from './scrub'
+import {
+  scrubKnownSensitiveKeys,
+  SENSITIVE_KEY_PATTERNS,
+  SENSITIVE_VALUE_PATTERNS,
+  REDACTION_PLACEHOLDER,
+} from './scrub'
 
 describe('scrubKnownSensitiveKeys', () => {
   it('deletes request.cookies, request.headers, and request.query_string when present', () => {
@@ -124,8 +129,19 @@ describe('scrubKnownSensitiveKeys', () => {
     expect(extra.status).toBe(200)
   })
 
+  it('redacts emails and credentials embedded in otherwise safe message fields', () => {
+    const scrubbed = scrubKnownSensitiveKeys({
+      message: 'Failed for peter@example.com with Bearer abc.def.ghi and sk_test_abcdefghijklmnop',
+    })
+    const serialized = JSON.stringify(scrubbed)
+    expect(serialized).not.toContain('peter@example.com')
+    expect(serialized).not.toContain('Bearer abc.def.ghi')
+    expect(serialized).not.toContain('sk_test_abcdefghijklmnop')
+  })
+
   it('exports a non-empty list of sensitive-key patterns', () => {
     expect(Array.isArray(SENSITIVE_KEY_PATTERNS)).toBe(true)
     expect(SENSITIVE_KEY_PATTERNS.length).toBeGreaterThan(0)
+    expect(SENSITIVE_VALUE_PATTERNS.length).toBeGreaterThan(0)
   })
 })

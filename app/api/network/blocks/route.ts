@@ -40,7 +40,7 @@ async function mutate(request: Request, action: 'block' | 'unblock') {
     const { error } = await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: blockedProfileId })
     // 23505 = unique-violation (already blocked) — idempotent, not an error.
     if (error && error.code !== '23505') {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
   } else {
     const { error } = await supabase
@@ -48,7 +48,7 @@ async function mutate(request: Request, action: 'block' | 'unblock') {
       .delete()
       .eq('blocker_id', user.id)
       .eq('blocked_id', blockedProfileId)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: { ok: true, blocked: action === 'block' } })

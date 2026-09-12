@@ -6,6 +6,19 @@ const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
 // POST /api/submissions — record an outbound pitch (PitchPlug "mark as sent").
 export async function POST(request: Request) {
+  if (DEMO) {
+    return NextResponse.json(
+      { error: 'Sending is disabled in demo mode' },
+      { status: 400 }
+    )
+  }
+
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await request.json().catch(() => ({}))) as {
     projectId?: string
     type?: string
@@ -21,19 +34,6 @@ export async function POST(request: Request) {
     )
   }
 
-  if (DEMO) {
-    return NextResponse.json(
-      { error: 'Sending is disabled in demo mode' },
-      { status: 400 }
-    )
-  }
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
   const { data, error } = await createSubmission(supabase, {
     projectId: body.projectId,
     userId: user.id,
@@ -43,6 +43,6 @@ export async function POST(request: Request) {
     status: 'sent',
   })
 
-  if (error) return NextResponse.json({ error }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Submission could not be recorded.' }, { status: 500 })
   return NextResponse.json({ data })
 }

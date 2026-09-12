@@ -17,6 +17,6 @@ export async function GET() {
     .not('release_date', 'is', null)
     .order('release_date', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

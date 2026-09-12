@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { TOOLS } from '@/lib/tools/registry'
+import { ALL_STAFF_ROLES } from '@/lib/admin/staff-role'
+import { requireStaffPage } from '@/lib/admin/gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,7 +123,8 @@ function StatusBadge({ state }: { state: State }) {
   )
 }
 
-export default function StatusPage() {
+export default async function StatusPage() {
+  await requireStaffPage(ALL_STAFF_ROLES)
   const demo = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
   const config = configHealth()
 

@@ -42,7 +42,7 @@ export async function PATCH(
     { onConflict: 'user_id,project_id,item_key' }
   )
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }

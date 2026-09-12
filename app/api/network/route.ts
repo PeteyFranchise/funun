@@ -39,8 +39,7 @@ export async function GET() {
   try {
     const data = await loadNetworkData(supabase, user.id)
     return NextResponse.json(data)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load your network'
-    return NextResponse.json({ error: message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to load your network' }, { status: 500 })
   }
 }

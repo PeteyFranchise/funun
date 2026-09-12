@@ -190,7 +190,7 @@ function respondToPostgresError(error: PostgresLikeError): NextResponse {
   if (error.code === '22023') {
     return NextResponse.json({ error: 'Invalid workspace payload.' }, { status: 400 })
   }
-  return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 }
 
 export async function POST(request: Request) {
@@ -266,7 +266,7 @@ export async function POST(request: Request) {
     .eq('id', result.workspace_id)
     .maybeSingle()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  if (readError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!workspace) {
     return NextResponse.json({ error: 'Failed to create workspace.' }, { status: 500 })
   }
@@ -291,6 +291,6 @@ export async function GET() {
     )
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }

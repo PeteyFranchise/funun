@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createApiClient } from '@/lib/supabase/server'
-import type { VaultProjectType } from '@/types'
 import { getDemoProjects, addDemoProject } from '@/lib/vault/demo-store'
 
-const VALID_TYPES: VaultProjectType[] = ['single', 'snippet', 'ep', 'album', 'unreleased']
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
+const CreateProjectSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    type: z.enum(['single', 'snippet', 'ep', 'album', 'unreleased']),
+    release_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .refine(value => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), 'Invalid release date')
+      .nullable()
+      .optional(),
+    genre: z.string().trim().max(100).nullable().optional(),
+  })
+  .strict()
 
 // GET /api/vault — list all vault projects for the current artist
 export async function GET() {
@@ -32,21 +44,23 @@ export async function GET() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }
 
 // POST /api/vault — create a new vault project
 export async function POST(request: Request) {
-  const body = await request.json()
-  const { title, type, release_date, genre } = body
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user && !DEMO) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!title || !type) {
-    return NextResponse.json({ error: 'Title and type are required' }, { status: 400 })
+  const parsed = CreateProjectSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid project details.' }, { status: 400 })
   }
-  if (!VALID_TYPES.includes(type)) {
-    return NextResponse.json({ error: 'Invalid project type' }, { status: 400 })
-  }
+  const { title, type, release_date, genre } = parsed.data
 
   if (DEMO) {
     const project = await addDemoProject({
@@ -58,10 +72,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: project })
   }
 
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
@@ -78,6 +88,6 @@ export async function POST(request: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Project could not be created.' }, { status: 500 })
   return NextResponse.json({ data })
 }

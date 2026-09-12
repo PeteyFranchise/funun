@@ -11,15 +11,12 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params
-  const body = await request.json()
-  const title = typeof body.title === 'string' ? body.title.trim() : ''
-  const isrc = typeof body.isrc === 'string' && body.isrc.trim() ? body.isrc.trim() : null
-
-  if (!title) {
-    return NextResponse.json({ error: 'Track title is required' }, { status: 400 })
-  }
 
   if (DEMO) {
+    const body = await request.json()
+    const title = typeof body.title === 'string' ? body.title.trim() : ''
+    const isrc = typeof body.isrc === 'string' && body.isrc.trim() ? body.isrc.trim() : null
+    if (!title) return NextResponse.json({ error: 'Track title is required' }, { status: 400 })
     const project = await addDemoTrack(projectId, { title, isrc })
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     return NextResponse.json({ data: project })
@@ -30,6 +27,11 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json()
+  const title = typeof body.title === 'string' ? body.title.trim() : ''
+  const isrc = typeof body.isrc === 'string' && body.isrc.trim() ? body.isrc.trim() : null
+  if (!title) return NextResponse.json({ error: 'Track title is required' }, { status: 400 })
 
   // Confirm the project belongs to this user (RLS also enforces this).
   const { data: project } = await supabase
@@ -61,6 +63,6 @@ export async function POST(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

@@ -54,7 +54,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orgI
     return NextResponse.json({ data })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to list relationship log' },
+      { error: 'Failed to list relationship log' },
       { status: 500 }
     )
   }
@@ -104,7 +104,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to append relationship log entry' },
+      { error: 'Failed to append relationship log entry' },
       { status: 500 }
     )
   }

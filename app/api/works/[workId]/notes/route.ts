@@ -88,7 +88,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .single()
 
   if (error || !inserted) {
-    return NextResponse.json({ error: error?.message ?? 'Could not save the note' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save the note' }, { status: 500 })
   }
 
   return NextResponse.json({ data: inserted }, { status: 201 })

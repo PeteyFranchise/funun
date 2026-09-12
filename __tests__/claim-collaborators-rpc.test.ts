@@ -25,13 +25,17 @@ function withoutSqlLineComments(sql: string): string {
 }
 
 describe('claim_collaborators RPC contract', () => {
-  it('keeps the route and migration aligned on named RPC arguments', () => {
+  it('routes first-navigation completion through the verified token-bound claim helper', () => {
     const route = readFileSync(
       path.join(process.cwd(), 'app/api/claim-collaborators/route.ts'),
       'utf8'
     )
+    const helper = readFileSync(
+      path.join(process.cwd(), 'lib/invites/completeSignupClaim.ts'),
+      'utf8'
+    )
     const migration = readFileSync(
-      path.join(process.cwd(), 'supabase/migrations/051_recreate_claim_collaborators_rpc.sql'),
+      path.join(process.cwd(), 'supabase/migrations/214_verified_invite_claim_hardening.sql'),
       'utf8'
     )
     const columnMigration = readFileSync(
@@ -43,12 +47,14 @@ describe('claim_collaborators RPC contract', () => {
       'utf8'
     )
 
-    expect(route).toContain("service.rpc('claim_collaborators'")
-    expect(route).toContain('p_user_id: user.id')
-    expect(route).toContain("p_email: user.email ?? ''")
-    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.claim_collaborators')
-    expect(migration).toContain('p_user_id UUID')
-    expect(migration).toContain('p_email   TEXT')
+    expect(route).toContain('completeSignupClaim(service, user.id, inviteToken)')
+    expect(route).not.toContain("service.rpc('claim_collaborators'")
+    expect(helper).toContain("service.rpc('complete_verified_signup_claim'")
+    expect(helper).toContain('p_user_id: userId')
+    expect(helper).toContain('p_invite_token: inviteToken ?? null')
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.complete_verified_signup_claim')
+    expect(migration).toContain('email_confirmed_at IS NOT NULL')
+    expect(migration).toContain('PERFORM public.claim_collaborators(p_user_id, v_email)')
     expect(migration).toContain("NOTIFY pgrst, 'reload schema'")
     expect(columnMigration).toContain('ADD COLUMN IF NOT EXISTS claimed_by UUID')
     expect(columnMigration).toContain('idx_collaborators_claimed_by')

@@ -49,9 +49,7 @@ export async function GET(request: Request) {
       limit: clampFeedLimit(searchParams.get('limit')),
     })
     return NextResponse.json(data)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load Green Room feed'
-    return NextResponse.json({ error: message }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to load Green Room feed' }, { status: 500 })
   }
 }
-

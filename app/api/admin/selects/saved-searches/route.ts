@@ -54,7 +54,7 @@ export async function GET() {
     .or(`created_by.eq.${auth.user.id},is_team_shared.eq.true`)
     .order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data: data ?? [] })
 }
 
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     .select(SAVED_SEARCH_COLUMNS)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data }, { status: 201 })
 }
 
@@ -131,6 +131,6 @@ export async function PATCH(request: Request) {
     .select(SAVED_SEARCH_COLUMNS)
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   return NextResponse.json({ data })
 }

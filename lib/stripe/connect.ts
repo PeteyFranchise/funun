@@ -1,4 +1,5 @@
 import type Stripe from 'stripe'
+import { createHash } from 'node:crypto'
 import { computeNetFee } from '@/lib/deals/commission'
 
 // ─── Stripe Connect money rails (D-17/D-17a/D-20) ────────────────────────
@@ -57,6 +58,23 @@ export type DestinationChargeParams = {
   currency: 'usd'
   applicationFeeAmountCents: number
   transferDestination: string
+}
+
+export function checkoutEconomicsFingerprint(
+  dealId: string,
+  params: DestinationChargeParams
+): string {
+  return createHash('sha256')
+    .update(
+      [
+        dealId,
+        params.amountCents,
+        params.currency,
+        params.applicationFeeAmountCents,
+        params.transferDestination,
+      ].join(':')
+    )
+    .digest('hex')
 }
 
 export function buildDestinationChargeParams(
@@ -145,7 +163,13 @@ export async function retrieveAccountStatus(accountId: string): Promise<AccountO
 // wrapper.
 export async function createCheckoutSessionForCharge(
   params: DestinationChargeParams,
-  opts: { successUrl: string; cancelUrl: string; description: string; licenseRequestId: string }
+  opts: {
+    successUrl: string
+    cancelUrl: string
+    description: string
+    licenseRequestId: string
+    economicsFingerprint: string
+  }
 ): Promise<Stripe.Checkout.Session> {
   const { stripe } = await import('@/lib/stripe')
 
@@ -167,6 +191,11 @@ export async function createCheckoutSessionForCharge(
       application_fee_amount: params.applicationFeeAmountCents,
       transfer_data: { destination: params.transferDestination },
     },
-    metadata: { license_request_id: opts.licenseRequestId },
+    metadata: {
+      license_request_id: opts.licenseRequestId,
+      economics_fingerprint: opts.economicsFingerprint,
+    },
+  }, {
+    idempotencyKey: `funun-checkout-${opts.licenseRequestId}-${opts.economicsFingerprint}`,
   })
 }

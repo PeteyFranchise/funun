@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     sourcePath = normalizePlaybookSourcePath(parsed.data.sourcePath)
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid doctrine source path' },
+      { error: 'Invalid doctrine source path' },
       { status: 400 }
     )
   }
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     .select('id')
     .eq('key', parsed.data.roomKey)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const roomId = (room as { id: string }).id
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       .eq('id', parsed.data.subGroupId)
       .eq('room_id', roomId)
       .maybeSingle()
-    if (subgroupError) return NextResponse.json({ error: subgroupError.message }, { status: 500 })
+    if (subgroupError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!subgroup) return NextResponse.json({ error: 'Subgroup does not belong to this room' }, { status: 400 })
   }
 
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     .eq('source_kind', 'adopted_markdown')
     .eq('source_path', sourcePath)
     .maybeSingle()
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const existing = (existingData as ExistingSource | null) ?? null
   const state = classifyAdoption({ targetRoomId: roomId, sourceHash, existing })

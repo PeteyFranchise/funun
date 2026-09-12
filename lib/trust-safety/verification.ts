@@ -96,7 +96,7 @@ export async function grantOrRevokeVerification(
     .eq('id', profileId)
     .maybeSingle()
 
-  if (fetchError) return { ok: false, error: fetchError.message, status: 500 }
+  if (fetchError) return { ok: false, error: 'Verification could not be completed.', status: 500 }
   if (!existing) return { ok: false, error: 'Profile not found', status: 404 }
 
   const verifiedAt = new Date().toISOString()
@@ -106,13 +106,13 @@ export async function grantOrRevokeVerification(
     .update({ verified: action === 'grant', verified_at: verifiedAt })
     .eq('id', profileId)
 
-  if (updateError) return { ok: false, error: updateError.message, status: 500 }
+  if (updateError) return { ok: false, error: 'Verification could not be completed.', status: 500 }
 
   const { error: auditError } = await service
     .from('verification_audit_log')
     .insert({ profile_id: profileId, action, actor_id: actorId })
 
-  if (auditError) return { ok: false, error: auditError.message, status: 500 }
+  if (auditError) return { ok: false, error: 'Verification could not be completed.', status: 500 }
 
   const { data: updated, error: reloadError } = await service
     .from('user_profiles')
@@ -120,7 +120,7 @@ export async function grantOrRevokeVerification(
     .eq('id', profileId)
     .maybeSingle()
 
-  if (reloadError) return { ok: false, error: reloadError.message, status: 500 }
+  if (reloadError) return { ok: false, error: 'Verification could not be completed.', status: 500 }
   if (!updated) return { ok: false, error: 'Profile not found', status: 404 }
   return { ok: true, data: updated as VerificationMemberRow }
 }

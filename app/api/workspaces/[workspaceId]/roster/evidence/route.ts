@@ -166,7 +166,7 @@ export async function POST(
     .maybeSingle()
 
   if (relationshipError) {
-    return NextResponse.json({ error: relationshipError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
   if (!relationship) {
     return NextResponse.json({ error: 'Roster relationship not found.' }, { status: 404 })
@@ -218,7 +218,7 @@ export async function POST(
     )
     .single()
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  if (insertError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logWorkspaceAction(service, {
     workspaceId,
@@ -274,7 +274,7 @@ export async function GET(
     .eq('relationship_id', relationshipId)
     .order('uploaded_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   type EvidenceRow = {
     id: string
@@ -352,7 +352,7 @@ export async function DELETE(
     .eq('id', parsed.data.evidenceId)
     .maybeSingle()
 
-  if (evidenceError) return NextResponse.json({ error: evidenceError.message }, { status: 500 })
+  if (evidenceError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!evidenceRow) return NextResponse.json({ error: 'Agreement evidence not found.' }, { status: 404 })
 
   const { data: relationship, error: relationshipError } = await service
@@ -362,7 +362,7 @@ export async function DELETE(
     .eq('workspace_id', workspaceId)
     .maybeSingle()
 
-  if (relationshipError) return NextResponse.json({ error: relationshipError.message }, { status: 500 })
+  if (relationshipError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!relationship) return NextResponse.json({ error: 'Agreement evidence not found.' }, { status: 404 })
 
   if (evidenceRow.superseded_at) {
@@ -381,7 +381,7 @@ export async function DELETE(
     .select('id, relationship_id, superseded_at, superseded_by')
     .single()
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   await logWorkspaceAction(service, {
     workspaceId,

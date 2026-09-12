@@ -22,6 +22,12 @@ export async function POST(request: Request, { params }: RouteCtx) {
     )
   }
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   // Guarded parse — a malformed/empty body must return a structured 400, not an
   // unhandled 500; a literal JSON `null` body parses fine but has no properties.
   let body: Record<string, unknown>
@@ -38,12 +44,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const path: string = body.path.trim()
   const size: number = typeof body.size === 'number' && Number.isFinite(body.size) ? body.size : 0
   const ext: string = typeof body.ext === 'string' && body.ext.trim() !== '' ? body.ext.trim() : 'mp3'
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Owner-prefix gate (confused-deputy defense): downstream consumers act on this
   // path with the service-role client (signed-URL minting, export ZIP assembly,
@@ -74,7 +74,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .select()
     .single()
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   return NextResponse.json({ data: updated })
@@ -126,7 +126,7 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
     .update({ metadata: nextMeta })
     .eq('id', trackId)
     .eq('user_id', user.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: { ok: true } })
 }

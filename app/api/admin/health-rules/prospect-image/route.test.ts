@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { POST } from './route'
@@ -9,6 +9,7 @@ import { POST } from './route'
 // id=1 row instead of funun_staff.avatar_url (D-31.1-08).
 
 jest.mock('@/lib/supabase/server', () => ({
+  createApiClient: jest.fn(),
   createServiceClient: jest.fn(),
 }))
 
@@ -45,6 +46,7 @@ function multipartRequest(file: File | null) {
   if (file) form.set('file', file)
   return new Request('http://t.local/api/admin/health-rules/prospect-image', {
     method: 'POST',
+    headers: { 'content-length': String((file?.size ?? 0) + 1024) },
     body: form,
   })
 }
@@ -75,6 +77,13 @@ function mockService(
 beforeEach(() => {
   jest.clearAllMocks()
   ;(logStaffAction as jest.Mock).mockResolvedValue({ ok: true })
+  ;(createApiClient as jest.Mock).mockResolvedValue({
+    rpc: jest.fn(async (name: string) =>
+      name === 'claim_upload_admission'
+        ? { data: { allowed: true, claimId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }, error: null }
+        : { data: true, error: null }
+    ),
+  })
 })
 
 describe('POST /api/admin/health-rules/prospect-image', () => {
@@ -144,7 +153,7 @@ describe('POST /api/admin/health-rules/prospect-image', () => {
     ;(createServiceClient as jest.Mock).mockReturnValue(service)
 
     const res = await POST(multipartRequest(makeFile('huge.png', 'image/png', 11 * 1024 * 1024)))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(413)
     expect(service.uploadSpy).not.toHaveBeenCalled()
   })
 

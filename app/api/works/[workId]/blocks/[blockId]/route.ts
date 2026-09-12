@@ -89,7 +89,7 @@ async function loadBlockInWork(
     .eq('work_id', workId)
     .maybeSingle()
 
-  if (error) return { block: null, error: error.message }
+  if (error) return { block: null, error: 'Request could not be completed.' }
   return { block: (data as LyricBlock | null) ?? null, error: null }
 }
 
@@ -136,7 +136,7 @@ export async function PATCH(
   }
 
   const { block, error: loadError } = await loadBlockInWork(supabase, workId, blockId)
-  if (loadError) return NextResponse.json({ error: loadError }, { status: 500 })
+  if (loadError) return NextResponse.json({ error: 'Lyric block could not be loaded.' }, { status: 500 })
   if (!block) return NextResponse.json({ error: 'Block not found.' }, { status: 404 })
 
   const body = await request.json().catch(() => null)
@@ -160,7 +160,7 @@ export async function PATCH(
       .eq('work_id', workId)
 
     if (allBlocksError) {
-      return NextResponse.json({ error: allBlocksError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
     const lookup = new Map(((allBlocks as LyricBlock[] | null) ?? []).map(row => [row.id, row]))
@@ -181,7 +181,7 @@ export async function PATCH(
 
     if (detachError || !detached) {
       return NextResponse.json(
-        { error: detachError?.message ?? 'Could not detach block' },
+        { error: 'Could not detach block' },
         { status: 500 }
       )
     }
@@ -234,7 +234,7 @@ export async function PATCH(
     if (saveError || !updated) {
       const lockConflict = saveError?.message.includes('lyric_lock_required')
       return NextResponse.json(
-        { error: lockConflict ? 'This section is no longer reserved for this tab.' : saveError?.message ?? 'Could not save lyrics' },
+        { error: lockConflict ? 'This section is no longer reserved for this tab.' : 'Could not save lyrics' },
         { status: lockConflict ? 409 : 500 }
       )
     }
@@ -268,7 +268,7 @@ export async function PATCH(
 
   if (updateError || !updated) {
     return NextResponse.json(
-      { error: updateError?.message ?? 'Could not update block' },
+      { error: 'Could not update block' },
       { status: 500 }
     )
   }
@@ -299,7 +299,7 @@ export async function DELETE(
   }
 
   const { block, error: loadError } = await loadBlockInWork(supabase, workId, blockId)
-  if (loadError) return NextResponse.json({ error: loadError }, { status: 500 })
+  if (loadError) return NextResponse.json({ error: 'Lyric block could not be loaded.' }, { status: 500 })
   if (!block) return NextResponse.json({ error: 'Block not found.' }, { status: 404 })
 
   // Migration 135 declares the self-FK as ON DELETE SET NULL, so any repeat
@@ -314,7 +314,7 @@ export async function DELETE(
     .eq('id', blockId)
     .eq('work_id', workId)
 
-  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+  if (deleteError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   // RENUMBERING RULE, once more, where it is easiest to get wrong: no
   // numeral is ever written. Positions are renormalised to be contiguous
@@ -328,7 +328,7 @@ export async function DELETE(
     .order('position', { ascending: true })
 
   if (remainingError) {
-    return NextResponse.json({ error: remainingError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   for (const [index, row] of (remaining ?? []).entries()) {
@@ -338,7 +338,7 @@ export async function DELETE(
       .update({ position: index })
       .eq('id', row.id)
     if (renumberError) {
-      return NextResponse.json({ error: renumberError.message }, { status: 500 })
+      return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
   }
 

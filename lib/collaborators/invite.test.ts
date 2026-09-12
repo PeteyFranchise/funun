@@ -218,7 +218,7 @@ describe('sendCollaboratorInvite', () => {
       collaborator: { id: COLLAB_ID, name: 'Jamie Rivera', email: 'jamie@example.com' },
       invitingUserId: USER_ID,
     })
-    expect(result).toEqual({ ok: false, status: 500, error: 'insert boom' })
+    expect(result).toEqual({ ok: false, status: 500, error: 'Invitation could not be created.' })
     expect(sendEmail).not.toHaveBeenCalled()
   })
 

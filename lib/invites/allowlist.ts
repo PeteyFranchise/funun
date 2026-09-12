@@ -73,3 +73,43 @@ export async function emailHasExistingAccount(service: SupabaseClient, email: st
   if (error) return false
   return data === true
 }
+
+const INVITE_TOKEN_PATTERN = /^[a-f0-9]{64}$/i
+
+/**
+ * Validates the specific bearer capability presented by the signup page.
+ * Email alone is never an admission signal: the token must name a pending,
+ * unexpired artist or collaborator invitation for this exact email.
+ */
+export async function isSignupInviteValid(
+  service: SupabaseClient,
+  email: string,
+  token: string
+): Promise<boolean> {
+  const trimmedEmail = (email ?? '').trim()
+  const trimmedToken = (token ?? '').trim()
+  if (!trimmedEmail || !INVITE_TOKEN_PATTERN.test(trimmedToken)) return false
+
+  const emailPattern = exactCaseInsensitiveEmailPattern(trimmedEmail)
+  const nowIso = new Date().toISOString()
+
+  const { count: artistInviteCount } = await service
+    .from('artist_invites')
+    .select('id', { count: 'exact', head: true })
+    .eq('invite_token', trimmedToken)
+    .ilike('email', emailPattern)
+    .eq('status', 'pending')
+    .or(`token_expires_at.is.null,token_expires_at.gt.${nowIso}`)
+
+  if ((artistInviteCount ?? 0) > 0) return true
+
+  const { count: collaboratorInviteCount } = await service
+    .from('collaborator_invites')
+    .select('id', { count: 'exact', head: true })
+    .eq('invite_token', trimmedToken)
+    .ilike('invited_email', emailPattern)
+    .eq('status', 'pending')
+    .gt('token_expires_at', nowIso)
+
+  return (collaboratorInviteCount ?? 0) > 0
+}

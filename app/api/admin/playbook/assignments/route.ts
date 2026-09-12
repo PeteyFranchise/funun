@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     .select('id')
     .eq('key', parsed.data.roomKey)
     .maybeSingle()
-  if (roomError) return NextResponse.json({ error: roomError.message }, { status: 500 })
+  if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 })
   const roomId = (room as { id: string }).id
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     .eq('id', parsed.data.entryId)
     .eq('room_id', roomId)
     .maybeSingle()
-  if (entryError) return NextResponse.json({ error: entryError.message }, { status: 500 })
+  if (entryError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!entry) return NextResponse.json({ error: 'Entry not found in this room' }, { status: 404 })
   if ((entry as { status: string }).status !== 'published') {
     return NextResponse.json({ error: 'Only published Playbook entries can be assigned' }, { status: 409 })
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     .from('playbook_room_role_grants')
     .select('role')
     .eq('room_id', roomId)
-  if (roomGrantError) return NextResponse.json({ error: roomGrantError.message }, { status: 500 })
+  if (roomGrantError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const grantedRoles = (roomGrantData ?? []).map(row => row.role as StaffRole)
 
   if (parsed.data.targetKind === 'user') {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       .select('user_id, staff_role, staff_roles')
       .eq('user_id', parsed.data.targetUserId!)
       .maybeSingle()
-    if (targetError) return NextResponse.json({ error: targetError.message }, { status: 500 })
+    if (targetError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!target) return NextResponse.json({ error: 'Assignee must be a Funūn Team Member' }, { status: 400 })
     const targetRow = target as { staff_role: StaffRole; staff_roles: StaffRole[] | null }
     const targetRoles = targetRow.staff_roles?.length ? targetRow.staff_roles : [targetRow.staff_role]
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     ? existingQuery.eq('target_user_id', parsed.data.targetUserId!)
     : existingQuery.eq('target_role', parsed.data.targetRole!)
   const { data: existing, error: existingError } = await existingQuery.maybeSingle()
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const assignment = {
     entry_id: parsed.data.entryId,
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     ? service.from('playbook_reading_assignments').update(assignment).eq('id', (existing as { id: string }).id).select('*').single()
     : service.from('playbook_reading_assignments').insert(assignment).select('*').single()
   const { data, error } = await write
-  if (error) return NextResponse.json({ error: error.message }, { status: error.code === '23505' ? 409 : 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: error.code === '23505' ? 409 : 500 })
 
   await logStaffAction(service, {
     actorId: auth.user.id,

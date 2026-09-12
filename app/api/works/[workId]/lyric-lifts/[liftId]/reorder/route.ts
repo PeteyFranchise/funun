@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     p_order: parsed.data.order,
   })
   if (error) return NextResponse.json(
-    { error: error.message },
+    { error: 'Request could not be completed.' },
     { status: error.code === '22023' ? 400 : error.code === '55000' ? 409 : 500 }
   )
   const view = await loadLyricLiftView(service, { workId, liftId })

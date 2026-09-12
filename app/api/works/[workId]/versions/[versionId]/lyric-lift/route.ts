@@ -40,7 +40,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     .eq('work_id', workId)
     .is('archived_at', null)
     .maybeSingle()
-  if (versionError) return NextResponse.json({ error: versionError.message }, { status: 500 })
+  if (versionError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!version) return NextResponse.json({ error: 'Recording not found in this Writer’s Room.' }, { status: 404 })
 
   const size = Number(version.audio_size ?? 0)
@@ -64,7 +64,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     .eq('work_id', workId)
     .in('status', ['queued', 'processing', 'review'])
     .maybeSingle()
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+  if (existingError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (existing) {
     if (existing.version_id !== versionId) {
       return NextResponse.json(
@@ -89,7 +89,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (noVocalsError) return NextResponse.json({ error: noVocalsError.message }, { status: 500 })
+  if (noVocalsError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (noVocals) {
     if (noVocals.status === 'discarded') {
       return NextResponse.json({ error: LYRIC_LIFT_NO_VOCALS_MESSAGE }, { status: 409 })
@@ -122,7 +122,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
         return NextResponse.json({ data: view })
       }
     }
-    return NextResponse.json({ error: insertError?.message ?? 'Could not start Lyric Lift.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not start Lyric Lift.' }, { status: 500 })
   }
 
   const job = await queueLyricLift(lift.id)

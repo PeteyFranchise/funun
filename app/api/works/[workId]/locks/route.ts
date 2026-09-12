@@ -23,7 +23,7 @@ export async function GET(
     .eq('work_id', workId)
     .gt('expires_at', new Date().toISOString())
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   const locks = (data ?? []).map(row => ({
     blockId: row.block_id,

@@ -138,7 +138,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
 
       if (insertError || !inserted) {
         return NextResponse.json(
-          { error: insertError?.message ?? 'Could not create collaborator' },
+          { error: 'Could not create collaborator' },
           { status: 500 }
         )
       }
@@ -221,7 +221,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       )
     }
     return NextResponse.json(
-      { error: memberError?.message ?? 'Could not add member' },
+      { error: 'Could not add member' },
       { status: 500 }
     )
   }

@@ -19,6 +19,6 @@ export async function GET(request: Request) {
     const data = await loadMembersForVerification(service, q)
     return NextResponse.json({ data })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to load members' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load members' }, { status: 500 })
   }
 }

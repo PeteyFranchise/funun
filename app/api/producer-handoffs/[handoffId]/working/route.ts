@@ -32,7 +32,7 @@ export async function POST(_request: Request, { params }: RouteCtx) {
     p_producer: user.id,
   })
   const progress = Array.isArray(data) ? data[0] : data
-  if (error || !progress) return NextResponse.json({ error: error?.message ?? 'Could not save that progress update.' }, { status: 409 })
+  if (error || !progress) return NextResponse.json({ error: 'Could not save that progress update.' }, { status: 409 })
 
   if (progress.inserted) {
     const [{ data: actor }, { data: work }] = await Promise.all([

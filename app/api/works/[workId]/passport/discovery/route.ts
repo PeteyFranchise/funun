@@ -48,7 +48,7 @@ export async function POST(_request: Request, context: RouteCtx) {
     })
     if (error) {
       Sentry.captureException(error, { tags: { feature: 'song-passport', operation: 'legacy-discovery-apply' } })
-      return NextResponse.json({ error: `Discovery apply failed: ${error.message}` }, { status: 500 })
+      return NextResponse.json({ error: "Request could not be completed." }, { status: 500 })
     }
     const result = Array.isArray(data) ? data[0] : data
     passportId = result?.passport_id ?? passportId
@@ -61,7 +61,7 @@ export async function POST(_request: Request, context: RouteCtx) {
       .upsert({ work_id: authorized.workId, created_by: authorized.userId }, { onConflict: 'work_id' })
       .select('id')
       .single()
-    if (error || !passport) return NextResponse.json({ error: error?.message ?? 'Could not create the Song Passport' }, { status: 500 })
+    if (error || !passport) return NextResponse.json({ error: 'Could not create the Song Passport' }, { status: 500 })
     passportId = passport.id
   }
 
@@ -76,7 +76,7 @@ export async function POST(_request: Request, context: RouteCtx) {
       source_evidence: issue.evidence,
       created_by: authorized.userId,
     }, { onConflict: 'passport_id,issue_key', ignoreDuplicates: true })
-    if (error) return NextResponse.json({ error: `Could not queue a reconciliation issue: ${error.message}` }, { status: 500 })
+    if (error) return NextResponse.json({ error: "Request could not be completed." }, { status: 500 })
   }
 
   const idempotencyKey = reportKey(report)

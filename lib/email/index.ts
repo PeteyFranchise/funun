@@ -64,9 +64,9 @@ export async function sendEmail(args: {
       },
       args.idempotencyKey ? { idempotencyKey: args.idempotencyKey } : undefined
     )
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: 'Email could not be sent' }
     return { ok: true }
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Email failed' }
+  } catch {
+    return { ok: false, error: 'Email could not be sent' }
   }
 }

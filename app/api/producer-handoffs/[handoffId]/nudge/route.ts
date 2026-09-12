@@ -34,7 +34,7 @@ export async function POST(_request: Request, { params }: RouteCtx) {
   const nudge = Array.isArray(data) ? data[0] : data
   if (error || !nudge) {
     const cooldown = error?.message?.includes('cooldown')
-    return NextResponse.json({ error: cooldown ? 'A reminder was already sent in the last 24 hours.' : error?.message ?? 'Could not send that reminder.' }, { status: cooldown ? 429 : 409 })
+    return NextResponse.json({ error: cooldown ? 'A reminder was already sent in the last 24 hours.' : 'Could not send that reminder.' }, { status: cooldown ? 429 : 409 })
   }
 
   const [{ data: actor }, { data: work }] = await Promise.all([

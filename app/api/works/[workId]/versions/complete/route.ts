@@ -115,7 +115,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
 
   if (insertError || !inserted) {
     await service.storage.from(BUCKET).remove([path])
-    return NextResponse.json({ error: insertError?.message ?? 'Could not save the version' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save the version' }, { status: 500 })
   }
 
   return NextResponse.json({ data: inserted }, { status: 201 })

@@ -50,7 +50,7 @@ export async function POST(
     return NextResponse.json({ data: result })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to mark assignment complete' },
+      { error: 'Failed to mark assignment complete' },
       { status: 500 }
     )
   }

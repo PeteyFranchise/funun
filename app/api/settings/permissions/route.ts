@@ -142,7 +142,7 @@ export async function GET(_request: Request) {
     .order('created_at', { ascending: false })
 
   if (relationshipError) {
-    return NextResponse.json({ error: relationshipError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   // Third pass on the same question: any row that does not name the caller

@@ -174,7 +174,7 @@ async function handleBlanketAgreementCompletion(
     await releaseBlanketCompletionClaim(service, doc.id, claimToken)
     return NextResponse.json(
       {
-        error: `Could not fetch the executed agreement: ${e instanceof Error ? e.message : 'unknown error'}`,
+        error: 'Could not fetch the executed agreement.',
       },
       { status: 502 }
     )
@@ -190,7 +190,7 @@ async function handleBlanketAgreementCompletion(
   if (uploadError) {
     await releaseBlanketCompletionClaim(service, doc.id, claimToken)
     return NextResponse.json(
-      { error: `Could not store the signed agreement: ${uploadError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }
@@ -496,7 +496,7 @@ export async function POST(request: Request) {
     await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
       {
-        error: `Could not fetch the executed documents: ${e instanceof Error ? e.message : 'unknown error'}`,
+        error: 'Could not fetch the executed documents.',
       },
       { status: 502 }
     )
@@ -519,7 +519,7 @@ export async function POST(request: Request) {
   if (executedUploadError) {
     await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
-      { error: `Could not store the executed document: ${executedUploadError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }
@@ -587,7 +587,7 @@ export async function POST(request: Request) {
   if (signersError) {
     await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
-      { error: `Could not record signer completion: ${signersError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }
@@ -602,7 +602,7 @@ export async function POST(request: Request) {
   if (sheetUpdateError) {
     await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
-      { error: `Could not mark the split sheet executed: ${sheetUpdateError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }
@@ -638,7 +638,7 @@ export async function POST(request: Request) {
     if (fanoutError && fanoutError.code !== '23505') {
       await releaseCompletionClaim(service, envelope.id, claimToken)
       return NextResponse.json(
-        { error: `Could not file the executed contract: ${fanoutError.message}` },
+        { error: "Request could not be completed." },
         { status: 500 }
       )
     }
@@ -662,7 +662,7 @@ export async function POST(request: Request) {
   if (envelopeUpdateError) {
     await releaseCompletionClaim(service, envelope.id, claimToken)
     return NextResponse.json(
-      { error: `Could not record the completion: ${envelopeUpdateError.message}` },
+      { error: "Request could not be completed." },
       { status: 500 }
     )
   }

@@ -52,7 +52,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
     return NextResponse.json({ data })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to list contacts' },
+      { error: 'Failed to list contacts' },
       { status: 500 }
     )
   }
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ org
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to create contact' },
+      { error: 'Failed to create contact' },
       { status: 500 }
     )
   }
@@ -134,7 +134,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ or
     return NextResponse.json({ data })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to update contact' },
+      { error: 'Failed to update contact' },
       { status: 500 }
     )
   }
@@ -169,7 +169,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ o
     return NextResponse.json({ data: { id: contactId } })
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to delete contact' },
+      { error: 'Failed to delete contact' },
       { status: 500 }
     )
   }

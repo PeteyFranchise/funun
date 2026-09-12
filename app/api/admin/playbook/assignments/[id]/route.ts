@@ -16,7 +16,7 @@ async function authorize(roomKey: string, id: string) {
   if ('error' in auth) return { response: NextResponse.json({ error: auth.error }, { status: auth.status }) }
   const service = createServiceClient()
   const { data: room, error: roomError } = await service.from('playbook_rooms').select('id').eq('key', roomKey).maybeSingle()
-  if (roomError) return { response: NextResponse.json({ error: roomError.message }, { status: 500 }) }
+  if (roomError) return { response: NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 }) }
   if (!room) return { response: NextResponse.json({ error: 'Room not found' }, { status: 404 }) }
   const roomId = (room as { id: string }).id
   const canManage = auth.staffRole === 'leadership' || (await isRoomLead(service, roomId, auth.user.id))
@@ -27,7 +27,7 @@ async function authorize(roomKey: string, id: string) {
     .eq('id', id)
     .eq('playbook_entries.room_id', roomId)
     .maybeSingle()
-  if (error) return { response: NextResponse.json({ error: error.message }, { status: 500 }) }
+  if (error) return { response: NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 }) }
   if (!assignment) return { response: NextResponse.json({ error: 'Reading assignment not found in this room' }, { status: 404 }) }
   return { auth, service, assignment: assignment as { id: string; entry_id: string; revoked_at: string | null } }
 }
@@ -42,7 +42,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (access.assignment.revoked_at) return NextResponse.json({ error: 'Revoked assignments cannot be edited' }, { status: 409 })
   const changes = { required: parsed.data.required, due_at: parsed.data.dueAt }
   const { data, error } = await access.service.from('playbook_reading_assignments').update(changes).eq('id', id).is('revoked_at', null).select('*').single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   await logStaffAction(access.service, { actorId: access.auth.user.id, action: 'update_playbook_reading_assignment', targetType: 'playbook_reading_assignment', targetId: id, changes })
   return NextResponse.json({ data })
 }
@@ -57,7 +57,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (access.assignment.revoked_at) return NextResponse.json({ data: access.assignment })
   const revokedAt = new Date().toISOString()
   const { data, error } = await access.service.from('playbook_reading_assignments').update({ revoked_at: revokedAt }).eq('id', id).is('revoked_at', null).select('*').single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   await logStaffAction(access.service, { actorId: access.auth.user.id, action: 'revoke_playbook_reading_assignment', targetType: 'playbook_reading_assignment', targetId: id, changes: { revoked_at: revokedAt } })
   return NextResponse.json({ data })
 }

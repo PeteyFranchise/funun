@@ -19,13 +19,11 @@ type HandleRemote = { available: boolean | null; reason: string | null }
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
-// D-10/D-11: the client-side gate state machine is UX only — the real,
-// unbypassable admission boundary is migration 098's handle_new_user()
-// trigger (D-02). Every branch below still round-trips through
-// POST /api/signup/check-invite before treating an email as admitted.
+// The client state machine is UX only. Migration 214's handle_new_user()
+// independently requires the same exact invite capability + email pair.
 type GateState = 'form' | 'allowed' | 'existing-account' | 'denied' | 'invite-expired'
 
-type DeepLinkInfo = { email: string; inviterName: string | null }
+type DeepLinkInfo = { email: string; inviterName: string | null; token: string }
 
 // Minimal Cloudflare Turnstile typing — no npm package installed (D-12,
 // first Turnstile integration in this codebase per 27-PATTERNS); loaded via
@@ -93,14 +91,14 @@ function SignUpFlow() {
   const turnstileWidgetId = useRef<string | null>(null)
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
-  const checkInvite = useCallback(async (candidateEmail: string) => {
+  const checkInvite = useCallback(async (candidateEmail: string, inviteToken?: string) => {
     setChecking(true)
     setCheckError(null)
     try {
       const res = await fetch('/api/signup/check-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: candidateEmail }),
+        body: JSON.stringify({ email: candidateEmail, inviteToken }),
       })
       if (res.status === 429) {
         setCheckError('Too many requests. Please try again later.')
@@ -149,13 +147,13 @@ function SignUpFlow() {
         }
         if (cancelled) return
         setEmail(data.email)
-        setDeepLink({ email: data.email, inviterName: data.inviterName })
+        setDeepLink({ email: data.email, inviterName: data.inviterName, token: token as string })
         if (data.expired) {
           setChecking(false)
           setGateState('invite-expired')
           return
         }
-        await checkInvite(data.email)
+        await checkInvite(data.email, token as string)
       } catch {
         if (!cancelled) setChecking(false)
       }
@@ -266,7 +264,10 @@ function SignUpFlow() {
         // Trimmed only, never lowercased (D-04) — storage preserves the
         // case the person typed; migration 010's lowered unique index is
         // what makes it unique regardless of casing.
-        data: { handle: handle.trim() },
+        data: {
+          handle: handle.trim(),
+          ...(inviteStillMatches ? { signup_invite_token: deepLink.token } : {}),
+        },
       },
     })
     if (error) {
@@ -275,11 +276,16 @@ function SignUpFlow() {
       return
     }
 
-    // Confirmation is currently disabled in production, so Supabase returns
-    // an active session and no second email is sent. Keep this branch driven
-    // by the actual response so the same screen remains correct if email
-    // confirmation is enabled later.
+    // Compatibility for local/staged environments that return an active
+    // session immediately. The database still verifies confirmed email and
+    // the exact invite capability before attaching any identity data.
     if (signupCompletionState(data.session) === 'active-session') {
+      const claimResponse = await fetch('/api/claim-collaborators', { method: 'POST' })
+      if (!claimResponse.ok) {
+        setSignUpError('Your account was created, but the invitation could not be claimed yet. Check your email verification, then sign in again.')
+        setSubmitting(false)
+        return
+      }
       setSubmitting(false)
       router.replace(destination)
       router.refresh()
@@ -392,13 +398,14 @@ function SignUpFlow() {
         <>
           <h1 className="text-xl font-semibold text-white">Funūn is invite-only — for now.</h1>
           <p className="mt-1 text-sm text-white/50">
-            We&rsquo;re building this with a founding cohort of artists.
+            We&rsquo;re building this with a founding cohort. Open the secure link in your
+            invitation email to create your account.
           </p>
 
           <form onSubmit={handleGateSubmit} className="mt-6 space-y-4">
             <div>
               <label htmlFor="gate-email" className="block text-sm font-medium text-white/80">
-                Have an invite? Enter your email
+                Need a new invitation link? Enter your email
               </label>
               <input
                 id="gate-email"
@@ -423,7 +430,7 @@ function SignUpFlow() {
               disabled={checking}
               className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
             >
-              {checking ? 'Checking…' : 'Check my invite'}
+              {checking ? 'Checking…' : 'Continue'}
             </button>
           </form>
 
@@ -528,9 +535,9 @@ function SignUpFlow() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={10}
                     autoComplete="new-password"
-                    placeholder="At least 6 characters"
+                    placeholder="At least 10 characters"
                     className={inputClass}
                   />
                 </div>
@@ -567,7 +574,7 @@ function SignUpFlow() {
             You already have an account — sign in instead.
           </p>
           <Link
-            href={`/signin?email=${encodeURIComponent(email)}`}
+            href={`/signin?email=${encodeURIComponent(email)}${deepLink ? `&invite=${encodeURIComponent(deepLink.token)}` : ''}${next ? `&next=${encodeURIComponent(next)}` : ''}`}
             className="mt-6 inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
           >
             Sign in
@@ -603,11 +610,11 @@ function SignUpFlow() {
         ) : (
           <>
             <h1 className="text-xl font-semibold text-white">
-              We couldn&rsquo;t find an invite for that email
+              A secure invitation link is required
             </h1>
             <p className="mt-1 text-sm text-white/50">
-              Funūn is invite-only while we grow with a founding cohort — join the waiting list
-              and we&rsquo;ll reach out the moment a spot opens.
+              Ask your inviter to resend your link, or join the waiting list and we&rsquo;ll reach
+              out when a spot opens.
             </p>
 
             <form onSubmit={handleWaitlistSubmit} className="mt-6 space-y-4">

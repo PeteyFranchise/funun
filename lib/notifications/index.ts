@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createHash } from 'node:crypto'
 import { sendEmail } from '@/lib/email'
 
 /**
@@ -24,6 +25,28 @@ export async function createNotification(
     actorAvatarUrl?: string | null
   }
 ): Promise<{ ok: boolean; error?: string }> {
+  // Exact notification fan-out is coalesced through the same atomic,
+  // database-backed admission primitive as other abuse-sensitive writes.
+  // This runs before email delivery so retries and concurrent serverless
+  // invocations cannot send duplicate in-app/email notifications.
+  const coalesceKey = createHash('sha256')
+    .update(JSON.stringify({
+      userId: args.userId,
+      type: args.type,
+      title: args.title,
+      body: args.body ?? null,
+      link: args.link ?? null,
+      actorId: args.actorId ?? null,
+    }))
+    .digest('hex')
+  const { data: duplicate, error: admissionError } = await service.rpc('check_rate_limit', {
+    p_key: `notification:${coalesceKey}`,
+    p_window_seconds: 60,
+    p_max: 1,
+  })
+  if (admissionError) return { ok: false, error: 'Notification admission unavailable' }
+  if (duplicate === true) return { ok: true }
+
   let emailed = false
   if (args.sendEmailCopy && args.email) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -62,5 +85,5 @@ export async function createNotification(
     actor_avatar_url: args.actorAvatarUrl ?? null,
   })
 
-  return { ok: !error, error: error?.message }
+  return { ok: !error, error: error ? 'Notification could not be saved' : undefined }
 }

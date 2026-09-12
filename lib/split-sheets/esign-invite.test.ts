@@ -252,7 +252,7 @@ describe('sendSignatureInvite', () => {
     mockSendEmail.mockResolvedValue({ ok: false, error: 'Recipient rejected' })
     const result = await sendSignatureInvite(baseInput)
     expect(result.ok).toBe(false)
-    expect(result.error).toBe('Recipient rejected')
+    expect(result.error).toBe('Signature invitation could not be sent')
     expect(result.notConfigured).toBeUndefined()
   })
 
@@ -261,7 +261,7 @@ describe('sendSignatureInvite', () => {
     await expect(sendSignatureInvite(baseInput)).resolves.toEqual({
       email: 'nikola@example.com',
       ok: false,
-      error: 'network down',
+      error: 'Signature invitation could not be sent',
     })
   })
 
@@ -292,7 +292,11 @@ describe('sendSignatureInvites', () => {
     const results = await sendSignatureInvites([baseInput, secondInput])
     expect(results).toHaveLength(2)
     expect(results[0]).toEqual({ email: 'nikola@example.com', ok: true })
-    expect(results[1]).toEqual({ email: 'maya@example.com', ok: false, error: 'Bounced' })
+    expect(results[1]).toEqual({
+      email: 'maya@example.com',
+      ok: false,
+      error: 'Signature invitation could not be sent',
+    })
   })
 
   it('does not let one signer failure stop the remaining signers', async () => {

@@ -47,6 +47,12 @@ export async function POST(
     )
   }
 
+  const supabase = await createApiClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = (await request.json()) as {
     tool?: string
     trackId?: string
@@ -58,12 +64,6 @@ export async function POST(
   }
   const input = body.input ?? {}
   const trackId = body.trackId ?? null
-
-  const supabase = await createApiClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Confirm project ownership.
   const { data: project } = await supabase
@@ -93,7 +93,7 @@ export async function POST(
       })
       .select()
       .single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     return NextResponse.json({ data: { document: doc, output: result.data } })
   }
 
@@ -137,9 +137,8 @@ export async function POST(
       .join('')
     output = extractJson(text)
     generationSucceeded = output !== null
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch {
+    return NextResponse.json({ error: 'Document generation is temporarily unavailable.' }, { status: 502 })
   } finally {
     await finishAiUsage(supabase, admission.claimId, generationSucceeded)
   }
@@ -175,7 +174,7 @@ export async function POST(
     })
     .select()
     .single()
-  if (docError) return NextResponse.json({ error: docError.message }, { status: 500 })
+  if (docError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: { document: doc, output } })
 }

@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     .select('id')
     .single()
   if (scenario.error)
-    return NextResponse.json({ error: scenario.error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   const assignment = await service
     .from('playbook_simulation_assignments')
     .insert({
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       .delete()
       .eq('id', scenario.data.id)
     return NextResponse.json(
-      { error: assignment.error.message },
+      { error: 'Request could not be completed.' },
       { status: 500 }
     )
   }

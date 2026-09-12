@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .from(BUCKET)
     .upload(path, file, { contentType: file.type, upsert: false })
   if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   let update: Record<string, unknown>
@@ -116,7 +116,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     .single()
   if (updateError) {
     await service.storage.from(BUCKET).remove([path])
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
   if (prev && prev !== path) {
@@ -167,7 +167,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
       .select('id')
       .maybeSingle()
     if (error || !updated) {
-      return NextResponse.json({ error: error?.message ?? 'Track no longer exists' }, { status: 500 })
+      return NextResponse.json({ error: 'Track no longer exists' }, { status: 500 })
     }
     if (masterPath) await service.storage.from(BUCKET).remove([masterPath])
   } else {
@@ -179,7 +179,7 @@ export async function DELETE(request: Request, { params }: RouteCtx) {
       .select('id')
       .maybeSingle()
     if (error || !updated) {
-      return NextResponse.json({ error: error?.message ?? 'Track no longer exists' }, { status: 500 })
+      return NextResponse.json({ error: 'Track no longer exists' }, { status: 500 })
     }
     if (track.audio_file_url) await service.storage.from(BUCKET).remove([track.audio_file_url])
   }

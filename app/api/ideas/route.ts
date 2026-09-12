@@ -35,6 +35,6 @@ export async function POST(request: Request) {
     moods: normalizeIdeaMoods(parsed.data.moods),
     parent_idea_id: parsed.data.parentIdeaId ?? null,
   }).select('id, title').single()
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not create the idea.' }, { status: 500 })
+  if (error || !data) return NextResponse.json({ error: 'Could not create the idea.' }, { status: 500 })
   return NextResponse.json({ data }, { status: 201 })
 }

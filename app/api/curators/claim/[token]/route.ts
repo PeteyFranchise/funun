@@ -32,7 +32,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     .eq('claim_token', token)
     .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (fetchError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   if (!curator) return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
   if (curator.claimed_by) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
   if (curator.claim_token_expires_at && curator.claim_token_expires_at < new Date().toISOString()) {
@@ -56,7 +56,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
   } catch (err) {
     if (!(err instanceof DuplicateIndustryMemberError)) {
       return NextResponse.json(
-        { error: err instanceof Error ? err.message : 'Could not create account' },
+        { error: 'Could not create account' },
         { status: 500 }
       )
     }
@@ -71,7 +71,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     })
     if (linkError || !existing?.user) {
       return NextResponse.json(
-        { error: linkError?.message ?? 'Could not create account' },
+        { error: 'Could not create account' },
         { status: 500 }
       )
     }
@@ -84,7 +84,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
       .is('claimed_by', null)
       .select('id')
       .maybeSingle()
-    if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
+    if (claimError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     if (!claimed) return NextResponse.json({ error: 'Already claimed' }, { status: 410 })
 
     await sendEmail({
@@ -132,8 +132,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
         {
           error:
             `We couldn't confirm your account claim. Your account may already be ` +
-            `set up — try signing in, or contact support if no email arrives. ` +
-            `(${retry.error.message})`,
+            `set up — try signing in, or contact support if no email arrives.`,
         },
         { status: 500 }
       )

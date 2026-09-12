@@ -159,7 +159,7 @@ export async function issueMemberConsent(
     // relies on — makes a race against a concurrent identical insert an
     // idempotent no-op rather than an error.
     if (insertError && insertError.code !== '23505') {
-      return { ok: false, status: 500, error: insertError.message }
+      return { ok: false, status: 500, error: 'Consent decision could not be recorded.' }
     }
   }
 
@@ -219,7 +219,7 @@ export async function revokeMemberConsent(
       .maybeSingle()
 
     if (updateError) {
-      return { ok: false, status: 500, error: updateError.message }
+      return { ok: false, status: 500, error: 'Consent decision could not be recorded.' }
     }
 
     if (updated && isKnownWorkspacePermission(permission)) {

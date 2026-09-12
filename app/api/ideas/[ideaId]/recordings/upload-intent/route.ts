@@ -29,6 +29,6 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const recordingId = randomUUID()
   const path = buildIdeaRecordingPath(ideaId, recordingId, audioType.ext)
   const { data, error } = await createServiceClient().storage.from(BUCKET).createSignedUploadUrl(path, { upsert: false })
-  if (error || !data) return NextResponse.json({ error: error?.message ?? 'Could not prepare the recording.' }, { status: 500 })
+  if (error || !data) return NextResponse.json({ error: 'Could not prepare the recording.' }, { status: 500 })
   return NextResponse.json({ data: { recordingId, path, token: data.token, contentType: audioType.contentType } })
 }

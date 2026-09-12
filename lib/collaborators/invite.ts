@@ -187,7 +187,7 @@ export async function sendCollaboratorInvite(
   })
 
   if (insertError) {
-    return { ok: false, status: 500, error: insertError.message }
+    return { ok: false, status: 500, error: 'Invitation could not be created.' }
   }
 
   const inviteLink = buildCollaboratorInviteUrl(inviteToken, input.nextPath)
