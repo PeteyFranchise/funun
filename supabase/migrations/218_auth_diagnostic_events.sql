@@ -41,9 +41,31 @@ CREATE INDEX auth_diagnostic_events_code_created_at_idx
 ALTER TABLE public.auth_diagnostic_events ENABLE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.auth_diagnostic_events FROM PUBLIC, anon, authenticated, service_role;
-GRANT SELECT, INSERT, DELETE ON TABLE public.auth_diagnostic_events TO service_role;
+GRANT SELECT, INSERT ON TABLE public.auth_diagnostic_events TO service_role;
+
+CREATE OR REPLACE FUNCTION public.prune_auth_diagnostic_events()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  deleted_count integer;
+BEGIN
+  DELETE FROM public.auth_diagnostic_events
+  WHERE created_at < now() - interval '30 days';
+
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.prune_auth_diagnostic_events()
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.prune_auth_diagnostic_events()
+  TO service_role;
 
 COMMENT ON TABLE public.auth_diagnostic_events IS
-  'Privacy-safe auth failure telemetry. Allowlisted operational fields only; 30-day retention is enforced by application cleanup.';
+  'Privacy-safe auth failure telemetry. Allowlisted operational fields only; 30-day retention is enforced by a service-only scheduled cleanup.';
 
 COMMIT;
