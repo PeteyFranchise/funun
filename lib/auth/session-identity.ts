@@ -13,6 +13,25 @@ export type AccountSwitchIntent = {
   startedAt: number
 }
 
+export type SessionIdentityIssue = {
+  previous: TabIdentity
+  current: TabIdentity | null
+}
+
+export type InitialSessionIdentityDecision =
+  | { kind: 'accept'; identity: TabIdentity; finishSwitch: boolean }
+  | { kind: 'block'; issue: SessionIdentityIssue }
+
+export type ObservedSessionIdentityDecision =
+  | { kind: 'ignore' }
+  | { kind: 'block'; issue: SessionIdentityIssue }
+
+export type ObservableAuthUser = {
+  id: string
+  email?: string
+  app_metadata?: unknown
+}
+
 export const TAB_IDENTITY_KEY = 'funun:tab-identity:v1'
 export const ACCOUNT_SWITCH_INTENT_KEY = 'funun:account-switch-intent:v1'
 export const ACCOUNT_SWITCH_INTENT_TTL_MS = 10 * 60 * 1000
@@ -57,9 +76,83 @@ export function isValidAccountSwitchIntent(
   context: AccountWorkspace,
   now = Date.now()
 ): boolean {
-  if (!intent || intent.targetContext !== context) return false
+  return Boolean(intent && intent.targetContext === context && isFreshAccountSwitchIntent(intent, now))
+}
+
+export function isFreshAccountSwitchIntent(
+  intent: AccountSwitchIntent | null,
+  now = Date.now()
+): boolean {
+  if (!intent) return false
   const age = now - intent.startedAt
   return age >= 0 && age <= ACCOUNT_SWITCH_INTENT_TTL_MS
+}
+
+/**
+ * Decide whether a protected workspace may adopt its server-validated identity.
+ * This is intentionally pure so account replacement cannot drift into an
+ * untested collection of browser-storage branches.
+ */
+export function resolveInitialSessionIdentity({
+  stored,
+  intent,
+  expected,
+  now = Date.now(),
+}: {
+  stored: TabIdentity | null
+  intent: AccountSwitchIntent | null
+  expected: TabIdentity
+  now?: number
+}): InitialSessionIdentityDecision {
+  const validSwitch = isValidAccountSwitchIntent(intent, expected.context, now)
+
+  if (stored && stored.userId !== expected.userId && !validSwitch) {
+    return {
+      kind: 'block',
+      issue: { previous: stored, current: expected },
+    }
+  }
+
+  return { kind: 'accept', identity: expected, finishSwitch: validSwitch }
+}
+
+/**
+ * Interpret an auth event or focus-time identity check for a mounted workspace.
+ * A fresh intentional switch suppresses the intermediate sign-out event, but
+ * malformed, expired, and future-dated intents never suppress protection.
+ */
+export function resolveObservedSessionIdentity({
+  markerPresent,
+  intent,
+  expected,
+  nextUser,
+  now = Date.now(),
+}: {
+  markerPresent: boolean
+  intent: AccountSwitchIntent | null
+  expected: TabIdentity
+  nextUser: ObservableAuthUser | null
+  now?: number
+}): ObservedSessionIdentityDecision {
+  if (!markerPresent || isFreshAccountSwitchIntent(intent, now)) return { kind: 'ignore' }
+
+  if (!nextUser) {
+    return { kind: 'block', issue: { previous: expected, current: null } }
+  }
+  if (nextUser.id === expected.userId) return { kind: 'ignore' }
+
+  const context = accountWorkspaceForUser(nextUser)
+  return {
+    kind: 'block',
+    issue: {
+      previous: expected,
+      current: {
+        userId: nextUser.id,
+        context,
+        label: nextUser.email || accountWorkspaceLabel(context),
+      },
+    },
+  }
 }
 
 export function accountWorkspaceForUser(user: { app_metadata?: unknown }): AccountWorkspace {

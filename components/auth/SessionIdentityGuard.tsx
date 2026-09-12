@@ -4,24 +4,20 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   ACCOUNT_SWITCH_INTENT_KEY,
-  ACCOUNT_SWITCH_INTENT_TTL_MS,
   TAB_IDENTITY_KEY,
-  accountWorkspaceForUser,
   accountWorkspaceHome,
   accountWorkspaceLabel,
   clearTabIdentity,
   finishAccountSwitch,
-  isValidAccountSwitchIntent,
   readAccountSwitchIntent,
   readTabIdentity,
+  resolveInitialSessionIdentity,
+  resolveObservedSessionIdentity,
   writeTabIdentity,
+  type ObservableAuthUser,
+  type SessionIdentityIssue,
   type TabIdentity,
 } from '@/lib/auth/session-identity'
-
-type IdentityIssue = {
-  previous: TabIdentity
-  current: TabIdentity | null
-}
 
 export function SessionIdentityGuard({
   identity,
@@ -30,7 +26,7 @@ export function SessionIdentityGuard({
   identity: TabIdentity
   children: React.ReactNode
 }) {
-  const [issue, setIssue] = useState<IdentityIssue | null>(null)
+  const [issue, setIssue] = useState<SessionIdentityIssue | null>(null)
   const expectedUserId = identity.userId
   const expectedContext = identity.context
   const expectedLabel = identity.label
@@ -43,44 +39,29 @@ export function SessionIdentityGuard({
     }
     const stored = readTabIdentity(sessionStorage.getItem(TAB_IDENTITY_KEY))
     const intent = readAccountSwitchIntent(sessionStorage.getItem(ACCOUNT_SWITCH_INTENT_KEY))
+    const initialDecision = resolveInitialSessionIdentity({ stored, intent, expected: expectedIdentity })
 
-    if (stored && stored.userId !== expectedUserId) {
-      if (isValidAccountSwitchIntent(intent, expectedContext)) {
-        finishAccountSwitch(expectedIdentity)
-      } else {
-        setIssue({ previous: stored, current: expectedIdentity })
-      }
+    if (initialDecision.kind === 'block') {
+      setIssue(initialDecision.issue)
+    } else if (initialDecision.finishSwitch) {
+      finishAccountSwitch(initialDecision.identity)
     } else {
-      writeTabIdentity(expectedIdentity)
-      if (isValidAccountSwitchIntent(intent, expectedContext)) {
-        finishAccountSwitch(expectedIdentity)
-      }
+      writeTabIdentity(initialDecision.identity)
     }
 
     const supabase = createClient()
-    function observeUser(nextUser: { id: string; email?: string; app_metadata?: unknown } | null) {
+    function observeUser(nextUser: ObservableAuthUser | null) {
       // Ordinary sign-out clears the tab marker before the auth event. An
       // intentional switch keeps a short-lived target marker while the sign-in
       // handoff is in progress. Neither should flash an account-change modal.
-      if (!sessionStorage.getItem(TAB_IDENTITY_KEY)) return
       const activeIntent = readAccountSwitchIntent(sessionStorage.getItem(ACCOUNT_SWITCH_INTENT_KEY))
-      if (activeIntent && Date.now() - activeIntent.startedAt <= ACCOUNT_SWITCH_INTENT_TTL_MS) return
-
-      if (!nextUser) {
-        setIssue({ previous: expectedIdentity, current: null })
-        return
-      }
-      if (nextUser.id === expectedUserId) return
-
-      const context = accountWorkspaceForUser(nextUser)
-      setIssue({
-        previous: expectedIdentity,
-        current: {
-          userId: nextUser.id,
-          context,
-          label: nextUser.email || accountWorkspaceLabel(context),
-        },
+      const observedDecision = resolveObservedSessionIdentity({
+        markerPresent: Boolean(sessionStorage.getItem(TAB_IDENTITY_KEY)),
+        intent: activeIntent,
+        expected: expectedIdentity,
+        nextUser,
       })
+      if (observedDecision.kind === 'block') setIssue(observedDecision.issue)
     }
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
