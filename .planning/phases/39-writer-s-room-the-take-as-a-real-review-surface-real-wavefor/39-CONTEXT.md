@@ -33,8 +33,14 @@ credits, splits, rights, approvals, delivery state or membership.
     ("Waveform Notes" vs "Track Notes") as **neither**.
   - The schema already agrees: `work_version_comments`, `work_lyric_block_comments`,
     `idea_comments`. Only user-facing copy drifted.
-  - **Fix in this phase** (both files are already being edited): `VersionComparisonPanel.tsx:372`
-    and `:405` say "timed notes"; `RecordOverBeatStudio.tsx:831` and `:840` say "open timed notes".
+  - **Fix in this phase.** The copy inventory is larger than first estimated (corrected
+    2026-09-12 during UI research): roughly **27 user-facing strings across three files**, not
+    four across two. `TimedTrackPlayer.tsx` carries the bulk (~12) including the most prominent
+    ones — `"View {n} unresolved notes"` (:342), `"Bring notes forward from…"` (:443),
+    `"Note {n} of {m}"` (:490) and the composer placeholder `"Leave a note at {time}"` (:553) —
+    plus `VersionComparisonPanel.tsx` (~8) and `RecordOverBeatStudio.tsx` (~5).
+    **The authoritative row-by-row inventory lives in `39-UI-SPEC.md`** — use that, not this
+    summary, when doing the rename.
   - **Studio Notes keeps its name.** It is the *surface* where comments gather, not a record
     type. No table renames, no migration, no touching `work_studio_notes` /
     `work_note_reactions`. "Studio Notes shows 4 comments" is correct usage.
