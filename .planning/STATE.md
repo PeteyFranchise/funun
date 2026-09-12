@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 39 context gathered
-last_updated: "2026-09-12T17:39:11.592Z"
+stopped_at: Phase 39 UI-SPEC verified
+last_updated: "2026-09-12T18:20:57.365Z"
 last_activity: 2026-08-25
 last_activity_desc: Phase 31.2 execution started
 progress:
   total_phases: 46
-  completed_phases: 35
+  completed_phases: 36
   total_plans: 312
-  completed_plans: 307
-  percent: 76
+  completed_plans: 308
+  percent: 78
 ---
 
 # Project State
@@ -816,10 +816,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-09-12T17:39:11.141Z
-Stopped at: Phase 39 context gathered
+Last session: 2026-09-12T18:20:57.282Z
+Stopped at: Phase 39 UI-SPEC verified
 Resume file: 
-.planning/phases/39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor/39-CONTEXT.md
+.planning/phases/39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor/39-UI-SPEC.md
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
