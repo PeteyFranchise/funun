@@ -5,16 +5,16 @@ milestone_name: "— Wave 4: The Green Room"
 current_phase: 31.2
 current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Awaiting owner checkpoint
-stopped_at: Phase 38.0.1 SHIPPED AND VERIFIED. *** PHASE 38.0.2 CODE COMPLETE: all 17 plans merged plus 3 quick fixes. MIGRATIONS 197 AND 198 ARE APPLIED (2026-09-07) and all TypeScript is deployed; origin/main == local. 6280 tests green, tsc clean. *** VERIFICATION ARTEFACTS READY TO RUN, NOT YET RUN: 38.0.2-VERIFY-A-STRUCTURAL.sql (read-only, 0 write statements confirmed) and 38.0.2-VERIFY-B-PRODUCTION-SINGLE.sql (atomic DO block, 39 per-assertion handlers, 7 trigger disable/enable pairs, teardown after every handler, kill switch restored OFF). 38.0.2-VALIDATION.md maps all 14 requirements to evidence and marks WSR-21 as application-layer, not SQL-provable. *** PROCESS FAILURE TO REMEMBER: I pushed after every wave instead of holding for the joint push, which put five functions worth of deployed call sites into production before those functions existed. Contained only by empty workspace tables and the kill switch - luck, not design. Fixed by bringing the migration apply forward. THE JOINT PUSH EXISTS FOR THIS REASON; DO NOT PUSH REPOINTED ROUTES INCREMENTALLY AGAIN. *** A bare supabase db push would have applied Codex migrations 201 and 202, which are authored, HUMAN-GATED and deliberately unapplied - they were moved aside for the 197/198 apply and restored. Always check the pending list before pushing. *** D-56 KILL SWITCH IS OFF and must stay off until this phase is signed off. Still open: run Part A and Part B; the 57-box RLS smoke checklist from 38.0.1; plan 13's human check; the kill-switch-before-auth ordering in the consent route; .env.example needs two cohort vars added by hand (agents are permission-denied on that path, block is in 38.0.2-02-SUMMARY.md, and leaving them unset is SAFE because the gate defaults closed).
-last_updated: "2026-09-09T23:59:00.000Z"
-last_activity: 2026-09-09
-last_activity_desc: "Phase 32 plan 09 — k6 capacity harness AUTHORED BUT NEVER RUN; the plan stays OPEN and ROADMAP stays 9/10. scripts/load/{target,scenarios,run-ramp}.js + README rewritten, plus 85 new tests (target.test.ts, no-runtime-import.test.ts). docs/observability/CAPACITY-REPORT.md is a TEMPLATE — every measurement cell reads UNMEASURED. FUNŪN HAS NO MEASURED CAPACITY FIGURE, so plan 08's baseline-adjusted thresholds and plan 10's upgrade trigger still have NO BASELINE; nothing was invented. Two real bugs found in the prior draft (219a6100): (1) the production guard had a TRAILING-DOT BYPASS — https://funun.studio./ satisfied neither the === nor the endsWith('.'+prod) branch, so the harness would have load-tested PRODUCTION; (2) k6's default http_req_failed counts any 4xx as failure, and /api/buyer/catalog returns 401 while /api/signup/check-invite returns 429 after 5 req/IP/15min, pinning the failure rate near 25% against rate<0.05 abortOnFail — every run would have aborted seconds into stage 1 and looked like a capacity finding. Both fixed; guard mutation-tested 6 ways (the scheme-allowlist mutation initially SURVIVED, so discriminating tests were added). Added a /api/health-backed health_degraded abort (the only DB-pressure signal k6 can see) and documented that Supabase CPU/memory, DB+pooler connections, Vercel throttling and SPEND are MANUAL Ctrl-C stop conditions k6 cannot enforce. All 8 plan-named routes verified to exist. OWNER SETUP OUTSTANDING, NO AGENT CAN DO IT: install k6 (brew, never npm); create a SEPARATE staging Supabase project seeded with representative data; point a Vercel Preview at it; then run the abort rehearsal + full ramp per scripts/load/README.md. Note the guard validates the URL, not the DB behind it — a Preview whose env vars point at prod Supabase is the one remaining way to hurt production. tsc clean, 6890 tests green, lint clean, build succeeded. --- PREVIOUS: Phase 38.0.3 plan 06 complete — the Tier 3 verification PAIR authored, closing the phase's six plans. NOTHING WAS EXECUTED AND NO DATABASE CONNECTION WAS OPENED; both files are artifacts the owner pastes by hand. 38.0.3-VERIFY-A2-NO-BLOCK.sql: 920 lines, ZERO write statements (one WITH…SELECT…ORDER BY 1, no table, not even TEMP), 22 four-column branches — placement, both grant pairs, the four preserved attributes, all eleven PRODUCTION policy predicates printed in full, both definer bodies, and the environment record. 38.0.3-VERIFY-B2-NO-BLOCK.sql: 902 lines, one session-local pg_temp results table and ZERO writes to any table in public or auth. Written for the CURRENT POST-APPLY state, not transcribed: migrations 208/209/210 are all APPLIED (210 on 2026-09-09, 12/12 PASS, recorded in 38.0.3-GATE-210-RESULTS.md), so Part A2's G-block is kept as a standing pg_proc.prosrc enumeration and labelled a gate ALREADY PASSED, with its recorded answer quoted beside each verdict — a re-run reads as a comparison, not a pending decision. Objects resolved by IDENTITY (to_regprocedure, a pg_namespace join) and the exposed-definer predicate COPIED character-for-character from 38.0.3-VERIFY-A-STRUCTURAL.sql, because four false verdicts in this phase were all one shape: correct data, hand-written ruler. Every row prints the raw value and its length so a wrong assertion self-diagnoses. Part B2 pairs its block-enforcement negative with an uninvolved-third-party positive control and records INFO/UNPROVEN — never PASS — when public.blocks is empty, when no free third party exists, when the blocker authored nothing, or when the control also reads zero (threat T-38.0.3-06-08). B2-4's ten counts carry no verdict; the diff between two runs is the assertion, and every subject query is deterministically ordered so both runs pick identical rows. B2-5 asserts on the SQLSTATE (42501), not the message, because the barrier moved from the function grant to the schema USAGE grant. Paste-safe: Part A2 has ZERO INTO occurrences (matching migration 210); Part B2's 41 are all real SQL. 7/7 plan mutations killed, tsc clean, 6805/6805 tests green. OWNER, AND NO AGENT CAN DO EITHER: (1) read Supabase → API → Exposed schemas BY EYE and confirm `private` is absent — Part A2 row X1 cannot answer itself; (2) curl the no_block RPC route with the anon key AND the service key, expecting 404 from both. The service-key 404 is what proves the absence is a ROUTING fact rather than a privilege one, and it is the closing evidence for the whole phase. Tier 3 remains behaviourally UNPROVEN until Part B2 runs with a real block pair and a working positive control — same standing caveat as Tier 2."
+stopped_at: Phase 39 context gathered
+last_updated: "2026-09-12T17:39:11.592Z"
+last_activity: 2026-08-25
+last_activity_desc: Phase 31.2 execution started
 progress:
-  total_phases: 42
-  completed_phases: 33
-  total_plans: 287
-  completed_plans: 285
-  percent: 79
+  total_phases: 46
+  completed_phases: 35
+  total_plans: 312
+  completed_plans: 307
+  percent: 76
 ---
 
 # Project State
@@ -450,6 +450,7 @@ Coverage: 28/28 v1 requirements mapped ✓ (Phase 8 is schema foundation with no
 - Phase 32 added (2026-08-13): **Production Observability, Capacity & Incident Readiness** — appended to the roadmap tail via `/gsd-phase`; folder `.planning/phases/32-production-observability-capacity-incident-readiness/`. Next: `/gsd-spec-phase 32 --text`.
 - Roadmap/folder reconcile (2026-08-13): materialized empty phase folders for the two scoped-but-unbuilt headings — Phase 29 (Self-Serve Flat-Price Sync) and Phase 31 (AE Client Workspace + Selects) — so folders match ROADMAP headings 8–31. Required because `phase.add` numbers by folder (max was 30) and first collided at 31; with 29/31 materialized it correctly assigned 32. The auto-inserted heading landed mid-roadmap (stale "current milestone" = Green Room) and was relocated to the end after Phase 31.
 - Phase 33 added (2026-08-17): **The Playbook shell + IT Team monitoring dashboard (read-only v1)** — appended to the roadmap tail via `/gsd-phase`; folder `.planning/phases/33-the-playbook-shell-it-team-monitoring-dashboard-read-only-v1/`. Read-only reading shell (double-sidebar Playbook nav + IT room + live single-pane Monitoring Dashboard, rendering the existing docs/observability/ docs); in-app authoring/RBAC-editing + Observability Dashboard v2 (live metrics) deferred to follow-ons. Design refs in `docs/design/`. Next: `/gsd-discuss-phase 33`.
+- Phase 39 added: Writer's Room — the take as a real review surface (real waveform peaks, range comments, private pins, keyboard shortcuts, playback speed)
 
 ### Decisions
 
@@ -815,10 +816,10 @@ Recommendation if/when this becomes necessary: exhaust the Vercel upgrade path f
 
 ## Session Continuity
 
-Last session: 2026-09-07T04:15:22.668Z
-Stopped at: Phase 38.0.1 plan 13 complete (Member consent surface, WSR-27). Wave 7 done; all 16 plans executed. Full suite 498 suites / 5510 tests green, tsc + lint clean. Migrations 190-195 still authored-but-unapplied; D-56 kill switch still OFF. Outstanding: plan 13 Task 3 human-check (needs kill switch ON + migration 195 applied).
+Last session: 2026-09-12T17:39:11.141Z
+Stopped at: Phase 39 context gathered
 Resume file: 
-None
+.planning/phases/39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor/39-CONTEXT.md
 Stopped at: Completed 28-03-PLAN.md
 malformed ROADMAP (Phase 18 had a summary checklist entry but no `### Phase 18:`
 detail section; Phase 17's detail block was also misplaced inside Future
