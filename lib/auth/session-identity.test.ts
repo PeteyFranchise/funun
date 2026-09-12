@@ -10,8 +10,8 @@ import {
   resolveObservedSessionIdentity,
 } from '@/lib/auth/session-identity'
 
-const member = { userId: 'member-1', context: 'personal' as const, label: '@member' }
-const team = { userId: 'team-1', context: 'team' as const, label: 'team@funun.studio' }
+const member = { userId: 'member-1', context: 'personal' as const, label: 'Personal workspace' }
+const team = { userId: 'team-1', context: 'team' as const, label: 'Funūn Team' }
 
 describe('session identity switching', () => {
   it('parses only complete tab identity snapshots', () => {

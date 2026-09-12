@@ -2171,6 +2171,7 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **215** | Atomic Stripe Checkout creation (Codex) | **LOCAL CANDIDATE — HUMAN-GATED, NOT APPLIED.** Adds claim/finalize/release RPCs, economics-bound idempotency, and stored checkout recovery. |
 | **216** | Atomic e-sign mint admission (Codex) | **LOCAL CANDIDATE — HUMAN-GATED, NOT APPLIED.** Adds one-instrument claim leases, provider reconciliation records, and active-instrument uniqueness guards. |
 | **217** | Atomic Playbook operations (Codex) | **LOCAL CANDIDATE — HUMAN-GATED, NOT APPLIED.** Makes activation and incident state changes transactional with their audit events and adds compare-and-swap boundaries. |
+| **218** | Privacy-safe authentication diagnostics (Codex) | **LOCAL CANDIDATE — HUMAN-GATED, NOT APPLIED.** Adds allowlisted, non-PII auth failure events for the gated IT Auth Health console. |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the

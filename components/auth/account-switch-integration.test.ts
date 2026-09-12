@@ -23,20 +23,34 @@ describe('Team and Personal account-switch integration', () => {
     expect(signIn).toContain('window.location.assign(')
   })
 
-  it('accepts an intentional ordinary sign-in as the new identity for that tab', () => {
+  it('never writes provider-returned identity into browser storage', () => {
     const signIn = source('app/(auth)/signin/page.tsx')
-    const finalizeAt = signIn.indexOf('finishAccountSwitch({')
+    const clearAt = signIn.indexOf('else clearTabIdentity()')
     const navigateAt = signIn.indexOf('window.location.assign(')
 
-    expect(finalizeAt).toBeGreaterThan(-1)
-    expect(navigateAt).toBeGreaterThan(finalizeAt)
-    expect(signIn).toContain('context: signedInContext')
-    expect(signIn).toContain('userId: data.user.id')
+    expect(clearAt).toBeGreaterThan(-1)
+    expect(navigateAt).toBeGreaterThan(clearAt)
+    expect(signIn).not.toContain('finishAccountSwitch({')
+    expect(signIn).not.toContain('userId: data.user.id')
   })
 
-  it('clears the tab identity marker during ordinary sign-out', () => {
+  it('clears the tab identity marker only after ordinary sign-out succeeds', () => {
     const signOut = source('components/auth/SignOutButton.tsx')
-    expect(signOut).toContain('clearTabIdentity()')
-    expect(signOut).toContain("signOut({ scope: 'local' })")
+    const providerSignOutAt = signOut.indexOf("signOut({ scope: 'local' })")
+    const clearMarkerAt = signOut.indexOf('clearTabIdentity()')
+
+    expect(providerSignOutAt).toBeGreaterThan(-1)
+    expect(clearMarkerAt).toBeGreaterThan(providerSignOutAt)
+    expect(signOut).toContain('`/signin?error=signout&ref=${reference}`')
+  })
+
+  it('preserves the account-switch intent and exposes a stable cleanup failure', () => {
+    const accountSwitch = source('components/auth/AccountContextSwitch.tsx')
+    const beginAt = accountSwitch.indexOf('beginAccountSwitch(targetContext)')
+    const signOutAt = accountSwitch.indexOf("signOut({ scope: 'local' })")
+
+    expect(beginAt).toBeGreaterThan(-1)
+    expect(signOutAt).toBeGreaterThan(beginAt)
+    expect(accountSwitch).toContain('error=switch-signout')
   })
 })

@@ -7,6 +7,7 @@ import {
   beginAccountSwitch,
   type AccountWorkspace,
 } from '@/lib/auth/session-identity'
+import { reportBrowserAuthEvent } from '@/lib/auth/client-diagnostics'
 
 function SwitchIcon({ className = '' }: { className?: string }) {
   return (
@@ -47,8 +48,34 @@ export function AccountContextSwitch({
     beginAccountSwitch(targetContext)
 
     const supabase = createClient()
-    await supabase.auth.signOut({ scope: 'local' })
-    window.location.assign(`/signin?switchTo=${targetContext}`)
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      const reference = error
+        ? reportBrowserAuthEvent(
+            {
+              eventCode: 'account_switch_signout_failed',
+              surface: 'account_menu',
+              workspaceIntent: targetContext,
+            }
+          )
+        : null
+      window.location.assign(
+        error
+          ? `/signin?switchTo=${targetContext}&error=switch-signout&ref=${reference}`
+          : `/signin?switchTo=${targetContext}`
+      )
+    } catch {
+      const reference = reportBrowserAuthEvent(
+        {
+          eventCode: 'account_switch_signout_failed',
+          surface: 'account_menu',
+          workspaceIntent: targetContext,
+        }
+      )
+      window.location.assign(
+        `/signin?switchTo=${targetContext}&error=switch-signout&ref=${reference}`
+      )
+    }
   }
 
   return (

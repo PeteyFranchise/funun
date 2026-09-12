@@ -10,6 +10,8 @@ import { signupCompletionState } from './completion'
 import { handleFieldState } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
+import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 
 // Debounce delay for the live availability check (D-14, courtesy only) and
 // the shape of a resolved GET /api/handles/available verdict.
@@ -243,11 +245,12 @@ function SignUpFlow() {
     })
     callbackUrl.searchParams.set('next', destination)
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: callbackUrl.toString(),
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: callbackUrl.toString(),
         // D-03: user_metadata IS visible to handle_new_user() at INSERT on
         // this Supabase instance, while app_metadata and email_confirmed_at
         // are NOT — the same asymmetry documented in
@@ -264,36 +267,59 @@ function SignUpFlow() {
         // Trimmed only, never lowercased (D-04) — storage preserves the
         // case the person typed; migration 010's lowered unique index is
         // what makes it unique regardless of casing.
-        data: {
-          handle: handle.trim(),
-          ...(inviteStillMatches ? { signup_invite_token: deepLink.token } : {}),
+          data: {
+            handle: handle.trim(),
+            ...(inviteStillMatches ? { signup_invite_token: deepLink.token } : {}),
+          },
         },
-      },
-    })
-    if (error) {
-      setSignUpError(error.message)
-      setSubmitting(false)
-      return
-    }
-
-    // Compatibility for local/staged environments that return an active
-    // session immediately. The database still verifies confirmed email and
-    // the exact invite capability before attaching any identity data.
-    if (signupCompletionState(data.session) === 'active-session') {
-      const claimResponse = await fetch('/api/claim-collaborators', { method: 'POST' })
-      if (!claimResponse.ok) {
-        setSignUpError('Your account was created, but the invitation could not be claimed yet. Check your email verification, then sign in again.')
-        setSubmitting(false)
+      })
+      if (error) {
+        setSignUpError(reportBrowserAuthFailure(
+          {
+            eventCode: 'signup_failed',
+            surface: 'signup',
+            workspaceIntent: 'personal',
+          },
+          publicAuthError('sign-up', error)
+        ))
         return
       }
-      setSubmitting(false)
-      router.replace(destination)
-      router.refresh()
-      return
-    }
 
-    setSent(true)
-    setSubmitting(false)
+      // Compatibility for local/staged environments that return an active
+      // session immediately. The database still verifies confirmed email and
+      // the exact invite capability before attaching any identity data.
+      if (signupCompletionState(data.session) === 'active-session') {
+        const claimResponse = await fetch('/api/claim-collaborators', { method: 'POST' })
+        if (!claimResponse.ok) {
+          await supabase.auth.signOut({ scope: 'local' })
+          setSignUpError(reportBrowserAuthFailure(
+            {
+              eventCode: 'invitation_claim_failed',
+              surface: 'signup',
+              workspaceIntent: 'personal',
+            },
+            'Your account was created, but the invitation could not be completed. Check your email verification, then sign in again.'
+          ))
+          return
+        }
+        router.replace(destination)
+        router.refresh()
+        return
+      }
+
+      setSent(true)
+    } catch {
+      setSignUpError(reportBrowserAuthFailure(
+        {
+          eventCode: 'signup_failed',
+          surface: 'signup',
+          workspaceIntent: 'personal',
+        },
+        publicAuthError('sign-up', null)
+      ))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // Single render() call site (both the callback-ref attach and the

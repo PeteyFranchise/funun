@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
+import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthEvent, reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -20,22 +22,36 @@ export default function UpdatePasswordPage() {
   const [done, setDone] = useState(false)
   // null = still checking, true/false = recovery session present or not.
   const [hasSession, setHasSession] = useState<boolean | null>(null)
+  const [sessionCheckFailed, setSessionCheckFailed] = useState(false)
+  const [sessionReference, setSessionReference] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
 
     // The normal path: /auth/callback already exchanged the recovery code for a
-    // session, so getSession() resolves truthy on mount. The onAuthStateChange
-    // listener is a fallback for hash-fragment recovery links (#access_token=…)
-    // that Supabase parses client-side and emits as PASSWORD_RECOVERY.
-    supabase.auth.getSession().then(({ data }) => {
-      if (active && data.session) setHasSession(true)
-      else if (active) setHasSession(prev => (prev === true ? true : false))
+    // session. Validate it with getUser() rather than trusting locally decoded
+    // session storage before enabling a credential change.
+    supabase.auth.getUser().then(({ data, error: userError }) => {
+      if (!active) return
+      if (userError || !data.user) {
+        setSessionCheckFailed(Boolean(userError))
+        setSessionReference(reportBrowserAuthEvent({
+          eventCode: 'recovery_verify_failed',
+          surface: 'update_password',
+          workspaceIntent: null,
+        }))
+        setHasSession(false)
+        return
+      }
+      setHasSession(true)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return
-      if (event === 'PASSWORD_RECOVERY' || session) setHasSession(true)
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        setSessionCheckFailed(false)
+        setHasSession(true)
+      }
     })
 
     return () => {
@@ -53,28 +69,57 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    setSubmitting(true)
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) {
-      setError(error.message)
-      setSubmitting(false)
+    if (password.length < 8) {
+      setError('Use at least 8 characters for your new password.')
       return
     }
 
-    // Role-aware landing (23-05 Pitfall 2): a buyer who sets/resets a password
-    // must not be dropped on the artist Sound Vault. getUser() reads the
-    // just-updated session's current user; postSignInPath falls back to
-    // DEFAULT_HOME ('/vault') for artists, preserving prior behavior exactly.
-    const { data } = await supabase.auth.getUser()
-    const destination = postSignInPath({ user: data.user })
+    setSubmitting(true)
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      if (updateError) {
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'password_update_failed',
+            surface: 'update_password',
+            workspaceIntent: null,
+          },
+          publicAuthError('password-update', updateError)
+        ))
+        return
+      }
 
-    setDone(true)
-    setSubmitting(false)
-    // Give the user a moment to read the confirmation, then land them in the app.
-    setTimeout(() => {
-      router.push(destination)
-      router.refresh()
-    }, 1800)
+      // Role-aware landing (23-05 Pitfall 2): a buyer who sets/resets a password
+      // must not be dropped on the artist Sound Vault. If identity validation is
+      // temporarily unavailable after the successful change, use sign-in as the
+      // safe landing rather than guessing a workspace.
+      const { data, error: userError } = await supabase.auth.getUser()
+      const destination = userError || !data.user
+        ? '/signin'
+        : postSignInPath({ user: data.user })
+
+      // Recovery should not leave other browser sessions active. This is
+      // best-effort because the password change itself is already complete.
+      await supabase.auth.signOut({ scope: 'others' })
+
+      setDone(true)
+      // Give the user a moment to read the confirmation, then land them in the app.
+      setTimeout(() => {
+        router.push(destination)
+        router.refresh()
+      }, 1800)
+    } catch {
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'password_update_failed',
+          surface: 'update_password',
+          workspaceIntent: null,
+        },
+        publicAuthError('password-update', null)
+      ))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (done) {
@@ -95,9 +140,14 @@ export default function UpdatePasswordPage() {
   if (hasSession === false) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <h1 className="text-xl font-semibold text-white">Reset link expired</h1>
+        <h1 className="text-xl font-semibold text-white">
+          {sessionCheckFailed ? 'Could not verify this reset link' : 'Reset link expired'}
+        </h1>
         <p className="mt-2 text-sm text-white/60">
-          This password reset link is invalid or has expired. Request a fresh one to continue.
+          {sessionCheckFailed
+            ? 'We could not securely verify this recovery session. Request a fresh link and try again.'
+            : 'This password reset link is invalid or has expired. Request a fresh one to continue.'}
+          {sessionReference ? ` Reference: ${sessionReference}.` : ''}
         </p>
         <Link
           href="/forgot-password"
@@ -125,9 +175,9 @@ export default function UpdatePasswordPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={8}
             autoComplete="new-password"
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             className={inputClass}
           />
         </div>
@@ -141,7 +191,7 @@ export default function UpdatePasswordPage() {
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
             required
-            minLength={6}
+            minLength={8}
             autoComplete="new-password"
             placeholder="Re-enter your password"
             className={inputClass}

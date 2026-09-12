@@ -1,18 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
+import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    if (searchParams.get('error') !== 'recovery') return null
+    const copy = 'That reset link is invalid or has expired. Request a new link and try again.'
+    const reference = validAuthCorrelationId(searchParams.get('ref'))
+    return reference ? authCopyWithReference(copy, reference) : copy
+  })
   const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,21 +34,42 @@ export default function ForgotPasswordPage() {
     // falls back to the current origin for local dev. The recovery link routes
     // through /auth/callback, which exchanges the code for a session and then
     // forwards to /update-password.
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
-    })
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
+        }
+      )
 
-    if (error) {
-      setError(error.message)
+      if (recoveryError) {
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'recovery_request_failed',
+            surface: 'forgot_password',
+            workspaceIntent: null,
+          },
+          publicAuthError('password-recovery', recoveryError)
+        ))
+        return
+      }
+
+      // Do NOT reveal whether the email is registered — Supabase returns the
+      // same successful result and this page keeps the confirmation neutral.
+      setSent(true)
+    } catch {
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'recovery_request_failed',
+          surface: 'forgot_password',
+          workspaceIntent: null,
+        },
+        publicAuthError('password-recovery', null)
+      ))
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    // Do NOT reveal whether the email is registered — always show the same
-    // confirmation to avoid account enumeration.
-    setSent(true)
-    setSubmitting(false)
   }
 
   if (sent) {
@@ -102,5 +133,13 @@ export default function ForgotPasswordPage() {
         </Link>
       </p>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   )
 }

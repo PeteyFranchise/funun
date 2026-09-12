@@ -9,9 +9,13 @@ import {
   accountWorkspaceForUser,
   accountWorkspaceHome,
   accountWorkspaceLabel,
-  finishAccountSwitch,
+  beginAccountSwitch,
+  clearTabIdentity,
   type AccountWorkspace,
 } from '@/lib/auth/session-identity'
+import { callbackErrorMessage, publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
+import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -29,66 +33,114 @@ function SignInForm() {
   const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    const copy = callbackErrorMessage(searchParams.get('error'))
+    const reference = validAuthCorrelationId(searchParams.get('ref'))
+    return copy && reference ? authCopyWithReference(copy, reference) : copy
+  })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    let hasNewSession = false
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
-      setSubmitting(false)
-      return
-    }
-
-    const signedInContext = accountWorkspaceForUser(data.user)
-    if (switchTo && signedInContext !== switchTo) {
-      await supabase.auth.signOut({ scope: 'local' })
-      setError(
-        switchTo === 'team'
-          ? 'That login is not a Funūn Team account. Sign in with your Team Member credentials.'
-          : 'That login is a Funūn Team account. Sign in with your personal Member credentials.'
-      )
-      setSubmitting(false)
-      return
-    }
-
-    if (inviteToken) {
-      const claimResponse = await fetch('/api/claim-collaborators', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteToken }),
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       })
-      if (!claimResponse.ok) {
-        setError('You are signed in, but this invitation could not be claimed. Ask the sender for a new invite and try again.')
-        setSubmitting(false)
+      if (signInError || !data.user) {
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'sign_in_failed',
+            surface: 'signin',
+            workspaceIntent: switchTo,
+          },
+          publicAuthError('sign-in', signInError)
+        ))
         return
       }
+      hasNewSession = true
+
+      const signedInContext = accountWorkspaceForUser(data.user)
+      if (switchTo && signedInContext !== switchTo) {
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+        if (!signOutError) {
+          clearTabIdentity()
+          hasNewSession = false
+        }
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'sign_in_failed',
+            surface: 'signin',
+            workspaceIntent: switchTo,
+          },
+          switchTo === 'team'
+            ? 'That login is not a Funūn Team account. Sign in with your Team Member credentials.'
+            : 'That login is a Funūn Team account. Sign in with your personal Member credentials.'
+        ))
+        return
+      }
+
+      if (inviteToken) {
+        const claimResponse = await fetch('/api/claim-collaborators', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inviteToken }),
+        })
+        if (!claimResponse.ok) {
+          const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+          if (!signOutError) {
+            clearTabIdentity()
+            hasNewSession = false
+          }
+          setError(reportBrowserAuthFailure(
+            {
+              eventCode: 'invitation_claim_failed',
+              surface: 'signin',
+              workspaceIntent: switchTo,
+            },
+            'This invitation could not be completed. Ask the sender for a new invite and try again.'
+          ))
+          return
+        }
+      }
+
+      // Never persist identity returned by signInWithPassword. The destination
+      // layout writes its own server-validated marker. A fresh, non-identifying
+      // intent allows an explicit account switch; ordinary sign-in clears any
+      // stale marker before the hard navigation.
+      if (switchTo) beginAccountSwitch(switchTo)
+      else clearTabIdentity()
+
+      // Role-aware landing (25-11): staff → admin surface, others → vault; an
+      // explicit same-origin ?next= deep link wins. postSignInPath guards against
+      // off-site open redirects the prior raw router.push(next) allowed.
+      // Account credentials can replace an existing browser session. A hard
+      // navigation guarantees the next server-rendered layout reads the newly
+      // written auth cookie instead of retaining state from the prior workspace.
+      window.location.assign(
+        switchTo
+          ? accountWorkspaceHome(switchTo)
+          : postSignInPath({ user: data.user, next })
+      )
+    } catch {
+      if (hasNewSession) {
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+        if (!signOutError) clearTabIdentity()
+      }
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'sign_in_failed',
+          surface: 'signin',
+          workspaceIntent: switchTo,
+        },
+        publicAuthError('sign-in', null)
+      ))
+    } finally {
+      setSubmitting(false)
     }
-
-    // Reaching this point means this tab explicitly authenticated this user.
-    // Replace any stale per-tab identity before the protected layout mounts;
-    // otherwise SessionIdentityGuard can mistake this intentional sign-in for
-    // a cross-tab session takeover and immediately block the Member workspace.
-    finishAccountSwitch({
-      userId: data.user.id,
-      context: signedInContext,
-      label: data.user.email || accountWorkspaceLabel(signedInContext),
-    })
-
-    // Role-aware landing (25-11): staff → admin surface, others → vault; an
-    // explicit same-origin ?next= deep link wins. postSignInPath guards against
-    // off-site open redirects the prior raw router.push(next) allowed.
-    // Account credentials can replace an existing browser session. A hard
-    // navigation guarantees the next server-rendered layout reads the newly
-    // written auth cookie instead of retaining state from the prior workspace.
-    window.location.assign(
-      switchTo
-        ? accountWorkspaceHome(switchTo)
-        : postSignInPath({ user: data.user, next })
-    )
   }
 
   return (
