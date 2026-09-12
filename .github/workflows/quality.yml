@@ -23,6 +23,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Verify security migration package
+        run: npm run security:migrations:verify
       - run: npm run typecheck:strict
       - run: npm run lint
       - run: npm test -- --runInBand
