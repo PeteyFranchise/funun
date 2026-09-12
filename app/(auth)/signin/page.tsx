@@ -9,8 +9,8 @@ import {
   accountWorkspaceForUser,
   accountWorkspaceHome,
   accountWorkspaceLabel,
+  beginAccountSwitch,
   clearTabIdentity,
-  finishAccountSwitch,
   type AccountWorkspace,
 } from '@/lib/auth/session-identity'
 import { callbackErrorMessage, publicAuthError } from '@/lib/auth/public-errors'
@@ -107,15 +107,12 @@ function SignInForm() {
         }
       }
 
-      // Reaching this point means this tab explicitly authenticated this user.
-      // Replace any stale per-tab identity before the protected layout mounts;
-      // otherwise SessionIdentityGuard can mistake this intentional sign-in for
-      // a cross-tab session takeover and immediately block the Member workspace.
-      finishAccountSwitch({
-        userId: data.user.id,
-        context: signedInContext,
-        label: data.user.email || accountWorkspaceLabel(signedInContext),
-      })
+      // Never persist identity returned by signInWithPassword. The destination
+      // layout writes its own server-validated marker. A fresh, non-identifying
+      // intent allows an explicit account switch; ordinary sign-in clears any
+      // stale marker before the hard navigation.
+      if (switchTo) beginAccountSwitch(switchTo)
+      else clearTabIdentity()
 
       // Role-aware landing (25-11): staff → admin surface, others → vault; an
       // explicit same-origin ?next= deep link wins. postSignInPath guards against

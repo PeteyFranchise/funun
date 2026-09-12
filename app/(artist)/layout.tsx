@@ -149,7 +149,7 @@ export default async function ArtistLayout({ children }: { children: React.React
 
   return (
     <SessionIdentityGuard
-      identity={{ userId: user.id, context: 'personal', label: navUser?.name || user.email || 'Member' }}
+      identity={{ userId: user.id, context: 'personal', label: 'Personal workspace' }}
     >
       <ArtistLayoutClient userId={user.id} enableGlobalCapture={isMemberAccount}>{body}</ArtistLayoutClient>
     </SessionIdentityGuard>

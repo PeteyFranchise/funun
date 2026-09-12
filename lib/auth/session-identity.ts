@@ -149,7 +149,7 @@ export function resolveObservedSessionIdentity({
       current: {
         userId: nextUser.id,
         context,
-        label: nextUser.email || accountWorkspaceLabel(context),
+        label: accountWorkspaceLabel(context),
       },
     },
   }

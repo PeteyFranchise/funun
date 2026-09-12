@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SessionIdentityGuard
-      identity={{ userId: user.id, context: 'team', label: user.email || 'Funūn Team member' }}
+      identity={{ userId: user.id, context: 'team', label: 'Funūn Team' }}
     >
       <div className="fncon" data-theme={theme}>
         <style>{ADMIN_CONSOLE_CSS}</style>
