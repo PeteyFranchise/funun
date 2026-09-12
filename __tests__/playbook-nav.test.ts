@@ -23,11 +23,12 @@ describe('lib/playbook/nav', () => {
   })
 
   it('has the IT sub-pages in the exact order, dashboard first', () => {
-    expect(IT_SUBPAGES).toHaveLength(7)
+    expect(IT_SUBPAGES).toHaveLength(8)
     expect(IT_SUBPAGES.map(p => p.slug)).toEqual([
       'dashboard',
       'vendor-directory',
       'vendor-health',
+      'auth-health',
       'song-passport',
       'runbook',
       'operating-rhythm',
@@ -49,6 +50,10 @@ describe('lib/playbook/nav', () => {
     expect(bySlug['vendor-health']).toMatchObject({
       label: 'Vendor Health',
       href: '/admin/playbook/it/vendor-health',
+    })
+    expect(bySlug['auth-health']).toMatchObject({
+      label: 'Auth Health',
+      href: '/admin/playbook/it/auth-health',
     })
     expect(bySlug['runbook']).toMatchObject({
       label: 'Incident Runbook',

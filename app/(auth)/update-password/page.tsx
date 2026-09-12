@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthEvent, reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -22,6 +23,7 @@ export default function UpdatePasswordPage() {
   // null = still checking, true/false = recovery session present or not.
   const [hasSession, setHasSession] = useState<boolean | null>(null)
   const [sessionCheckFailed, setSessionCheckFailed] = useState(false)
+  const [sessionReference, setSessionReference] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -31,12 +33,17 @@ export default function UpdatePasswordPage() {
     // session storage before enabling a credential change.
     supabase.auth.getUser().then(({ data, error: userError }) => {
       if (!active) return
-      if (userError) {
-        setSessionCheckFailed(true)
+      if (userError || !data.user) {
+        setSessionCheckFailed(Boolean(userError))
+        setSessionReference(reportBrowserAuthEvent({
+          eventCode: 'recovery_verify_failed',
+          surface: 'update_password',
+          workspaceIntent: null,
+        }))
         setHasSession(false)
         return
       }
-      setHasSession(prev => (prev === true ? true : Boolean(data.user)))
+      setHasSession(true)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -71,7 +78,14 @@ export default function UpdatePasswordPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password })
       if (updateError) {
-        setError(publicAuthError('password-update', updateError))
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'password_update_failed',
+            surface: 'update_password',
+            workspaceIntent: null,
+          },
+          publicAuthError('password-update', updateError)
+        ))
         return
       }
 
@@ -95,7 +109,14 @@ export default function UpdatePasswordPage() {
         router.refresh()
       }, 1800)
     } catch {
-      setError(publicAuthError('password-update', null))
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'password_update_failed',
+          surface: 'update_password',
+          workspaceIntent: null,
+        },
+        publicAuthError('password-update', null)
+      ))
     } finally {
       setSubmitting(false)
     }
@@ -126,6 +147,7 @@ export default function UpdatePasswordPage() {
           {sessionCheckFailed
             ? 'We could not securely verify this recovery session. Request a fresh link and try again.'
             : 'This password reset link is invalid or has expired. Request a fresh one to continue.'}
+          {sessionReference ? ` Reference: ${sessionReference}.` : ''}
         </p>
         <Link
           href="/forgot-password"

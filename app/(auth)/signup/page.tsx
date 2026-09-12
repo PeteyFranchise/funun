@@ -11,6 +11,7 @@ import { handleFieldState } from '@/lib/handles/availability'
 import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/handles/validate'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 
 // Debounce delay for the live availability check (D-14, courtesy only) and
 // the shape of a resolved GET /api/handles/available verdict.
@@ -273,7 +274,14 @@ function SignUpFlow() {
         },
       })
       if (error) {
-        setSignUpError(publicAuthError('sign-up', error))
+        setSignUpError(reportBrowserAuthFailure(
+          {
+            eventCode: 'signup_failed',
+            surface: 'signup',
+            workspaceIntent: 'personal',
+          },
+          publicAuthError('sign-up', error)
+        ))
         return
       }
 
@@ -284,9 +292,14 @@ function SignUpFlow() {
         const claimResponse = await fetch('/api/claim-collaborators', { method: 'POST' })
         if (!claimResponse.ok) {
           await supabase.auth.signOut({ scope: 'local' })
-          setSignUpError(
+          setSignUpError(reportBrowserAuthFailure(
+            {
+              eventCode: 'invitation_claim_failed',
+              surface: 'signup',
+              workspaceIntent: 'personal',
+            },
             'Your account was created, but the invitation could not be completed. Check your email verification, then sign in again.'
-          )
+          ))
           return
         }
         router.replace(destination)
@@ -296,7 +309,14 @@ function SignUpFlow() {
 
       setSent(true)
     } catch {
-      setSignUpError(publicAuthError('sign-up', null))
+      setSignUpError(reportBrowserAuthFailure(
+        {
+          eventCode: 'signup_failed',
+          surface: 'signup',
+          workspaceIntent: 'personal',
+        },
+        publicAuthError('sign-up', null)
+      ))
     } finally {
       setSubmitting(false)
     }

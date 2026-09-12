@@ -1,19 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
+import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    if (searchParams.get('error') !== 'recovery') return null
+    const copy = 'That reset link is invalid or has expired. Request a new link and try again.'
+    const reference = validAuthCorrelationId(searchParams.get('ref'))
+    return reference ? authCopyWithReference(copy, reference) : copy
+  })
   const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,7 +44,14 @@ export default function ForgotPasswordPage() {
       )
 
       if (recoveryError) {
-        setError(publicAuthError('password-recovery', recoveryError))
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'recovery_request_failed',
+            surface: 'forgot_password',
+            workspaceIntent: null,
+          },
+          publicAuthError('password-recovery', recoveryError)
+        ))
         return
       }
 
@@ -43,7 +59,14 @@ export default function ForgotPasswordPage() {
       // same successful result and this page keeps the confirmation neutral.
       setSent(true)
     } catch {
-      setError(publicAuthError('password-recovery', null))
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'recovery_request_failed',
+          surface: 'forgot_password',
+          workspaceIntent: null,
+        },
+        publicAuthError('password-recovery', null)
+      ))
     } finally {
       setSubmitting(false)
     }
@@ -110,5 +133,13 @@ export default function ForgotPasswordPage() {
         </Link>
       </p>
     </div>
+  )
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordForm />
+    </Suspense>
   )
 }

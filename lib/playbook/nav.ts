@@ -30,6 +30,7 @@ export type ItSubpageSlug =
   | 'dashboard'
   | 'vendor-directory'
   | 'vendor-health'
+  | 'auth-health'
   | 'song-passport'
   | 'runbook'
   | 'operating-rhythm'
@@ -43,24 +44,22 @@ export type ItSubpage = {
 
 // IT sub-pages, in order — dashboard is the room's index page
 // (33-CONTEXT.md D-06). Route segments live under /admin/playbook/it/*.
-// vendor-health (260826-2qm) sits directly after vendor-directory — the
-// static directory and its live per-vendor credential-check counterpart
-// belong adjacent.
+// Live health surfaces sit directly after vendor-directory so the static
+// directory and operational checks stay adjacent.
 export const IT_SUBPAGES: ItSubpage[] = [
   { slug: 'dashboard', label: 'Monitoring Dashboard', href: '/admin/playbook/it/dashboard' },
   { slug: 'vendor-directory', label: 'Vendor Directory', href: '/admin/playbook/it/vendor-directory' },
   { slug: 'vendor-health', label: 'Vendor Health', href: '/admin/playbook/it/vendor-health' },
+  { slug: 'auth-health', label: 'Auth Health', href: '/admin/playbook/it/auth-health' },
   { slug: 'song-passport', label: 'Song Passport Pilot', href: '/admin/playbook/it/song-passport' },
   { slug: 'runbook', label: 'Incident Runbook', href: '/admin/playbook/it/runbook' },
   { slug: 'operating-rhythm', label: 'Operating Rhythm', href: '/admin/playbook/it/operating-rhythm' },
   { slug: 'thresholds', label: 'Thresholds & Severity', href: '/admin/playbook/it/thresholds' },
 ]
 
-// D-10: page → file map. The Monitoring Dashboard AND Vendor Health
-// (260826-2qm) are bespoke React (not a markdown render) so neither has an
-// entry here — only the 4 doc pages map to their docs/observability/*.md
-// single source of truth.
-export const DOC_PAGE_FILE: Record<Exclude<ItSubpageSlug, 'dashboard' | 'vendor-health' | 'song-passport'>, string> = {
+// D-10: page → file map. Dashboard, Vendor Health, Auth Health, and Song
+// Passport are bespoke React, so only the four document pages map here.
+export const DOC_PAGE_FILE: Record<Exclude<ItSubpageSlug, 'dashboard' | 'vendor-health' | 'auth-health' | 'song-passport'>, string> = {
   'vendor-directory': 'VENDOR-DIRECTORY.md',
   runbook: 'RUNBOOK.md',
   'operating-rhythm': 'OPERATING-RHYTHM.md',

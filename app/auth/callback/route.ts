@@ -3,6 +3,47 @@ import type { User } from '@supabase/supabase-js'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { completeSignupClaim } from '@/lib/invites/completeSignupClaim'
+import { createAuthCorrelationId } from '@/lib/auth/diagnostics'
+import { recordAuthDiagnosticEvent } from '@/lib/auth/diagnostic-store'
+
+type CallbackFailureCode =
+  | 'callback_client_failed'
+  | 'callback_exchange_failed'
+  | 'recovery_verify_failed'
+  | 'invitation_claim_failed'
+
+const CALLBACK_INVITE_CLAIM_PATH = '/signin?error=invite-claim'
+
+async function callbackFailureRedirect({
+  origin,
+  isRecovery,
+  eventCode,
+}: {
+  origin: string
+  isRecovery: boolean
+  eventCode: CallbackFailureCode
+}) {
+  const correlationId = createAuthCorrelationId()
+  try {
+    await recordAuthDiagnosticEvent(createServiceClient(), {
+      correlationId,
+      eventCode,
+      surface: 'auth_callback',
+      workspaceIntent: null,
+      runtime: 'server',
+    })
+  } catch {
+    // Diagnostics are a side channel. An unavailable store must never replace
+    // the stable recovery path for an already-failing authentication request.
+  }
+
+  const location = isRecovery
+    ? `${origin}/forgot-password?error=recovery&ref=${correlationId}`
+    : eventCode === 'invitation_claim_failed'
+      ? `${origin}${CALLBACK_INVITE_CLAIM_PATH}&ref=${correlationId}`
+      : `${origin}/signin?error=auth&ref=${correlationId}`
+  return NextResponse.redirect(location)
+}
 
 // GET /auth/callback — exchanges the email-confirmation / password-recovery /
 // magic-link code for a session, then redirects into the app. Supabase appends
@@ -28,19 +69,19 @@ export async function GET(request: Request) {
   // through to /vault with no session (that silently drops the user on a
   // protected page they'll just get bounced off). Route them somewhere they can
   // recover instead: back to the reset flow for recovery links, or signin.
-  const failureRedirect = isRecovery
-    ? `${origin}/forgot-password?error=recovery`
-    : `${origin}/signin?error=auth`
-
   if (!code) {
-    return NextResponse.redirect(failureRedirect)
+    return callbackFailureRedirect({
+      origin,
+      isRecovery,
+      eventCode: isRecovery ? 'recovery_verify_failed' : 'callback_exchange_failed',
+    })
   }
 
   let supabase: Awaited<ReturnType<typeof createApiClient>>
   try {
     supabase = await createApiClient()
   } catch {
-    return NextResponse.redirect(failureRedirect)
+    return callbackFailureRedirect({ origin, isRecovery, eventCode: 'callback_client_failed' })
   }
 
   async function clearCallbackSession() {
@@ -57,12 +98,20 @@ export async function GET(request: Request) {
     const result = await supabase.auth.exchangeCodeForSession(code)
     if (result.error || !result.data.user) {
       await clearCallbackSession()
-      return NextResponse.redirect(failureRedirect)
+      return callbackFailureRedirect({
+        origin,
+        isRecovery,
+        eventCode: isRecovery ? 'recovery_verify_failed' : 'callback_exchange_failed',
+      })
     }
     user = result.data.user
   } catch {
     await clearCallbackSession()
-    return NextResponse.redirect(failureRedirect)
+    return callbackFailureRedirect({
+      origin,
+      isRecovery,
+      eventCode: isRecovery ? 'recovery_verify_failed' : 'callback_exchange_failed',
+    })
   }
 
   // A confirmation callback is the earliest safe place to attach existing
@@ -74,11 +123,19 @@ export async function GET(request: Request) {
       const claim = await completeSignupClaim(createServiceClient(), user.id)
       if (!claim.ok) {
         await clearCallbackSession()
-        return NextResponse.redirect(`${origin}/signin?error=invite-claim`)
+        return callbackFailureRedirect({
+          origin,
+          isRecovery: false,
+          eventCode: 'invitation_claim_failed',
+        })
       }
     } catch {
       await clearCallbackSession()
-      return NextResponse.redirect(`${origin}/signin?error=invite-claim`)
+      return callbackFailureRedirect({
+        origin,
+        isRecovery: false,
+        eventCode: 'invitation_claim_failed',
+      })
     }
   }
 

@@ -14,6 +14,8 @@ import {
   type AccountWorkspace,
 } from '@/lib/auth/session-identity'
 import { callbackErrorMessage, publicAuthError } from '@/lib/auth/public-errors'
+import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
+import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
 
 const inputClass =
   'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
@@ -31,9 +33,11 @@ function SignInForm() {
   const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(() =>
-    callbackErrorMessage(searchParams.get('error'))
-  )
+  const [error, setError] = useState<string | null>(() => {
+    const copy = callbackErrorMessage(searchParams.get('error'))
+    const reference = validAuthCorrelationId(searchParams.get('ref'))
+    return copy && reference ? authCopyWithReference(copy, reference) : copy
+  })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +51,14 @@ function SignInForm() {
         password,
       })
       if (signInError || !data.user) {
-        setError(publicAuthError('sign-in', signInError))
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'sign_in_failed',
+            surface: 'signin',
+            workspaceIntent: switchTo,
+          },
+          publicAuthError('sign-in', signInError)
+        ))
         return
       }
       hasNewSession = true
@@ -59,11 +70,16 @@ function SignInForm() {
           clearTabIdentity()
           hasNewSession = false
         }
-        setError(
+        setError(reportBrowserAuthFailure(
+          {
+            eventCode: 'sign_in_failed',
+            surface: 'signin',
+            workspaceIntent: switchTo,
+          },
           switchTo === 'team'
             ? 'That login is not a Funūn Team account. Sign in with your Team Member credentials.'
             : 'That login is a Funūn Team account. Sign in with your personal Member credentials.'
-        )
+        ))
         return
       }
 
@@ -79,9 +95,14 @@ function SignInForm() {
             clearTabIdentity()
             hasNewSession = false
           }
-          setError(
+          setError(reportBrowserAuthFailure(
+            {
+              eventCode: 'invitation_claim_failed',
+              surface: 'signin',
+              workspaceIntent: switchTo,
+            },
             'This invitation could not be completed. Ask the sender for a new invite and try again.'
-          )
+          ))
           return
         }
       }
@@ -112,7 +133,14 @@ function SignInForm() {
         const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (!signOutError) clearTabIdentity()
       }
-      setError(publicAuthError('sign-in', null))
+      setError(reportBrowserAuthFailure(
+        {
+          eventCode: 'sign_in_failed',
+          surface: 'signin',
+          workspaceIntent: switchTo,
+        },
+        publicAuthError('sign-in', null)
+      ))
     } finally {
       setSubmitting(false)
     }

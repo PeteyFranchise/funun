@@ -41,7 +41,7 @@ describe('Team and Personal account-switch integration', () => {
 
     expect(providerSignOutAt).toBeGreaterThan(-1)
     expect(clearMarkerAt).toBeGreaterThan(providerSignOutAt)
-    expect(signOut).toContain("window.location.assign('/signin?error=signout')")
+    expect(signOut).toContain('`/signin?error=signout&ref=${reference}`')
   })
 
   it('preserves the account-switch intent and exposes a stable cleanup failure', () => {

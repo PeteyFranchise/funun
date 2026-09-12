@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { clearTabIdentity } from '@/lib/auth/session-identity'
+import { reportBrowserAuthEvent } from '@/lib/auth/client-diagnostics'
 
 type Props = {
   appearance?: 'text' | 'nav'
@@ -34,13 +35,27 @@ export function SignOutButton({ appearance = 'text', collapsed = false }: Props)
     try {
       const { error } = await supabase.auth.signOut({ scope: 'local' })
       if (error) {
-        window.location.assign('/signin?error=signout')
+        const reference = reportBrowserAuthEvent(
+          {
+            eventCode: 'signout_failed',
+            surface: 'account_menu',
+            workspaceIntent: null,
+          }
+        )
+        window.location.assign(`/signin?error=signout&ref=${reference}`)
         return
       }
       clearTabIdentity()
       window.location.assign('/signin')
     } catch {
-      window.location.assign('/signin?error=signout')
+      const reference = reportBrowserAuthEvent(
+        {
+          eventCode: 'signout_failed',
+          surface: 'account_menu',
+          workspaceIntent: null,
+        }
+      )
+      window.location.assign(`/signin?error=signout&ref=${reference}`)
     }
   }
 

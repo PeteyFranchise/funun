@@ -66,8 +66,8 @@ describe('GET /auth/callback verified invitation claim', () => {
 
     const response = await GET(new Request('https://funun.test/auth/callback?code=confirmed'))
 
-    expect(response.headers.get('location')).toBe(
-      'https://funun.test/signin?error=invite-claim'
+    expect(response.headers.get('location')).toMatch(
+      /^https:\/\/funun\.test\/signin\?error=invite-claim&ref=AUTH-[A-F0-9]{12}$/
     )
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
   })
@@ -86,7 +86,9 @@ describe('GET /auth/callback verified invitation claim', () => {
     const response = await GET(new Request('https://funun.test/auth/callback?code=partial'))
 
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
-    expect(response.headers.get('location')).toBe('https://funun.test/signin?error=auth')
+    expect(response.headers.get('location')).toMatch(
+      /^https:\/\/funun\.test\/signin\?error=auth&ref=AUTH-[A-F0-9]{12}$/
+    )
   })
 
   it('returns a stable recovery route when the provider throws', async () => {
@@ -101,8 +103,8 @@ describe('GET /auth/callback verified invitation claim', () => {
       new Request('https://funun.test/auth/callback?code=bad&next=/update-password')
     )
 
-    expect(response.headers.get('location')).toBe(
-      'https://funun.test/forgot-password?error=recovery'
+    expect(response.headers.get('location')).toMatch(
+      /^https:\/\/funun\.test\/forgot-password\?error=recovery&ref=AUTH-[A-F0-9]{12}$/
     )
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
   })
@@ -111,7 +113,9 @@ describe('GET /auth/callback verified invitation claim', () => {
     const response = await GET(new Request('https://funun.test/auth/callback'))
 
     expect(createApiClient).not.toHaveBeenCalled()
-    expect(response.headers.get('location')).toBe('https://funun.test/signin?error=auth')
+    expect(response.headers.get('location')).toMatch(
+      /^https:\/\/funun\.test\/signin\?error=auth&ref=AUTH-[A-F0-9]{12}$/
+    )
   })
 
   it('returns a stable failure when the callback client cannot initialize', async () => {
@@ -119,7 +123,9 @@ describe('GET /auth/callback verified invitation claim', () => {
 
     const response = await GET(new Request('https://funun.test/auth/callback?code=valid'))
 
-    expect(response.headers.get('location')).toBe('https://funun.test/signin?error=auth')
+    expect(response.headers.get('location')).toMatch(
+      /^https:\/\/funun\.test\/signin\?error=auth&ref=AUTH-[A-F0-9]{12}$/
+    )
     expect(completeSignupClaim).not.toHaveBeenCalled()
   })
 })
