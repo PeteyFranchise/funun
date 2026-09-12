@@ -42,11 +42,22 @@ credits, splits, rights, approvals, delivery state or membership.
     connection note, diary note. Different things; do not rename them.
 
 ### Waveform peaks
-- **D-01:** Peaks are computed **at creation**. Hum and record-over-beat takes compute
-  client-side from the `AudioBuffer` the browser already holds (`RecordOverBeatStudio.tsx:397`
-  decodes one; `waveformPeaks()` takes exactly that) — free and instant, so a writer who just
-  recorded never sees a placeholder. Large uploaded mixes (up to 250MB) fall back to
-  server-side extraction at upload-complete.
+- **D-01 (AMENDED 2026-09-12 after research):** Peaks are computed **at creation, client-side,
+  for every take** — no server-side extraction path at all.
+  - Hum and record-over-beat takes decode from the `AudioBuffer` the browser already holds
+    (`RecordOverBeatStudio.tsx:397` decodes one; `waveformPeaks()` takes exactly that).
+  - Plain uploads decode from the `Blob` the browser holds *before* it uploads.
+  - Peaks are POSTed alongside the version. `lib/catalogue/level-match.ts` already runs
+    `decodeAudioData()` in production, so this is an established path, not a new capability.
+  - **Why amended:** the original decision carried a server-side fallback justified by "uploads
+    up to 250MB". That ceiling was misattributed — it is Sound Vault's
+    (`lib/storage/index.ts:7`). Writer's Room takes are capped at **50MB** by `MAX_BYTES`
+    (`lib/catalogue/audio-mime.ts:13`), enforced at `versions/upload-intent/route.ts:49` and
+    `versions/complete/route.ts:67`. At 50MB the client handles every take, so the fallback —
+    which had no clean implementation on Vercel (no ffmpeg on the default runtime, no
+    server-side PCM decode precedent in this repo) — is removed entirely.
+  - **Intent preserved:** a writer who just made a take never sees a placeholder.
+  - **Safety net:** D-03's lazy backfill is the single retry path for any decode that fails.
 - **D-02:** `VersionComparisonPanel` draws **level-matched** peaks; every other surface draws
   **raw** peaks. A/B playback is already level-matched via `lib/catalogue/level-match.ts`, so
   drawing raw peaks there would show one thing while playing another. Principle: *the picture
