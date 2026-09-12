@@ -34,7 +34,10 @@ describe('migration 214 verified invite claim hardening', () => {
 
   it('keeps the claim ledger and function unavailable to browser roles', () => {
     expect(sql).toContain(
-      'REVOKE ALL ON public.verified_signup_invite_claims FROM PUBLIC, anon, authenticated'
+      'REVOKE ALL ON public.verified_signup_invite_claims FROM PUBLIC, anon, authenticated, service_role'
+    )
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT ON public.verified_signup_invite_claims TO service_role'
     )
     expect(sql).toMatch(
       /REVOKE ALL ON FUNCTION public\.complete_verified_signup_claim\(UUID, TEXT\)[\s\S]*FROM PUBLIC, anon, authenticated/

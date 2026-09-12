@@ -80,7 +80,7 @@ describe('beta security migration 214–217 harness', () => {
     expect(preflight).toContain('GROUP BY split_sheet_id HAVING count(*) > 1')
     expect(preflight).toContain('GROUP BY user_id HAVING count(*) > 1')
     expect(postApply).toContain('Every target function is a hardened definer')
-    expect(postApply).toContain("ARRAY['search_path=']::text[]")
+    expect(postApply).toContain("WHERE cfg.value IN ('search_path=', 'search_path=\"\"')")
     expect(postApply).toContain("a.grantee = 0 OR r.rolname IN ('anon', 'authenticated')")
     expect(postApply).toContain('Service role can execute every target function')
     expect(read('supabase/migrations/214_verified_invite_claim_hardening.sql')).toContain(
@@ -108,5 +108,27 @@ describe('beta security migration 214–217 harness', () => {
     expect(workflow).not.toMatch(
       /name: Verify security migration package[\s\S]{0,160}continue-on-error:\s*true/
     )
+  })
+
+  it('preserves the reviewed migration-214 recovery and isolated continuation path', () => {
+    const preRecover = read(`${harness}/PRE-RECOVER-214-SERVICE-GRANTS.sql`)
+    const recover = read(`${harness}/RECOVER-214-SERVICE-GRANTS.sql`)
+    const verifyUnregistered = read(`${harness}/VERIFY-214-UNREGISTERED.sql`)
+    const continueGate = read(`${harness}/PRE-APPLY-215-217-AFTER-214.sql`)
+    const pushWrapper = read(`${harness}/push-215-217.sh`)
+
+    expect(preRecover).toContain('Migration 214 remains unregistered')
+    expect(preRecover).toContain('Service role has the observed over-broad default grant')
+    expect(recover).toContain('HUMAN-GATED')
+    expect(recover).toContain(
+      'FROM PUBLIC, anon, authenticated, service_role'
+    )
+    expect(recover).toContain(
+      'GRANT SELECT, INSERT ON TABLE public.verified_signup_invite_claims'
+    )
+    expect(verifyUnregistered).toContain('Verified-claim ledger privileges are least-privilege')
+    expect(continueGate).toContain('Remaining candidate ledger entries are unused')
+    expect(pushWrapper).toContain('trap restore_218 EXIT INT TERM')
+    expect(pushWrapper).toContain('npx supabase db push --linked --skip-vault --dry-run')
   })
 })

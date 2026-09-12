@@ -12,9 +12,9 @@ digest change requires a new review and a fresh preflight.
 
 | Version | File | SHA-256 |
 | --- | --- | --- |
-| `214` | `supabase/migrations/214_verified_invite_claim_hardening.sql` | `d6e8d41383974d8e6b0913762d0d8b3f252b6ea6437b037dadfe1c5a2d467b77` |
+| `214` | `supabase/migrations/214_verified_invite_claim_hardening.sql` | `cb476c5af68970a768ffff2186cfa8bb53ca6c9c48a924bc75ba282884f00671` |
 | `215` | `supabase/migrations/215_atomic_checkout_creation.sql` | `526d2238d3f4166e2ceecefeaf260cc675d030f05fd105ea8f8db83c7ea6a4f7` |
-| `216` | `supabase/migrations/216_atomic_esign_mint_claims.sql` | `86481b95e155419dc72aab579066f02c57c61695472753c7ca5619ae59f494fa` |
+| `216` | `supabase/migrations/216_atomic_esign_mint_claims.sql` | `7ddaf01b32dbe34a4a576a3b7b461cc54ec000b6c936294ea7e34858903f27ef` |
 | `217` | `supabase/migrations/217_atomic_playbook_operations.sql` | `eab4e299caec26b96ef3de15b842bcbbedbd1f61f5cf150e126b13ba5dc495f2` |
 
 Migration `203` remains retired. Versions `211` and `212` remain reserved for
@@ -59,7 +59,20 @@ SUPABASE_ACCESS_TOKEN="$FUNUN_SUPABASE_PAT" npx supabase db push --linked
 ```
 
 Each migration has its own explicit transaction. Supabase records a version
-only after that file succeeds. Do not manually repair the migration ledger.
+only after that file succeeds. In the normal path, do not manually repair the
+migration ledger. The reviewed 2026-09-12 recovery exception is documented
+below.
+
+### Recovery continuation after migration 214 was directly applied
+
+On 2026-09-12, migration 214 required definition-level recovery and an
+ACL-only correction before it was registered. For the remaining chain, run
+`PRE-APPLY-215-217-AFTER-214.sql`, then use `push-215-217.sh --dry-run`. The
+wrapper temporarily holds migration 218 outside the migrations directory and
+restores it under an EXIT/INT/TERM trap, preventing the 215–217 push from
+silently absorbing the separately gated Auth Health migration. The dry run
+must list exactly 215, 216, and 217. Only then may the owner run the same
+wrapper with `--apply`.
 
 ## If the apply fails
 

@@ -30,7 +30,7 @@ CREATE TABLE public.verified_signup_invite_claims (
 );
 
 ALTER TABLE public.verified_signup_invite_claims ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.verified_signup_invite_claims FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.verified_signup_invite_claims FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT ON public.verified_signup_invite_claims TO service_role;
 
 COMMENT ON TABLE public.verified_signup_invite_claims IS

@@ -20,7 +20,7 @@ CREATE TABLE public.esign_mint_claims (
 );
 
 ALTER TABLE public.esign_mint_claims ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.esign_mint_claims FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.esign_mint_claims FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.esign_mint_claims TO service_role;
 
 CREATE UNIQUE INDEX idx_esign_envelopes_one_active_per_sheet
