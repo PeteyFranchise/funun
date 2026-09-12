@@ -1,4 +1,4 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -39,11 +39,26 @@ export async function middleware(req: NextRequest) {
     "worker-src 'self' blob:",
     'upgrade-insecure-requests',
   ].join('; ')
-  const requestHeaders = new Headers(req.headers)
-  requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy', csp)
-  const res = NextResponse.next({ request: { headers: requestHeaders } })
-  res.headers.set('Content-Security-Policy', csp)
+  const createPassThroughResponse = () => {
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-nonce', nonce)
+    requestHeaders.set('Content-Security-Policy', csp)
+    const response = NextResponse.next({ request: { headers: requestHeaders } })
+    response.headers.set('Content-Security-Policy', csp)
+    return response
+  }
+
+  let res = createPassThroughResponse()
+
+  const respondWithAuthState = (response: NextResponse) => {
+    res.cookies.getAll().forEach(cookie => response.cookies.set(cookie))
+    for (const header of ['cache-control', 'expires', 'pragma']) {
+      const value = res.headers.get(header)
+      if (value) response.headers.set(header, value)
+    }
+    response.headers.set('Content-Security-Policy', csp)
+    return response
+  }
 
   // Local preview: skip auth so the seeded Sound Vault renders without a session.
   if (
@@ -51,7 +66,31 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
   ) return res
 
-  const supabase = createMiddlewareClient({ req, res })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookiesToSet, headers) => {
+          // Update the forwarded request first so Server Components see the
+          // refreshed session during this same request.
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+          res = createPassThroughResponse()
+
+          // Then update the browser response so its next request carries the
+          // same refreshed session. Supabase's no-cache headers are mandatory
+          // whenever auth cookies change behind a CDN.
+          cookiesToSet.forEach(({ name, value, options }) => {
+            res.cookies.set(name, value, options)
+          })
+          Object.entries(headers).forEach(([name, value]) => {
+            res.headers.set(name, value)
+          })
+        },
+      },
+    }
+  )
   // Use getUser() rather than getSession(): getSession() can reflect a stale
   // client cookie, while server pages/routes validate with getUser(). Keeping
   // middleware on the same contract prevents deleted/expired users from
@@ -68,7 +107,11 @@ export async function middleware(req: NextRequest) {
   // making room-scoped routes parse a body merely to discover which room gate
   // to invoke.
   if (pathname.startsWith('/api/admin/')) {
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) {
+      return respondWithAuthState(
+        NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      )
+    }
     return res
   }
   // /forgot-password is a public auth route: a fully signed-in user has no reason
@@ -99,13 +142,13 @@ export async function middleware(req: NextRequest) {
   if (isProtected && !user) {
     const url = new URL('/signin', req.url)
     url.searchParams.set('next', pathname)
-    return NextResponse.redirect(url)
+    return respondWithAuthState(NextResponse.redirect(url))
   }
 
   // Signup and password-reset entry remain unnecessary for a current session.
   // Signin is excluded because it is also the safe account-replacement surface.
   if (isAuthRoute && user && !pathname.startsWith('/signin')) {
-    return NextResponse.redirect(new URL('/vault', req.url))
+    return respondWithAuthState(NextResponse.redirect(new URL('/vault', req.url)))
   }
 
   // Phase 4: fire the claim completion for users whose collaborator rows
