@@ -496,7 +496,7 @@ set per the phase's own framing. Mapped by decision ID.)
 |----------|----------|-----------|-------------------|--------------|
 | D-01/D-03 | `waveformPeaks()` output shape and scaling stay stable when wrapped by the new decode helper | unit | `npx jest lib/catalogue/record-over-beat.test.ts` | Yes — extend existing file |
 | D-02 | Level-matched peaks in `VersionComparisonPanel` reflect `analyzePlaybackLevels()`'s volumes, not raw peaks | unit | `npx jest lib/catalogue/level-match.test.ts` | ✅ Yes |
-| D-04/D-06/D-07 | Range-comment CHECK constraints (`end > start`, duration bound) and carry-forward clamping | unit (pure logic twin) + migration content test | `npx jest supabase/migrations/*writer_room*range*.test.ts` (new file, mirrors `__tests__/migration-*.test.ts` convention already used for 128/130/131/132) | ❌ Wave 0 — new test file |
+| D-04/D-06/D-07 | Range-comment CHECK constraints (`end > start`, duration bound) and carry-forward clamping | unit (pure logic twin) + migration content test | `npx jest __tests__/migration-224-writer-room-take-review.test.ts` (new file, follows the numbered migration-test convention) | ❌ Wave 0 — new test file |
 | D-10/D-11/D-12/D-13 | Pin RLS: author can read/write own rows; a second authenticated user gets zero rows for the same `version_id`; promotion deletes the pin | RLS smoke (SQL, run against a local/staging Supabase instance — the pattern this repo's `31.2-01`/`25-07` production security smokes already use) | Manual/scripted smoke checklist, not a pure jest unit (RLS cannot be exercised meaningfully without a real Postgres role context) | ❌ Wave 0 — new smoke checklist |
 | D-14/D-15/D-16 | Keyboard shortcuts suppressed while any input/textarea/contenteditable holds focus; `[`/`]` navigate; two mounted players don't double-fire | unit (pure `shouldSuppressShortcut()` logic) + component test for the "active player" registry | `npx jest components/catalogue/TimedTrackPlayer.test.tsx` (new) | ❌ Wave 0 |
 | D-17/D-18 | Speed resets to 1x per take; `preservesPitch` reapplied on `loadedmetadata` | component test asserting `audio.playbackRate`/`audio.preservesPitch` after simulated `src` change | `npx jest components/catalogue/VersionComparisonPanel.test.tsx` | ✅ Partial — file likely exists; extend |
@@ -506,15 +506,14 @@ set per the phase's own framing. Mapped by decision ID.)
 - **Per wave merge:** `npm test` (full suite) + `npx tsc --noEmit` (per this repo's own
   "no build while dev server runs" convention — never `npm run build` during active development).
 - **Phase gate:** full suite green, plus the RLS pin-visibility smoke run manually against a real
-  Supabase project (local or staging) before the migration is claimed live in production, exactly
+  Supabase project (local or staging) before migration 224 is applied in production, exactly
   like the six-account adversarial smoke Phase 38's D-48 RLS branch required.
 
 ### Wave 0 Gaps
 - [ ] `lib/catalogue/waveform.ts` + `lib/catalogue/waveform.test.ts` — the new shared
       decode-and-extract helper (Pattern 1) and its unit coverage
-- [ ] A migration content test for the `end_timestamp_ms` ALTER + updated trigger (mirrors
-      `__tests__/migration-160.test.ts` if one exists, or migration 128/130/131/132's convention
-      if not — confirm at plan time)
+- [ ] `__tests__/migration-224-writer-room-take-review.test.ts` for the `end_timestamp_ms` ALTER
+      and updated trigger, following the numbered migration-test convention
 - [ ] A pins RLS smoke checklist (author-only visibility, cross-author zero-rows, promotion
       deletes the pin) — this cannot be a pure jest unit test since RLS requires a real Postgres
       role boundary
@@ -559,8 +558,8 @@ set per the phase's own framing. Mapped by decision ID.)
   CHECK constraints, RLS policy, `validate_work_version_comment()` trigger,
   `create_work_version_comment()`/`review_work_version_comment_carry()` RPCs
 - `supabase/migrations/146_writer_room_section_comments.sql` — confirms this is a sibling table
-  (`work_lyric_block_comments`), not the same table as 160, clarifying the sequencing-gate todo's
-  scope
+  (`work_lyric_block_comments`), not the same table as 160. Migration 146 is applied; its deferred
+  multi-account UAT remains separate from Phase 39.
 - `supabase/migrations/135_works_core.sql`, `136_*.sql` — `work_versions` table shape and its
   plain `FOR ALL` RLS policy (no REVOKE/column-grant lockdown), contrasted with 160's locked-down
   shape
@@ -572,7 +571,7 @@ set per the phase's own framing. Mapped by decision ID.)
   — the `MAX_BYTES = 50MB` (Writer's Room) vs `MAX_AUDIO_SIZE = 250MB` (Sound Vault) distinction,
   confirmed via `grep` across the whole repo for both constants
 - `.planning/todos/pending/2026-09-01-writers-room-section-comments-production-activation.md`
-  — sequencing gate detail
+  — applied migration 146 and its remaining deferred multi-account UAT
 - `docs/design/WRITERS-ROOM-WAVEFORM-NOTES-2027.md`, `.planning/ROADMAP.md` § Phase 39,
   `39-CONTEXT.md` — phase scope and locked decisions
 - `package.json` — confirms no ffmpeg/audio-decode/native-binary dependency exists today aside

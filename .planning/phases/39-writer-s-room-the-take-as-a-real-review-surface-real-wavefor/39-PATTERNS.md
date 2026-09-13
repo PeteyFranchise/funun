@@ -12,8 +12,8 @@
 | `components/catalogue/VersionComparisonPanel.tsx` (modify) | component | request-response + client audio decode | itself + `lib/catalogue/level-match.ts` | in-place refinement |
 | `lib/catalogue/waveform.ts` (new) | utility | transform (pure decode-and-extract) | `lib/catalogue/level-match.ts` (decode shape) + `lib/catalogue/record-over-beat.ts`'s `waveformPeaks()` (algorithm, reused not copied) | exact (module shape) |
 | `lib/catalogue/waveform.test.ts` (new) | test | unit | `lib/catalogue/record-over-beat.ts` pairs with existing `*.test.ts` convention (pure-function unit tests, no mocks) | role-match |
-| `supabase/migrations/NNN_writer_room_range_comments_and_pins.sql` (new, number TBD) | migration | CRUD + RLS | `supabase/migrations/160_writer_room_timed_track_comments.sql` (comment ALTER/trigger half) + `supabase/migrations/015_dsr_imports.sql` (pins RLS half) | exact |
-| `__tests__/migration-NNN-writer-room-range-pins.test.ts` (new) | test | content-assertion | `__tests__/migration-218-auth-diagnostics.test.ts` | exact |
+| `supabase/migrations/224_writer_room_take_review_surface.sql` (new, reserved) | migration | CRUD + RLS | `supabase/migrations/160_writer_room_timed_track_comments.sql` (comment ALTER/trigger half) + `supabase/migrations/015_dsr_imports.sql` (pins RLS half) | exact |
+| `__tests__/migration-224-writer-room-take-review.test.ts` (new) | test | content-assertion | `__tests__/migration-218-auth-diagnostics.test.ts` | exact |
 | `app/api/works/[workId]/versions/[versionId]/comments/route.ts` (modify) | route | request-response, CRUD | itself (existing GET/POST) | exact (extend in place) |
 | `app/api/works/[workId]/versions/complete/route.ts` (modify) | route | request-response, CRUD | itself; bounded-array validation analog is `app/api/works/[workId]/blocks/reorder/route.ts` | role-match + exact (array bounding) |
 | `app/api/works/[workId]/versions/[versionId]/route.ts` (modify, peaks PATCH) | route | request-response, CRUD | `app/api/works/[workId]/versions/complete/route.ts` (direct `work_versions` write, no RPC) | role-match |
@@ -94,7 +94,7 @@ export async function extractPeaksFromBlob(blob: Blob, barCount = 200): Promise<
 
 ---
 
-### Migration (new, number unassigned — refer to as "the range-comments-and-pins migration")
+### Migration 224 (new, reserved — the take-review-surface migration)
 
 **Two analogs, one for each half:**
 
@@ -194,7 +194,7 @@ Copy this policy shape verbatim (rename `user_id` → `author_user_id`, add `wor
 
 ---
 
-### `__tests__/migration-NNN-writer-room-range-pins.test.ts` (test, content-assertion) — NEW
+### `__tests__/migration-224-writer-room-take-review.test.ts` (test, content-assertion) — NEW
 
 **Analog:** `__tests__/migration-218-auth-diagnostics.test.ts` (full file, 37 lines) — read the raw SQL text with `readFileSync`, assert on literal substrings; no DB connection.
 ```typescript
@@ -355,9 +355,12 @@ const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${ver
 **Source:** `__tests__/migration-218-auth-diagnostics.test.ts` (whole file)
 **Apply to:** the new range-comments/pins migration's test file — `readFileSync` + `toContain`/`not.toContain` on the raw SQL text, including negative assertions proving the pins policy has no membership branch
 
-### Migration numbers are unassigned
+### Migration 224 is reserved
 **Source:** N/A — sequencing gate in `39-CONTEXT.md` Canonical References
-**Apply to:** every migration/test-file reference above; do not hardcode a number until implementation planning re-checks `supabase/migrations/` (highest was 218 at context-gather time, a parallel Phase 38.1 session is also claiming numbers)
+**Apply to:** every migration/test-file reference above. Production is verified through 223 and a
+2026-09-13 scan found 224 free. Execution must recheck `supabase/migrations/`, untracked files,
+`.planning/quick/**`, and the authoritative ROADMAP ledger immediately before creating migration
+224; a collision requires re-planning, not silent renumbering.
 
 ## No Analog Found
 

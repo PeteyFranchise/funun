@@ -55,7 +55,7 @@ no pre-assigned requirement IDs, so `39-CONTEXT.md`'s D-01..D-18 **are** the req
 | D-02 | `VersionComparisonPanel` draws level-matched peaks reflecting `analyzePlaybackLevels()`, not raw peaks | unit | `npx jest lib/catalogue/level-match.test.ts components/catalogue/VersionComparisonPanel.test.tsx` | ✅ both exist |
 | D-03 | A take with no stored peaks triggers exactly one lazy backfill, caches the result, and never renders `WAVE_BARS` | unit | `npx jest components/catalogue/TimedTrackPlayer.test.tsx` | ✅ exists |
 | D-04, D-05, D-06 | "Mark span" mode disables the seek overlay; span plays once and stops; pre-roll clamps at 0:00 | unit | `npx jest components/catalogue/TimedTrackPlayer.test.tsx` | ✅ exists |
-| D-04, D-07 | `end_timestamp_ms` CHECK constraints (`end > start`, duration bound) present in the migration; carry clamps **both** endpoints together | migration content | `npx jest __tests__/migration-<claimed>.test.ts` | ❌ W0 — follows the 214–218 convention |
+| D-04, D-07 | `end_timestamp_ms` CHECK constraints (`end > start`, duration bound) present in migration 224; carry clamps **both** endpoints together | migration content | `npx jest __tests__/migration-224-writer-room-take-review.test.ts` | ❌ W0 — follows the existing numbered migration-test convention |
 | D-07 | A carried range whose in-point exceeds the new take's duration is **offered and flagged**, never dropped and never collapsed to a point | unit | `npx jest lib/catalogue/version-comments.test.ts` | ⚠️ confirm at plan time |
 | D-09 | A carried comment renders its "carried from v1" line from `carried_from_version_id` | unit | `npx jest components/catalogue/TimedTrackPlayer.test.tsx` | ✅ exists |
 | D-10–D-13 | Pin RLS: author reads/writes own rows; a second authenticated room member gets **zero rows** for the same `version_id`; promotion deletes the pin; pins are never offered for carry | RLS smoke (SQL, real Postgres role context) | manual/scripted checklist — see Manual-Only below | ❌ W0 |
@@ -72,9 +72,8 @@ no pre-assigned requirement IDs, so `39-CONTEXT.md`'s D-01..D-18 **are** the req
 - [ ] `lib/catalogue/waveform.ts` + `lib/catalogue/waveform.test.ts` — the shared
       decode-and-extract helper and its unit coverage
 - [ ] Peaks-payload bounds test for the version route (fixed length; each value an integer 0–100)
-- [ ] `__tests__/migration-<claimed>.test.ts` — migration content test for the `end_timestamp_ms`
-      ALTER, its CHECK constraints, and the updated trigger/RPCs. Follows the existing
-      `migration-214`…`migration-218` convention.
+- [ ] `__tests__/migration-224-writer-room-take-review.test.ts` — migration content test for the
+      `end_timestamp_ms` ALTER, its CHECK constraints, and the updated trigger/RPCs.
 - [ ] Pins RLS smoke checklist — cannot be a jest unit test; RLS needs a real Postgres role
       boundary
 - [ ] A grep-based review gate proving the pin path never broadcasts
@@ -104,5 +103,5 @@ and `lib/catalogue/level-match.test.ts` all exist and are extended, not created.
 - [ ] Full suite green + `npm run typecheck` clean
 - [ ] Pins RLS smoke passed against a real Supabase project
 - [ ] Grep gate confirms zero broadcast calls on any pin path
-- [ ] **Sequencing gate:** migration 146's production-activation status confirmed before this
-      phase's migrations ship (see `39-CONTEXT.md` § Canonical References)
+- [ ] **Sequencing gate:** production migration parity confirmed through 223 before the owner is
+      asked to apply migration 224 (see `39-CONTEXT.md` § Canonical References)

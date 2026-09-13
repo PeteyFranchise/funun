@@ -663,7 +663,7 @@ Plans:
 | 30. The Crate + Sync Library — Catalogue Engine | 9/9 | Complete (UAT pending) | 2026-08-13 |
 | 31. AE Client Workspace + Selects (My Client Partners / Client Partners) | 13/13 | Complete | 2026-08-12 |
 | 31.1. AE Console — Client Partners room, Health & AE Assignment | 7/7 | Complete (UAT deferred to beta) | 2026-08-24 |
-| 31.2. AE Console — Playbook Authoring/RBAC, Plays & Telemetry | 10/10 | Complete (UAT deferred to beta) | 2026-08-23 |
+| 31.2. AE Console — Playbook Authoring/RBAC, Plays & Telemetry | 10/10 | Implementation complete; owner checkpoint/UAT deferred to organic beta, so the phase record remains unfinished | - |
 | 32. Production Observability, Capacity & Incident Readiness | 9/10 | In Progress | - |
 | 33. The Playbook shell + IT Team monitoring dashboard (read-only v1) | 9/8 | Complete | - |
 | 34. Lead Intake & BDT First Contact (leads queue, liaison) | 0/0 | Roadmapped | - |
@@ -672,12 +672,12 @@ Plans:
 | 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Shipped (dark) + VERIFIED — Part A 35/35, Part B 12/12 | 2026-09-07 |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. **Vercel vars set 2026-09-08** (`WORKSPACE_ACCESS_GENERAL_ENABLED=false`, `WORKSPACE_COHORT_PILOT_ENABLED=true`, Config type, all three environments) — they bake in at BUILD time, so a deploy must run after this date before D-56 is flipped. `.env.example` documented (commit 321ce556). Remaining before D-56: the RLS smoke checklist carried over from 38.0.1 (`38-RLS-SMOKE-CHECKLIST.md`, **57 boxes, 0 ticked**). **OWNER DECISION 2026-09-09: verified ORGANICALLY as beta testers arrive — no fabricated accounts**, same precedent as the 31.1/31.2 UAT call. The execution protocol is `docs/verification/BETA-RLS-SMOKE-SESSION.md`: six facilitator-led screenshare sessions covering three beta testers plus two team accounts (role E is role C after removal). Every check is a refusal PAIRED with a positive control, because a refusal alone can be produced by an unrelated failure. Sections 8a/8b (the D-56 switch itself), 9, 10 and the negative half of 7 stay internal and are NOT put in front of beta users. Sections 5 (clean master) and 6 (payout) are flagged as better solved by a runtime guard on workspace-scoped responses than by a manual tick. | 2026-09-08 |
 | 38.0.3. RLS Helper API Exposure | 6/6 | **SHIPPED 2026-09-09.** Migrations 208–210 applied; structural gates passed; targeted revoke behavior passed; `public.no_block` returned 404 to anon and service-role HTTP probes. Organic-data cross-user and Green Room policy behavior remains explicitly deferred. | 2026-09-09 |
-| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **SHIPPED 2026-09-13.** Migrations 219–220 applied and structurally verified; application deployed through PR #68. Human browser, accessibility, and live-role UAT remains deferred. | 2026-09-13 |
-| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **SHIPPED 2026-09-13.** Migrations 221–223 applied and structurally verified; application deployed through PR #68. No Stripe charge path or beta quota enforcement was introduced; human UAT remains deferred. | 2026-09-13 |
+| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **SHIPPED 2026-09-13.** Migrations 219–220 applied, registered, and structurally verified; application deployed through PR #68. Human browser, accessibility, and live-role UAT remains deferred. | 2026-09-13 |
+| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **SHIPPED 2026-09-13.** Migrations 221–223 applied, registered, and structurally verified; application deployed through PR #68. No Stripe charge path or beta quota enforcement was introduced; billing, rollout-console, and Playbook UAT remains deferred. | 2026-09-13 |
 | 39. Sync Demand Signals — buyer interest telemetry & commission pipeline | 0/0 | **ROADMAPPED 2026-09-09 (owner) — soon.** Capture, in the Funūn team console, aggregate buyer interest in catalogue tracks that CANNOT be licensed as-is — principally sampled tracks awaiting clearance. **The insight:** if six supervisors save the same sampled track, that is not six dead ends, it is a commissioned original with proven demand behind it. Left to individual AE conversations that signal evaporates. Needs: per-track interest counters across saves / Selects adds / plays / brief attachments, deduplicated by buyer org; a ranked team-console view of highest-demand unlicensable tracks; and enough attribution to hand a producer a real brief (which buyers, what they responded to, what else they saved). Feeds the Brief Builder / Vibe Match surfaces rather than adding a new one. **Depends on** the sync-catalogue entry model in `.planning/deliberations/sync-catalogue-entry-and-samples.md` and on 22-05 putting live tracks in the catalogue. Consent note: this counts BUYER behaviour on Funūn surfaces, not third-party tracking — keep it inside `.planning/deliberations/` guest-lead consent norms. | - |
 | 40. The Crate — Sync Doctrine: versioning, track-level rights & withdrawal | 0/0 | **ROADMAPPED 2026-09-10 (owner).** The redesign behind the Crate admission doctrine, split out from the four defects fixed the same day. Source: a design review Codex produced 2026-09-10, reacting to the entry-gate decisions in `.planning/deliberations/sync-catalogue-entry-and-samples.md`. **The core reframe:** the project type currently conflates THREE independent facts — commercial release status (unreleased / scheduled / released), production maturity (idea / demo / working mix / finished master), and sync availability (not submitted / under review / admitted / withdrawn / removed). One field cannot govern sync eligibility. **This REOPENS the 2026-09-09 decision to exclude `unreleased`:** a finished master held back for the right placement is among the most valuable things a sync catalogue can hold — supervisors pay for exclusivity, and a placement can BE the release. A demo is not. The rule should attach to production maturity, not to the type name. Workstreams: (a) **sync-master versioning** — admission binds ONE audio version, a new mix creates a candidate rather than silently replacing what a buyer heard, and shortlists/Selects retain the exact version reviewed; (b) **track-and-version authoritative listings** — a project-level document satisfies a track only where its recorded scope says so, so three clean album tracks are not blocked by a fourth; (c) **metadata split** — hard-gate identity and authorization (writers, shares, master owners, contacts, sample disclosure), warn on administrative identifiers (IPI, ISWC, ISRC, PRO, MLC, distributor), since an IPI routes royalties and does not grant permission; (d) an **applicable/not-applicable state** on every rights requirement, affirmatively declared rather than inferred from absent data; (e) **withdrawal and removal** — what happens to a shortlist, a Selects list, an open request, a signed licence when a rights holder pulls a song, including a co-owner revoking authorization; (f) **buyer-facing rights status** — "cleared for licence" vs "clearance required" vs "authorization in progress", so The Crate stops implying everything in it is licensable today. (g) **`signedOf()` under-counts `verified` documents — a CONFIRMED defect, not a design question.** `signedOf()` in `lib/vault/readiness.ts` counts only `status === 'signed'`, so a split sheet or producer agreement uploaded through `POST /api/contracts/verify` — which writes `'verified'` after AI verification — reads `'warning'` and BLOCKS Crate entry, despite carrying MORE evidence than a plain upload that passes. The stronger path produces the worse outcome. `evidencedOf()`, added 2026-09-10 for the copyright item, already accepts `signed || verified` and is the correct shape; `split_sheets` and `hire_right` still route through `signedOf()`. Fixed for copyright only and deliberately left alone elsewhere, because widening it moves two gates that were not in that task's scope — it loosens what enters the catalogue and deserves a decision rather than a drive-by. Note `stage3.docStatusToReq()`, `lib/contracts/locker-attention.ts` and `lib/eligibility/direct-overlay.ts` already treat signed and verified as one state, so `signedOf()` is the outlier. **Depends on** the all-owners-authorization work (22-05 item 2) and on real beta usage — the owner's standing position is that these gates are provisional and should be revised from usage, not theory. **Codex owns the phase design.** | - |
 
-*Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work is only: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), 32-09 (k6 load test, deferred to pre-launch).***
+*Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work includes: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), Phase 31.2's owner checkpoint/UAT, and 32-09 (k6 load test, deferred to pre-launch).***
 
 ### Phase 19: Profile & Identity Model Cleanup
 
@@ -2147,6 +2147,7 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 
 | Range | Owner | State |
 |---|---|---|
+| **146** | Writer's Room section comments | **APPLIED.** Multi-account owner/member/non-member UAT remains deferred and pending in `.planning/todos/pending/2026-09-01-writers-room-section-comments-production-activation.md`; application is not being mistaken for completion of that human test. |
 | 182–187 | Phase 38 + the F1/F7/F10 hotfix | applied |
 | 188–189 | Playbook ANR + BDT doctrine (unrelated, parallel session) | applied |
 | **190** | the pre-existing F3 custody fix (plan 02) | **APPLIED 2026-09-07** — verified live: an anon RPC probe returns SQLSTATE 42501 (permission denied), which proves the function exists and is correctly locked down. The custody-transfer 500 is resolved. |
@@ -2175,8 +2176,9 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **216** | Atomic e-sign mint admission (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds one-instrument claim leases, provider reconciliation records, and active-instrument uniqueness guards. The reviewed source now revokes inherited `service_role` table grants before granting only the four privileges required by the mutable claim ledger. Provider behavior UAT remains deferred. |
 | **217** | Atomic Playbook operations (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Makes activation and incident state changes transactional with their audit events and adds compare-and-swap boundaries. Live operator UAT remains deferred. |
 | **218** | Privacy-safe authentication diagnostics (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds allowlisted, non-PII auth failure events for the gated IT Auth Health console, service-only retention, and exact 30-day cleanup. Live console and retention-route UAT remain deferred. |
-| **219–220** | Phase 38.1 Member workspace rights proposals and master-ownership claims | **APPLIED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Human UAT remains deferred. |
-| **221–223** | Phase 38.2 workspace billing, usage metering, and Playbook doctrine publication | **APPLIED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Human UAT remains deferred. |
+| **219–220** | Phase 38.1 Member workspace rights proposals and master-ownership claims | **APPLIED, REGISTERED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Browser, accessibility, and live-role UAT remains deferred. |
+| **221–223** | Phase 38.2 workspace billing, usage metering, and Playbook doctrine publication | **APPLIED, REGISTERED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Billing, rollout-console, and Playbook UAT remains deferred. |
+| **224** | Phase 39 Writer's Room take review surface | **RESERVED 2026-09-13; NOT CREATED OR APPLIED.** Fresh scans of migration files, untracked files, quick tasks, and this ledger found no collision. Reconfirm before file creation; application remains human-gated in plan 39-11. |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
@@ -2391,7 +2393,8 @@ surfaces.
 **Requirements:** WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29
 **Decisions — already locked, do not re-ask:** D-10, D-30, D-31, D-32, D-33, D-36, D-37, D-38, D-39,
 D-41 in `.planning/phases/38-member-organization-team-workspaces/38-CONTEXT.md`
-**Migrations:** 219–220, applied and structurally verified in production on 2026-09-13.
+**Migrations:** 219–220, applied, registered, and structurally verified in production on
+2026-09-13; the corresponding application was deployed.
 
 **Watch-outs:** (a) In-session workspace switching has **no in-repo precedent** — `components/auth/AccountContextSwitch.tsx`
 is explicitly the ANTI-pattern (it signs out and re-logs in). Build a parallel resolver keyed off the
@@ -2401,8 +2404,8 @@ review the D-37 document-state vocabulary before any user-facing copy ships. (d)
 is the closest analog for the D-32 Roster/Activity room, including its hide-not-filter server gating.
 
 **Depends on:** Phase 38 (workspace entity, membership, permissions, grants, RLS branch)
-**Status:** **SHIPPED 2026-09-13.** All eight plans are complete; migrations 219–220 were applied
-and structurally verified, and the application shipped to production through PR #68 / merge commit
+**Status:** **SHIPPED 2026-09-13.** All eight plans are complete; migrations 219–220 were applied,
+registered, and structurally verified, and the application shipped to production through PR #68 / merge commit
 `cb0ec3a7`. Human browser, accessibility, and live-role UAT remains intentionally deferred in
 `38.1-DEFERRED-UAT.md` and is not represented as complete.
 
@@ -2431,9 +2434,9 @@ enforced; then the cohort-scoped rollout flag and the doctrine documentation upd
 **Requirements:** WS-21, WS-22, WS-27, WS-28
 **Decisions — already locked, do not re-ask:** D-44, D-45, D-46, D-47, D-53, D-55, plus the
 `<documentation>` section's ACCOUNT-TYPES.md + Playbook update list in `38-CONTEXT.md`
-**Migrations:** 221–223 candidates. The historical 187–188 reservation is obsolete: those numbers
-were consumed by Phase 38 hotfix/doctrine work, 197 already shipped the D-55 cohort table, and
-219–220 belong to Phase 38.1. Re-check the full repository ledger before creating any later file.
+**Migrations:** 221–223, applied, registered, and structurally verified in production on
+2026-09-13; the corresponding application was deployed. The historical 187–188 reservation is
+obsolete: those numbers were consumed by Phase 38 hotfix/doctrine work.
 
 **Watch-outs:** (a) Organization billing has **no in-repo precedent** — build from research, not from
 analog. (b) Do NOT relax `subscriptions.user_id UNIQUE NOT NULL`; the workspace plan is an ADDITIVE
@@ -2445,9 +2448,10 @@ already shipped in Phase 38 — this phase reuses both through one Leadership co
 second rollout source of truth.
 
 **Depends on:** Phase 38 (workspace entity), Phase 38.1 (the surfaces the cohort flag gates)
-**Status:** **SHIPPED 2026-09-13.** Migrations 221–223 were applied and structurally verified in
+**Status:** **SHIPPED 2026-09-13.** Migrations 221–223 were applied, registered, and structurally verified in
 production, and the application shipped through PR #68 / merge commit `cb0ec3a7`. Human UAT remains
-recorded in `38.2-DEFERRED-UAT.md` and is not represented as complete.
+recorded in `38.2-DEFERRED-UAT.md`; billing, rollout-console, and Playbook UAT is not represented
+as complete.
 
 **Plans:** 4 plans
 
@@ -2511,26 +2515,30 @@ conversation); guest/external reviewer links (the access and pricing model is no
 play with a cached write-back; (ii) whether a range comment carries forward to a new take the same
 way a point comment does — the existing carry-forward UI assumes a single timestamp.
 
-**Depends on:** Phase 37 (My Catalogue / works) and the shipped Writer's Room note stack
-(migrations 160, 161, 180).
+**Depends on:** Phase 37 (My Catalogue / works), the shipped Writer's Room note stack
+(migrations 160, 161, 180), and the production migration baseline through 223. These dependencies
+are satisfied.
 
-**Migrations:** Unassigned. Claim a number only during implementation planning after checking
-`supabase/migrations/`, untracked files, `.planning/quick/**` and this ledger. Highest on disk at
-roadmap time was 218 (Codex landed 214–218 in PR #67) and a Codex session is working Phase 38.1 in
-parallel, so numbers will move. Do not hardcode one here.
+**Migration:** **224 reserved for Phase 39.** A 2026-09-13 scan of `supabase/migrations/`, both
+worktrees' untracked files, `.planning/quick/**`, and this authoritative ledger found 224 free
+after the applied/registered/structurally verified/deployed production baseline through 223.
+Plan 39-01 must repeat the scan immediately before creating the file; a collision requires all
+Phase 39 references to be re-planned. Plan 39-11 preserves the owner-only application gate.
 
-**Parallel-session note:** Codex is concurrently building Phase 38.1 (workspaces/nav/middleware —
-`app/w/`, `components/nav/Workspace*.tsx`, `lib/workspaces/*`, `middleware.ts`,
-`app/(artist)/layout.tsx`, `components/nav/ArtistNav.tsx`). This phase touches
-`components/catalogue/*`, `lib/catalogue/*`, `app/api/works/*` and `supabase/migrations/*` — no
-file overlap, but ROADMAP.md is modified and uncommitted by that session. Re-read before editing,
-edit surgically, never `git add -A`.
+**Deferred, non-blocking verification:** Phase 38.1 browser/accessibility/live-role UAT; Phase
+38.2 billing/rollout-console/Playbook UAT; Writer's Room section-comment multi-account UAT; and
+Phase 38.0.3 organic-data behavioral checks. None blocks Phase 39 execution.
+
+**Separate, non-blocking follow-ups:** Phase 38.3 Client Partner Qualification and live
+publication of the Legal Leadership doctrine remain independent work. Neither is folded into or
+required before Phase 39.
 
 **Source:** `docs/design/WRITERS-ROOM-WAVEFORM-NOTES-2027.md` (265 lines — already specifies most
 of items 1–3) plus a competitive teardown of notetracks.com, 2026-09-12.
 
-**Status:** Owner-approved and roadmapped 2026-09-12. Planned 2026-09-12 — 11 plans across 7 waves,
-covering all eighteen locked decisions (D-01..D-18) in `39-CONTEXT.md`. Nothing executed.
+**Status:** **READY TO EXECUTE 2026-09-13.** Eleven plans across seven waves cover all eighteen
+locked decisions (D-01..D-18); migration 224 is reserved and the production baseline through 223
+is satisfied. Nothing in Phase 39 has been executed.
 
 **Plans:** 11 plans
 
@@ -2546,7 +2554,7 @@ Plans:
 - [ ] 39-08-PLAN.md — Mark-span mode, committed spans, pre-roll and opt-in loop, amber reposition prompt (wave 4)
 - [ ] 39-09-PLAN.md — Private pins in the take player: drop, draw, promote-consumes, remove (wave 5)
 - [ ] 39-10-PLAN.md — Keyboard transport scoped to one active player, plus playback speed in the take player (wave 6)
-- [ ] 39-11-PLAN.md — [BLOCKING, human-gated] migration 146 sequencing gate, schema push, pins RLS two-account smoke, manual verifications (wave 7)
+- [ ] 39-11-PLAN.md — [BLOCKING, human-gated] production-through-223 sequencing gate, owner-only migration 224 push, pins RLS two-account smoke, manual verifications (wave 7)
 
 ### Phase 40: Writer's Room — DAW marker export (Audition, Audacity, CSV)
 

@@ -55,7 +55,9 @@ The database remains the source of truth. Realtime is only an invalidation signa
 
 ## Production Activation
 
-Migration 146 is forward-only and has not been applied by this build. Apply it with `npm run db:push`, confirm the migration list reaches 146, and then complete the multi-account UAT in the linked pending TODO.
+Migration 146 was forward-only and was not applied by this build. It has since been applied in
+production. The linked pending TODO now tracks only the deferred multi-account UAT; no migration
+push remains for this feature.
 
 ## Claude / GSD Handoff
 

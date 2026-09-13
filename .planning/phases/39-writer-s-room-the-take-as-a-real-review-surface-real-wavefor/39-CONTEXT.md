@@ -174,13 +174,15 @@ credits, splits, rights, approvals, delivery state or membership.
 
 ### SEQUENCING GATE — read before claiming a migration number
 - `.planning/todos/pending/2026-09-01-writers-room-section-comments-production-activation.md` —
-  **migration 146 is `pending-production-activation`, priority `immediate`.** Phase 39 adds
-  migrations to the same subsystem. Confirm 146 is applied in production before this phase's
-  migrations go out, or we stack on an unapplied migration.
-- Migration numbers are **unassigned**. Claim only at implementation planning, after checking
-  `supabase/migrations/`, untracked files and `.planning/quick/**`. Highest on disk at
-  discussion time was **218**; a Codex session is working Phase 38.1 in parallel, so numbers
-  will move.
+  migration 146 is applied. Its owner/member/non-member multi-account UAT remains deferred and
+  pending; that human behavior check is not a Phase 39 sequencing blocker.
+- Production is applied, registered, structurally verified, and deployed through migrations
+  219–223. Phase 39 reserves **migration 224** after a 2026-09-13 scan of
+  `supabase/migrations/`, untracked files, `.planning/quick/**`, and the authoritative ROADMAP
+  ledger found no collision. Re-run the collision scan immediately before creating the file;
+  if 224 is no longer free, stop and re-plan every Phase 39 migration reference.
+- Plan 39-11 remains the human gate: an executor never applies migration 224. Before the owner
+  push, production migration parity must be confirmed through 223.
 
 </canonical_refs>
 
@@ -251,8 +253,9 @@ credits, splits, rights, approvals, delivery state or membership.
 - **Adjusting a posted span** without rewriting the comment — not discussed, not scoped.
 
 ### Reviewed Todos (not folded)
-- *Activate and verify Writer's Room section comments in production* — **not folded, but a hard
-  sequencing gate**; see Canonical References.
+- *Activate and verify Writer's Room section comments in production* — **not folded; now a
+  human-UAT follow-up**. Migration 146 is applied; only the multi-account behavior pass remains,
+  and it does not block Phase 39; see Canonical References.
 - *Activate and production-test Writer's Room lyric snapshots* — one cross-browser visual
   confirmation outstanding. Adjacent subsystem, not this phase's work.
 - *Plan and ship block-level live collaboration in the Writer's Room* — the Phase 37.2 line.

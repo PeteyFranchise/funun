@@ -205,7 +205,8 @@ rather than an inherited default.
 - Minimum usable span length (guard against accidental sub-100ms spans).
 - Whether pins live on their own table or as a flagged row, subject to D-11's constraints.
 - Shortcut suppression mechanics while an input/textarea/contenteditable holds focus (D-16).
-- Exact migration numbers — claimed at planning, after the sequencing gate.
+- Exact migration number — migration 224 was reserved during the 2026-09-13 final planning
+  cleanup after the production baseline reached 223 and the collision scan passed.
 
 ## Deferred Ideas
 
