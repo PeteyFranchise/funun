@@ -1,0 +1,6 @@
+interface:
+  display_name: "Funūn Phase Review"
+  short_description: "Review completed phases for release readiness"
+  default_prompt: "Use $funun-phase-review to review the requested Funūn phase and return a read-only, Claude-ready release go/no-go report."
+policy:
+  allow_implicit_invocation: true
