@@ -135,3 +135,9 @@ None - no external service configuration required. Migration 224 (span columns, 
 ---
 *Phase: 39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor*
 *Completed: 2026-09-13*
+
+## Self-Check: PASSED
+
+All modified files verified present on disk; all four task/plan commits
+(`bdfd551a`, `dff79471`, `89f8dadb`, `add2b0b9`) verified present in
+`git log --oneline`.
