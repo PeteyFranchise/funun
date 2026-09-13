@@ -74,6 +74,11 @@ export function presentVersionComments({
       ? (versionDisplays.get(comment.carried_from_version_id) ?? 'an earlier version')
       : null,
     createdAt: comment.created_at,
+    // ─── Range comments ───
+    // A span is presented but never inferred: a comment with no stored end
+    // is a point comment and stays one.
+    endTimestampMs: comment.end_timestamp_ms ?? null,
+    needsReposition: comment.needs_reposition ?? false,
     canResolve:
       comment.parent_comment_id === null &&
       (viewerIsOwner || viewerCanAdminister || comment.author_user_id === viewerUserId),
