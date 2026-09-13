@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { extensionForMime, pickSupportedMimeType } from '@/lib/catalogue/hum-capture'
 import { uploadWorkVersion } from '@/lib/catalogue/version-upload-client'
+import { peaksFromBuffer } from '@/lib/catalogue/waveform'
 import {
   encodeWav,
   clipOverlapsRange,
@@ -647,6 +648,15 @@ export function RecordOverBeatStudio({
       setSaveStage('Mixing your take…')
       const rendered = await renderRoughMix({ backing, clips, beatGain, vocalGain, timingOffsetMs })
       const mix = encodeWav(rendered)
+      // The browser already owns this fully decoded buffer — re-decoding the
+      // encoded WAV it becomes would be pure waste (D-01).
+      const peaks = (() => {
+        try {
+          return peaksFromBuffer(rendered)
+        } catch {
+          return null
+        }
+      })()
 
       setSaveStage('Keeping the raw vocal clips…')
       const durableSessionId = await ensureSessionForWrite()
@@ -665,6 +675,7 @@ export function RecordOverBeatStudio({
         source: 'recording',
         durationSeconds: rendered.duration,
         label: sessionStatus === 'saved' ? 'Rough vocal revision' : `Rough vocal over ${activeBaseLabel}`,
+        peaks,
       })
       const finishResponse = await fetch(`/api/works/${workId}/recording-sessions/${durableSessionId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -828,7 +839,7 @@ export function RecordOverBeatStudio({
               <label className="text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim sm:col-span-2">What are we changing? (optional)<textarea value={handoffNote} maxLength={PRODUCER_HANDOFF_NOTE_MAX} onChange={event => setHandoffNote(event.target.value)} rows={2} placeholder="Bring the drums forward in the hook; keep the vocal intimate." className="mt-1.5 w-full resize-none rounded-[8px] border border-hairstrong bg-card px-2.5 py-2 text-[11px] font-normal normal-case tracking-normal text-white outline-none placeholder:text-lavdim focus:border-brandindigo" /></label>
               <fieldset className="rounded-[9px] border border-hair bg-card p-3 sm:col-span-2">
                 <legend className="px-1 text-[9px] font-semibold uppercase tracking-[.1em] text-lavdim">Timed feedback to include (optional)</legend>
-                {handoffFeedbackLoading ? <p className="text-[10px] text-lavdim">Loading open timed notes…</p> : handoffFeedback.length > 0 ? (
+                {handoffFeedbackLoading ? <p className="text-[10px] text-lavdim">Loading open timed comments…</p> : handoffFeedback.length > 0 ? (
                   <div className="space-y-2">
                     {handoffFeedback.map(comment => (
                       <label key={comment.id} className="flex items-start gap-2 text-[10px] leading-4 text-lav">
@@ -837,7 +848,7 @@ export function RecordOverBeatStudio({
                       </label>
                     ))}
                   </div>
-                ) : <p className="text-[10px] text-lavdim">No open timed notes on the backing take. You can still send the pack.</p>}
+                ) : <p className="text-[10px] text-lavdim">No open timed comments on the backing take. You can still send the pack.</p>}
               </fieldset>
               <div className="sm:col-span-2 flex justify-end">
                 <button type="button" disabled={saving || syncState !== 'saved' || !handoffRecipientId} onClick={() => void saveRoughTake(true)} className="rounded-[9px] bg-grad px-4 py-2 text-[11px] font-semibold text-white shadow-cta disabled:opacity-40">{saving ? saveStage : sessionStatus === 'saved' ? 'Send producer pack' : 'Save & send producer pack'}</button>
