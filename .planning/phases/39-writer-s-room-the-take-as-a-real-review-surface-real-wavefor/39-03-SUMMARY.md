@@ -151,3 +151,12 @@ None - no external service configuration required.
 ---
 *Phase: 39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor*
 *Completed: 2026-09-13*
+
+## Self-Check: PASSED
+
+- FOUND: `app/api/works/[workId]/versions/[versionId]/route.test.ts`
+- FOUND: `.planning/phases/39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor/39-03-SUMMARY.md`
+- FOUND: commit `2e54422d` (Task 1)
+- FOUND: commit `37312fbf` (Task 2)
+- FOUND: commit `6e5b8115` (Task 3)
+- FOUND: commit `dec8d932` (docs: SUMMARY)
