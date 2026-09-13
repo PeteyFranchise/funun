@@ -1,5 +1,5 @@
 import type { AgreementEvidenceFacts } from '@/lib/workspaces/evidence'
-import { resolveAuthorityTier, describeProvenance } from '@/lib/workspaces/evidence'
+import { resolveAuthorityStatus, resolveAuthorityTier, describeProvenance } from '@/lib/workspaces/evidence'
 
 const NOW = new Date('2026-09-05T12:00:00.000Z').getTime()
 
@@ -93,6 +93,37 @@ describe('lib/workspaces/evidence resolveAuthorityTier', () => {
         now: NOW,
       })
     ).toBe('authority')
+  })
+})
+
+describe('lib/workspaces/evidence resolveAuthorityStatus', () => {
+  it('reports the exact expiry boundary as an operational-only lapse', () => {
+    expect(resolveAuthorityStatus({
+      relationshipState: 'accepted',
+      evidence: [evidenceRow({ expiresAt: new Date(NOW).toISOString() })],
+      now: NOW,
+    })).toEqual({ tier: 'operational', reason: 'expired', changesAt: new Date(NOW).toISOString() })
+  })
+
+  it('keeps authority while any qualifying evidence remains live', () => {
+    expect(resolveAuthorityStatus({
+      relationshipState: 'accepted',
+      evidence: [
+        evidenceRow({ expiresAt: '2026-01-01T00:00:00.000Z' }),
+        evidenceRow({ expiresAt: '2030-01-01T00:00:00.000Z' }),
+      ],
+      now: NOW,
+    })).toEqual({ tier: 'authority', reason: 'supported', changesAt: '2030-01-01T00:00:00.000Z' })
+  })
+
+  it('distinguishes a Member confirmation wait from missing evidence', () => {
+    expect(resolveAuthorityStatus({
+      relationshipState: 'accepted',
+      evidence: [evidenceRow({ confirmedBySubjectAt: null })],
+      now: NOW,
+    }).reason).toBe('awaiting_member_confirmation')
+    expect(resolveAuthorityStatus({ relationshipState: 'accepted', evidence: [], now: NOW }).reason)
+      .toBe('no_evidence')
   })
 })
 

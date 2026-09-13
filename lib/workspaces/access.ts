@@ -1,7 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getStaffRoles } from '@/lib/admin/staff-role'
 import { createServiceClient } from '@/lib/supabase/server'
-import { resolveWorkspaceAccessDecision } from '@/lib/workspaces/cohort'
+import {
+  resolveWorkspaceWritesAllowed,
+  type WorkspaceBillingClient,
+} from '@/lib/workspaces/billing'
+import {
+  resolveWorkspaceAccessDecision,
+  type WorkspaceCohortClient,
+} from '@/lib/workspaces/cohort'
 import {
   canReachWorkspaceProjects,
   WORKSPACE_PROJECT_ROLE_FLOOR_MESSAGE,
@@ -90,6 +97,12 @@ export const WORKSPACE_ACCESS_REQUIRED =
 export const WORKSPACE_ACCESS_DISABLED =
   'Workspace access is temporarily disabled. Please try again shortly.'
 
+export const WORKSPACE_READ_ONLY =
+  'This workspace is currently read-only. Nothing was changed.'
+
+export const WORKSPACE_BILLING_UNAVAILABLE =
+  'Workspace write access could not be verified. Nothing was changed.'
+
 /**
  * R-25 — what a Member OUTSIDE the D-55 pilot cohort is told.
  *
@@ -125,7 +138,7 @@ const UNAUTHENTICATED_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
 
 export type WorkspaceAccessResult =
   | { ok: true; workspaceId: string; userId: string; role: WorkspaceRole }
-  | { ok: false; status: 401 | 403 | 404 | 500 | 503; error: string }
+  | { ok: false; status: 401 | 403 | 404 | 423 | 500 | 503; error: string }
 
 /**
  * Enforces the workspace access boundary for `/api/workspaces/**` routes.
@@ -154,7 +167,7 @@ export async function requireWorkspaceAccess(
   // set all resolve to `{ accessEnabled: false, cohortEligible: false }`, so
   // this gate can never mistake a broken read for permission.
   const decision = await resolveWorkspaceAccessDecision(
-    createServiceClient(),
+    createServiceClient() as unknown as WorkspaceCohortClient,
     // F7 ORDERING, DELIBERATE — the switch is consulted even when there is
     // no user, so a disabled platform answers an unauthenticated caller 503
     // exactly as it did before this gate learned about cohorts.
@@ -206,6 +219,36 @@ export async function requireWorkspaceAccess(
     userId: user.id,
     role: membership.role as WorkspaceRole,
   }
+}
+
+/**
+ * D-46 write boundary. Reads use `requireWorkspaceAccess`; mutations use
+ * this composition so a past-due, paused, or canceled workspace becomes
+ * read-only without losing visibility into its roster, contracts, rights,
+ * or audit trail. The billing RPC is service-only and missing/unreadable
+ * state fails closed — a deployment must apply migration 221 before it
+ * deploys the call sites that use this gate.
+ */
+export async function requireWorkspaceMutationAccess(
+  supabase: SupabaseClient,
+  user: AuthAccount | null,
+  workspaceId: string,
+  options?: { now?: number }
+): Promise<WorkspaceAccessResult> {
+  const access = await requireWorkspaceAccess(supabase, user, workspaceId, options)
+  if (!access.ok) return access
+
+  const writesAllowed = await resolveWorkspaceWritesAllowed(
+    createServiceClient() as unknown as WorkspaceBillingClient,
+    workspaceId
+  )
+  if (writesAllowed === null) {
+    return { ok: false, status: 503, error: WORKSPACE_BILLING_UNAVAILABLE }
+  }
+  if (!writesAllowed) {
+    return { ok: false, status: 423, error: WORKSPACE_READ_ONLY }
+  }
+  return access
 }
 
 /**

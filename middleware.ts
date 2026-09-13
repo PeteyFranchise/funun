@@ -135,6 +135,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/collaborators') ||
     pathname.startsWith('/split-sheets') ||
     pathname.startsWith('/launchpad') ||
+    pathname === '/w' ||
+    pathname.startsWith('/w/') ||
     pathname.startsWith('/admin')
   // Note: /approve and /join are intentionally public — collaborators access
   // approval and invite pages without a Funūn account (D-15, D-08).

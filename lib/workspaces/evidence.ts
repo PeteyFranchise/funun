@@ -45,6 +45,30 @@ export type AgreementEvidenceFacts = {
   documentId?: string | null
 }
 
+export type WorkspaceAuthorityStatusReason =
+  | 'relationship_inactive'
+  | 'supported'
+  | 'no_evidence'
+  | 'awaiting_member_confirmation'
+  | 'document_not_linked'
+  | 'not_yet_effective'
+  | 'expired'
+  | 'superseded'
+  | 'scope_not_declared'
+  | 'record_issue'
+
+export type WorkspaceAuthorityStatus = {
+  tier: WorkspaceAuthorityTier
+  reason: WorkspaceAuthorityStatusReason
+  changesAt: string | null
+}
+
+function parsedDate(value: string | null | undefined): number | null {
+  if (!value) return null
+  const parsed = new Date(value).getTime()
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function isLiveQualifyingEvidence(row: AgreementEvidenceFacts, now: number): boolean {
   // An attached file with no declared scope is not a grant of authority --
   // the rights holder's declaration is the grant, the file is only proof
@@ -120,12 +144,83 @@ export function resolveAuthorityTier(args: {
   evidence: readonly AgreementEvidenceFacts[]
   now?: number
 }): WorkspaceAuthorityTier {
-  if (args.relationshipState !== 'accepted') return 'none'
+  return resolveAuthorityStatus(args).tier
+}
+
+/**
+ * Returns the same fail-closed tier as `resolveAuthorityTier` plus a
+ * presentation-safe reason. The reason is explanatory only; callers must
+ * continue to authorize through the tier and the uncached grant resolver.
+ */
+export function resolveAuthorityStatus(args: {
+  relationshipState: RosterRelationshipState
+  evidence: readonly AgreementEvidenceFacts[]
+  now?: number
+}): WorkspaceAuthorityStatus {
+  if (args.relationshipState !== 'accepted') {
+    return { tier: 'none', reason: 'relationship_inactive', changesAt: null }
+  }
 
   const now = args.now ?? Date.now()
-  const hasQualifyingEvidence = args.evidence.some((row) => isLiveQualifyingEvidence(row, now))
+  const qualifying = args.evidence.filter(row => isLiveQualifyingEvidence(row, now))
+  if (qualifying.length > 0) {
+    const expiries = qualifying
+      .map(row => ({ timestamp: parsedDate(row.expiresAt), value: row.expiresAt }))
+      .filter((item): item is { timestamp: number; value: string } => item.timestamp !== null)
+      .sort((a, b) => a.timestamp - b.timestamp)
+    return { tier: 'authority', reason: 'supported', changesAt: expiries[0]?.value ?? null }
+  }
 
-  return hasQualifyingEvidence ? 'authority' : 'operational'
+  if (args.evidence.length === 0) {
+    return { tier: 'operational', reason: 'no_evidence', changesAt: null }
+  }
+
+  // Pick the most actionable explanation. Corrupt dates win so the surface
+  // never presents a corrupt record as merely late; then confirmation and
+  // document gaps, time-window states, supersession, and scope.
+  if (args.evidence.some(row =>
+    (row.effectiveFrom && parsedDate(row.effectiveFrom) === null) ||
+    (row.expiresAt && parsedDate(row.expiresAt) === null) ||
+    (row.supersededAt && parsedDate(row.supersededAt) === null)
+  )) return { tier: 'operational', reason: 'record_issue', changesAt: null }
+
+  if (args.evidence.some(row => !row.confirmedBySubjectAt)) {
+    return { tier: 'operational', reason: 'awaiting_member_confirmation', changesAt: null }
+  }
+  if (args.evidence.some(row => !row.documentId)) {
+    return { tier: 'operational', reason: 'document_not_linked', changesAt: null }
+  }
+
+  const future = args.evidence
+    .map(row => ({ timestamp: parsedDate(row.effectiveFrom), value: row.effectiveFrom }))
+    .filter((item): item is { timestamp: number; value: string } =>
+      item.timestamp !== null && item.timestamp > now
+    )
+    .sort((a, b) => a.timestamp - b.timestamp)
+  if (future.length > 0) {
+    return { tier: 'operational', reason: 'not_yet_effective', changesAt: future[0].value }
+  }
+
+  const expired = args.evidence
+    .map(row => ({ timestamp: parsedDate(row.expiresAt), value: row.expiresAt }))
+    .filter((item): item is { timestamp: number; value: string } =>
+      item.timestamp !== null && item.timestamp <= now
+    )
+    .sort((a, b) => b.timestamp - a.timestamp)
+  if (expired.length > 0) {
+    return { tier: 'operational', reason: 'expired', changesAt: expired[0].value }
+  }
+
+  if (args.evidence.some(row => {
+    const value = parsedDate(row.supersededAt)
+    return value !== null && value <= now
+  })) return { tier: 'operational', reason: 'superseded', changesAt: null }
+
+  if (args.evidence.some(row => !row.declaredScope?.trim())) {
+    return { tier: 'operational', reason: 'scope_not_declared', changesAt: null }
+  }
+
+  return { tier: 'operational', reason: 'record_issue', changesAt: null }
 }
 
 // Describes what Funun observed about one evidence row, never a judgement

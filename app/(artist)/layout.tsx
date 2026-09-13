@@ -15,6 +15,10 @@ import { redirect } from 'next/navigation'
 import { getStaffRoles } from '@/lib/admin/staff-role'
 import { resolveAccountContext } from '@/lib/accounts/account-context'
 import { SessionIdentityGuard } from '@/components/auth/SessionIdentityGuard'
+import {
+  loadWorkspaceSwitcherOptions,
+} from '@/lib/workspaces/active-context'
+import type { WorkspaceSwitcherOption } from '@/lib/workspaces/navigation'
 
 export default async function ArtistLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerClient()
@@ -28,6 +32,7 @@ export default async function ArtistLayout({ children }: { children: React.React
   let navUser: { name: string } | undefined
   let isMemberAccount = false
   let clientPartner: { organizationName: string } | undefined
+  let workspaceOptions: WorkspaceSwitcherOption[] = []
 
   if (user) {
     const service = createServiceClient()
@@ -120,6 +125,13 @@ export default async function ArtistLayout({ children }: { children: React.React
     // header, no presence tracker, no docked-widget wrapper — so no page
     // below renders and no page-level data is fetched behind it (T-36-33).
     if (handleGate) return handleGate
+
+    // D-30/D-33: these are navigation targets for the SAME authenticated
+    // Member, not alternate accounts. The loader evaluates the server-only
+    // cohort/switch decision and reads only live, unexpired seats through
+    // the caller's RLS session. The active context itself will come from the
+    // destination URL; nothing is remembered in the browser.
+    workspaceOptions = await loadWorkspaceSwitcherOptions(supabase, service, user.id)
   }
 
   const body = (
@@ -129,6 +141,7 @@ export default async function ArtistLayout({ children }: { children: React.React
         clientPartner={clientPartner}
         userId={user?.id}
         user={navUser}
+        workspaceOptions={workspaceOptions}
       />
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
   requireWorkspaceProjectAccess,
   requireWorkspaceRole,
 } from '@/lib/workspaces/access'
@@ -73,7 +74,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   // R-20 / WSR-29: the API-layer twin of the `AND m.role IN (...)` conjunct on
   // `workspace_project_permission` hop 2 (migration 197) — two independent
   // layers agreeing, this repo's doctrine, and the reason WSR-17 exists.
@@ -276,7 +277,7 @@ export async function DELETE(
     // own project. The API-layer twin of the `AND m.role IN (...)` conjunct on
     // `workspace_project_permission` hop 2 (migration 197). Floor first (a
     // role minimum), existing gate second (a role maximum); both must hold.
-    const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+    const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
     const gated = requireWorkspaceRole(
       requireWorkspaceProjectAccess(access),
       canManageRoster,

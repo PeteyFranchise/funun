@@ -53,6 +53,7 @@ export const NOTIFICATION_TYPES = {
   playbook_change_requested: { icon: 'alert-triangle', inlineAction: null },
   playbook_change_addressed: { icon: 'check-circle', inlineAction: null },
   playbook_review_resubmitted: { icon: 'book-open', inlineAction: null },
+  master_ownership_claim: { icon: 'file-check', inlineAction: null },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES

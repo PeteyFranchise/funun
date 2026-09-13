@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import {
+  resolveWorkspaceWritesAllowed,
+  type WorkspaceBillingClient,
+} from '@/lib/workspaces/billing'
+import {
   isWorkspaceAccessPermitted,
   isWorkspaceCohortRequired,
   resolveWorkspaceAccessDecision,
@@ -99,6 +103,7 @@ const AcceptSchema = z.object({ token: z.string().trim().min(1) }).strict()
 // check is decided inside the RPC against the row it has locked, so this
 // route never needs to hold a second copy of somebody's email.
 type InvitationLookupRow = {
+  workspace_id: string
   status: WorkspaceInvitationState
   expires_at: string
 }
@@ -117,6 +122,8 @@ const INVITATION_INVALID_MESSAGE = 'This invitation link is invalid.'
 const INVITATION_NOT_VALID_MESSAGE = 'This invitation is no longer valid.'
 const EMAIL_MISMATCH_MESSAGE =
   'This invitation was sent to a different email address than your account.'
+const WORKSPACE_READ_ONLY_MESSAGE =
+  'This workspace is currently read-only. The invitation was not accepted.'
 
 // ─── Outcome → HTTP, in the shape of ────────────────────────────────────────
 // `app/api/workspaces/[workspaceId]/members/route.ts`: a
@@ -245,7 +252,7 @@ export async function POST(request: Request) {
   // ─── The read-only predicate layer. It writes nothing. ──────────────────
   const { data: invitationData, error: lookupError } = await service
     .from('workspace_invitations')
-    .select('status, expires_at')
+    .select('workspace_id, status, expires_at')
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
@@ -278,6 +285,23 @@ export async function POST(request: Request) {
     if (invitation.status !== 'pending') {
       return NextResponse.json({ error: INVITATION_NOT_VALID_MESSAGE }, { status: 410 })
     }
+  }
+
+  // D-46: accepting a seat mutates the workspace, so a lapsed workspace
+  // cannot add members. This check happens only after the opaque token has
+  // resolved to a real invitation; a missing token keeps the generic 404.
+  const writesAllowed = await resolveWorkspaceWritesAllowed(
+    service as unknown as WorkspaceBillingClient,
+    invitation.workspace_id
+  )
+  if (writesAllowed === null) {
+    return NextResponse.json(
+      { error: 'Workspace write access could not be verified. Nothing was changed.' },
+      { status: 503 }
+    )
+  }
+  if (!writesAllowed) {
+    return NextResponse.json({ error: WORKSPACE_READ_ONLY_MESSAGE }, { status: 423 })
   }
 
   // ─── THE ONE WRITE ───────────────────────────────────────────────────────

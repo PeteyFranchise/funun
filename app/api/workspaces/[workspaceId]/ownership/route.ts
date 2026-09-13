@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
+  requireWorkspaceRole,
+} from '@/lib/workspaces/access'
 import { canManageOwners } from '@/lib/workspaces/membership'
 import {
   assertMayNominate,
@@ -258,7 +262,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageOwners,
@@ -399,7 +403,7 @@ export async function PATCH(
   // decline; only the nominating incumbent may withdraw) and again by the
   // RPC's own post-lock check — which is authority derived from the
   // NOMINATION, not from a workspace role.
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>

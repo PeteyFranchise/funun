@@ -17,6 +17,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
 }))
 
+jest.mock('@/lib/workspaces/billing', () => ({
+  resolveWorkspaceWritesAllowed: jest.fn(async () => true),
+}))
+
 // Permission resolution is a whole subsystem of its own (grants, lineage,
 // consent roots) and is not what these cases are about.
 jest.mock('@/lib/workspaces/grant-service', () => ({

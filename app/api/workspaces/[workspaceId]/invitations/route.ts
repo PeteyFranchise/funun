@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import {
   requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
   requireWorkspaceRole,
   WORKSPACE_ACCESS_DISABLED,
 } from '@/lib/workspaces/access'
@@ -87,7 +88,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageWorkspaceMembers,
@@ -372,7 +373,7 @@ export async function DELETE(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageWorkspaceMembers,
