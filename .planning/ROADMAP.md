@@ -670,9 +670,9 @@ Plans:
 | 38. Member Organization & Team Workspaces — Slices A–D (foundation, roster, permissions, RLS) | 13/13 | Complete   | 2026-09-06 |
 | 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Shipped (dark) + VERIFIED — Part A 35/35, Part B 12/12 | 2026-09-07 |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. **Vercel vars set 2026-09-08** (`WORKSPACE_ACCESS_GENERAL_ENABLED=false`, `WORKSPACE_COHORT_PILOT_ENABLED=true`, Config type, all three environments) — they bake in at BUILD time, so a deploy must run after this date before D-56 is flipped. `.env.example` documented (commit 321ce556). Remaining before D-56: the RLS smoke checklist carried over from 38.0.1 (`38-RLS-SMOKE-CHECKLIST.md`, **57 boxes, 0 ticked**). **OWNER DECISION 2026-09-09: verified ORGANICALLY as beta testers arrive — no fabricated accounts**, same precedent as the 31.1/31.2 UAT call. The execution protocol is `docs/verification/BETA-RLS-SMOKE-SESSION.md`: six facilitator-led screenshare sessions covering three beta testers plus two team accounts (role E is role C after removal). Every check is a refusal PAIRED with a positive control, because a refusal alone can be produced by an unrelated failure. Sections 8a/8b (the D-56 switch itself), 9, 10 and the negative half of 7 stay internal and are NOT put in front of beta users. Sections 5 (clean master) and 6 (payout) are flagged as better solved by a runtime guard on workspace-scoped responses than by a manual tick. | 2026-09-08 |
-| 38.0.3. RLS Helper API Exposure | 6/6 | **TIERS 1+2 APPLIED AND VERIFIED 2026-09-09** (migrations 208, 209). Part A pre-run and post-run both clean; the exposed-definer count fell 53 to 49, all thirteen binds report `binds=true service_role_disjunct=true`, and Part B proved the revokes and the drop live (42501/42883) plus B10 confirming definer bodies still work. **Tier 2 is structurally verified but behaviourally UNPROVEN** — every cross-user assertion skipped for want of data; re-run Part B once beta users create Green Room posts and split sheets. Tier 3 (`no_block`, migration 210, plans 04-06) remains. **PLAN 04 COMPLETE AND DEPLOYED 2026-09-09 (`80c8e1a7`):** `lib/green-room/placements-admin.ts` no longer calls the `no_block` RPC — the placement activation gate now does a fail-closed, bidirectional direct read of `public.blocks`, so `no_block` has ZERO application `.rpc()` call sites (pinned by assertion (d) of `__tests__/rls-helper-callsites.test.ts`). The deploy gate is CLEARED — PostgREST routes only to exposed schemas, so relocating before that deploy would have 404d placement activation for every internal destination type on the first live request. **PLAN 05 COMPLETE 2026-09-09 (migration 210 AUTHORED, NOT APPLIED):** `no_block` moves to an unexposed `private` schema, both SECURITY DEFINER body callers (`green_room_can_view_post`, copied from applied migration 209 so the Tier-2 bind survives, and `discover_profile_id_by_email`) are retargeted BEFORE the drop, all eleven live policies are rewritten with their predicates proven unchanged apart from the qualifier, and `public.no_block` is dropped with NO modifier so restrictive-by-default makes the drop its own proof. 92-assertion text-lock suite; all twelve plan mutations confirmed RED. **OWNER MUST RUN THE PRE-APPLY GATE FIRST** (`38.0.3-05-SUMMARY.md`): `pg_proc.prosrc` must name EXACTLY two body callers, because `DROP FUNCTION` is blind to string-literal body references and a third caller would break silently with `42883` on its next live call. Plan 06 (the Part A2/B2 verification pair) remains. BLOCKS BETA (D1). Research collapsed the shape: every RLS-policy call site of every in-scope helper passes `auth.uid()` — 73 sites, 200 migrations, zero exceptions — so the caller-identity bind closes the disclosure with **no relocation and no policy rewrites**. Three tiers in ship order: **T1 revoke ×4** (zero policy call sites; the documented exemption to the TRAP rule), **T2 bind ×13** (one migration, zero policy edits), **T3 relocate `no_block` only** (owner decision D4 — it is symmetric, so a bind re-opens T-08-03; 11 live policies). Migrations **207–209** (201–206 consumed by the parallel Playbook workstream). Behavioural harness mandatory and, unlike 38.0.1/38.0.2, needs **no fixture seeding** — a 100% read-only JWT-claim impersonation probe suffices. **SCOPED 2026-09-08.** Scope is EVERY `SECURITY DEFINER` function in `public` (D3). **Inventory COMPLETE and live-verified 2026-09-08: 109 definers, 88 already correct, ZERO repo-vs-live divergence. The actionable set is 19 functions — 15 relocate, 1 bind, 3 to read — all read-only.** `apply_to_opportunity_atomic` revoked in production the same day, closing the one write-capable bypass. `discover_profile_id_by_email` checked and found already correct — out of scope (D2). A production grant sweep found `anon`/`authenticated` hold EXECUTE on ~18 read-only authorization predicates, so PostgREST exposes them as RPCs — the authorization graph (who holds what role/permission where, who blocked whom) is queryable with the public anon key. None write. **Blanket-revoking would take the app down**: RLS policy expressions are evaluated as the querying role and call these helpers from USING clauses. Two remedies — relocate pure policy helpers to a non-exposed schema, bind `p_uid` to `auth.uid()` for the ones the app genuinely calls. ~250 references across 97 migrations; Green Room/split sheets/works are LIVE with real data, so unlike 38.0.1/38.0.2 this phase cannot lean on empty tables. See `.planning/phases/38.0.3-rls-helper-api-exposure/38.0.3-SCOPE.md`. **PLAN 06 COMPLETE 2026-09-09 — the Tier 3 verification pair is AUTHORED (not run by any agent; no database connection was opened).** `38.0.3-VERIFY-A2-NO-BLOCK.sql` (920 lines, **ZERO write statements** — one `WITH … SELECT … ORDER BY 1;`, no table, not even a TEMP one; 22 branches, all four-column) and `38.0.3-VERIFY-B2-NO-BLOCK.sql` (902 lines, one session-local `pg_temp` results table and **zero writes to any table in `public` or `auth`**). Both were written for the CURRENT POST-APPLY state rather than transcribed from the plan: 210 is applied, so Part A2's G-block is retained as a standing `pg_proc.prosrc` enumeration and explicitly labelled a gate that has already been passed, with its recorded 2026-09-09 answer quoted beside each verdict. Objects are resolved by IDENTITY (`to_regprocedure`, a `pg_namespace` join), the exposed-definer predicate is COPIED character-for-character from `38.0.3-VERIFY-A-STRUCTURAL.sql` (both filters intact — the two omissions that made an ad-hoc sweep read 63 instead of 48), and every row prints the raw value it judged plus its length. Part B2 pairs its block-enforcement negative with an uninvolved-third-party positive control and records **INFO / UNPROVEN, never PASS**, when `public.blocks` is empty, when no free third party exists, when the blocker authored nothing on that surface, or when the control also reads zero (threat T-38.0.3-06-08). B2-4's ten counts carry no verdict at all — the diff between two runs is the assertion, and every subject query is deterministically ordered so both runs pick identical rows. B2-5 asserts on the **SQLSTATE (42501), not the message**: the barrier moved from the EXECUTE grant on `public.no_block` to the USAGE grant on schema `private`, so the text changes while the anonymous behaviour PostgREST surfaces does not. Both files are paste-safe — Part A2 has **zero** `INTO` occurrences (matching migration 210) and Part B2's 41 are all real SQL. 7 of 7 plan mutations killed; `tsc` clean; 6805/6805 tests green. **STILL OWED BY THE OWNER, and no agent can close it: read Exposed schemas in the dashboard by eye (Part A2 row X1 cannot answer itself), then `curl` the `no_block` RPC route with the anon key AND the service key — expect 404 from both. That is the only check that proves the ROUTE is gone rather than the privilege, and it is the closing evidence for the phase.** Tier 3 stays behaviourally UNPROVEN until B2-3 has a real block pair and a working positive control. | - |
-| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **IMPLEMENTED; MIGRATIONS 219–220 APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Active URL context, workspace chrome and switching, roster/activity/audit rooms, contract shelf, authority expiry, rights proposals, master claims, and hardening/UAT package are complete. Automated verification passed; application deployment and human UAT remain. | - |
-| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **IMPLEMENTED; MIGRATIONS 221–223 APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Adds workspace-specific beta billing and fail-closed write lifecycle, privacy-minimal usage metering, a Leadership-only rollout console reusing the existing cohort and emergency controls, and three source-locked Playbook doctrines. No Stripe customer/charge path or beta quota enforcement was introduced. Application deployment and human UAT remain. | - |
+| 38.0.3. RLS Helper API Exposure | 6/6 | **SHIPPED 2026-09-09.** Migrations 208–210 applied; structural gates passed; targeted revoke behavior passed; `public.no_block` returned 404 to anon and service-role HTTP probes. Organic-data cross-user and Green Room policy behavior remains explicitly deferred. | 2026-09-09 |
+| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **SHIPPED 2026-09-13.** Migrations 219–220 applied and structurally verified; application deployed through PR #68. Human browser, accessibility, and live-role UAT remains deferred. | 2026-09-13 |
+| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **SHIPPED 2026-09-13.** Migrations 221–223 applied and structurally verified; application deployed through PR #68. No Stripe charge path or beta quota enforcement was introduced; human UAT remains deferred. | 2026-09-13 |
 | 39. Sync Demand Signals — buyer interest telemetry & commission pipeline | 0/0 | **ROADMAPPED 2026-09-09 (owner) — soon.** Capture, in the Funūn team console, aggregate buyer interest in catalogue tracks that CANNOT be licensed as-is — principally sampled tracks awaiting clearance. **The insight:** if six supervisors save the same sampled track, that is not six dead ends, it is a commissioned original with proven demand behind it. Left to individual AE conversations that signal evaporates. Needs: per-track interest counters across saves / Selects adds / plays / brief attachments, deduplicated by buyer org; a ranked team-console view of highest-demand unlicensable tracks; and enough attribution to hand a producer a real brief (which buyers, what they responded to, what else they saved). Feeds the Brief Builder / Vibe Match surfaces rather than adding a new one. **Depends on** the sync-catalogue entry model in `.planning/deliberations/sync-catalogue-entry-and-samples.md` and on 22-05 putting live tracks in the catalogue. Consent note: this counts BUYER behaviour on Funūn surfaces, not third-party tracking — keep it inside `.planning/deliberations/` guest-lead consent norms. | - |
 | 40. The Crate — Sync Doctrine: versioning, track-level rights & withdrawal | 0/0 | **ROADMAPPED 2026-09-10 (owner).** The redesign behind the Crate admission doctrine, split out from the four defects fixed the same day. Source: a design review Codex produced 2026-09-10, reacting to the entry-gate decisions in `.planning/deliberations/sync-catalogue-entry-and-samples.md`. **The core reframe:** the project type currently conflates THREE independent facts — commercial release status (unreleased / scheduled / released), production maturity (idea / demo / working mix / finished master), and sync availability (not submitted / under review / admitted / withdrawn / removed). One field cannot govern sync eligibility. **This REOPENS the 2026-09-09 decision to exclude `unreleased`:** a finished master held back for the right placement is among the most valuable things a sync catalogue can hold — supervisors pay for exclusivity, and a placement can BE the release. A demo is not. The rule should attach to production maturity, not to the type name. Workstreams: (a) **sync-master versioning** — admission binds ONE audio version, a new mix creates a candidate rather than silently replacing what a buyer heard, and shortlists/Selects retain the exact version reviewed; (b) **track-and-version authoritative listings** — a project-level document satisfies a track only where its recorded scope says so, so three clean album tracks are not blocked by a fourth; (c) **metadata split** — hard-gate identity and authorization (writers, shares, master owners, contacts, sample disclosure), warn on administrative identifiers (IPI, ISWC, ISRC, PRO, MLC, distributor), since an IPI routes royalties and does not grant permission; (d) an **applicable/not-applicable state** on every rights requirement, affirmatively declared rather than inferred from absent data; (e) **withdrawal and removal** — what happens to a shortlist, a Selects list, an open request, a signed licence when a rights holder pulls a song, including a co-owner revoking authorization; (f) **buyer-facing rights status** — "cleared for licence" vs "clearance required" vs "authorization in progress", so The Crate stops implying everything in it is licensable today. (g) **`signedOf()` under-counts `verified` documents — a CONFIRMED defect, not a design question.** `signedOf()` in `lib/vault/readiness.ts` counts only `status === 'signed'`, so a split sheet or producer agreement uploaded through `POST /api/contracts/verify` — which writes `'verified'` after AI verification — reads `'warning'` and BLOCKS Crate entry, despite carrying MORE evidence than a plain upload that passes. The stronger path produces the worse outcome. `evidencedOf()`, added 2026-09-10 for the copyright item, already accepts `signed || verified` and is the correct shape; `split_sheets` and `hire_right` still route through `signedOf()`. Fixed for copyright only and deliberately left alone elsewhere, because widening it moves two gates that were not in that task's scope — it loosens what enters the catalogue and deserves a decision rather than a drive-by. Note `stage3.docStatusToReq()`, `lib/contracts/locker-attention.ts` and `lib/eligibility/direct-overlay.ts` already treat signed and verified as one state, so `signedOf()` is the outlier. **Depends on** the all-owners-authorization work (22-05 item 2) and on real beta usage — the owner's standing position is that these gates are provisional and should be revised from usage, not theory. **Codex owns the phase design.** | - |
 
@@ -1947,7 +1947,9 @@ and switches between them **in-session**. Workspace membership grants **access o
 ownership, credit, royalty entitlement, signature authority, or licensing power.
 
 **Not a new account class.** The three classes in `docs/architecture/ACCOUNT-TYPES.md` (Member,
-Client Partner, Funūn Team Member) are unchanged. Workspaces are contexts Member Accounts join.
+limited guest/signature recipient, and internal Funūn Team Member) are unchanged. Client Partner
+access is a verified organization relationship, not an identity class. Workspaces are contexts
+Member Accounts join.
 
 **Supersedes and absorbs** the deferred manager/A&R roster vision recorded at ROADMAP.md ~line
 1109 and `28-CONTEXT.md` §Deferred Ideas ("per-subtype industry toolsets"). That vision is now
@@ -2015,9 +2017,8 @@ needed a split at ~19 plans). Slice D (RLS + attachment) is security-critical an
 parties access to artists' catalogues); per-row helper performance; counsel review of document-state
 vocabulary and the declared-authority model. **Kill switch RESOLVED at planning — see D-56 below.**
 
-**Status:** Discussed 2026-09-05 via `/gsd-discuss-phase 38` — 55 decisions, decision-complete.
-Planned 2026-09-05 via `/gsd-plan-phase 38`. **Planner recommends a phase split** (see below);
-Phase 38 as planned covers Slices A–D only.
+**Status:** **SHIPPED 2026-09-06.** All 13 Slice A–D plans completed and reached production. The
+owner-approved follow-ons, Phase 38.1 and Phase 38.2, subsequently shipped on 2026-09-13.
 
 **SPLIT APPROVED by the owner 2026-09-05.** Boundary sits after Slice D, not after C, so the
 permission model and its RLS consumer stay inside one security review.
@@ -2049,11 +2050,11 @@ with its own adversarial smoke, because it is the only file editing live policie
 pushed on its own since it was already authored and gated when the decision was taken.
 Net: three owner sittings (182 · 183–185 · 186) instead of five.
 
-**Migration numbers pre-assigned** to prevent the collision class this repo has hit before:
-182 = Slice A foundation · 183 = roster relationships · 184 = grants and bundles ·
-185 = attachments and custody transfers · 186 = the RLS workspace branch.
-**187 and 188 are RESERVED for Phase 38.2** and must not be claimed. Migrations 182–185 are
-additive and may be pushed as one batch; **186 is pushed alone** with its own adversarial smoke.
+**Migration numbers used:** 182 = Slice A foundation · 183 = roster relationships · 184 = grants
+and bundles · 185 = attachments and custody transfers · 186 = the RLS workspace branch. The
+historical 187–188 reservation was superseded and those numbers were consumed before Phase 38.2;
+the live ledger below is authoritative. Migrations 182–185 were applied additively, and 186 was
+applied alone with its adversarial smoke package.
 
 **Plans:** 13/13 plans complete
 
@@ -2153,9 +2154,9 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | 193 | column-allowlist RPCs (plan 10) | **APPLIED 2026-09-07** |
 | 194 | catalogue RPC (plan 11) | **APPLIED 2026-09-07** |
 | 195 | `workspace_permission_requests` (plan 15, R-19) | **APPLIED 2026-09-07** |
-| **196** | migration 139's guard blocked the custody RPC (quick `260907-cust`) | **APPLIED 2026-09-07 and re-verified (Part B B6 PASS, B10 still refused).** Migration 190 shipped its exemption, but migration 139's older, differently-named `guard_owner_immutable` trigger ALSO fires on `vault_projects` and refused the sanctioned RPC with `42501: ownership is immutable`. 196 gives that shared function the same structural exemption, scoped by `TG_TABLE_NAME` to `vault_projects` only — `works` keeps its absolute guard. Custody transfer stays broken in production until this is pushed. |
+| **196** | Migration 139 custody-guard compatibility hotfix | **APPLIED AND VERIFIED 2026-09-07.** Scoped the sanctioned custody RPC exemption to `vault_projects` while preserving the absolute `works` ownership guard; Part B B6 and B10 passed. |
 | 197–198 | Phase 38.0.2 | **APPLIED 2026-09-08.** Part A structural verification 70/70 (the 12 `search_path` FAILs were a bad assertion string in the check, not a schema defect — corrected in `38.0.2-VERIFY-A-STRUCTURAL.sql`). Part B behavioural verification 40/42, with B31 (all seven triggers re-enabled) and TEARDOWN (`switch=false`, all twelve tables at 0) both PASS. |
-| **199** | Phase 38.0.2 hotfix — 42702 in `workspace_redeem_invitation` (quick `260908-2dc`) | **APPLIED 2026-09-08** (owner, Supabase SQL editor) **and VERIFIED**: Part B re-run returned 42/42, with B18 now `before_cohort=not_in_cohort after_cohort=ok seat=member`. B27 also moved 18 → 20 audit rows, which is exactly the two rows a successful redemption writes — independent corroboration that the seat was really created. R-24 is proven rather than merely refusing. Part B assertion B18 — the only call this RPC has ever received — returned `42702: column reference "workspace_id" is ambiguous`, so invitation redemption is entirely non-functional in 198 as applied. `workspace_id` is both an OUT parameter and a real column, and an `ON CONFLICT` inference clause is parsed as expressions and therefore takes PL/pgSQL variable substitution (an INSERT column list does not — hence only line 2229 raised). 199 adds `#variable_conflict use_column` and nothing else; a drift-guard test asserts the function block differs from 198's by exactly one line. Contained by the D-56 switch being OFF and every workspace table being empty. **B18 stays UNPROVEN until this is applied and Part B is re-run** — its second call is the positive control that shows the R-24 cohort refusal was the gate rather than an incidental failure. |
+| **199** | Phase 38.0.2 invitation-redemption ambiguity hotfix | **APPLIED AND VERIFIED 2026-09-08.** Added `#variable_conflict use_column`; the final Part B rerun passed 42/42, including successful invitation redemption and its two expected audit rows. |
 | **200** | `apply_to_opportunity_atomic` hardening (quick `260908-antenna`) | **APPLIED 2026-09-09 and VERIFIED (6/6).** Post-apply: `proconfig` is `search_path=""`, `prosecdef` true, grants read `anon=false authenticated=false service_role=true`, and both the four-parameter signature and the `RETURNS TABLE` shape are unchanged so no caller breaks. This makes permanent the revoke the owner applied by hand on 2026-09-08 — a rebuild can no longer restore the old posture. Lock modes deliberately UNCHANGED (see below). The Antenna finding deferred out of 38.0.2 for unrelated blast radius. 046 is `SECURITY DEFINER` with `SET search_path = public` and four UNQUALIFIED table references; per PostgreSQL's search_path rule the temp schema, when not listed, "is searched FIRST (even before pg_catalog)" for relation names — so a caller who can execute this function and create temp tables could shadow `opportunities` et al. inside the definer body. 200 sets `search_path = ''`, qualifies all nine references, and re-issues the REVOKE naming `anon`/`authenticated` explicitly (047 revoked only from PUBLIC, which does not remove a DIRECT grant). Hardening, not a demonstrated exploit — reachability depends on live grants, and the quick task carries an owner-run query to settle it. Lock modes deliberately UNCHANGED. |
 | **201–202** | Playbook rich-content model R1 (Codex) | **APPLIED, CHECKPOINTED, AND REGISTERED 2026-09-10.** The production pre-apply gate passed 279/279. All stage checks passed, including both reminder RPCs returning zero while migration 207's activation controls were absent. A later 204 checkpoint found the tables retained Supabase's direct `REFERENCES`, `TRIGGER`, and `TRUNCATE` browser-role defaults; migration 213 is the approved repair. |
 | **203** | **RETIRED — DO NOT FILL** | Former Phase 38.2 reservation; the phase ultimately uses 221–223. **Do not reuse it.** Filling it now would place a migration numerically before already-applied migrations while applying after them and trip `supabase db push`'s out-of-order check. A dead number is cheaper than that trap. |
@@ -2165,16 +2166,16 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **207** | Playbook operational v1, R27–31 (Codex) | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10; FEATURES REMAIN OFF.** The first attempt failed on misplaced `NULLS NOT DISTINCT` index syntax and its transaction rolled back completely (fourteen tables absent, three functions absent, ledger row absent). The corrected retry passed all seven focused checks and the complete Playbook verifier passed 114/114 with zero `STOP` or `FAIL`. All three functions use `SET search_path = ''`; browser execution is revoked explicitly and callable RPCs are granted only to `service_role`. All six controls remain `enabled=false` and `emergency_disabled=true`. |
 | **208** | Phase 38.0.3 Tier 1 — targeted revokes + one drop | **APPLIED 2026-09-09 and VERIFIED behaviourally.** Was planned as 207; moved because Codex claimed 207 between planning and execution. Part B proved all four live: `workspace_access_enabled` and `green_room_post_matches_custom_audience` return `42501` to `authenticated`, `workspace_roster_relationship_is_live` returns `42883` (the drop is real), and B10 confirmed definer bodies still call the revoked helpers successfully — the TRAP was avoided. |
 | **209** | Phase 38.0.3 Tier 2 — thirteen caller-identity binds | **APPLIED 2026-09-09. STRUCTURALLY verified, behaviourally UNPROVEN.** All thirteen report `binds=true service_role_disjunct=true` and the exposed-definer count fell 53 → 49, but no live call has exercised a bind: every cross-user assertion skipped for want of data. That is the same gap migration 198's `42702` fell through, so it is not called verified. Re-run Part B rows B1–B7 once beta users create Green Room posts and split sheets. |
-| **210** | Phase 38.0.3 Tier 3 — `no_block` relocation (plan 05) | **APPLIED 2026-09-09, VERIFIED STRUCTURALLY (12/12), and PROVEN OVER HTTP.** Owner-run `curl` against `/rest/v1/rpc/no_block` returned **404 for BOTH the anon key and the service_role key**. The service_role 404 is decisive: that key bypasses RLS and holds broad privileges, so a 404 proves absence by ROUTING rather than by permission (401/403 would have been the weaker outcome). Threat T-08-03 is closed at the transport layer. No SQL check can establish this — every SQL assertion runs inside PostgreSQL and proves privilege only. Post-apply: `private.no_block` present with `authenticated`-only EXECUTE and `search_path=""`, `public.no_block` absent, all eleven policies retargeted, `rc_select_public` still `{public}`, and B1 confirming Tier 2's caller-binding survived. The drop carried no `CASCADE`, so its success is itself the proof nothing still referenced the function. Exposed public definers 49 to **48**; all public definers 109 to **107** — both close arithmetically. Deploy gate `80c8e1a7` cleared first. **Behaviourally UNPROVEN and not claimed:** no live Green Room read has exercised a retargeted policy; that is plan 06 Part B2. Results in `38.0.3-GATE-210-RESULTS.md`. `supabase/migrations/210_no_block_relocation.sql` (610 lines). Six sections in the order the safety argument requires: the `private` schema and its grants, the relocated helper with its explicit `REVOKE … FROM PUBLIC, anon, authenticated` before the single grant (PostgreSQL grants EXECUTE to PUBLIC by default in EVERY schema, so the hazard follows the function), both definer-body callers retargeted, eleven policy drop/create pairs, the bare drop, the PostgREST reload. **Run the pre-apply gate in `38.0.3-05-SUMMARY.md` before pasting it.** If the drop refuses with `2BP01`, that is the safety mechanism working — read the DETAIL, add the named policy to section 4, re-apply; do NOT force it and do NOT add a cascading modifier. 208/209 are applied (D4 satisfied). **DEPLOY GATE CLEARED 2026-09-09.** Plan 04 removed the app's only `no_block` `.rpc()` call; production deploy `80c8e1a7` succeeded at 20:53:05Z, so the running site no longer needs the RPC route and 210 may be applied. Two earlier deploys (`26f5e2bc`, `7d7cdf3d`) FAILED first: plan 04's service-client import pulled `next/headers` into `placements-admin.ts`, which a `'use client'` component imported, breaking the client bundle. `tsc --noEmit` and 6682 tests were green throughout — a bundler constraint is invisible to both. Fixed by splitting client-safe constants into `lib/green-room/placements-constants.ts`; guarded by `__tests__/placements-client-server-boundary.test.ts`. Plans 05 and 06 were renumbered from 209→210 on 2026-09-09; their frontmatter had gone stale when Codex took 207. |
+| **210** | Phase 38.0.3 Tier 3 — `no_block` relocation | **APPLIED 2026-09-09, VERIFIED STRUCTURALLY (12/12), AND PROVEN OVER HTTP.** `private.no_block` is hardened and policy callers are retargeted; `public.no_block` is absent; anon and service-role REST probes both returned 404. Organic-data Green Room policy behavior remains explicitly deferred. |
 | **211–212** | **RETIRED — DO NOT FILL** | Former Phase 38.2 reservation. Later migrations 213–218 were applied before Phase 38.2 implementation began, so using these numbers now would create an out-of-order trap. Phase 38.2 uses 221–223 instead. |
-| **213** | Playbook browser table-grant hardening | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** The 38-row pre-apply gate matched the exact residual grants on all 24 table/role pairs. The privilege-only repair committed, and `VERIFY-201-204-GRANTS.sql` returned zero browser-role rows. Pending migrations 205–207 were separately hardened at creation time. |
+| **213** | Playbook browser table-grant hardening | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** The pre-apply gate matched the residual grants on all 24 table/role pairs, and `VERIFY-201-204-GRANTS.sql` returned zero browser-role rows after repair. Migrations 205–207 were hardened at creation time and subsequently applied. |
 | **214** | Verified invitation claim hardening (Codex) | **APPLIED AND VERIFIED 2026-09-12.** A direct apply initially left the migration unregistered; definition-level review confirmed all seven security invariants, an ACL-only recovery removed inherited `service_role` table privileges beyond `INSERT`/`SELECT`, and the ledger was registered only after every recovery check passed. Supabase email-confirmation behavior and live signup UAT remain separately human-coordinated. |
 | **215** | Atomic Stripe Checkout creation (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds claim/finalize/release RPCs, economics-bound idempotency, and stored checkout recovery. Provider behavior UAT remains deferred. |
 | **216** | Atomic e-sign mint admission (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds one-instrument claim leases, provider reconciliation records, and active-instrument uniqueness guards. The reviewed source now revokes inherited `service_role` table grants before granting only the four privileges required by the mutable claim ledger. Provider behavior UAT remains deferred. |
 | **217** | Atomic Playbook operations (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Makes activation and incident state changes transactional with their audit events and adds compare-and-swap boundaries. Live operator UAT remains deferred. |
 | **218** | Privacy-safe authentication diagnostics (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds allowlisted, non-PII auth failure events for the gated IT Auth Health console, service-only retention, and exact 30-day cleanup. Live console and retention-route UAT remain deferred. |
-| **219–220** | Phase 38.1 Member workspace rights proposals and master-ownership claims | **APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** |
-| **221–223** | Phase 38.2 workspace billing, usage metering, and Playbook doctrine publication | **APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Application deployment and human UAT remain. |
+| **219–220** | Phase 38.1 Member workspace rights proposals and master-ownership claims | **APPLIED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Human UAT remains deferred. |
+| **221–223** | Phase 38.2 workspace billing, usage metering, and Playbook doctrine publication | **APPLIED, STRUCTURALLY VERIFIED, AND APPLICATION DEPLOYED 2026-09-13.** Human UAT remains deferred. |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
@@ -2198,11 +2199,12 @@ outside the grant lineage entirely — no `parent_grant_id`, never walked by
 `workspace_grant_lineage_live`, read by no authorization path — and approving routes through
 `issueMemberConsent`, which remains the sole writer of consent rows. Adds **WSR-28**.
 
-**Blocks:** Phase 38.1 and 38.2 should NOT be planned until this lands — 38.1 builds surfaces on
-the authorization model being reworked.
+**Former block:** Cleared on 2026-09-07. Phase 38.1 and 38.2 subsequently built on this remediated
+authorization model and shipped on 2026-09-13.
 
-**Status:** Discussed 2026-09-06 via `/gsd-discuss-phase 38.0.1` — 17 decisions (+R-18 at planning),
-decision-complete. **Planned 2026-09-06 — 16 plans across 7 waves** (plans 15 and 16 added during execution, see R-19).
+**Status:** **SHIPPED AND VERIFIED 2026-09-07.** All 16 plans completed; migrations 190–196 and the
+associated application changes reached production. The owner-run structural and behavioral gates
+recorded in the migration ledger passed.
 
 **PHASE SPLIT APPROVED by the owner 2026-09-06.** Full A-E scope prices at 21-23 plans (Phase 38
 itself needed 13). Planned here: slices **A + B + E + WSR-27** — WSR-01, 02, 03, 04, 05, 06, 14, 15,
@@ -2259,12 +2261,13 @@ project access — adds WSR-29), R-21..R-30 (actor binding, ownership transfers 
 `blocked` collapses to `refused`, cohort gate on the acceptor, 404 for a non-cohort Member, audit
 authority refusals as outcome codes, narrowed audit policy, owner-floor `expires_at`, no cohort admin
 surface, single-shot production verification).
-**Migrations:** **197–198** (Phase 38.2 moves to 199–200). Shifted TWICE: plan 15 claimed 195 for `workspace_permission_requests` (R-19), and the quick custody fix claimed 196. The LIVE MIGRATION LEDGER under Phase 38.0.1 is authoritative — check it before claiming a number. **201–202 are the Playbook rich-content workstream's; do not take them.**
+**Migrations:** **197–198 plus hotfix 199**, applied and behaviorally verified on 2026-09-08. The
+earlier note that Phase 38.2 would use 199–200 is obsolete; Phase 38.2 ultimately used 221–223.
+The LIVE MIGRATION LEDGER under Phase 38.0.1 is authoritative.
 
-**⚠ CARRIES 38.0.1's BINDING CONDITION: the D-56 kill switch must stay OFF in production until this
-ships.** WSR-07/08 (an admin promoting themselves to owner and removing the real owner) need no
-grants to exploit, so the switch is their only containment. **No plan in this phase flips it** — the
-decision is a separate, deliberate act at plan 17's checkpoint.
+**Historical D-56 gate:** The kill switch remained OFF throughout this phase's production apply and
+verification. This phase never flipped it; any later activation remains a separate, deliberate
+owner decision tied to the deferred live-role smoke program.
 
 **Watch-outs:** (a) ~~No `SELECT ... FOR UPDATE` plpgsql RPC exists anywhere in this repo~~ —
 **WRONG, corrected by research 2026-09-07. Twenty-seven `SECURITY DEFINER` functions here use
@@ -2281,31 +2284,31 @@ and it sees uncommitted writes from earlier statements, so ownership transfer mu
 demotes.
 
 **Depends on:** Phase 38.0.1
-**Status:** **Planned 2026-09-07 — 17 plans across 6 waves.** Decisions were already locked; no
-discuss-phase was run. Research is in `38.0.2-RESEARCH.md` (1233 lines, load-bearing: copy-paste RPC
-skeleton §2.2, LO-1 §3.1, 15-trigger inventory §4.2, keep-vs-delete classification §11).
+**Status:** **SHIPPED AND VERIFIED 2026-09-08.** All 17 plans completed; migrations 197–198 plus
+hotfix 199 were applied. Part A passed 70/70 and the final Part B rerun passed 42/42. The remaining
+organic beta smoke program is tracked separately and is not represented as complete.
 
 **Plans:** 17 plans
 
 Plans:
 
-- [ ] 38.0.2-01-PLAN.md — pure ownership-transfer state machine (`lib/workspaces/ownership-transfer.ts`)
-- [ ] 38.0.2-02-PLAN.md — D-55 cohort gate module + the two server-only env vars
-- [ ] 38.0.2-03-PLAN.md — `canManageOwners` + the WSR-29 project-access role floor predicates
-- [ ] 38.0.2-04-PLAN.md — "Appears on" requires a relationship naming the caller; multi-workspace fix
-- [ ] 38.0.2-05-PLAN.md — migration 197 pt1: ownership-transfer + cohort tables, owner-role guard, owner floor v2
-- [ ] 38.0.2-06-PLAN.md — migration 198 pt1: the LO-1 doctrine, the canonical RPC template, `workspace_create`
-- [ ] 38.0.2-07-PLAN.md — migration 197 pt2: audit lockdown, PII guard, deferred audit-assertion triggers, redacted read
-- [ ] 38.0.2-08-PLAN.md — migration 198 pt2: member role/status + the two ownership RPCs
-- [ ] 38.0.2-09-PLAN.md — migration 197 pt3: policy rewrites, WSR-29 role floor, cohort gate fn (**completes 197**)
-- [ ] 38.0.2-10-PLAN.md — migration 198 pt3: invitation redemption + roster transition RPCs
-- [ ] 38.0.2-11-PLAN.md — migration 198 pt4: transactional custody accept (WSR-09) (**completes 198**)
-- [ ] 38.0.2-12-PLAN.md — members route onto the RPC + the new workspace ownership route
-- [ ] 38.0.2-13-PLAN.md — cohort gate in `requireWorkspaceAccess`, atomic create route, role floor at project routes
-- [ ] 38.0.2-14-PLAN.md — invitation accept onto the RPC + audit PII removal
-- [ ] 38.0.2-15-PLAN.md — both roster surfaces onto the RPC + `logWorkspaceAction` doctrine correction
-- [ ] 38.0.2-16-PLAN.md — custody-transfers route onto the RPC (WSR-09 route half)
-- [ ] 38.0.2-17-PLAN.md — Part A structural probe, Part B behavioural harness, evidence map, **joint push**
+- [x] 38.0.2-01-PLAN.md — pure ownership-transfer state machine (`lib/workspaces/ownership-transfer.ts`)
+- [x] 38.0.2-02-PLAN.md — D-55 cohort gate module + the two server-only env vars
+- [x] 38.0.2-03-PLAN.md — `canManageOwners` + the WSR-29 project-access role floor predicates
+- [x] 38.0.2-04-PLAN.md — "Appears on" requires a relationship naming the caller; multi-workspace fix
+- [x] 38.0.2-05-PLAN.md — migration 197 pt1: ownership-transfer + cohort tables, owner-role guard, owner floor v2
+- [x] 38.0.2-06-PLAN.md — migration 198 pt1: the LO-1 doctrine, the canonical RPC template, `workspace_create`
+- [x] 38.0.2-07-PLAN.md — migration 197 pt2: audit lockdown, PII guard, deferred audit-assertion triggers, redacted read
+- [x] 38.0.2-08-PLAN.md — migration 198 pt2: member role/status + the two ownership RPCs
+- [x] 38.0.2-09-PLAN.md — migration 197 pt3: policy rewrites, WSR-29 role floor, cohort gate fn (**completes 197**)
+- [x] 38.0.2-10-PLAN.md — migration 198 pt3: invitation redemption + roster transition RPCs
+- [x] 38.0.2-11-PLAN.md — migration 198 pt4: transactional custody accept (WSR-09) (**completes 198**)
+- [x] 38.0.2-12-PLAN.md — members route onto the RPC + the new workspace ownership route
+- [x] 38.0.2-13-PLAN.md — cohort gate in `requireWorkspaceAccess`, atomic create route, role floor at project routes
+- [x] 38.0.2-14-PLAN.md — invitation accept onto the RPC + audit PII removal
+- [x] 38.0.2-15-PLAN.md — both roster surfaces onto the RPC + `logWorkspaceAction` doctrine correction
+- [x] 38.0.2-16-PLAN.md — custody-transfers route onto the RPC (WSR-09 route half)
+- [x] 38.0.2-17-PLAN.md — Part A structural probe, Part B behavioural harness, evidence map, **joint push**
 
 ---
 
@@ -2326,9 +2329,9 @@ phase; the research's five questions are the requirement set).
 kind; D4 `no_block` relocates rather than binds; D5 claim migration numbers from 207; D6 the Writer
 Room mention-stripping bug is out of scope.
 
-**Migrations:** **207** (T1 revokes), **208** (T2 binds), **209** (T3 relocation). 201–206 are
-consumed by the parallel Playbook workstream — four of them only in *untracked* test files, so
-re-verify against `ls supabase/migrations/` **and** `git status --porcelain` at execution time.
+**Migrations:** **208** (T1 revokes), **209** (T2 binds), and **210** (T3 relocation), all applied.
+Migration 207 belongs to the Playbook operational workstream. The LIVE MIGRATION LEDGER above is
+authoritative.
 
 **The finding that collapsed the phase.** The SCOPE planned for 15 relocations and 73 policy
 rewrites in lockstep. An exhaustive enumeration over all 200 migrations — comments stripped,
@@ -2357,19 +2360,21 @@ is self-verifying for policies but blind to string-literal function bodies — h
 second trigger, 198's `ON CONFLICT`), so Part A + Part B are mandatory.
 
 **Depends on:** Phase 38.0.2 (applied and verified 2026-09-08)
-**Status:** **Planned 2026-09-08 — 6 plans across 6 waves, strictly sequential.** SCOPE, INVENTORY
-(109 definers, live cross-checked, zero divergence) and RESEARCH are complete and authoritative.
+**Status:** **SHIPPED 2026-09-09.** All six plans completed. Migrations 208–210 were applied; the
+structural gates passed, the exposed `public.no_block` route returned 404 to both anon and
+service-role HTTP probes, and the targeted revocation behavior passed. Tier 2 cross-user behavior
+and the retargeted Green Room policy remain explicitly deferred until organic beta data exists.
 
 **Plans:** 6 plans
 
 Plans:
 
-- [ ] 38.0.3-01-PLAN.md — T1: migration 207 revokes ×4, the standing call-site invariant test, inventory closeout
-- [ ] 38.0.3-02-PLAN.md — T2: migration 208 binds all 13 helpers in one file, zero policy edits
-- [ ] 38.0.3-03-PLAN.md — Part A structural + Part B behavioural harness for T1+T2 (read-only, no seeding)
-- [ ] 38.0.3-04-PLAN.md — T3 prep: decouple `placements-admin.ts` from the `no_block` RPC route (ships and deploys first)
-- [ ] 38.0.3-05-PLAN.md — T3: migration 209 relocates `no_block`, retargets 11 policies + 2 definer bodies, drops the exposed copy
-- [ ] 38.0.3-06-PLAN.md — T3 verification: pre-apply `prosrc` gate (Part A2) + before/after behavioural probe (Part B2)
+- [x] 38.0.3-01-PLAN.md — T1: migration 208 revokes ×4, the standing call-site invariant test, inventory closeout
+- [x] 38.0.3-02-PLAN.md — T2: migration 209 binds all 13 helpers in one file, zero policy edits
+- [x] 38.0.3-03-PLAN.md — Part A structural + Part B behavioural harness for T1+T2 (read-only, no seeding)
+- [x] 38.0.3-04-PLAN.md — T3 prep: decouple `placements-admin.ts` from the `no_block` RPC route (ships and deploys first)
+- [x] 38.0.3-05-PLAN.md — T3: migration 210 relocates `no_block`, retargets 11 policies + 2 definer bodies, drops the exposed copy
+- [x] 38.0.3-06-PLAN.md — T3 verification: pre-apply `prosrc` gate (Part A2) + before/after behavioural probe (Part B2)
 
 ---
 
@@ -2385,7 +2390,7 @@ surfaces.
 **Requirements:** WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29
 **Decisions — already locked, do not re-ask:** D-10, D-30, D-31, D-32, D-33, D-36, D-37, D-38, D-39,
 D-41 in `.planning/phases/38-member-organization-team-workspaces/38-CONTEXT.md`
-**Migrations:** 219+ if required (production is applied through 218; re-check the full ledger before authoring)
+**Migrations:** 219–220, applied and structurally verified in production on 2026-09-13.
 
 **Watch-outs:** (a) In-session workspace switching has **no in-repo precedent** — `components/auth/AccountContextSwitch.tsx`
 is explicitly the ANTI-pattern (it signs out and re-logs in). Build a parallel resolver keyed off the
@@ -2395,8 +2400,10 @@ review the D-37 document-state vocabulary before any user-facing copy ships. (d)
 is the closest analog for the D-32 Roster/Activity room, including its hide-not-filter server gating.
 
 **Depends on:** Phase 38 (workspace entity, membership, permissions, grants, RLS branch)
-**Status:** Split from Phase 38 on 2026-09-05, owner-approved. Decisions already exist in
-`38-CONTEXT.md` — run `/gsd-plan-phase 38.1` directly; no discuss-phase needed.
+**Status:** **SHIPPED 2026-09-13.** All eight plans are complete; migrations 219–220 were applied
+and structurally verified, and the application shipped to production through PR #68 / merge commit
+`cb0ec3a7`. Human browser, accessibility, and live-role UAT remains intentionally deferred in
+`38.1-DEFERRED-UAT.md` and is not represented as complete.
 
 **Plans:** 8 plans
 
@@ -2437,9 +2444,9 @@ already shipped in Phase 38 — this phase reuses both through one Leadership co
 second rollout source of truth.
 
 **Depends on:** Phase 38 (workspace entity), Phase 38.1 (the surfaces the cohort flag gates)
-**Status:** Implemented; migrations 221–223 were applied and structurally verified in production on
-2026-09-13. Application deployment is pending, and human UAT remains recorded in
-`38.2-DEFERRED-UAT.md`.
+**Status:** **SHIPPED 2026-09-13.** Migrations 221–223 were applied and structurally verified in
+production, and the application shipped through PR #68 / merge commit `cb0ec3a7`. Human UAT remains
+recorded in `38.2-DEFERRED-UAT.md` and is not represented as complete.
 
 **Plans:** 4 plans
 
