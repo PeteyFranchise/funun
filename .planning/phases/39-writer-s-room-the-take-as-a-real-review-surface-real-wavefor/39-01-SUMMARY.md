@@ -138,6 +138,15 @@ None - no external service configuration required. Migration application itself 
 - The migration is written and content-tested but NOT applied to any database. Every downstream plan in this phase that touches these tables/columns is developing against types and RPC signatures that exist only in the migration file until 39-11's human-gated push.
 - No blockers for 39-02 through 39-10 proceeding in parallel against this committed foundation.
 
+## Self-Check: PASSED
+
+- `supabase/migrations/224_writer_room_take_review_surface.sql` — FOUND
+- `__tests__/migration-224-writer-room-take-review.test.ts` — FOUND
+- `.planning/phases/39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor/39-01-SUMMARY.md` — FOUND
+- Commit `b82d96e0` (Task 1) — FOUND in `git log`
+- Commit `ab89d56a` (Task 2) — FOUND in `git log`
+- Commit `4574feaf` (Task 3) — FOUND in `git log`
+
 ---
 *Phase: 39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor*
 *Plan: 01*
