@@ -23,6 +23,8 @@ import { SignOutButton } from '@/components/auth/SignOutButton'
 import { AccountContextSwitch } from '@/components/auth/AccountContextSwitch'
 import { ReportProblemLink } from '@/components/nav/ReportProblemLink'
 import { newFeatureSeenKey, useNewFeatureSeen } from '@/components/sync-library/SyncLibraryCoachMark'
+import { WorkspaceContextSwitcher } from '@/components/nav/WorkspaceContextSwitcher'
+import type { WorkspaceSwitcherOption } from '@/lib/workspaces/navigation'
 
 type Item = {
   href: string
@@ -89,6 +91,7 @@ export function ArtistNav({
   hasSyncLibraryAccess = false,
   clientPartner,
   userId,
+  workspaceOptions = [],
 }: {
   user?: NavUser
   // ≥1 admitted sync-library listing, resolved server-side in
@@ -101,6 +104,7 @@ export function ArtistNav({
   // access-control meaning). Optional so this component still renders
   // sensibly if a future caller doesn't have it yet.
   userId?: string
+  workspaceOptions?: readonly WorkspaceSwitcherOption[]
 }) {
   const pathname = usePathname() ?? ''
   const name = user?.name ?? 'Your Profile'
@@ -276,6 +280,10 @@ export function ArtistNav({
 
       {/* Scrollable items area — keeps footer pinned at bottom */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <WorkspaceContextSwitcher
+        workspaces={workspaceOptions}
+        collapsed={collapsed}
+      />
       {/* Workspace label */}
       {!collapsed && (
         <div className="mb-3 mt-[6px] px-[14px] text-[11px] font-bold uppercase tracking-[.18em] text-lavdim">

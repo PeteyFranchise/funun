@@ -30,6 +30,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
 }))
 
+jest.mock('@/lib/workspaces/billing', () => ({
+  resolveWorkspaceWritesAllowed: jest.fn(async () => true),
+}))
+
 jest.mock('@/lib/email', () => ({ sendEmail: jest.fn(async () => ({ ok: true })) }))
 
 const WORKSPACE_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'

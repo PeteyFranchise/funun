@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
+  requireWorkspaceRole,
+} from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { canManageRoster } from '@/lib/workspaces/membership'
 import { describeProvenance } from '@/lib/workspaces/evidence'
@@ -127,7 +131,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageRoster,
@@ -327,7 +331,7 @@ export async function DELETE(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageRoster,

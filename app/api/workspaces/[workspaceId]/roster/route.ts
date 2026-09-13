@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
+  requireWorkspaceRole,
+} from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { canManageRoster } from '@/lib/workspaces/membership'
 import {
   assertCanPropose,
   assertWorkspaceMayEnd,
-  loadRelationshipTier,
   pickRosterFields,
   ROSTER_PROPOSAL_RATE_LIMIT,
 } from '@/lib/workspaces/roster-service'
+import { loadWorkspaceRosterPage } from '@/lib/workspaces/room-data'
 import type { RosterRelationshipState } from '@/lib/workspaces/types'
 import { assertDateOrdering, optionalIsoDate } from '@/lib/workspaces/date-schemas'
 import { checkRateLimit } from '@/lib/security/rate-limit'
@@ -126,35 +130,6 @@ const PatchRosterSchema = z
   })
   .strict()
 
-// ─── Pagination, in lib/workspaces/catalogue.ts's idiom ─────────────────────
-// These MUST match migration 197's own
-// `LIMIT LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200)` clamp — the SQL
-// clamps because an unbounded page on a SECURITY DEFINER function is a
-// denial-of-service surface, and this side clamps so a caller cannot reach
-// past it from either direction. Change one and you must change the other.
-//
-// Declared HERE rather than imported from lib/workspaces/catalogue.ts, whose
-// identically-valued constants are documented as mirroring MIGRATION 194's
-// clamp. The two happen to agree today; binding this route to the
-// catalogue's contract would mean a future change to 194 silently moved the
-// roster page too.
-const ROSTER_PAGE_MAX = 200
-const ROSTER_PAGE_DEFAULT = 50
-
-/** A non-finite or absent value takes the default rather than being
- * forwarded as `NaN`. */
-function clampLimit(raw: string | null): number {
-  const value = raw === null ? NaN : Number(raw)
-  if (!Number.isFinite(value)) return ROSTER_PAGE_DEFAULT
-  return Math.min(Math.max(Math.trunc(value), 1), ROSTER_PAGE_MAX)
-}
-
-function clampOffset(raw: string | null): number {
-  const value = raw === null ? NaN : Number(raw)
-  if (!Number.isFinite(value)) return 0
-  return Math.max(Math.trunc(value), 0)
-}
-
 // ─── Outcome → HTTP, in the shape of ────────────────────────────────────────
 // `app/api/workspaces/[workspaceId]/members/route.ts`: a
 // `Record<string, { error, status }>` with a fallback for a code this route
@@ -238,7 +213,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageRoster,
@@ -392,27 +367,16 @@ export async function GET(
   //
   // The Member's own surface (app/api/roster/relationships/route.ts)
   // deliberately does NOT use this function — see this file's header.
-  const { data, error } = await supabase.rpc('workspace_roster_page', {
-    p_workspace_id: workspaceId,
-    p_uid: access.userId,
-    p_limit: clampLimit(searchParams.get('limit')),
-    p_offset: clampOffset(searchParams.get('offset')),
-  })
-
-  if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
-
   const service = createServiceClient()
-  const rows = await Promise.all(
-    ((data ?? []) as Array<{ id: string; state: RosterRelationshipState }>).map(async (row) => {
-      const tierResult = await loadRelationshipTier(service, {
-        relationshipId: row.id,
-        state: row.state,
-      })
-      return { ...row, authorityTier: tierResult.ok ? tierResult.tier : 'none' }
-    })
-  )
+  const result = await loadWorkspaceRosterPage(supabase, service, {
+    workspaceId,
+    userId: access.userId,
+    limit: searchParams.get('limit'),
+    offset: searchParams.get('offset'),
+  })
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
 
-  return NextResponse.json({ data: rows })
+  return NextResponse.json({ data: result.data })
 }
 
 export async function PATCH(
@@ -425,7 +389,7 @@ export async function PATCH(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   const gated = requireWorkspaceRole(
     access,
     canManageRoster,

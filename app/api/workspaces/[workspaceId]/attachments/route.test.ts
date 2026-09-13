@@ -22,6 +22,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
 }))
 
+jest.mock('@/lib/workspaces/billing', () => ({
+  resolveWorkspaceWritesAllowed: jest.fn(async () => true),
+}))
+
 jest.mock('@/lib/workspaces/audit', () => ({
   logWorkspaceAction: jest.fn(async () => undefined),
 }))

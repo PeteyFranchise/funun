@@ -23,11 +23,13 @@ const fail = (error: string) => (): Promise<SaveResult> => Promise.resolve({ ok:
 
 describe('SETTINGS_TABS', () => {
   it('is ordered rights → profile → payouts → permissions with segments matching useSelectedLayoutSegment()', () => {
-    expect(SETTINGS_TABS.map(t => t.id)).toEqual(['rights', 'profile', 'payouts', 'permissions'])
+    expect(SETTINGS_TABS.map(t => t.id)).toEqual(['rights', 'profile', 'payouts', 'rights-proposals', 'master-claims', 'permissions'])
     expect(SETTINGS_TABS.map(t => t.href)).toEqual([
       '/settings',
       '/settings/profile',
       '/settings/payouts',
+      '/settings/rights-proposals',
+      '/settings/master-claims',
       '/settings/permissions',
     ])
     // The index route's segment is null, not '' and not '/settings'.
@@ -35,6 +37,8 @@ describe('SETTINGS_TABS', () => {
       null,
       'profile',
       'payouts',
+      'rights-proposals',
+      'master-claims',
       'permissions',
     ])
   })

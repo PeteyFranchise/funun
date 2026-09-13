@@ -77,6 +77,7 @@ const ITEMS: Item[] = [
   // prospect image). Nav entry lands with this plan; the page itself ships
   // in plan 05.
   { href: '/admin/health-rules', label: 'Health Rules', match: '/admin/health-rules', Icon: HealthPulseIcon, show: isLead },
+  { href: '/admin/workspaces', label: 'Workspace Rollout', match: '/admin/workspaces', Icon: HealthPulseIcon, show: isLead },
   { href: '/admin/artist-invites', label: 'Artist Invites', match: '/admin/artist-invites', Icon: InvitesIcon, show: notIt },
   { href: '/admin/member-onboarding', label: 'Member Onboarding', match: '/admin/member-onboarding', Icon: IndustryIcon, show: canOnboardMembers },
   { href: '/admin/profile', label: 'My Profile', match: '/admin/profile', Icon: ProfileIcon, show: notIt },

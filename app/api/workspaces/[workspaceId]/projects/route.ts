@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceProjectAccess } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceMutationAccess,
+  requireWorkspaceProjectAccess,
+} from '@/lib/workspaces/access'
 import { logWorkspaceAction } from '@/lib/workspaces/audit'
 import { assertMayExercise } from '@/lib/workspaces/grant-service'
 import { optionalIsoDate } from '@/lib/workspaces/date-schemas'
@@ -66,7 +69,7 @@ export async function POST(
   // on `workspace_project_permission` hop 2 (migration 197): two independent
   // layers agreeing is this repo's doctrine, and the reason WSR-17 exists.
   const access = requireWorkspaceProjectAccess(
-    await requireWorkspaceAccess(supabase, user, workspaceId)
+    await requireWorkspaceMutationAccess(supabase, user, workspaceId)
   )
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 

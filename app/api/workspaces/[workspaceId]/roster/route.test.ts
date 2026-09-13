@@ -19,6 +19,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createServiceClient: jest.fn(),
 }))
 
+jest.mock('@/lib/workspaces/billing', () => ({
+  resolveWorkspaceWritesAllowed: jest.fn(async () => true),
+}))
+
 // The rate limiter builds its own service client and calls an RPC; it is not
 // what these cases are about. Stubbed permissive so the POST path runs. The
 // route's own `checkRateLimit` call is untouched by this plan (P0 hotfix).
@@ -74,6 +78,13 @@ function buildSessionClient(
           error: null,
         })
       }
+      // Phase 38.2's central mutation gate asks the service-only billing
+      // predicate whether this beta workspace is writable. Keep this outside
+      // the route-RPC recorder for the same reason as the access decision:
+      // the assertions below count only the business mutation itself.
+      if (name === 'workspace_writes_allowed') {
+        return Promise.resolve({ data: true, error: null })
+      }
       calls.rpcs.push({ name, args })
       return Promise.resolve({ data: opts.pageRows ?? [], error: opts.pageError ?? null })
     }),
@@ -125,6 +136,9 @@ function buildServiceClient(
           data: [{ access_enabled: true, cohort_ok: true }],
           error: null,
         })
+      }
+      if (name === 'workspace_writes_allowed') {
+        return Promise.resolve({ data: true, error: null })
       }
       calls.rpcs.push({ name, args })
       if (opts.rpcError) {

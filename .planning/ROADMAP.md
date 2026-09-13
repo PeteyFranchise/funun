@@ -12,6 +12,7 @@
 - 📝 **Near-term discussion — Lawyer-Reviewed Contract Product Foundation** — resolve ten GSD/counsel questions; create common agreements in the approved order; ship versioned templates, protected legal language, disclosures, e-signature and Contract Locker lifecycle before sync representation)
 - 🧭 **Post-beta discussion — Freemium/Paid Tiers & Platform-Wide AI Governance** — keep AI-assisted tools active for measured beta testing, then use real OpenAI + Anthropic usage and value data to decide free trials, paid allowances, account eligibility and optional overages. Before broad availability, ship one account-wide usage ledger, spending ceilings, entitlement gates and user/admin dashboards across every AI tool; never make AI a prerequisite for core songwriting or rights workflows. No prices or allowances are decided yet; use `.planning/deliberations/post-beta-ai-pricing-and-governance.md` as the future discussion brief.)
 - 🧭 **Playbook Releases 32–39 — Enterprise Maturity Roadmap** — proposed sequence after Release 31 activation evidence: R32 Integration Hub, R33 AI Doctrine Studio, R34 Coverage & Continuity, R35 Audit & Evidence Packages, R36 Mobile & Offline Field Guide, R37 Knowledge Health Intelligence, R38 Partner Enablement Portals, and R39 Business Continuity & Recovery. These are roadmap candidates, not production commitments; each remains gated by observed need, privacy/security/legal/accessibility review, and explicit owner approval. See `.planning/deliberations/playbook-releases-32-39-roadmap.md`.
+- 📝 **Post–Phase 38 — Client Partner Qualification Gameplan** — install the reusable BDT qualification workflow required by the Business Development Doctrine, including a non-blocking organic-buyer fast path, documented access recommendation, authorized verification boundaries, and the BDT-to-AE joint-ownership handoff. Tracked as Phase 38.3 below.
 - 🔭 **Post–Release 39 research — Playbook Long-Horizon Exploration** — preserve, but do not yet schedule, research into workforce skills and capacity forecasting; regulatory and jurisdiction-specific overlays; advanced organizational simulations; cross-department benchmarking; voice-based training; acquisition/merger onboarding; anonymous doctrine-quality reporting; enterprise partner administration; historical decision intelligence; and custom automation/integration marketplaces. Each requires evidence, explicit human-decision boundaries, and security/privacy/legal/accessibility review before it can receive a release number. See `.planning/deliberations/playbook-post-39-research-roadmap.md`.
 - 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
 - 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
@@ -670,8 +671,8 @@ Plans:
 | 38.0.1. Workspace Authorization Remediation — consent model, RLS rework, mig 190 | 16/16 | Shipped (dark) + VERIFIED — Part A 35/35, Part B 12/12 | 2026-09-07 |
 | 38.0.2. Workspace Transactional Integrity & Hygiene | 17/17 | **VERIFIED 2026-09-08** — migrations 197+198+199 applied; Part A 70/70, Part B 42/42. 13 of 14 requirements PASS; WSR-21 is application-layer and explicitly not claimed. D-56 still OFF pending sign-off. **Vercel vars set 2026-09-08** (`WORKSPACE_ACCESS_GENERAL_ENABLED=false`, `WORKSPACE_COHORT_PILOT_ENABLED=true`, Config type, all three environments) — they bake in at BUILD time, so a deploy must run after this date before D-56 is flipped. `.env.example` documented (commit 321ce556). Remaining before D-56: the RLS smoke checklist carried over from 38.0.1 (`38-RLS-SMOKE-CHECKLIST.md`, **57 boxes, 0 ticked**). **OWNER DECISION 2026-09-09: verified ORGANICALLY as beta testers arrive — no fabricated accounts**, same precedent as the 31.1/31.2 UAT call. The execution protocol is `docs/verification/BETA-RLS-SMOKE-SESSION.md`: six facilitator-led screenshare sessions covering three beta testers plus two team accounts (role E is role C after removal). Every check is a refusal PAIRED with a positive control, because a refusal alone can be produced by an unrelated failure. Sections 8a/8b (the D-56 switch itself), 9, 10 and the negative half of 7 stay internal and are NOT put in front of beta users. Sections 5 (clean master) and 6 (payout) are flagged as better solved by a runtime guard on workspace-scoped responses than by a manual tick. | 2026-09-08 |
 | 38.0.3. RLS Helper API Exposure | 6/6 | **TIERS 1+2 APPLIED AND VERIFIED 2026-09-09** (migrations 208, 209). Part A pre-run and post-run both clean; the exposed-definer count fell 53 to 49, all thirteen binds report `binds=true service_role_disjunct=true`, and Part B proved the revokes and the drop live (42501/42883) plus B10 confirming definer bodies still work. **Tier 2 is structurally verified but behaviourally UNPROVEN** — every cross-user assertion skipped for want of data; re-run Part B once beta users create Green Room posts and split sheets. Tier 3 (`no_block`, migration 210, plans 04-06) remains. **PLAN 04 COMPLETE AND DEPLOYED 2026-09-09 (`80c8e1a7`):** `lib/green-room/placements-admin.ts` no longer calls the `no_block` RPC — the placement activation gate now does a fail-closed, bidirectional direct read of `public.blocks`, so `no_block` has ZERO application `.rpc()` call sites (pinned by assertion (d) of `__tests__/rls-helper-callsites.test.ts`). The deploy gate is CLEARED — PostgREST routes only to exposed schemas, so relocating before that deploy would have 404d placement activation for every internal destination type on the first live request. **PLAN 05 COMPLETE 2026-09-09 (migration 210 AUTHORED, NOT APPLIED):** `no_block` moves to an unexposed `private` schema, both SECURITY DEFINER body callers (`green_room_can_view_post`, copied from applied migration 209 so the Tier-2 bind survives, and `discover_profile_id_by_email`) are retargeted BEFORE the drop, all eleven live policies are rewritten with their predicates proven unchanged apart from the qualifier, and `public.no_block` is dropped with NO modifier so restrictive-by-default makes the drop its own proof. 92-assertion text-lock suite; all twelve plan mutations confirmed RED. **OWNER MUST RUN THE PRE-APPLY GATE FIRST** (`38.0.3-05-SUMMARY.md`): `pg_proc.prosrc` must name EXACTLY two body callers, because `DROP FUNCTION` is blind to string-literal body references and a third caller would break silently with `42883` on its next live call. Plan 06 (the Part A2/B2 verification pair) remains. BLOCKS BETA (D1). Research collapsed the shape: every RLS-policy call site of every in-scope helper passes `auth.uid()` — 73 sites, 200 migrations, zero exceptions — so the caller-identity bind closes the disclosure with **no relocation and no policy rewrites**. Three tiers in ship order: **T1 revoke ×4** (zero policy call sites; the documented exemption to the TRAP rule), **T2 bind ×13** (one migration, zero policy edits), **T3 relocate `no_block` only** (owner decision D4 — it is symmetric, so a bind re-opens T-08-03; 11 live policies). Migrations **207–209** (201–206 consumed by the parallel Playbook workstream). Behavioural harness mandatory and, unlike 38.0.1/38.0.2, needs **no fixture seeding** — a 100% read-only JWT-claim impersonation probe suffices. **SCOPED 2026-09-08.** Scope is EVERY `SECURITY DEFINER` function in `public` (D3). **Inventory COMPLETE and live-verified 2026-09-08: 109 definers, 88 already correct, ZERO repo-vs-live divergence. The actionable set is 19 functions — 15 relocate, 1 bind, 3 to read — all read-only.** `apply_to_opportunity_atomic` revoked in production the same day, closing the one write-capable bypass. `discover_profile_id_by_email` checked and found already correct — out of scope (D2). A production grant sweep found `anon`/`authenticated` hold EXECUTE on ~18 read-only authorization predicates, so PostgREST exposes them as RPCs — the authorization graph (who holds what role/permission where, who blocked whom) is queryable with the public anon key. None write. **Blanket-revoking would take the app down**: RLS policy expressions are evaluated as the querying role and call these helpers from USING clauses. Two remedies — relocate pure policy helpers to a non-exposed schema, bind `p_uid` to `auth.uid()` for the ones the app genuinely calls. ~250 references across 97 migrations; Green Room/split sheets/works are LIVE with real data, so unlike 38.0.1/38.0.2 this phase cannot lean on empty tables. See `.planning/phases/38.0.3-rls-helper-api-exposure/38.0.3-SCOPE.md`. **PLAN 06 COMPLETE 2026-09-09 — the Tier 3 verification pair is AUTHORED (not run by any agent; no database connection was opened).** `38.0.3-VERIFY-A2-NO-BLOCK.sql` (920 lines, **ZERO write statements** — one `WITH … SELECT … ORDER BY 1;`, no table, not even a TEMP one; 22 branches, all four-column) and `38.0.3-VERIFY-B2-NO-BLOCK.sql` (902 lines, one session-local `pg_temp` results table and **zero writes to any table in `public` or `auth`**). Both were written for the CURRENT POST-APPLY state rather than transcribed from the plan: 210 is applied, so Part A2's G-block is retained as a standing `pg_proc.prosrc` enumeration and explicitly labelled a gate that has already been passed, with its recorded 2026-09-09 answer quoted beside each verdict. Objects are resolved by IDENTITY (`to_regprocedure`, a `pg_namespace` join), the exposed-definer predicate is COPIED character-for-character from `38.0.3-VERIFY-A-STRUCTURAL.sql` (both filters intact — the two omissions that made an ad-hoc sweep read 63 instead of 48), and every row prints the raw value it judged plus its length. Part B2 pairs its block-enforcement negative with an uninvolved-third-party positive control and records **INFO / UNPROVEN, never PASS**, when `public.blocks` is empty, when no free third party exists, when the blocker authored nothing on that surface, or when the control also reads zero (threat T-38.0.3-06-08). B2-4's ten counts carry no verdict at all — the diff between two runs is the assertion, and every subject query is deterministically ordered so both runs pick identical rows. B2-5 asserts on the **SQLSTATE (42501), not the message**: the barrier moved from the EXECUTE grant on `public.no_block` to the USAGE grant on schema `private`, so the text changes while the anonymous behaviour PostgREST surfaces does not. Both files are paste-safe — Part A2 has **zero** `INTO` occurrences (matching migration 210) and Part B2's 41 are all real SQL. 7 of 7 plan mutations killed; `tsc` clean; 6805/6805 tests green. **STILL OWED BY THE OWNER, and no agent can close it: read Exposed schemas in the dashboard by eye (Part A2 row X1 cannot answer itself), then `curl` the `no_block` RPC route with the anon key AND the service key — expect 404 from both. That is the only check that proves the ROUTE is gone rather than the privilege, and it is the closing evidence for the phase.** Tier 3 stays behaviourally UNPROVEN until B2-3 has a real block pair and a working positive control. | - |
-| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 0/0 | **UNBLOCKED 2026-09-09** — the entire remediation chain it waited on is complete: 38.0.1 (16/16, shipped + verified), 38.0.2 (17/17, verified) and 38.0.3 (6/6, migrations 208/209/210 applied and verified, `no_block` proven unreachable over HTTP). **Not yet planned (0/0)** and the row carries no scope detail beyond its title, so start with `/gsd-discuss-phase 38.1` rather than planning blind. Independent of the RLS smoke sessions — only the D-56 flip is gated on those. | - |
-| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 0/0 | **UNBLOCKED 2026-09-09** on the same grounds as 38.1 — 38.0.1/38.0.2/38.0.3 are all complete. **Not yet planned (0/0).** Migrations **211-212** are reserved for it in the LIVE MIGRATION LEDGER. **Caveat specific to this phase:** its *Beta Rollout* portion depends on the D-56 workspace-access switch, which is still OFF and is gated on the RLS smoke sessions (`docs/verification/BETA-RLS-SMOKE-SESSION.md`) plus the plan 38.0.2-17 checkpoint. The Org Billing and Doctrine Docs portions are not gated on any of that. | - |
+| 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **IMPLEMENTED; MIGRATIONS 219–220 APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Active URL context, workspace chrome and switching, roster/activity/audit rooms, contract shelf, authority expiry, rights proposals, master claims, and hardening/UAT package are complete. Automated verification passed; application deployment and human UAT remain. | - |
+| 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **IMPLEMENTED; MIGRATIONS 221–223 APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Adds workspace-specific beta billing and fail-closed write lifecycle, privacy-minimal usage metering, a Leadership-only rollout console reusing the existing cohort and emergency controls, and three source-locked Playbook doctrines. No Stripe customer/charge path or beta quota enforcement was introduced. Application deployment and human UAT remain. | - |
 | 39. Sync Demand Signals — buyer interest telemetry & commission pipeline | 0/0 | **ROADMAPPED 2026-09-09 (owner) — soon.** Capture, in the Funūn team console, aggregate buyer interest in catalogue tracks that CANNOT be licensed as-is — principally sampled tracks awaiting clearance. **The insight:** if six supervisors save the same sampled track, that is not six dead ends, it is a commissioned original with proven demand behind it. Left to individual AE conversations that signal evaporates. Needs: per-track interest counters across saves / Selects adds / plays / brief attachments, deduplicated by buyer org; a ranked team-console view of highest-demand unlicensable tracks; and enough attribution to hand a producer a real brief (which buyers, what they responded to, what else they saved). Feeds the Brief Builder / Vibe Match surfaces rather than adding a new one. **Depends on** the sync-catalogue entry model in `.planning/deliberations/sync-catalogue-entry-and-samples.md` and on 22-05 putting live tracks in the catalogue. Consent note: this counts BUYER behaviour on Funūn surfaces, not third-party tracking — keep it inside `.planning/deliberations/` guest-lead consent norms. | - |
 | 40. The Crate — Sync Doctrine: versioning, track-level rights & withdrawal | 0/0 | **ROADMAPPED 2026-09-10 (owner).** The redesign behind the Crate admission doctrine, split out from the four defects fixed the same day. Source: a design review Codex produced 2026-09-10, reacting to the entry-gate decisions in `.planning/deliberations/sync-catalogue-entry-and-samples.md`. **The core reframe:** the project type currently conflates THREE independent facts — commercial release status (unreleased / scheduled / released), production maturity (idea / demo / working mix / finished master), and sync availability (not submitted / under review / admitted / withdrawn / removed). One field cannot govern sync eligibility. **This REOPENS the 2026-09-09 decision to exclude `unreleased`:** a finished master held back for the right placement is among the most valuable things a sync catalogue can hold — supervisors pay for exclusivity, and a placement can BE the release. A demo is not. The rule should attach to production maturity, not to the type name. Workstreams: (a) **sync-master versioning** — admission binds ONE audio version, a new mix creates a candidate rather than silently replacing what a buyer heard, and shortlists/Selects retain the exact version reviewed; (b) **track-and-version authoritative listings** — a project-level document satisfies a track only where its recorded scope says so, so three clean album tracks are not blocked by a fourth; (c) **metadata split** — hard-gate identity and authorization (writers, shares, master owners, contacts, sample disclosure), warn on administrative identifiers (IPI, ISWC, ISRC, PRO, MLC, distributor), since an IPI routes royalties and does not grant permission; (d) an **applicable/not-applicable state** on every rights requirement, affirmatively declared rather than inferred from absent data; (e) **withdrawal and removal** — what happens to a shortlist, a Selects list, an open request, a signed licence when a rights holder pulls a song, including a co-owner revoking authorization; (f) **buyer-facing rights status** — "cleared for licence" vs "clearance required" vs "authorization in progress", so The Crate stops implying everything in it is licensable today. (g) **`signedOf()` under-counts `verified` documents — a CONFIRMED defect, not a design question.** `signedOf()` in `lib/vault/readiness.ts` counts only `status === 'signed'`, so a split sheet or producer agreement uploaded through `POST /api/contracts/verify` — which writes `'verified'` after AI verification — reads `'warning'` and BLOCKS Crate entry, despite carrying MORE evidence than a plain upload that passes. The stronger path produces the worse outcome. `evidencedOf()`, added 2026-09-10 for the copyright item, already accepts `signed || verified` and is the correct shape; `split_sheets` and `hire_right` still route through `signedOf()`. Fixed for copyright only and deliberately left alone elsewhere, because widening it moves two gates that were not in that task's scope — it loosens what enters the catalogue and deserves a decision rather than a drive-by. Note `stage3.docStatusToReq()`, `lib/contracts/locker-attention.ts` and `lib/eligibility/direct-overlay.ts` already treat signed and verified as one state, so `signedOf()` is the outlier. **Depends on** the all-owners-authorization work (22-05 item 2) and on real beta usage — the owner's standing position is that these gates are provisional and should be revised from usage, not theory. **Codex owns the phase design.** | - |
 
@@ -2157,7 +2158,7 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **199** | Phase 38.0.2 hotfix — 42702 in `workspace_redeem_invitation` (quick `260908-2dc`) | **APPLIED 2026-09-08** (owner, Supabase SQL editor) **and VERIFIED**: Part B re-run returned 42/42, with B18 now `before_cohort=not_in_cohort after_cohort=ok seat=member`. B27 also moved 18 → 20 audit rows, which is exactly the two rows a successful redemption writes — independent corroboration that the seat was really created. R-24 is proven rather than merely refusing. Part B assertion B18 — the only call this RPC has ever received — returned `42702: column reference "workspace_id" is ambiguous`, so invitation redemption is entirely non-functional in 198 as applied. `workspace_id` is both an OUT parameter and a real column, and an `ON CONFLICT` inference clause is parsed as expressions and therefore takes PL/pgSQL variable substitution (an INSERT column list does not — hence only line 2229 raised). 199 adds `#variable_conflict use_column` and nothing else; a drift-guard test asserts the function block differs from 198's by exactly one line. Contained by the D-56 switch being OFF and every workspace table being empty. **B18 stays UNPROVEN until this is applied and Part B is re-run** — its second call is the positive control that shows the R-24 cohort refusal was the gate rather than an incidental failure. |
 | **200** | `apply_to_opportunity_atomic` hardening (quick `260908-antenna`) | **APPLIED 2026-09-09 and VERIFIED (6/6).** Post-apply: `proconfig` is `search_path=""`, `prosecdef` true, grants read `anon=false authenticated=false service_role=true`, and both the four-parameter signature and the `RETURNS TABLE` shape are unchanged so no caller breaks. This makes permanent the revoke the owner applied by hand on 2026-09-08 — a rebuild can no longer restore the old posture. Lock modes deliberately UNCHANGED (see below). The Antenna finding deferred out of 38.0.2 for unrelated blast radius. 046 is `SECURITY DEFINER` with `SET search_path = public` and four UNQUALIFIED table references; per PostgreSQL's search_path rule the temp schema, when not listed, "is searched FIRST (even before pg_catalog)" for relation names — so a caller who can execute this function and create temp tables could shadow `opportunities` et al. inside the definer body. 200 sets `search_path = ''`, qualifies all nine references, and re-issues the REVOKE naming `anon`/`authenticated` explicitly (047 revoked only from PUBLIC, which does not remove a DIRECT grant). Hardening, not a demonstrated exploit — reachability depends on live grants, and the quick task carries an owner-run query to settle it. Lock modes deliberately UNCHANGED. |
 | **201–202** | Playbook rich-content model R1 (Codex) | **APPLIED, CHECKPOINTED, AND REGISTERED 2026-09-10.** The production pre-apply gate passed 279/279. All stage checks passed, including both reminder RPCs returning zero while migration 207's activation controls were absent. A later 204 checkpoint found the tables retained Supabase's direct `REFERENCES`, `TRIGGER`, and `TRUNCATE` browser-role defaults; migration 213 is the approved repair. |
-| **203** | **RETIRED — DO NOT FILL** | Held for Phase 38.2 while the reservation read "200, 203"; Codex correctly skipped it. Phase 38.2 has since moved to 211–212, so nothing will ever claim 203. **Do not reuse it.** Filling it now would place a migration numerically *before* 204–210 while applying *after* them — harmless in the SQL Editor, but it would trip `supabase db push`'s out-of-order check the moment anyone switches to the CLI. A dead number is cheaper than that trap. |
+| **203** | **RETIRED — DO NOT FILL** | Former Phase 38.2 reservation; the phase ultimately uses 221–223. **Do not reuse it.** Filling it now would place a migration numerically before already-applied migrations while applying after them and trip `supabase db push`'s out-of-order check. A dead number is cheaper than that trap. |
 | **204** | Playbook review threads (Codex) | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** Its initial post-check exposed residual `REFERENCES`, `TRIGGER`, and `TRUNCATE` grants for `anon` and `authenticated`; the apply window stopped before 205. Migration 213 repaired all twelve affected 201/202/204 tables, and the focused grant verifier returned zero rows before 204 was registered. |
 | **205** | Playbook change broadcasts (Codex) | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** Tables, RLS, zero browser grants, functions, and the history trigger all passed. |
 | **206** | Playbook enablement platform, R17–26 (Codex) | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** Tables, RLS, zero browser grants, private media bucket posture, function, and triggers all passed. |
@@ -2165,13 +2166,15 @@ switch un-flippable. Deliberately minimal — pending requests, per-permission a
 | **208** | Phase 38.0.3 Tier 1 — targeted revokes + one drop | **APPLIED 2026-09-09 and VERIFIED behaviourally.** Was planned as 207; moved because Codex claimed 207 between planning and execution. Part B proved all four live: `workspace_access_enabled` and `green_room_post_matches_custom_audience` return `42501` to `authenticated`, `workspace_roster_relationship_is_live` returns `42883` (the drop is real), and B10 confirmed definer bodies still call the revoked helpers successfully — the TRAP was avoided. |
 | **209** | Phase 38.0.3 Tier 2 — thirteen caller-identity binds | **APPLIED 2026-09-09. STRUCTURALLY verified, behaviourally UNPROVEN.** All thirteen report `binds=true service_role_disjunct=true` and the exposed-definer count fell 53 → 49, but no live call has exercised a bind: every cross-user assertion skipped for want of data. That is the same gap migration 198's `42702` fell through, so it is not called verified. Re-run Part B rows B1–B7 once beta users create Green Room posts and split sheets. |
 | **210** | Phase 38.0.3 Tier 3 — `no_block` relocation (plan 05) | **APPLIED 2026-09-09, VERIFIED STRUCTURALLY (12/12), and PROVEN OVER HTTP.** Owner-run `curl` against `/rest/v1/rpc/no_block` returned **404 for BOTH the anon key and the service_role key**. The service_role 404 is decisive: that key bypasses RLS and holds broad privileges, so a 404 proves absence by ROUTING rather than by permission (401/403 would have been the weaker outcome). Threat T-08-03 is closed at the transport layer. No SQL check can establish this — every SQL assertion runs inside PostgreSQL and proves privilege only. Post-apply: `private.no_block` present with `authenticated`-only EXECUTE and `search_path=""`, `public.no_block` absent, all eleven policies retargeted, `rc_select_public` still `{public}`, and B1 confirming Tier 2's caller-binding survived. The drop carried no `CASCADE`, so its success is itself the proof nothing still referenced the function. Exposed public definers 49 to **48**; all public definers 109 to **107** — both close arithmetically. Deploy gate `80c8e1a7` cleared first. **Behaviourally UNPROVEN and not claimed:** no live Green Room read has exercised a retargeted policy; that is plan 06 Part B2. Results in `38.0.3-GATE-210-RESULTS.md`. `supabase/migrations/210_no_block_relocation.sql` (610 lines). Six sections in the order the safety argument requires: the `private` schema and its grants, the relocated helper with its explicit `REVOKE … FROM PUBLIC, anon, authenticated` before the single grant (PostgreSQL grants EXECUTE to PUBLIC by default in EVERY schema, so the hazard follows the function), both definer-body callers retargeted, eleven policy drop/create pairs, the bare drop, the PostgREST reload. **Run the pre-apply gate in `38.0.3-05-SUMMARY.md` before pasting it.** If the drop refuses with `2BP01`, that is the safety mechanism working — read the DETAIL, add the named policy to section 4, re-apply; do NOT force it and do NOT add a cascading modifier. 208/209 are applied (D4 satisfied). **DEPLOY GATE CLEARED 2026-09-09.** Plan 04 removed the app's only `no_block` `.rpc()` call; production deploy `80c8e1a7` succeeded at 20:53:05Z, so the running site no longer needs the RPC route and 210 may be applied. Two earlier deploys (`26f5e2bc`, `7d7cdf3d`) FAILED first: plan 04's service-client import pulled `next/headers` into `placements-admin.ts`, which a `'use client'` component imported, breaking the client bundle. `tsc --noEmit` and 6682 tests were green throughout — a bundler constraint is invisible to both. Fixed by splitting client-safe constants into `lib/green-room/placements-constants.ts`; guarded by `__tests__/placements-client-server-boundary.test.ts`. Plans 05 and 06 were renumbered from 209→210 on 2026-09-09; their frontmatter had gone stale when Codex took 207. |
-| **211–212** | Phase 38.2 (billing, beta flag) | **RESERVED.** Moved here from "203, 204": 204 was already Codex's, and 203 is retired above. A contiguous block at the end keeps Phase 38.2's own migrations in order relative to everything before them. |
+| **211–212** | **RETIRED — DO NOT FILL** | Former Phase 38.2 reservation. Later migrations 213–218 were applied before Phase 38.2 implementation began, so using these numbers now would create an out-of-order trap. Phase 38.2 uses 221–223 instead. |
 | **213** | Playbook browser table-grant hardening | **APPLIED, VERIFIED, AND REGISTERED 2026-09-10.** The 38-row pre-apply gate matched the exact residual grants on all 24 table/role pairs. The privilege-only repair committed, and `VERIFY-201-204-GRANTS.sql` returned zero browser-role rows. Pending migrations 205–207 were separately hardened at creation time. |
 | **214** | Verified invitation claim hardening (Codex) | **APPLIED AND VERIFIED 2026-09-12.** A direct apply initially left the migration unregistered; definition-level review confirmed all seven security invariants, an ACL-only recovery removed inherited `service_role` table privileges beyond `INSERT`/`SELECT`, and the ledger was registered only after every recovery check passed. Supabase email-confirmation behavior and live signup UAT remain separately human-coordinated. |
 | **215** | Atomic Stripe Checkout creation (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds claim/finalize/release RPCs, economics-bound idempotency, and stored checkout recovery. Provider behavior UAT remains deferred. |
 | **216** | Atomic e-sign mint admission (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds one-instrument claim leases, provider reconciliation records, and active-instrument uniqueness guards. The reviewed source now revokes inherited `service_role` table grants before granting only the four privileges required by the mutable claim ledger. Provider behavior UAT remains deferred. |
 | **217** | Atomic Playbook operations (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Makes activation and incident state changes transactional with their audit events and adds compare-and-swap boundaries. Live operator UAT remains deferred. |
 | **218** | Privacy-safe authentication diagnostics (Codex) | **APPLIED AND VERIFIED 2026-09-12.** Adds allowlisted, non-PII auth failure events for the gated IT Auth Health console, service-only retention, and exact 30-day cleanup. Live console and retention-route UAT remain deferred. |
+| **219–220** | Phase 38.1 Member workspace rights proposals and master-ownership claims | **APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** |
+| **221–223** | Phase 38.2 workspace billing, usage metering, and Playbook doctrine publication | **APPLIED AND STRUCTURALLY VERIFIED 2026-09-13.** Application deployment and human UAT remain. |
 
 **Read this table, not the migration headers.** An earlier line here said "188 = the pre-existing F3
 fix; 189+ for this phase" — wrong on both counts, residue of the 188/189 renumber. Separately, the
@@ -2382,7 +2385,7 @@ surfaces.
 **Requirements:** WS-13, WS-14, WS-15, WS-16, WS-17, WS-18, WS-19, WS-29
 **Decisions — already locked, do not re-ask:** D-10, D-30, D-31, D-32, D-33, D-36, D-37, D-38, D-39,
 D-41 in `.planning/phases/38-member-organization-team-workspaces/38-CONTEXT.md`
-**Migrations:** 189+ (187–188 are reserved for 38.2; reconcile at planning)
+**Migrations:** 219+ if required (production is applied through 218; re-check the full ledger before authoring)
 
 **Watch-outs:** (a) In-session workspace switching has **no in-repo precedent** — `components/auth/AccountContextSwitch.tsx`
 is explicitly the ANTI-pattern (it signs out and re-logs in). Build a parallel resolver keyed off the
@@ -2395,11 +2398,18 @@ is the closest analog for the D-32 Roster/Activity room, including its hide-not-
 **Status:** Split from Phase 38 on 2026-09-05, owner-approved. Decisions already exist in
 `38-CONTEXT.md` — run `/gsd-plan-phase 38.1` directly; no discuss-phase needed.
 
-**Plans:** 0 plans
+**Plans:** 8 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 38.1 to break down)
+- [x] 38.1-01 — Active workspace URL context, persistent chrome, and in-session switching
+- [x] 38.1-02 — Roster and Activity sibling views with one consistent read model
+- [x] 38.1-03 — Member-visible workspace audit surface
+- [x] 38.1-04 — Contract Locker workspace shelf and document provenance views
+- [x] 38.1-05 — Evidence expiry and authority-tier lapse enforcement
+- [x] 38.1-06 — Rights proposals and Member confirmation
+- [x] 38.1-07 — Master-ownership claims and evidence-derived label access
+- [x] 38.1-08 — Automated hardening, accessibility, and deferred human UAT package
 
 ---
 
@@ -2413,22 +2423,218 @@ enforced; then the cohort-scoped rollout flag and the doctrine documentation upd
 **Requirements:** WS-21, WS-22, WS-27, WS-28
 **Decisions — already locked, do not re-ask:** D-44, D-45, D-46, D-47, D-53, D-55, plus the
 `<documentation>` section's ACCOUNT-TYPES.md + Playbook update list in `38-CONTEXT.md`
-**Migrations:** 187–188 (reserved at Phase 38 planning)
+**Migrations:** 221–223 candidates. The historical 187–188 reservation is obsolete: those numbers
+were consumed by Phase 38 hotfix/doctrine work, 197 already shipped the D-55 cohort table, and
+219–220 belong to Phase 38.1. Re-check the full repository ledger before creating any later file.
 
 **Watch-outs:** (a) Organization billing has **no in-repo precedent** — build from research, not from
 analog. (b) Do NOT relax `subscriptions.user_id UNIQUE NOT NULL`; the workspace plan is an ADDITIVE
 table beside it. (c) D-46 is absolute — a billing event must never destroy rights evidence, detach a
 project, or touch a Member's own catalogue. (d) The ACCOUNT-TYPES.md and Playbook updates are this
 work's contract with every future reader; the Playbook publish is a human-gated migration per repo
-convention (precedent: migrations 141, 150, 178). (e) The D-56 disable control already shipped in
-Phase 38 — this phase adds the cohort flag, not the kill switch.
+convention (precedent: migrations 141, 150, 178). (e) The D-55 cohort table and D-56 disable control
+already shipped in Phase 38 — this phase reuses both through one Leadership console and creates no
+second rollout source of truth.
 
 **Depends on:** Phase 38 (workspace entity), Phase 38.1 (the surfaces the cohort flag gates)
-**Status:** Split from Phase 38 on 2026-09-05, owner-approved. Decisions already exist in
-`38-CONTEXT.md` — run `/gsd-plan-phase 38.2` directly; no discuss-phase needed.
+**Status:** Implemented; migrations 221–223 were applied and structurally verified in production on
+2026-09-13. Application deployment is pending, and human UAT remains recorded in
+`38.2-DEFERRED-UAT.md`.
+
+**Plans:** 4 plans
+
+Plans:
+
+- [x] 38.2-01 — Workspace billing entity and read-only lifecycle
+- [x] 38.2-02 — Beta usage metering and workspace usage surface
+- [x] 38.2-03 — Workspace rollout and emergency operations console
+- [x] 38.2-04 — Account architecture and workspace doctrine publication
+
+### Phase 39: Writer's Room — the take as a real review surface (real waveform peaks, range comments, private pins, keyboard shortcuts, playback speed)
+
+**Goal:** Make a recording take in the Writer's Room something a writer can actually review
+against, instead of a decorative strip. Five items on one spine — the waveform:
+
+1. **Real waveform peaks.** `components/catalogue/TimedTrackPlayer.tsx:44` and
+   `components/catalogue/VersionComparisonPanel.tsx:32` each hardcode an identical 48-value
+   `WAVE_BARS` array, rendered for every take of every version of every work — a writer cannot
+   see the chorus, or see that v3 is louder than v2. `lib/catalogue/record-over-beat.ts:46`
+   already exports a working `waveformPeaks()` used in production by `RecordOverBeatStudio`.
+   Extract peaks once client-side at creation, persist ~200 values on `work_versions`, retire
+   both constants. Decoding happens once per take, never on render. (Corrected 2026-09-12 during
+   research: Writer's Room takes are capped at **50MB** by `MAX_BYTES` in
+   `lib/catalogue/audio-mime.ts:13` — the 250MB figure belongs to Sound Vault's separate upload
+   path in `lib/storage/index.ts:7`. At 50MB no server-side extraction is needed at all.)
+
+2. **Range comments.** `work_version_comments.timestamp_ms` is a single `NOT NULL` integer
+   (migration 160), so "lower the guitars through this section" has nowhere to live. Add a
+   nullable `end_timestamp_ms`. Drag-select shades the span; playback loops it. Also delivers
+   the "loop a range around a note" item already sitting in the 2027 design doc.
+
+3. **Private pins.** A wordless pin on the timeline, visible only to whoever dropped it,
+   notifying nobody. Solves first-listen friction — drop pins while listening, come back and
+   write real notes on the ones that still matter. Deliberately private, not shared: a private
+   pin is not a communication, so it sits entirely outside the notes doctrine. A pin must be
+   promotable into a real timed comment, so it is a stage in one flow rather than a second
+   parallel system cluttering the timeline.
+
+4. **Keyboard shortcuts.** The player has zero keydown handlers for playback today; every
+   interaction is a mouse. Spacebar play/pause, arrow-key nudge, marker prev/next.
+
+5. **Playback speed.** Absent today — the player exposes only a seek slider.
+
+**Operating boundaries:** (a) Everything here is creative context only — no note, pin, range or
+reaction may alter authorship, credits, splits, rights, approvals, delivery state or membership
+(`docs/design/WRITERS-ROOM-WAVEFORM-NOTES-2027.md`). (b) Notes stay bound to the exact take they
+were created on; a note on v1 never silently moves to v2, and the existing explicit carry-forward
+review (`work_version_comment_carry_reviews`) remains the only path. (c) Direct table writes stay
+revoked; validated server functions perform mutations. (d) A private pin must never become visible
+to another room member or generate a notification. (e) Mobile is a primary case, not a reduced
+desktop layout — thumb-sized hit targets, composer above the keyboard. (f) Shortcuts must not fire
+while a comment draft or the take-rename field holds focus.
+
+**Out of scope (owner-decided 2026-09-12):** waveform zoom — deferred because range comments may
+absorb the precision need; revisit only if real usage shows writers hitting the ceiling.
+Also out: shared/team markers; freehand drawing and stamp tools; a general audio editor; video
+tracks; stacked multi-track lanes (changes the `work_versions` model — needs its own design
+conversation); guest/external reviewer links (the access and pricing model is not being touched).
+
+**Open questions for planning:** (i) peak extraction server-side at upload vs client-side on first
+play with a cached write-back; (ii) whether a range comment carries forward to a new take the same
+way a point comment does — the existing carry-forward UI assumes a single timestamp.
+
+**Depends on:** Phase 37 (My Catalogue / works) and the shipped Writer's Room note stack
+(migrations 160, 161, 180).
+
+**Migrations:** Unassigned. Claim a number only during implementation planning after checking
+`supabase/migrations/`, untracked files, `.planning/quick/**` and this ledger. Highest on disk at
+roadmap time was 218 (Codex landed 214–218 in PR #67) and a Codex session is working Phase 38.1 in
+parallel, so numbers will move. Do not hardcode one here.
+
+**Parallel-session note:** Codex is concurrently building Phase 38.1 (workspaces/nav/middleware —
+`app/w/`, `components/nav/Workspace*.tsx`, `lib/workspaces/*`, `middleware.ts`,
+`app/(artist)/layout.tsx`, `components/nav/ArtistNav.tsx`). This phase touches
+`components/catalogue/*`, `lib/catalogue/*`, `app/api/works/*` and `supabase/migrations/*` — no
+file overlap, but ROADMAP.md is modified and uncommitted by that session. Re-read before editing,
+edit surgically, never `git add -A`.
+
+**Source:** `docs/design/WRITERS-ROOM-WAVEFORM-NOTES-2027.md` (265 lines — already specifies most
+of items 1–3) plus a competitive teardown of notetracks.com, 2026-09-12.
+
+**Status:** Owner-approved and roadmapped 2026-09-12. Planned 2026-09-12 — 11 plans across 7 waves,
+covering all eighteen locked decisions (D-01..D-18) in `39-CONTEXT.md`. Nothing executed.
+
+**Plans:** 11 plans
+
+Plans:
+
+- [ ] 39-01-PLAN.md — Migration: peaks column, range-comment span + reposition flag, author-only private-pins table, and the matching row types (wave 1)
+- [ ] 39-02-PLAN.md — Pure client model: waveform peaks helper, transport/keyboard model, span math (wave 1)
+- [ ] 39-03-PLAN.md — Peaks persisted on every creation path, bounded server-side; record-over studio reuses its rendered buffer (wave 2)
+- [ ] 39-04-PLAN.md — Range comments through the comments route, presenter and carry-forward flag (wave 2)
+- [ ] 39-05-PLAN.md — Private pins API: author-only routes plus the no-broadcast doctrine gate (wave 2)
+- [ ] 39-06-PLAN.md — Real waveform in the take player, self-healing rest state, and the comment-terminology rename (wave 3)
+- [ ] 39-07-PLAN.md — A/B panel: level-matched waveform, four-step pitch-preserving speed, terminology (wave 4)
+- [ ] 39-08-PLAN.md — Mark-span mode, committed spans, pre-roll and opt-in loop, amber reposition prompt (wave 4)
+- [ ] 39-09-PLAN.md — Private pins in the take player: drop, draw, promote-consumes, remove (wave 5)
+- [ ] 39-10-PLAN.md — Keyboard transport scoped to one active player, plus playback speed in the take player (wave 6)
+- [ ] 39-11-PLAN.md — [BLOCKING, human-gated] migration 146 sequencing gate, schema push, pins RLS two-account smoke, manual verifications (wave 7)
+
+### Phase 40: Writer's Room — DAW marker export (Audition, Audacity, CSV)
+
+**Goal:** Get a take's comments out of the browser and into the DAW, where the person acting on
+them actually works. Today Writer's Room feedback lives only in Funūn — the producer or engineer
+receiving it is in Pro Tools, Logic, Ableton or Audition, translating timecodes by hand. This
+phase serializes a take's comments as timeline markers and hands them over as a file.
+
+Small surface, high signal to exactly the people a songwriter most needs to reach.
+
+1. **One export endpoint** that reads a take's comments and serializes them as timeline markers.
+2. **Three formats** — an Audition-importable marker file, an Audacity label track, and a generic
+   CSV as the universal fallback. (Audacity's `start⇥end⇥label` TSV is well documented; **the
+   exact Audition marker-import format must be verified at research time** — do not assume XML.)
+3. **A download control** on the take. No new comment concepts, no new UI vocabulary.
+
+**Why this sits AFTER Phase 39, not before:** both Audition and Audacity support *range* markers.
+Until Phase 39 ships range comments (D-04/D-07), every comment is a single timestamp, so an
+export today would be a file of zero-length point markers — the weak version of the feature.
+Phase 39 is what makes a marker span mean something.
+
+**Operating boundaries:** (a) Export is a **read**. It must never alter comments, resolution
+state, authorship, credits, splits, rights, approvals or delivery state. (b) Only current work
+members may export — the same gate that governs reading the comments (`is_work_owner` /
+`work_member_tier`). (c) **Private pins are never exported into any shared file** — Phase 39's
+D-11 makes them invisible to everyone but their author, and a downloadable file is the easiest
+way to break that. (d) One-way, outbound only: no importing markers back into Funūn. (e) The
+exported file is creative context, not a deliverable, a rights record, or evidence of approval.
+
+**Open questions for discussion:** (i) does the export include resolved comments, unresolved
+only, or is it the exporter's choice? (ii) may an author export *their own* pins in a personal
+file, or are pins simply never exportable? (iii) does a carried comment export with its
+"carried from v1" provenance, or just its text? (iv) does the marker label carry author
+attribution (`@maya: bring the bass up`) or the text alone? (v) which DAWs beyond
+Audition/Audacity earn a format — Reaper and Logic have their own conventions and Pro Tools
+marker import is notoriously awkward.
+
+**Depends on:** Phase 39 (range comments are the reason this is worth building).
+
+**Migrations:** None expected — this is a read plus serialization, with no schema change. If one
+turns out to be needed, claim the number only at implementation planning after checking
+`supabase/migrations/`, untracked files and `.planning/quick/**`.
+
+**Source:** competitive teardown of notetracks.com, 2026-09-12 — their Audition/Audacity marker
+export is the most concrete pro-workflow feature they ship, and the one Funūn has no answer to.
+Recorded as a deferred idea in `39-CONTEXT.md` before being promoted to its own phase on
+2026-09-12 at owner request.
+
+**Related but NOT in this phase:** the clickable transcript pane (also from the teardown, also
+deferred) would pair naturally with this as a "getting work out" phase. It stays deferred unless
+the owner folds it in.
+
+**Status:** Owner-approved and roadmapped 2026-09-12. Implementation planning not started.
 
 **Plans:** 0 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 38.2 to break down)
+- [ ] TBD (run /gsd-plan-phase 40 to break down)
+
+---
+
+### Phase 38.3: Client Partner Qualification Gameplan & BDT-to-AE Handoff
+
+**Goal:** Install the reusable `client-partner-qualification` CRM Gameplan required by the Business
+Development Doctrine. Give BDT and authorized collaborators a consistent internal workflow for
+qualifying prospective music buyers and Client Partner organizations, recommending the appropriate
+access path, preserving a fast route for legitimate buyers ready to transact, and handing the
+relationship to an Account Executive without losing context or accountability.
+
+**Operating boundaries:** (a) The Gameplan is an internal checklist, not a client application, legal
+determination, permanent risk score, or prerequisite to an immediate legitimate licence. (b) BDT may
+recommend verification; only explicitly authorized senior BDT members, Leadership, or the designated
+Verification function may decide it. (c) A ready organic buyer may proceed through transaction-scoped
+identity, authority, rights, commercial, fraud, sanctions, signature, and payment checks while broader
+organization verification continues. (d) BDT and the receiving AE remain joint owners during the
+approximately six-month incubation and handoff period, after which the receiving team becomes the
+full relationship owner when the transfer is documented as complete. (e) Checklist completion never
+replaces authoritative contract, payment, verification, clearance, or licensing records.
+
+**Dependencies:** Phase 31.1 Client Partner CRM workspace and call Game Plan; the applied Playbook
+connected-knowledge and operational platform; completion of the active Phase 38 workstream for
+sequencing and coordination.
+
+**Migrations:** Unassigned. Claim a number only during implementation planning after checking
+`supabase/migrations/`, untracked files, `.planning/quick/**`, and the authoritative roadmap ledger.
+
+**Status:** Owner-approved and roadmapped 2026-09-12. Implementation planning has not started.
+
+**Plans:** 6 planned slices
+
+Plans:
+
+- [ ] 38.3-01 — Finalize required, optional, and safely skippable qualification steps and outcomes
+- [ ] 38.3-02 — Install the reusable CRM Gameplan template and doctrine connection
+- [ ] 38.3-03 — Launch and track a Gameplan run from a buyer or Client Partner organization context
+- [ ] 38.3-04 — Add access recommendations, escalation paths, and the organic-buyer transaction fast path
+- [ ] 38.3-05 — Add BDT-to-AE assignment, joint-ownership milestones, handoff evidence, and completion
+- [ ] 38.3-06 — Verify authorization, audit history, accessibility, failure states, and deferred human UAT

@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/admin/gate'
 import { logStaffAction } from '@/lib/staff/audit'
 import { readWorkspaceAccessState, setWorkspaceAccessEnabled } from '@/lib/workspaces/access-kill-switch'
+import { checkRateLimit } from '@/lib/security/rate-limit'
 
 // ─── /api/admin/workspaces/access — the D-56 / WS-31 platform-wide kill ────
 // switch, leadership-only. This route plus the migration 186 push checkpoint
@@ -52,7 +53,7 @@ export async function GET() {
 
   try {
     const state = await readWorkspaceAccessState(service)
-    return NextResponse.json({ data: state })
+    return NextResponse.json({ data: state }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (err) {
     return NextResponse.json(
       { error: 'Failed to read workspace access state' },
@@ -64,6 +65,14 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireStaff(['leadership'])
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  if (await checkRateLimit(`workspace-access-control:${auth.user.id}`, {
+    windowMs: 60_000,
+    maxAttempts: 10,
+    failClosed: true,
+  })) {
+    return NextResponse.json({ error: 'Too many control changes. Try again shortly.' }, { status: 429 })
+  }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const parsed = PostBodySchema.safeParse(body)

@@ -10,17 +10,22 @@ Artist, songwriter, producer, manager, publisher, attorney, engineer, label exec
 music supervisor, and similar labels are **professional roles**, not account types and not
 permissions.
 
-## The three account classes
+## The three identity classes
 
-| Account class | Purpose | Structural signal | Product context |
+| Identity class | Purpose | Structural signal | Product context |
 |---|---|---|---|
 | **Member Account** | Personal and professional creative work | `user_profiles` row | Member workspace: Ideas, Sound Vault, Writer's Room, Contract Locker, network, tools |
-| **Client Partner Account** | Verified organization access for licensing music through The Crate | approved `buyer_members` relationship to `buyer_orgs` | Client Partner organization workspace |
+| **Limited guest/signature recipient** | Complete one invited action without receiving a full Funūn workspace | Narrow token, invitation, or signing record | Only the invited room, decision, or signature flow |
 | **Funūn Team Member Account** | Operating the Funūn business | `funun_staff` row plus server-verified `staff_roles[]` | Internal staff/admin surfaces |
 
-Limited guests and signature recipients are **not a fourth account class**. They receive a
-narrow, expiring invitation or signing context. If they later join Funūn, they become a
-Member without losing the evidence attached to the earlier invitation.
+Client Partner is **not an identity class**. It is a verified organization relationship granted
+to a Member through `buyer_members` and `buyer_orgs`. A Member may be a songwriter in their
+personal context, a workspace member for several professional teams, and a music buyer for one
+verified Client Partner organization without acquiring a second identity.
+
+Limited guests and signature recipients receive a narrow, expiring invitation or signing context.
+If they later join Funūn, they become a Member without losing the evidence attached to the earlier
+invitation.
 
 ## One Member umbrella
 
@@ -126,3 +131,42 @@ When adding a feature, ask in this order:
 4. Which record is authoritative for the claimed right?
 
 Never answer any later question from a professional-role label alone.
+
+## Member workspaces are operating contexts, not identities
+
+A Member workspace represents an artist team, management roster, label, or combined operating
+organization. It is a durable entity reached from the same Member identity through an explicit
+active-workspace selector. A person may belong to several workspaces at once. Opening one must not
+sign them into a different identity, merge catalogues, or make it the owner of their personal work.
+
+- `workspace_members` determines who may enter and administer the workspace.
+- `workspace_roster_relationships` records a proposed, accepted, refused, or ended professional
+  relationship. It never proves ownership or legal representation by itself.
+- `workspace_attachments` points to a Member-owned project without copying or transferring it.
+- `workspace_grants` gives narrow, revocable project permissions rooted in a live relationship and
+  current Member consent.
+- Split sheets, contracts, registrations, and confirmed rights evidence remain the authorities for
+  credits, ownership, control, signature, and payment.
+
+Workspace guests receive workspace chrome only. Reaching Member project data requires the role
+floor, an active roster relationship, a live attachment, a live grant, and current custody to agree.
+No workspace participant can grant more access than they hold.
+
+## Workspace billing and continuity
+
+Workspace billing belongs to the workspace. It must never consume, replace, or silently modify an
+individual Member subscription. During beta, workspaces begin on a free active plan while seat,
+roster, storage, AI, e-sign, and audio-processing usage is measured but not enforced.
+
+A paused, past-due, or canceled workspace becomes read-only. Its roster, attachments, rights
+evidence, contracts, activity, and audit history remain readable; the billing lifecycle never
+deletes, detaches, transfers, or rewrites Member-owned catalogue records. A missing billing decision
+fails closed for workspace mutations and does not affect the Member's personal workspace.
+
+## Rollout and emergency controls
+
+The existing database kill switch is the single platform-wide workspace stop control. The existing
+account cohort is the single beta rollout boundary. Environment configuration may end the cohort
+requirement but can never override a disabled database control. Cohort membership is Leadership-only
+operational information; an account outside the bounded pilot receives a 404 rather than a feature
+disclosure.

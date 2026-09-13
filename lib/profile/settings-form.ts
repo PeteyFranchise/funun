@@ -1,6 +1,6 @@
 // ── Artist Settings shared form model + pure tab logic ──────────────────
-// The artist Settings page is split across four linkable routes
-// (/settings, /settings/profile, /settings/payouts, and the Permissions
+// The artist Settings page is split across linkable routes
+// (/settings, /settings/profile, /settings/payouts, rights proposals, and the Permissions
 // tab) that share one client provider mounted in
 // app/(artist)/settings/layout.tsx. Everything in this
 // module is PURE — no React, no fetch, no next/navigation — because that is
@@ -102,7 +102,7 @@ export function toForm(p: UserProfile): FormState {
 // the index route (/settings). Do NOT switch this to a usePathname() prefix
 // test — '/settings' is a prefix of all three routes and would mark every
 // tab active at once.
-export type SettingsTabId = 'rights' | 'profile' | 'payouts' | 'permissions'
+export type SettingsTabId = 'rights' | 'profile' | 'payouts' | 'permissions' | 'rights-proposals' | 'master-claims'
 
 export type SettingsTab = {
   id: SettingsTabId
@@ -115,6 +115,18 @@ export const SETTINGS_TABS: readonly SettingsTab[] = [
   { id: 'rights', href: '/settings', label: 'Rights & contracts', segment: null },
   { id: 'profile', href: '/settings/profile', label: 'Public profile', segment: 'profile' },
   { id: 'payouts', href: '/settings/payouts', label: 'Payouts', segment: 'payouts' },
+  {
+    id: 'rights-proposals',
+    href: '/settings/rights-proposals',
+    label: 'Rights proposals',
+    segment: 'rights-proposals',
+  },
+  {
+    id: 'master-claims',
+    href: '/settings/master-claims',
+    label: 'Master claims',
+    segment: 'master-claims',
+  },
   // WSR-27 / R-18 — the Member's consent surface. Last in the bar, and the
   // only entry point this phase adds: it is deliberately NOT a new
   // top-level nav item (see the UI-SPEC's Placement section).
@@ -204,7 +216,7 @@ function fieldsForTab(tab: SettingsTabId): readonly (keyof FormState)[] {
   // left to the fall-through so isTabDirty and buildTabPayload are correct
   // by construction: neither tab can ever be dirty and neither can ever
   // contribute a key to a PATCH body.
-  if (tab === 'permissions') return []
+  if (tab === 'permissions' || tab === 'rights-proposals') return []
   return []
 }
 
@@ -231,7 +243,7 @@ export function isTabDirty(tab: SettingsTabId, form: FormState, baseline: FormSt
  */
 export function buildTabPayload(tab: SettingsTabId, form: FormState): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
-  if (tab === 'payouts' || tab === 'permissions') return payload
+  if (tab === 'payouts' || tab === 'permissions' || tab === 'rights-proposals') return payload
 
   const fields = tab === 'rights' ? RIGHTS_FIELDS : PUBLIC_FIELDS
   for (const key of fields) {
@@ -301,7 +313,7 @@ export function buildSaversForTab(
   if (tab === 'profile') {
     return [profileSaver, { dirty: deps.visibilityDirty, save: deps.saveVisibility }]
   }
-  if (tab === 'permissions') return []
+  if (tab === 'permissions' || tab === 'rights-proposals') return []
   return []
 }
 

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { requireWorkspaceAccess, requireWorkspaceRole } from '@/lib/workspaces/access'
+import {
+  requireWorkspaceAccess,
+  requireWorkspaceMutationAccess,
+  requireWorkspaceRole,
+} from '@/lib/workspaces/access'
 import { canManageRoster } from '@/lib/workspaces/membership'
 import {
   createPermissionRequest,
@@ -113,13 +117,19 @@ function parseStateFilter(raw: string | null): PermissionRequestState[] | undefi
  * workspace chrome: ordinary members, contractors and guests get nothing
  * here, the same posture R-12 takes for proposed relationships.
  */
-async function openWorkspaceContext(workspaceId: string, action: string) {
+async function openWorkspaceContext(
+  workspaceId: string,
+  action: string,
+  mutation = false
+) {
   const supabase = await createApiClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const access = await requireWorkspaceAccess(supabase, user, workspaceId)
+  const access = mutation
+    ? await requireWorkspaceMutationAccess(supabase, user, workspaceId)
+    : await requireWorkspaceAccess(supabase, user, workspaceId)
   return requireWorkspaceRole(access, canManageRoster, `Only owners and admins can ${action}.`)
 }
 
@@ -130,7 +140,7 @@ export async function POST(
 ) {
   const { workspaceId } = await params
 
-  const gated = await openWorkspaceContext(workspaceId, 'request permissions')
+  const gated = await openWorkspaceContext(workspaceId, 'request permissions', true)
   if (!gated.ok) return NextResponse.json({ error: gated.error }, { status: gated.status })
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -191,7 +201,7 @@ export async function DELETE(
 ) {
   const { workspaceId } = await params
 
-  const gated = await openWorkspaceContext(workspaceId, 'withdraw permission requests')
+  const gated = await openWorkspaceContext(workspaceId, 'withdraw permission requests', true)
   if (!gated.ok) return NextResponse.json({ error: gated.error }, { status: gated.status })
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
