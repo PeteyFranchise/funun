@@ -47,6 +47,7 @@ The Playbook must support a page or document entry that preserves:
 | Talent Services & Member Success | Talent Services & Member Success | Role Doctrine | Internal; restricted member cases separate |
 | Sync & Licensing | Sync & Licensing | Role Doctrine | Internal; deal records separate |
 | Rights, Legal & Contract Operations | Rights, Legal & Contract Operations | Role Doctrine | Internal; privileged matters excluded |
+| Legal Leadership and Roles | Rights, Legal & Contract Operations | Role Doctrine | Restricted; privileged matters excluded |
 | Catalogue, Metadata & Verification | Catalogue Operations | Role Doctrine | Internal |
 | Finance, Accounting & Royalties | Finance | Role Doctrine | Internal; financial records excluded |
 | Marketing, Community & Audience | Marketing | Role Doctrine | Internal |
@@ -90,6 +91,10 @@ Each function should publish a short entry series rather than one overwhelming p
 9. **Ethics, Conflicts and Refusal**
 
 The concise Start Here entry links to the detailed operating entries. Sensitive procedures or case records never belong inside general doctrine articles.
+
+The Legal room should also publish **Legal Leadership and Roles** as a restricted
+companion entry. It defines job architecture, hiring gates and authority boundaries;
+privileged matters and individual legal advice remain outside the Playbook.
 
 ## Cross-functional entries
 
