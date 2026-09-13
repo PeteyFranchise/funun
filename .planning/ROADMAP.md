@@ -674,7 +674,7 @@ Plans:
 | 38.0.3. RLS Helper API Exposure | 6/6 | **SHIPPED 2026-09-09.** Migrations 208–210 applied; structural gates passed; targeted revoke behavior passed; `public.no_block` returned 404 to anon and service-role HTTP probes. Organic-data cross-user and Green Room policy behavior remains explicitly deferred. | 2026-09-09 |
 | 38.1. Member Workspaces — Active-Workspace UX, Contracts & Authority, Audit | 8/8 | **SHIPPED 2026-09-13.** Migrations 219–220 applied, registered, and structurally verified; application deployed through PR #68. Human browser, accessibility, and live-role UAT remains deferred. | 2026-09-13 |
 | 38.2. Member Workspaces — Org Billing, Beta Rollout & Doctrine Docs | 4/4 | **SHIPPED 2026-09-13.** Migrations 221–223 applied, registered, and structurally verified; application deployed through PR #68. No Stripe charge path or beta quota enforcement was introduced; billing, rollout-console, and Playbook UAT remains deferred. | 2026-09-13 |
-| 39. Sync Demand Signals — buyer interest telemetry & commission pipeline | 0/0 | **ROADMAPPED 2026-09-09 (owner) — soon.** Capture, in the Funūn team console, aggregate buyer interest in catalogue tracks that CANNOT be licensed as-is — principally sampled tracks awaiting clearance. **The insight:** if six supervisors save the same sampled track, that is not six dead ends, it is a commissioned original with proven demand behind it. Left to individual AE conversations that signal evaporates. Needs: per-track interest counters across saves / Selects adds / plays / brief attachments, deduplicated by buyer org; a ranked team-console view of highest-demand unlicensable tracks; and enough attribution to hand a producer a real brief (which buyers, what they responded to, what else they saved). Feeds the Brief Builder / Vibe Match surfaces rather than adding a new one. **Depends on** the sync-catalogue entry model in `.planning/deliberations/sync-catalogue-entry-and-samples.md` and on 22-05 putting live tracks in the catalogue. Consent note: this counts BUYER behaviour on Funūn surfaces, not third-party tracking — keep it inside `.planning/deliberations/` guest-lead consent norms. | - |
+| 39. Sync Demand Signals — buyer interest telemetry & commission pipeline | 2/11 | In Progress|  |
 | 40. The Crate — Sync Doctrine: versioning, track-level rights & withdrawal | 0/0 | **ROADMAPPED 2026-09-10 (owner).** The redesign behind the Crate admission doctrine, split out from the four defects fixed the same day. Source: a design review Codex produced 2026-09-10, reacting to the entry-gate decisions in `.planning/deliberations/sync-catalogue-entry-and-samples.md`. **The core reframe:** the project type currently conflates THREE independent facts — commercial release status (unreleased / scheduled / released), production maturity (idea / demo / working mix / finished master), and sync availability (not submitted / under review / admitted / withdrawn / removed). One field cannot govern sync eligibility. **This REOPENS the 2026-09-09 decision to exclude `unreleased`:** a finished master held back for the right placement is among the most valuable things a sync catalogue can hold — supervisors pay for exclusivity, and a placement can BE the release. A demo is not. The rule should attach to production maturity, not to the type name. Workstreams: (a) **sync-master versioning** — admission binds ONE audio version, a new mix creates a candidate rather than silently replacing what a buyer heard, and shortlists/Selects retain the exact version reviewed; (b) **track-and-version authoritative listings** — a project-level document satisfies a track only where its recorded scope says so, so three clean album tracks are not blocked by a fourth; (c) **metadata split** — hard-gate identity and authorization (writers, shares, master owners, contacts, sample disclosure), warn on administrative identifiers (IPI, ISWC, ISRC, PRO, MLC, distributor), since an IPI routes royalties and does not grant permission; (d) an **applicable/not-applicable state** on every rights requirement, affirmatively declared rather than inferred from absent data; (e) **withdrawal and removal** — what happens to a shortlist, a Selects list, an open request, a signed licence when a rights holder pulls a song, including a co-owner revoking authorization; (f) **buyer-facing rights status** — "cleared for licence" vs "clearance required" vs "authorization in progress", so The Crate stops implying everything in it is licensable today. (g) **`signedOf()` under-counts `verified` documents — a CONFIRMED defect, not a design question.** `signedOf()` in `lib/vault/readiness.ts` counts only `status === 'signed'`, so a split sheet or producer agreement uploaded through `POST /api/contracts/verify` — which writes `'verified'` after AI verification — reads `'warning'` and BLOCKS Crate entry, despite carrying MORE evidence than a plain upload that passes. The stronger path produces the worse outcome. `evidencedOf()`, added 2026-09-10 for the copyright item, already accepts `signed || verified` and is the correct shape; `split_sheets` and `hire_right` still route through `signedOf()`. Fixed for copyright only and deliberately left alone elsewhere, because widening it moves two gates that were not in that task's scope — it loosens what enters the catalogue and deserves a decision rather than a drive-by. Note `stage3.docStatusToReq()`, `lib/contracts/locker-attention.ts` and `lib/eligibility/direct-overlay.ts` already treat signed and verified as one state, so `signedOf()` is the outlier. **Depends on** the all-owners-authorization work (22-05 item 2) and on real beta usage — the owner's standing position is that these gates are provisional and should be revised from usage, not theory. **Codex owns the phase design.** | - |
 
 *Counts are `SUMMARY.md` files over `PLAN.md` files on disk. A few phases show more summaries than plans (27, 33) where extra summaries were written for split or superseded plans — not an error. **Genuinely unfinished work includes: 16-08/09 (payments + counsel-gated sync-license signing), 20-03/04 (profile-rename cutover, human-gated pushes), 22-05 (catalogue enrichment), Phase 31.2's owner checkpoint/UAT, and 32-09 (k6 load test, deferred to pre-launch).***
@@ -2540,12 +2540,12 @@ of items 1–3) plus a competitive teardown of notetracks.com, 2026-09-12.
 locked decisions (D-01..D-18); migration 224 is reserved and the production baseline through 223
 is satisfied. Nothing in Phase 39 has been executed.
 
-**Plans:** 11 plans
+**Plans:** 2/11 plans executed
 
 Plans:
 
-- [ ] 39-01-PLAN.md — Migration: peaks column, range-comment span + reposition flag, author-only private-pins table, and the matching row types (wave 1)
-- [ ] 39-02-PLAN.md — Pure client model: waveform peaks helper, transport/keyboard model, span math (wave 1)
+- [x] 39-01-PLAN.md — Migration: peaks column, range-comment span + reposition flag, author-only private-pins table, and the matching row types (wave 1)
+- [x] 39-02-PLAN.md — Pure client model: waveform peaks helper, transport/keyboard model, span math (wave 1)
 - [ ] 39-03-PLAN.md — Peaks persisted on every creation path, bounded server-side; record-over studio reuses its rendered buffer (wave 2)
 - [ ] 39-04-PLAN.md — Range comments through the comments route, presenter and carry-forward flag (wave 2)
 - [ ] 39-05-PLAN.md — Private pins API: author-only routes plus the no-broadcast doctrine gate (wave 2)
@@ -2573,6 +2573,7 @@ Small surface, high signal to exactly the people a songwriter most needs to reac
    byte. **Per decision E-12, if it cannot be confirmed the phase ships CSV + Audacity and
    Audition follows as a small separate piece. Audition is not a blocker.** All three stay
    separately named options either way (E-13) — a user picks their DAW, not a file format.
+
 3. **Two download controls** on the take — *Export comments* (shareable) and *Export my pins*
    (author-only). They are deliberately separate files and separate actions so a shareable file
    can never contain private pins (E-03). No new comment concepts, no new UI vocabulary.
@@ -2677,11 +2678,13 @@ so without treating a member's address book as a platform-owned lead database.
    privacy-safe identity card and an explicit **Add to roster** action. Reuse the shipped Green Room
    People Search privacy, visibility, and bidirectional-block doctrine rather than creating a second
    member directory.
+
 2. **Invite by email.** Use this when the person cannot be found. Before minting a signup capability,
    perform the existing verified exact-email reconciliation server-side. If the address belongs to an
    eligible existing Member, create/link the private roster identity and use an existing-member
    collaboration notification instead of sending a claim-profile email. A hidden or blocked identity
    must not be exposed through a reverse-lookup result.
+
 3. **Enter manually.** Keep the structured form for cases where the Member already holds the person's
    professional and rights information. Make clear which values were entered by the roster owner and
    which values have later been confirmed by the collaborator.
@@ -2691,14 +2694,19 @@ so without treating a member's address book as a platform-owned lead database.
 - My Roster is the Member's private reusable working list. Adding a person does **not** automatically
   create a social connection, send a message, add them to a song or workspace, assign a credit or
   split, grant access, or declare authorship, ownership, representation, custody, or authority.
+
 - Project/work invitations and any rights-bearing declarations remain separate, contextual actions
   with their existing authorization and acceptance rules.
+
 - Member identity comes from the canonical Funūn profile and verified account bridge; clients may
   never supply `claimed_by` or choose the destination account ID.
+
 - Search must be rate-limited, return only the public-safe profile projection, enforce both directions
   of blocking, respect profile visibility, exclude the requester, and resist handle/email enumeration.
+
 - If no discoverable match exists, the interface may offer email invitation but must not claim that
   the person is not a Funūn member. Duplicate roster creation must remain fail-closed.
+
 - Every path needs keyboard, screen-reader, responsive, empty, loading, error, duplicate, blocked,
   hidden-profile, and race-condition states before release.
 
@@ -2708,20 +2716,26 @@ so without treating a member's address book as a platform-owned lead database.
   signup requirement or background permission grab: **“Find people you already create with. See
   which contacts are already on Funūn. Your contacts won't be added, messaged, or invited without
   your approval.”**
+
 - Give each Member explicit settings for whether verified phone numbers and/or emails may be used to
   help existing contacts find them. Default and regional consent behavior require privacy/legal review.
+
 - Do not retain or repurpose the address book, build shadow profiles, create marketing audiences, or
   invite nonmembers automatically. Matching output reveals only eligible Funūn Members and only the
   minimum public-safe profile fields needed to recognize them.
+
 - Do not treat unsalted hashes of phone numbers or emails as sufficient privacy: those identifiers have
   small, guessable spaces. Select and threat-model a private-contact-discovery design (for example an
   appropriate private-set-intersection/OPRF service or a tightly bounded ephemeral alternative) before
   implementation. Document raw-identifier transit, retention, deletion, breach impact, vendor access,
   abuse controls, rate limits, auditability, and account/permission revocation.
+
 - Enforce bidirectional blocks, hidden/discoverability choices, region and age requirements, iOS and
   Android contact-permission policies, and a no-reverse-lookup/no-bulk-enumeration contract.
+
 - A match only enables **Add to roster** or a deliberate connection request. No automatic connection,
   follow, message, project invitation, credit assignment, or off-platform invitation is permitted.
+
 - Provide **Not now**, permission-revocation recovery, contact-refresh controls, and a clear method to
   delete any retained discovery state. The app must remain fully usable without contact access.
 

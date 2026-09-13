@@ -2,13 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 39
-current_phase_name: writer-s-room-the-take-as-a-real-review-surface-real-wavefor
+current_phase: 31.2
+current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
 status: Ready to execute
 stopped_at: Phase 39 plan 01 ready
-last_updated: "2026-09-13T00:00:00-04:00"
+last_updated: "2026-09-13T21:49:08.051Z"
 last_activity: 2026-09-13
-last_activity_desc: Phase 38 to Phase 39 planning and state cleanup
 progress:
   total_phases: 48
   completed_phases: 37
@@ -24,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 39 — Writer's Room take review surface
+**Current focus:** Phase 39 — writer-s-room-the-take-as-a-real-review-surface-real-wavefor
 
 > **Unfinished Phase 31.2 preserved (2026-09-13).** Phase 31.2 remains genuinely unfinished:
 > its owner checkpoint/UAT is deferred to organic beta and is not marked complete by moving the
@@ -292,7 +291,7 @@ goal-verified (12-VERIFICATION.md, 21/21 requirements met). Full repo suite gree
 (280 tests), tsc/lint/build clean; migrations 054–057 live. NOT formally complete —
 gated on: (1) two visual UAT items in 12-BROWSER-UAT-CHECKLIST.md, (2) Codex
 adversarial review, (3) PR #37 merge. ROADMAP Phase 12 stays [ ] until then.
-Last activity: 2026-08-25 — Phase 31.2 execution started
+Last activity: 2026-09-13
 summaries backfilled; goal-backward verification written.
 
 Note: the cumulative `progress:` counters in frontmatter are stale/approximate and will
