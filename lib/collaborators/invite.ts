@@ -49,6 +49,33 @@ export function buildCollaboratorJoinUrl(token: string): string {
 
 export type CollaboratorInviteEmail = { subject: string; html: string; text: string }
 
+type CollaboratorInviter = {
+  name: string | null
+  handle: string | null
+}
+
+function singleLineIdentity(value: string | null): string {
+  return (value ?? '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
+}
+
+function collaboratorInviterLabels(inviter: CollaboratorInviter): {
+  subject: string
+  body: string
+} {
+  const name = singleLineIdentity(inviter.name)
+  const rawHandle = singleLineIdentity(inviter.handle).replace(/^@+/, '')
+  const handle = rawHandle ? `@${rawHandle}` : ''
+
+  return {
+    subject: name || handle || 'A Funūn member',
+    body: name && handle ? `${name} (${handle})` : name || handle || 'A Funūn member',
+  }
+}
+
 /**
  * Renders the educational IPI-invite email body. Pure — reads only its
  * input, touches no network, and never throws. Moved byte-for-byte from
@@ -59,6 +86,8 @@ export function buildCollaboratorInviteEmail(input: {
   name: string
   token: string
   nextPath?: string
+  inviterName: string | null
+  inviterHandle: string | null
 }): CollaboratorInviteEmail {
   const inviteUrl = buildCollaboratorInviteUrl(input.token, input.nextPath)
 
@@ -68,16 +97,21 @@ export function buildCollaboratorInviteEmail(input: {
   // already-safe input).
   const safeName = esc(input.name)
   const safeInviteUrl = esc(inviteUrl)
+  const inviter = collaboratorInviterLabels({
+    name: input.inviterName,
+    handle: input.inviterHandle,
+  })
+  const safeInviter = esc(inviter.body)
   const entersWriterRoom = input.nextPath?.startsWith('/vault/works/') === true
   const subject = entersWriterRoom
-    ? `You've been invited into a Writer's Room on Funūn`
-    : `You've been added as a collaborator on Funūn — claim your profile`
+    ? `${inviter.subject} invited you into a Writer's Room on Funūn`
+    : `${inviter.subject} added you as a collaborator on Funūn`
   const invitationLine = entersWriterRoom
-    ? 'An artist has invited you to write with them in a <strong>Writer\'s Room</strong> on <strong>Funūn</strong>.'
-    : 'An artist has added you as a collaborator on <strong>Funūn</strong>.'
+    ? `${safeInviter} invited you to write with them in a <strong>Writer's Room</strong> on <strong>Funūn</strong>.`
+    : `${safeInviter} added you as a collaborator on <strong>Funūn</strong>.`
   const textInvitationLine = entersWriterRoom
-    ? "An artist has invited you to write with them in a Writer's Room on Funūn."
-    : 'An artist has added you as a collaborator on Funūn.'
+    ? `${inviter.body} invited you to write with them in a Writer's Room on Funūn.`
+    : `${inviter.body} added you as a collaborator on Funūn.`
   const actionLabel = entersWriterRoom ? 'Claim my profile and open the song' : 'Claim my Funūn profile'
 
   return {
@@ -85,7 +119,7 @@ export function buildCollaboratorInviteEmail(input: {
     html: `
       <h2>Hi ${safeName},</h2>
       <p>${invitationLine}</p>
-      <p>Claim your profile to review your credits, keep your rights information accurate, and collaborate on songs in one place.</p>
+      <p>Funūn is a shared workspace where you can write together, keep credits and metadata accurate, organize masters, and find new opportunities for your music.</p>
 
       <p><a href="${safeInviteUrl}" style="display:inline-block;padding:12px 22px;background:#818CF8;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">${actionLabel}</a></p>
 
@@ -98,7 +132,7 @@ export function buildCollaboratorInviteEmail(input: {
       '',
       textInvitationLine,
       '',
-      'Claim your profile to review your credits, keep your rights information accurate, and collaborate on songs in one place.',
+      'Funūn is a shared workspace where you can write together, keep credits and metadata accurate, organize masters, and find new opportunities for your music.',
       '',
       `${actionLabel}: ${inviteUrl}`,
       '',
@@ -193,10 +227,30 @@ export async function sendCollaboratorInvite(
   const inviteLink = buildCollaboratorInviteUrl(inviteToken, input.nextPath)
 
   // ── 4. Send educational IPI invite email (D-04, D-08) — best-effort. ──
+  // Resolve the inviter from the authenticated identity already established
+  // by the caller. Never accept this display identity from a browser payload.
+  // Profile lookup failure is non-blocking: invitation delivery keeps the
+  // truthful, role-neutral "A Funūn member" fallback.
+  let inviterName: string | null = null
+  let inviterHandle: string | null = null
+  try {
+    const { data: inviterProfile } = await supabase
+      .from('user_profiles')
+      .select('artist_name, handle')
+      .eq('id', invitingUserId)
+      .maybeSingle()
+    inviterName = inviterProfile?.artist_name ?? null
+    inviterHandle = inviterProfile?.handle ?? null
+  } catch {
+    // Best-effort identity enhancement only; the invite remains deliverable.
+  }
+
   const email = buildCollaboratorInviteEmail({
     name: collaborator.name,
     token: inviteToken,
     nextPath: input.nextPath,
+    inviterName,
+    inviterHandle,
   })
   const result = await sendEmail({ to: collaborator.email, ...email })
 

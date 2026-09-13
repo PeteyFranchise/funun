@@ -83,7 +83,12 @@ describe('buildCollaboratorInviteEmail', () => {
 
   it('escapes markup and an ampersand in the name for the html body, but leaves the text body raw', () => {
     const maliciousName = '<img src=x onerror=alert(1)> "Jamie" & <b>Rivera</b>'
-    const { html, text } = buildCollaboratorInviteEmail({ name: maliciousName, token: 'tok123' })
+    const { html, text } = buildCollaboratorInviteEmail({
+      name: maliciousName,
+      token: 'tok123',
+      inviterName: 'Peter Zora',
+      inviterHandle: 'peterzora',
+    })
 
     expect(html).not.toContain('<img src=x onerror=alert(1)>')
     expect(html).not.toContain('<b>Rivera</b>')
@@ -96,8 +101,19 @@ describe('buildCollaboratorInviteEmail', () => {
   })
 
   it('presents one clear claim-profile action that preserves the invite token', () => {
-    const { html, text } = buildCollaboratorInviteEmail({ name: 'Stephan', token: 'tok123' })
+    const { subject, html, text } = buildCollaboratorInviteEmail({
+      name: 'Stephan',
+      token: 'tok123',
+      inviterName: 'Peter Zora',
+      inviterHandle: 'peterzora',
+    })
 
+    expect(subject).toBe('Peter Zora added you as a collaborator on Funūn')
+    expect(html).toContain('Peter Zora (@peterzora) added you as a collaborator')
+    expect(text).toContain('Peter Zora (@peterzora) added you as a collaborator')
+    expect(text).toContain(
+      'Funūn is a shared workspace where you can write together, keep credits and metadata accurate, organize masters, and find new opportunities for your music.'
+    )
     expect(html.match(/<a href=/g)).toHaveLength(1)
     expect(html).toContain('Claim my Funūn profile')
     expect(html).toContain('https://funun.studio/signup?invite=tok123')
@@ -113,12 +129,43 @@ describe('buildCollaboratorInviteEmail', () => {
       name: 'Stephan',
       token: 'tok123',
       nextPath: '/vault/works/work-1',
+      inviterName: 'Peter Zora',
+      inviterHandle: 'peterzora',
     })
 
-    expect(subject).toContain("Writer's Room")
+    expect(subject).toBe("Peter Zora invited you into a Writer's Room on Funūn")
+    expect(html).toContain("Peter Zora (@peterzora) invited you to write with them in a <strong>Writer's Room</strong>")
     expect(html).toContain('Claim my profile and open the song')
     expect(text).toContain('Claim my profile and open the song')
     expect(text).toContain('next=%2Fvault%2Fworks%2Fwork-1')
+  })
+
+  it('uses a role-neutral fallback when the inviter has no display identity', () => {
+    const { subject, html, text } = buildCollaboratorInviteEmail({
+      name: 'Stephan',
+      token: 'tok123',
+      inviterName: null,
+      inviterHandle: null,
+    })
+
+    expect(subject).toBe('A Funūn member added you as a collaborator on Funūn')
+    expect(html).toContain('A Funūn member added you as a collaborator')
+    expect(text).not.toContain('An artist')
+  })
+
+  it('escapes inviter markup in HTML and strips line breaks from email identity text', () => {
+    const { subject, html, text } = buildCollaboratorInviteEmail({
+      name: 'Stephan',
+      token: 'tok123',
+      inviterName: '<b>Peter</b>\r\nInjected',
+      inviterHandle: '@peter&friends',
+    })
+
+    expect(subject).toBe('<b>Peter</b> Injected added you as a collaborator on Funūn')
+    expect(subject).not.toMatch(/[\r\n]/)
+    expect(html).toContain('&lt;b&gt;Peter&lt;/b&gt; Injected (@peter&amp;friends)')
+    expect(html).not.toContain('<b>Peter</b>')
+    expect(text).toContain('<b>Peter</b> Injected (@peter&friends)')
   })
 })
 
@@ -126,9 +173,16 @@ function mockSupabase(
   options: {
     recentInvite?: { id: string; invite_token: string } | null
     insertError?: { message: string } | null
+    inviterProfile?: { artist_name: string | null; handle: string | null } | null
+    inviterLookupThrows?: boolean
   } = {}
 ) {
-  const { recentInvite = null, insertError = null } = options
+  const {
+    recentInvite = null,
+    insertError = null,
+    inviterProfile = { artist_name: 'Peter Zora', handle: 'peterzora' },
+    inviterLookupThrows = false,
+  } = options
   const insertSpy = jest.fn(async () => ({ error: insertError }))
 
   const from = jest.fn((table: string) => {
@@ -144,6 +198,16 @@ function mockSupabase(
           })),
         })),
         insert: insertSpy,
+      }
+    }
+    if (table === 'user_profiles') {
+      if (inviterLookupThrows) throw new Error('profile lookup unavailable')
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn(async () => ({ data: inviterProfile, error: null })),
+          })),
+        })),
       }
     }
     throw new Error(`Unexpected table: ${table}`)
@@ -234,6 +298,27 @@ describe('sendCollaboratorInvite', () => {
       expect(result.skipped).toBe(false)
       expect(result.inviteLink).toContain('/signup?invite=')
     }
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: 'Peter Zora added you as a collaborator on Funūn',
+        text: expect.stringContaining('Peter Zora (@peterzora) added you as a collaborator'),
+      })
+    )
+  })
+
+  it('keeps delivery working with the role-neutral fallback when inviter lookup throws', async () => {
+    const supabase = mockSupabase({ inviterLookupThrows: true })
+    const result = await sendCollaboratorInvite(supabase as never, {
+      collaborator: { id: COLLAB_ID, name: 'Jamie Rivera', email: 'jamie@example.com' },
+      invitingUserId: USER_ID,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: 'A Funūn member added you as a collaborator on Funūn',
+      })
+    )
   })
 
   it('carries a Writer\'s Room destination through the invite link and email', async () => {
