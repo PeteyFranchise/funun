@@ -20,6 +20,15 @@ describe('One Identity, Many Roles navigation contract', () => {
     expect(memberNav).not.toContain('requiresCapability')
   })
 
+  it('keeps the owner-approved Member menu relationships adjacent', () => {
+    expect(memberNav).toMatch(
+      /label: 'Contract Locker'[\s\S]*?Icon: LockerIcon,\n  },\n  \{ href: '\/collaborators', label: 'Collaborators'/
+    )
+    expect(memberNav).toContain(
+      "{ href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon },\n  { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },"
+    )
+  })
+
   it('renders Split Sheets inside Contract Locker and preserves the old list URL', () => {
     expect(lockerPage).toContain("view === 'split-sheets'")
     expect(lockerPage).toContain('<SplitSheetList sheets={splitSheets} />')

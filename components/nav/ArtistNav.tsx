@@ -50,9 +50,10 @@ const ITEMS: Item[] = [
     alsoMatches: ['/split-sheets'],
     Icon: LockerIcon,
   },
-  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon },
-  // Sync Library — appears directly under Deals ONLY once the artist has
-  // ≥1 admitted song (progressive disclosure; earned, not given).
+  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon },
+  // Sync Library remains in the catalogue/rights portion of the rail and
+  // appears ONLY once the artist has ≥1 admitted song (progressive
+  // disclosure; earned, not given).
   {
     href: '/sync-library',
     label: 'Sync Library',
@@ -60,7 +61,6 @@ const ITEMS: Item[] = [
     Icon: SyncLibraryIcon,
     requiresSyncLibraryAccess: true,
   },
-  { href: '/collaborators', label: 'Collaborators', match: '/collaborators', Icon: CollaboratorsIcon },
   {
     href: '/green-room',
     label: 'The Green Room',
@@ -73,6 +73,7 @@ const ITEMS: Item[] = [
   { href: '/benchmarks', label: 'Benchmarks', match: '/benchmarks', Icon: BenchmarkIcon },
   { href: '/launchpad', label: 'Launchpad', match: '/launchpad', Icon: LaunchpadIcon },
   { href: '/coach', label: 'Rights Coach', match: '/coach', Icon: CoachIcon },
+  { href: '/deals', label: 'Deals', match: '/deals', Icon: DealsIcon },
   { href: '/earnings', label: 'Earnings', match: '/earnings', Icon: EarningsIcon },
   { href: '/settings', label: 'Settings', match: '/settings', Icon: SettingsIcon },
 ]
