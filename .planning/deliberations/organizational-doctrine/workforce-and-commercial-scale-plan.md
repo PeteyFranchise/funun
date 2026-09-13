@@ -31,6 +31,13 @@ If buyer volume remains light, employee #9 may be another high-priority operator
 
 External or fractional support during this stage may include CFO/Controller, legal counsel, payroll/HR, security review and specialized design. External support does not erase the internal accountable owner.
 
+During this stage, approved outside or fractional counsel supplies licensed music,
+commercial, privacy, employment, corporate and specialist legal judgment. The COO
+coordinates the work internally and the CEO remains accountable for company decisions;
+neither role becomes legal counsel by performing that coordination. Funūn should maintain
+a current counsel roster, engagement scope and urgent-escalation path before material
+licensing or employment activity scales.
+
 ## Employees 11–35
 
 The order below is a reference sequence. Capacity evidence may move an AE, engineer, support or control function earlier.
@@ -66,6 +73,34 @@ The order below is a reference sequence. Capacity evidence may move an AE, engin
 ### Buyer-demand adjustment
 
 If buyer demand develops strongly, two additional AE seats should replace lower-immediacy hires in the #21–35 range. The desired Month-35-person organization is approximately four to five AEs, including the producing SVP only where that person still carries a book. The displaced specialist seats move into the next hiring wave; they are not cancelled.
+
+### General Counsel adjustment
+
+The first internal **General Counsel** is a trigger-gated hire, normally made around
+25–40 employees and no later than the expansion toward ten AEs. If the gate is reached
+during the #11–35 sequence, General Counsel replaces the lowest-immediacy unfilled seat;
+that specialist seat moves into the next hiring wave rather than being cancelled.
+
+The Rights & Contract Operations Specialist at #16 remains necessary and distinct. That
+role owns evidence and operational workflow; it does not substitute for licensed legal
+judgment. See the [Legal Leadership and Roles Doctrine](./legal-leadership-and-roles-doctrine.md).
+
+## When to hire General Counsel
+
+Forecast the need 6–12 months ahead. Hire when several signals converge:
+
+- Outside legal spending approaches the fully loaded cost of an appropriate internal leader.
+- Legal review or negotiation repeatedly delays licences, enterprise agreements, partnerships or launches.
+- Legal demand consistently resembles roughly 60–75% of a full-time senior lawyer's capacity.
+- Rights conflicts, claims, takedowns, disputes or exceptional negotiations become recurring.
+- Multi-jurisdiction operations or international agreements become material.
+- Privacy, AI, employment, corporate, securities, consumer, royalty or regulatory exposure becomes operationally significant.
+- Leadership needs routine privileged advice and durable institutional legal memory.
+- Commercial growth is approaching ten AEs and fulfilment complexity is expanding with it.
+
+Move the hire earlier after a material incident, financing, acquisition opportunity,
+regulatory inquiry or litigation threat. Until then, approved outside counsel supplies
+licensed judgment, the COO coordinates internally and the CEO remains accountable.
 
 ## When to hire the first dedicated AE
 
@@ -106,6 +141,12 @@ At maturity, ten AEs require approximately:
 
 Reach ten AEs only when each additional seat has a credible starting book, pipeline remains near three times ramp-adjusted quota, service SLAs remain healthy and the fulfillment functions can absorb the work.
 
+The organization should not enter this stage without named internal legal leadership.
+The expected structure is a General Counsel, commercial/licensing counsel, rights/IP
+counsel or senior rights capacity operating within counsel-defined boundaries, legal or
+contract operations support, and approved outside specialists. Legal capacity must grow
+with transaction complexity rather than trail commercial hiring.
+
 ## Fifty-AE organization
 
 ### Commercial structure
@@ -132,6 +173,11 @@ Reach ten AEs only when each additional seat has a credible starting book, pipel
 | Revenue Operations & Enablement | 8–13 |
 
 The planning target is $100–140M annual net revenue with approximately $62.5–87.5M attributable to mature AE books.
+
+The five-to-ten-person Legal function is led by the General Counsel and may include
+commercial/licensing, rights and intellectual property, product/privacy/AI, employment,
+disputes and legal operations. Regional counsel is added only where demonstrated
+jurisdictional workload requires it.
 
 ## One-hundred-AE global organization
 
@@ -187,6 +233,10 @@ Use approximately 12–14 AVPs, normally supporting 7–10 AEs each. Geographic 
 | Trust & Safety | 8–15 |
 | Revenue Operations & Enablement | 20–30 |
 | Client Solutions & Implementation | 15–25 |
+
+At this scale, the legal function may be led by a **Chief Legal Officer & General Counsel**
+with deputy, regional or specialty leads. The title is earned by global organizational
+complexity and governance responsibility, not automatically by tenure or headcount.
 
 ### Expansion waves
 

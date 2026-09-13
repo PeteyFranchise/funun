@@ -14,6 +14,7 @@ Technical capability does not create business authority. A title does not create
 
 - [Functional Team Doctrines](./functional-team-doctrines.md)
 - [Workforce and Commercial Scale Plan](./workforce-and-commercial-scale-plan.md)
+- [Legal Leadership and Roles Doctrine](./legal-leadership-and-roles-doctrine.md)
 - [First Six-Month Launch Growth Plan](./first-six-month-launch-growth-plan.md)
 - [Playbook Publication Map](./playbook-publication-map.md)
 - [Playbook Rich-Content Model Build Plan](./playbook-rich-content-model-build-plan.md)
@@ -38,6 +39,10 @@ Technical capability does not create business authority. A title does not create
 13. Training and Enablement
 14. Trust and Safety
 15. Support Operations
+
+The Legal Leadership and Roles Doctrine is a detailed companion to function 6. It
+defines the internal legal leadership milestone and job architecture without turning
+Legal, Rights Operations and Contract Operations into interchangeable functions.
 
 ## Shared doctrine structure
 

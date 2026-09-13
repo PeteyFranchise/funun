@@ -13,6 +13,7 @@
 - 🧭 **Post-beta discussion — Freemium/Paid Tiers & Platform-Wide AI Governance** — keep AI-assisted tools active for measured beta testing, then use real OpenAI + Anthropic usage and value data to decide free trials, paid allowances, account eligibility and optional overages. Before broad availability, ship one account-wide usage ledger, spending ceilings, entitlement gates and user/admin dashboards across every AI tool; never make AI a prerequisite for core songwriting or rights workflows. No prices or allowances are decided yet; use `.planning/deliberations/post-beta-ai-pricing-and-governance.md` as the future discussion brief.)
 - 🧭 **Playbook Releases 32–39 — Enterprise Maturity Roadmap** — proposed sequence after Release 31 activation evidence: R32 Integration Hub, R33 AI Doctrine Studio, R34 Coverage & Continuity, R35 Audit & Evidence Packages, R36 Mobile & Offline Field Guide, R37 Knowledge Health Intelligence, R38 Partner Enablement Portals, and R39 Business Continuity & Recovery. These are roadmap candidates, not production commitments; each remains gated by observed need, privacy/security/legal/accessibility review, and explicit owner approval. See `.planning/deliberations/playbook-releases-32-39-roadmap.md`.
 - 📝 **Post–Phase 38 — Client Partner Qualification Gameplan** — install the reusable BDT qualification workflow required by the Business Development Doctrine, including a non-blocking organic-buyer fast path, documented access recommendation, authorized verification boundaries, and the BDT-to-AE joint-ownership handoff. Tracked as Phase 38.3 below.
+- 📝 **Phase 41 — Collaborator Discovery & Mobile Contact Matching** — replace the Collaborators room's email-first fork with one coherent three-path flow: Find on Funūn by name or `@handle` and Add to roster; Invite by email when no discoverable member is found; Enter manually when the member already holds the person's professional/rights information. A later native-mobile slice may offer opt-in `Find from contacts`, but only after privacy-preserving matching, member discoverability consent, blocking, data-minimization, anti-enumeration, platform-policy, legal, and security review. Neither path may silently connect, message, invite, credit, grant project access, or declare rights. Detailed phase entry below.
 - 🔭 **Post–Release 39 research — Playbook Long-Horizon Exploration** — preserve, but do not yet schedule, research into workforce skills and capacity forecasting; regulatory and jurisdiction-specific overlays; advanced organizational simulations; cross-department benchmarking; voice-based training; acquisition/merger onboarding; anonymous doctrine-quality reporting; enterprise partner administration; historical decision intelligence; and custom automation/integration marketplaces. Each requires evidence, explicit human-decision boundaries, and security/privacy/legal/accessibility review before it can receive a release number. See `.planning/deliberations/playbook-post-39-research-roadmap.md`.
 - 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
 - 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
@@ -2645,3 +2646,86 @@ Plans:
 - [ ] 38.3-04 — Add access recommendations, escalation paths, and the organic-buyer transaction fast path
 - [ ] 38.3-05 — Add BDT-to-AE assignment, joint-ownership milestones, handoff evidence, and completion
 - [ ] 38.3-06 — Verify authorization, audit history, accessibility, failure states, and deferred human UAT
+
+---
+
+### Phase 41: Collaborator Discovery & Mobile Contact Matching
+
+**Goal:** Let a Member add the right person to My Roster without accidentally sending a signup
+email to an existing Funūn member, while preserving a clear manual path for professional and rights
+records. Extend that foundation to optional native-mobile contact discovery only when Funūn can do
+so without treating a member's address book as a platform-owned lead database.
+
+**Web experience — approved order:**
+
+1. **Find on Funūn (default).** Search discoverable Members by name or `@handle`; show a minimal,
+   privacy-safe identity card and an explicit **Add to roster** action. Reuse the shipped Green Room
+   People Search privacy, visibility, and bidirectional-block doctrine rather than creating a second
+   member directory.
+2. **Invite by email.** Use this when the person cannot be found. Before minting a signup capability,
+   perform the existing verified exact-email reconciliation server-side. If the address belongs to an
+   eligible existing Member, create/link the private roster identity and use an existing-member
+   collaboration notification instead of sending a claim-profile email. A hidden or blocked identity
+   must not be exposed through a reverse-lookup result.
+3. **Enter manually.** Keep the structured form for cases where the Member already holds the person's
+   professional and rights information. Make clear which values were entered by the roster owner and
+   which values have later been confirmed by the collaborator.
+
+**Shared operating boundaries:**
+
+- My Roster is the Member's private reusable working list. Adding a person does **not** automatically
+  create a social connection, send a message, add them to a song or workspace, assign a credit or
+  split, grant access, or declare authorship, ownership, representation, custody, or authority.
+- Project/work invitations and any rights-bearing declarations remain separate, contextual actions
+  with their existing authorization and acceptance rules.
+- Member identity comes from the canonical Funūn profile and verified account bridge; clients may
+  never supply `claimed_by` or choose the destination account ID.
+- Search must be rate-limited, return only the public-safe profile projection, enforce both directions
+  of blocking, respect profile visibility, exclude the requester, and resist handle/email enumeration.
+- If no discoverable match exists, the interface may offer email invitation but must not claim that
+  the person is not a Funūn member. Duplicate roster creation must remain fail-closed.
+- Every path needs keyboard, screen-reader, responsive, empty, loading, error, duplicate, blocked,
+  hidden-profile, and race-condition states before release.
+
+**Future native-mobile slice — Find from contacts:**
+
+- Present an optional, just-in-time Contacts permission with plain-language purpose text, never as a
+  signup requirement or background permission grab: **“Find people you already create with. See
+  which contacts are already on Funūn. Your contacts won't be added, messaged, or invited without
+  your approval.”**
+- Give each Member explicit settings for whether verified phone numbers and/or emails may be used to
+  help existing contacts find them. Default and regional consent behavior require privacy/legal review.
+- Do not retain or repurpose the address book, build shadow profiles, create marketing audiences, or
+  invite nonmembers automatically. Matching output reveals only eligible Funūn Members and only the
+  minimum public-safe profile fields needed to recognize them.
+- Do not treat unsalted hashes of phone numbers or emails as sufficient privacy: those identifiers have
+  small, guessable spaces. Select and threat-model a private-contact-discovery design (for example an
+  appropriate private-set-intersection/OPRF service or a tightly bounded ephemeral alternative) before
+  implementation. Document raw-identifier transit, retention, deletion, breach impact, vendor access,
+  abuse controls, rate limits, auditability, and account/permission revocation.
+- Enforce bidirectional blocks, hidden/discoverability choices, region and age requirements, iOS and
+  Android contact-permission policies, and a no-reverse-lookup/no-bulk-enumeration contract.
+- A match only enables **Add to roster** or a deliberate connection request. No automatic connection,
+  follow, message, project invitation, credit assignment, or off-platform invitation is permitted.
+- Provide **Not now**, permission-revocation recovery, contact-refresh controls, and a clear method to
+  delete any retained discovery state. The app must remain fully usable without contact access.
+
+**Dependencies:** Phase 12 People Search and Phase 13 trust/safety; canonical Member identity and
+existing-member collaborator reconciliation; the personalized collaborator-invitation work recorded in
+`.planning/quick/260913-personalized-collaborator-invites/`. The mobile slice additionally depends on a
+native Funūn application, privacy/legal approval, mobile-platform policy review, and an approved contact
+discovery threat model.
+
+**Migrations:** Unassigned. Claim numbers only during implementation planning after checking
+`supabase/migrations/`, untracked files, `.planning/quick/**`, and the authoritative migration ledger.
+
+**Status:** Owner-approved and roadmapped 2026-09-13. Web implementation planning has not started.
+Mobile contact discovery is explicitly future, research-gated work and is not approved for data
+collection or implementation yet.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD — run `/gsd-discuss-phase 41` before planning, with a separate mobile privacy/threat-model
+  checkpoint rather than treating Contacts permission as ordinary UI work.

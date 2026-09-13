@@ -145,6 +145,19 @@ This function preserves evidence, agreements, obligations and lawful escalation.
 
 The console requires queues for missing evidence, signing, expirations, obligations, disputes and legal review with strict visibility. Measure accuracy, turnaround, avoided expiration, obligation completion and defensible records—not agreement volume or denial rate. AI may assist extraction and drafting but never deliver final legal judgment, waive rights or approve disputed ownership.
 
+### Legal leadership
+
+During beta, approved outside or fractional counsel supplies licensed legal judgment,
+the COO coordinates legal work internally and the CEO remains accountable for company
+decisions. Funūn should hire its first General Counsel around 25–40 employees and no
+later than expansion toward ten AEs, subject to the workload and risk triggers in the
+[Legal Leadership and Roles Doctrine](./legal-leadership-and-roles-doctrine.md).
+
+General Counsel leads Legal and reports to the CEO with direct escalation access to the
+governing body for material legal, ethical or fiduciary concerns. Rights Operations and
+Contract Operations remain distinct operational disciplines; neither title nor system
+access authorizes a non-lawyer to provide legal advice.
+
 ## 7. Catalogue, Metadata and Verification Operations Doctrine
 
 ### Purpose and boundary
