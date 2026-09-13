@@ -82,6 +82,7 @@ export type WorkVersion = {
   performers: PerformerRef[] // declared per-recording credits (PERFORMER RULE) — feeds DDEX + the human-take registry
   archived_at?: string | null
   archived_by?: string | null
+  peaks?: number[] | null // percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means not extracted yet
   created_at: string
   // NO numeral column — see file header note 1.
 }
@@ -233,6 +234,8 @@ export type WorkVersionComment = {
   resolved_by_user_id: string | null
   carried_from_version_id: string | null
   carried_from_comment_id: string | null
+  end_timestamp_ms?: number | null
+  needs_reposition?: boolean
   created_at: string
 }
 
@@ -251,12 +254,33 @@ export type WorkVersionCommentView = {
   createdAt: string
   canResolve: boolean
   reactions?: StudioNoteReactionView[]
+  endTimestampMs?: number | null
+  needsReposition?: boolean
 }
 
 export type WorkVersionCommentCarryOffer = {
   sourceVersionId: string
   sourceVersionDisplay: string
   comments: WorkVersionCommentView[]
+}
+
+// ─── Private pins ───────────────────────────────────────────────────
+// A pin is private to its author, carries no body, is never carried
+// forward to another take, and never appears on the presence channel.
+
+export type WorkVersionPin = {
+  id: string
+  work_id: string
+  version_id: string
+  author_user_id: string
+  timestamp_ms: number
+  created_at: string
+}
+
+export type WorkVersionPinView = {
+  id: string
+  timestampMs: number
+  createdAt: string
 }
 
 // ─── unified Writer's Room Studio Notes ─────────────────────────────
