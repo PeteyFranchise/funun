@@ -1,9 +1,9 @@
 ---
 created: 2026-09-01T12:30:00-04:00
-title: Activate and verify Writer's Room section comments in production
+title: Complete Writer's Room section-comments multi-account UAT
 area: catalogue
-priority: immediate
-status: pending-production-activation
+priority: deferred
+status: pending-human-uat
 depends_on:
   - supabase/migrations/146_writer_room_section_comments.sql
   - .planning/quick/260901-writers-room-section-comments/SUMMARY.md
@@ -11,13 +11,15 @@ depends_on:
 
 ## Purpose
 
-Apply the forward-only section-comments migration and prove the feature with real owner/member sessions before describing it as live in production.
+Complete the deferred owner/member/non-member behavior pass for section comments. Migration 146 is
+applied in production; this TODO remains pending because application is not evidence that the
+multi-account behavior works end to end.
 
-## Activation
+## Recorded Production State
 
-1. From the Funūn repository, run `npm run db:push`.
-2. Confirm the Supabase migration list is applied through 146.
-3. Confirm the application deployment contains the commit recorded in the quick-task summary.
+- Migration 146 is applied.
+- No migration push remains in this TODO.
+- The multi-account UAT below is deferred and has not been marked complete.
 
 ## Multi-account UAT
 
@@ -39,4 +41,6 @@ Use one unreleased song with an owner and at least two invited contributors.
 
 ## Completion Rule
 
-Move this TODO to completed only after migration 146 is applied, the deployed commit is verified, and the owner/member/non-member UAT passes. Until then, describe the capability as **built and awaiting production activation**, not live.
+Move this TODO to completed only after the owner/member/non-member UAT passes and its results are
+recorded. Until then, describe migration 146 as **applied** and the section-comment multi-account
+UAT as **deferred and pending**. This TODO does not block Phase 39 execution.

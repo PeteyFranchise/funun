@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 31.2
-current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Awaiting owner checkpoint
-stopped_at: Phase 40 context gathered
-last_updated: "2026-09-12T19:20:31.442Z"
-last_activity: 2026-08-25
-last_activity_desc: Phase 31.2 execution started
+current_phase: 39
+current_phase_name: writer-s-room-the-take-as-a-real-review-surface-real-wavefor
+status: Ready to execute
+stopped_at: Phase 39 plan 01 ready
+last_updated: "2026-09-13T00:00:00-04:00"
+last_activity: 2026-09-13
+last_activity_desc: Phase 38 to Phase 39 planning and state cleanup
 progress:
   total_phases: 47
   completed_phases: 35
@@ -24,18 +24,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 31.2 — ae-console-playbook-authoring-rbac-plays-selects-telemetry
+**Current focus:** Phase 39 — Writer's Room take review surface
 
-> **Stale pointer, recorded not forced (2026-08-27).** The `current_phase: 31.2` /
-> `current_phase_name` frontmatter keys have not tracked actual work since Phase 31.2 was
-> paused — every Phase 36 plan (36-01 through 36-07) ran against them unchanged, advancing
-> only `stopped_at`, `completed_plans` and the session block. Phase 36 is the real current
-> phase and is now **complete**. Left as-is deliberately rather than hand-edited: 31.2 is
-> genuinely unfinished (UAT deferred to organic beta), so overwriting the pointer would
-> lose that, and the correct fix is a phase-completion pass over both phases, not a
-> one-line patch from a plan executor.
+> **Unfinished Phase 31.2 preserved (2026-09-13).** Phase 31.2 remains genuinely unfinished:
+> its owner checkpoint/UAT is deferred to organic beta and is not marked complete by moving the
+> execution pointer. The frontmatter now identifies Phase 39 as the next ready-to-execute phase;
+> this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-09-13 — Phase 39 ready to execute
+
+The Phase 38 → Phase 39 planning handoff is reconciled. Migrations 219–223 are applied,
+registered, structurally verified, and deployed; migration 146 is applied while its separate
+multi-account section-comment UAT remains deferred. The repository migration ceiling is 223 and
+migration 224 is reserved consistently across all eleven Phase 39 plans after checking migration
+files, untracked files, quick tasks, and the authoritative ROADMAP ledger.
+
+Phase 39's dependencies are satisfied and plan 39-11 preserves the human-only migration push.
+Deferred Phase 38.1/38.2 UAT, Writer's Room section-comment UAT, and Phase 38.0.3 organic-data
+checks do not block execution. Phase 38.3 Client Partner Qualification and live publication of
+the Legal Leadership doctrine remain separate follow-ups. No Phase 39 application work has begun.
 
 ### UPDATE 2026-09-13 — Phases 38.1 and 38.2 shipped
 
@@ -45,10 +54,11 @@ deployment `dpl_Cj8moPooLqWKHG5UDt455EMF3UC8` reached Ready on `www.funun.studio
 gates passed: 604 suites / 7,275 tests, TypeScript, ESLint, production build, CodeQL, GitHub
 JavaScript/TypeScript analysis, and Vercel checks.
 
-The only remaining Phase 38.1/38.2 verification is the explicitly deferred owner-led browser,
-accessibility, and live-role UAT in each phase's `DEFERRED-UAT.md`. No human-UAT item is represented
-as complete. Separate legal-leadership doctrine edits and Phase 39/40 planning remain outside this
-closeout.
+The remaining Phase 38 verification is explicitly deferred and owner-led: Phase 38.1 browser,
+accessibility, and live-role UAT; Phase 38.2 billing, rollout-console, and Playbook UAT; and Phase
+38.0.3 organic-data behavioral checks. No human-UAT item is represented as complete. Separate
+Phase 38.3 Client Partner Qualification and live publication of the Legal Leadership doctrine
+remain non-blocking follow-ups outside this closeout.
 
 ### UPDATE 2026-09-05 — Phase 38 (Member Organization & Team Workspaces) discussed + planned
 
