@@ -110,3 +110,81 @@ exactly the thing a producer should see flagged.
 - Include-resolved-comments flag; formats beyond the three; export accounting (who exported what,
   raised but not discussed); reaching a non-member producer; the clickable transcript pane;
   importing markers back from a DAW (explicitly one-way by design)
+
+---
+
+# Session 2 — 2026-09-13 (continuation)
+
+**Areas discussed:** Does exporting leave a trace? · When there's nothing to export ·
+If Audition's format can't be verified · Reaching a producer outside Funūn
+
+---
+
+## Does exporting leave a trace?
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Nothing — pure read | No audit table, no marker, no Diary entry | ✓ |
+| A Diary entry, comments export only | Reuses existing infrastructure; pins must never appear | |
+| A dedicated audit record | Complete, but drags in retention + privacy review | |
+
+**User's choice:** Nothing — export stays a pure read
+**Notes:** I surfaced the Diary option unprompted along with its own disqualifier — a Diary entry on
+a *pin* export would tell the room that someone has pins, breaking Phase 39's D-11. Declining any
+trace removes that failure mode rather than relying on an exception holding.
+
+---
+
+## When there's nothing to export
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Refuse, and say why | Case-specific message; never hands over a useless file | ✓ |
+| Export an empty file anyway | One behaviour; writer discovers emptiness in their DAW | |
+| Hide the control entirely | Quietest; indistinguishable from the feature not existing | |
+
+**User's choice:** Refuse, and say why
+**Notes:** The case that motivated the question: E-01 filters resolved and E-09 excludes
+position-flagged comments, so a take can display three comments in the room and still export empty.
+Without a message that reads as a bug.
+
+---
+
+## If Audition's format can't be verified
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Ship what's confirmed, add Audition later | Release not blocked by an undocumented vendor format | ✓ |
+| Block until Audition is confirmed | Delivers exactly what was scoped; hands the date to an unknown | |
+| Reverse-engineer it | A method rather than a fallback — adopted as the research approach | |
+
+**User's choice:** Ship what's confirmed; reverse-engineering recorded as the research method
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Two named options either way | A user picks their DAW, not a serialization format | ✓ |
+| Collapse into one CSV option | One fewer serializer; user must know CSV means Audition | |
+
+**User's choice:** Two named options either way
+
+---
+
+## Reaching a producer outside Funūn
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Full display name | Attribution too vague to identify anyone is worse than none | ✓ |
+| First name only | Less identifying if forwarded; ambiguous with shared first names | |
+
+**User's choice:** Full display name
+**Notes:** Resolved quickly — E-06 (filename) and E-07 (display name over @handle) had already
+done most of the work of making the file readable to someone with no Funūn context. Onward travel
+of the file is the writer's decision and stays out of scope.
+
+---
+
+## Offered and left as Claude's discretion
+
+At the second Done gate the owner was offered these and left them with me: one route vs two, how a
+point comment renders in a range-shaped format, rate limiting and payload bounds, and filename
+sanitization for path-hostile song titles.
