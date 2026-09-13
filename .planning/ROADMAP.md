@@ -2566,10 +2566,16 @@ phase serializes a take's comments as timeline markers and hands them over as a 
 Small surface, high signal to exactly the people a songwriter most needs to reach.
 
 1. **One export endpoint** that reads a take's comments and serializes them as timeline markers.
-2. **Three formats** — an Audition-importable marker file, an Audacity label track, and a generic
-   CSV as the universal fallback. (Audacity's `start⇥end⇥label` TSV is well documented; **the
-   exact Audition marker-import format must be verified at research time** — do not assume XML.)
-3. **A download control** on the take. No new comment concepts, no new UI vocabulary.
+2. **Up to three formats** — an Audacity label track and a generic CSV, both certain; plus an
+   Audition-importable marker file **conditional on its format being verified**. Audacity's
+   `start⇥end⇥label` TSV is well documented. The Audition format is NOT — do not assume XML; the
+   research method is to have Audition export its own marker list and match that shape byte for
+   byte. **Per decision E-12, if it cannot be confirmed the phase ships CSV + Audacity and
+   Audition follows as a small separate piece. Audition is not a blocker.** All three stay
+   separately named options either way (E-13) — a user picks their DAW, not a file format.
+3. **Two download controls** on the take — *Export comments* (shareable) and *Export my pins*
+   (author-only). They are deliberately separate files and separate actions so a shareable file
+   can never contain private pins (E-03). No new comment concepts, no new UI vocabulary.
 
 **Why this sits AFTER Phase 39, not before:** both Audition and Audacity support *range* markers.
 Until Phase 39 ships range comments (D-04/D-07), every comment is a single timestamp, so an
@@ -2584,13 +2590,14 @@ D-11 makes them invisible to everyone but their author, and a downloadable file 
 way to break that. (d) One-way, outbound only: no importing markers back into Funūn. (e) The
 exported file is creative context, not a deliverable, a rights record, or evidence of approval.
 
-**Open questions for discussion:** (i) does the export include resolved comments, unresolved
-only, or is it the exporter's choice? (ii) may an author export *their own* pins in a personal
-file, or are pins simply never exportable? (iii) does a carried comment export with its
-"carried from v1" provenance, or just its text? (iv) does the marker label carry author
-attribution (`@maya: bring the bass up`) or the text alone? (v) which DAWs beyond
-Audition/Audacity earn a format — Reaper and Logic have their own conventions and Pro Tools
-marker import is notoriously awkward.
+**Open questions — ALL RESOLVED across two discussion sessions (2026-09-12 and 2026-09-13).**
+All five original questions, plus four more raised during discussion, are answered as decisions
+**E-01..E-14 in `40-CONTEXT.md`** — read that, not this summary. In brief: unresolved comments only;
+an author may export their own pins but only as a separate file via a separate action; one take per
+export with provenance in the filename; labels carry the author's full display name and a `[v1]`
+prefix for carried comments; position-flagged comments are excluded with a stated count; nothing is
+recorded on export; an empty export refuses with a case-specific message; formats beyond
+Audition/Audacity/CSV are declined.
 
 **Depends on:** Phase 39 (range comments are the reason this is worth building).
 
