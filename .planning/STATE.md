@@ -37,6 +37,19 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
+### UPDATE 2026-09-13 — Phases 38.1 and 38.2 shipped
+
+All twelve plans across Phase 38.1 and Phase 38.2 are complete. The owner applied, registered, and
+structurally verified migrations 219–223 in production. PR #68 merged as `cb0ec3a7`, and Vercel
+deployment `dpl_Cj8moPooLqWKHG5UDt455EMF3UC8` reached Ready on `www.funun.studio`. Automated release
+gates passed: 604 suites / 7,275 tests, TypeScript, ESLint, production build, CodeQL, GitHub
+JavaScript/TypeScript analysis, and Vercel checks.
+
+The only remaining Phase 38.1/38.2 verification is the explicitly deferred owner-led browser,
+accessibility, and live-role UAT in each phase's `DEFERRED-UAT.md`. No human-UAT item is represented
+as complete. Separate legal-leadership doctrine edits and Phase 39/40 planning remain outside this
+closeout.
+
 ### UPDATE 2026-09-05 — Phase 38 (Member Organization & Team Workspaces) discussed + planned
 
 **Discussed** via `/gsd-discuss-phase 38` across all twelve owner-specified decision areas →
