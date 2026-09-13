@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { BUCKET, MAX_BYTES, resolveAudioType } from '@/lib/catalogue/audio-mime'
+import { extractPeaksFromBlob, isValidPeaksPayload } from '@/lib/catalogue/waveform'
 import type { WorkVersion, WorkVersionSource } from '@/types/catalogue'
 
 type UploadPhase = 'preparing' | 'uploading' | 'finalizing'
@@ -13,6 +14,10 @@ export type UploadWorkVersionInput = {
   source: WorkVersionSource
   durationSeconds?: number | null
   label?: string | null
+  /** A pre-computed peaks array for callers that already hold a decoded
+   * AudioBuffer (e.g. RecordOverBeatStudio) and must not decode a second
+   * time. When absent, `uploadWorkVersion` decodes `file` itself. */
+  peaks?: number[] | null
   onPhase?: (phase: UploadPhase) => void
 }
 
@@ -26,6 +31,25 @@ type UploadIntent = {
 async function responseError(response: Response, fallback: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { error?: unknown } | null
   return typeof body?.error === 'string' && body.error.trim() ? body.error : fallback
+}
+
+/**
+ * Resolves the peaks array to send with a take. A caller-supplied array is
+ * trusted only when it is exactly the agreed shape; otherwise the value is
+ * treated as though nothing was supplied and the take is saved without a
+ * waveform. When no array was supplied at all, this decodes `input.file`
+ * itself — a decode failure never blocks or fails the upload, it simply
+ * degrades to `null` and the player heals it later (D-03).
+ */
+async function resolvePeaks(input: UploadWorkVersionInput): Promise<number[] | null> {
+  if (input.peaks !== undefined) {
+    return isValidPeaksPayload(input.peaks) ? input.peaks : null
+  }
+  try {
+    return await extractPeaksFromBlob(input.file)
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -74,13 +98,18 @@ export async function uploadWorkVersion(input: UploadWorkVersionInput): Promise<
     input.file.type === intent.contentType
       ? input.file
       : new Blob([input.file], { type: intent.contentType })
-  const { error: uploadError } = await supabase.storage
+  const uploadPromise = supabase.storage
     .from(BUCKET)
     .uploadToSignedUrl(intent.path, intent.token, canonicalBlob, {
       contentType: intent.contentType,
       upsert: false,
     })
+  // Started alongside the upload, not after it, so the decode's few seconds
+  // overlap the network transfer instead of delaying the take's appearance.
+  const peaksPromise = resolvePeaks(input)
+  const { error: uploadError } = await uploadPromise
   if (uploadError) throw new Error(`Audio upload failed: ${uploadError.message}`)
+  const peaks = await peaksPromise
 
   input.onPhase?.('finalizing')
   const completeResponse = await fetch(`/api/works/${input.workId}/versions/complete`, {
@@ -92,6 +121,7 @@ export async function uploadWorkVersion(input: UploadWorkVersionInput): Promise<
       source: input.source,
       duration: input.durationSeconds ?? null,
       label: input.label ?? null,
+      peaks,
     }),
   })
   if (!completeResponse.ok) {
