@@ -10,6 +10,12 @@ import {
   type ComparisonVersionFacts,
 } from '@/lib/catalogue/version-comparison'
 import {
+  DEFAULT_PLAYBACK_SPEED,
+  PLAYBACK_SPEEDS,
+  applyPlaybackShape,
+  type PlaybackSpeed,
+} from '@/lib/catalogue/take-transport'
+import {
   PEAKS_BAR_COUNT,
   REST_BAR_HEIGHT_PERCENT,
   isValidPeaksPayload,
@@ -69,6 +75,7 @@ export function VersionComparisonPanel({
   const [saving, setSaving] = useState(false)
   const [levelMatch, setLevelMatch] = useState<'off' | 'analyzing' | 'on'>('off')
   const [levelVolumes, setLevelVolumes] = useState({ a: 1, b: 1 })
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED)
   const [error, setError] = useState<string | null>(null)
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({})
 
@@ -129,6 +136,19 @@ export function VersionComparisonPanel({
     if (sideBAudio) sideBAudio.volume = levelMatch === 'on' ? levelVolumes.b : 1
   }, [levelMatch, levelVolumes, sideA.id, sideB.id])
 
+  // D-18/T-39-23: a side change swaps which <audio> element is bound to that
+  // side (it remounts, keyed by version id), and a fresh media element does
+  // not inherit the previous element's playbackRate/preservesPitch. Reapply
+  // immediately once the new element exists, rather than waiting only on its
+  // own onLoadedMetadata, so the control and the audio never disagree.
+  useEffect(() => {
+    for (const version of [sideA, sideB]) {
+      const audio = audioRefs.current[version.id]
+      if (audio) applyPlaybackShape(audio, speed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sideA.id, sideB.id])
+
   function applyPosition(nextMs: number) {
     const next = clampComparisonPosition(nextMs, activeDurationMs / 1000)
     setPositionMs(next)
@@ -178,6 +198,9 @@ export function VersionComparisonPanel({
     else setSideBId(versionId)
     setLevelMatch('off')
     setLevelVolumes({ a: 1, b: 1 })
+    // D-17: nobody should open another take wondering why it drags — a side
+    // change resets speed the same way it resets level match.
+    setSpeed(DEFAULT_PLAYBACK_SPEED)
     if (wasActive) {
       setPlaying(false)
       const next = versions.find(version => version.id === versionId)
@@ -202,6 +225,14 @@ export function VersionComparisonPanel({
       setLevelMatch('off')
       setLevelVolumes({ a: 1, b: 1 })
       setError('Level matching is unavailable for these takes. You can still compare them normally.')
+    }
+  }
+
+  function selectSpeed(nextSpeed: PlaybackSpeed) {
+    setSpeed(nextSpeed)
+    for (const version of [sideA, sideB]) {
+      const audio = audioRefs.current[version.id]
+      if (audio) applyPlaybackShape(audio, nextSpeed)
     }
   }
 
@@ -262,6 +293,10 @@ export function VersionComparisonPanel({
               setDurations(current => ({ ...current, [version.id]: Math.round(seconds * 1000) }))
               event.currentTarget.currentTime = clampComparisonPosition(positionMs, seconds) / 1000
             }
+            // D-18: a new source commonly resets playback-adjacent element
+            // properties, and this fires on every source swap, not only at
+            // mount — the one call site that fixes the real defect.
+            applyPlaybackShape(event.currentTarget, speed)
           }}
           onTimeUpdate={event => {
             if (version.id === activeVersion.id) setPositionMs(Math.round(event.currentTarget.currentTime * 1000))
@@ -335,15 +370,30 @@ export function VersionComparisonPanel({
           <p className="truncate text-[13px] font-semibold text-white">Listening to {activeVersion.display} · {activeVersion.description}</p>
           <p className="text-[10px] text-lavdim">{formatTrackTimestamp(positionMs)} / {formatTrackTimestamp(activeDurationMs)}</p>
         </div>
-        <button
-          type="button"
-          disabled={levelMatch === 'analyzing'}
-          onClick={() => void toggleLevelMatch()}
-          aria-pressed={levelMatch === 'on'}
-          className="ml-auto shrink-0 rounded-[8px] border border-hairstrong bg-card2 px-3 py-2 text-[10px] font-semibold text-lav hover:border-brandindigo hover:text-white disabled:opacity-40"
-        >
-          {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-hairstrong bg-card2 p-0.5 text-[9px]" role="group" aria-label="Playback speed">
+            {PLAYBACK_SPEEDS.map(step => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => selectSpeed(step)}
+                aria-pressed={speed === step}
+                className={`rounded-full px-2 py-1 font-semibold ${speed === step ? 'bg-brandindigo text-ink font-bold' : 'text-lavdim hover:text-white'}`}
+              >
+                {step}×
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={levelMatch === 'analyzing'}
+            onClick={() => void toggleLevelMatch()}
+            aria-pressed={levelMatch === 'on'}
+            className="shrink-0 rounded-[8px] border border-hairstrong bg-card2 px-3 py-2 text-[10px] font-semibold text-lav hover:border-brandindigo hover:text-white disabled:opacity-40"
+          >
+            {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
+          </button>
+        </div>
       </div>
       <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file, and the picture on-screen matches it.</p>
 

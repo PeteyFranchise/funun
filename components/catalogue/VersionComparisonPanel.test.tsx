@@ -114,6 +114,31 @@ describe('VersionComparisonPanel', () => {
     expect(markup).not.toContain('rounded-full bg-brandindigo')
   })
 
+  it('renders all four speed steps with only 1× pressed on first render', () => {
+    const markup = renderToStaticMarkup(
+      <VersionComparisonPanel
+        workId="work-1"
+        versions={versions}
+        initialComments={{}}
+        onClose={() => undefined}
+        onActivity={() => undefined}
+        onCommentChanged={() => undefined}
+        refreshToken={0}
+      />
+    )
+    expect(markup).toContain('0.5×')
+    expect(markup).toContain('0.75×')
+    expect(markup).toContain('1×')
+    expect(markup).toContain('1.5×')
+    const speedGroup = markup.split('aria-label="Playback speed"')[1]?.split('</div>')[0] ?? ''
+    expect(speedGroup.match(/aria-pressed="true"/g)).toHaveLength(1)
+    // The one pressed step is 1×, not 0.5×/0.75×/1.5× — D-17's visual default.
+    const speedButtons = speedGroup.split('<button').slice(1)
+    const pressedButtons = speedButtons.filter(chunk => chunk.includes('aria-pressed="true"'))
+    expect(pressedButtons).toHaveLength(1)
+    expect(pressedButtons[0]).toContain('>1×</button>')
+  })
+
   it('contains no raw hex colour', () => {
     const markup = renderToStaticMarkup(
       <VersionComparisonPanel
