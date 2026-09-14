@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
-import { normalizeSpanDrag, spanGeometry } from '@/lib/catalogue/take-spans'
+import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
 import { preRollStartMs } from '@/lib/catalogue/take-transport'
 import {
   PEAKS_BAR_COUNT,
@@ -296,6 +296,10 @@ export function TimedTrackPlayer({
     : []
   const mentionable = participants.filter(person => person.handle)
   const effectiveDurationMs = Math.max(durationMs, positionMs, 1000)
+  // D-07: this take's own known duration, or null before audio metadata has
+  // loaded — spanNeedsReposition/clampCarriedSpan both treat null duration
+  // as "unknown, don't flag," never as zero.
+  const carryTargetDurationMs = durationMs > 0 ? durationMs : null
 
   function seek(nextMs: number) {
     const clamped = Math.max(0, Math.min(effectiveDurationMs, nextMs))
@@ -371,6 +375,26 @@ export function TimedTrackPlayer({
   function cancelSpan() {
     setPendingSpan(null)
     exitSpanMode()
+  }
+
+  // D-07: a carried span whose in-point no longer fits this take is never
+  // silently dropped or collapsed to a point. Reposition re-enters the same
+  // Mark-span mode Task 1 built — no second span-editing path — pre-seeded
+  // near the clamped edge so the writer isn't hunting for where it landed.
+  // The carry decision itself never changes: this only pre-fills a fresh
+  // span for the writer to confirm as a new comment.
+  function repositionComment(comment: WorkVersionCommentView) {
+    if (comment.endTimestampMs == null) return
+    const clamped = clampCarriedSpan({
+      startMs: comment.timestampMs,
+      endMs: comment.endTimestampMs,
+      targetDurationMs: carryTargetDurationMs,
+    })
+    const seedEndMs = clamped.endMs ?? Math.min(effectiveDurationMs, clamped.startMs + 1)
+    enterSpanMode()
+    setDragAnchorMs(clamped.startMs)
+    setDragPointerMs(seedEndMs)
+    setPendingSpan(normalizeSpanDrag(clamped.startMs, seedEndMs, effectiveDurationMs))
   }
 
   function handleSpanPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -672,6 +696,15 @@ export function TimedTrackPlayer({
           const label = rangeComment
             ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}`
             : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}`
+          // D-07: a carried comment whose in-point no longer fits this take
+          // recolors amber instead of indigo — hygiene, warmer than legal,
+          // never the rose/red reserved for genuine errors.
+          const isFlagged = group.comments.some(comment => comment.needsReposition)
+          const isSelected = group.comments.some(comment => comment.id === selectedRootId)
+          const toneClass = isFlagged ? 'border-amber-400/70 text-amber-400' : 'border-brandindigo/70 text-brandindigo'
+          const selectedClass = isSelected
+            ? (isFlagged ? 'ring-2 ring-amber-400/30' : 'text-white ring-2 ring-brandindigo/30')
+            : ''
           return (
             <button
               key={group.timestampMs}
@@ -681,7 +714,7 @@ export function TimedTrackPlayer({
                 selectComment(group.comments[(selectedInGroup + 1) % group.comments.length]!)
               }}
               aria-label={label}
-              className={`absolute top-7 flex min-h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border border-brandindigo/70 bg-card px-1 text-[9px] font-bold shadow-md ${group.comments.some(comment => comment.id === selectedRootId) ? 'text-white ring-2 ring-brandindigo/30' : 'text-brandindigo'}`}
+              className={`absolute top-7 flex min-h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border bg-card px-1 text-[9px] font-bold shadow-md ${toneClass} ${selectedClass}`}
               style={{ left: `${Math.max(1, Math.min(99, (group.timestampMs / effectiveDurationMs) * 100))}%` }}
             >
               {group.comments.length}
@@ -769,21 +802,39 @@ export function TimedTrackPlayer({
             </div>
           ) : (
             <div className="mt-3 space-y-2">
-              {carryOffer.comments.map(comment => (
-                <label key={comment.id} className="flex cursor-pointer items-start gap-2 rounded-[9px] border border-hair bg-card2 px-2.5 py-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedCarryIds.includes(comment.id)}
-                    onChange={event => setSelectedCarryIds(current => event.target.checked
-                      ? [...current, comment.id]
-                      : current.filter(id => id !== comment.id))}
-                    className="mt-0.5"
-                  />
-                  <span className="min-w-0 text-[10px] leading-4 text-lav">
-                    <b className="text-white">{formatTrackTimestamp(comment.timestampMs)}</b> · {comment.body}
-                  </span>
-                </label>
-              ))}
+              {carryOffer.comments.map(comment => {
+                // D-07: still offered and still checked by default even when
+                // flagged — never silently dropped, never collapsed to a
+                // point. Showing the clamped bounds here is what lets the
+                // writer see what the span will become before they commit.
+                const needsReposition = spanNeedsReposition({ timestampMs: comment.timestampMs, durationMs: carryTargetDurationMs })
+                const clamped = comment.endTimestampMs != null
+                  ? clampCarriedSpan({ startMs: comment.timestampMs, endMs: comment.endTimestampMs, targetDurationMs: carryTargetDurationMs })
+                  : null
+                return (
+                  <label key={comment.id} className="flex cursor-pointer items-start gap-2 rounded-[9px] border border-hair bg-card2 px-2.5 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedCarryIds.includes(comment.id)}
+                      onChange={event => setSelectedCarryIds(current => event.target.checked
+                        ? [...current, comment.id]
+                        : current.filter(id => id !== comment.id))}
+                      className="mt-0.5"
+                    />
+                    <span className="min-w-0 text-[10px] leading-4 text-lav">
+                      <b className={needsReposition ? 'text-amber-400' : 'text-white'}>{formatTrackTimestamp(comment.timestampMs)}</b> · {comment.body}
+                      {needsReposition && (
+                        <span className="mt-1 block text-[9px] text-amber-400">
+                          Needs a new position in this take
+                          {clamped && clamped.endMs !== null && (
+                            <> — will land at {formatTrackTimestamp(clamped.startMs)} to {formatTrackTimestamp(clamped.endMs)}</>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                )
+              })}
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button type="button" disabled={saving} onClick={() => void saveCarryChoice(selectedCarryIds)} className="text-[10px] font-semibold text-brandindigo hover:text-white disabled:opacity-50">
                   {saving ? 'Copying…' : `Carry ${selectedCarryIds.length} selected`}
@@ -838,12 +889,18 @@ export function TimedTrackPlayer({
                   {selectedRoot.carriedFromVersionDisplay && (
                     <span className="shrink-0 rounded-full border border-hair px-2 py-1 text-[8px] text-lavdim">Carried from {selectedRoot.carriedFromVersionDisplay}</span>
                   )}
+                  {selectedRoot.needsReposition && (
+                    <span className="shrink-0 rounded-full border border-amber-400/70 px-2 py-1 text-[8px] text-amber-400">Needs a new position in this take</span>
+                  )}
                 </div>
                 <div className="mt-2"><CommentText comment={selectedRoot} /></div>
                 <MicroReactionBar workId={workId} source="audio" noteId={selectedRoot.id} reactions={selectedRoot.reactions ?? []} onChanged={() => void loadComments()} />
                 <div className="mt-2 flex flex-wrap gap-3 border-t border-hair pt-2">
                   {!selectedRoot.resolvedAt && (
                     <button type="button" onClick={() => { setPendingSpan(null); setReplyingToId(selectedRoot.id) }} className="text-[9px] text-lavdim hover:text-white">Reply</button>
+                  )}
+                  {selectedRoot.needsReposition && selectedRoot.endTimestampMs != null && (
+                    <button type="button" onClick={() => repositionComment(selectedRoot)} className="text-[9px] font-semibold text-amber-400 hover:text-white">Reposition</button>
                   )}
                   {selectedRoot.canResolve && (
                     <button type="button" disabled={saving} onClick={() => void setResolved(selectedRoot, !selectedRoot.resolvedAt)} className="text-[9px] font-semibold text-brandindigo hover:text-white disabled:opacity-50">

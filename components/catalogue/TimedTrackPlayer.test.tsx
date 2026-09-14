@@ -177,7 +177,7 @@ describe('TimedTrackPlayer', () => {
     const span = commentFixture({ id: 'span-1', timestampMs: 45000, endTimestampMs: 52000 })
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[span]} />)
     expect(markup).toContain('bg-brandindigo/15')
-    expect((markup.match(/border-brandindigo\/70 bg-card px-1/g) ?? []).length).toBe(1)
+    expect((markup.match(/rounded-full border bg-card px-1 text-\[9px\] font-bold shadow-md/g) ?? []).length).toBe(1)
     expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment"')
   })
 
@@ -185,7 +185,23 @@ describe('TimedTrackPlayer', () => {
     const point = commentFixture({ id: 'point-1', timestampMs: 12000, endTimestampMs: null })
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[point]} />)
     expect(markup).not.toContain('bg-brandindigo/15')
-    expect((markup.match(/border-brandindigo\/70 bg-card px-1/g) ?? []).length).toBe(1)
+    expect((markup.match(/rounded-full border bg-card px-1 text-\[9px\] font-bold shadow-md/g) ?? []).length).toBe(1)
+  })
+
+  it('flags a comment carrying needsReposition:true in amber, never rose or red', () => {
+    const flagged = commentFixture({ id: 'flagged-1', needsReposition: true })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[flagged]} />)
+    expect(markup).toContain('amber-400')
+    const markerSection = markup.slice(markup.indexOf('aria-label="Timeline'))
+    expect(markerSection).not.toContain('rose-')
+    expect(markerSection).not.toContain('red-')
+  })
+
+  it('renders the default indigo marker with no amber chip when needsReposition is false', () => {
+    const fitting = commentFixture({ id: 'fits-1', needsReposition: false })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[fitting]} />)
+    expect(markup).toContain('border-brandindigo/70')
+    expect(markup).not.toContain('amber-400')
   })
 
   it('uses the phase\'s comment vocabulary for the composer placeholder', () => {
