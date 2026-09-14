@@ -3,6 +3,28 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
+import type { WorkVersionCommentView } from '@/types/catalogue'
+
+function commentFixture(overrides: Partial<WorkVersionCommentView> = {}): WorkVersionCommentView {
+  return {
+    id: 'comment-1',
+    versionId: 'version-1',
+    parentCommentId: null,
+    body: 'Lower the guitars here',
+    timestampMs: 45000,
+    author: null,
+    mentioned: [],
+    resolvedAt: null,
+    resolvedByName: null,
+    carriedFromVersionId: null,
+    carriedFromVersionDisplay: null,
+    createdAt: '2026-09-14T00:00:00Z',
+    canResolve: true,
+    endTimestampMs: null,
+    needsReposition: false,
+    ...overrides,
+  }
+}
 
 function baseProps() {
   return {
@@ -149,6 +171,21 @@ describe('TimedTrackPlayer', () => {
     expect(markup).not.toContain('cursor-crosshair')
     expect(markup).not.toContain('ring-brandfuchsia')
     expect(markup).not.toContain('disabled=""')
+  })
+
+  it('renders a committed range comment as a shaded band at its true bounds with one start-only marker pill', () => {
+    const span = commentFixture({ id: 'span-1', timestampMs: 45000, endTimestampMs: 52000 })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[span]} />)
+    expect(markup).toContain('bg-brandindigo/15')
+    expect((markup.match(/border-brandindigo\/70 bg-card px-1/g) ?? []).length).toBe(1)
+    expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment"')
+  })
+
+  it('renders no shaded band for a point comment', () => {
+    const point = commentFixture({ id: 'point-1', timestampMs: 12000, endTimestampMs: null })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[point]} />)
+    expect(markup).not.toContain('bg-brandindigo/15')
+    expect((markup.match(/border-brandindigo\/70 bg-card px-1/g) ?? []).length).toBe(1)
   })
 
   it('uses the phase\'s comment vocabulary for the composer placeholder', () => {
