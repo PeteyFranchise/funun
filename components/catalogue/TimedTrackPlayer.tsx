@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import {
+  PEAKS_BAR_COUNT,
+  REST_BAR_HEIGHT_PERCENT,
+  extractPeaksFromUrl,
+  isValidPeaksPayload,
+} from '@/lib/catalogue/waveform'
 import { MicroReactionBar } from './MicroReactionBar'
 import type {
   LyricCommentParticipant,
@@ -32,6 +38,8 @@ type TimedTrackPlayerProps = {
   onMakeWorking?: () => Promise<{ ok: boolean; error?: string }>
   recordOverLabel?: string
   draftOwnerId?: string
+  /** Percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means not extracted yet — the player backfills it on first open. */
+  peaks?: number[] | null
 }
 
 type CommentsResponse = {
@@ -41,12 +49,10 @@ type CommentsResponse = {
   error?: string
 }
 
-const WAVE_BARS = [
-  35, 52, 74, 43, 88, 61, 38, 79, 55, 91, 66, 47,
-  83, 58, 31, 72, 49, 86, 63, 41, 77, 54, 93, 68,
-  36, 81, 57, 45, 89, 62, 33, 75, 51, 84, 59, 39,
-  78, 53, 90, 65, 42, 82, 56, 34, 73, 48, 87, 60,
-]
+// A take's real shape is decoded at most once per version per page: keyed
+// by version id so a remount, a refreshToken change, or a second mounted
+// player for the same take can never start a second decode (T-39-18).
+const backfillsInFlight = new Set<string>()
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?'
@@ -95,6 +101,7 @@ export function TimedTrackPlayer({
   onMakeWorking,
   recordOverLabel = '● Record over this beat',
   draftOwnerId = 'viewer',
+  peaks = null,
 }: TimedTrackPlayerProps) {
   const playerRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -117,7 +124,13 @@ export function TimedTrackPlayer({
   const [labelDraft, setLabelDraft] = useState(label ?? '')
   const [takeSaving, setTakeSaving] = useState(false)
   const [takeError, setTakeError] = useState<string | null>(null)
+  const [livePeaks, setLivePeaks] = useState<number[] | null>(peaks ?? null)
+  const [waveformError, setWaveformError] = useState<string | null>(null)
   const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
+  // A payload that fails the shared validator is treated exactly like a
+  // missing one — the server and the browser agree on what a peaks array
+  // is, and a corrupt array must never be drawn (T-39-19).
+  const drawnPeaks = isValidPeaksPayload(livePeaks) ? livePeaks : null
 
   useEffect(() => {
     const recovered = readTextDraft(commentDraftKey)
@@ -125,6 +138,44 @@ export function TimedTrackPlayer({
   }, [commentDraftKey])
 
   useEffect(() => setLabelDraft(label ?? ''), [label])
+
+  useEffect(() => setLivePeaks(peaks ?? null), [peaks])
+
+  // D-03's one-time backfill: a take with no valid stored shape decodes its
+  // own audio once, on first open, and heals itself for every future
+  // viewer via the PATCH below — never a retry loop within one mount.
+  useEffect(() => {
+    if (drawnPeaks !== null) return
+    if (!playbackUrl) return
+    if (backfillsInFlight.has(versionId)) return
+    backfillsInFlight.add(versionId)
+    let resolved = false
+    extractPeaksFromUrl(playbackUrl)
+      .then(async nextPeaks => {
+        resolved = true
+        try {
+          await fetch(`/api/works/${workId}/versions/${versionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ peaks: nextPeaks }),
+          })
+        } catch {
+          // Best-effort persistence — the current viewer still sees the
+          // real shape even if the write-back failed; the next opener
+          // simply triggers another one-time decode.
+        }
+        setLivePeaks(nextPeaks)
+      })
+      .catch(() => {
+        resolved = true
+        setWaveformError("Couldn't read this take's waveform. It'll retry automatically.")
+      })
+    return () => {
+      // Only release the slot if the decode never resolved — a genuinely
+      // completed attempt (success or failure) must not retry this mount.
+      if (!resolved) backfillsInFlight.delete(versionId)
+    }
+  }, [drawnPeaks, playbackUrl, versionId, workId])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -365,14 +416,36 @@ export function TimedTrackPlayer({
       )}
 
       <div className="relative mt-3 h-[58px]" aria-label={`Timeline for ${display}`}>
-        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-9 items-center gap-px overflow-hidden">
-          {WAVE_BARS.map((height, index) => (
-            <span
-              key={index}
-              className={`min-w-px flex-1 rounded-full ${index / WAVE_BARS.length <= positionMs / effectiveDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
-              style={{ height: `${height}%` }}
-            />
-          ))}
+        {/* At the `sm` breakpoint and above the hairline gap is exactly the
+            UI contract's existing treatment, but below it PEAKS_BAR_COUNT
+            (200) one-pixel bars plus 199 one-pixel gaps need 399px, which a
+            320-390px viewport cannot give — the container's own
+            overflow-hidden would silently clip the tail of every take on a
+            phone. Mobile is a primary case for this surface, so the
+            hairline collapses (gap-0) below `sm` rather than the take. */}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 flex h-9 items-center gap-0 sm:gap-px overflow-hidden${drawnPeaks === null ? ' animate-pulse' : ''}`}
+        >
+          {drawnPeaks !== null
+            ? drawnPeaks.map((height, index) => (
+                <span
+                  key={index}
+                  className={`min-w-px flex-1 rounded-full ${index / drawnPeaks.length <= positionMs / effectiveDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))
+            : // Uniform and flat is the point — a rest-state bar is
+              // structurally impossible to read as data, never a dimmer
+              // version of a real shape, and draws no progress fill because
+              // there is no real shape for a playhead to sweep across.
+              Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (
+                <span
+                  key={index}
+                  className="min-w-px flex-1 rounded-full bg-lavdim/20"
+                  style={{ height: `${REST_BAR_HEIGHT_PERCENT}%` }}
+                />
+              ))}
         </div>
         <input
           type="range"
@@ -437,6 +510,10 @@ export function TimedTrackPlayer({
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
       {takeError && <p role="alert" className="mt-2 text-[10px] text-red-300">{takeError}</p>}
+      {/* A take with simply no peaks yet shows no error at all — that state
+          is expected and self-healing (D-03). Only the backfill decode
+          itself throwing surfaces this copy. */}
+      {waveformError && <p role="alert" className="mt-2 text-[10px] text-red-300">{waveformError}</p>}
 
       {isLatest && carryOffer && (
         <div className="mt-3 border-t border-hair pt-3">

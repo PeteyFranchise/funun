@@ -1,5 +1,30 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
+import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
+
+function baseProps() {
+  return {
+    workId: 'work-1',
+    versionId: 'version-1',
+    display: 'v1',
+    description: 'Scratch hum',
+    playbackUrl: 'https://signed.example/scratch.webm',
+    durationSeconds: 42,
+    isLatest: false,
+    isAiTagged: false,
+    refreshToken: 0,
+    onActivity: () => undefined,
+    onCommentChanged: () => undefined,
+  } as const
+}
+
+// The bar row is the first `aria-hidden="true"` block, ending right before
+// the seek `<input type="range">` — isolating it keeps a "no bg-brandindigo"
+// assertion from tripping on unrelated slash-suffixed uses elsewhere in the
+// file (`bg-brandindigo/10`, `/15`, `/80`).
+function barRow(markup: string): string {
+  return markup.slice(markup.indexOf('aria-hidden="true"'), markup.indexOf('type="range"'))
+}
 
 describe('TimedTrackPlayer', () => {
   it('renders real playback, a seek timeline, and a timestamp comment action', () => {
@@ -82,5 +107,30 @@ describe('TimedTrackPlayer', () => {
     expect(markup).not.toContain(' controls=""')
     expect(markup).toContain('AI noted')
     expect(markup).not.toContain('>Download<')
+  })
+
+  it('draws the real waveform from a valid stored peaks array', () => {
+    const distinctivePeaks = Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (index === 5 ? 42 : 10))
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} peaks={distinctivePeaks} />)
+    const row = barRow(markup)
+    expect(row).toContain('height:42%')
+    expect(row).toContain('bg-brandindigo')
+  })
+
+  it('renders an honestly empty, pulsing rest state — never a fabricated shape — when no peaks exist', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} peaks={null} />)
+    const row = barRow(markup)
+    expect(row).toContain('animate-pulse')
+    expect(row).toContain('bg-lavdim/20')
+    expect(row).toContain('height:15%')
+    expect(row).not.toContain('bg-brandindigo')
+  })
+
+  it('treats a wrongly sized peaks array as no peaks at all, not a partial waveform', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} peaks={[10, 20, 30]} />)
+    const row = barRow(markup)
+    expect(row).toContain('animate-pulse')
+    expect(row).toContain('height:15%')
+    expect(row).not.toContain('bg-brandindigo')
   })
 })
