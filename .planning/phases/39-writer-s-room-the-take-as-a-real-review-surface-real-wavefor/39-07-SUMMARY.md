@@ -146,3 +146,11 @@ None - no external service configuration required.
 ---
 *Phase: 39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+- FOUND: components/catalogue/VersionComparisonPanel.tsx
+- FOUND: components/catalogue/VersionComparisonPanel.test.tsx
+- FOUND: lib/catalogue/version-comparison.ts
+- FOUND: lib/catalogue/version-comparison.test.ts
+- FOUND commits: fc1d0ff9, e38f6ee9, 4015c4c9 (all present in `git log --oneline`)
