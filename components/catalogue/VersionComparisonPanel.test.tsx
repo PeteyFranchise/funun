@@ -1,10 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { VersionComparisonPanel } from './VersionComparisonPanel'
+import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
 import type { WorkVersionCommentView } from '@/types/catalogue'
 
+const samplePeaks = Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (index % 100) + 1)
+
 const versions = [
-  { id: 'v5-id', display: 'v5', description: 'New mix', playbackUrl: 'https://signed.example/v5.mp3', durationSeconds: 180, createdAt: '2026-09-03T11:00:00Z' },
-  { id: 'v4-id', display: 'v4', description: 'Studio bounce', playbackUrl: 'https://signed.example/v4.mp3', durationSeconds: 198, createdAt: '2026-09-03T10:00:00Z' },
+  { id: 'v5-id', display: 'v5', description: 'New mix', playbackUrl: 'https://signed.example/v5.mp3', durationSeconds: 180, createdAt: '2026-09-03T11:00:00Z', peaks: samplePeaks },
+  { id: 'v4-id', display: 'v4', description: 'Studio bounce', playbackUrl: 'https://signed.example/v4.mp3', durationSeconds: 198, createdAt: '2026-09-03T10:00:00Z', peaks: null },
 ]
 
 const note: WorkVersionCommentView = {
@@ -72,6 +75,43 @@ describe('VersionComparisonPanel', () => {
     )
     expect(markup).toContain('v4 note at 1:45')
     expect(markup).not.toContain('v4 note at 2:00')
+  })
+
+  it("draws the active take's real waveform when a valid peaks array exists", () => {
+    const versionsActivePeaks = [
+      { ...versions[0]!, peaks: null },
+      { ...versions[1]!, peaks: samplePeaks },
+    ]
+    const markup = renderToStaticMarkup(
+      <VersionComparisonPanel
+        workId="work-1"
+        versions={versionsActivePeaks}
+        initialComments={{}}
+        onClose={() => undefined}
+        onActivity={() => undefined}
+        onCommentChanged={() => undefined}
+        refreshToken={0}
+      />
+    )
+    expect(markup).toContain('rounded-full bg-brandindigo')
+    expect(markup).not.toContain('animate-pulse')
+  })
+
+  it('renders the structurally-distinct pulsing rest state, with no indigo fill, when the active take has no peaks yet', () => {
+    const markup = renderToStaticMarkup(
+      <VersionComparisonPanel
+        workId="work-1"
+        versions={versions}
+        initialComments={{}}
+        onClose={() => undefined}
+        onActivity={() => undefined}
+        onCommentChanged={() => undefined}
+        refreshToken={0}
+      />
+    )
+    expect(markup).toContain('animate-pulse')
+    expect(markup).toContain('bg-lavdim/20')
+    expect(markup).not.toContain('rounded-full bg-brandindigo')
   })
 
   it('contains no raw hex colour', () => {

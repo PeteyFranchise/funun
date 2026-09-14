@@ -9,11 +9,19 @@ import {
   defaultComparisonIds,
   type ComparisonVersionFacts,
 } from '@/lib/catalogue/version-comparison'
+import {
+  PEAKS_BAR_COUNT,
+  REST_BAR_HEIGHT_PERCENT,
+  isValidPeaksPayload,
+  levelMatchedPeaks,
+} from '@/lib/catalogue/waveform'
 import type { WorkVersionCommentView } from '@/types/catalogue'
 
 export type ComparableVersion = ComparisonVersionFacts & {
   description: string
   playbackUrl: string
+  /** Percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means not extracted yet. */
+  peaks?: number[] | null
 }
 
 type VersionComparisonPanelProps = {
@@ -28,13 +36,6 @@ type VersionComparisonPanelProps = {
   /** Static-render test seam; production loads canonical comments through the existing version routes. */
   initialComments?: Record<string, WorkVersionCommentView[]>
 }
-
-const WAVE_BARS = [
-  39, 61, 82, 48, 91, 67, 35, 76, 56, 88, 63, 42,
-  79, 52, 94, 69, 37, 84, 59, 46, 73, 55, 90, 65,
-  40, 81, 57, 33, 75, 50, 86, 62, 44, 78, 54, 92,
-  68, 36, 83, 58, 47, 72, 53, 89, 64, 41, 77, 60,
-]
 
 function rootComments(comments: WorkVersionCommentView[]): WorkVersionCommentView[] {
   return comments
@@ -76,6 +77,17 @@ export function VersionComparisonPanel({
   const activeVersion = activeSide === 'a' ? sideA : sideB
   const activeDurationMs = Math.max(1000, durations[activeVersion.id] ?? Math.round((activeVersion.durationSeconds ?? 0) * 1000))
   const activeRoots = rootComments(commentsByVersion[activeVersion.id] ?? [])
+  // D-02: the picture matches what is actually playing. Raw peaks are the
+  // single source of truth; when level matching is on, the drawn array is
+  // scaled by the same volume already applied to that side's <audio>.volume,
+  // never a second, independent computation.
+  const activeRawPeaks = isValidPeaksPayload(activeVersion.peaks) ? activeVersion.peaks : null
+  const activeVolume = activeSide === 'a' ? levelVolumes.a : levelVolumes.b
+  const drawnPeaks = activeRawPeaks === null
+    ? null
+    : levelMatch === 'on'
+      ? levelMatchedPeaks(activeRawPeaks, activeVolume)
+      : activeRawPeaks
   const selected = selectedComment
     ? (commentsByVersion[selectedComment.versionId] ?? []).find(comment => comment.id === selectedComment.commentId) ?? null
     : null
@@ -333,17 +345,32 @@ export function VersionComparisonPanel({
           {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
         </button>
       </div>
-      <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file.</p>
+      <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file, and the picture on-screen matches it.</p>
 
       <div className="relative mt-4 h-[76px]" aria-label={`Comparison timeline for ${activeVersion.display}`}>
-        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-11 items-center gap-px overflow-hidden">
-          {WAVE_BARS.map((height, index) => (
-            <span
-              key={index}
-              className={`min-w-px flex-1 rounded-full ${index / WAVE_BARS.length <= positionMs / activeDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
-              style={{ height: `${height}%` }}
-            />
-          ))}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 flex h-11 items-center gap-0 sm:gap-px overflow-hidden${drawnPeaks === null ? ' animate-pulse' : ''}`}
+        >
+          {drawnPeaks !== null
+            ? drawnPeaks.map((height, index) => (
+                <span
+                  key={index}
+                  className={`min-w-px flex-1 rounded-full ${index / drawnPeaks.length <= positionMs / activeDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))
+            : // Uniform and flat is the point — structurally impossible to
+              // read as data, never a dimmer version of a real shape, and no
+              // progress fill because there is no real shape for a playhead
+              // to sweep across.
+              Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (
+                <span
+                  key={index}
+                  className="min-w-px flex-1 rounded-full bg-lavdim/20"
+                  style={{ height: `${REST_BAR_HEIGHT_PERCENT}%` }}
+                />
+              ))}
         </div>
         <input
           type="range"
