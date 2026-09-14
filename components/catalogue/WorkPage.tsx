@@ -1434,6 +1434,7 @@ export function WorkPage({
         playbackUrl: version.playbackUrl,
         durationSeconds: version.durationSeconds,
         createdAt: version.createdAt,
+        peaks: version.peaks ?? null,
       }]
     : [])
   const activeVersionCount = versions.filter(version => !version.archivedAt).length

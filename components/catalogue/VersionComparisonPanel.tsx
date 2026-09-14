@@ -9,11 +9,25 @@ import {
   defaultComparisonIds,
   type ComparisonVersionFacts,
 } from '@/lib/catalogue/version-comparison'
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  PLAYBACK_SPEEDS,
+  applyPlaybackShape,
+  type PlaybackSpeed,
+} from '@/lib/catalogue/take-transport'
+import {
+  PEAKS_BAR_COUNT,
+  REST_BAR_HEIGHT_PERCENT,
+  isValidPeaksPayload,
+  levelMatchedPeaks,
+} from '@/lib/catalogue/waveform'
 import type { WorkVersionCommentView } from '@/types/catalogue'
 
 export type ComparableVersion = ComparisonVersionFacts & {
   description: string
   playbackUrl: string
+  /** Percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means not extracted yet. */
+  peaks?: number[] | null
 }
 
 type VersionComparisonPanelProps = {
@@ -28,13 +42,6 @@ type VersionComparisonPanelProps = {
   /** Static-render test seam; production loads canonical comments through the existing version routes. */
   initialComments?: Record<string, WorkVersionCommentView[]>
 }
-
-const WAVE_BARS = [
-  39, 61, 82, 48, 91, 67, 35, 76, 56, 88, 63, 42,
-  79, 52, 94, 69, 37, 84, 59, 46, 73, 55, 90, 65,
-  40, 81, 57, 33, 75, 50, 86, 62, 44, 78, 54, 92,
-  68, 36, 83, 58, 47, 72, 53, 89, 64, 41, 77, 60,
-]
 
 function rootComments(comments: WorkVersionCommentView[]): WorkVersionCommentView[] {
   return comments
@@ -68,6 +75,7 @@ export function VersionComparisonPanel({
   const [saving, setSaving] = useState(false)
   const [levelMatch, setLevelMatch] = useState<'off' | 'analyzing' | 'on'>('off')
   const [levelVolumes, setLevelVolumes] = useState({ a: 1, b: 1 })
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED)
   const [error, setError] = useState<string | null>(null)
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({})
 
@@ -76,6 +84,17 @@ export function VersionComparisonPanel({
   const activeVersion = activeSide === 'a' ? sideA : sideB
   const activeDurationMs = Math.max(1000, durations[activeVersion.id] ?? Math.round((activeVersion.durationSeconds ?? 0) * 1000))
   const activeRoots = rootComments(commentsByVersion[activeVersion.id] ?? [])
+  // D-02: the picture matches what is actually playing. Raw peaks are the
+  // single source of truth; when level matching is on, the drawn array is
+  // scaled by the same volume already applied to that side's <audio>.volume,
+  // never a second, independent computation.
+  const activeRawPeaks = isValidPeaksPayload(activeVersion.peaks) ? activeVersion.peaks : null
+  const activeVolume = activeSide === 'a' ? levelVolumes.a : levelVolumes.b
+  const drawnPeaks = activeRawPeaks === null
+    ? null
+    : levelMatch === 'on'
+      ? levelMatchedPeaks(activeRawPeaks, activeVolume)
+      : activeRawPeaks
   const selected = selectedComment
     ? (commentsByVersion[selectedComment.versionId] ?? []).find(comment => comment.id === selectedComment.commentId) ?? null
     : null
@@ -116,6 +135,19 @@ export function VersionComparisonPanel({
     if (sideAAudio) sideAAudio.volume = levelMatch === 'on' ? levelVolumes.a : 1
     if (sideBAudio) sideBAudio.volume = levelMatch === 'on' ? levelVolumes.b : 1
   }, [levelMatch, levelVolumes, sideA.id, sideB.id])
+
+  // D-18/T-39-23: a side change swaps which <audio> element is bound to that
+  // side (it remounts, keyed by version id), and a fresh media element does
+  // not inherit the previous element's playbackRate/preservesPitch. Reapply
+  // immediately once the new element exists, rather than waiting only on its
+  // own onLoadedMetadata, so the control and the audio never disagree.
+  useEffect(() => {
+    for (const version of [sideA, sideB]) {
+      const audio = audioRefs.current[version.id]
+      if (audio) applyPlaybackShape(audio, speed)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sideA.id, sideB.id])
 
   function applyPosition(nextMs: number) {
     const next = clampComparisonPosition(nextMs, activeDurationMs / 1000)
@@ -166,6 +198,9 @@ export function VersionComparisonPanel({
     else setSideBId(versionId)
     setLevelMatch('off')
     setLevelVolumes({ a: 1, b: 1 })
+    // D-17: nobody should open another take wondering why it drags — a side
+    // change resets speed the same way it resets level match.
+    setSpeed(DEFAULT_PLAYBACK_SPEED)
     if (wasActive) {
       setPlaying(false)
       const next = versions.find(version => version.id === versionId)
@@ -193,6 +228,14 @@ export function VersionComparisonPanel({
     }
   }
 
+  function selectSpeed(nextSpeed: PlaybackSpeed) {
+    setSpeed(nextSpeed)
+    for (const version of [sideA, sideB]) {
+      const audio = audioRefs.current[version.id]
+      if (audio) applyPlaybackShape(audio, nextSpeed)
+    }
+  }
+
   function chooseMarker(comment: WorkVersionCommentView) {
     setSelectedComment({ versionId: comment.versionId, commentId: comment.id })
     applyPosition(comment.timestampMs)
@@ -209,7 +252,7 @@ export function VersionComparisonPanel({
     })
     const body = (await response.json().catch(() => ({}))) as { error?: string }
     if (!response.ok) {
-      setError(body.error ?? 'Could not update that note.')
+      setError(body.error ?? 'Could not update that comment.')
       setSaving(false)
       return
     }
@@ -250,6 +293,10 @@ export function VersionComparisonPanel({
               setDurations(current => ({ ...current, [version.id]: Math.round(seconds * 1000) }))
               event.currentTarget.currentTime = clampComparisonPosition(positionMs, seconds) / 1000
             }
+            // D-18: a new source commonly resets playback-adjacent element
+            // properties, and this fires on every source swap, not only at
+            // mount — the one call site that fixes the real defect.
+            applyPlaybackShape(event.currentTarget, speed)
           }}
           onTimeUpdate={event => {
             if (version.id === activeVersion.id) setPositionMs(Math.round(event.currentTarget.currentTime * 1000))
@@ -274,7 +321,7 @@ export function VersionComparisonPanel({
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brandindigo">A/B listening</p>
           <h2 id="version-comparison-title" className="mt-1 text-[20px] font-bold text-white">Compare two takes</h2>
-          <p className="mt-1 text-[11px] leading-5 text-lavdim">One playhead, each take&apos;s own notes. Switching keeps the same elapsed moment.</p>
+          <p className="mt-1 text-[11px] leading-5 text-lavdim">One playhead, each take&apos;s own comments. Switching keeps the same elapsed moment.</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close version comparison" className="text-[16px] text-lavdim hover:text-white">✕</button>
       </div>
@@ -323,27 +370,57 @@ export function VersionComparisonPanel({
           <p className="truncate text-[13px] font-semibold text-white">Listening to {activeVersion.display} · {activeVersion.description}</p>
           <p className="text-[10px] text-lavdim">{formatTrackTimestamp(positionMs)} / {formatTrackTimestamp(activeDurationMs)}</p>
         </div>
-        <button
-          type="button"
-          disabled={levelMatch === 'analyzing'}
-          onClick={() => void toggleLevelMatch()}
-          aria-pressed={levelMatch === 'on'}
-          className="ml-auto shrink-0 rounded-[8px] border border-hairstrong bg-card2 px-3 py-2 text-[10px] font-semibold text-lav hover:border-brandindigo hover:text-white disabled:opacity-40"
-        >
-          {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-hairstrong bg-card2 p-0.5 text-[9px]" role="group" aria-label="Playback speed">
+            {PLAYBACK_SPEEDS.map(step => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => selectSpeed(step)}
+                aria-pressed={speed === step}
+                className={`rounded-full px-2 py-1 font-semibold ${speed === step ? 'bg-brandindigo text-ink font-bold' : 'text-lavdim hover:text-white'}`}
+              >
+                {step}×
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={levelMatch === 'analyzing'}
+            onClick={() => void toggleLevelMatch()}
+            aria-pressed={levelMatch === 'on'}
+            className="shrink-0 rounded-[8px] border border-hairstrong bg-card2 px-3 py-2 text-[10px] font-semibold text-lav hover:border-brandindigo hover:text-white disabled:opacity-40"
+          >
+            {levelMatch === 'analyzing' ? 'Analyzing levels…' : levelMatch === 'on' ? '≈ Level matched' : '≈ Level match'}
+          </button>
+        </div>
       </div>
-      <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file.</p>
+      <p className="mt-2 text-right text-[9px] text-lavdim">Listening aid only—approximately balances playback without changing either file, and the picture on-screen matches it.</p>
 
       <div className="relative mt-4 h-[76px]" aria-label={`Comparison timeline for ${activeVersion.display}`}>
-        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-11 items-center gap-px overflow-hidden">
-          {WAVE_BARS.map((height, index) => (
-            <span
-              key={index}
-              className={`min-w-px flex-1 rounded-full ${index / WAVE_BARS.length <= positionMs / activeDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
-              style={{ height: `${height}%` }}
-            />
-          ))}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 flex h-11 items-center gap-0 sm:gap-px overflow-hidden${drawnPeaks === null ? ' animate-pulse' : ''}`}
+        >
+          {drawnPeaks !== null
+            ? drawnPeaks.map((height, index) => (
+                <span
+                  key={index}
+                  className={`min-w-px flex-1 rounded-full ${index / drawnPeaks.length <= positionMs / activeDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))
+            : // Uniform and flat is the point — structurally impossible to
+              // read as data, never a dimmer version of a real shape, and no
+              // progress fill because there is no real shape for a playhead
+              // to sweep across.
+              Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (
+                <span
+                  key={index}
+                  className="min-w-px flex-1 rounded-full bg-lavdim/20"
+                  style={{ height: `${REST_BAR_HEIGHT_PERCENT}%` }}
+                />
+              ))}
         </div>
         <input
           type="range"
@@ -360,7 +437,7 @@ export function VersionComparisonPanel({
             key={comment.id}
             type="button"
             onClick={() => chooseMarker(comment)}
-            aria-label={`${comment.resolvedAt ? 'Resolved' : 'Open'} ${activeVersion.display} note at ${formatTrackTimestamp(comment.timestampMs)}`}
+            aria-label={`${comment.resolvedAt ? 'Resolved' : 'Open'} ${activeVersion.display} comment at ${formatTrackTimestamp(comment.timestampMs)}`}
             className={`absolute top-10 -translate-x-1/2 text-[11px] ${comment.resolvedAt ? 'text-lavdim' : 'text-brandindigo'}`}
             style={{ left: `${Math.min(100, (comment.timestampMs / activeDurationMs) * 100)}%` }}
           >●</button>
@@ -369,13 +446,13 @@ export function VersionComparisonPanel({
 
       <div className="mt-3 border-t border-hair pt-4">
         {loading ? (
-          <p className="text-[11px] text-lavdim">Loading timed notes…</p>
+          <p className="text-[11px] text-lavdim">Loading timed comments…</p>
         ) : selected && selectedVersion ? (
           <div>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-brandindigo">
-                  Note from {selectedVersion.display} at {formatTrackTimestamp(selected.timestampMs)}
+                  Comment from {selectedVersion.display} at {formatTrackTimestamp(selected.timestampMs)}
                 </p>
                 <p className="mt-1 text-[12px] leading-5 text-white">{selected.body}</p>
                 <p className="mt-1 text-[9px] text-lavdim">
@@ -395,14 +472,14 @@ export function VersionComparisonPanel({
             </div>
             {selected.versionId !== activeVersion.id && (
               <p className="mt-3 rounded-[9px] border border-hair bg-card2 px-3 py-2 text-[10px] text-lavdim">
-                You are hearing {activeVersion.display} at the same moment while reviewing this {selectedVersion.display} note.
+                You are hearing {activeVersion.display} at the same moment while reviewing this {selectedVersion.display} comment.
               </p>
             )}
           </div>
         ) : activeRoots.length > 0 ? (
-          <p className="text-[11px] text-lavdim">Choose a {activeVersion.display} marker, then switch sides to hear whether the note was addressed.</p>
+          <p className="text-[11px] text-lavdim">Choose a {activeVersion.display} marker, then switch sides to hear whether the comment was addressed.</p>
         ) : (
-          <p className="text-[11px] text-lavdim">{activeVersion.display} has no timed notes yet. Switch sides or return to the room to add one.</p>
+          <p className="text-[11px] text-lavdim">{activeVersion.display} has no timed comments yet. Switch sides or return to the room to add one.</p>
         )}
         {error && <p role="alert" className="mt-3 text-[11px] text-rose-300">{error}</p>}
       </div>
