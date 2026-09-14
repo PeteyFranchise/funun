@@ -4,7 +4,14 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
-import { preRollStartMs } from '@/lib/catalogue/take-transport'
+import {
+  claimActivePlayer,
+  isActivePlayer,
+  preRollStartMs,
+  releaseActivePlayer,
+  resolveTransportAction,
+  shouldSuppressShortcut,
+} from '@/lib/catalogue/take-transport'
 import {
   PEAKS_BAR_COUNT,
   REST_BAR_HEIGHT_PERCENT,
@@ -245,23 +252,53 @@ export function TimedTrackPlayer({
     }
   }, [drawnPeaks, playbackUrl, versionId, workId])
 
-  // D-04: Esc exits Mark-span mode even while the comment composer holds
-  // focus — this is the one key deliberately exempt from the typing-surface
-  // suppression that guards every other shortcut, and only while this mode
-  // is live. The listener is registered only while spanMode is active and
-  // released on mode exit and on unmount, per T-39-26.
+  // D-14/T-39-30: a player claims the keyboard only when a writer plays it
+  // or touches it directly — never on hover or focus-within, or a page with
+  // six takes would fight over one spacebar. The release call below is a
+  // no-op unless this player still holds the claim, so a stale unmount
+  // can't steal whichever player took over after it.
   useEffect(() => {
-    if (!spanMode) return
-    function handleSpanEscape(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return
-      setPendingSpan(null)
-      setSpanMode(false)
-      setDragAnchorMs(null)
-      setDragPointerMs(null)
+    return () => releaseActivePlayer(versionId)
+  }, [versionId])
+
+  // D-14/D-15/D-16: one guarded document keydown listener per mounted
+  // player. With N players mounted, N listeners run and the active-player
+  // check's early return is the entire per-keypress cost — simpler and
+  // more robust than a shared singleton listener, because a player that
+  // unmounts takes its own listener with it (T-39-31). D-04's Esc-exits-
+  // Mark-span-mode handling lives in this same listener rather than a
+  // second one, so the whole component keeps exactly one keydown listener
+  // per instance — Esc is the one key deliberately exempt from every other
+  // shortcut's typing-surface suppression below, and only while span mode
+  // is live.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (spanMode && event.key === 'Escape') {
+        setPendingSpan(null)
+        setSpanMode(false)
+        setDragAnchorMs(null)
+        setDragPointerMs(null)
+        return
+      }
+      if (!isActivePlayer(versionId)) return
+      if (shouldSuppressShortcut(event, document.activeElement)) return
+      const action = resolveTransportAction(event)
+      // A null result must leave the key to the browser — this is what
+      // keeps page scrolling and browser shortcuts intact when no player
+      // holds the keyboard, or when a modifier is held (T-39-32).
+      if (!action) return
+      event.preventDefault()
+      if (action.kind === 'toggle-play') {
+        void togglePlayback()
+      } else if (action.kind === 'nudge') {
+        seek(positionMs + action.deltaMs)
+      } else if (action.kind === 'step-comment') {
+        // Wired to the existing thread-stepping function in Task 2.
+      }
     }
-    document.addEventListener('keydown', handleSpanEscape)
-    return () => document.removeEventListener('keydown', handleSpanEscape)
-  }, [spanMode])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [versionId, positionMs, spanMode, seek, togglePlayback])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -667,7 +704,11 @@ export function TimedTrackPlayer({
   }
 
   return (
-    <div ref={playerRef} className="rounded-[11px] border border-hair bg-card px-3 py-3">
+    <div
+      ref={playerRef}
+      onPointerDownCapture={() => claimActivePlayer(versionId)}
+      className="rounded-[11px] border border-hair bg-card px-3 py-3"
+    >
       <audio
         ref={audioRef}
         src={playbackUrl}
@@ -691,7 +732,7 @@ export function TimedTrackPlayer({
             }
           }
         }}
-        onPlay={() => { setPlaying(true); onActivity(true) }}
+        onPlay={() => { claimActivePlayer(versionId); setPlaying(true); onActivity(true) }}
         onPause={() => { setPlaying(false); onActivity(false) }}
         onEnded={() => { setPlaying(false); onActivity(false) }}
         className="hidden"

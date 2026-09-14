@@ -276,4 +276,11 @@ describe('TimedTrackPlayer', () => {
     )
     expect(markup).not.toContain('Bring comments forward')
   })
+
+  it('renders no visible keyboard affordance — the transport bindings are behaviour, not chrome; the desktop legend is added in plan 39-10 Task 2', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).not.toContain('Space play')
+    expect(markup).not.toContain('seek 5s')
+    expect(markup).not.toContain('nudge 1s')
+  })
 })
