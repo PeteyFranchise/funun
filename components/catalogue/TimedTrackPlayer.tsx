@@ -4,7 +4,18 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
-import { preRollStartMs } from '@/lib/catalogue/take-transport'
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  PLAYBACK_SPEEDS,
+  applyPlaybackShape,
+  claimActivePlayer,
+  isActivePlayer,
+  preRollStartMs,
+  releaseActivePlayer,
+  resolveTransportAction,
+  shouldSuppressShortcut,
+  type PlaybackSpeed,
+} from '@/lib/catalogue/take-transport'
 import {
   PEAKS_BAR_COUNT,
   REST_BAR_HEIGHT_PERCENT,
@@ -135,6 +146,12 @@ export function TimedTrackPlayer({
   const [takeError, setTakeError] = useState<string | null>(null)
   const [livePeaks, setLivePeaks] = useState<number[] | null>(peaks ?? null)
   const [waveformError, setWaveformError] = useState<string | null>(null)
+  // D-17: this player instance is scoped to one take, so speed is naturally
+  // per-take by construction — a newly mounted player always opens at 1x.
+  // Never hoisted into a shared store, a context, or the module-level
+  // active-player registry; that would reintroduce exactly what D-17 exists
+  // to prevent, a writer opening v3 wondering why it drags.
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED)
   // ─── Mark-span mode (D-04) ───
   // A drag never creates a comment on its own — it only becomes a pending
   // span after normalizeSpanDrag accepts it, and only becomes a posted
@@ -245,23 +262,57 @@ export function TimedTrackPlayer({
     }
   }, [drawnPeaks, playbackUrl, versionId, workId])
 
-  // D-04: Esc exits Mark-span mode even while the comment composer holds
-  // focus — this is the one key deliberately exempt from the typing-surface
-  // suppression that guards every other shortcut, and only while this mode
-  // is live. The listener is registered only while spanMode is active and
-  // released on mode exit and on unmount, per T-39-26.
+  // D-14/T-39-30: a player claims the keyboard only when a writer plays it
+  // or touches it directly — never on hover or focus-within, or a page with
+  // six takes would fight over one spacebar. The release call below is a
+  // no-op unless this player still holds the claim, so a stale unmount
+  // can't steal whichever player took over after it.
   useEffect(() => {
-    if (!spanMode) return
-    function handleSpanEscape(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return
-      setPendingSpan(null)
-      setSpanMode(false)
-      setDragAnchorMs(null)
-      setDragPointerMs(null)
+    return () => releaseActivePlayer(versionId)
+  }, [versionId])
+
+  // D-14/D-15/D-16: one guarded document keydown listener per mounted
+  // player. With N players mounted, N listeners run and the active-player
+  // check's early return is the entire per-keypress cost — simpler and
+  // more robust than a shared singleton listener, because a player that
+  // unmounts takes its own listener with it (T-39-31). D-04's Esc-exits-
+  // Mark-span-mode handling lives in this same listener rather than a
+  // second one, so the whole component keeps exactly one keydown listener
+  // per instance — Esc is the one key deliberately exempt from every other
+  // shortcut's typing-surface suppression below, and only while span mode
+  // is live.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (spanMode && event.key === 'Escape') {
+        setPendingSpan(null)
+        setSpanMode(false)
+        setDragAnchorMs(null)
+        setDragPointerMs(null)
+        return
+      }
+      if (!isActivePlayer(versionId)) return
+      if (shouldSuppressShortcut(event, document.activeElement)) return
+      const action = resolveTransportAction(event)
+      // A null result must leave the key to the browser — this is what
+      // keeps page scrolling and browser shortcuts intact when no player
+      // holds the keyboard, or when a modifier is held (T-39-32).
+      if (!action) return
+      event.preventDefault()
+      if (action.kind === 'toggle-play') {
+        void togglePlayback()
+      } else if (action.kind === 'nudge') {
+        seek(positionMs + action.deltaMs)
+      } else if (action.kind === 'step-comment') {
+        // D-15: reuses the same function the Previous/Next buttons already
+        // call, so a keyboard step wraps the same way, opens the same
+        // thread, and gets the same pre-roll a click does. A take with no
+        // comments is a no-op, not an error — stepSelectedNote's own guard.
+        stepSelectedNote(action.direction)
+      }
     }
-    document.addEventListener('keydown', handleSpanEscape)
-    return () => document.removeEventListener('keydown', handleSpanEscape)
-  }, [spanMode])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [versionId, positionMs, spanMode, seek, togglePlayback, stepSelectedNote])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -458,6 +509,16 @@ export function TimedTrackPlayer({
     } else {
       audio.pause()
     }
+  }
+
+  // D-18: applied here on press, and again from the audio element's own
+  // onLoadedMetadata below. This player never swaps its own src, so the
+  // second call site costs nothing today, but it keeps both surfaces
+  // identical so a later change to either can never silently diverge —
+  // the same discipline VersionComparisonPanel already follows.
+  function selectSpeed(nextSpeed: PlaybackSpeed) {
+    setSpeed(nextSpeed)
+    if (audioRef.current) applyPlaybackShape(audioRef.current, nextSpeed)
   }
 
   // ─── Mark-span mode (D-04) ───
@@ -667,7 +728,11 @@ export function TimedTrackPlayer({
   }
 
   return (
-    <div ref={playerRef} className="rounded-[11px] border border-hair bg-card px-3 py-3">
+    <div
+      ref={playerRef}
+      onPointerDownCapture={() => claimActivePlayer(versionId)}
+      className="rounded-[11px] border border-hair bg-card px-3 py-3"
+    >
       <audio
         ref={audioRef}
         src={playbackUrl}
@@ -675,6 +740,9 @@ export function TimedTrackPlayer({
         onLoadedMetadata={event => {
           const seconds = event.currentTarget.duration
           if (Number.isFinite(seconds) && seconds >= 0) setDurationMs(Math.round(seconds * 1000))
+          // D-18: media elements reset playback-adjacent properties on a
+          // new source; this fires on every metadata load, not only mount.
+          applyPlaybackShape(event.currentTarget, speed)
         }}
         onTimeUpdate={event => {
           const currentMs = Math.round(event.currentTarget.currentTime * 1000)
@@ -691,7 +759,7 @@ export function TimedTrackPlayer({
             }
           }
         }}
-        onPlay={() => { setPlaying(true); onActivity(true) }}
+        onPlay={() => { claimActivePlayer(versionId); setPlaying(true); onActivity(true) }}
         onPause={() => { setPlaying(false); onActivity(false) }}
         onEnded={() => { setPlaying(false); onActivity(false) }}
         className="hidden"
@@ -711,14 +779,32 @@ export function TimedTrackPlayer({
             ) : <span>0 unresolved comments</span>}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => void togglePlayback()}
-          aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
-        >
-          {playing ? 'Ⅱ' : '▶'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* D-17/D-18: matches VersionComparisonPanel's control exactly —
+              same container classes, one real button per PLAYBACK_SPEEDS
+              entry, same active/inactive treatment, aria-pressed on each. */}
+          <div className="flex items-center gap-1 rounded-full border border-hairstrong bg-card2 p-0.5 text-[9px]" role="group" aria-label="Playback speed">
+            {PLAYBACK_SPEEDS.map(step => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => selectSpeed(step)}
+                aria-pressed={speed === step}
+                className={`rounded-full px-2 py-1 font-semibold ${speed === step ? 'bg-brandindigo text-ink font-bold' : 'text-lavdim hover:text-white'}`}
+              >
+                {step}×
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => void togglePlayback()}
+            aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
+          >
+            {playing ? 'Ⅱ' : '▶'}
+          </button>
+        </div>
       </div>
 
       {renaming && onRename && (
@@ -828,9 +914,14 @@ export function TimedTrackPlayer({
           // point-marker label pattern.
           const rangeComment = group.comments.find(comment => comment.endTimestampMs != null)
           const commentWord = group.comments.length === 1 ? 'comment' : 'comments'
+          // Accessibility Contract: every marker states its timestamp, its
+          // count, and its open or resolved state. A group with any still-
+          // unresolved thread reads as "open" — the same rule the header's
+          // unresolvedCount already uses.
+          const groupStateWord = group.comments.some(comment => comment.resolvedAt === null) ? 'open' : 'resolved'
           const label = rangeComment
-            ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}`
-            : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}`
+            ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}, ${groupStateWord}`
+            : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}, ${groupStateWord}`
           // D-07: a carried comment whose in-point no longer fits this take
           // recolors amber instead of indigo — hygiene, warmer than legal,
           // never the rose/red reserved for genuine errors.
@@ -911,6 +1002,13 @@ export function TimedTrackPlayer({
           <span>{formatTrackTimestamp(effectiveDurationMs)}</span>
         </div>
       </div>
+      {/* D-14/D-15: a single quiet, desktop-only legend line — a phone has
+          no physical keyboard to discover, so no help panel is in scope.
+          Naming all four bindings here is what makes them discoverable
+          without teaching them. */}
+      <p className="hidden sm:block mt-1 text-[9px] text-lavdim">
+        Space play/pause · ← → seek 5s · ⇧← ⇧→ nudge 1s · [ ] comments
+      </p>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hair pt-2">
         <div className="flex flex-wrap items-center gap-3">

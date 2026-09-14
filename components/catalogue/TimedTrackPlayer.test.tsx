@@ -197,7 +197,7 @@ describe('TimedTrackPlayer', () => {
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[span]} />)
     expect(markup).toContain('bg-brandindigo/15')
     expect((markup.match(/rounded-full border bg-card px-1 text-\[9px\] font-bold shadow-md/g) ?? []).length).toBe(1)
-    expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment"')
+    expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment, open"')
   })
 
   it('renders no shaded band for a point comment', () => {
@@ -275,5 +275,56 @@ describe('TimedTrackPlayer', () => {
       <TimedTrackPlayer {...baseProps()} isLatest initialPins={[pinFixture()]} />
     )
     expect(markup).not.toContain('Bring comments forward')
+  })
+
+  it('renders the desktop-only keyboard legend as the only visible keyboard affordance — the bindings themselves are behaviour, not chrome', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    // Exactly one occurrence of each phrase, and only inside the legend
+    // line — no second, restated hint elsewhere in the transport row.
+    expect((markup.match(/Space play\/pause/g) ?? []).length).toBe(1)
+    expect((markup.match(/seek 5s/g) ?? []).length).toBe(1)
+    expect((markup.match(/nudge 1s/g) ?? []).length).toBe(1)
+  })
+
+  it('renders a single, desktop-only keyboard legend naming all four bindings under the waveform', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('hidden sm:block')
+    expect(markup).toContain('Space play/pause')
+    expect(markup).toContain('seek 5s')
+    expect(markup).toContain('nudge 1s')
+    expect(markup).toContain('comments')
+  })
+
+  it('renders every marker as a real button with an aria-label stating timestamp, count, and open/resolved state', () => {
+    const open = commentFixture({ id: 'open-1', timestampMs: 12000, resolvedAt: null })
+    const resolved = commentFixture({ id: 'resolved-1', timestampMs: 30000, resolvedAt: '2026-09-14T00:00:00Z', canResolve: false })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[open, resolved]} />)
+    expect(markup).toContain('aria-label="1 comment at 0:12, open"')
+    expect(markup).toContain('aria-label="1 comment at 0:30, resolved"')
+    const markerSection = markup.slice(markup.indexOf('aria-label="Timeline'))
+    expect((markerSection.match(/<button/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('renders four playback speed steps with 1x active on first render, pitch preserved, and no shared/global speed state', () => {
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).not.toMatch(/useContext|createContext|window\.__/)
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('aria-label="Playback speed"')
+    expect(markup).toContain('>0.5×<')
+    expect(markup).toContain('>0.75×<')
+    expect(markup).toContain('>1×<')
+    expect(markup).toContain('>1.5×<')
+    const speedGroupMatch = markup.match(/aria-label="Playback speed"[\s\S]*?(?=aria-label="(?:Play|Pause) )/)
+    const speedSection = speedGroupMatch ? speedGroupMatch[0] : ''
+    expect((speedSection.match(/aria-pressed="true"/g) ?? []).length).toBe(1)
+    // The one active step is 1× — the button carrying aria-pressed="true"
+    // must be the one labelled "1×", not any other step.
+    const activeButtonMatch = speedSection.match(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)</)
+    expect(activeButtonMatch?.[1]).toBe('1×')
+  })
+
+  it('does not grow the timeline block to make room for the speed control', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect((markup.match(/h-\[58px\]/g) ?? []).length).toBe(1)
   })
 })
