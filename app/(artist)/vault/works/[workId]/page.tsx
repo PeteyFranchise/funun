@@ -564,6 +564,7 @@ export default async function WorkComposerPage({
       canManage: access.isOwner || v.user_id === user.id,
       recordingSessionStatus: recordingSession?.status ?? null,
       isWorking: work.working_version_id === v.id,
+      peaks: v.peaks ?? null,
     }
   })
   const versionCardsById = new Map(versionCards.map(version => [version.id, version]))
