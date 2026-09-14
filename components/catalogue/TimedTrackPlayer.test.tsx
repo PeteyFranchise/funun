@@ -3,7 +3,26 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
-import type { WorkVersionCommentView } from '@/types/catalogue'
+import type { WorkVersionCommentView, WorkVersionPinView } from '@/types/catalogue'
+
+function pinFixture(overrides: Partial<WorkVersionPinView> = {}): WorkVersionPinView {
+  return {
+    id: 'pin-1',
+    timestampMs: 45000,
+    createdAt: '2026-09-14T00:00:00Z',
+    ...overrides,
+  }
+}
+
+// Isolates one pin dot's own opening `<button ...>` tag so a "no accent
+// colour" assertion cannot accidentally pass by matching unrelated markup
+// elsewhere in the component (e.g. the seek input, a marker pill).
+function pinButtonMarkup(markup: string, ariaLabel: string): string {
+  const labelIndex = markup.indexOf(`aria-label="${ariaLabel}"`)
+  const start = markup.lastIndexOf('<button', labelIndex)
+  const end = markup.indexOf('>', labelIndex)
+  return markup.slice(start, end + 1)
+}
 
 function commentFixture(overrides: Partial<WorkVersionCommentView> = {}): WorkVersionCommentView {
   return {
@@ -215,5 +234,46 @@ describe('TimedTrackPlayer', () => {
     const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
     expect(source).toContain('Leave a comment at ${formatTrackTimestamp(positionMs)}')
     expect(source).not.toContain('timed notes')
+  })
+
+  it('offers a Pin control in the transport row and tells the writer once, plainly, that a pin is private', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('>Pin<')
+    expect(markup).toContain('Pins are private — only you can see them.')
+  })
+
+  it('renders no pin dot when there are no pins', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialPins={[]} />)
+    expect(markup).not.toContain('bg-lav/60')
+  })
+
+  it("renders a plain lavender dot for the viewer's own pin, with a private aria-label and neither accent colour", () => {
+    const pin = pinFixture({ id: 'pin-1', timestampMs: 45000 })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialPins={[pin]} />)
+    expect(markup).toContain('aria-label="Your pin at 0:45"')
+    const dot = pinButtonMarkup(markup, 'Your pin at 0:45')
+    expect(dot).toContain('bg-lav/60')
+    expect(dot).not.toContain('brandindigo')
+    expect(dot).not.toContain('brandfuchsia')
+  })
+
+  it('offers exactly two pin actions — turn into a comment, or remove — with no confirmation dialog', () => {
+    // The popover only renders once a pin dot has been pressed
+    // (selectedPinId starts null), which this repo's jsdom-free
+    // (testEnvironment: 'node') Jest config cannot exercise via
+    // renderToStaticMarkup. A direct source-content check is the same
+    // text-lock technique the composer-placeholder test above already uses
+    // for exactly this kind of unreachable-via-render guard.
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).toContain('Turn into a comment')
+    expect(source).toContain('Remove pin')
+    expect(source).not.toMatch(/confirm\(|Are you sure/)
+  })
+
+  it('never triggers the carry-forward offer block due to the presence of pins', () => {
+    const markup = renderToStaticMarkup(
+      <TimedTrackPlayer {...baseProps()} isLatest initialPins={[pinFixture()]} />
+    )
+    expect(markup).not.toContain('Bring comments forward')
   })
 })
