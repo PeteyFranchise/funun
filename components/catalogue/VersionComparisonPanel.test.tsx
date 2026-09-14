@@ -73,8 +73,8 @@ describe('VersionComparisonPanel', () => {
         refreshToken={0}
       />
     )
-    expect(markup).toContain('v4 note at 1:45')
-    expect(markup).not.toContain('v4 note at 2:00')
+    expect(markup).toContain('v4 comment at 1:45')
+    expect(markup).not.toContain('v4 comment at 2:00')
   })
 
   it("draws the active take's real waveform when a valid peaks array exists", () => {

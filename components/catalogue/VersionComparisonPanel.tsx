@@ -252,7 +252,7 @@ export function VersionComparisonPanel({
     })
     const body = (await response.json().catch(() => ({}))) as { error?: string }
     if (!response.ok) {
-      setError(body.error ?? 'Could not update that note.')
+      setError(body.error ?? 'Could not update that comment.')
       setSaving(false)
       return
     }
@@ -321,7 +321,7 @@ export function VersionComparisonPanel({
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brandindigo">A/B listening</p>
           <h2 id="version-comparison-title" className="mt-1 text-[20px] font-bold text-white">Compare two takes</h2>
-          <p className="mt-1 text-[11px] leading-5 text-lavdim">One playhead, each take&apos;s own notes. Switching keeps the same elapsed moment.</p>
+          <p className="mt-1 text-[11px] leading-5 text-lavdim">One playhead, each take&apos;s own comments. Switching keeps the same elapsed moment.</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close version comparison" className="text-[16px] text-lavdim hover:text-white">✕</button>
       </div>
@@ -437,7 +437,7 @@ export function VersionComparisonPanel({
             key={comment.id}
             type="button"
             onClick={() => chooseMarker(comment)}
-            aria-label={`${comment.resolvedAt ? 'Resolved' : 'Open'} ${activeVersion.display} note at ${formatTrackTimestamp(comment.timestampMs)}`}
+            aria-label={`${comment.resolvedAt ? 'Resolved' : 'Open'} ${activeVersion.display} comment at ${formatTrackTimestamp(comment.timestampMs)}`}
             className={`absolute top-10 -translate-x-1/2 text-[11px] ${comment.resolvedAt ? 'text-lavdim' : 'text-brandindigo'}`}
             style={{ left: `${Math.min(100, (comment.timestampMs / activeDurationMs) * 100)}%` }}
           >●</button>
@@ -446,13 +446,13 @@ export function VersionComparisonPanel({
 
       <div className="mt-3 border-t border-hair pt-4">
         {loading ? (
-          <p className="text-[11px] text-lavdim">Loading timed notes…</p>
+          <p className="text-[11px] text-lavdim">Loading timed comments…</p>
         ) : selected && selectedVersion ? (
           <div>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-brandindigo">
-                  Note from {selectedVersion.display} at {formatTrackTimestamp(selected.timestampMs)}
+                  Comment from {selectedVersion.display} at {formatTrackTimestamp(selected.timestampMs)}
                 </p>
                 <p className="mt-1 text-[12px] leading-5 text-white">{selected.body}</p>
                 <p className="mt-1 text-[9px] text-lavdim">
@@ -472,14 +472,14 @@ export function VersionComparisonPanel({
             </div>
             {selected.versionId !== activeVersion.id && (
               <p className="mt-3 rounded-[9px] border border-hair bg-card2 px-3 py-2 text-[10px] text-lavdim">
-                You are hearing {activeVersion.display} at the same moment while reviewing this {selectedVersion.display} note.
+                You are hearing {activeVersion.display} at the same moment while reviewing this {selectedVersion.display} comment.
               </p>
             )}
           </div>
         ) : activeRoots.length > 0 ? (
-          <p className="text-[11px] text-lavdim">Choose a {activeVersion.display} marker, then switch sides to hear whether the note was addressed.</p>
+          <p className="text-[11px] text-lavdim">Choose a {activeVersion.display} marker, then switch sides to hear whether the comment was addressed.</p>
         ) : (
-          <p className="text-[11px] text-lavdim">{activeVersion.display} has no timed notes yet. Switch sides or return to the room to add one.</p>
+          <p className="text-[11px] text-lavdim">{activeVersion.display} has no timed comments yet. Switch sides or return to the room to add one.</p>
         )}
         {error && <p role="alert" className="mt-3 text-[11px] text-rose-300">{error}</p>}
       </div>

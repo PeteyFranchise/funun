@@ -60,9 +60,9 @@ export function comparisonResolutionLabel({
   commentVersion: ComparisonVersionFacts
   listeningVersion: ComparisonVersionFacts
 }): string {
-  if (resolved) return 'Reopen note'
+  if (resolved) return 'Reopen comment'
   if (commentVersion.id !== listeningVersion.id && isNewerVersion(listeningVersion, commentVersion)) {
     return `Mark addressed in ${listeningVersion.display}`
   }
-  return 'Resolve note'
+  return 'Resolve comment'
 }

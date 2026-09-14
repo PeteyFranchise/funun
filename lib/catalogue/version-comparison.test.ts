@@ -32,12 +32,12 @@ describe('Writer\'s Room version comparison', () => {
     expect(clampComparisonPosition(205000, null)).toBe(205000)
   })
 
-  it('names the newer take when resolving an older note while listening to it', () => {
+  it('names the newer take when resolving an older comment while listening to it', () => {
     expect(comparisonResolutionLabel({ resolved: false, commentVersion: older, listeningVersion: newer }))
       .toBe('Mark addressed in v5')
     expect(comparisonResolutionLabel({ resolved: false, commentVersion: older, listeningVersion: older }))
-      .toBe('Resolve note')
+      .toBe('Resolve comment')
     expect(comparisonResolutionLabel({ resolved: true, commentVersion: older, listeningVersion: newer }))
-      .toBe('Reopen note')
+      .toBe('Reopen comment')
   })
 })
