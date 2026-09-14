@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import { normalizeSpanDrag, spanGeometry } from '@/lib/catalogue/take-spans'
 import {
   PEAKS_BAR_COUNT,
   REST_BAR_HEIGHT_PERCENT,
@@ -126,6 +127,15 @@ export function TimedTrackPlayer({
   const [takeError, setTakeError] = useState<string | null>(null)
   const [livePeaks, setLivePeaks] = useState<number[] | null>(peaks ?? null)
   const [waveformError, setWaveformError] = useState<string | null>(null)
+  // ─── Mark-span mode (D-04) ───
+  // A drag never creates a comment on its own — it only becomes a pending
+  // span after normalizeSpanDrag accepts it, and only becomes a posted
+  // comment after an explicit Confirm.
+  const [spanMode, setSpanMode] = useState(false)
+  const [dragAnchorMs, setDragAnchorMs] = useState<number | null>(null)
+  const [dragPointerMs, setDragPointerMs] = useState<number | null>(null)
+  const [pendingSpan, setPendingSpan] = useState<{ startMs: number; endMs: number } | null>(null)
+  const spanLayerRef = useRef<HTMLDivElement | null>(null)
   const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
   // A payload that fails the shared validator is treated exactly like a
   // missing one — the server and the browser agree on what a peaks array
@@ -176,6 +186,24 @@ export function TimedTrackPlayer({
       if (!resolved) backfillsInFlight.delete(versionId)
     }
   }, [drawnPeaks, playbackUrl, versionId, workId])
+
+  // D-04: Esc exits Mark-span mode even while the comment composer holds
+  // focus — this is the one key deliberately exempt from the typing-surface
+  // suppression that guards every other shortcut, and only while this mode
+  // is live. The listener is registered only while spanMode is active and
+  // released on mode exit and on unmount, per T-39-26.
+  useEffect(() => {
+    if (!spanMode) return
+    function handleSpanEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setPendingSpan(null)
+      setSpanMode(false)
+      setDragAnchorMs(null)
+      setDragPointerMs(null)
+    }
+    document.addEventListener('keydown', handleSpanEscape)
+    return () => document.removeEventListener('keydown', handleSpanEscape)
+  }, [spanMode])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -271,6 +299,76 @@ export function TimedTrackPlayer({
       audio.pause()
     }
   }
+
+  // ─── Mark-span mode (D-04) ───
+  // A single pointer-event code path serves both touch and mouse, which is
+  // what makes the one-interaction-model requirement real: the same three
+  // handlers below run whether the drag came from a finger or a cursor.
+  function msFromClientX(clientX: number): number {
+    const rect = spanLayerRef.current?.getBoundingClientRect()
+    if (!rect || rect.width <= 0) return 0
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return ratio * effectiveDurationMs
+  }
+
+  function enterSpanMode() {
+    setPendingSpan(null)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+    setSpanMode(true)
+  }
+
+  function exitSpanMode() {
+    setSpanMode(false)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+  }
+
+  function confirmSpan() {
+    if (!pendingSpan) return
+    setOpen(true)
+    exitSpanMode()
+  }
+
+  function cancelSpan() {
+    setPendingSpan(null)
+    exitSpanMode()
+  }
+
+  function handleSpanPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const ms = msFromClientX(event.clientX)
+    setDragAnchorMs(ms)
+    setDragPointerMs(ms)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handleSpanPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragAnchorMs === null) return
+    setDragPointerMs(msFromClientX(event.clientX))
+  }
+
+  function handleSpanPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    if (dragAnchorMs === null || dragPointerMs === null) return
+    const normalized = normalizeSpanDrag(dragAnchorMs, dragPointerMs, effectiveDurationMs)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+    // A drag shorter than MIN_SPAN_MS snaps back with no confirm affordance
+    // at all — normalizeSpanDrag returning null is the whole guard, so
+    // there is no second minimum-span check here.
+    if (normalized) setPendingSpan(normalized)
+  }
+
+  // The band a writer currently sees: a live drag in progress, or a
+  // confirmed-but-not-yet-posted span persisting (at higher opacity, via
+  // the pendingSpan-and-not-spanMode branch below) while the composer is
+  // open.
+  const dragBand = dragAnchorMs !== null && dragPointerMs !== null
+    ? { startMs: Math.min(dragAnchorMs, dragPointerMs), endMs: Math.max(dragAnchorMs, dragPointerMs) }
+    : pendingSpan
+  const dragBandGeometry = dragBand ? spanGeometry(dragBand.startMs, dragBand.endMs, effectiveDurationMs) : null
 
   function selectComment(comment: WorkVersionCommentView) {
     setOpen(true)
@@ -415,7 +513,10 @@ export function TimedTrackPlayer({
         </div>
       )}
 
-      <div className="relative mt-3 h-[58px]" aria-label={`Timeline for ${display}`}>
+      <div
+        className={`relative mt-3 h-[58px]${spanMode ? ' ring-2 ring-brandfuchsia/50' : ''}`}
+        aria-label={`Timeline for ${display}`}
+      >
         {/* At the `sm` breakpoint and above the hairline gap is exactly the
             UI contract's existing treatment, but below it PEAKS_BAR_COUNT
             (200) one-pixel bars plus 199 one-pixel gaps need 399px, which a
@@ -454,9 +555,29 @@ export function TimedTrackPlayer({
           step={100}
           value={Math.min(positionMs, effectiveDurationMs)}
           onChange={event => seek(Number(event.target.value))}
+          disabled={spanMode}
           aria-label={`Seek ${display}`}
           className="absolute inset-x-0 top-0 h-9 w-full cursor-pointer opacity-0"
         />
+        {spanMode && (
+          <div
+            ref={spanLayerRef}
+            onPointerDown={handleSpanPointerDown}
+            onPointerMove={handleSpanPointerMove}
+            onPointerUp={handleSpanPointerUp}
+            onPointerCancel={handleSpanPointerUp}
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-9 w-full cursor-crosshair"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+        {dragBand && dragBandGeometry && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-0 h-9 border-x border-brandfuchsia/60 ${pendingSpan && !spanMode ? 'bg-brandfuchsia/25' : 'bg-brandfuchsia/20'}`}
+            style={{ left: `${dragBandGeometry.leftPercent}%`, width: `${dragBandGeometry.widthPercent}%` }}
+          />
+        )}
         {selectedRoot ? (
           <span
             aria-hidden="true"
@@ -497,6 +618,36 @@ export function TimedTrackPlayer({
           <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
             {recordOverLabel}
           </button>
+          <button
+            type="button"
+            onClick={() => (spanMode ? exitSpanMode() : enterSpanMode())}
+            aria-pressed={spanMode}
+            className={spanMode
+              ? 'inline-flex min-h-[44px] items-center justify-center rounded-full bg-brandfuchsia px-2 py-1 text-[9px] font-bold text-ink sm:min-h-0'
+              : 'inline-flex min-h-[44px] items-center text-[10px] font-semibold text-brandfuchsia hover:text-white sm:min-h-0'}
+          >
+            {spanMode ? (
+              <>Marking span<span className="hidden sm:inline"> — Esc to exit</span></>
+            ) : 'Mark span'}
+          </button>
+          {pendingSpan && spanMode && (
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={confirmSpan}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-grad px-3 text-[10px] font-bold text-white sm:min-h-0 sm:px-2 sm:py-1"
+              >
+                Confirm span
+              </button>
+              <button
+                type="button"
+                onClick={cancelSpan}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-hairstrong px-3 text-[10px] text-lavdim hover:text-white sm:min-h-0 sm:border-0 sm:px-0 sm:py-0"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
           {onPullLyrics && (
             <button type="button" onClick={onPullLyrics} aria-label={`Use Lyric Lift to pull lyrics from ${display}`} className="text-[10px] font-semibold text-brandindigo hover:text-white">
               Lyric Lift

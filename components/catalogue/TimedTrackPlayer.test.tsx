@@ -143,6 +143,14 @@ describe('TimedTrackPlayer', () => {
     expect(markup).not.toContain('timed notes')
   })
 
+  it('offers Mark span mode in the transport row without ever auto-activating it', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('Mark span')
+    expect(markup).not.toContain('cursor-crosshair')
+    expect(markup).not.toContain('ring-brandfuchsia')
+    expect(markup).not.toContain('disabled=""')
+  })
+
   it('uses the phase\'s comment vocabulary for the composer placeholder', () => {
     // The composer only renders once `open` is true, which this file only
     // ever sets from a click handler or the URL-linked-comment effect —
