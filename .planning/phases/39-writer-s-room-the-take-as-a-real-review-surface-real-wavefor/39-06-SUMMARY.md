@@ -163,6 +163,10 @@ None - no external service configuration required.
 - The take player now has a real waveform to draw against — this is the explicit spine plan 39-07 (`VersionComparisonPanel`'s own identical `WAVE_BARS` constant, deliberately left untouched here) and the remaining Writer's Room player features (span marking, pins, keyboard navigation, speed) build on top of.
 - **Not verified by this plan (explicitly deferred to plan 39-11, per this plan's own `<verification>` section):** that a freshly recorded take shows its real shape with no placeholder frame in a live browser — the felt-absence-of-waiting behavior D-01 targets, which no static-render assertion can observe. The backfill's actual decode + PATCH round-trip (D3 in the coverage table above) is likewise unverified by automated tests for the same reason and needs a human pass against a take with no stored peaks.
 
+## Self-Check: PASSED
+
+All 6 key files confirmed present on disk (5 code files + this SUMMARY). All 4 commits (`0a92fa94`, `00893f90`, `733b4a3c`, `f22ffd59`) confirmed present in `git log`.
+
 ---
 *Phase: 39-writer-s-room-the-take-as-a-real-review-surface-real-wavefor*
 *Completed: 2026-09-14*
