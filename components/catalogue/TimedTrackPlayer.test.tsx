@@ -197,7 +197,7 @@ describe('TimedTrackPlayer', () => {
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[span]} />)
     expect(markup).toContain('bg-brandindigo/15')
     expect((markup.match(/rounded-full border bg-card px-1 text-\[9px\] font-bold shadow-md/g) ?? []).length).toBe(1)
-    expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment"')
+    expect(markup).toContain('aria-label="Range comment, 0:45 to 0:52, 1 comment, open"')
   })
 
   it('renders no shaded band for a point comment', () => {
@@ -277,10 +277,31 @@ describe('TimedTrackPlayer', () => {
     expect(markup).not.toContain('Bring comments forward')
   })
 
-  it('renders no visible keyboard affordance — the transport bindings are behaviour, not chrome; the desktop legend is added in plan 39-10 Task 2', () => {
+  it('renders the desktop-only keyboard legend as the only visible keyboard affordance — the bindings themselves are behaviour, not chrome', () => {
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
-    expect(markup).not.toContain('Space play')
-    expect(markup).not.toContain('seek 5s')
-    expect(markup).not.toContain('nudge 1s')
+    // Exactly one occurrence of each phrase, and only inside the legend
+    // line — no second, restated hint elsewhere in the transport row.
+    expect((markup.match(/Space play\/pause/g) ?? []).length).toBe(1)
+    expect((markup.match(/seek 5s/g) ?? []).length).toBe(1)
+    expect((markup.match(/nudge 1s/g) ?? []).length).toBe(1)
+  })
+
+  it('renders a single, desktop-only keyboard legend naming all four bindings under the waveform', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('hidden sm:block')
+    expect(markup).toContain('Space play/pause')
+    expect(markup).toContain('seek 5s')
+    expect(markup).toContain('nudge 1s')
+    expect(markup).toContain('comments')
+  })
+
+  it('renders every marker as a real button with an aria-label stating timestamp, count, and open/resolved state', () => {
+    const open = commentFixture({ id: 'open-1', timestampMs: 12000, resolvedAt: null })
+    const resolved = commentFixture({ id: 'resolved-1', timestampMs: 30000, resolvedAt: '2026-09-14T00:00:00Z', canResolve: false })
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} initialComments={[open, resolved]} />)
+    expect(markup).toContain('aria-label="1 comment at 0:12, open"')
+    expect(markup).toContain('aria-label="1 comment at 0:30, resolved"')
+    const markerSection = markup.slice(markup.indexOf('aria-label="Timeline'))
+    expect((markerSection.match(/<button/g) ?? []).length).toBeGreaterThanOrEqual(2)
   })
 })

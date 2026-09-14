@@ -293,12 +293,16 @@ export function TimedTrackPlayer({
       } else if (action.kind === 'nudge') {
         seek(positionMs + action.deltaMs)
       } else if (action.kind === 'step-comment') {
-        // Wired to the existing thread-stepping function in Task 2.
+        // D-15: reuses the same function the Previous/Next buttons already
+        // call, so a keyboard step wraps the same way, opens the same
+        // thread, and gets the same pre-roll a click does. A take with no
+        // comments is a no-op, not an error — stepSelectedNote's own guard.
+        stepSelectedNote(action.direction)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [versionId, positionMs, spanMode, seek, togglePlayback])
+  }, [versionId, positionMs, spanMode, seek, togglePlayback, stepSelectedNote])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -869,9 +873,14 @@ export function TimedTrackPlayer({
           // point-marker label pattern.
           const rangeComment = group.comments.find(comment => comment.endTimestampMs != null)
           const commentWord = group.comments.length === 1 ? 'comment' : 'comments'
+          // Accessibility Contract: every marker states its timestamp, its
+          // count, and its open or resolved state. A group with any still-
+          // unresolved thread reads as "open" — the same rule the header's
+          // unresolvedCount already uses.
+          const groupStateWord = group.comments.some(comment => comment.resolvedAt === null) ? 'open' : 'resolved'
           const label = rangeComment
-            ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}`
-            : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}`
+            ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}, ${groupStateWord}`
+            : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}, ${groupStateWord}`
           // D-07: a carried comment whose in-point no longer fits this take
           // recolors amber instead of indigo — hygiene, warmer than legal,
           // never the rose/red reserved for genuine errors.
@@ -952,6 +961,13 @@ export function TimedTrackPlayer({
           <span>{formatTrackTimestamp(effectiveDurationMs)}</span>
         </div>
       </div>
+      {/* D-14/D-15: a single quiet, desktop-only legend line — a phone has
+          no physical keyboard to discover, so no help panel is in scope.
+          Naming all four bindings here is what makes them discoverable
+          without teaching them. */}
+      <p className="hidden sm:block mt-1 text-[9px] text-lavdim">
+        Space play/pause · ← → seek 5s · ⇧← ⇧→ nudge 1s · [ ] comments
+      </p>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hair pt-2">
         <div className="flex flex-wrap items-center gap-3">
