@@ -5,12 +5,16 @@ import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
 import {
+  DEFAULT_PLAYBACK_SPEED,
+  PLAYBACK_SPEEDS,
+  applyPlaybackShape,
   claimActivePlayer,
   isActivePlayer,
   preRollStartMs,
   releaseActivePlayer,
   resolveTransportAction,
   shouldSuppressShortcut,
+  type PlaybackSpeed,
 } from '@/lib/catalogue/take-transport'
 import {
   PEAKS_BAR_COUNT,
@@ -142,6 +146,12 @@ export function TimedTrackPlayer({
   const [takeError, setTakeError] = useState<string | null>(null)
   const [livePeaks, setLivePeaks] = useState<number[] | null>(peaks ?? null)
   const [waveformError, setWaveformError] = useState<string | null>(null)
+  // D-17: this player instance is scoped to one take, so speed is naturally
+  // per-take by construction — a newly mounted player always opens at 1x.
+  // Never hoisted into a shared store, a context, or the module-level
+  // active-player registry; that would reintroduce exactly what D-17 exists
+  // to prevent, a writer opening v3 wondering why it drags.
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED)
   // ─── Mark-span mode (D-04) ───
   // A drag never creates a comment on its own — it only becomes a pending
   // span after normalizeSpanDrag accepts it, and only becomes a posted
@@ -501,6 +511,16 @@ export function TimedTrackPlayer({
     }
   }
 
+  // D-18: applied here on press, and again from the audio element's own
+  // onLoadedMetadata below. This player never swaps its own src, so the
+  // second call site costs nothing today, but it keeps both surfaces
+  // identical so a later change to either can never silently diverge —
+  // the same discipline VersionComparisonPanel already follows.
+  function selectSpeed(nextSpeed: PlaybackSpeed) {
+    setSpeed(nextSpeed)
+    if (audioRef.current) applyPlaybackShape(audioRef.current, nextSpeed)
+  }
+
   // ─── Mark-span mode (D-04) ───
   // A single pointer-event code path serves both touch and mouse, which is
   // what makes the one-interaction-model requirement real: the same three
@@ -720,6 +740,9 @@ export function TimedTrackPlayer({
         onLoadedMetadata={event => {
           const seconds = event.currentTarget.duration
           if (Number.isFinite(seconds) && seconds >= 0) setDurationMs(Math.round(seconds * 1000))
+          // D-18: media elements reset playback-adjacent properties on a
+          // new source; this fires on every metadata load, not only mount.
+          applyPlaybackShape(event.currentTarget, speed)
         }}
         onTimeUpdate={event => {
           const currentMs = Math.round(event.currentTarget.currentTime * 1000)
@@ -756,14 +779,32 @@ export function TimedTrackPlayer({
             ) : <span>0 unresolved comments</span>}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => void togglePlayback()}
-          aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
-        >
-          {playing ? 'Ⅱ' : '▶'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* D-17/D-18: matches VersionComparisonPanel's control exactly —
+              same container classes, one real button per PLAYBACK_SPEEDS
+              entry, same active/inactive treatment, aria-pressed on each. */}
+          <div className="flex items-center gap-1 rounded-full border border-hairstrong bg-card2 p-0.5 text-[9px]" role="group" aria-label="Playback speed">
+            {PLAYBACK_SPEEDS.map(step => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => selectSpeed(step)}
+                aria-pressed={speed === step}
+                className={`rounded-full px-2 py-1 font-semibold ${speed === step ? 'bg-brandindigo text-ink font-bold' : 'text-lavdim hover:text-white'}`}
+              >
+                {step}×
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => void togglePlayback()}
+            aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
+          >
+            {playing ? 'Ⅱ' : '▶'}
+          </button>
+        </div>
       </div>
 
       {renaming && onRename && (

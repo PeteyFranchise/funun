@@ -304,4 +304,27 @@ describe('TimedTrackPlayer', () => {
     const markerSection = markup.slice(markup.indexOf('aria-label="Timeline'))
     expect((markerSection.match(/<button/g) ?? []).length).toBeGreaterThanOrEqual(2)
   })
+
+  it('renders four playback speed steps with 1x active on first render, pitch preserved, and no shared/global speed state', () => {
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).not.toMatch(/useContext|createContext|window\.__/)
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect(markup).toContain('aria-label="Playback speed"')
+    expect(markup).toContain('>0.5×<')
+    expect(markup).toContain('>0.75×<')
+    expect(markup).toContain('>1×<')
+    expect(markup).toContain('>1.5×<')
+    const speedGroupMatch = markup.match(/aria-label="Playback speed"[\s\S]*?(?=aria-label="(?:Play|Pause) )/)
+    const speedSection = speedGroupMatch ? speedGroupMatch[0] : ''
+    expect((speedSection.match(/aria-pressed="true"/g) ?? []).length).toBe(1)
+    // The one active step is 1× — the button carrying aria-pressed="true"
+    // must be the one labelled "1×", not any other step.
+    const activeButtonMatch = speedSection.match(/<button[^>]*aria-pressed="true"[^>]*>([^<]*)</)
+    expect(activeButtonMatch?.[1]).toBe('1×')
+  })
+
+  it('does not grow the timeline block to make room for the speed control', () => {
+    const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
+    expect((markup.match(/h-\[58px\]/g) ?? []).length).toBe(1)
+  })
 })
