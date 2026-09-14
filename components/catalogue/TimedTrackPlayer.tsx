@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
 import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
@@ -157,6 +157,13 @@ export function TimedTrackPlayer({
   // rides refreshToken, because a pin is not the same kind of thing.
   const [pins, setPins] = useState<WorkVersionPinView[]>(initialPins ?? [])
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
+  // Which pin, if any, the composer currently open is promoting into a
+  // comment — set only by the promote action below, cleared on a
+  // successful post, on cancel, or on navigating away from that composer
+  // without posting. Never a second posting path: submitComment is the
+  // only place a comment is ever created.
+  const [promotingPinId, setPromotingPinId] = useState<string | null>(null)
+  const pinPopoverRef = useRef<HTMLDivElement | null>(null)
   const [pinsCoachmarkDismissed, setPinsCoachmarkDismissed] = useState(false)
   const pinsCoachmarkKey = `funun:user:${draftOwnerId}:pins-coachmark`
   const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
@@ -187,6 +194,20 @@ export function TimedTrackPlayer({
     writeTextDraft(pinsCoachmarkKey, 'dismissed')
     setPinsCoachmarkDismissed(true)
   }
+
+  // The pin popover is not a thread — an outside press closes it, exactly
+  // like the popover the UI-SPEC describes, never a modal a writer must
+  // explicitly dismiss.
+  useEffect(() => {
+    if (!selectedPinId) return
+    function handleOutsidePress(event: MouseEvent) {
+      if (pinPopoverRef.current && !pinPopoverRef.current.contains(event.target as Node)) {
+        setSelectedPinId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsidePress)
+    return () => document.removeEventListener('mousedown', handleOutsidePress)
+  }, [selectedPinId])
 
   // D-03's one-time backfill: a take with no valid stored shape decodes its
   // own audio once, on first open, and heals itself for every future
@@ -333,6 +354,46 @@ export function TimedTrackPlayer({
     } catch {
       // Scratch, not worth an error banner.
     }
+  }
+
+  // The single delete path for a pin — used both by the direct removal
+  // action below and by a successful promotion, so there is exactly one
+  // place in this file that ever calls the pins DELETE route.
+  async function deletePin(pinId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/works/${workId}/versions/${versionId}/pins/${pinId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) setPins(current => current.filter(pin => pin.id !== pinId))
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  // Promotion: pre-seed the existing composer at the pin's timestamp and
+  // record which pin is being promoted. The writer still
+  // types and presses the existing post button — submitComment runs exactly
+  // as it does for any other comment, and only on its success does the pin
+  // get deleted (D-12), so a failed delete never costs a lost comment.
+  function beginPromotePin(pin: WorkVersionPinView) {
+    setSelectedPinId(null)
+    setPromotingPinId(pin.id)
+    setPendingSpan(null)
+    setSelectedRootId(null)
+    setReplyingToId(null)
+    setPositionMs(pin.timestampMs)
+    if (audioRef.current) audioRef.current.currentTime = pin.timestampMs / 1000
+    setOpen(true)
+  }
+
+  function toggleCommentsPanel() {
+    const next = !open
+    setOpen(next)
+    // Closing the panel without posting abandons any promotion in
+    // progress — a pin promoted into a comment is only consumed on a
+    // successful post, never merely on opening the composer.
+    if (!next) setPromotingPinId(null)
   }
 
   const roots = useMemo(
@@ -495,6 +556,9 @@ export function TimedTrackPlayer({
   const dragBandGeometry = dragBand ? spanGeometry(dragBand.startMs, dragBand.endMs, effectiveDurationMs) : null
 
   function selectComment(comment: WorkVersionCommentView) {
+    // Selecting a marker means the composer is no longer the blank one a
+    // promotion pre-seeded — any promotion in progress is abandoned.
+    setPromotingPinId(null)
     setOpen(true)
     setSelectedRootId(comment.id)
     setReplyingToId(null)
@@ -550,6 +614,15 @@ export function TimedTrackPlayer({
     setOpen(true)
     setSaving(false)
     onCommentChanged()
+    // D-12: promotion consumes the pin only after the comment succeeds — a
+    // reply never carries a promotion, matching the span rule above. If the
+    // delete itself fails, the writer keeps their comment and a harmless
+    // private pin; nothing is ever lost.
+    const promotedPinId = !replyingToId ? promotingPinId : null
+    if (promotedPinId) {
+      setPromotingPinId(null)
+      void deletePin(promotedPinId)
+    }
   }
 
   async function setResolved(comment: WorkVersionCommentView, resolved: boolean) {
@@ -794,16 +867,45 @@ export function TimedTrackPlayer({
             what the contract is actually asking for — clear of the `top-7`
             row above where shared comment markers live, so a private mark
             never occupies the same visual row as a shared one. */}
-        {pins.map(pin => (
-          <button
-            key={`pin-${pin.id}`}
-            type="button"
-            onClick={() => setSelectedPinId(current => (current === pin.id ? null : pin.id))}
-            aria-label={`Your pin at ${formatTrackTimestamp(pin.timestampMs)}`}
-            className="absolute top-8 h-1.5 w-1.5 -translate-x-1/2 rounded-full border-0 bg-lav/60 p-0"
-            style={{ left: `${Math.max(1, Math.min(99, (pin.timestampMs / effectiveDurationMs) * 100))}%` }}
-          />
-        ))}
+        {pins.map(pin => {
+          const pinLeftPercent = Math.max(1, Math.min(99, (pin.timestampMs / effectiveDurationMs) * 100))
+          return (
+            <Fragment key={`pin-${pin.id}`}>
+              <button
+                type="button"
+                onClick={() => setSelectedPinId(current => (current === pin.id ? null : pin.id))}
+                aria-label={`Your pin at ${formatTrackTimestamp(pin.timestampMs)}`}
+                className="absolute top-8 h-1.5 w-1.5 -translate-x-1/2 rounded-full border-0 bg-lav/60 p-0"
+                style={{ left: `${pinLeftPercent}%` }}
+              />
+              {/* Not a thread — a pin has no thread. Exactly two actions,
+                  and Remove has no confirmation dialog, because a pin is
+                  free to re-drop (D-13). */}
+              {selectedPinId === pin.id && (
+                <div
+                  ref={pinPopoverRef}
+                  className="absolute top-8 z-10 mt-3 flex -translate-x-1/2 flex-col gap-1 rounded-[8px] border border-hairstrong bg-card2 p-2 text-[9px]"
+                  style={{ left: `${pinLeftPercent}%` }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => beginPromotePin(pin)}
+                    className="text-left font-semibold text-brandindigo hover:text-white"
+                  >
+                    Turn into a comment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedPinId(null); void deletePin(pin.id) }}
+                    className="text-left text-lavdim hover:text-white"
+                  >
+                    Remove pin
+                  </button>
+                </div>
+              )}
+            </Fragment>
+          )
+        })}
         <div className="absolute inset-x-0 bottom-0 flex justify-between text-[9px] text-lavdim">
           <span>{formatTrackTimestamp(positionMs)}</span>
           <span>{formatTrackTimestamp(effectiveDurationMs)}</span>
@@ -814,7 +916,7 @@ export function TimedTrackPlayer({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => setOpen(current => !current)}
+            onClick={toggleCommentsPanel}
             className="text-[10px] font-semibold text-brandindigo hover:text-white"
           >
             {open ? 'Hide comments' : `Comment at ${formatTrackTimestamp(positionMs)}`}

@@ -256,4 +256,24 @@ describe('TimedTrackPlayer', () => {
     expect(dot).not.toContain('brandindigo')
     expect(dot).not.toContain('brandfuchsia')
   })
+
+  it('offers exactly two pin actions — turn into a comment, or remove — with no confirmation dialog', () => {
+    // The popover only renders once a pin dot has been pressed
+    // (selectedPinId starts null), which this repo's jsdom-free
+    // (testEnvironment: 'node') Jest config cannot exercise via
+    // renderToStaticMarkup. A direct source-content check is the same
+    // text-lock technique the composer-placeholder test above already uses
+    // for exactly this kind of unreachable-via-render guard.
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).toContain('Turn into a comment')
+    expect(source).toContain('Remove pin')
+    expect(source).not.toMatch(/confirm\(|Are you sure/)
+  })
+
+  it('never triggers the carry-forward offer block due to the presence of pins', () => {
+    const markup = renderToStaticMarkup(
+      <TimedTrackPlayer {...baseProps()} isLatest initialPins={[pinFixture()]} />
+    )
+    expect(markup).not.toContain('Bring comments forward')
+  })
 })
