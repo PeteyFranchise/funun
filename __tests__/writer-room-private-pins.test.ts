@@ -26,6 +26,10 @@ const presenceSource = readFileSync(
   path.join(process.cwd(), 'components/catalogue/WriterRoomPresence.tsx'),
   'utf8'
 )
+const playerSource = readFileSync(
+  path.join(process.cwd(), 'components/catalogue/TimedTrackPlayer.tsx'),
+  'utf8'
+)
 
 const pinSources: Array<[string, string]> = [
   ['pins/route.ts', collectionRouteSource],
@@ -80,6 +84,41 @@ describe('a pin never speaks to the room (D-11 doctrine gate)', () => {
       expect(source).not.toContain(FORBIDDEN_SERVICE_CLIENT)
       expect(source).not.toContain(FORBIDDEN_OWNER_WIDENER)
       expect(source).not.toContain(FORBIDDEN_TIER_WIDENER)
+    })
+  })
+
+  // ─── Group four — the player ────────────────────────────────────────
+  // The player opens no channel of its own; it reports comment activity
+  // upward through onCommentChanged, and WorkPage's
+  // announceTrackCommentChanged turns THAT into a room-wide broadcast (see
+  // components/catalogue/WorkPage.tsx). So the only realistic way a pin
+  // could reach the room is by riding that same callback — this group
+  // pins the call-site count to the mutations that are legitimately
+  // allowed to notify the room, so adding a pin handler to that list
+  // breaks the suite.
+  describe('Group four — the player reports nothing pin-shaped upward', () => {
+    it('carries no realtime call, presence import, or notification call', () => {
+      expect(playerSource).not.toMatch(FORBIDDEN_BROADCAST_CALL)
+      expect(playerSource).not.toMatch(FORBIDDEN_CHANNEL_SEND_CALL)
+      expect(playerSource).not.toContain(FORBIDDEN_PRESENCE_COMPONENT)
+      expect(playerSource).not.toContain(FORBIDDEN_NOTIFICATION_CALL)
+    })
+
+    // Exactly three comment mutations are allowed to tell the room
+    // something today: posting a comment, changing a thread's resolution,
+    // and saving a carry-forward choice. A pin drop, a pin removal, and a
+    // pin load must never be added to this list — and promotion needs no
+    // entry of its own, because it already routes through the existing
+    // post-a-comment call rather than adding a new one.
+    const EXPECTED_ON_COMMENT_CHANGED_CALLS = 3
+
+    it('calls onCommentChanged( exactly as many times as there are legitimate comment mutations', () => {
+      const callSites = playerSource.match(/onCommentChanged\(/g) ?? []
+      expect(callSites).toHaveLength(EXPECTED_ON_COMMENT_CHANGED_CALLS)
+    })
+
+    it('defines no pin-shaped event name', () => {
+      expect(playerSource).not.toMatch(/pin[_-](changed|added)/i)
     })
   })
 })
