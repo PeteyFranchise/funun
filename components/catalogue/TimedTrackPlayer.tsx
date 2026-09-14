@@ -390,9 +390,9 @@ export function TimedTrackPlayer({
             {isAiTagged ? <span>AI noted ·</span> : null}
             {roots.length > 0 ? (
               <button type="button" onClick={viewNotes} className="font-semibold text-brandindigo underline decoration-brandindigo/40 underline-offset-2 hover:text-white">
-                View {visibleNoteCount} {unresolvedCount > 0 ? 'unresolved ' : ''}{visibleNoteCount === 1 ? 'note' : 'notes'}
+                View {visibleNoteCount} {unresolvedCount > 0 ? 'unresolved ' : ''}{visibleNoteCount === 1 ? 'comment' : 'comments'}
               </button>
-            ) : <span>0 unresolved notes</span>}
+            ) : <span>0 unresolved comments</span>}
           </span>
         </div>
         <button
@@ -517,12 +517,12 @@ export function TimedTrackPlayer({
 
       {isLatest && carryOffer && (
         <div className="mt-3 border-t border-hair pt-3">
-          <p className="text-[11px] font-semibold text-white">Bring notes forward from {carryOffer.sourceVersionDisplay}?</p>
-          <p className="mt-1 text-[10px] leading-4 text-lavdim">Choose unresolved mix notes to copy here, or start this take fresh. Nothing moves automatically.</p>
+          <p className="text-[11px] font-semibold text-white">Bring comments forward from {carryOffer.sourceVersionDisplay}?</p>
+          <p className="mt-1 text-[10px] leading-4 text-lavdim">Choose unresolved comments to copy here, or start this take fresh. Nothing moves automatically.</p>
           {!reviewingCarry ? (
             <div className="mt-2 flex flex-wrap gap-3">
               <button type="button" onClick={() => setReviewingCarry(true)} className="text-[10px] font-semibold text-brandindigo hover:text-white">
-                Review {carryOffer.comments.length} {carryOffer.comments.length === 1 ? 'note' : 'notes'}
+                Review {carryOffer.comments.length} {carryOffer.comments.length === 1 ? 'comment' : 'comments'}
               </button>
               <button type="button" disabled={saving} onClick={() => void saveCarryChoice([])} className="text-[10px] text-lavdim hover:text-white disabled:opacity-50">
                 Start fresh
@@ -564,7 +564,7 @@ export function TimedTrackPlayer({
             <div className="space-y-2">
               <div className={`rounded-[9px] border border-hairstrong bg-card2 p-2.5 ${selectedRoot.resolvedAt ? 'opacity-70' : ''}`}>
                 <div className="mb-2 flex items-center justify-between gap-3 border-b border-hair pb-2 text-[9px] text-lavdim">
-                  <span>Note {selectedRootIndex + 1} of {roots.length}</span>
+                  <span>Comment {selectedRootIndex + 1} of {roots.length}</span>
                   {roots.length > 1 ? (
                     <span className="flex items-center gap-3">
                       <button type="button" onClick={() => stepSelectedNote(-1)} className="font-semibold hover:text-white">← Previous</button>
@@ -583,7 +583,7 @@ export function TimedTrackPlayer({
                     </span>
                   </span>
                   {selectedRoot.carriedFromVersionDisplay && (
-                    <span className="shrink-0 rounded-full border border-hair px-2 py-1 text-[8px] text-lavdim">From {selectedRoot.carriedFromVersionDisplay}</span>
+                    <span className="shrink-0 rounded-full border border-hair px-2 py-1 text-[8px] text-lavdim">Carried from {selectedRoot.carriedFromVersionDisplay}</span>
                   )}
                 </div>
                 <div className="mt-2"><CommentText comment={selectedRoot} /></div>
@@ -608,14 +608,14 @@ export function TimedTrackPlayer({
               ))}
             </div>
           ) : roots.length > 0 ? (
-            <p className="text-[10px] text-lavdim">Choose a marker, or leave a new note at {formatTrackTimestamp(positionMs)}.</p>
+            <p className="text-[10px] text-lavdim">Choose a marker, or leave a new comment at {formatTrackTimestamp(positionMs)}.</p>
           ) : (
             <p className="text-[10px] text-lavdim">No timed comments yet. Play or seek to the moment you want to discuss.</p>
           )}
 
           {replyingToId && (
             <div className="mt-3 flex items-center justify-between gap-2 text-[9px] text-lavdim">
-              <span>Replying to the note at {formatTrackTimestamp(selectedRoot?.timestampMs ?? positionMs)}</span>
+              <span>Replying to the comment at {formatTrackTimestamp(selectedRoot?.timestampMs ?? positionMs)}</span>
               <button type="button" onClick={() => setReplyingToId(null)} className="hover:text-white">Cancel reply</button>
             </div>
           )}
@@ -627,7 +627,7 @@ export function TimedTrackPlayer({
             }}
             rows={2}
             maxLength={2000}
-            placeholder={replyingToId ? 'Reply to this thread' : `Leave a note at ${formatTrackTimestamp(positionMs)}`}
+            placeholder={replyingToId ? 'Reply to this thread' : `Leave a comment at ${formatTrackTimestamp(positionMs)}`}
             className="mt-3 w-full resize-none rounded-[9px] border border-hair bg-card2 px-3 py-2 text-[11px] leading-5 text-white outline-none placeholder:text-lavdim focus:border-brandindigo"
           />
           {mentionable.length > 0 && (

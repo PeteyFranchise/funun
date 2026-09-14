@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { TimedTrackPlayer } from './TimedTrackPlayer'
 import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
@@ -51,7 +53,7 @@ describe('TimedTrackPlayer', () => {
     expect(markup).toContain('<audio')
     expect(markup).toContain('type="range"')
     expect(markup).toContain('Comment at 0:00')
-    expect(markup).toContain('0 unresolved notes')
+    expect(markup).toContain('0 unresolved comments')
     expect(markup).toContain('Record over this beat')
     expect(markup).toContain('>Lyric Lift<')
     expect(markup).toContain('aria-label="Use Lyric Lift to pull lyrics from v4"')
@@ -132,5 +134,25 @@ describe('TimedTrackPlayer', () => {
     expect(row).toContain('animate-pulse')
     expect(row).toContain('height:15%')
     expect(row).not.toContain('bg-brandindigo')
+  })
+
+  it('never calls a work_version_comments record a "note" anywhere in its rendered markup', () => {
+    const markup = renderToStaticMarkup(
+      <TimedTrackPlayer {...baseProps()} downloadUrl="https://signed.example/scratch.webm?download=Midnight-v1.webm" />
+    )
+    expect(markup).not.toContain('timed notes')
+  })
+
+  it('uses the phase\'s comment vocabulary for the composer placeholder', () => {
+    // The composer only renders once `open` is true, which this file only
+    // ever sets from a click handler or the URL-linked-comment effect —
+    // neither reachable from a pure `renderToStaticMarkup` pass in this
+    // repo's jsdom-free (`testEnvironment: 'node'`) Jest config. A direct
+    // source-content check is the same text-lock technique this repo's own
+    // migration tests already use for exactly this kind of unreachable-via-
+    // render guard.
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).toContain('Leave a comment at ${formatTrackTimestamp(positionMs)}')
+    expect(source).not.toContain('timed notes')
   })
 })
