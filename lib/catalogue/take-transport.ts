@@ -44,14 +44,26 @@ export function resolveTransportAction(event: {
  * call site. */
 export function shouldSuppressShortcut(
   event: { isComposing?: boolean; keyCode?: number },
-  activeElement: { tagName?: string; isContentEditable?: boolean } | null
+  activeElement: { tagName?: string; type?: string; isContentEditable?: boolean } | null
 ): boolean {
   if (event.isComposing) return true
   // Several IMEs report this keyCode during candidate selection.
   if (event.keyCode === 229) return true
   if (!activeElement) return false
   const tag = (activeElement.tagName ?? '').toUpperCase()
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (tag === 'INPUT') {
+    // The scrubber is an <input type="range">, so clicking a waveform leaves
+    // focus on an INPUT. Treating that as a typing surface made the most
+    // natural gesture in the room -- click the take you want, press space --
+    // return early before preventDefault and let the browser scroll the page
+    // instead of playing. A range has no text entry and space does nothing
+    // native on it, so it is a transport control, not somewhere words go.
+    // Every other input type stays suppressed: space legitimately toggles a
+    // checkbox or radio, and stealing it there would be the same bug pointed
+    // the other way.
+    return (activeElement.type ?? 'text').toLowerCase() !== 'range'
+  }
   return activeElement.isContentEditable === true
 }
 
