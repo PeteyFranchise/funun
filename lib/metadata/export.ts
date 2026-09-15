@@ -200,8 +200,27 @@ const CSV_HEADERS = [
   'contact_phone',
 ]
 
+// Excel, LibreOffice and Google Sheets treat a cell beginning =, +, - or @ as
+// a formula. This CSV is built to be SENT to distributors, so the recipient
+// opening it in a spreadsheet is the feature's purpose rather than an edge
+// case -- and a track title, artist name, composer name or contact field is
+// free text any account holder controls. The OWASP mitigation is a leading
+// apostrophe, which the spreadsheet consumes as "treat the rest as text".
+//
+// The whitespace scan before the check is load-bearing: a cell beginning with
+// a tab or newline followed by = is still parsed as a formula, so testing only
+// s[0] would miss it. Leading control characters are themselves on OWASP's
+// list for the same reason.
+//
+// The apostrophe IS visible in the delivered bytes. That is the accepted cost
+// and the reason this needs re-verifying against a real distributor import --
+// there is no mitigation that both neutralises the formula and preserves the
+// original bytes.
+const CSV_FORMULA_LEAD = /^[\s\u0000-\u001F]*[=+\-@]/
+
 export function csvCell(v: unknown): string {
-  const s = v == null ? '' : String(v)
+  const raw = v == null ? '' : String(v)
+  const s = CSV_FORMULA_LEAD.test(raw) ? `'${raw}` : raw
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
