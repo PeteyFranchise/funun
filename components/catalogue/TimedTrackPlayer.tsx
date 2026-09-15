@@ -281,38 +281,6 @@ export function TimedTrackPlayer({
   // per instance — Esc is the one key deliberately exempt from every other
   // shortcut's typing-surface suppression below, and only while span mode
   // is live.
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (spanMode && event.key === 'Escape') {
-        setPendingSpan(null)
-        setSpanMode(false)
-        setDragAnchorMs(null)
-        setDragPointerMs(null)
-        return
-      }
-      if (!isActivePlayer(versionId)) return
-      if (shouldSuppressShortcut(event, document.activeElement)) return
-      const action = resolveTransportAction(event)
-      // A null result must leave the key to the browser — this is what
-      // keeps page scrolling and browser shortcuts intact when no player
-      // holds the keyboard, or when a modifier is held (T-39-32).
-      if (!action) return
-      event.preventDefault()
-      if (action.kind === 'toggle-play') {
-        void togglePlayback()
-      } else if (action.kind === 'nudge') {
-        seek(positionMs + action.deltaMs)
-      } else if (action.kind === 'step-comment') {
-        // D-15: reuses the same function the Previous/Next buttons already
-        // call, so a keyboard step wraps the same way, opens the same
-        // thread, and gets the same pre-roll a click does. A take with no
-        // comments is a no-op, not an error — stepSelectedNote's own guard.
-        stepSelectedNote(action.direction)
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [versionId, positionMs, spanMode, seek, togglePlayback, stepSelectedNote])
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -475,20 +443,20 @@ export function TimedTrackPlayer({
   // as "unknown, don't flag," never as zero.
   const carryTargetDurationMs = durationMs > 0 ? durationMs : null
 
-  function seek(nextMs: number) {
+  const seek = useCallback((nextMs: number) => {
     const clamped = Math.max(0, Math.min(effectiveDurationMs, nextMs))
     setPositionMs(clamped)
     // A manual seek always clears the stop point — a writer dragging the
     // scrubber has taken over from the pre-roll/play-once behaviour.
     stopPointMsRef.current = null
     if (audioRef.current) audioRef.current.currentTime = clamped / 1000
-  }
+  }, [effectiveDurationMs])
 
   // The single review-seek helper: every entry point that opens a comment
   // (selectComment below, and the keyboard bindings plan 39-10 adds) routes
   // through here, so pre-roll, the play-once stop point, and the loop reset
   // all happen exactly once, in exactly one place.
-  function reviewSeekTo(comment: WorkVersionCommentView) {
+  const reviewSeekTo = useCallback((comment: WorkVersionCommentView) => {
     const targetMs = comment.timestampMs
     setPositionMs(targetMs)
     if (audioRef.current) audioRef.current.currentTime = preRollStartMs(targetMs) / 1000
@@ -499,9 +467,9 @@ export function TimedTrackPlayer({
     } else {
       stopPointMsRef.current = null
     }
-  }
+  }, [])
 
-  async function togglePlayback() {
+  const togglePlayback = useCallback(async () => {
     const audio = audioRef.current
     if (!audio) return
     if (audio.paused) {
@@ -509,7 +477,7 @@ export function TimedTrackPlayer({
     } else {
       audio.pause()
     }
-  }
+  }, [])
 
   // D-18: applied here on press, and again from the audio element's own
   // onLoadedMetadata below. This player never swaps its own src, so the
@@ -616,7 +584,7 @@ export function TimedTrackPlayer({
     : pendingSpan
   const dragBandGeometry = dragBand ? spanGeometry(dragBand.startMs, dragBand.endMs, effectiveDurationMs) : null
 
-  function selectComment(comment: WorkVersionCommentView) {
+  const selectComment = useCallback((comment: WorkVersionCommentView) => {
     // Selecting a marker means the composer is no longer the blank one a
     // promotion pre-seeded — any promotion in progress is abandoned.
     setPromotingPinId(null)
@@ -624,7 +592,7 @@ export function TimedTrackPlayer({
     setSelectedRootId(comment.id)
     setReplyingToId(null)
     reviewSeekTo(comment)
-  }
+  }, [reviewSeekTo])
 
   function viewNotes() {
     const first = roots.find(comment => comment.resolvedAt === null) ?? roots[0]
@@ -632,13 +600,49 @@ export function TimedTrackPlayer({
     selectComment(first)
   }
 
-  function stepSelectedNote(direction: -1 | 1) {
+  const stepSelectedNote = useCallback((direction: -1 | 1) => {
     if (roots.length === 0) return
     const nextIndex = selectedRootIndex < 0
       ? 0
       : (selectedRootIndex + direction + roots.length) % roots.length
     selectComment(roots[nextIndex]!)
-  }
+  }, [roots, selectedRootIndex, selectComment])
+
+  // Defined below the transport helpers on purpose: seek, togglePlayback and
+  // stepSelectedNote are useCallback consts now, so this effect's dependency
+  // array would hit the temporal dead zone if it still sat above them.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (spanMode && event.key === 'Escape') {
+        setPendingSpan(null)
+        setSpanMode(false)
+        setDragAnchorMs(null)
+        setDragPointerMs(null)
+        return
+      }
+      if (!isActivePlayer(versionId)) return
+      if (shouldSuppressShortcut(event, document.activeElement)) return
+      const action = resolveTransportAction(event)
+      // A null result must leave the key to the browser — this is what
+      // keeps page scrolling and browser shortcuts intact when no player
+      // holds the keyboard, or when a modifier is held (T-39-32).
+      if (!action) return
+      event.preventDefault()
+      if (action.kind === 'toggle-play') {
+        void togglePlayback()
+      } else if (action.kind === 'nudge') {
+        seek(positionMs + action.deltaMs)
+      } else if (action.kind === 'step-comment') {
+        // D-15: reuses the same function the Previous/Next buttons already
+        // call, so a keyboard step wraps the same way, opens the same
+        // thread, and gets the same pre-roll a click does. A take with no
+        // comments is a no-op, not an error — stepSelectedNote's own guard.
+        stepSelectedNote(action.direction)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [versionId, positionMs, spanMode, seek, togglePlayback, stepSelectedNote])
 
   function insertMention(handle: string) {
     setDraft(current => `${current}${current && !/\s$/.test(current) ? ' ' : ''}@${handle} `)
