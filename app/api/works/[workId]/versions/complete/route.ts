@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import { BUCKET, MAX_BYTES, buildVersionPath, resolveAudioType } from '@/lib/catalogue/audio'
 import { checkRateLimit } from '@/lib/security/rate-limit'
+import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
 import type { PerformerRef, WorkVersionSource } from '@/types/catalogue'
 
 type RouteCtx = { params: Promise<{ workId: string }> }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const PeaksSchema = z.array(z.number().int().min(0).max(100)).length(PEAKS_BAR_COUNT)
 
 function sourceOf(value: unknown): WorkVersionSource | null {
   return value === 'hum' || value === 'upload' || value === 'recording' ? value : null
@@ -36,6 +40,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
     source?: unknown
     duration?: unknown
     label?: unknown
+    peaks?: unknown
   } | null
   const versionId = typeof body?.versionId === 'string' ? body.versionId : ''
   const path = typeof body?.path === 'string' ? body.path : ''
@@ -95,6 +100,11 @@ export async function POST(request: Request, { params }: RouteCtx) {
         : Number.NaN
   const duration = Number.isFinite(durationNumber) && durationNumber >= 0 ? Math.round(durationNumber) : null
   const label = typeof body?.label === 'string' && body.label.trim() ? body.label.trim().slice(0, 200) : null
+  // A wrong-shaped peaks array is discarded silently rather than failing the
+  // completion — the audio object is already stored, and D-03's lazy
+  // backfill (plan 39-06) heals a null peaks column on first open.
+  const peaksParsed = PeaksSchema.safeParse(body?.peaks)
+  const peaks = peaksParsed.success ? peaksParsed.data : null
 
   const { data: inserted, error: insertError } = await supabase
     .from('work_versions')
@@ -108,6 +118,7 @@ export async function POST(request: Request, { params }: RouteCtx) {
       audio_size: storedSize,
       duration_seconds: duration,
       label,
+      peaks,
       performers,
     })
     .select()

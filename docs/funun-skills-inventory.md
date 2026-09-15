@@ -14,6 +14,33 @@ Use this as an SOP reference for Codex workflows, not as a legal or engineering 
 
 ## Skill Index
 
+### `$funun-phase-review`
+
+- Purpose: Perform an adversarial, evidence-based post-execution review of one Funūn GSD phase and turn the result into a single copy/paste-ready handoff for Claude.
+- Scope: Funūn only. Reviews are read-only by default and do not remediate code, apply migrations, commit, push, deploy, or change external state without separate authorization.
+- Best for:
+  - reviewing a phase after Claude or another agent finishes execution
+  - checking every phase plan, requirement, locked decision, validation item, and summary claim against the implementation
+  - assessing application logic, authorization, Supabase/RLS, migration safety, accessibility, and test evidence
+  - deciding whether code merge, migration apply, production deployment, and phase closeout are safe
+  - producing a self-contained review box that can be handed directly to Claude
+- Skill path: `/Users/peterzora/Desktop/funun/.agents/skills/funun-phase-review`
+- Key outputs:
+  - confirmed findings ordered by `Critical`, `High`, `Medium`, and `Low`
+  - plan and requirement coverage matrix
+  - separate needs-verification, human-UAT, and accepted-risk sections
+  - explicit `GO`, `CONDITIONAL GO`, or `NO-GO` decisions for each release gate
+  - exact next actions and authority boundaries for Claude
+- Important behavior:
+  - preserves unrelated worktree changes
+  - never treats summaries or screenshots as proof beyond what they demonstrate
+  - never assumes a migration is applied merely because its SQL file exists
+  - returns the entire report in exactly one fenced Markdown block with no surrounding prose
+- Example prompts:
+  - `$funun-phase-review Review Phase 39 after Claude finishes it.`
+  - `$funun-phase-review Review Phase 38.2 against every plan and return the Claude handoff box.`
+  - `$funun-phase-review Re-review Phase 39 after remediation and decide whether migration and deployment are safe.`
+
 ### `$funun-repo-audit`
 
 - Purpose: Perform a strict, evidence-based, read-only audit of Funūn across application security, authorization, Supabase/RLS, concurrency and data integrity, performance, generated-code risks, and edge cases.
@@ -191,6 +218,13 @@ For a repository audit:
 2. Keep the audit read-only and review the prioritized findings, accepted risks, and coverage gaps.
 3. Authorize remediation separately so review findings do not silently become code or database changes.
 4. Re-run the skill after remediation when an independent verification pass is needed.
+
+For a completed GSD phase:
+
+1. Run `$funun-phase-review` with the exact phase number after execution finishes.
+2. Review the copy/paste report and its four release-gate decisions.
+3. Hand the fenced report to Claude if remediation or additional evidence is required.
+4. Re-run the same skill after remediation before authorizing migrations, deployment, or phase closeout.
 
 For a new shared Funūn Codex skill:
 

@@ -44,4 +44,35 @@ describe('timed Writer\'s Room comments', () => {
       canResolve: true,
     })
   })
+
+  it('presents the span and the reposition flag in a normalised shape', () => {
+    const [withSpan, withoutSpan] = presentVersionComments({
+      comments: [
+        {
+          id: 'comment-3', work_id: 'work-1', version_id: 'v2', parent_comment_id: null,
+          author_user_id: 'writer-1', body: 'Lower the guitars here', timestamp_ms: 40000,
+          mentioned_user_ids: [], resolved_at: null, resolved_by_user_id: null,
+          carried_from_version_id: null, carried_from_comment_id: null,
+          created_at: '2026-01-02T00:00:00Z',
+          end_timestamp_ms: 52000, needs_reposition: true,
+        },
+        {
+          id: 'comment-4', work_id: 'work-1', version_id: 'v2', parent_comment_id: null,
+          author_user_id: 'writer-1', body: 'Nice take', timestamp_ms: 10000,
+          mentioned_user_ids: [], resolved_at: null, resolved_by_user_id: null,
+          carried_from_version_id: null, carried_from_comment_id: null,
+          created_at: '2026-01-02T00:00:00Z',
+        },
+      ] as never,
+      profiles: new Map(),
+      versionDisplays: new Map(),
+      viewerUserId: 'viewer',
+      viewerIsOwner: true,
+      viewerCanAdminister: false,
+    })
+    expect(withSpan.endTimestampMs).toBe(52000)
+    expect(withSpan.needsReposition).toBe(true)
+    expect(withoutSpan.endTimestampMs).toBeNull()
+    expect(withoutSpan.needsReposition).toBe(false)
+  })
 })

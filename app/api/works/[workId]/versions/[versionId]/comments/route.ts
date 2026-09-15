@@ -26,13 +26,17 @@ import type {
 
 type RouteContext = { params: Promise<{ workId: string; versionId: string }> }
 
-const COMMENT_COLUMNS = 'id, work_id, version_id, parent_comment_id, author_user_id, body, timestamp_ms, mentioned_user_ids, resolved_at, resolved_by_user_id, carried_from_version_id, carried_from_comment_id, created_at'
+const COMMENT_COLUMNS = 'id, work_id, version_id, parent_comment_id, author_user_id, body, timestamp_ms, mentioned_user_ids, resolved_at, resolved_by_user_id, carried_from_version_id, carried_from_comment_id, created_at, end_timestamp_ms, needs_reposition'
 
 const CommentBodySchema = z.object({
   body: z.string().trim().min(1).max(2000),
   timestampMs: z.number().int().min(0).max(86400000),
+  endTimestampMs: z.number().int().min(1).max(86400000).nullable().optional(),
   parentCommentId: z.string().uuid().nullable().optional(),
-}).strict()
+}).strict().refine(
+  data => data.endTimestampMs == null || data.endTimestampMs > data.timestampMs,
+  { message: 'endTimestampMs must be strictly after timestampMs', path: ['endTimestampMs'] }
+)
 
 async function loadVersions(supabase: Awaited<ReturnType<typeof createApiClient>>, workId: string) {
   const { data, error } = await supabase
@@ -176,7 +180,9 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const parsed = CommentBodySchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
-    return NextResponse.json({ error: 'A timed comment needs a valid track position and 1-2000 characters.' }, { status: 400 })
+    return NextResponse.json({
+      error: 'A timed comment needs a valid track position, an optional end position after it, and 1-2000 characters.',
+    }, { status: 400 })
   }
 
   try {
@@ -198,10 +204,20 @@ export async function POST(request: Request, { params }: RouteContext) {
       p_timestamp_ms: parsed.data.timestampMs,
       p_parent_comment_id: parsed.data.parentCommentId ?? null,
       p_mentioned_user_ids: mentionedUserIds,
+      p_end_timestamp_ms: parsed.data.endTimestampMs ?? null,
     })
     if (error || !data) {
-      const message = 'Could not save timed comment'
-      const status = message.includes('comment_thread_resolved') ? 409 : message.includes('timestamp') ? 400 : 500
+      const rawMessage = error ? error.message : ''
+      const status = rawMessage.includes('comment_thread_resolved')
+        ? 409
+        : (rawMessage.includes('timestamp') || rawMessage.includes('invalid_comment_end_timestamp') || rawMessage.includes('comment_end_timestamp_out_of_range'))
+          ? 400
+          : 500
+      const message = status === 409
+        ? 'This thread is resolved and cannot accept new replies.'
+        : status === 400
+          ? 'A timed comment needs a valid track position, an optional end position after it, and 1-2000 characters.'
+          : 'Could not save timed comment'
       return NextResponse.json({ error: message }, { status })
     }
 

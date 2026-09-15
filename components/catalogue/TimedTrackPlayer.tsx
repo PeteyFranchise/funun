@@ -1,13 +1,33 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatTrackTimestamp } from '@/lib/catalogue/version-comments'
 import { clearTextDraft, readTextDraft, writeTextDraft } from '@/lib/catalogue/local-drafts'
+import { clampCarriedSpan, normalizeSpanDrag, spanGeometry, spanNeedsReposition } from '@/lib/catalogue/take-spans'
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  PLAYBACK_SPEEDS,
+  applyPlaybackShape,
+  claimActivePlayer,
+  isActivePlayer,
+  preRollStartMs,
+  releaseActivePlayer,
+  resolveTransportAction,
+  shouldSuppressShortcut,
+  type PlaybackSpeed,
+} from '@/lib/catalogue/take-transport'
+import {
+  PEAKS_BAR_COUNT,
+  REST_BAR_HEIGHT_PERCENT,
+  extractPeaksFromUrl,
+  isValidPeaksPayload,
+} from '@/lib/catalogue/waveform'
 import { MicroReactionBar } from './MicroReactionBar'
 import type {
   LyricCommentParticipant,
   WorkVersionCommentCarryOffer,
   WorkVersionCommentView,
+  WorkVersionPinView,
 } from '@/types/catalogue'
 
 type TimedTrackPlayerProps = {
@@ -32,6 +52,12 @@ type TimedTrackPlayerProps = {
   onMakeWorking?: () => Promise<{ ok: boolean; error?: string }>
   recordOverLabel?: string
   draftOwnerId?: string
+  /** Percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means not extracted yet — the player backfills it on first open. */
+  peaks?: number[] | null
+  /** Static-render test seam; production loads canonical comments through the existing version routes. Mirrors VersionComparisonPanel's identical seam. */
+  initialComments?: WorkVersionCommentView[]
+  /** Static-render test seam mirroring initialComments; production loads pins through the pins route below (fetch never runs under renderToStaticMarkup). */
+  initialPins?: WorkVersionPinView[]
 }
 
 type CommentsResponse = {
@@ -41,12 +67,10 @@ type CommentsResponse = {
   error?: string
 }
 
-const WAVE_BARS = [
-  35, 52, 74, 43, 88, 61, 38, 79, 55, 91, 66, 47,
-  83, 58, 31, 72, 49, 86, 63, 41, 77, 54, 93, 68,
-  36, 81, 57, 45, 89, 62, 33, 75, 51, 84, 59, 39,
-  78, 53, 90, 65, 42, 82, 56, 34, 73, 48, 87, 60,
-]
+// A take's real shape is decoded at most once per version per page: keyed
+// by version id so a remount, a refreshToken change, or a second mounted
+// player for the same take can never start a second decode (T-39-18).
+const backfillsInFlight = new Set<string>()
 
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?'
@@ -95,6 +119,9 @@ export function TimedTrackPlayer({
   onMakeWorking,
   recordOverLabel = '● Record over this beat',
   draftOwnerId = 'viewer',
+  peaks = null,
+  initialComments,
+  initialPins,
 }: TimedTrackPlayerProps) {
   const playerRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -102,7 +129,7 @@ export function TimedTrackPlayer({
   const [durationMs, setDurationMs] = useState(Math.max(0, Math.round((durationSeconds ?? 0) * 1000)))
   const [positionMs, setPositionMs] = useState(0)
   const [open, setOpen] = useState(false)
-  const [comments, setComments] = useState<WorkVersionCommentView[]>([])
+  const [comments, setComments] = useState<WorkVersionCommentView[]>(initialComments ?? [])
   const [participants, setParticipants] = useState<LyricCommentParticipant[]>([])
   const [carryOffer, setCarryOffer] = useState<WorkVersionCommentCarryOffer | null>(null)
   const [reviewingCarry, setReviewingCarry] = useState(false)
@@ -110,14 +137,57 @@ export function TimedTrackPlayer({
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(initialComments === undefined)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [labelDraft, setLabelDraft] = useState(label ?? '')
   const [takeSaving, setTakeSaving] = useState(false)
   const [takeError, setTakeError] = useState<string | null>(null)
+  const [livePeaks, setLivePeaks] = useState<number[] | null>(peaks ?? null)
+  const [waveformError, setWaveformError] = useState<string | null>(null)
+  // D-17: this player instance is scoped to one take, so speed is naturally
+  // per-take by construction — a newly mounted player always opens at 1x.
+  // Never hoisted into a shared store, a context, or the module-level
+  // active-player registry; that would reintroduce exactly what D-17 exists
+  // to prevent, a writer opening v3 wondering why it drags.
+  const [speed, setSpeed] = useState<PlaybackSpeed>(DEFAULT_PLAYBACK_SPEED)
+  // ─── Mark-span mode (D-04) ───
+  // A drag never creates a comment on its own — it only becomes a pending
+  // span after normalizeSpanDrag accepts it, and only becomes a posted
+  // comment after an explicit Confirm.
+  const [spanMode, setSpanMode] = useState(false)
+  const [dragAnchorMs, setDragAnchorMs] = useState<number | null>(null)
+  const [dragPointerMs, setDragPointerMs] = useState<number | null>(null)
+  const [pendingSpan, setPendingSpan] = useState<{ startMs: number; endMs: number } | null>(null)
+  const spanLayerRef = useRef<HTMLDivElement | null>(null)
+  // ─── Review playback (D-05, D-06) ───
+  // A ref, not state: read only inside the audio element's onTimeUpdate
+  // handler, never rendered, so updating it never needs to trigger a
+  // re-render. Cleared whenever the selection changes, the writer seeks
+  // manually, or the mode changes.
+  const stopPointMsRef = useRef<number | null>(null)
+  const [loopEnabled, setLoopEnabled] = useState(false)
+  // ─── Private pins (D-10, D-11, D-12, D-13) ───
+  // A pin is a bookmark, not a letter — it keeps its own state, its own
+  // list, its own count. It shares nothing with comments, and it never
+  // rides refreshToken, because a pin is not the same kind of thing.
+  const [pins, setPins] = useState<WorkVersionPinView[]>(initialPins ?? [])
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null)
+  // Which pin, if any, the composer currently open is promoting into a
+  // comment — set only by the promote action below, cleared on a
+  // successful post, on cancel, or on navigating away from that composer
+  // without posting. Never a second posting path: submitComment is the
+  // only place a comment is ever created.
+  const [promotingPinId, setPromotingPinId] = useState<string | null>(null)
+  const pinPopoverRef = useRef<HTMLDivElement | null>(null)
+  const [pinsCoachmarkDismissed, setPinsCoachmarkDismissed] = useState(false)
+  const pinsCoachmarkKey = `funun:user:${draftOwnerId}:pins-coachmark`
   const commentDraftKey = `funun:user:${draftOwnerId}:work:${workId}:version:${versionId}:comment-draft`
+  // A payload that fails the shared validator is treated exactly like a
+  // missing one — the server and the browser agree on what a peaks array
+  // is, and a corrupt array must never be drawn (T-39-19).
+  const drawnPeaks = isValidPeaksPayload(livePeaks) ? livePeaks : null
 
   useEffect(() => {
     const recovered = readTextDraft(commentDraftKey)
@@ -125,6 +195,92 @@ export function TimedTrackPlayer({
   }, [commentDraftKey])
 
   useEffect(() => setLabelDraft(label ?? ''), [label])
+
+  useEffect(() => setLivePeaks(peaks ?? null), [peaks])
+
+  // The coachmark is told once, ever, per viewer — not per take. The
+  // seven-day default expiry on readTextDraft would resurrect it, so this
+  // read passes a maximum-safe-integer age override to opt this one key out
+  // of that expiry entirely.
+  useEffect(() => {
+    const recovered = readTextDraft(pinsCoachmarkKey, Number.MAX_SAFE_INTEGER)
+    if (recovered?.text === 'dismissed') setPinsCoachmarkDismissed(true)
+  }, [pinsCoachmarkKey])
+
+  function dismissPinsCoachmark() {
+    writeTextDraft(pinsCoachmarkKey, 'dismissed')
+    setPinsCoachmarkDismissed(true)
+  }
+
+  // The pin popover is not a thread — an outside press closes it, exactly
+  // like the popover the UI-SPEC describes, never a modal a writer must
+  // explicitly dismiss.
+  useEffect(() => {
+    if (!selectedPinId) return
+    function handleOutsidePress(event: MouseEvent) {
+      if (pinPopoverRef.current && !pinPopoverRef.current.contains(event.target as Node)) {
+        setSelectedPinId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsidePress)
+    return () => document.removeEventListener('mousedown', handleOutsidePress)
+  }, [selectedPinId])
+
+  // D-03's one-time backfill: a take with no valid stored shape decodes its
+  // own audio once, on first open, and heals itself for every future
+  // viewer via the PATCH below — never a retry loop within one mount.
+  useEffect(() => {
+    if (drawnPeaks !== null) return
+    if (!playbackUrl) return
+    if (backfillsInFlight.has(versionId)) return
+    backfillsInFlight.add(versionId)
+    let resolved = false
+    extractPeaksFromUrl(playbackUrl)
+      .then(async nextPeaks => {
+        resolved = true
+        try {
+          await fetch(`/api/works/${workId}/versions/${versionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ peaks: nextPeaks }),
+          })
+        } catch {
+          // Best-effort persistence — the current viewer still sees the
+          // real shape even if the write-back failed; the next opener
+          // simply triggers another one-time decode.
+        }
+        setLivePeaks(nextPeaks)
+      })
+      .catch(() => {
+        resolved = true
+        setWaveformError("Couldn't read this take's waveform. It'll retry automatically.")
+      })
+    return () => {
+      // Only release the slot if the decode never resolved — a genuinely
+      // completed attempt (success or failure) must not retry this mount.
+      if (!resolved) backfillsInFlight.delete(versionId)
+    }
+  }, [drawnPeaks, playbackUrl, versionId, workId])
+
+  // D-14/T-39-30: a player claims the keyboard only when a writer plays it
+  // or touches it directly — never on hover or focus-within, or a page with
+  // six takes would fight over one spacebar. The release call below is a
+  // no-op unless this player still holds the claim, so a stale unmount
+  // can't steal whichever player took over after it.
+  useEffect(() => {
+    return () => releaseActivePlayer(versionId)
+  }, [versionId])
+
+  // D-14/D-15/D-16: one guarded document keydown listener per mounted
+  // player. With N players mounted, N listeners run and the active-player
+  // check's early return is the entire per-keypress cost — simpler and
+  // more robust than a shared singleton listener, because a player that
+  // unmounts takes its own listener with it (T-39-31). D-04's Esc-exits-
+  // Mark-span-mode handling lives in this same listener rather than a
+  // second one, so the whole component keeps exactly one keydown listener
+  // per instance — Esc is the one key deliberately exempt from every other
+  // shortcut's typing-surface suppression below, and only while span mode
+  // is live.
 
   async function saveTakeName() {
     if (!onRename || takeSaving) return
@@ -146,6 +302,7 @@ export function TimedTrackPlayer({
   }
 
   const loadComments = useCallback(async () => {
+    if (initialComments !== undefined) return
     const response = await fetch(`/api/works/${workId}/versions/${versionId}/comments`, { cache: 'no-store' })
     const body = (await response.json().catch(() => ({}))) as CommentsResponse
     if (!response.ok) {
@@ -174,12 +331,89 @@ export function TimedTrackPlayer({
         window.requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
       }
     }
-  }, [isLatest, versionId, workId])
+  }, [initialComments, isLatest, versionId, workId])
 
   useEffect(() => {
+    if (initialComments !== undefined) return
     setLoading(true)
     void loadComments()
-  }, [loadComments, refreshToken])
+  }, [initialComments, loadComments, refreshToken])
+
+  // A pin's own loader: fetched on mount and whenever the version changes,
+  // never on refreshToken — a pin has no relation to the room's comment
+  // activity. A failed load is not worth an error banner; a pin is scratch.
+  const loadPins = useCallback(async () => {
+    if (initialPins !== undefined) return
+    try {
+      const response = await fetch(`/api/works/${workId}/versions/${versionId}/pins`, { cache: 'no-store' })
+      if (!response.ok) return
+      const body = (await response.json().catch(() => ({}))) as { data?: WorkVersionPinView[] }
+      setPins(Array.isArray(body.data) ? body.data : [])
+    } catch {
+      // Scratch, not worth an error banner.
+    }
+  }, [initialPins, workId, versionId])
+
+  useEffect(() => {
+    void loadPins()
+  }, [loadPins])
+
+  // Dropping a pin has no composer, no confirm, no dialog — the whole point
+  // is that it costs nothing while the take is still playing.
+  async function dropPin() {
+    try {
+      const response = await fetch(`/api/works/${workId}/versions/${versionId}/pins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timestampMs: Math.round(positionMs) }),
+      })
+      if (!response.ok) return
+      const result = (await response.json().catch(() => ({}))) as { data?: WorkVersionPinView }
+      if (result.data) setPins(current => [...current, result.data!])
+    } catch {
+      // Scratch, not worth an error banner.
+    }
+  }
+
+  // The single delete path for a pin — used both by the direct removal
+  // action below and by a successful promotion, so there is exactly one
+  // place in this file that ever calls the pins DELETE route.
+  async function deletePin(pinId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/works/${workId}/versions/${versionId}/pins/${pinId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) setPins(current => current.filter(pin => pin.id !== pinId))
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  // Promotion: pre-seed the existing composer at the pin's timestamp and
+  // record which pin is being promoted. The writer still
+  // types and presses the existing post button — submitComment runs exactly
+  // as it does for any other comment, and only on its success does the pin
+  // get deleted (D-12), so a failed delete never costs a lost comment.
+  function beginPromotePin(pin: WorkVersionPinView) {
+    setSelectedPinId(null)
+    setPromotingPinId(pin.id)
+    setPendingSpan(null)
+    setSelectedRootId(null)
+    setReplyingToId(null)
+    setPositionMs(pin.timestampMs)
+    if (audioRef.current) audioRef.current.currentTime = pin.timestampMs / 1000
+    setOpen(true)
+  }
+
+  function toggleCommentsPanel() {
+    const next = !open
+    setOpen(next)
+    // Closing the panel without posting abandons any promotion in
+    // progress — a pin promoted into a comment is only consumed on a
+    // successful post, never merely on opening the composer.
+    if (!next) setPromotingPinId(null)
+  }
 
   const roots = useMemo(
     () => comments.filter(comment => comment.parentCommentId === null).sort((a, b) => a.timestampMs - b.timestampMs),
@@ -204,14 +438,38 @@ export function TimedTrackPlayer({
     : []
   const mentionable = participants.filter(person => person.handle)
   const effectiveDurationMs = Math.max(durationMs, positionMs, 1000)
+  // D-07: this take's own known duration, or null before audio metadata has
+  // loaded — spanNeedsReposition/clampCarriedSpan both treat null duration
+  // as "unknown, don't flag," never as zero.
+  const carryTargetDurationMs = durationMs > 0 ? durationMs : null
 
-  function seek(nextMs: number) {
+  const seek = useCallback((nextMs: number) => {
     const clamped = Math.max(0, Math.min(effectiveDurationMs, nextMs))
     setPositionMs(clamped)
+    // A manual seek always clears the stop point — a writer dragging the
+    // scrubber has taken over from the pre-roll/play-once behaviour.
+    stopPointMsRef.current = null
     if (audioRef.current) audioRef.current.currentTime = clamped / 1000
-  }
+  }, [effectiveDurationMs])
 
-  async function togglePlayback() {
+  // The single review-seek helper: every entry point that opens a comment
+  // (selectComment below, and the keyboard bindings plan 39-10 adds) routes
+  // through here, so pre-roll, the play-once stop point, and the loop reset
+  // all happen exactly once, in exactly one place.
+  const reviewSeekTo = useCallback((comment: WorkVersionCommentView) => {
+    const targetMs = comment.timestampMs
+    setPositionMs(targetMs)
+    if (audioRef.current) audioRef.current.currentTime = preRollStartMs(targetMs) / 1000
+    setLoopEnabled(false)
+    if (comment.endTimestampMs != null) {
+      stopPointMsRef.current = comment.endTimestampMs
+      void audioRef.current?.play().catch(() => setError('Playback could not start. Try again.'))
+    } else {
+      stopPointMsRef.current = null
+    }
+  }, [])
+
+  const togglePlayback = useCallback(async () => {
     const audio = audioRef.current
     if (!audio) return
     if (audio.paused) {
@@ -219,14 +477,122 @@ export function TimedTrackPlayer({
     } else {
       audio.pause()
     }
+  }, [])
+
+  // D-18: applied here on press, and again from the audio element's own
+  // onLoadedMetadata below. This player never swaps its own src, so the
+  // second call site costs nothing today, but it keeps both surfaces
+  // identical so a later change to either can never silently diverge —
+  // the same discipline VersionComparisonPanel already follows.
+  function selectSpeed(nextSpeed: PlaybackSpeed) {
+    setSpeed(nextSpeed)
+    if (audioRef.current) applyPlaybackShape(audioRef.current, nextSpeed)
   }
 
-  function selectComment(comment: WorkVersionCommentView) {
+  // ─── Mark-span mode (D-04) ───
+  // A single pointer-event code path serves both touch and mouse, which is
+  // what makes the one-interaction-model requirement real: the same three
+  // handlers below run whether the drag came from a finger or a cursor.
+  function msFromClientX(clientX: number): number {
+    const rect = spanLayerRef.current?.getBoundingClientRect()
+    if (!rect || rect.width <= 0) return 0
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return ratio * effectiveDurationMs
+  }
+
+  function enterSpanMode() {
+    setPendingSpan(null)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+    stopPointMsRef.current = null
+    setSpanMode(true)
+  }
+
+  function exitSpanMode() {
+    setSpanMode(false)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+  }
+
+  function confirmSpan() {
+    if (!pendingSpan) return
+    // Show the new-comment composer, not a previously open thread — a
+    // confirmed span is always a new top-level comment.
+    setSelectedRootId(null)
+    setReplyingToId(null)
+    setOpen(true)
+    exitSpanMode()
+  }
+
+  function cancelSpan() {
+    setPendingSpan(null)
+    exitSpanMode()
+  }
+
+  // D-07: a carried span whose in-point no longer fits this take is never
+  // silently dropped or collapsed to a point. Reposition re-enters the same
+  // Mark-span mode Task 1 built — no second span-editing path — pre-seeded
+  // near the clamped edge so the writer isn't hunting for where it landed.
+  // The carry decision itself never changes: this only pre-fills a fresh
+  // span for the writer to confirm as a new comment.
+  function repositionComment(comment: WorkVersionCommentView) {
+    if (comment.endTimestampMs == null) return
+    const clamped = clampCarriedSpan({
+      startMs: comment.timestampMs,
+      endMs: comment.endTimestampMs,
+      targetDurationMs: carryTargetDurationMs,
+    })
+    const seedEndMs = clamped.endMs ?? Math.min(effectiveDurationMs, clamped.startMs + 1)
+    enterSpanMode()
+    setDragAnchorMs(clamped.startMs)
+    setDragPointerMs(seedEndMs)
+    setPendingSpan(normalizeSpanDrag(clamped.startMs, seedEndMs, effectiveDurationMs))
+  }
+
+  function handleSpanPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    const ms = msFromClientX(event.clientX)
+    setDragAnchorMs(ms)
+    setDragPointerMs(ms)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handleSpanPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragAnchorMs === null) return
+    setDragPointerMs(msFromClientX(event.clientX))
+  }
+
+  function handleSpanPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    if (dragAnchorMs === null || dragPointerMs === null) return
+    const normalized = normalizeSpanDrag(dragAnchorMs, dragPointerMs, effectiveDurationMs)
+    setDragAnchorMs(null)
+    setDragPointerMs(null)
+    // A drag shorter than MIN_SPAN_MS snaps back with no confirm affordance
+    // at all — normalizeSpanDrag returning null is the whole guard, so
+    // there is no second minimum-span check here.
+    if (normalized) setPendingSpan(normalized)
+  }
+
+  // The band a writer currently sees: a live drag in progress, or a
+  // confirmed-but-not-yet-posted span persisting (at higher opacity, via
+  // the pendingSpan-and-not-spanMode branch below) while the composer is
+  // open.
+  const dragBand = dragAnchorMs !== null && dragPointerMs !== null
+    ? { startMs: Math.min(dragAnchorMs, dragPointerMs), endMs: Math.max(dragAnchorMs, dragPointerMs) }
+    : pendingSpan
+  const dragBandGeometry = dragBand ? spanGeometry(dragBand.startMs, dragBand.endMs, effectiveDurationMs) : null
+
+  const selectComment = useCallback((comment: WorkVersionCommentView) => {
+    // Selecting a marker means the composer is no longer the blank one a
+    // promotion pre-seeded — any promotion in progress is abandoned.
+    setPromotingPinId(null)
     setOpen(true)
     setSelectedRootId(comment.id)
     setReplyingToId(null)
-    seek(comment.timestampMs)
-  }
+    reviewSeekTo(comment)
+  }, [reviewSeekTo])
 
   function viewNotes() {
     const first = roots.find(comment => comment.resolvedAt === null) ?? roots[0]
@@ -234,13 +600,49 @@ export function TimedTrackPlayer({
     selectComment(first)
   }
 
-  function stepSelectedNote(direction: -1 | 1) {
+  const stepSelectedNote = useCallback((direction: -1 | 1) => {
     if (roots.length === 0) return
     const nextIndex = selectedRootIndex < 0
       ? 0
       : (selectedRootIndex + direction + roots.length) % roots.length
     selectComment(roots[nextIndex]!)
-  }
+  }, [roots, selectedRootIndex, selectComment])
+
+  // Defined below the transport helpers on purpose: seek, togglePlayback and
+  // stepSelectedNote are useCallback consts now, so this effect's dependency
+  // array would hit the temporal dead zone if it still sat above them.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (spanMode && event.key === 'Escape') {
+        setPendingSpan(null)
+        setSpanMode(false)
+        setDragAnchorMs(null)
+        setDragPointerMs(null)
+        return
+      }
+      if (!isActivePlayer(versionId)) return
+      if (shouldSuppressShortcut(event, document.activeElement)) return
+      const action = resolveTransportAction(event)
+      // A null result must leave the key to the browser — this is what
+      // keeps page scrolling and browser shortcuts intact when no player
+      // holds the keyboard, or when a modifier is held (T-39-32).
+      if (!action) return
+      event.preventDefault()
+      if (action.kind === 'toggle-play') {
+        void togglePlayback()
+      } else if (action.kind === 'nudge') {
+        seek(positionMs + action.deltaMs)
+      } else if (action.kind === 'step-comment') {
+        // D-15: reuses the same function the Previous/Next buttons already
+        // call, so a keyboard step wraps the same way, opens the same
+        // thread, and gets the same pre-roll a click does. A take with no
+        // comments is a no-op, not an error — stepSelectedNote's own guard.
+        stepSelectedNote(action.direction)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [versionId, positionMs, spanMode, seek, togglePlayback, stepSelectedNote])
 
   function insertMention(handle: string) {
     setDraft(current => `${current}${current && !/\s$/.test(current) ? ' ' : ''}@${handle} `)
@@ -251,10 +653,16 @@ export function TimedTrackPlayer({
     if (!body || saving) return
     setSaving(true)
     setError(null)
+    // With no pending span this sends the playhead position and no end,
+    // exactly as before span marking existed. A reply never carries a
+    // span — a reply is a message in a thread, not a second span.
+    const spanForPost = !replyingToId ? pendingSpan : null
+    const timestampMs = spanForPost ? spanForPost.startMs : Math.round(positionMs)
+    const endTimestampMs = spanForPost ? spanForPost.endMs : undefined
     const response = await fetch(`/api/works/${workId}/versions/${versionId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body, timestampMs: Math.round(positionMs), parentCommentId: replyingToId }),
+      body: JSON.stringify({ body, timestampMs, endTimestampMs, parentCommentId: replyingToId }),
     })
     const result = (await response.json().catch(() => ({}))) as { data?: { id?: string }; error?: string }
     if (!response.ok) {
@@ -265,11 +673,21 @@ export function TimedTrackPlayer({
     setDraft('')
     clearTextDraft(commentDraftKey)
     setReplyingToId(null)
+    setPendingSpan(null)
     await loadComments()
     if (result.data?.id) setSelectedRootId(replyingToId ?? result.data.id)
     setOpen(true)
     setSaving(false)
     onCommentChanged()
+    // D-12: promotion consumes the pin only after the comment succeeds — a
+    // reply never carries a promotion, matching the span rule above. If the
+    // delete itself fails, the writer keeps their comment and a harmless
+    // private pin; nothing is ever lost.
+    const promotedPinId = !replyingToId ? promotingPinId : null
+    if (promotedPinId) {
+      setPromotingPinId(null)
+      void deletePin(promotedPinId)
+    }
   }
 
   async function setResolved(comment: WorkVersionCommentView, resolved: boolean) {
@@ -314,7 +732,11 @@ export function TimedTrackPlayer({
   }
 
   return (
-    <div ref={playerRef} className="rounded-[11px] border border-hair bg-card px-3 py-3">
+    <div
+      ref={playerRef}
+      onPointerDownCapture={() => claimActivePlayer(versionId)}
+      className="rounded-[11px] border border-hair bg-card px-3 py-3"
+    >
       <audio
         ref={audioRef}
         src={playbackUrl}
@@ -322,9 +744,26 @@ export function TimedTrackPlayer({
         onLoadedMetadata={event => {
           const seconds = event.currentTarget.duration
           if (Number.isFinite(seconds) && seconds >= 0) setDurationMs(Math.round(seconds * 1000))
+          // D-18: media elements reset playback-adjacent properties on a
+          // new source; this fires on every metadata load, not only mount.
+          applyPlaybackShape(event.currentTarget, speed)
         }}
-        onTimeUpdate={event => setPositionMs(Math.round(event.currentTarget.currentTime * 1000))}
-        onPlay={() => { setPlaying(true); onActivity(true) }}
+        onTimeUpdate={event => {
+          const currentMs = Math.round(event.currentTarget.currentTime * 1000)
+          setPositionMs(currentMs)
+          const stopMs = stopPointMsRef.current
+          if (stopMs !== null && currentMs >= stopMs) {
+            // Play once and stop is the default; looping is an explicit
+            // seek-back so the stop point stays the single authority —
+            // the native media loop property is never used.
+            if (loopEnabled && selectedRoot) {
+              event.currentTarget.currentTime = preRollStartMs(selectedRoot.timestampMs) / 1000
+            } else {
+              event.currentTarget.pause()
+            }
+          }
+        }}
+        onPlay={() => { claimActivePlayer(versionId); setPlaying(true); onActivity(true) }}
         onPause={() => { setPlaying(false); onActivity(false) }}
         onEnded={() => { setPlaying(false); onActivity(false) }}
         className="hidden"
@@ -339,19 +778,37 @@ export function TimedTrackPlayer({
             {isAiTagged ? <span>AI noted ·</span> : null}
             {roots.length > 0 ? (
               <button type="button" onClick={viewNotes} className="font-semibold text-brandindigo underline decoration-brandindigo/40 underline-offset-2 hover:text-white">
-                View {visibleNoteCount} {unresolvedCount > 0 ? 'unresolved ' : ''}{visibleNoteCount === 1 ? 'note' : 'notes'}
+                View {visibleNoteCount} {unresolvedCount > 0 ? 'unresolved ' : ''}{visibleNoteCount === 1 ? 'comment' : 'comments'}
               </button>
-            ) : <span>0 unresolved notes</span>}
+            ) : <span>0 unresolved comments</span>}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => void togglePlayback()}
-          aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
-        >
-          {playing ? 'Ⅱ' : '▶'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* D-17/D-18: matches VersionComparisonPanel's control exactly —
+              same container classes, one real button per PLAYBACK_SPEEDS
+              entry, same active/inactive treatment, aria-pressed on each. */}
+          <div className="flex items-center gap-1 rounded-full border border-hairstrong bg-card2 p-0.5 text-[9px]" role="group" aria-label="Playback speed">
+            {PLAYBACK_SPEEDS.map(step => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => selectSpeed(step)}
+                aria-pressed={speed === step}
+                className={`rounded-full px-2 py-1 font-semibold ${speed === step ? 'bg-brandindigo text-ink font-bold' : 'text-lavdim hover:text-white'}`}
+              >
+                {step}×
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => void togglePlayback()}
+            aria-label={`${playing ? 'Pause' : 'Play'} ${display}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-hairstrong bg-card2 text-[12px] text-white hover:border-brandindigo"
+          >
+            {playing ? 'Ⅱ' : '▶'}
+          </button>
+        </div>
       </div>
 
       {renaming && onRename && (
@@ -364,15 +821,58 @@ export function TimedTrackPlayer({
         </div>
       )}
 
-      <div className="relative mt-3 h-[58px]" aria-label={`Timeline for ${display}`}>
-        <div aria-hidden="true" className="absolute inset-x-0 top-0 flex h-9 items-center gap-px overflow-hidden">
-          {WAVE_BARS.map((height, index) => (
-            <span
-              key={index}
-              className={`min-w-px flex-1 rounded-full ${index / WAVE_BARS.length <= positionMs / effectiveDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
-              style={{ height: `${height}%` }}
-            />
-          ))}
+      <div
+        className={`relative mt-3 h-[58px]${spanMode ? ' ring-2 ring-brandfuchsia/50' : ''}`}
+        aria-label={`Timeline for ${display}`}
+      >
+        {/* At the `sm` breakpoint and above the hairline gap is exactly the
+            UI contract's existing treatment, but below it PEAKS_BAR_COUNT
+            (200) one-pixel bars plus 199 one-pixel gaps need 399px, which a
+            320-390px viewport cannot give — the container's own
+            overflow-hidden would silently clip the tail of every take on a
+            phone. Mobile is a primary case for this surface, so the
+            hairline collapses (gap-0) below `sm` rather than the take. */}
+        {/* Committed range-comment bands render underneath the bars — indigo
+            means "a saved comment," never "currently marking" (that's
+            fuchsia, see the in-progress/pending band below). One marker
+            pill per span, at its start, is rendered later in markerGroups —
+            no separate end-marker here. */}
+        {roots
+          .filter((comment): comment is WorkVersionCommentView & { endTimestampMs: number } => comment.endTimestampMs != null)
+          .map(comment => {
+            const geometry = spanGeometry(comment.timestampMs, comment.endTimestampMs, effectiveDurationMs)
+            return (
+              <span
+                key={`span-${comment.id}`}
+                aria-hidden="true"
+                className="pointer-events-none absolute top-0 h-9 border-x border-brandindigo/40 bg-brandindigo/15"
+                style={{ left: `${geometry.leftPercent}%`, width: `${geometry.widthPercent}%` }}
+              />
+            )
+          })}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 flex h-9 items-center gap-0 sm:gap-px overflow-hidden${drawnPeaks === null ? ' animate-pulse' : ''}`}
+        >
+          {drawnPeaks !== null
+            ? drawnPeaks.map((height, index) => (
+                <span
+                  key={index}
+                  className={`min-w-px flex-1 rounded-full ${index / drawnPeaks.length <= positionMs / effectiveDurationMs ? 'bg-brandindigo' : 'bg-lavdim/35'}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))
+            : // Uniform and flat is the point — a rest-state bar is
+              // structurally impossible to read as data, never a dimmer
+              // version of a real shape, and draws no progress fill because
+              // there is no real shape for a playhead to sweep across.
+              Array.from({ length: PEAKS_BAR_COUNT }, (_, index) => (
+                <span
+                  key={index}
+                  className="min-w-px flex-1 rounded-full bg-lavdim/20"
+                  style={{ height: `${REST_BAR_HEIGHT_PERCENT}%` }}
+                />
+              ))}
         </div>
         <input
           type="range"
@@ -381,9 +881,29 @@ export function TimedTrackPlayer({
           step={100}
           value={Math.min(positionMs, effectiveDurationMs)}
           onChange={event => seek(Number(event.target.value))}
+          disabled={spanMode}
           aria-label={`Seek ${display}`}
           className="absolute inset-x-0 top-0 h-9 w-full cursor-pointer opacity-0"
         />
+        {spanMode && (
+          <div
+            ref={spanLayerRef}
+            onPointerDown={handleSpanPointerDown}
+            onPointerMove={handleSpanPointerMove}
+            onPointerUp={handleSpanPointerUp}
+            onPointerCancel={handleSpanPointerUp}
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-9 w-full cursor-crosshair"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+        {dragBand && dragBandGeometry && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-0 h-9 border-x border-brandfuchsia/60 ${pendingSpan && !spanMode ? 'bg-brandfuchsia/25' : 'bg-brandfuchsia/20'}`}
+            style={{ left: `${dragBandGeometry.leftPercent}%`, width: `${dragBandGeometry.widthPercent}%` }}
+          />
+        )}
         {selectedRoot ? (
           <span
             aria-hidden="true"
@@ -391,32 +911,114 @@ export function TimedTrackPlayer({
             style={{ left: `${Math.max(1, Math.min(99, (selectedRoot.timestampMs / effectiveDurationMs) * 100))}%` }}
           />
         ) : null}
-        {markerGroups.map(group => (
-          <button
-            key={group.timestampMs}
-            type="button"
-            onClick={() => {
-              const selectedInGroup = group.comments.findIndex(comment => comment.id === selectedRootId)
-              selectComment(group.comments[(selectedInGroup + 1) % group.comments.length]!)
-            }}
-            aria-label={`${group.comments.length} ${group.comments.length === 1 ? 'comment' : 'comments'} at ${formatTrackTimestamp(group.timestampMs)}`}
-            className={`absolute top-7 flex min-h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border border-brandindigo/70 bg-card px-1 text-[9px] font-bold shadow-md ${group.comments.some(comment => comment.id === selectedRootId) ? 'text-white ring-2 ring-brandindigo/30' : 'text-brandindigo'}`}
-            style={{ left: `${Math.max(1, Math.min(99, (group.timestampMs / effectiveDurationMs) * 100))}%` }}
-          >
-            {group.comments.length}
-          </button>
-        ))}
+        {markerGroups.map(group => {
+          // A range's marker pill sits at its start only (no second,
+          // end-side pill) — extend the label to name both ends when a
+          // grouped comment carries a span, matching the existing
+          // point-marker label pattern.
+          const rangeComment = group.comments.find(comment => comment.endTimestampMs != null)
+          const commentWord = group.comments.length === 1 ? 'comment' : 'comments'
+          // Accessibility Contract: every marker states its timestamp, its
+          // count, and its open or resolved state. A group with any still-
+          // unresolved thread reads as "open" — the same rule the header's
+          // unresolvedCount already uses.
+          const groupStateWord = group.comments.some(comment => comment.resolvedAt === null) ? 'open' : 'resolved'
+          const label = rangeComment
+            ? `Range comment, ${formatTrackTimestamp(rangeComment.timestampMs)} to ${formatTrackTimestamp(rangeComment.endTimestampMs!)}, ${group.comments.length} ${commentWord}, ${groupStateWord}`
+            : `${group.comments.length} ${commentWord} at ${formatTrackTimestamp(group.timestampMs)}, ${groupStateWord}`
+          // D-07: a carried comment whose in-point no longer fits this take
+          // recolors amber instead of indigo — hygiene, warmer than legal,
+          // never the rose/red reserved for genuine errors.
+          const isFlagged = group.comments.some(comment => comment.needsReposition)
+          const isSelected = group.comments.some(comment => comment.id === selectedRootId)
+          const toneClass = isFlagged ? 'border-amber-400/70 text-amber-400' : 'border-brandindigo/70 text-brandindigo'
+          const selectedClass = isSelected
+            ? (isFlagged ? 'ring-2 ring-amber-400/30' : 'text-white ring-2 ring-brandindigo/30')
+            : ''
+          return (
+            <button
+              key={group.timestampMs}
+              type="button"
+              onClick={() => {
+                const selectedInGroup = group.comments.findIndex(comment => comment.id === selectedRootId)
+                selectComment(group.comments[(selectedInGroup + 1) % group.comments.length]!)
+              }}
+              aria-label={label}
+              className={`absolute top-7 flex min-h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full border bg-card px-1 text-[9px] font-bold shadow-md ${toneClass} ${selectedClass}`}
+              style={{ left: `${Math.max(1, Math.min(99, (group.timestampMs / effectiveDurationMs) * 100))}%` }}
+            >
+              {group.comments.length}
+            </button>
+          )
+        })}
+        {/* Private pins (D-10, D-11, D-12, D-13): a plain lavender dot, no
+            border, no pill, no count badge — a pin uses neither accent
+            colour, because it is neither a saved comment (indigo) nor a
+            live authoring mode (fuchsia). Positioned at `top-8`, not the
+            UI-SPEC's literal `bottom-1`: inside this component's existing
+            58px timeline container the bottom edge is already occupied by
+            the elapsed/duration timestamps below, so `bottom-1` would sit a
+            pin on top of them. `top-8` puts the dot on the bars' baseline —
+            what the contract is actually asking for — clear of the `top-7`
+            row above where shared comment markers live, so a private mark
+            never occupies the same visual row as a shared one. */}
+        {pins.map(pin => {
+          const pinLeftPercent = Math.max(1, Math.min(99, (pin.timestampMs / effectiveDurationMs) * 100))
+          return (
+            <Fragment key={`pin-${pin.id}`}>
+              <button
+                type="button"
+                onClick={() => setSelectedPinId(current => (current === pin.id ? null : pin.id))}
+                aria-label={`Your pin at ${formatTrackTimestamp(pin.timestampMs)}`}
+                className="absolute top-8 h-1.5 w-1.5 -translate-x-1/2 rounded-full border-0 bg-lav/60 p-0"
+                style={{ left: `${pinLeftPercent}%` }}
+              />
+              {/* Not a thread — a pin has no thread. Exactly two actions,
+                  and Remove has no confirmation dialog, because a pin is
+                  free to re-drop (D-13). */}
+              {selectedPinId === pin.id && (
+                <div
+                  ref={pinPopoverRef}
+                  className="absolute top-8 z-10 mt-3 flex -translate-x-1/2 flex-col gap-1 rounded-[8px] border border-hairstrong bg-card2 p-2 text-[9px]"
+                  style={{ left: `${pinLeftPercent}%` }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => beginPromotePin(pin)}
+                    className="text-left font-semibold text-brandindigo hover:text-white"
+                  >
+                    Turn into a comment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedPinId(null); void deletePin(pin.id) }}
+                    className="text-left text-lavdim hover:text-white"
+                  >
+                    Remove pin
+                  </button>
+                </div>
+              )}
+            </Fragment>
+          )
+        })}
         <div className="absolute inset-x-0 bottom-0 flex justify-between text-[9px] text-lavdim">
           <span>{formatTrackTimestamp(positionMs)}</span>
           <span>{formatTrackTimestamp(effectiveDurationMs)}</span>
         </div>
       </div>
+      {/* D-14/D-15: a single quiet, desktop-only legend line — a phone has
+          no physical keyboard to discover, so no help panel is in scope.
+          Naming all four bindings here is what makes them discoverable
+          without teaching them. */}
+      <p className="hidden sm:block mt-1 text-[9px] text-lavdim">
+        Space play/pause · ← → seek 5s · ⇧← ⇧→ nudge 1s · [ ] comments
+      </p>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hair pt-2">
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => setOpen(current => !current)}
+            onClick={toggleCommentsPanel}
             className="text-[10px] font-semibold text-brandindigo hover:text-white"
           >
             {open ? 'Hide comments' : `Comment at ${formatTrackTimestamp(positionMs)}`}
@@ -424,6 +1026,51 @@ export function TimedTrackPlayer({
           <button type="button" onClick={onRecordOver} className="text-[10px] font-semibold text-brandfuchsia hover:text-white">
             {recordOverLabel}
           </button>
+          <button
+            type="button"
+            onClick={() => (spanMode ? exitSpanMode() : enterSpanMode())}
+            aria-pressed={spanMode}
+            className={spanMode
+              ? 'inline-flex min-h-[44px] items-center justify-center rounded-full bg-brandfuchsia px-2 py-1 text-[9px] font-bold text-ink sm:min-h-0'
+              : 'inline-flex min-h-[44px] items-center text-[10px] font-semibold text-brandfuchsia hover:text-white sm:min-h-0'}
+          >
+            {spanMode ? (
+              <>Marking span<span className="hidden sm:inline"> — Esc to exit</span></>
+            ) : 'Mark span'}
+          </button>
+          {pendingSpan && spanMode && (
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={confirmSpan}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-grad px-3 text-[10px] font-bold text-white sm:min-h-0 sm:px-2 sm:py-1"
+              >
+                Confirm span
+              </button>
+              <button
+                type="button"
+                onClick={cancelSpan}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-hairstrong px-3 text-[10px] text-lavdim hover:text-white sm:min-h-0 sm:border-0 sm:px-0 sm:py-0"
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+          <span className="relative inline-flex items-center gap-2">
+            {/* Deliberately quieter than "Mark span" — a pin is
+                low-ceremony, and it is never a waveform tap, which is
+                reserved for seeking (same hard constraint comments already
+                live under). */}
+            <button type="button" onClick={() => void dropPin()} className="text-[10px] text-lavdim hover:text-brandindigo">
+              Pin
+            </button>
+            {!pinsCoachmarkDismissed && (
+              <span className="flex items-center gap-1.5 rounded-full border border-hairstrong bg-card2 px-2 py-1 text-[9px] text-lavdim">
+                Pins are private — only you can see them.
+                <button type="button" onClick={dismissPinsCoachmark} aria-label="Dismiss pins privacy note" className="text-lavdim hover:text-white">✕</button>
+              </span>
+            )}
+          </span>
           {onPullLyrics && (
             <button type="button" onClick={onPullLyrics} aria-label={`Use Lyric Lift to pull lyrics from ${display}`} className="text-[10px] font-semibold text-brandindigo hover:text-white">
               Lyric Lift
@@ -437,15 +1084,19 @@ export function TimedTrackPlayer({
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
       {takeError && <p role="alert" className="mt-2 text-[10px] text-red-300">{takeError}</p>}
+      {/* A take with simply no peaks yet shows no error at all — that state
+          is expected and self-healing (D-03). Only the backfill decode
+          itself throwing surfaces this copy. */}
+      {waveformError && <p role="alert" className="mt-2 text-[10px] text-red-300">{waveformError}</p>}
 
       {isLatest && carryOffer && (
         <div className="mt-3 border-t border-hair pt-3">
-          <p className="text-[11px] font-semibold text-white">Bring notes forward from {carryOffer.sourceVersionDisplay}?</p>
-          <p className="mt-1 text-[10px] leading-4 text-lavdim">Choose unresolved mix notes to copy here, or start this take fresh. Nothing moves automatically.</p>
+          <p className="text-[11px] font-semibold text-white">Bring comments forward from {carryOffer.sourceVersionDisplay}?</p>
+          <p className="mt-1 text-[10px] leading-4 text-lavdim">Choose unresolved comments to copy here, or start this take fresh. Nothing moves automatically.</p>
           {!reviewingCarry ? (
             <div className="mt-2 flex flex-wrap gap-3">
               <button type="button" onClick={() => setReviewingCarry(true)} className="text-[10px] font-semibold text-brandindigo hover:text-white">
-                Review {carryOffer.comments.length} {carryOffer.comments.length === 1 ? 'note' : 'notes'}
+                Review {carryOffer.comments.length} {carryOffer.comments.length === 1 ? 'comment' : 'comments'}
               </button>
               <button type="button" disabled={saving} onClick={() => void saveCarryChoice([])} className="text-[10px] text-lavdim hover:text-white disabled:opacity-50">
                 Start fresh
@@ -453,21 +1104,39 @@ export function TimedTrackPlayer({
             </div>
           ) : (
             <div className="mt-3 space-y-2">
-              {carryOffer.comments.map(comment => (
-                <label key={comment.id} className="flex cursor-pointer items-start gap-2 rounded-[9px] border border-hair bg-card2 px-2.5 py-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedCarryIds.includes(comment.id)}
-                    onChange={event => setSelectedCarryIds(current => event.target.checked
-                      ? [...current, comment.id]
-                      : current.filter(id => id !== comment.id))}
-                    className="mt-0.5"
-                  />
-                  <span className="min-w-0 text-[10px] leading-4 text-lav">
-                    <b className="text-white">{formatTrackTimestamp(comment.timestampMs)}</b> · {comment.body}
-                  </span>
-                </label>
-              ))}
+              {carryOffer.comments.map(comment => {
+                // D-07: still offered and still checked by default even when
+                // flagged — never silently dropped, never collapsed to a
+                // point. Showing the clamped bounds here is what lets the
+                // writer see what the span will become before they commit.
+                const needsReposition = spanNeedsReposition({ timestampMs: comment.timestampMs, durationMs: carryTargetDurationMs })
+                const clamped = comment.endTimestampMs != null
+                  ? clampCarriedSpan({ startMs: comment.timestampMs, endMs: comment.endTimestampMs, targetDurationMs: carryTargetDurationMs })
+                  : null
+                return (
+                  <label key={comment.id} className="flex cursor-pointer items-start gap-2 rounded-[9px] border border-hair bg-card2 px-2.5 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedCarryIds.includes(comment.id)}
+                      onChange={event => setSelectedCarryIds(current => event.target.checked
+                        ? [...current, comment.id]
+                        : current.filter(id => id !== comment.id))}
+                      className="mt-0.5"
+                    />
+                    <span className="min-w-0 text-[10px] leading-4 text-lav">
+                      <b className={needsReposition ? 'text-amber-400' : 'text-white'}>{formatTrackTimestamp(comment.timestampMs)}</b> · {comment.body}
+                      {needsReposition && (
+                        <span className="mt-1 block text-[9px] text-amber-400">
+                          Needs a new position in this take
+                          {clamped && clamped.endMs !== null && (
+                            <> — will land at {formatTrackTimestamp(clamped.startMs)} to {formatTrackTimestamp(clamped.endMs)}</>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                )
+              })}
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button type="button" disabled={saving} onClick={() => void saveCarryChoice(selectedCarryIds)} className="text-[10px] font-semibold text-brandindigo hover:text-white disabled:opacity-50">
                   {saving ? 'Copying…' : `Carry ${selectedCarryIds.length} selected`}
@@ -487,13 +1156,27 @@ export function TimedTrackPlayer({
             <div className="space-y-2">
               <div className={`rounded-[9px] border border-hairstrong bg-card2 p-2.5 ${selectedRoot.resolvedAt ? 'opacity-70' : ''}`}>
                 <div className="mb-2 flex items-center justify-between gap-3 border-b border-hair pb-2 text-[9px] text-lavdim">
-                  <span>Note {selectedRootIndex + 1} of {roots.length}</span>
-                  {roots.length > 1 ? (
-                    <span className="flex items-center gap-3">
-                      <button type="button" onClick={() => stepSelectedNote(-1)} className="font-semibold hover:text-white">← Previous</button>
-                      <button type="button" onClick={() => stepSelectedNote(1)} className="font-semibold hover:text-white">Next →</button>
-                    </span>
-                  ) : null}
+                  <span>Comment {selectedRootIndex + 1} of {roots.length}</span>
+                  <span className="flex items-center gap-3">
+                    {roots.length > 1 && (
+                      <>
+                        <button type="button" onClick={() => stepSelectedNote(-1)} className="font-semibold hover:text-white">← Previous</button>
+                        <button type="button" onClick={() => stepSelectedNote(1)} className="font-semibold hover:text-white">Next →</button>
+                      </>
+                    )}
+                    {/* Opening a range comment always plays its span once
+                        and stops; this toggle is the only way to repeat it
+                        — it starts off every time a thread opens (see
+                        reviewSeekTo's setLoopEnabled(false)). */}
+                    <button
+                      type="button"
+                      onClick={() => setLoopEnabled(current => !current)}
+                      aria-pressed={loopEnabled}
+                      className={loopEnabled ? 'font-semibold text-brandindigo' : 'text-lavdim hover:text-white'}
+                    >
+                      Loop ⟲
+                    </button>
+                  </span>
                 </div>
                 <div className="flex items-start justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
@@ -506,14 +1189,20 @@ export function TimedTrackPlayer({
                     </span>
                   </span>
                   {selectedRoot.carriedFromVersionDisplay && (
-                    <span className="shrink-0 rounded-full border border-hair px-2 py-1 text-[8px] text-lavdim">From {selectedRoot.carriedFromVersionDisplay}</span>
+                    <span className="shrink-0 rounded-full border border-hair px-2 py-1 text-[8px] text-lavdim">Carried from {selectedRoot.carriedFromVersionDisplay}</span>
+                  )}
+                  {selectedRoot.needsReposition && (
+                    <span className="shrink-0 rounded-full border border-amber-400/70 px-2 py-1 text-[8px] text-amber-400">Needs a new position in this take</span>
                   )}
                 </div>
                 <div className="mt-2"><CommentText comment={selectedRoot} /></div>
                 <MicroReactionBar workId={workId} source="audio" noteId={selectedRoot.id} reactions={selectedRoot.reactions ?? []} onChanged={() => void loadComments()} />
                 <div className="mt-2 flex flex-wrap gap-3 border-t border-hair pt-2">
                   {!selectedRoot.resolvedAt && (
-                    <button type="button" onClick={() => setReplyingToId(selectedRoot.id)} className="text-[9px] text-lavdim hover:text-white">Reply</button>
+                    <button type="button" onClick={() => { setPendingSpan(null); setReplyingToId(selectedRoot.id) }} className="text-[9px] text-lavdim hover:text-white">Reply</button>
+                  )}
+                  {selectedRoot.needsReposition && selectedRoot.endTimestampMs != null && (
+                    <button type="button" onClick={() => repositionComment(selectedRoot)} className="text-[9px] font-semibold text-amber-400 hover:text-white">Reposition</button>
                   )}
                   {selectedRoot.canResolve && (
                     <button type="button" disabled={saving} onClick={() => void setResolved(selectedRoot, !selectedRoot.resolvedAt)} className="text-[9px] font-semibold text-brandindigo hover:text-white disabled:opacity-50">
@@ -531,14 +1220,14 @@ export function TimedTrackPlayer({
               ))}
             </div>
           ) : roots.length > 0 ? (
-            <p className="text-[10px] text-lavdim">Choose a marker, or leave a new note at {formatTrackTimestamp(positionMs)}.</p>
+            <p className="text-[10px] text-lavdim">Choose a marker, or leave a new comment at {formatTrackTimestamp(positionMs)}.</p>
           ) : (
             <p className="text-[10px] text-lavdim">No timed comments yet. Play or seek to the moment you want to discuss.</p>
           )}
 
           {replyingToId && (
             <div className="mt-3 flex items-center justify-between gap-2 text-[9px] text-lavdim">
-              <span>Replying to the note at {formatTrackTimestamp(selectedRoot?.timestampMs ?? positionMs)}</span>
+              <span>Replying to the comment at {formatTrackTimestamp(selectedRoot?.timestampMs ?? positionMs)}</span>
               <button type="button" onClick={() => setReplyingToId(null)} className="hover:text-white">Cancel reply</button>
             </div>
           )}
@@ -550,7 +1239,7 @@ export function TimedTrackPlayer({
             }}
             rows={2}
             maxLength={2000}
-            placeholder={replyingToId ? 'Reply to this thread' : `Leave a note at ${formatTrackTimestamp(positionMs)}`}
+            placeholder={replyingToId ? 'Reply to this thread' : `Leave a comment at ${formatTrackTimestamp(positionMs)}`}
             className="mt-3 w-full resize-none rounded-[9px] border border-hair bg-card2 px-3 py-2 text-[11px] leading-5 text-white outline-none placeholder:text-lavdim focus:border-brandindigo"
           />
           {mentionable.length > 0 && (

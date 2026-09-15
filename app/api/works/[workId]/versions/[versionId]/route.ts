@@ -3,13 +3,17 @@ import { z } from 'zod'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { resolveWorkAccess, createWorkAccessDeps } from '@/lib/catalogue/access'
 import { normalizeTakeLabel } from '@/lib/catalogue/take-workflow'
+import { PEAKS_BAR_COUNT } from '@/lib/catalogue/waveform'
 
 type RouteCtx = { params: Promise<{ workId: string; versionId: string }> }
+
+const PeaksSchema = z.array(z.number().int().min(0).max(100)).length(PEAKS_BAR_COUNT)
 
 const PatchVersionSchema = z.union([
   z.object({ archived: z.boolean() }).strict(),
   z.object({ label: z.string().max(200).nullable() }).strict(),
   z.object({ working: z.literal(true) }).strict(),
+  z.object({ peaks: PeaksSchema }).strict(),
 ])
 
 export async function PATCH(request: Request, { params }: RouteCtx) {
@@ -52,6 +56,18 @@ export async function PATCH(request: Request, { params }: RouteCtx) {
       .eq('id', versionId)
       .eq('work_id', workId)
       .select('id, label')
+      .single()
+    if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+    return NextResponse.json({ data })
+  }
+
+  if ('peaks' in body) {
+    const { data, error } = await supabase
+      .from('work_versions')
+      .update({ peaks: body.peaks })
+      .eq('id', versionId)
+      .eq('work_id', workId)
+      .select('id')
       .single()
     if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     return NextResponse.json({ data })

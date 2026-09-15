@@ -1,4 +1,5 @@
 import { uploadWorkVersion } from './version-upload-client'
+import { PEAKS_BAR_COUNT } from './waveform'
 
 const uploadToSignedUrl = jest.fn()
 
@@ -9,6 +10,30 @@ jest.mock('@/lib/supabase/client', () => ({
     },
   }),
 }))
+
+function mockIntentThenCompleteFetch(version: unknown) {
+  return jest
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            versionId: 'version-1',
+            path: 'work-1/version-1.mp3',
+            token: 'signed-token',
+            contentType: 'audio/mpeg',
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: version }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+}
 
 describe('uploadWorkVersion', () => {
   beforeEach(() => {
@@ -90,5 +115,68 @@ describe('uploadWorkVersion', () => {
     )
     expect(String(fetchMock.mock.calls[0]![1]?.body)).not.toContain('audio!')
     expect(String(fetchMock.mock.calls[1]![1]?.body)).not.toContain('audio!')
+  })
+
+  it('forwards a caller-supplied, correctly shaped peaks array verbatim', async () => {
+    const version = { id: 'version-1' }
+    const fetchMock = mockIntentThenCompleteFetch(version)
+    global.fetch = fetchMock as typeof fetch
+    uploadToSignedUrl.mockResolvedValue({ data: { path: 'work-1/version-1.mp3' }, error: null })
+
+    const peaks = Array.from({ length: PEAKS_BAR_COUNT }, () => 50)
+    await expect(
+      uploadWorkVersion({
+        workId: 'work-1',
+        file: new Blob(['audio!'], { type: 'audio/mp3' }),
+        fileName: 'take.mp3',
+        source: 'upload',
+        peaks,
+      })
+    ).resolves.toEqual(version)
+
+    const completeBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as { peaks: unknown }
+    expect(completeBody.peaks).toEqual(peaks)
+  })
+
+  it('drops a caller-supplied peaks array of the wrong length and sends peaks: null', async () => {
+    const version = { id: 'version-1' }
+    const fetchMock = mockIntentThenCompleteFetch(version)
+    global.fetch = fetchMock as typeof fetch
+    uploadToSignedUrl.mockResolvedValue({ data: { path: 'work-1/version-1.mp3' }, error: null })
+
+    const wrongLength = Array.from({ length: PEAKS_BAR_COUNT - 1 }, () => 50)
+    await expect(
+      uploadWorkVersion({
+        workId: 'work-1',
+        file: new Blob(['audio!'], { type: 'audio/mp3' }),
+        fileName: 'take.mp3',
+        source: 'upload',
+        peaks: wrongLength,
+      })
+    ).resolves.toEqual(version)
+
+    const completeBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as { peaks: unknown }
+    expect(completeBody.peaks).toBeNull()
+  })
+
+  it('resolves (never rejects) and sends peaks: null when no array is supplied and decode throws', async () => {
+    const version = { id: 'version-1' }
+    const fetchMock = mockIntentThenCompleteFetch(version)
+    global.fetch = fetchMock as typeof fetch
+    uploadToSignedUrl.mockResolvedValue({ data: { path: 'work-1/version-1.mp3' }, error: null })
+
+    // No AudioContext exists in this Jest (node) environment, so
+    // extractPeaksFromBlob throws — this is the fallback path under test.
+    await expect(
+      uploadWorkVersion({
+        workId: 'work-1',
+        file: new Blob(['audio!'], { type: 'audio/mp3' }),
+        fileName: 'take.mp3',
+        source: 'upload',
+      })
+    ).resolves.toEqual(version)
+
+    const completeBody = JSON.parse(String(fetchMock.mock.calls[1]![1]?.body)) as { peaks: unknown }
+    expect(completeBody.peaks).toBeNull()
   })
 })

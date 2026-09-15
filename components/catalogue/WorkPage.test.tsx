@@ -58,6 +58,11 @@ const contributeRoster: WorkPageProps['roster'] = {
   viewerIsOwner: false,
 }
 
+// A valid 200-length peaks array (isValidPeaksPayload's own bar count) —
+// exercises the real plumbing path rather than falling back to the rest
+// state's own validator gate.
+const SAMPLE_PEAKS = Array.from({ length: 200 }, (_, i) => i % 100)
+
 const baseVersions: VersionCardData[] = [
   {
     id: 'v1',
@@ -69,6 +74,7 @@ const baseVersions: VersionCardData[] = [
     durationSeconds: 42,
     createdAt: '2026-01-01T00:00:00Z',
     source: 'upload',
+    peaks: SAMPLE_PEAKS,
   },
 ]
 
@@ -224,6 +230,14 @@ describe('WorkPage', () => {
       <WorkPage {...makeProps({ versions: [{ ...baseVersions[0]!, playbackUrl: null, downloadUrl: null }] })} />
     )
     expect(withoutUrl).not.toContain('<audio')
+  })
+
+  it('plumbs peaks from the version card to the player — a take with peaks renders different markup than one without', () => {
+    const withPeaks = renderToStaticMarkup(<WorkPage {...makeProps()} />)
+    const withoutPeaks = renderToStaticMarkup(
+      <WorkPage {...makeProps({ versions: [{ ...baseVersions[0]!, peaks: null }] })} />
+    )
+    expect(withPeaks).not.toBe(withoutPeaks)
   })
 
   it('offers Lyric Lift on uploaded audio and renders a review draft beside the pad', () => {

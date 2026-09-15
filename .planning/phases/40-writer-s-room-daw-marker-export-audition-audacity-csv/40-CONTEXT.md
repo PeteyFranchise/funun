@@ -2,6 +2,7 @@
 
 **Gathered:** 2026-09-12
 **Status:** Ready for planning — **but see the sequencing note in Canonical References.**
+**Sessions:** context gathered 2026-09-12 (E-01..E-09); continued 2026-09-13 (E-10..E-14).
 
 <domain>
 ## Phase Boundary
@@ -66,6 +67,48 @@ transcript pane (separately deferred).
   wrong music. Fix the position in the room and it exports normally. **Nothing goes silently
   missing** — the count is required, not optional.
 
+### Does exporting leave a trace?
+- **E-10:** **Nothing is recorded.** No audit table, no `last_exported_at` marker, no Diary entry.
+  Export stays a pure READ.
+  - A comments file is not a protected asset class, and the pin export is a person accessing their
+    own data — auditing either drags retention and privacy review into a phase that serializes
+    creative notes.
+  - A Diary entry was considered and rejected: it would be a write on a read path, and if it ever
+    applied to the pin export it would tell the room that someone has pins — breaking Phase 39's
+    D-11. Declining it outright removes that failure mode entirely.
+
+### When there is nothing to export
+- **E-11:** **Refuse, and say which case it is.** No file is produced, and the control explains
+  why, because a take can look like it has feedback and still export empty:
+  - no comments at all → *"No comments on this take yet."*
+  - comments exist but all resolved (E-01 filters them) → *"All 4 comments are resolved — nothing
+    outstanding to export."*
+  - comments exist but **all** flagged for repositioning (E-09 excludes them) → *"3 comments need
+    repositioning before they can be exported."*
+  - That third case is the trap: the room shows comments and the file would be empty. The message
+    is what makes it legible, and is required rather than optional.
+
+### Format risk and shape
+- **E-12:** **Ship what is confirmed; Audition may follow.** CSV and the Audacity label track are
+  certain and deliver the phase's value. If research cannot pin down Audition's marker format, the
+  phase ships without it and Audition lands as a small follow-up. **The release is not blocked on
+  a vendor's undocumented file format.**
+  - **Research method:** reverse-engineer it — have Audition export its own marker list and match
+    that shape byte for byte, rather than guessing. This needs someone with Audition installed to
+    produce a sample file.
+- **E-13:** **Audacity, Audition and CSV stay three named options**, even if Audition's format
+  turns out to be a CSV variant. A user picks their DAW, not a serialization format, and the two
+  can diverge later without a breaking change.
+
+### Reaching a producer outside Funūn
+- **E-14:** The label carries the author's **full display name**. The writer chose to send the
+  file, and a producer acting on feedback needs to know whose it is — attribution too vague to
+  identify anyone is worse than none. First-name-only was rejected: display names are not reliably
+  splittable, and two collaborators sharing a first name makes it useless.
+  - Onward travel of the file is the writer's decision and is out of scope. E-06 (filename) and
+    E-07/E-14 (display names) are what already make the file readable to someone with no Funūn
+    context.
+
 ### Settled without discussion (owner declined the area)
 - **Formats are exactly the three the roadmap names: Audition, Audacity, CSV.** No expansion to
   Reaper, Logic or Pro Tools. Treat this as decided, not discretionary.
@@ -75,6 +118,8 @@ transcript pane (separately deferred).
 - Rate limiting and payload bounds on the export endpoint.
 - Exact filename sanitization for song titles containing path-hostile characters.
 - Whether the two export controls share one route with a path segment or are two routes.
+
+*(Owner was offered these at the second Done gate and left them as discretion.)*
 
 </decisions>
 
@@ -109,6 +154,9 @@ than planned ones. This CONTEXT.md is deliberately code-independent and does not
 - **Audacity label track** — `start⇥end⇥label` TSV. Well documented; ranges supported natively.
 - **Audition** — **format UNVERIFIED. Do not assume XML.** Notetracks advertises the integration
   without documenting the file. Confirming this is a research task, not an assumption.
+  **Method (E-12):** have Audition export its own marker list and match that shape byte for byte.
+  Requires access to Audition. **If it cannot be confirmed, the phase ships CSV + Audacity and
+  Audition follows separately — planning must not treat Audition as a blocker.**
 - **CSV** — universal fallback, no external spec to satisfy.
 
 ### Reviewed and NOT applicable
@@ -162,10 +210,11 @@ than planned ones. This CONTEXT.md is deliberately code-independent and does not
 - **Include-resolved-comments flag** — E-01 ships unresolved-only; a flag is the obvious later
   addition if anyone asks.
 - **Formats beyond the three** — Reaper, Logic, Pro Tools. Owner declined; revisit only on demand.
-- **Export accounting** — a record of who exported which take and when. Raised, not discussed.
-  Sharper now that pins can leave the platform.
-- **Reaching a non-member producer** — today only room members can export. Whether the file should
-  ever travel further is a question for the access model, not this phase.
+- **Export accounting** — DECIDED against in E-10 (nothing is recorded). Revisit only if a
+  comments file ever becomes a protected asset class, at which point
+  `accountable-download-history` is the todo that owns it.
+- **Audition support, if unverified** — E-12 allows the phase to ship without it. The follow-up is
+  one serializer plus its tests.
 - **Clickable transcript pane** — from the notetracks.com teardown; pairs naturally with this phase
   but stays deferred.
 - **Importing markers back from a DAW** — explicitly out of scope; one-way by design.

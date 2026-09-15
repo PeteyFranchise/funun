@@ -106,6 +106,8 @@ export type VersionCardData = {
   canManage?: boolean
   recordingSessionStatus?: 'draft' | 'saved' | null
   isWorking?: boolean
+  /** Percent-height bars (0-100), fixed cardinality 200, computed client-side at take creation; null means the player backfills it on first open. */
+  peaks?: number[] | null
 }
 
 export type WorkPageProps = {
@@ -364,6 +366,7 @@ function VersionsList({
           playbackUrl={v.playbackUrl}
           downloadUrl={v.downloadUrl ?? null}
           durationSeconds={v.durationSeconds}
+          peaks={v.peaks ?? null}
           isLatest={v.id === latestVersionId}
           isWorking={Boolean(v.isWorking)}
           isAiTagged={v.isAiTagged}
@@ -1431,6 +1434,7 @@ export function WorkPage({
         playbackUrl: version.playbackUrl,
         durationSeconds: version.durationSeconds,
         createdAt: version.createdAt,
+        peaks: version.peaks ?? null,
       }]
     : [])
   const activeVersionCount = versions.filter(version => !version.archivedAt).length

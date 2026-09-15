@@ -42,4 +42,13 @@ describe("Writer's Room timed track comments API and wiring", () => {
     expect(workPage).toContain("hint.kind === 'track_comment_changed'")
     expect(workPage).toContain('<TimedTrackPlayer')
   })
+
+  it('carries a span both ways through the validated RPC only', () => {
+    expect(commentsRoute).toContain('end_timestamp_ms')
+    expect(commentsRoute).toContain('needs_reposition')
+    expect(commentsRoute).toContain('endTimestampMs')
+    expect(commentsRoute).toContain('p_end_timestamp_ms')
+    expect(commentsRoute).toContain("supabase.rpc('create_work_version_comment'")
+    expect(commentsRoute).not.toMatch(/\.from\('work_version_comments'\)[\s\S]*?\.(insert|update)\(/)
+  })
 })
