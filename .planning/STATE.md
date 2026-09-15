@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 31.2
-current_phase_name: ae-console-playbook-authoring-rbac-plays-selects-telemetry
-status: Ready to execute
-stopped_at: Phase 39 plan 01 ready
+current_phase: 39
+current_phase_name: writer-s-room-the-take-as-a-real-review-surface-real-wavefor
+status: Blocked at plan 39-11 checkpoint
+stopped_at: 10 of 11 plans complete; 39-11 blocked on Supabase CLI auth
 last_updated: "2026-09-13T21:49:08.051Z"
 last_activity: 2026-09-13
 progress:
