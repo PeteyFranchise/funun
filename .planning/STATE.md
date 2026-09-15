@@ -4,8 +4,8 @@ milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
 current_phase: 39
 current_phase_name: writer-s-room-the-take-as-a-real-review-surface-real-wavefor
-status: At plan 39-11 checkpoint — sequencing gate passed, push pending
-stopped_at: 10 of 11 plans complete; 39-11 Task 1 Step 1 passed, awaiting owner db:push
+status: Phase 39 SHIPPED — migration 224 applied, code deployed; 39-11 Tasks 2-3 outstanding
+stopped_at: 39-11 Task 1 complete; Task 2 Step 1 is the next instruction
 last_updated: "2026-09-13T21:49:08.051Z"
 last_activity: 2026-09-13
 progress:

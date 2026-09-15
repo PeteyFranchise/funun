@@ -64,6 +64,26 @@ describe('take transport', () => {
     expect(shouldSuppressShortcut({}, { tagName: 'DIV', isContentEditable: true })).toBe(true)
   })
 
+  // Regression, found in production during 39-11: clicking a waveform leaves
+  // focus on the scrubber, which is an <input type="range">. Suppressing there
+  // returned before preventDefault, so space scrolled the page instead of
+  // playing -- the shortcut looked broken exactly when a writer reached for it.
+  it('does not suppress shortcuts for a range input -- the scrubber is transport, not typing', () => {
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'range' })).toBe(false)
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'RANGE' })).toBe(false)
+  })
+
+  it('still suppresses every text-entry input, and the types where space has its own meaning', () => {
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT' })).toBe(true)
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'text' })).toBe(true)
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'search' })).toBe(true)
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'email' })).toBe(true)
+    // Space toggles these natively -- hijacking it would be this same bug
+    // pointed the other way.
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'checkbox' })).toBe(true)
+    expect(shouldSuppressShortcut({}, { tagName: 'INPUT', type: 'radio' })).toBe(true)
+  })
+
   it('does not suppress shortcuts for an ordinary element', () => {
     expect(shouldSuppressShortcut({}, { tagName: 'BUTTON' })).toBe(false)
     expect(shouldSuppressShortcut({}, { tagName: 'DIV', isContentEditable: false })).toBe(false)
