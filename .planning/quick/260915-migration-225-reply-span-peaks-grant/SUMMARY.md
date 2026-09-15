@@ -4,7 +4,7 @@ slug: migration-225-reply-span-peaks-grant
 status: complete
 created: 2026-09-15
 migration: 225
-applied: false
+applied: 2026-09-15
 key-files:
   created:
     - supabase/migrations/225_reply_span_and_peaks_grant.sql
@@ -61,19 +61,35 @@ Suites went 611 to 612 (the new migration test file) and tests 7,384 to 7,391
 - Migration 160 already uses the same `CHECK (parent_comment_id IS NULL OR …)`
   idiom on this table, so the shape is the table's own convention.
 
-## NOT APPLIED
+## APPLIED 2026-09-15 — verified behaviourally
 
-Migration 225 is written and content-tested only. **Application is human-gated**,
-as every migration in this repo is — no agent runs `db:push`.
+Production migration ceiling is now **225**. `migration list` reports 222 rows,
+**0 mismatches**, 225 local = remote.
 
-Production is currently at migration **224**. Applying 225 needs the same
-sequence Phase 39 used: confirm parity through 224, push, confirm parity through
-225, then load a Writer's Room take to catch a stale PostgREST cache.
+Both findings were confirmed by behaviour, not by the push's exit code — which
+matters especially for WR-04, whose whole nature was a grant that *looked*
+present but worked only by accident. An applied migration would have proven
+nothing about it.
 
-Note the API-edge change is deployable independently and is harmless ahead of the
-migration — it only rejects a combination the client never sends. The migration
-is likewise safe ahead of the deploy, since nothing currently produces a spanned
-reply. Neither ordering breaks the other.
+**WR-03 refusal probe.** A spanned reply inserted directly against production
+was rejected by name — `work_version_comments_reply_has_no_span` — with positive
+controls passing alongside (comments and versions still readable, 4 and 7 rows).
+Refusal paired with a positive control, per the discipline in
+`docs/verification/BETA-RLS-SMOKE-SESSION.md`: a refusal on its own can be
+produced by an unrelated failure.
+
+**WR-04 grant.** Opening the "Heartburn" take — chosen because it had no stored
+peaks — ran the backfill end to end under a real `authenticated` session: decode,
+PATCH, the `work_versions_peaks_shape` CHECK, and therefore
+`work_version_peaks_in_range()`. Versions with peaks went 3 to 4 and the value
+persisted.
+
+Worth recording how nearly this was missed: the first attempt reopened a take in
+"Justified Noise", which already had peaks. The waveform appeared, which looked
+like success, but nothing backfilled and the grant was never exercised. Only the
+server-side count showed it. A visual "it worked" was not evidence.
+
+**PostgREST cache.** Comments read cleanly against the new schema.
 
 ## Left for a separate pass
 
