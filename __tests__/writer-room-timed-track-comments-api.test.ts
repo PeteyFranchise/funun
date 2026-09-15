@@ -51,4 +51,16 @@ describe("Writer's Room timed track comments API and wiring", () => {
     expect(commentsRoute).toContain("supabase.rpc('create_work_version_comment'")
     expect(commentsRoute).not.toMatch(/\.from\('work_version_comments'\)[\s\S]*?\.(insert|update)\(/)
   })
+
+  // WR-03 from the Phase 39 code review. The client sends a span only when
+  // there is no replyingToId and calls that a hard invariant, but nothing below
+  // the client enforced it. Migration 225 makes it a CHECK so no write path can
+  // bypass it; this refinement turns what would otherwise surface as a raw
+  // constraint violation into an honest 400.
+  it('rejects a reply that carries a span at the edge, not only in the database', () => {
+    expect(commentsRoute).toContain('A reply cannot carry a span')
+    expect(commentsRoute).toMatch(
+      /data\.endTimestampMs == null \|\| data\.parentCommentId == null/
+    )
+  })
 })

@@ -36,6 +36,12 @@ const CommentBodySchema = z.object({
 }).strict().refine(
   data => data.endTimestampMs == null || data.endTimestampMs > data.timestampMs,
   { message: 'endTimestampMs must be strictly after timestampMs', path: ['endTimestampMs'] }
+).refine(
+  // A reply is a message in a thread, not a second span. Migration 225 makes
+  // this a CHECK so no write path can bypass it; rejecting here too turns what
+  // would surface as a raw constraint violation into an honest 400.
+  data => data.endTimestampMs == null || data.parentCommentId == null,
+  { message: 'A reply cannot carry a span', path: ['endTimestampMs'] }
 )
 
 async function loadVersions(supabase: Awaited<ReturnType<typeof createApiClient>>, workId: string) {
