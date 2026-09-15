@@ -409,6 +409,37 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 <!-- GSD:workflow-end -->
 
+## Verification Gate
+
+Before claiming any change, wave, or phase is green, run **every step the CI `validate` job
+runs** (`.github/workflows/quality.yml`). Anything less is not a green build:
+
+```bash
+npm run security:migrations:verify
+npm run typecheck:strict     # not just `tsc --noEmit` — adds noUnusedLocals/noUnusedParameters
+npm run lint                 # --max-warnings=0, so ANY warning fails the build
+npm test -- --runInBand
+npm audit --omit=dev --audit-level=moderate
+npm audit --audit-level=high
+```
+
+Notes:
+
+- **`npm run build` is not part of CI's validate job.** It is also unsafe while a dev server is
+  running (it clobbers `.next`). Prefer `npm run typecheck:strict` for type safety and only build
+  when you specifically need the production bundle.
+- **`lint` is load-bearing, not cosmetic.** `--max-warnings=0` means a `react-hooks/exhaustive-deps`
+  warning fails the build — and those warnings usually describe a real defect. Phase 39 gated six
+  consecutive waves on build + test alone; all six passed while a keydown effect re-subscribed its
+  `document` listener on every render, caught only when CI finally ran lint.
+- `main` is protected: direct pushes are rejected until `validate` and CodeQL pass. Ship through a
+  PR, never by pushing `main`.
+
+A check that prints green without exercising what it claims to cover is worse than no check,
+because it buys false confidence. Two known traps in this repo: a bracketed Jest path
+(`app/api/works/[workId]/...`) parses as a regex character class and silently matches zero tests,
+and no jsdom is installed, so component tests cannot observe interaction state.
+
 <!-- GSD:profile-start -->
 
 ## Developer Profile
