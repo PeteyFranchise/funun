@@ -34,3 +34,5 @@ output/
 public/_captures/
 public/morning-light-edit.html
 tmp/
+.env.local.bak*
+.env.*.bak*
