@@ -12,9 +12,30 @@
 
 ALTER TABLE public.work_versions ADD COLUMN peaks SMALLINT[];
 
+-- The 0-100 range below is enforced in the database, not only in the client
+-- helper: migration 136 gates work_versions by RLS alone, so any work member
+-- can write this column directly. A CHECK cannot contain a subquery, so the
+-- per-element test lives in an IMMUTABLE helper.
+CREATE OR REPLACE FUNCTION public.work_version_peaks_in_range(p SMALLINT[])
+RETURNS BOOLEAN
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+  SELECT p IS NULL OR NOT EXISTS (
+    SELECT 1 FROM unnest(p) AS v WHERE v < 0 OR v > 100
+  );
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.work_version_peaks_in_range(SMALLINT[]) FROM PUBLIC, anon;
+
 ALTER TABLE public.work_versions
   ADD CONSTRAINT work_versions_peaks_shape
-  CHECK (peaks IS NULL OR (cardinality(peaks) = 200 AND array_position(peaks, NULL) IS NULL));
+  CHECK (peaks IS NULL OR (
+    cardinality(peaks) = 200
+    AND array_position(peaks, NULL) IS NULL
+    AND public.work_version_peaks_in_range(peaks)
+  ));
 
 COMMENT ON COLUMN public.work_versions.peaks IS
   'Percent-height waveform bars (0-100), fixed cardinality 200, computed client-side at take creation. A NULL value means "not extracted yet -- the player backfills it," never "draw a placeholder shape."';
@@ -352,13 +373,25 @@ GRANT EXECUTE ON FUNCTION public.review_work_version_comment_carry(uuid, uuid, u
 -- The entire access model is "you wrote it." Room membership is verified by
 -- the API route at insert time, not by a second RLS policy here.
 
+-- A composite FK needs a matching unique key on the referenced side.
+-- work_versions.id is already the primary key, so this adds no new
+-- uniqueness guarantee -- it only makes (id, work_id) referenceable.
+ALTER TABLE public.work_versions
+  ADD CONSTRAINT work_versions_id_work_id_key UNIQUE (id, work_id);
+
 CREATE TABLE public.work_version_pins (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   work_id        UUID NOT NULL REFERENCES public.works(id) ON DELETE CASCADE,
-  version_id     UUID NOT NULL REFERENCES public.work_versions(id) ON DELETE CASCADE,
+  version_id     UUID NOT NULL,
   author_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   timestamp_ms   INTEGER NOT NULL CHECK (timestamp_ms BETWEEN 0 AND 86400000),
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Composite, not two independent keys: a pin whose version belongs to some
+  -- OTHER work is incoherent, and separate FKs to works(id) and
+  -- work_versions(id) would each pass while permitting exactly that.
+  CONSTRAINT work_version_pins_version_in_work
+    FOREIGN KEY (version_id, work_id)
+    REFERENCES public.work_versions (id, work_id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_work_version_pins_author_version_time

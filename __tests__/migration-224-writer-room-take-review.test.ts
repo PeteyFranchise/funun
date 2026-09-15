@@ -22,6 +22,16 @@ describe('migration 224 writer room take-review surface', () => {
       expect(sql).toContain('cardinality(peaks) = 200')
       expect(sql).toContain('array_position(peaks, NULL) IS NULL')
     })
+
+    // The column comment promises 0-100. migration 136 gates work_versions by
+    // RLS alone, so a work member writes this column directly -- the promise
+    // has to be a database constraint, not only a client-side helper.
+    it('enforces the documented 0-100 range in the database', () => {
+      expect(sql).toContain('work_version_peaks_in_range')
+      expect(sql).toContain('public.work_version_peaks_in_range(peaks)')
+      expect(sql).toMatch(/WHERE v < 0 OR v > 100/)
+      expect(sql).toContain('IMMUTABLE')
+    })
   })
 
   describe('range comments', () => {
@@ -86,6 +96,29 @@ describe('migration 224 writer room take-review surface', () => {
 
     it('never clamps the end timestamp alone, without the start', () => {
       expect(carryBody).not.toMatch(/LEAST\(\s*source\.end_timestamp_ms/)
+    })
+  })
+
+  describe('pin coherence (a version must belong to its work)', () => {
+    // Two independent FKs to works(id) and work_versions(id) would each pass
+    // for a pin whose version belongs to some OTHER work. One composite key
+    // is what actually forbids that.
+    it('binds version_id and work_id with one composite foreign key', () => {
+      expect(sql).toContain('work_version_pins_version_in_work')
+      expect(sql).toContain('FOREIGN KEY (version_id, work_id)')
+      expect(sql).toContain('REFERENCES public.work_versions (id, work_id)')
+    })
+
+    it('adds the unique key the composite reference requires', () => {
+      expect(sql).toContain('work_versions_id_work_id_key UNIQUE (id, work_id)')
+      // Ordering is load-bearing: the unique key must exist before the FK.
+      expect(sql.indexOf('work_versions_id_work_id_key')).toBeLessThan(
+        sql.indexOf('work_version_pins_version_in_work')
+      )
+    })
+
+    it('no longer carries a standalone version_id reference', () => {
+      expect(sql).not.toContain('version_id     UUID NOT NULL REFERENCES public.work_versions(id)')
     })
   })
 
