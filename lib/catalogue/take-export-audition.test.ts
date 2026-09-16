@@ -1,5 +1,10 @@
 import { AUDITION_MARKER_HEADER, auditionDuration, auditionTime, renderAuditionMarkers } from './take-export-audition'
 import type { ExportMarker } from '@/lib/catalogue/take-export'
+// Test-only cross-import. The two format modules must NOT import each other in
+// production -- their independence is pinned by each plan's import count -- but
+// the divergence between them is exactly what this test exists to prove, so the
+// comparison belongs here and nowhere else.
+import { renderAudacityLabels } from './take-export-formats'
 
 describe('take export audition: auditionTime', () => {
   it('formats zero as 0:00.000', () => {
@@ -124,15 +129,6 @@ describe('take export audition: cross-format divergence — Audacity and Auditio
   // end column of `78.000000` — the absolute end timestamp in seconds to six
   // decimal places). That contract is enforced by plan 40-02's own
   // acceptance criteria independently of this test.
-  //
-  // DEVIATION NOTE (see 40-03-SUMMARY.md): once plan 40-02 has merged, this
-  // test should be rewired to `import { renderAudacityLabels } from
-  // '@/lib/catalogue/take-export-formats'` and assert against its live
-  // output, per the plan's original instruction that the cross-import
-  // belongs in the test and nowhere else. Until then, this test still
-  // proves the two claims that matter: renderAuditionMarkers produces a
-  // duration, and that duration is a different string than the pinned
-  // Audacity end-timestamp value for the identical input.
   it('produces a different second-time-value than Audacity for the same 72000ms-78000ms range, and both are correct for their own format', () => {
     const markers: ExportMarker[] = [
       { label: 'Maya Okonkwo: lower the guitars', startMs: 72000, endMs: 78000 },
@@ -141,10 +137,19 @@ describe('take export audition: cross-format divergence — Audacity and Auditio
     const auditionRow = renderAuditionMarkers(markers).split('\r\n')[1]
     const auditionDurationField = auditionRow.split('\t')[2]
 
-    // Pinned by 40-02-PLAN.md's own <behavior> block for this exact input.
-    const audacityEndColumnPerPlan40_02 = '78.000000'
+    // Live output from the Audacity renderer, not a literal transcribed from a
+    // plan document. That distinction is the whole point: a transcription only
+    // proves someone copied a number correctly once, whereas this fails if
+    // EITHER module ever drifts toward the other's meaning.
+    const audacityEndField = renderAudacityLabels(markers).split('\n')[0].split('\t')[1]
 
+    // Audacity's second column is an END TIMESTAMP: 78s.
+    expect(audacityEndField).toBe('78.000000')
+    // Audition's is a DURATION: 78s - 72s = 6s.
     expect(auditionDurationField).toBe('0:06.000')
-    expect(auditionDurationField).not.toBe(audacityEndColumnPerPlan40_02)
+    // The claim that matters. If Audition ever emitted the end timestamp
+    // instead, the file would still import cleanly and every range marker
+    // would land in the wrong place.
+    expect(auditionDurationField).not.toBe(audacityEndField)
   })
 })
