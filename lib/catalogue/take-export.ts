@@ -124,3 +124,130 @@ export function pinToMarker(pin: WorkVersionPinView): ExportMarker {
     endMs: null,
   }
 }
+
+// ─── Classification — what is excluded, and the one sentence that says why ──
+
+/**
+ * ExportRefusalReason distinguishes the five ways an export can produce no
+ * markers, so the export control can say which one happened instead of a
+ * generic "nothing to export" (E-11).
+ */
+export type ExportRefusalReason = 'none' | 'no_comments' | 'all_resolved' | 'all_repositioning' | 'no_pins'
+
+export type ExportClassification = {
+  exportable: ExportMarker[]
+  skippedRepositionCount: number
+  refusalReason: ExportRefusalReason
+  /** Null exactly when refusalReason is 'none'. */
+  refusalMessage: string | null
+}
+
+function sortByStartMsThenLabel(markers: ExportMarker[]): ExportMarker[] {
+  return [...markers].sort((a, b) => a.startMs - b.startMs || a.label.localeCompare(b.label))
+}
+
+/**
+ * classifyCommentExport applies four filters in order and returns early with
+ * a tagged reason at each empty point. No pin ever reaches
+ * classifyCommentExport and no comment ever reaches classifyPinExport —
+ * they are two functions on purpose (E-03), not one classifier with a mode
+ * argument.
+ */
+export function classifyCommentExport(comments: WorkVersionCommentView[]): ExportClassification {
+  // 1. Root filter — done FIRST and unconditionally. The route also filters
+  // roots in its query; these are two independent gates and neither is
+  // allowed to be the only one (migration 225's CHECK constraint is not
+  // relied on implicitly here).
+  const roots = comments.filter(comment => comment.parentCommentId === null)
+  if (roots.length === 0) {
+    return {
+      exportable: [],
+      skippedRepositionCount: 0,
+      refusalReason: 'no_comments',
+      refusalMessage: 'No comments on this take yet.',
+    }
+  }
+
+  // 2. Unresolved filter (E-01) — the count in the message is the number of
+  // ROOT comments, not the original array length, because a reply is not a
+  // comment the writer can see a marker for.
+  const unresolved = roots.filter(comment => comment.resolvedAt === null)
+  if (unresolved.length === 0) {
+    const rootCount = roots.length
+    return {
+      exportable: [],
+      skippedRepositionCount: 0,
+      refusalReason: 'all_resolved',
+      refusalMessage:
+        rootCount === 1
+          ? 'The only comment on this take is resolved — nothing outstanding to export.'
+          : `All ${rootCount} comments are resolved — nothing outstanding to export.`,
+    }
+  }
+
+  // 3. Reposition filter (E-09) — a flagged comment has a known-wrong
+  // timestamp and writing it to a timeline puts it on the wrong music.
+  const flagged = unresolved.filter(comment => comment.needsReposition === true)
+  const positioned = unresolved.filter(comment => comment.needsReposition !== true)
+  if (positioned.length === 0) {
+    const flaggedCount = flagged.length
+    return {
+      exportable: [],
+      skippedRepositionCount: flaggedCount,
+      refusalReason: 'all_repositioning',
+      refusalMessage:
+        flaggedCount === 1
+          ? '1 comment needs repositioning before it can be exported.'
+          : `${flaggedCount} comments need repositioning before they can be exported.`,
+    }
+  }
+
+  // 4. Success — skippedRepositionCount is carried here too, because E-09
+  // requires the writer to be told what was left out even when the export
+  // otherwise worked, not only when it is the sole blocker.
+  return {
+    exportable: sortByStartMsThenLabel(positioned.map(commentToMarker)),
+    skippedRepositionCount: flagged.length,
+    refusalReason: 'none',
+    refusalMessage: null,
+  }
+}
+
+/**
+ * classifyPinExport is a genuinely separate function from
+ * classifyCommentExport, not a parameterised one — E-03 makes the
+ * separation of the comments path and the pins path a structural fact
+ * rather than a runtime invariant, and a shared classifier with a mode
+ * argument is exactly the shape a later change would add a third mode to.
+ * A pin has no reposition concept and must never borrow one.
+ */
+export function classifyPinExport(pins: WorkVersionPinView[]): ExportClassification {
+  if (pins.length === 0) {
+    return {
+      exportable: [],
+      skippedRepositionCount: 0,
+      refusalReason: 'no_pins',
+      refusalMessage: 'No pins on this take yet.',
+    }
+  }
+  return {
+    exportable: sortByStartMsThenLabel(pins.map(pinToMarker)),
+    skippedRepositionCount: 0,
+    refusalReason: 'none',
+    refusalMessage: null,
+  }
+}
+
+/**
+ * skippedRepositionNote is the success-path sentence the export control
+ * renders (E-09) — null at zero, otherwise the count of comments that were
+ * excluded from an otherwise-successful export. Lives here rather than in
+ * the component so the refusal sentences and the success sentence have one
+ * home.
+ */
+export function skippedRepositionNote(count: number): string | null {
+  if (count === 0) return null
+  return count === 1
+    ? "1 comment needs repositioning and wasn't included."
+    : `${count} comments need repositioning and weren't included.`
+}
