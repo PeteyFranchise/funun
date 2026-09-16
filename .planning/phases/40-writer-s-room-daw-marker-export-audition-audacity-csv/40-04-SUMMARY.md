@@ -164,6 +164,15 @@ None - no external service configuration required.
 - No live request has been made against this route in this environment (no test database) — the 401/403/404/409/200 status paths are proven by source assertion and by the already-tested pure modules, not by execution. This matches the plan's own "Not verified by this plan" note and remains UAT for whoever exercises the deployed route.
 - Depends on plans 40-01/40-02/40-03 (merged at this worktree's base) for `classifyCommentExport`, `exportFilename`, `renderAudacityLabels`, `renderMarkerCsv`, and `renderAuditionMarkers` — all confirmed present and their own test suites still green (82 tests across the three `take-export*` files).
 
+## Self-Check: PASSED
+
+- FOUND: `app/api/works/[workId]/versions/[versionId]/comments/export/route.ts`
+- FOUND: `__tests__/writer-room-comments-export-api.test.ts`
+- FOUND: `.planning/phases/40-writer-s-room-daw-marker-export-audition-audacity-csv/40-04-SUMMARY.md`
+- FOUND: commit `17fe71d8` (Task 1 — feat)
+- FOUND: commit `7b293539` (Task 2 — test)
+- FOUND: commit `c8ba48c5` (docs — this SUMMARY)
+
 ---
 *Phase: 40-writer-s-room-daw-marker-export-audition-audacity-csv*
 *Completed: 2026-09-15*
