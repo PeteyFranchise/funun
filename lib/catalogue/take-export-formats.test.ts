@@ -154,10 +154,15 @@ describe('renderMarkerCsv', () => {
     // csvField nor csvCell for this comparison — none of these inputs begin
     // with a formula-lead character, so csvCell's additional guard never
     // fires and the two functions' outputs are directly comparable.
-    const [, dataLine] = renderMarkerCsv([marker({ startMs: 0, endMs: null, label: input })]).split(
-      '\n'
-    )
-    const csvFieldOutput = dataLine.slice('0:00,,'.length)
+    //
+    // Sliced by known prefix/suffix length rather than split('\n') — one of
+    // the table's own cases embeds a literal newline inside the quoted
+    // field, and split('\n') would cut that field in half.
+    const header = 'Start,End,Marker\n'
+    const output = renderMarkerCsv([marker({ startMs: 0, endMs: null, label: input })])
+    const rowWithTrailingNewline = output.slice(header.length)
+    const row = rowWithTrailingNewline.slice(0, -1)
+    const csvFieldOutput = row.slice('0:00,,'.length)
     expect(csvFieldOutput).toBe(csvCell(input))
   })
 })
