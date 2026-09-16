@@ -23,6 +23,7 @@ import {
   isValidPeaksPayload,
 } from '@/lib/catalogue/waveform'
 import { MicroReactionBar } from './MicroReactionBar'
+import { TakeMarkerExport } from './TakeMarkerExport'
 import type {
   LyricCommentParticipant,
   WorkVersionCommentCarryOffer,
@@ -1080,6 +1081,7 @@ export function TimedTrackPlayer({
           {onRename && <button type="button" disabled={takeSaving} onClick={() => { setTakeError(null); setRenaming(current => !current) }} className="text-[10px] text-lavdim hover:text-white disabled:opacity-40">Name</button>}
           {!isWorking && onMakeWorking && <button type="button" disabled={takeSaving} onClick={() => void makeWorkingTake()} className="text-[10px] text-lavdim hover:text-brandindigo disabled:opacity-40">Make working</button>}
           {onArchive && <button type="button" onClick={() => void onArchive()} className="text-[10px] text-lavdim hover:text-white">Archive</button>}
+          <TakeMarkerExport workId={workId} versionId={versionId} />
         </div>
         {roots.length > 0 && <span className="text-[9px] text-lavdim">Click a marker to open its thread</span>}
       </div>
