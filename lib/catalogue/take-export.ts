@@ -251,3 +251,55 @@ export function skippedRepositionNote(count: number): string | null {
     ? "1 comment needs repositioning and wasn't included."
     : `${count} comments need repositioning and weren't included.`
 }
+
+// ─── Filename — the provenance carrier ──────────────────────────────────────
+
+// Windows-reserved filename characters. This is a cross-platform superset
+// rather than a macOS requirement: a slightly over-stripped name is a
+// cosmetic cost, while an under-stripped one is a broken download or a
+// header injection into Content-Disposition.
+const RESERVED_FILENAME_CHARS = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
+const MAX_FILENAME_TITLE_LENGTH = 80
+
+function isHostileFilenameChar(char: string): boolean {
+  return RESERVED_FILENAME_CHARS.includes(char) || char.charCodeAt(0) <= MAX_C0_CONTROL_CODE
+}
+
+/**
+ * sanitizeFilenameTitle strips only what is genuinely hostile — the
+ * Windows-reserved character set plus every C0 control character — and
+ * replaces each with a single space rather than deleting it: deleting
+ * would silently join two words, and the title is the only provenance
+ * carrier this file has. Case, internal spaces, apostrophes, hyphens, and
+ * accented or non-Latin characters are all preserved exactly.
+ */
+function sanitizeFilenameTitle(rawTitle: string): string {
+  let out = ''
+  for (const char of rawTitle) {
+    out += isHostileFilenameChar(char) ? ' ' : char
+  }
+  const collapsed = out.replace(/\s+/g, ' ').trim().replace(/\.+$/, '')
+  const capped = collapsed.slice(0, MAX_FILENAME_TITLE_LENGTH).trim()
+  return capped.length > 0 ? capped : 'Untitled'
+}
+
+/**
+ * exportFilename composes E-06's fixed shape exactly: the sanitised title,
+ * space hyphen space, the version display, space hyphen space, the kind, a
+ * dot, the extension. No format token is added even though two of the
+ * three formats share the .csv extension — E-06 fixes this shape with two
+ * literal examples, and changing a locked filename convention to avoid a
+ * browser-dedupe nuisance is not a trade this phase gets to make.
+ *
+ * Only the title segment is sanitised. versionDisplay, kind and ext are
+ * values this codebase generates, never user text.
+ */
+export function exportFilename(input: {
+  workTitle: string
+  versionDisplay: string
+  kind: 'comments' | 'my-pins'
+  ext: string
+}): string {
+  const title = sanitizeFilenameTitle(input.workTitle)
+  return `${title} - ${input.versionDisplay} - ${input.kind}.${input.ext}`
+}
