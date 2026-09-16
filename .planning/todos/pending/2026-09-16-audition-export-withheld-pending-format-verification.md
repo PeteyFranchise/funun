@@ -30,7 +30,37 @@ column is a **duration** where Audacity's is an **end timestamp**; get that wron
 imports cleanly with every range marker in the wrong place. A writer would sooner doubt their own
 memory of where they left a note than suspect the export.
 
-## The prior question, which is probably the more important one
+## OWNER DIRECTION 2026-09-16 — support all the major DAWs eventually
+
+This reframes everything below. The question was never **whether** to support a DAW, only **in
+what order**. Audition is not on trial; it is simply the one that happens to be built and
+unverifiable right now.
+
+So the "does Audition belong at all" framing is settled: **yes, eventually, along with Logic,
+Ableton, FL Studio and Pro Tools.** What still matters is sequencing — which format earns the next
+round of work — and that is an empirical question about which DAWs beta users actually open, not
+a question about Audition.
+
+What that changes in practice:
+
+- **The work already done keeps its value.** `lib/catalogue/take-export-audition.ts`, its 17
+  tests, the sample script and the verification doc are a down payment on a format that will ship,
+  not a sunk cost on a format that might be dropped.
+- **The format pattern is now a template.** Each DAW is a pure renderer in `lib/catalogue/`, one
+  entry in `FORMAT_OPTIONS`, one option-count number. Adding Logic should look exactly like
+  `take-export-audition.ts` looks — that consistency is worth protecting as the list grows.
+- **Verification is the bottleneck, not implementation.** Audition is blocked because nobody here
+  can run it. The same will be true of Logic, Pro Tools and FL Studio unless someone with each
+  DAW can check a real import. Worth planning for: a format nobody can verify is a format that
+  silently corrupts, and that risk repeats per DAW rather than being paid once.
+- **E-13 scales badly if unexamined.** Three separately-named options is a clean UI; seven or
+  eight is a menu. Worth revisiting the presentation before the list gets long.
+
+Research for a future phase should therefore cover **the remaining major DAWs as a set** — their
+marker formats, whether each distinguishes point from range, and crucially who could verify each
+one — rather than treating Audition as a one-off question.
+
+## The prior question, now answered by the direction above
 
 **Does Audition belong in this feature at all?**
 
