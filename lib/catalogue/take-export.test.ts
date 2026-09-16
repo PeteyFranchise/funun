@@ -1,4 +1,11 @@
-import { commentToMarker, pinToMarker, sanitizeMarkerLabel } from './take-export'
+import {
+  classifyCommentExport,
+  classifyPinExport,
+  commentToMarker,
+  pinToMarker,
+  sanitizeMarkerLabel,
+  skippedRepositionNote,
+} from './take-export'
 import type { WorkVersionCommentView, WorkVersionPinView } from '@/types/catalogue'
 
 function makeComment(overrides: Partial<WorkVersionCommentView> = {}): WorkVersionCommentView {
@@ -107,5 +114,134 @@ describe('take export: marker shape and label sanitisation', () => {
     expect(marker.endMs).toBe(null)
     expect(marker.endMs).not.toBeUndefined()
     expect(marker.endMs).not.toBe(0)
+  })
+})
+
+describe('take export: classification — what is excluded, and why', () => {
+  it('classifies an empty comment array as no_comments', () => {
+    const result = classifyCommentExport([])
+    expect(result.refusalReason).toBe('no_comments')
+    expect(result.refusalMessage).toBe('No comments on this take yet.')
+    expect(result.exportable).toEqual([])
+  })
+
+  it('classifies an array containing only replies as no_comments — a reply is never a marker', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'reply-1', parentCommentId: 'root-1' }),
+      makeComment({ id: 'reply-2', parentCommentId: 'root-1' }),
+    ])
+    expect(result.refusalReason).toBe('no_comments')
+    expect(result.refusalMessage).toBe('No comments on this take yet.')
+  })
+
+  it('classifies four resolved root comments as all_resolved with the plural message', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'c1', resolvedAt: '2026-01-01T00:00:00Z' }),
+      makeComment({ id: 'c2', resolvedAt: '2026-01-01T00:00:00Z' }),
+      makeComment({ id: 'c3', resolvedAt: '2026-01-01T00:00:00Z' }),
+      makeComment({ id: 'c4', resolvedAt: '2026-01-01T00:00:00Z' }),
+    ])
+    expect(result.refusalReason).toBe('all_resolved')
+    expect(result.refusalMessage).toBe('All 4 comments are resolved — nothing outstanding to export.')
+  })
+
+  it('classifies a single resolved root comment as all_resolved with the singular message', () => {
+    const result = classifyCommentExport([makeComment({ resolvedAt: '2026-01-01T00:00:00Z' })])
+    expect(result.refusalReason).toBe('all_resolved')
+    expect(result.refusalMessage).toBe(
+      'The only comment on this take is resolved — nothing outstanding to export.'
+    )
+  })
+
+  it('classifies three unresolved, all-flagged root comments as all_repositioning with the plural message', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'c1', needsReposition: true }),
+      makeComment({ id: 'c2', needsReposition: true }),
+      makeComment({ id: 'c3', needsReposition: true }),
+    ])
+    expect(result.refusalReason).toBe('all_repositioning')
+    expect(result.refusalMessage).toBe('3 comments need repositioning before they can be exported.')
+  })
+
+  it('classifies one unresolved, flagged root comment as all_repositioning with the singular message', () => {
+    const result = classifyCommentExport([makeComment({ needsReposition: true })])
+    expect(result.refusalReason).toBe('all_repositioning')
+    expect(result.refusalMessage).toBe('1 comment needs repositioning before it can be exported.')
+  })
+
+  it('classifies two exportable plus two repositioning-flagged comments as none, carrying the skipped count on the success path', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'c1', timestampMs: 1000 }),
+      makeComment({ id: 'c2', timestampMs: 2000 }),
+      makeComment({ id: 'c3', timestampMs: 3000, needsReposition: true }),
+      makeComment({ id: 'c4', timestampMs: 4000, needsReposition: true }),
+    ])
+    expect(result.refusalReason).toBe('none')
+    expect(result.refusalMessage).toBe(null)
+    expect(result.exportable).toHaveLength(2)
+    expect(result.skippedRepositionCount).toBe(2)
+  })
+
+  it('returns markers ordered by startMs ascending regardless of input order', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'c1', timestampMs: 9000, body: 'last' }),
+      makeComment({ id: 'c2', timestampMs: 1000, body: 'first' }),
+      makeComment({ id: 'c3', timestampMs: 5000, body: 'middle' }),
+    ])
+    expect(result.exportable.map(m => m.startMs)).toEqual([1000, 5000, 9000])
+  })
+
+  it('never includes a resolved comment in exportable', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'c1', timestampMs: 1000 }),
+      makeComment({ id: 'c2', timestampMs: 2000, resolvedAt: '2026-01-01T00:00:00Z' }),
+    ])
+    expect(result.exportable).toHaveLength(1)
+    expect(result.exportable[0]!.startMs).toBe(1000)
+  })
+
+  it('never includes a reply in exportable, even when it carries a span', () => {
+    const result = classifyCommentExport([
+      makeComment({ id: 'root', timestampMs: 1000 }),
+      makeComment({
+        id: 'reply',
+        parentCommentId: 'root',
+        timestampMs: 2000,
+        endTimestampMs: 3000,
+      }),
+    ])
+    expect(result.exportable).toHaveLength(1)
+    expect(result.exportable[0]!.startMs).toBe(1000)
+  })
+
+  it('carries a null refusalMessage exactly when the refusal reason is none', () => {
+    const result = classifyCommentExport([makeComment()])
+    expect(result.refusalReason).toBe('none')
+    expect(result.refusalMessage).toBe(null)
+  })
+
+  it('classifies an empty pin array as no_pins', () => {
+    const result = classifyPinExport([])
+    expect(result.refusalReason).toBe('no_pins')
+    expect(result.refusalMessage).toBe('No pins on this take yet.')
+  })
+
+  it('classifies two pins as none with a skippedRepositionCount of zero — a pin has no reposition concept', () => {
+    const result = classifyPinExport([makePin({ id: 'p1', timestampMs: 1000 }), makePin({ id: 'p2', timestampMs: 2000 })])
+    expect(result.refusalReason).toBe('none')
+    expect(result.exportable).toHaveLength(2)
+    expect(result.skippedRepositionCount).toBe(0)
+  })
+
+  it('returns null from skippedRepositionNote at zero', () => {
+    expect(skippedRepositionNote(0)).toBe(null)
+  })
+
+  it('returns the singular skippedRepositionNote sentence for a count of one', () => {
+    expect(skippedRepositionNote(1)).toBe("1 comment needs repositioning and wasn't included.")
+  })
+
+  it('returns the plural skippedRepositionNote sentence for a count above one', () => {
+    expect(skippedRepositionNote(2)).toBe("2 comments need repositioning and weren't included.")
   })
 })
