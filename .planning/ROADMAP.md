@@ -2619,7 +2619,7 @@ the owner folds it in.
 No migration: the phase is a pure read plus serialization and every column it needs shipped with
 migrations 224 and 225 in Phase 39. The migration ceiling stays 225.
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 
@@ -2630,7 +2630,7 @@ Plans:
 - [x] 40-05-PLAN.md
 - [x] 40-06-PLAN.md
 - [x] 40-07-PLAN.md
-- [ ] 40-08-PLAN.md
+- [x] 40-08-PLAN.md
 
 - [x] 40-01 — Pure marker core: shape, sanitisation, classification, filename (wave 1)
 - [x] 40-02 — Audacity label track and generic CSV renderers (wave 2)
