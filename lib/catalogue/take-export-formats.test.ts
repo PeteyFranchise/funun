@@ -1,4 +1,5 @@
-import { renderAudacityLabels } from './take-export-formats'
+import { renderAudacityLabels, renderMarkerCsv } from './take-export-formats'
+import { csvCell } from '@/lib/metadata/export'
 import type { ExportMarker } from '@/lib/catalogue/take-export'
 
 function marker(overrides: Partial<ExportMarker> = {}): ExportMarker {
@@ -74,5 +75,89 @@ describe('renderAudacityLabels', () => {
       marker({ startMs: 5000, endMs: null, label: "'=already sanitised" }),
     ]
     expect(renderAudacityLabels(markers)).toBe("5.000000\t5.000000\t'=already sanitised\n")
+  })
+})
+
+describe('renderMarkerCsv', () => {
+  it('renders an empty marker array as exactly the header row', () => {
+    expect(renderMarkerCsv([])).toBe('Start,End,Marker\n')
+  })
+
+  it('renders a point marker with an empty End cell, not a repeat of Start', () => {
+    const markers: ExportMarker[] = [
+      marker({ startMs: 9000, endMs: null, label: 'Maya Okonkwo: bring the bass up here' }),
+    ]
+    expect(renderMarkerCsv(markers)).toBe(
+      'Start,End,Marker\n0:09,,Maya Okonkwo: bring the bass up here\n'
+    )
+  })
+
+  it('renders a range marker with distinct minutes:seconds Start and End cells', () => {
+    const markers: ExportMarker[] = [
+      marker({ startMs: 72000, endMs: 78000, label: 'Maya Okonkwo: lower the guitars' }),
+    ]
+    const [, dataLine] = renderMarkerCsv(markers).split('\n')
+    const [start, end] = dataLine.split(',')
+    expect(start).toBe('1:12')
+    expect(end).toBe('1:18')
+  })
+
+  it('switches to an hours:minutes:seconds Start cell past an hour', () => {
+    const markers: ExportMarker[] = [marker({ startMs: 3661500, endMs: null, label: 'Pin 1:01:01' })]
+    const [, dataLine] = renderMarkerCsv(markers).split('\n')
+    const [start] = dataLine.split(',')
+    expect(start).toBe('1:01:01')
+  })
+
+  it('wraps a label containing a comma in double quotes', () => {
+    const markers: ExportMarker[] = [
+      marker({ startMs: 9000, endMs: null, label: 'Maya: bring the bass, please' }),
+    ]
+    expect(renderMarkerCsv(markers)).toBe(
+      'Start,End,Marker\n0:09,,"Maya: bring the bass, please"\n'
+    )
+  })
+
+  it('wraps a label containing a double quote in double quotes with the quote doubled', () => {
+    const markers: ExportMarker[] = [
+      marker({ startMs: 9000, endMs: null, label: 'Maya: the "hook" needs work' }),
+    ]
+    expect(renderMarkerCsv(markers)).toBe(
+      'Start,End,Marker\n0:09,,"Maya: the ""hook"" needs work"\n'
+    )
+  })
+
+  it('leaves a label containing neither a comma nor a quote unquoted', () => {
+    const markers: ExportMarker[] = [
+      marker({ startMs: 9000, endMs: null, label: 'Maya: bring the bass up here' }),
+    ]
+    expect(renderMarkerCsv(markers)).toBe(
+      'Start,End,Marker\n0:09,,Maya: bring the bass up here\n'
+    )
+  })
+
+  it('renders a plan-40-01 apostrophe-prefixed label intact, without a second guard', () => {
+    const markers: ExportMarker[] = [marker({ startMs: 9000, endMs: null, label: "'=1+1" })]
+    expect(renderMarkerCsv(markers)).toBe('Start,End,Marker\n0:09,,\'=1+1\n')
+  })
+
+  it.each([
+    ['plain text', 'plain text'],
+    ['a value with a comma, right here', 'a value with a comma, right here'],
+    ['a value with a "quote"', 'a value with a "quote"'],
+    ['a value with a "quote", and a comma', 'a value with a "quote", and a comma'],
+    ['a value with\na newline', 'a value with\na newline'],
+    ['', ''],
+  ])('csvField agrees with csvCell on quoting for: %s', input => {
+    // This equivalence is deliberately about QUOTING only. The formula guard
+    // lives upstream in sanitizeMarkerLabel and is expected in neither
+    // csvField nor csvCell for this comparison — none of these inputs begin
+    // with a formula-lead character, so csvCell's additional guard never
+    // fires and the two functions' outputs are directly comparable.
+    const [, dataLine] = renderMarkerCsv([marker({ startMs: 0, endMs: null, label: input })]).split(
+      '\n'
+    )
+    const csvFieldOutput = dataLine.slice('0:00,,'.length)
+    expect(csvFieldOutput).toBe(csvCell(input))
   })
 })
