@@ -2615,13 +2615,22 @@ Recorded as a deferred idea in `39-CONTEXT.md` before being promoted to its own 
 deferred) would pair naturally with this as a "getting work out" phase. It stays deferred unless
 the owner folds it in.
 
-**Status:** Owner-approved and roadmapped 2026-09-12. Implementation planning not started.
+**Status:** Owner-approved and roadmapped 2026-09-12. Planned 2026-09-15 — 8 plans across 5 waves.
+No migration: the phase is a pure read plus serialization and every column it needs shipped with
+migrations 224 and 225 in Phase 39. The migration ceiling stays 225.
 
-**Plans:** 0 plans
+**Plans:** 8 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 40 to break down)
+- [ ] 40-01 — Pure marker core: shape, sanitisation, classification, filename (wave 1)
+- [ ] 40-02 — Audacity label track and generic CSV renderers (wave 2)
+- [ ] 40-03 — Audition marker serializer, isolated, plus a one-command byte sample (wave 2)
+- [ ] 40-04 — Comments export route, shareable (wave 3)
+- [ ] 40-05 — Pins export route, author-only (wave 3)
+- [ ] 40-06 — E-03/E-10 separation doctrine gate across both routes (wave 4)
+- [ ] 40-07 — Two export controls on the take (wave 4)
+- [ ] 40-08 — Expose Audition behind the format-verification human check (wave 5)
 
 ---
 
