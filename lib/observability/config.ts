@@ -39,6 +39,7 @@ export type ThresholdMetric =
   | 'auth_api_5xx_rate'
   | 'uptime_consecutive_failures'
   | 'monthly_spend_usd'
+  | 'account_storage_gb'
 
 export type ThresholdBand = {
   /** Value at/above this (and below `critical`) classifies as 'warning'. */
@@ -76,6 +77,13 @@ export const THRESHOLDS: Record<ThresholdMetric, ThresholdBand> = {
   // Matches D-09/D-15's $100 heads-up/infra-review trigger; warning band
   // mirrors Vercel's 75%-of-plan usage-alert tier cited in SPEC R1.
   monthly_spend_usd: { warning: 75, critical: 100, provisional: true },
+  // M-01 stopgap. Direct browser uploads bypass the server's admission quotas,
+  // so this is the band at which one account's Storage footprint is worth a
+  // look. Deliberately generous: Sound Vault allows 250MB per track, so a
+  // twelve-track album with stems is legitimately several GB and a prolific
+  // artist can reach double digits without doing anything wrong. Set to catch
+  // abuse, not to nag real users — provisional until beta usage says otherwise.
+  account_storage_gb: { warning: 25, critical: 50, provisional: true, window: 'total Storage bytes per owning path segment, all buckets' },
 }
 
 export type ThresholdStatus = 'healthy' | 'warning' | 'critical' | 'unknown'

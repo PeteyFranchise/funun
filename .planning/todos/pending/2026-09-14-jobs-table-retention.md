@@ -2,6 +2,8 @@
 created: 2026-09-14T00:00:00Z
 title: Completed and failed jobs are never pruned — unbounded table growth (audit M-03)
 area: reliability
+status: deferred
+deferred_on: 2026-09-16
 files:
   - supabase/migrations/118_jobs_queue.sql
   - lib/jobs/queue.ts
@@ -48,6 +50,21 @@ unbatched initial delete risks long locks and a replication spike.
 Confirm cleanup excludes pending and processing jobs, excludes recent terminal
 jobs, respects its batch limit, is idempotent across repeated runs, and uses the
 intended index.
+
+## DEFERRED 2026-09-16 — owner decision
+
+**Revisit once beta usage shows what a finished job is actually worth.** The retention period
+cannot be chosen sensibly in the abstract: it depends on whether anyone ever looks back at a
+completed job, and nobody knows that yet because the beta has barely run.
+
+Deferring costs very little. This degrades on a scale of months, and the table is small today —
+the failure mode is a slow increase in backup size and restore time, never an outage. Choosing a
+number now and discovering it was wrong later is worse than choosing it when there is evidence.
+
+What would settle it: after a few weeks of real use, look at whether anyone has ever needed to
+inspect a `completed` or `failed` job more than a day old. If not, 30 days is generous. If job
+history turns out to answer real questions ("how often does watermarking fail?"), it is not a
+cleanup problem at all — it is an analytics one, and deleting would be the wrong instinct.
 
 ## Open question for the owner
 
