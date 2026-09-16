@@ -185,3 +185,10 @@ None beyond what the plan's own `<threat_model>` already registers (T-40-01 thro
 *Phase: 40-writer-s-room-daw-marker-export-audition-audacity-csv*
 *Plan: 01*
 *Completed: 2026-09-15*
+
+## Self-Check: PASSED
+
+- FOUND: `lib/catalogue/take-export.ts`
+- FOUND: `lib/catalogue/take-export.test.ts`
+- FOUND: `.planning/phases/40-writer-s-room-daw-marker-export-audition-audacity-csv/40-01-SUMMARY.md`
+- FOUND commits: `834c3aeb`, `2564c19d`, `6afb136b`, `fbd543b2`, `7c4241ac`, `fd32db78`, `e7b88faa`
