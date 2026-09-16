@@ -56,6 +56,22 @@ abandoned intents.
 the old Storage policies. The reverse order breaks stems and instrumental uploads.
 Inventory existing orphaned objects separately.
 
+## STOPGAP SHIPPED 2026-09-16 — detection, not prevention
+
+A daily cron (`/api/cron/storage-usage-check`) now totals Storage bytes per account from
+`storage.objects` and alerts on anyone at or above the `account_storage_gb` warning band.
+Migration 227 adds the service-role-only reporting function. See
+`.planning/quick/260916-storage-usage-detection-cron/`.
+
+**This does not close the finding.** Unbounded upload is still possible; it is now visible. The
+owner's reasoning: the risk needs someone deliberately abusing a beta with a handful of known,
+paying users, and "I would get an alert" is proportionate to that. Nothing built for the stopgap
+is wasted when intents land.
+
+**Upload intents remain the destination**, and the sequencing note below still governs it: ship
+intent-aware clients FIRST, then revoke the blanket Storage grant. The reverse order breaks stems
+and instrumental uploads immediately.
+
 ## Open question for the owner
 
 Is browser-direct Storage writing the intended long-term upload architecture? If
