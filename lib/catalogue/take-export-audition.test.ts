@@ -120,15 +120,12 @@ describe('take export audition: renderAuditionMarkers', () => {
 })
 
 describe('take export audition: cross-format divergence — Audacity and Audition disagree on purpose', () => {
-  // Plan 40-02 (lib/catalogue/take-export-formats.ts, renderAudacityLabels)
-  // executes in a separate, parallel worktree for this wave and has not
-  // merged into this worktree yet, so a live cross-module import is not
-  // resolvable from here. The Audacity value below is not a guess: it is a
-  // literal transcription of 40-02-PLAN.md's own pinned behavior contract
-  // for this exact input (a range marker from 72000ms to 78000ms renders an
-  // end column of `78.000000` — the absolute end timestamp in seconds to six
-  // decimal places). That contract is enforced by plan 40-02's own
-  // acceptance criteria independently of this test.
+  // This asserts the two formats against each other's LIVE output, which is the
+  // only version of this test worth having. It was briefly written against a
+  // literal transcribed from 40-02-PLAN.md, because that module was still
+  // building in a parallel worktree and could not be imported; a transcription
+  // proves only that someone copied a number correctly once, whereas a live
+  // import fails if EITHER module ever drifts toward the other's meaning.
   it('produces a different second-time-value than Audacity for the same 72000ms-78000ms range, and both are correct for their own format', () => {
     const markers: ExportMarker[] = [
       { label: 'Maya Okonkwo: lower the guitars', startMs: 72000, endMs: 78000 },
