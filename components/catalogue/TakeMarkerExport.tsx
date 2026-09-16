@@ -6,10 +6,22 @@ import { skippedRepositionNote } from '@/lib/catalogue/take-export'
 // All three formats are offered, named by DAW (E-13). Audition is
 // corroborated from three third-party sources, not Adobe — unknowns and
 // the settling procedure live in docs/catalogue/AUDITION-MARKER-FORMAT.md.
-// Removing this entry is E-12's fallback if that verification fails.
+//
+// AUDITION IS WITHHELD (2026-09-16), per E-12's fallback. Its format is
+// corroborated by three third-party sources but has never been checked against
+// Adobe Audition itself, and nobody on this project has the software -- so the
+// verification had no date it could happen by. A wrong format here would not
+// error; it would import cleanly with every range marker in the wrong place,
+// and a writer would sooner doubt their own memory than the export.
+//
+// Nothing was deleted to do this. lib/catalogue/take-export-audition.ts, its
+// 17 tests, the sample script and the verification doc all remain. Re-enabling
+// is one array entry below (an audition id labelled Audition, same shape as
+// its neighbours) plus the option count in the UI test. Note the test counts
+// option ids by source pattern, so do not write that entry's literal syntax
+// into a comment -- it reads as a real option and fails the count.
 const FORMAT_OPTIONS = [
   { id: 'audacity', label: 'Audacity' },
-  { id: 'audition', label: 'Audition' },
   { id: 'csv', label: 'Spreadsheet (CSV)' },
 ] as const
 

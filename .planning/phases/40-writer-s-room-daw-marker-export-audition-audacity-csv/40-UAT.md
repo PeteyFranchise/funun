@@ -8,24 +8,22 @@ updated: 2026-09-16T02:45:00Z
 
 ## Current Test
 
-number: 1
-name: Audition byte-level format verification (E-12 release gate)
+number: 2
+name: Audacity label track imports correctly
 expected: |
-  Encoding is UTF-8 with no BOM; line endings are CRLF with a trailing tab before each
-  terminator; a range marker's Type column is `Cue` and it imports at 6 seconds, not 66.
-
-  All three INFERRED facts become CONFIRMED with a date — or the Audition option is removed
-  per E-12's one-line fallback.
+  Import a Funūn-exported Audacity label track into Audacity against any audio file. Label count
+  equals the comment count the room showed; a range comment appears as a region with the same
+  in/out points; a point comment appears at a single position, not a zero-length artifact.
 awaiting: user response
 
 ## Tests
 
-### 1. Audition byte-level format verification (E-12 release gate)
+### 1. Audition byte-level format verification — NO LONGER A GATE (withheld 2026-09-16)
 
 expected: Run the eight-step procedure in `docs/catalogue/AUDITION-MARKER-FORMAT.md` against a
 real Adobe Audition install.
 
-result: [pending]
+result: WITHHELD — Audition removed from the UI before shipping, per E-12. Not a pending test.
 
 why_human: Nobody on this phase has Audition installed. The format is corroborated by three
 independent third-party sources but has never been checked against the software itself.
@@ -108,8 +106,8 @@ why_human: Same jsdom and live-request limitation.
 
 ### 8. Mobile wrapping
 
-expected: At phone width, with all three format labels visible, both controls wrap cleanly rather
-than overflowing.
+expected: At phone width, with both format labels visible (Audacity, CSV — Audition is withheld),
+both controls wrap cleanly rather than overflowing.
 
 result: [pending]
 
@@ -120,7 +118,8 @@ why_human: Visual and responsive judgment; no jsdom.
 total: 8
 passed: 0
 issues: 0
-pending: 8
+pending: 7
+withheld: 1
 skipped: 0
 blocked: 0
 
