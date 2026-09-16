@@ -2,6 +2,7 @@ import {
   classifyCommentExport,
   classifyPinExport,
   commentToMarker,
+  exportFilename,
   pinToMarker,
   sanitizeMarkerLabel,
   skippedRepositionNote,
@@ -243,5 +244,80 @@ describe('take export: classification — what is excluded, and why', () => {
 
   it('returns the plural skippedRepositionNote sentence for a count above one', () => {
     expect(skippedRepositionNote(2)).toBe("2 comments need repositioning and weren't included.")
+  })
+})
+
+describe('take export: filename provenance', () => {
+  it('reproduces E-06\'s comments filename example exactly', () => {
+    expect(
+      exportFilename({ workTitle: 'Midnight', versionDisplay: 'v3', kind: 'comments', ext: 'txt' })
+    ).toBe('Midnight - v3 - comments.txt')
+  })
+
+  it('reproduces E-06\'s pins filename example exactly', () => {
+    expect(
+      exportFilename({ workTitle: 'Midnight', versionDisplay: 'v3', kind: 'my-pins', ext: 'csv' })
+    ).toBe('Midnight - v3 - my-pins.csv')
+  })
+
+  it('turns a path separator into a space rather than deleting it', () => {
+    const filename = exportFilename({ workTitle: 'A/B Side', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(filename.startsWith('A B Side - ')).toBe(true)
+  })
+
+  it('produces a filename with no double quote when the title contains one', () => {
+    const filename = exportFilename({ workTitle: 'Report "Live"', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(filename).not.toContain('"')
+  })
+
+  it('produces a single-line filename when the title contains a carriage return or a line feed', () => {
+    const withCrlf = exportFilename({ workTitle: 'Line1\r\nLine2', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(withCrlf.split('\n')).toHaveLength(1)
+    expect(withCrlf.split('\r')).toHaveLength(1)
+  })
+
+  it('produces a filename with no colon when the title contains one', () => {
+    const filename = exportFilename({ workTitle: 'Report:', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(filename).not.toContain(':')
+    expect(filename).toBe('Report - v1 - comments.txt')
+  })
+
+  it('strips a trailing period from the title segment', () => {
+    const filename = exportFilename({ workTitle: 'Midnight.', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(filename).toBe('Midnight - v1 - comments.txt')
+  })
+
+  it('strips a trailing space from the title segment', () => {
+    const filename = exportFilename({ workTitle: 'Midnight ', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    expect(filename).toBe('Midnight - v1 - comments.txt')
+  })
+
+  it('caps a 250-character title at 80 characters', () => {
+    const longTitle = 'a'.repeat(250)
+    const filename = exportFilename({ workTitle: longTitle, versionDisplay: 'v1', kind: 'comments', ext: 'txt' })
+    const titleSegment = filename.split(' - v1 - comments.txt')[0]!
+    expect(titleSegment.length).toBeLessThanOrEqual(80)
+  })
+
+  it('falls back to Untitled when the title is empty', () => {
+    expect(exportFilename({ workTitle: '', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })).toBe(
+      'Untitled - v1 - comments.txt'
+    )
+  })
+
+  it('falls back to Untitled when the title is entirely reserved characters', () => {
+    expect(exportFilename({ workTitle: '::::', versionDisplay: 'v1', kind: 'comments', ext: 'txt' })).toBe(
+      'Untitled - v1 - comments.txt'
+    )
+  })
+
+  it('preserves case, internal spaces, apostrophes and hyphens in an ordinary title exactly', () => {
+    const filename = exportFilename({
+      workTitle: "Midnight's Groove - Reprise",
+      versionDisplay: 'v2',
+      kind: 'comments',
+      ext: 'txt',
+    })
+    expect(filename).toBe("Midnight's Groove - Reprise - v2 - comments.txt")
   })
 })
