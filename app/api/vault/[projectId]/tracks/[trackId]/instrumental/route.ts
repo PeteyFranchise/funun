@@ -54,26 +54,20 @@ export async function POST(request: Request, { params }: RouteCtx) {
     return NextResponse.json({ error: 'Invalid storage path' }, { status: 400 })
   }
 
-  const { data: track } = await supabase
-    .from('tracks')
-    .select('id, metadata')
-    .eq('id', trackId)
-    .eq('project_id', projectId)
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!track) return NextResponse.json({ error: 'Track not found' }, { status: 404 })
-
-  const metadata = (track.metadata as Record<string, unknown> | null) ?? {}
-  const update = { metadata: { ...metadata, instrumental: { path, size, ext } } }
-
-  const { data: updated, error: updateError } = await supabase
-    .from('tracks')
-    .update(update)
-    .eq('id', trackId)
-    .eq('user_id', user.id)
-    .select()
-    .single()
+  // M-02: merged in the database, never read-modify-written here. Reading the
+  // whole metadata object and writing it back meant a concurrent stems write
+  // silently erased this instrumental key (or the reverse) — the file survived
+  // in Storage while its only reference vanished, with nothing erroring.
+  const { data: updated, error: updateError } = await supabase.rpc('set_track_metadata_asset', {
+    p_track_id: trackId,
+    p_project_id: projectId,
+    p_key: 'instrumental',
+    p_value: { path, size, ext },
+  })
   if (updateError) {
+    if (updateError.message?.includes('track_not_found')) {
+      return NextResponse.json({ error: 'Track not found' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
   }
 
@@ -118,14 +112,14 @@ export async function DELETE(_request: Request, { params }: RouteCtx) {
     await service.storage.from(BUCKET).remove([instrumentalPath])
   }
 
-  const nextMeta: Record<string, unknown> = { ...metadata }
-  delete nextMeta.instrumental
-
-  const { error } = await supabase
-    .from('tracks')
-    .update({ metadata: nextMeta })
-    .eq('id', trackId)
-    .eq('user_id', user.id)
+  // M-02: `-` removes exactly this key in the database. The old path rewrote
+  // the whole object and could erase a sibling a concurrent request had just
+  // added.
+  const { error } = await supabase.rpc('clear_track_metadata_asset', {
+    p_track_id: trackId,
+    p_project_id: projectId,
+    p_key: 'instrumental',
+  })
   if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
   return NextResponse.json({ data: { ok: true } })

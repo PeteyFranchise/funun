@@ -2,10 +2,29 @@
 created: 2026-09-14T00:00:00Z
 title: Concurrent stems/instrumental writes can silently drop track metadata (audit M-02)
 area: data-integrity
+resolved: 2026-09-16
+resolved_by: migration 226 (not yet applied)
 files:
   - app/api/vault/[projectId]/tracks/[trackId]/stems/route.ts
   - app/api/vault/[projectId]/tracks/[trackId]/instrumental/route.ts
 ---
+
+## RESOLVED 2026-09-16 — confirmed, then fixed
+
+**The finding was real.** All four call sites did exactly what was described. Fixed by migration
+226 plus rewiring both routes to `set_track_metadata_asset` / `clear_track_metadata_asset`, which
+merge and remove single JSONB keys in the database.
+
+Notably the fix chosen was NOT the one this todo suggested first. A compare-and-swap on
+`updated_at` was available with no migration — the trigger from migration 001 maintains it — but
+stems and instrumental touch different keys, so a CAS would make them conflict and retry over a
+collision that need not exist. `||` lets both writes succeed. The contention was removed rather
+than detected.
+
+**Migration 226 is written but NOT APPLIED.** Production is at 225, and deploy ordering matters:
+the routes call RPCs that do not exist until 226 lands, so the migration must go first.
+
+## Original report
 
 ## Provenance
 
