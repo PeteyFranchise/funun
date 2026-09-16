@@ -36,6 +36,8 @@ const validPeaks = () => Array.from({ length: PEAKS_BAR_COUNT }, () => 50)
 
 describe('PATCH /api/works/[workId]/versions/[versionId] — peaks', () => {
   let updateSpy: jest.Mock
+  let updateIsSpy: jest.Mock
+  let updateMaybeSingleSpy: jest.Mock
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -48,9 +50,11 @@ describe('PATCH /api/works/[workId]/versions/[versionId] — peaks', () => {
     const lookupEq1Spy = jest.fn(() => ({ eq: lookupEq2Spy }))
     const selectSpy = jest.fn(() => ({ eq: lookupEq1Spy }))
 
-    const singleSpy = jest.fn(async () => ({ data: { id: VERSION_ID }, error: null }))
-    const updateSelectSpy = jest.fn(() => ({ single: singleSpy }))
-    const updateEq2Spy = jest.fn(() => ({ select: updateSelectSpy }))
+    // Default: the row still has a NULL waveform, so the self-heal write lands.
+    updateMaybeSingleSpy = jest.fn(async () => ({ data: { id: VERSION_ID }, error: null }))
+    const updateSelectSpy = jest.fn(() => ({ maybeSingle: updateMaybeSingleSpy }))
+    updateIsSpy = jest.fn(() => ({ select: updateSelectSpy }))
+    const updateEq2Spy = jest.fn(() => ({ is: updateIsSpy }))
     const updateEq1Spy = jest.fn(() => ({ eq: updateEq2Spy }))
     updateSpy = jest.fn(() => ({ eq: updateEq1Spy }))
 
@@ -110,5 +114,26 @@ describe('PATCH /api/works/[workId]/versions/[versionId] — peaks', () => {
     const res = await PATCH(patchRequest({ peaks: validPeaks(), label: 'Take 2' }), ctx())
     expect(res.status).toBe(400)
     expect(updateSpy).not.toHaveBeenCalled()
+  })
+
+  // WR-02. A waveform is computed once; this endpoint exists only so a take
+  // that predates the column can fill in its own shape. Without this filter any
+  // contribute-tier member could replace an already-correct waveform for the
+  // whole room, and migration 224's CHECK cannot help -- it validates the shape
+  // of what arrives, never whether it should have been allowed to arrive.
+  it('scopes the write to rows whose waveform is still unset', async () => {
+    const res = await PATCH(patchRequest({ peaks: validPeaks() }), ctx())
+    expect(res.status).toBe(200)
+    expect(updateIsSpy).toHaveBeenCalledWith('peaks', null)
+  })
+
+  // Zero rows is the EXPECTED outcome when a waveform already exists -- two
+  // clients opening the same take will race, and the loser must see a no-op
+  // rather than a 500 telling them something broke.
+  it('treats an already-computed waveform as a no-op, not an error', async () => {
+    updateMaybeSingleSpy.mockResolvedValueOnce({ data: null, error: null })
+    const res = await PATCH(patchRequest({ peaks: validPeaks() }), ctx())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ data: { id: VERSION_ID, alreadyComputed: true } })
   })
 })
