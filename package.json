@@ -14,7 +14,8 @@
     "db:push": "supabase db push",
     "security:migrations:verify": "node scripts/verify-beta-security-migrations.mjs",
     "break-glass": "tsx scripts/break-glass.ts",
-    "playbook:activation-check": "tsx scripts/check-playbook-activation.ts"
+    "playbook:activation-check": "tsx scripts/check-playbook-activation.ts",
+    "export:audition-sample": "tsx scripts/print-audition-sample.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
