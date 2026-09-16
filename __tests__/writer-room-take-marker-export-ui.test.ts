@@ -36,11 +36,12 @@ describe('the take marker export controls never converge into one handler (E-03,
     })
 
     // Asserting the count rather than the absence of a particular format id
-    // means plan 40-09's one-line addition of Audition is a one-line test
-    // change here too, not a rewrite.
-    it('offers exactly two format options', () => {
+    // means E-12's fallback — removing the Audition entry if plan 40-08's
+    // human byte-level check comes back negative — is a one-line revert of
+    // this number, not a rewrite of this test.
+    it('offers exactly three format options', () => {
       const optionEntries = componentSource.match(/id: '/g) ?? []
-      expect(optionEntries).toHaveLength(2)
+      expect(optionEntries).toHaveLength(3)
     })
 
     it('imports the skipped-count sentence from the pure export module, not a re-typed wording', () => {

@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import { skippedRepositionNote } from '@/lib/catalogue/take-export'
 
-// Audition is deliberately absent from this list. Its serializer
-// (lib/catalogue/take-export-audition.ts) is written, tested and
-// byte-pinned, but the option here waits on plan 40-08's byte-for-byte
-// verification against a real Audition export. Once that verification
-// lands, plan 40-09 adds a third entry to this array — that one line is
-// the entire UI change.
+// All three formats are offered, named by DAW (E-13). Audition is
+// corroborated from three third-party sources, not Adobe — unknowns and
+// the settling procedure live in docs/catalogue/AUDITION-MARKER-FORMAT.md.
+// Removing this entry is E-12's fallback if that verification fails.
 const FORMAT_OPTIONS = [
   { id: 'audacity', label: 'Audacity' },
+  { id: 'audition', label: 'Audition' },
   { id: 'csv', label: 'Spreadsheet (CSV)' },
 ] as const
 
