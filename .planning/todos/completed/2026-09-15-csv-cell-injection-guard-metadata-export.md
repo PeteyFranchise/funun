@@ -2,6 +2,8 @@
 created: 2026-09-15T00:00:00Z
 title: csvCell has no CSV-injection guard — distributor metadata export
 area: security
+resolved: 2026-09-15
+resolved_by: PR #78
 files:
   - lib/metadata/export.ts
 ---
@@ -35,7 +37,22 @@ Three reasons, and they are good ones:
 3. **Closing a gap in a shipped exporter deserves its own verification** against a real
    distributor import, not a drive-by in an unrelated phase.
 
-## Residual risk — assess before acting
+## RESOLVED 2026-09-15 — the audit answered it, and the fix followed
+
+**The audit's question was answered decisively: yes, user-authored free text reaches `buildCsv`.**
+Thirteen of its fields are free text an account holder controls — `t.title`, `artistCredit(...)`,
+`release.artistName`, `release.releaseTitle`, `composers` (names), `splits` (names), `r.label`,
+`r.publisher`, `r.p_line`, `r.c_line`, and all three contact fields. The risk was real, not
+hypothetical.
+
+Fixed in **PR #78**: the OWASP apostrophe prefix applied inside `csvCell` before RFC4180 quoting,
+with the leading-whitespace scan that stops a tab-then-`=` bypass.
+
+**Still outstanding, and the reason this is worth remembering:** the apostrophe is visible in the
+delivered bytes, so the export needs verifying against a **real distributor import** before it is
+trusted end to end. No mitigation both neutralises the formula and preserves the original bytes.
+
+## Original assessment, kept for the record — assess before acting
 
 The exposure depends entirely on whether any **user-authored free text** reaches `buildCsv`. If
 every field is a structured identifier (ISRC, UPC, ISWC, duration, territory code), the practical
