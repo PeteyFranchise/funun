@@ -571,9 +571,22 @@ export function TimedTrackPlayer({
     setDragAnchorMs(null)
     setDragPointerMs(null)
     // A drag shorter than MIN_SPAN_MS snaps back with no confirm affordance
-    // at all — normalizeSpanDrag returning null is the whole guard, so
-    // there is no second minimum-span check here.
-    if (normalized) setPendingSpan(normalized)
+    // at all — normalizeSpanDrag returning null is the whole guard, so there
+    // is no second minimum-span check here.
+    //
+    // Assigned unconditionally, and that is the fix for WR-01. Guarding this
+    // with `if (normalized)` made the comment above true only for the FIRST
+    // drag: a writer who had already marked a span and then redrew it too
+    // short — a very plausible correction, especially on touch — kept the
+    // OLD span pending with Confirm still live and pointed at it. Confirming
+    // then posted coordinates they had visibly replaced.
+    //
+    // normalizeSpanDrag already returns null to mean "no span". Discarding
+    // that null was the bug; passing it straight through is the behaviour the
+    // comment always described. It fixes repositionComment for free, where a
+    // pre-seeded span made the same silence worse — there the stale value was
+    // the original pre-clamped one the writer never drew at all.
+    setPendingSpan(normalized)
   }
 
   // The band a writer currently sees: a live drag in progress, or a
