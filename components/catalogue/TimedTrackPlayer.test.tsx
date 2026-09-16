@@ -184,6 +184,23 @@ describe('TimedTrackPlayer', () => {
     expect(markup).not.toContain('timed notes')
   })
 
+  // WR-01. normalizeSpanDrag returns null for a drag under MIN_SPAN_MS, and
+  // that null means "no span". Guarding the assignment with `if (normalized)`
+  // discarded it, so a writer who had already marked a span and then redrew it
+  // too short kept the OLD span pending — Confirm still live, still pointed at
+  // coordinates they had visibly replaced. repositionComment was worse: the
+  // stale value there was a pre-seeded span the writer never drew at all.
+  //
+  // A source assertion because the invariant lives in a pointer handler and
+  // this repo has no jsdom, so no rendered test can reach it.
+  it('clears the pending span when a drag is rejected, rather than keeping the previous one', () => {
+    const source = readFileSync(join(__dirname, 'TimedTrackPlayer.tsx'), 'utf8')
+    expect(source).toContain('setPendingSpan(normalized)')
+    // The exact shape of the bug: a truthiness guard that swallows the null.
+    expect(source).not.toMatch(/if\s*\(\s*normalized\s*\)\s*setPendingSpan/)
+    expect(source).not.toMatch(/normalized\s*&&\s*setPendingSpan/)
+  })
+
   it('offers Mark span mode in the transport row without ever auto-activating it', () => {
     const markup = renderToStaticMarkup(<TimedTrackPlayer {...baseProps()} />)
     expect(markup).toContain('Mark span')
