@@ -440,6 +440,15 @@ because it buys false confidence. Two known traps in this repo: a bracketed Jest
 (`app/api/works/[workId]/...`) parses as a regex character class and silently matches zero tests,
 and no jsdom is installed, so component tests cannot observe interaction state.
 
+**Running it proves the mechanism, not the meaning.** Migration 227 was verified by calling it
+against production: it executed, returned rows, and refused `anon` by name with a positive
+control alongside. Every one of those statements was true, and the output was still wrong — six
+of eight rows in a column named `owner_segment` did not contain an owner. Nothing checked the
+label, because the label looked like an answer. When a result is named, verify the name against
+an independent source: cross-referencing those segments against `auth.users` and `works` was one
+query and would have caught it the same afternoon. "The code ran" and "the answer is right" are
+separate claims, and only the first one is cheap.
+
 <!-- GSD:profile-start -->
 
 ## Developer Profile
