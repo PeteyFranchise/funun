@@ -13,7 +13,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
   const supabase = await createApiClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (await checkRateLimit(`idea-recording-intent:${user.id}`, { maxAttempts: 80, windowMs: 15 * 60 * 1000 })) {
+  if (
+    await checkRateLimit(`idea-recording-intent:${user.id}`, {
+      maxAttempts: 80,
+      windowMs: 15 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
     return NextResponse.json({ error: 'Too many recordings. Please slow down.' }, { status: 429 })
   }
   const access = await resolveIdeaAccess(supabase, ideaId, user.id)

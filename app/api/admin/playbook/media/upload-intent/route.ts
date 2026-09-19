@@ -21,7 +21,15 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid training video' }, { status: 400 })
   const auth = await requireRoomAccess(parsed.data.roomKey)
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
-  if (await checkRateLimit(`playbook-media:${auth.user.id}`, { maxAttempts: 20, windowMs: 24 * 60 * 60 * 1000 })) return NextResponse.json({ error: 'Daily training-media upload limit reached.' }, { status: 429 })
+  if (
+    await checkRateLimit(`playbook-media:${auth.user.id}`, {
+      maxAttempts: 20,
+      windowMs: 24 * 60 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
+    return NextResponse.json({ error: 'Daily training-media upload limit reached.' }, { status: 429 })
+  }
   const service = createServiceClient()
   const { data: room, error: roomError } = await service.from('playbook_rooms').select('id').eq('key', parsed.data.roomKey).maybeSingle()
   if (roomError) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })

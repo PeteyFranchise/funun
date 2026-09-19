@@ -20,7 +20,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (await checkRateLimit(`work-version-intent:${user.id}`, { maxAttempts: 40, windowMs: 15 * 60 * 1000 })) {
+  if (
+    await checkRateLimit(`work-version-intent:${user.id}`, {
+      maxAttempts: 40,
+      windowMs: 15 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
     return NextResponse.json({ error: 'Too many uploads. Please slow down.' }, { status: 429 })
   }
 
