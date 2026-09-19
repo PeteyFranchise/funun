@@ -2,7 +2,7 @@
 type: review-prompt
 reviewer: codex
 created: 2026-09-19
-status: response-received-partial-x2
+status: complete
 subject: storage attribution model + upload-intent rollout
 source:
   - .planning/todos/pending/2026-09-14-storage-upload-admission-bypass.md (audit M-01)
@@ -447,9 +447,47 @@ Write the file, then reply with only the path and the headings.
 
 ### Third response
 
-_Expected as a file at `.planning/reviews/CODEX-RESPONSE-260919-storage-attribution.md`,
-not as pasted text. Triage unchanged: re-verify each claim in-code before
-accepting it._
+**Received 2026-09-19 as a file — COMPLETE.**
+`.planning/reviews/CODEX-RESPONSE-260919-storage-attribution.md`, 610 lines,
+Answers 4-8 plus Recommended Sequence and Confidence, nothing truncated.
+
+**Writing the file rather than pasting it was the fix.** Two prior attempts died
+mid-code-block regardless of formatting instructions, because the limit was in
+the transport, not the generation. Worth reusing: a long review belongs in the
+repo, not in a chat message.
+
+### Spot-check dispositions
+
+| Claim | Disposition | Evidence |
+|---|---|---|
+| `works.user_id` has no sanctioned transfer path | **ACCEPTED — stronger than stated** | `196_owner_immutable_guard_custody_exemption.sql:66-74` says it "stays immutable to EVERYONE, owner and superuser alike", with the vault_projects exemption scoped by `TG_TABLE_NAME` and text-locked by a test |
+| Three C7 routes still write storage caller-scoped | **ACCEPTED** (re-confirmed) | `assets/route.ts:97`, `profile/avatar/route.ts:85`, `contracts/verify/route.ts:94` |
+| Five call sites omit `failClosed` | **ACCEPTED** (re-confirmed) | Counted zero across all five |
+
+### What the report gets right that is easy to get wrong
+
+- It **declines to add a replacement broad policy** after the DROPs, on the
+  grounds that another path-prefix policy simply recreates M-01.
+- It **declines a table-wide `REVOKE ... ON storage.objects FROM authenticated`**,
+  because that reaches unrelated and future buckets rather than the three under
+  review.
+- It **keeps SELECT and DELETE policies in place**, correctly observing they
+  cannot create new storage consumption, so they are not part of closing M-01.
+- It marks its own production-evidence boundary: the segment counts came from
+  this repo's probes, not from any query it ran.
+
+### Decisions this leaves with the owner
+
+1. **Ship `failClosed: true` first?** Codex says yes — small, independently
+   reviewable, and its failure mode is reversible upload unavailability on five
+   surfaces rather than unbounded cost. It also says explicitly: do not call it
+   the quota fix, because the healthy-limiter bounds survive it untouched.
+2. **Container owner vs uploader** — recommends BOTH dimensions: container owner
+   carries the byte budget and retention, uploader carries count/velocity
+   admission. Recorded here because it is a billing and fairness call, not a
+   technical one.
+3. **Retention intervals** for quarantine and deletion are left open by design
+   and need an owner-approved number.
 
 ## The owner decision this review cannot make
 
