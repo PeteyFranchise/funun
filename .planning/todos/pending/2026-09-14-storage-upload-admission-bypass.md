@@ -128,6 +128,54 @@ Two consequences, neither urgent:
 Worth folding into the intents work, where attribution is the subject rather than a side effect —
 not worth a separate migration now.
 
+## OWNER DECISION 2026-09-19 — LOCKED: bytes follow the container, velocity follows the person
+
+Adopting the Codex recommendation in full. **Keep both dimensions rather than choosing one.**
+
+| Dimension | Whose | Column |
+|---|---|---|
+| Durable billing and retention | **Container owner** | `works.user_id`, `ideas.user_id` |
+| Admission, velocity, abuse | **Authenticated uploader** | `work_versions.user_id`, `idea_recordings.created_by`, the intent caller |
+
+Enforce a **container-owner byte budget** and an **uploader count/velocity budget**. A single
+collaborator therefore cannot mint unlimited intents against someone else's allowance, while the
+owner's total storage stays predictable no matter how many people contribute.
+
+Picking only one fails in a specific way each time. Bill the uploader alone and a single song's
+files scatter across several people's quotas, so no one can answer "how big is this work" and
+removing a collaborator leaves orphaned charges behind. Bill the owner alone and a collaborator
+can exhaust someone else's quota at will, with no velocity limit attached to the actor actually
+causing it.
+
+### What follows from it
+
+- **Collaborator removal changes nothing retroactively.** Bytes stay charged to the container
+  owner; uploader identity is immutable provenance, not a billing pointer. Work access is already
+  resolved through the work rather than through `work_versions.user_id`
+  (`supabase/migrations/135_works_core.sql:128-132`), so this matches how permission already works.
+- **Work transfer does not exist yet, and that simplifies today.**
+  `196_owner_immutable_guard_custody_exemption.sql:66-74` keeps `works.user_id` immutable "to
+  EVERYONE, owner and superuser alike" — there is no sanctioned transfer path, unlike
+  `vault_projects`, which has one via `transfer_vault_project_custody()`. So the "who pays for the
+  old bytes" question cannot arise yet. **When transfer is built, the billing owner must move in
+  that same sanctioned transaction while `uploader_user_id` is preserved**, and historical
+  reporting should record effective ownership periods rather than rewriting prior usage.
+- **Deletion needs explicit Storage work.** Relational cascades remove the rows
+  (`135_works_core.sql:159-162`; `169_ideas_inbox.sql:64-68`) but **do not delete Storage bytes**.
+  A sanctioned container-delete flow has to queue or perform the Storage deletion, and
+  reconciliation has to catch the leftovers. Until deletion actually succeeds, the ledger must
+  retain the last owner so the remaining bytes never become unattributed.
+
+### Consequence for the ledger
+
+`owner_user_id` and `uploader_user_id` are **both required** on
+`storage_object_ledger`, and they are not interchangeable: quota sums group by
+`owner_user_id`, admission and rate limiting key on `uploader_user_id`. Full proposed DDL in
+`.planning/reviews/CODEX-RESPONSE-260919-storage-attribution.md`.
+
+Still open, and deliberately: the actual byte numbers for each budget, and the quarantine and
+deletion retention intervals.
+
 ## Open question for the owner
 
 Is browser-direct Storage writing the intended long-term upload architecture? If
