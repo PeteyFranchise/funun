@@ -2,7 +2,7 @@
 type: review-prompt
 reviewer: codex
 created: 2026-09-19
-status: response-received-partial
+status: response-received-partial-x2
 subject: storage attribution model + upload-intent rollout
 source:
   - .planning/todos/pending/2026-09-14-storage-upload-admission-bypass.md (audit M-01)
@@ -321,10 +321,135 @@ rather than truncating mid-block.
 
 ## Copy to here
 
-## Second response
+## Second response — received 2026-09-19, TRUNCATED AGAIN
 
-_Not yet received. Same triage as the first: re-verify each claim in-code before
-accepting it, and record a disposition per item above._
+Arrived: CONFIRM-OR-REFUTE, and Answer 3 complete (per-route hourly table, the
+fail-open caveat, the beta-acceptability list). **Cut off mid-`CREATE TABLE`
+inside Answer 4's `storage_object_ledger` DDL.** Still missing: the rest of
+Answer 4, Answers 5-8, RECOMMENDED SEQUENCE, CONFIDENCE.
+
+### Dispositions — Answer 3
+
+| # | Claim | Disposition | Evidence |
+|---|---|---|---|
+| A3-1 | Five intent routes fail **open** on a limiter error | **ACCEPTED — highest value-per-effort finding in the review** | `lib/security/rate-limit.ts:48,51` return `options.failClosed === true`, so an unset flag yields `false` = not limited. None of the five passes it |
+| A3-2 | Routes validate a declared 50 MB the storage layer never enforces | **ACCEPTED** | `track-audio` ceiling is 262,144,000 bytes (`supabase/migrations/041_track_audio_stems_config.sql:16`); the signed URL receives only path and `upsert` |
+| A3-3 | The size gate is post-hoc and caller-triggered | **ACCEPTED** | `.../clips/complete/route.ts:46-48` does remove an oversized object — but only when `/complete` is called, which an abuser simply omits |
+| A3-4 | Fragmentation defeats the detector | **ACCEPTED** (already confirmed independently) | Production cross-reference: 2 real accounts, 5 work ids, 1 unknown |
+
+### Where I would soften Codex's framing
+
+The hourly ceilings (clips at ~125 GB/h, ideas at ~84 GB/h) are **authorization
+limits, not achievable throughput** — bandwidth binds long before them, and a
+typical residential connection cannot approach those numbers. Codex labelled
+them upper bounds under stated assumptions, which is honest, but the figures
+read more alarming than the realistic exposure for a beta.
+
+The unconditional part is the sharper finding and needs no attacker at all:
+**every one of these routes validates a size the storage layer never enforces.**
+Declare 50 MB, store 250 MB. That is true of every upload, every day, right now.
+
+### The finding that breaks the codebase's own stated contract
+
+`lib/security/rate-limit.ts:11-14` states the policy in its own header:
+
+> Low-cost onboarding checks retain the default fail-open behavior so a limiter
+> outage does not lock out legitimate signups. Abuse-sensitive or fan-out writes
+> pass `failClosed: true`, preventing a database/limiter outage from turning
+> into an unlimited messaging channel.
+
+Five upload-intent routes are abuse-sensitive writes. None passes the flag. This
+is not a reviewer's preference being asserted over the codebase — it is the
+module's documented contract not being met at five call sites.
+
+**Not yet fixed, deliberately.** Codex's own open question is whether failing
+closed there creates a worse failure mode: a limiter outage blocking all uploads
+platform-wide. That tradeoff should be answered before shipping a one-word
+change to five routes.
+
+## Third prompt — write the file instead of printing it
+
+Two truncations, both mid-code-block, despite an explicit instruction to stop at
+a section boundary. That is the signature of a **transport limit rather than a
+generation choice**, so no further formatting instruction will help. Codex runs
+in the repo with write access; the fix is to stop pasting altogether.
+
+### The prompt — copy from here
+
+````text
+# Write the remainder to a file instead of printing it
+
+Your last two responses were cut off mid-code-block — first inside the
+policy-removal SQL, then inside the `storage_object_ledger` CREATE TABLE. This
+is a transport limit on my side, not something you can fix by formatting, so
+stop returning the report in chat.
+
+**Write it to `.planning/reviews/CODEX-RESPONSE-260919-storage-attribution.md`
+in the repo.** Create the file. Do not print its contents back to me — just
+confirm the path and the section headings you wrote.
+
+## What has already landed and must NOT be repeated
+
+- VERDICT, CORRECTIONS, INVENTORY
+- Answer 1 (attribution model), Answer 2 (what must change per bucket)
+- CONFIRM-OR-REFUTE of the fragmentation consequence
+- Answer 3 complete, including the per-route hourly table, the fail-open
+  caveat, and the beta-acceptability list
+
+I independently re-verified from Answer 3 and all of it holds:
+`lib/security/rate-limit.ts:41-52` returns `options.failClosed === true` on
+error, none of the five routes passes it, `track-audio` is capped at
+262,144,000 bytes (`supabase/migrations/041_track_audio_stems_config.sql:16`),
+and the clips completion route does remove oversized objects but only when it
+is called (`.../clips/complete/route.ts:46-48`).
+
+## What the file must contain
+
+- **Answer 4, complete.** Your `storage_object_ledger` DDL was cut after
+  `REVOKE ALL`. Restate it in full, then the rest: what compares bucket to
+  ledger, how it runs given `storage.objects` is not PostgREST-readable, the
+  completion-callback race, distinguishing a genuine orphan from an in-flight
+  upload, and what happens on a hit — alert, quarantine, or delete after a
+  grace period, and who decides.
+- **Answer 5** — ordered rollout, given server routes must move to the service
+  client before any policy is revoked.
+- **Answer 6** — repair 227 via a new migration 228, or skip to the ledger.
+  Recommend one, with the SQL. 227 is already applied; a fix is a new migration.
+- **Answer 7** — container owner vs uploader for billing, both arguments plus a
+  recommendation, including collaborator removal and work transfer/deletion.
+- **Answer 8** — the full policy-removal SQL, including any replacement
+  policies or grants, and what must be true before it is safe to run.
+- **RECOMMENDED SEQUENCE** — ordered steps, each with what breaks if skipped.
+- **CONFIDENCE** — what you verified by reading code vs what you inferred.
+
+## One addition, given what Answer 3 established
+
+You found five routes failing open on a limiter error, which the limiter's own
+header comment says abuse-sensitive writes must not do. Treat that as its own
+item: is adding `failClosed: true` to those five call sites sufficient on its
+own, or does failing closed there create a worse failure mode — a limiter
+outage blocking all uploads platform-wide? Say which you would ship first, that
+or the quota work, and why.
+
+## Constraints, unchanged
+
+- Migrations are human-gated. Propose SQL; never claim anything is applied.
+- Production is at 227, and 227 IS applied.
+- `main` is protected.
+- Alert content is summary-only — no raw user records or file paths (T-32-06).
+- `{workId}/...` and `ideas/...` paths are deliberate; see
+  `lib/catalogue/audio-mime.ts:125-137`.
+
+Write the file, then reply with only the path and the headings.
+````
+
+### Copy to here
+
+### Third response
+
+_Expected as a file at `.planning/reviews/CODEX-RESPONSE-260919-storage-attribution.md`,
+not as pasted text. Triage unchanged: re-verify each claim in-code before
+accepting it._
 
 ## The owner decision this review cannot make
 
