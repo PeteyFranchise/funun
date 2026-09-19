@@ -409,6 +409,33 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 <!-- GSD:workflow-end -->
 
+## Repository Visibility
+
+**`PeteyFranchise/funun` is a PUBLIC repository.** Everything committed and pushed is
+readable by anyone on the internet, immediately and permanently.
+
+Before committing anything that is not application code, ask whether it belongs on the
+public internet — not merely whether it belongs in a repo. Business documents, contracts,
+financing paperwork, deal terms, personal correspondence and customer data do not.
+
+**Removing it later does not remove it.** A force-pushed commit stays retrievable by its
+SHA until GitHub Support garbage-collects the repository; there is no self-serve control.
+That happened on 2026-09-19 with a film-financing redline whose task records were committed
+here because a session was run from this directory on unrelated work.
+
+Two standing consequences:
+
+- `~/Desktop/deals/` exists for non-Funūn business work. Run those sessions from there, not
+  from this repo, so their `.planning/quick/` records land somewhere private.
+- `private/` and `*.docx` are gitignored here as a backstop for anything that lands anyway.
+  The backstop is not the plan; keeping the work out of this directory is the plan.
+
+**Do not make the repository private as a reflex.** GitHub Pages serves
+**www.funun.studio** from `main`, and Pages on a private repository requires a paid GitHub
+plan — flipping visibility on the Free plan takes the site down. CodeQL default setup would
+also stop (it is free for public repositories only), though it is not a required check and
+merges would continue.
+
 ## Verification Gate
 
 Before claiming any change, wave, or phase is green, run **every step the CI `validate` job
