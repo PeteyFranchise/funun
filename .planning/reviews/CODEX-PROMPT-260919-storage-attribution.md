@@ -181,3 +181,156 @@ heavy user's bytes fragment across many work ids and no group need cross 25 GB.
   are the two most decision-relevant parts and neither arrived.
 - A decision on whether to repair 227 in place (group by bucket + resolve owners
   through the database) or go straight to the ledger model Codex recommends.
+
+---
+
+# Continuation prompt — sent 2026-09-19 to recover the truncated sections
+
+The first report died **mid-SQL-block**, which is the worst place to cut: it
+reads as complete until you look for the closing fence. The continuation
+therefore ends with an explicit instruction to stop at a section boundary and
+name what remains rather than truncate again.
+
+It also feeds Codex two things it did not have: confirmation that four of its
+claims were independently re-verified in-code, and the production
+cross-reference data — it said plainly that it never queried production, and
+that honesty is worth rewarding with the data rather than letting it keep
+guessing.
+
+## The prompt — copy from here
+
+```text
+# Continuation: the rest of the storage attribution review
+
+You reviewed Funūn's storage attribution model and upload-intent rollout earlier.
+Your report was TRUNCATED after Answer 2 — the policy-removal SQL block was cut
+mid-block and nothing after it arrived. This asks for the remainder.
+
+Do not repeat VERDICT, CORRECTIONS or INVENTORY. They came through intact and
+have been accepted into the repo.
+
+## Your findings were independently re-verified — four for four
+
+Before acting on your report I re-checked your highest-impact claims in-code
+rather than accepting them. All held:
+
+- C1 (227 misattributes non-account UUIDs) — CONFIRMED, and see the production
+  data below, which you did not have.
+- C3 (only one of six intent routes calls upload admission) — CONFIRMED. Only
+  `vault/[projectId]/tracks/[trackId]/audio/upload-intent` references it; the
+  other five score zero.
+- C6 (`StemsUpload` holds both remaining browser-direct writes) — CONFIRMED at
+  `components/vault/StemsUpload.tsx:118` (TUS, `x-upsert: true`) and `:200`
+  (`.upload()`, `upsert: true`).
+- C7 (revoking the policies also breaks authenticated server routes) — CONFIRMED
+  at `app/api/vault/[projectId]/assets/route.ts:97`,
+  `app/api/profile/avatar/route.ts:85`, `app/api/contracts/verify/route.ts:94`.
+
+Your C9 was correct and worth keeping: you did not query production. I did.
+
+## Production data you did not have
+
+Every UUID first segment returned by `storage_usage_over_threshold(0)` was
+cross-referenced against `auth.users` and `public.works`:
+
+```
+segments migration 227 reports as ACCOUNTS: 8
+  real accounts: 2 | work ids: 5 | unknown: 1
+```
+
+The largest row — 36,450,479 bytes across 5 objects — is a WORK ID. One segment
+matched neither table and is genuinely unidentified. Total storage across all
+prefixes is ~0.047 GB, against a 25 GB warning band, so nothing is close to
+alerting today.
+
+The operational consequence I drew from this, which I want you to confirm or
+refute: because Writer's Room uploads land under `{workId}/...`, a heavy user's
+bytes fragment across many work ids and no single group need ever cross the
+threshold — so the detector systematically misses the exact user it exists to
+catch, rather than merely mislabelling output.
+
+## What I still need — pick up at Answer 3
+
+3. **Do the intents enforce quota, or only authorization?** Your INVENTORY gave
+   rate limits per route. Complete it: for each of the six intent routes, what
+   could a single authenticated user cause to be stored in one hour if they
+   deliberately tried, in bytes? State assumptions. Then say which of those
+   numbers you consider unacceptable for a beta with a handful of users.
+
+4. **Orphan reconciliation design.** Concretely:
+   - what compares bucket contents against owning tables,
+   - how it runs given `storage.objects` is not PostgREST-readable,
+   - how it handles the completion-callback race — an object uploaded via a
+     signed URL whose `/complete` call never arrives,
+   - how it distinguishes a genuine orphan from an in-flight upload,
+   - and what it should DO on a hit (alert only? quarantine? delete after a
+     grace period? who decides?).
+
+5. **Sequencing.** The ordered rollout, given C7 means server routes must move
+   to the service client before any policy is revoked. Each step with what
+   breaks if it is skipped or reordered.
+
+## Three questions added since your report
+
+6. **Repair 227 in place, or skip to the ledger?** Two candidate paths:
+   (a) a migration 228 that groups by `(bucket_id, first_segment)` and resolves
+   ownership through the database — `works.user_id`, `ideas.user_id`, playbook
+   rooms, and `{userId}/...` paths as themselves; or (b) leave 227 as a raw
+   byte-counter, mark it explicitly not-a-detector, and build the ledger as part
+   of the intents work. Recommend one and give the SQL for whichever you pick.
+   Note that 227 is already applied to production, so (a) means a new migration,
+   not an edit.
+
+7. **Whose storage is a collaborative work's?** `works` has an owner and
+   `work_versions` records an uploader; `ideas.user_id` and
+   `idea_recordings.created_by` are the same split. For quota and billing,
+   should bytes attribute to the container owner or the uploader? Give the
+   argument both ways and a recommendation — including what happens when a
+   collaborator is removed, and when a work is transferred or deleted.
+
+8. **Restate the policy-removal SQL in full.** Your Answer 2 block was cut off
+   after `COMMIT;`. Include any accompanying grants or replacement policies, not
+   just the DROPs, and say explicitly what must already be true before it is
+   safe to run.
+
+## Constraints, unchanged
+
+- Migrations are human-gated. Propose SQL; never claim anything is applied.
+- Production is at migration 227, and 227 IS applied — a fix is a new migration.
+- `main` is protected; work ships via PR.
+- Alert content is summary-only — no raw user records or file paths (T-32-06).
+- Do not casually propose reshaping `ideas/` or `{workId}/` paths. Both are
+  deliberate: see the comment at `lib/catalogue/audio-mime.ts:125-137`
+  explaining that an owner-prefixed path would make migration 004's storage
+  policies reject a legitimate collaborator.
+
+## Output format
+
+Return the entire response in ONE copy-paste-ready fenced code block so I can
+paste it back into Claude Code without reformatting. Markdown inside. Structure:
+
+- CONFIRM-OR-REFUTE — the fragmentation consequence I drew above, in 3 sentences
+- ANSWERS — one section per question 3 through 8
+- RECOMMENDED SEQUENCE — ordered steps, each with what breaks if skipped
+- CONFIDENCE — what you verified by reading code vs what you inferred
+
+Cite `file:line` for every factual claim. Where you are guessing, say so. If you
+cannot fit it all, stop at a section boundary and say which sections remain
+rather than truncating mid-block.
+```
+
+## Copy to here
+
+## Second response
+
+_Not yet received. Same triage as the first: re-verify each claim in-code before
+accepting it, and record a disposition per item above._
+
+## The owner decision this review cannot make
+
+Question 7 is not Codex's to answer. **When a work has collaborators, whose
+storage is it — the container owner's or the uploader's?** The schema already
+keeps both (`works.user_id` vs `work_versions`; `ideas.user_id` vs
+`idea_recordings.created_by`), so either is buildable. It is a billing and
+fairness decision, and it should be made deliberately rather than inherited from
+whichever column the first query happened to join on.
