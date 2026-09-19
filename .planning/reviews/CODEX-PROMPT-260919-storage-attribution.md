@@ -662,3 +662,55 @@ _Expected as a file at
 `.planning/reviews/CODEX-RESPONSE-260919-what-is-worth-doing.md`. Triage
 unchanged: re-verify each claim in-code before accepting it, and be as willing
 to challenge a recommendation to do less as one to do more._
+
+---
+
+# Fourth response — received 2026-09-19 as a file, complete
+
+`.planning/reviews/CODEX-RESPONSE-260919-what-is-worth-doing.md`.
+
+**It argued for less, which is what was asked and the harder answer to give.**
+Bottom line: run none of the four candidates now; spend two to four hours
+fixing the cron to report a global byte total and growth delta; stop.
+
+## Dispositions
+
+| Claim | Disposition | Evidence |
+|---|---|---|
+| A signed upload URL cannot be bound to a content length | **ACCEPTED — verified independently** | `node_modules/@supabase/storage-js/src/packages/StorageFileApi.ts:381-383` types the parameter as `options?: { upsert: boolean }`. Installed version is 2.109.0. There is no length parameter to pass |
+| Strict pre-upload size enforcement is blocked by bucket layout | **ACCEPTED** | `track-audio` is capped at 250 MB specifically so stems ZIPs fit (`041_track_audio_stems_config.sql:6-25`) while ordinary audio is 50 MB (`lib/catalogue/audio-mime.ts:13`). Lowering the bucket breaks stems; splitting stems into its own bucket first is the only strict route |
+| A sweeper substitutes for most of the ledger's *present* value | **ACCEPTED** | The current question is "do abandoned bytes accumulate", not "can we bill exactly". Its own miss-list is honest, including that it cannot recover `uploader_user_id` for work- and idea-scoped paths because those paths deliberately do not encode it |
+
+## The flaw in the trigger table, and why it still holds
+
+**Several triggers require tooling that is itself deferred behind that trigger.**
+"Stale unreferenced objects exceed 10 objects or 500 MB" needs the classifier
+the sweeper would provide. "Any retained object exceeds its limit" needs the
+same. "Manual reconciliation takes more than two operator-hours a month" needs
+reconciliation to be happening at all. As written, those conditions can never
+become true, because nothing would ever measure them.
+
+The table survives only because each row is **any one condition**, and the
+surviving conditions are of two observable kinds:
+
+- **Growth signals** — total bytes reaching 5 GB, or 1 GB in seven days.
+- **Product decisions** — open self-serve signup, storage becoming a paid
+  entitlement, a customer-visible quota meter. These are the strongest entries
+  in the table because they are decisions the owner makes deliberately and
+  cannot fail to notice.
+
+## The dependency the report understates
+
+**Every growth trigger depends on a sensor that does not exist yet.**
+
+The daily job calls the RPC with the 25 GB warning band as `p_min_bytes`, so it
+returns zero rows and reports healthy whenever nobody exceeds 25 GB in a single
+path segment (`app/api/cron/storage-usage-check/route.ts:40-45,66-68`). Against
+a current total of 0.047 GB, and with bytes fragmented across work ids so no
+segment aggregates, **that job is silent by construction.** It cannot report
+5 GB total or 1 GB of weekly growth, because it never reports anything below the
+band.
+
+So the two-to-four-hour cron correction is not merely the cheapest item on the
+list — it is the precondition for the entire deferral strategy. Defer everything
+else without it and the deferral is against triggers that cannot fire.
