@@ -482,10 +482,15 @@ repo, not in a chat message.
    reviewable, and its failure mode is reversible upload unavailability on five
    surfaces rather than unbounded cost. It also says explicitly: do not call it
    the quota fix, because the healthy-limiter bounds survive it untouched.
-2. **Container owner vs uploader** — recommends BOTH dimensions: container owner
-   carries the byte budget and retention, uploader carries count/velocity
-   admission. Recorded here because it is a billing and fairness call, not a
-   technical one.
+2. **Container owner vs uploader** — **DECIDED 2026-09-19: adopt Codex's
+   recommendation in full.** Container owner carries the byte budget and
+   retention; uploader carries count/velocity admission. Both dimensions, not
+   one. `owner_user_id` and `uploader_user_id` are therefore both required on
+   the ledger and are not interchangeable — quota sums group by the former,
+   admission keys on the latter. Rationale and consequences (collaborator
+   removal, the not-yet-existing work transfer, and Storage deletion outliving
+   relational cascades) are recorded on
+   `.planning/todos/pending/2026-09-14-storage-upload-admission-bypass.md`.
 3. **Retention intervals** for quarantine and deletion are left open by design
    and need an owner-approved number.
 
