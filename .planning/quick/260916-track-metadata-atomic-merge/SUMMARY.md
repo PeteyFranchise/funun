@@ -4,7 +4,7 @@ slug: track-metadata-atomic-merge
 status: complete
 created: 2026-09-16
 migration: 226
-applied: false
+applied: 2026-09-16
 source: .planning/todos/pending/2026-09-14-track-metadata-lost-update.md (audit M-02)
 key-files:
   created:
@@ -78,11 +78,26 @@ source-counting assertion; it is a standing hazard of the technique, not a one-o
 Every step of CI `validate`: `security:migrations:verify` PASS · `typecheck:strict` clean ·
 `lint --max-warnings=0` clean · **621 suites / 7,552 tests** · both `npm audit` levels clean.
 
-## NOT APPLIED
+## APPLIED 2026-09-16 — record corrected 2026-09-19
 
-Migration 226 is written and content-tested only. **Application is human-gated**, as every
-migration in this repo is. Production is at **225**.
+Applied to production ahead of the PR #82 merge, which was the required order: the new routes call
+RPCs that do not exist until 226 is applied, so code-first would have broken stems and
+instrumental uploads outright. This is not a case where either half is safe alone.
 
-**Deploy ordering matters here, unlike 225.** The new routes call RPCs that do not exist until 226
-is applied, so the migration must land **before** the code. The reverse order breaks stems and
-instrumental uploads outright — this is not a case where either half is safe alone.
+**This summary sat at `applied: false` for three days after the fact.** Recording it late is worth
+noting, because the frontmatter is what a future reader checks first — and for three days it said
+the opposite of the truth. The 225 summary was updated at application time; this one was not.
+
+### Confirmed by behaviour on 2026-09-19, not by the push's exit code
+
+Both RPCs were called from an anon client against production:
+
+```
+set_track_metadata_asset   → 42501: permission denied for function set_track_metadata_asset
+clear_track_metadata_asset → 42501: permission denied for function clear_track_metadata_asset
+```
+
+`42501` is the informative result. Had the migration never landed, PostgREST would have answered
+`PGRST202` — function absent from the schema cache — so a single probe distinguishes "applied and
+correctly locked down" from "never applied". Both functions exist, and `anon` cannot execute
+either, which is the grant discipline the migration set out to enforce.
