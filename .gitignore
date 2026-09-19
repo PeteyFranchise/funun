@@ -36,3 +36,11 @@ public/morning-light-edit.html
 tmp/
 .env.local.bak*
 .env.*.bak*
+
+# Private, non-code documents that happen to live in the project folder —
+# financing paperwork, contracts, anything legal. Untracked is not safe: it is
+# one `git add -A` from permanent, and deleting a file later does not remove it
+# from history. No .docx is tracked anywhere in this repo, so the blanket
+# pattern costs nothing and makes the accident structurally impossible.
+private/
+*.docx
