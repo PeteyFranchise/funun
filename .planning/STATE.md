@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: "— Wave 4: The Green Room"
-current_phase: 39
-current_phase_name: writer-s-room-the-take-as-a-real-review-surface-real-wavefor
-status: Phase 39 SHIPPED — migration 224 applied, code deployed; 39-11 Tasks 2-3 outstanding
-stopped_at: 39-11 Task 1 complete; Task 2 Step 1 is the next instruction
-last_updated: "2026-09-13T21:49:08.051Z"
-last_activity: 2026-09-13
+current_phase: 40
+current_phase_name: writer-s-room-daw-marker-export-audition-audacity-csv
+status: Phases 39 and 40 SHIPPED. Migration ceiling 227 applied. Phase 41 roadmapped, not yet planned
+stopped_at: Nothing mid-flight. Next action is /gsd-plan-phase 41, or a deferred item
+last_updated: "2026-09-19T23:00:00.000Z"
+last_activity: 2026-09-19
 progress:
   total_phases: 48
-  completed_phases: 37
-  total_plans: 333
-  completed_plans: 319
-  percent: 77
+  completed_phases: 39
+  total_plans: 341
+  completed_plans: 338
+  percent: 81
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — keep them on the platform.
-**Current focus:** Phase 39 — writer-s-room-the-take-as-a-real-review-surface-real-wavefor
+**Current focus:** Nothing mid-flight. Phase 41 (Collaborator Discovery & Mobile Contact Matching) is the next roadmapped phase and has not been planned.
 
 > **Unfinished Phase 31.2 preserved (2026-09-13).** Phase 31.2 remains genuinely unfinished:
 > its owner checkpoint/UAT is deferred to organic beta and is not marked complete by moving the
@@ -31,6 +31,62 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 > this paragraph remains the explicit Phase 31.2 record until its own completion pass occurs.
 
 ## Current Position
+
+### UPDATE 2026-09-19 — Phases 39 and 40 shipped; nothing mid-flight
+
+**This section was six days stale.** It described Phase 39 as "ready to execute" and the
+migration ceiling as 223, while 39 and 40 have both shipped and production is on **227**. GSD
+commands read this file for orientation, so a session started against it would have begun from a
+wrong picture — recorded here because staleness in this file is not cosmetic.
+
+**Phase 39** (Writer's Room — the take as a real review surface) shipped: 11 plans, real waveform
+peaks, range comments, private pins, keyboard shortcuts, playback speed. Migration 224 applied,
+plus 225 (reply-span CHECK + peaks-function grant). Manual UAT found a real production defect —
+space did not trigger playback because the scrubber input swallowed it — fixed in
+`lib/catalogue/take-transport.ts`. **39-11 Task 2 steps 3-6 remain deferred (D-11)**: proving a
+private pin is invisible cross-account needs two authenticated Postgres roles, consistent with the
+2026-08-25 decision to verify organically rather than fabricate accounts.
+
+**Phase 40** (Writer's Room — DAW marker export) shipped 8 plans with **Audacity and CSV only**.
+**Audition was built in full and withheld from the UI** per E-12: the format is corroborated by
+three third-party sources but has never been checked against Audition itself, and the failure mode
+is silent — its second column is a DURATION where Audacity's is an END TIMESTAMP, so a wrong file
+imports cleanly with every range marker in the wrong place. Owner direction 2026-09-16 is to
+support all major DAWs eventually; verification capacity, not implementation, is the bottleneck.
+
+### Production migration ceiling: 227
+
+| Migration | Applied | What |
+|---|---|---|
+| 224 | 2026-09-15 | Phase 39 take review surface |
+| 225 | 2026-09-15 | Reply-span CHECK + `work_version_peaks_in_range` grant |
+| 226 | 2026-09-16 | Atomic `tracks.metadata` asset merge (audit M-02) |
+| 227 | 2026-09-19 | `storage_usage_over_threshold` (audit M-01 stopgap) |
+
+**Migration 227 is applied and KNOWN DEFECTIVE.** Its `owner_segment` column is the first path
+segment, which is an account id for `{userId}/...` uploads but a **work** id for versions, clips
+and handoffs, a **room** id for playbook media, a **track** id for stream previews. Verified
+against production: 6 of 8 UUID segments were not accounts. The cron no longer repeats the claim
+and a caller-lock test stops a second consumer picking it up quietly, but **any direct caller still
+gets work ids labelled as owners.** The fix is migration 228, deliberately deferred.
+
+### The M-01 session, 2026-09-19
+
+Applying 227 turned into finding a defect in the thing being applied, then a four-round Codex
+review. Shipped: `failClosed: true` on five upload-intent routes (a limiter outage was permitting
+unlimited signed-intent issuance, against the limiter module's own documented contract); the
+storage cron rebuilt to sum a global total against a new `storage_total_gb` band, because passing
+the 25 GB per-account band as the floor made the job **silent by construction**; a caller lock;
+and the ownership model locked — **container owner carries the byte budget, uploader carries
+count and velocity.**
+
+Deferred against observable triggers rather than dates: migration 228, the storage ledger, an
+orphan sweeper, and policy revocation (the actual close of M-01, and a gate before open signup).
+Full reasoning in `.planning/reviews/CODEX-RESPONSE-260919-what-is-worth-doing.md`.
+
+> **The section below this one is older than the frontmatter and has not been reconciled.**
+> "Operator Next Steps" in particular still describes Phases 11-15. Treat anything below as
+> historical unless corroborated.
 
 ### UPDATE 2026-09-13 — Phase 39 ready to execute
 
@@ -786,6 +842,14 @@ Recent decisions affecting current work (v1.2 The Green Room):
 | 2026-09-08 | consent-route-auth-before-switch | Consent route now authenticates before consulting D-56 (38.0.1 notes §1); header comment cited a FALSE precedent and was rewritten; 2 tests added, mutation-proved |
 | 2026-09-08 | antenna-apply-hardening | Migration 200 authored (NOT applied): apply_to_opportunity_atomic gets search_path='' + 9 qualified refs + explicit anon/authenticated revoke; lock modes deliberately unchanged |
 | 2026-09-09 | 260910-sync-entry-gate-six-items | `isRightsReady()` gates on the SIX decided readiness items (split_sheets, copyright, hire_right, audio_files, metadata, visual_asset) instead of `vault_readiness_score`; signature gained a third `ReadinessItem[]` param and `CatalogProjectLike` dropped the score field. All 4 call sites + 3 staff `syncReadinessForTrack` sites updated; queries widened for `vault_assets` + `tracks.metadata`. `METADATA_FAMILY_KEYS` collapsed 4→1 (kept, since the staff admit gate consumes it) — a missing ISRC no longer blocks admission. Staff `pending_admit` label moved with the gate, deliberately. **FINDING: `stage3.canContinue` is itself `score >= 60`, so the aggregate survives transitively — but it is REDUNDANT, since the six items score 70 (migration 070). The motivating anecdote is not reproducible; the real change is that the gate now REJECTS songs the score admitted.** `CATALOG_READINESS_THRESHOLD` NOT dead (GTM-06 `computeArtistReadinessPassRate` still uses it) but diverged — flagged, not removed. No migration; `rightsBadge()` untouched; 4 mutations killed incl. the named low-score test. 6944 tests green, tsc + build clean. Commit 2513ea79. OPEN: GTM-06 re-spec?; `unreleased` projects now fail closed (4 of 6 items don't apply) — may matter to Phase 37 |
+| 2026-09-15 | migration-225-reply-span-peaks-grant | Migration 225 applied and verified BEHAVIOURALLY, not by exit code — a spanned reply was rejected by name (`work_version_comments_reply_has_no_span`) with positive controls, and the peaks grant was exercised by opening a take that had none. Worth recording how nearly it was missed: the first attempt reopened a take that already had peaks, the waveform appeared, and nothing backfilled |
+| 2026-09-16 | peaks-self-heal-once-only (WR-02) | Peaks PATCH gained `.is('peaks', null)` + `maybeSingle()`, so any contribute-tier member can no longer overwrite a take's canonical waveform |
+| 2026-09-16 | rejected-span-drag-clears-pending (WR-01) | A too-short redraw left a stale `pendingSpan` that could be confirmed, posting coordinates the writer never drew |
+| 2026-09-16 | track-metadata-atomic-merge (M-02) | Read-modify-write race on `tracks.metadata` replaced by DB-side `||` merge and `- key` delete; migration 226 applied, both RPCs confirmed present by refusal code (42501, not PGRST202) |
+| 2026-09-16 | storage-usage-detection-cron (M-01) | Daily per-account Storage check + migration 227. **Shipped correct-looking and was wrong** — see 2026-09-19 |
+| 2026-09-19 | fail-closed-on-upload-intent-rate-limits | Five upload-intent routes were failing OPEN on a limiter error, against `lib/security/rate-limit.ts`'s own header contract that abuse-sensitive writes pass `failClosed: true`. 29 tests; the flag assertion and the no-URL-minted assertion are load-bearing for different reasons |
+| 2026-09-19 | storage-cron-global-total | The storage job passed the 25 GB per-account band as `p_min_bytes`, so it returned zero rows and reported healthy unless ONE segment exceeded 25 GB — **silent by construction** against 0.047 GB total. Now sums a global total against `storage_total_gb` (5/20 GB, provisional) and makes no per-account claim. `account_storage_gb` retired: nothing can honestly measure it until attribution is repaired |
+| 2026-09-19 | guard-227-and-private-docs | Caller lock on `storage_usage_over_threshold` (one caller, no reads of the misleading columns) — the scan runs on comment-stripped source **and the stripper is itself tested**, because the only mentions in `app/`+`lib/` are in a comment explaining the rule. Plus the verification lesson in CLAUDE.md and the `private/` + `*.docx` gitignore |
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
