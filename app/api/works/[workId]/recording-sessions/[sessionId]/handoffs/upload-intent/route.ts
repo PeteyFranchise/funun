@@ -15,7 +15,13 @@ export async function POST(request: Request, { params }: RouteCtx) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const access = await resolveWorkAccess(createWorkAccessDeps(supabase), workId, user.id, 'contribute')
   if (!access.granted) return NextResponse.json({ error: access.reason }, { status: access.status })
-  if (await checkRateLimit(`producer-handoff-intent:${user.id}`, { maxAttempts: 20, windowMs: 15 * 60 * 1000 })) {
+  if (
+    await checkRateLimit(`producer-handoff-intent:${user.id}`, {
+      maxAttempts: 20,
+      windowMs: 15 * 60 * 1000,
+      failClosed: true,
+    })
+  ) {
     return NextResponse.json({ error: 'Too many producer handoffs. Please slow down.' }, { status: 429 })
   }
 

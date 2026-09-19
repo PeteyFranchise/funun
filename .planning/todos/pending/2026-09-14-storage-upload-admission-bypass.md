@@ -58,14 +58,20 @@ Inventory existing orphaned objects separately.
 
 ## STOPGAP SHIPPED 2026-09-16 — detection, not prevention
 
-A daily cron (`/api/cron/storage-usage-check`) now totals Storage bytes per account from
-`storage.objects` and alerts on anyone at or above the `account_storage_gb` warning band.
-Migration 227 adds the service-role-only reporting function. See
-`.planning/quick/260916-storage-usage-detection-cron/`.
+A daily cron (`/api/cron/storage-usage-check`) reads `storage.objects` via migration 227's
+service-role-only reporting function. See `.planning/quick/260916-storage-usage-detection-cron/`.
 
 **LIVE as of 2026-09-19.** Migration 227 applied and verified behaviourally: the function runs as
 `service_role` against production, and `anon` is refused by name with a positive control
-alongside. Current real usage is 0.047 GB across every prefix, against a 25 GB warning band.
+alongside. Current real usage is 0.047 GB across every prefix.
+
+**CORRECTED 2026-09-19** (`.planning/quick/260919-storage-cron-global-total/`). As shipped the job
+could not fire: it passed the 25 GB per-account band as the RPC's floor, so it returned zero rows
+and reported healthy at any realistic usage. It also called each path segment an account, which is
+false — 5 of 8 production UUID segments are work ids. The job now sums every row into one **global
+total** and bands it against `storage_total_gb` (warn 5 GB, crit 20 GB, provisional). The
+per-account band `account_storage_gb` is **retired**: nothing can measure a per-account footprint
+until attribution is repaired, which is this todo's own work.
 
 ## 2026-09-19 — upload intents ALREADY EXIST in this codebase
 
