@@ -4,7 +4,7 @@ slug: storage-usage-detection-cron
 status: complete
 created: 2026-09-16
 migration: 227
-applied: false
+applied: 2026-09-19
 source: .planning/todos/pending/2026-09-14-storage-upload-admission-bypass.md (audit M-01)
 key-files:
   created:
@@ -76,14 +76,74 @@ reachable by anyone on the public internet.
 Every step of CI `validate`: `security:migrations:verify` PASS · `typecheck:strict` clean ·
 `lint --max-warnings=0` clean · **622 suites / 7,566 tests** · both `npm audit` levels clean.
 
-## NOT APPLIED
+## APPLIED 2026-09-19 — verified behaviourally
 
-Migration 227 is written and content-tested only; application stays human-gated. Production is at
-**226**.
+Production migration ceiling is now **227**. `migration list` showed 226 on both sides and 227
+local-only before the push, with no other gap between the columns, so nothing rode along.
 
-**Ordering is safe either way here**, unlike 226. The function is additive and nothing calls it
-until the cron route deploys; the route without the function would fail its daily run and alert
-about its own failure, which is loud rather than silent. Migration-first is still tidier.
+### The check that mattered
+
+`storage_usage_over_threshold` is `SECURITY DEFINER` reading `storage.objects`. **A clean
+migration proves nothing about whether the function's owner can actually read that table** — that
+failure would surface at 05:00 the next morning, not at push time. So it was called for real:
+
+```
+SERVICE CALL OK — rows: 9
+  largest single account: 0.034 GB (5 objects)
+  TOTAL across all prefixes: 0.047 GB
+```
+
+### Grant discipline, with a positive control
+
+```
+ANON CALL:    REFUSED (42501: permission denied for function storage_usage_over_threshold)
+ANON CONTROL: vault_projects reachable, no error
+```
+
+The control is not decoration. A refusal on its own can be produced by a bad key or an
+unreachable API; pairing it with a call that still succeeds proves the refusal is specific to this
+function. Same discipline as `docs/verification/BETA-RLS-SMOKE-SESSION.md`.
+
+### Three failure alerts fired before this landed
+
+The cron route deployed with PR #83 on 2026-09-16 and ran at 05:00 UTC on the 17th, 18th and 19th
+against a function that did not yet exist — emitting its own failure alert each time. That is the
+designed behaviour and it is the right behaviour, but it is worth stating plainly: **the gap
+between deploying the caller and applying the migration is measured in alerts.** The ordering was
+genuinely safe either way here; it was not free.
+
+## The "unattributed" objects turned out to be the most useful thing here
+
+The probe found 4 unattributed objects (first path segment not a UUID), 222 KB. Chasing what they
+actually were produced a finding worth more than the stopgap itself.
+
+They are **Quick Capture voice memos** — `ideas/{ideaId}/{recordingId}.webm`, keyed by idea rather
+than by user because an idea is collaborative and has no single owner in its path. Live feature,
+most recent recording 2026-09-15.
+
+**And that path is already governed by server-issued upload intents** —
+`app/api/ideas/[ideaId]/recordings/upload-intent/route.ts` authenticates, rate-limits, checks
+permission, validates size and MIME before issuing anything, chooses the path itself, and hands
+back a `createSignedUploadUrl(path, { upsert: false })`. A `/complete` route re-derives the path
+and rejects a mismatch.
+
+So the durable fix M-01 has been waiting for is not unbuilt design work. It exists and runs in
+production for one feature. Recorded in full on the M-01 todo; it reframes that work from
+"design intents" to "extend the working one".
+
+### Two reporting consequences, neither urgent
+
+The function filters by `p_min_bytes` before returning rows, so a non-UUID prefix surfaces only as
+a footnote inside an alert fired by some *other* account.
+
+- **Per-account totals undercount** — a user's idea recordings never appear in their own figure.
+- **"Unattributed" needs a third category.** The useful distinction is *known non-user prefix* vs
+  *genuinely unrecognised*, not UUID vs not-UUID. As written, a real orphan would hide among
+  legitimate ones.
+
+**The irony is the point: the one prefix this report cannot attribute is the one prefix that is
+already properly governed.** Left alone deliberately — folding it into the intents work, where
+attribution is the subject rather than a side effect.
 
 ## What remains for M-01
 

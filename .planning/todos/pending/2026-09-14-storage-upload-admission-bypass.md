@@ -63,14 +63,64 @@ A daily cron (`/api/cron/storage-usage-check`) now totals Storage bytes per acco
 Migration 227 adds the service-role-only reporting function. See
 `.planning/quick/260916-storage-usage-detection-cron/`.
 
-**This does not close the finding.** Unbounded upload is still possible; it is now visible. The
-owner's reasoning: the risk needs someone deliberately abusing a beta with a handful of known,
-paying users, and "I would get an alert" is proportionate to that. Nothing built for the stopgap
-is wasted when intents land.
+**LIVE as of 2026-09-19.** Migration 227 applied and verified behaviourally: the function runs as
+`service_role` against production, and `anon` is refused by name with a positive control
+alongside. Current real usage is 0.047 GB across every prefix, against a 25 GB warning band.
 
-**Upload intents remain the destination**, and the sequencing note below still governs it: ship
-intent-aware clients FIRST, then revoke the blanket Storage grant. The reverse order breaks stems
-and instrumental uploads immediately.
+## 2026-09-19 — upload intents ALREADY EXIST in this codebase
+
+Investigating the stopgap's four "unattributed" objects turned up something that changes this
+todo's shape. They are not orphans. They are **Quick Capture voice memos** from the Ideas feature,
+stored at `ideas/{ideaId}/{recordingId}.webm` — keyed by idea rather than by user, because an idea
+is collaborative and has no single owner in its path. Live and in use; most recent 2026-09-15.
+
+**And that path is already governed by exactly the mechanism this todo calls "the fix".** See
+`app/api/ideas/[ideaId]/recordings/upload-intent/route.ts`:
+
+- authenticates, then rate-limits (80 per 15 min per user)
+- checks idea-level `contribute` permission
+- validates size against `MAX_BYTES` and MIME **before** issuing anything
+- **the server chooses the path** via `buildIdeaRecordingPath` — the client cannot name it
+- issues `createSignedUploadUrl(path, { upsert: false })` — narrow, expiring, single-path, no overwrite
+- a separate `/recordings/complete` route re-derives the path and rejects a mismatch
+
+That is a server-issued upload intent, in production, working.
+
+### What this means for M-01
+
+The fix direction below was written as if intents are unbuilt design work. **They are not — this
+is a rollout problem, not a design problem.** The remaining work is to extend the existing pattern
+from `ideas/` to `track-audio/{userId}/`, `vault-assets` and `vault-contracts`, then revoke the
+blanket browser INSERT/UPDATE grants.
+
+That is substantially smaller and substantially less risky than it reads below, because the shape
+is already proven against a real feature rather than being invented for this one. The sequencing
+note still governs: intent-aware clients first, revoke second, never the reverse.
+
+`components/vault/StemsUpload.tsx` is the client to convert first — it is the one named in this
+todo as proof the direct path is reachable and in use.
+
+## The reporting gap this exposed — and why it is mild
+
+`storage_usage_over_threshold` filters by `p_min_bytes` before returning rows, so a non-UUID path
+prefix only ever appears as a footnote inside an alert that fired for some *other* account. You
+would not hear about `ideas/` until someone separately crossed 25 GB.
+
+**The irony is worth recording: the one prefix the report cannot attribute is the one prefix that
+is already properly governed.** Nothing can be written under `ideas/` without the server issuing a
+signed URL for that exact path first. The report's implicit "unattributed means nobody can be
+billed for this" is simply the wrong reading here.
+
+Two consequences, neither urgent:
+
+- **Per-account totals undercount.** A user's idea recordings never land in their own figure. At
+  222 KB across four files this is noise; it would stop being noise if Quick Capture takes off.
+- **"Unattributed" needs a third category.** The useful distinction is not UUID vs not-UUID, it is
+  *known non-user prefix* vs *genuinely unrecognised*. Lumping them together means a real orphan
+  would hide among legitimate ones.
+
+Worth folding into the intents work, where attribution is the subject rather than a side effect —
+not worth a separate migration now.
 
 ## Open question for the owner
 
