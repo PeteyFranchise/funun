@@ -112,6 +112,56 @@ designed behaviour and it is the right behaviour, but it is worth stating plainl
 between deploying the caller and applying the migration is measured in alerts.** The ordering was
 genuinely safe either way here; it was not free.
 
+## ⚠ DEFECT FOUND 2026-09-19 BY CODEX REVIEW — attribution is wrong
+
+**The verification above proved the function runs. It did not prove the rows mean what the column
+names say, and they do not.** Recorded here rather than quietly fixed, because the gap between
+"the mechanism works" and "the output is correct" is exactly the trap this repo's Verification
+Gate warns about, and this round walked into it.
+
+`owner_segment` assumes every UUID first path segment is an account. It is not. Verified against
+production by cross-referencing each segment against `auth.users` and `works`:
+
+```
+segments migration 227 reports as ACCOUNTS: 8
+  real accounts: 2 | work ids: 5 | unknown: 1
+```
+
+**The largest row — 36,450,479 bytes, reported in this summary's first draft as "largest single
+account" — is a work id.** Only two of eight are people.
+
+### Why the path convention differs, deliberately
+
+`lib/catalogue/audio-mime.ts:125-137` is explicit that `buildVersionPath()` returns
+`{workId}/{versionId}.{ext}` with **no owner prefix on purpose** (RESEARCH Pitfall 2): migration
+004's storage policies check that the first segment equals the caller's own auth id, so an
+owner-prefixed path would reject a legitimate collaborator. Access is gated by `work_member_tier()`
+in the route instead. Playbook media is `{roomId}/{userId}/...`
+(`app/api/admin/playbook/media/upload-intent/route.ts:31`) and stream previews are `{trackId}/...`
+(`lib/watermark/stream-preview.ts:63`). All three are UUIDs. None is an account.
+
+### This is a detection failure, not a labelling nit
+
+The stopgap exists to catch one person consuming unbounded storage. Writer's Room uploads — work
+versions, recording clips, producer handoffs — all land under `{workId}/...`, so **a prolific
+writer's bytes are fragmented across many work ids, and no single group need ever cross 25 GB.**
+The person the alarm was built to catch is the person most able to walk past it.
+
+Two further defects in the same function, both from the Codex review and both confirmed by
+reading `227_storage_usage_by_owner.sql:35-60`:
+
+- **The bucket dimension is dropped.** Grouping is by first segment alone, so the same UUID in two
+  buckets merges into one row.
+- **Filtering happens before returning.** A brand-new unknown namespace stays invisible until it
+  is independently large, so the report cannot warn about a path convention it has never seen.
+
+### Status
+
+The function is live and harmless today — nothing is within two orders of magnitude of the 25 GB
+band, so no alert fires either way. **It should not be trusted as a detector until attribution is
+resolved.** Full review and proposed direction:
+`.planning/reviews/CODEX-PROMPT-260919-storage-attribution.md`.
+
 ## The "unattributed" objects turned out to be the most useful thing here
 
 The probe found 4 unattributed objects (first path segment not a UUID), 222 KB. Chasing what they

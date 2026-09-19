@@ -2,7 +2,7 @@
 type: review-prompt
 reviewer: codex
 created: 2026-09-19
-status: awaiting-response
+status: response-received-partial
 subject: storage attribution model + upload-intent rollout
 source:
   - .planning/todos/pending/2026-09-14-storage-upload-admission-bypass.md (audit M-01)
@@ -148,7 +148,36 @@ Cite `file:line` for every factual claim. Where you are guessing, say so.
 
 ## Response
 
-_Not yet received. Paste Codex's report below when it arrives, then triage it the
-way `.planning/phases/27-artist-invite-only-onboarding/27-CODEX-REVIEW.md` does:
-re-verify each finding in-code before accepting it, and record a disposition per
-item rather than accepting the report wholesale._
+**Received 2026-09-19 — TRUNCATED.** The report arrived through VERDICT, CORRECTIONS,
+INVENTORY and Answers 1-2. **Answers 3, 4 and 5, plus RECOMMENDED SEQUENCE and
+CONFIDENCE, were cut off** and must be requested again.
+
+### Dispositions — verified in-code before acceptance
+
+Four high-impact claims were re-checked against the repository and production
+rather than accepted on the report's authority. **All four hold.**
+
+| # | Claim | Disposition | Evidence |
+|---|---|---|---|
+| C1 | 227 misattributes work/room/track ids as accounts | **ACCEPTED — defect confirmed** | `lib/catalogue/audio-mime.ts:125-137` states the no-owner-prefix choice is deliberate; production cross-reference returned 2 real accounts, 5 work ids, 1 unknown out of 8 |
+| C3 | Only 1 of 6 intent routes calls upload admission | **ACCEPTED** | Only `vault/[projectId]/tracks/[trackId]/audio/upload-intent` matches; the other five score zero |
+| C6 | `StemsUpload` holds both remaining direct writes | **ACCEPTED** | `components/vault/StemsUpload.tsx:118` (TUS, `x-upsert: true`) and `:200` (`.upload`, `upsert: true`) |
+| C7 | Revoking the policies also breaks authenticated server routes | **ACCEPTED — materially changes sequencing** | `assets/route.ts:97`, `profile/avatar/route.ts:85`, `contracts/verify/route.ts:94` all write storage through `createApiClient()` |
+
+C9 is correct and worth keeping: Codex did **not** query production. The
+0.047 GB figure and the misattribution cross-reference are this repo's own
+probes, not the reviewer's.
+
+### The finding that outranks the rest
+
+C1 is not a labelling nit. Writer's Room uploads land under `{workId}/...`, so a
+heavy user's bytes fragment across many work ids and no group need cross 25 GB.
+**The detector misses precisely the user it was built to catch.** Recorded on
+`.planning/quick/260916-storage-usage-detection-cron/SUMMARY.md`.
+
+### Still outstanding
+
+- The truncated sections — orphan reconciliation design and the ordered rollout
+  are the two most decision-relevant parts and neither arrived.
+- A decision on whether to repair 227 in place (group by bucket + resolve owners
+  through the database) or go straight to the ledger model Codex recommends.
