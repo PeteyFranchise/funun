@@ -432,6 +432,11 @@ Two standing consequences:
 - `private/` and `*.docx` are gitignored here as a backstop for anything that lands anyway.
   The backstop is not the plan; keeping the work out of this directory is the plan.
 
+**OWNER DECISION 2026-09-20: it stays public until a paid plan is affordable, then
+goes private.** Deferred on cost, not on doubt — so treat the rule above as the
+standing operating rule, not as advice about to expire. Details and the order of
+operations: `.planning/todos/pending/2026-09-20-make-repo-private-when-affordable.md`.
+
 **Do not make the repository private as a reflex.** GitHub Pages serves
 **www.funun.studio** from `main`, and Pages on a private repository requires a paid GitHub
 plan — flipping visibility on the Free plan takes the site down. CodeQL default setup would
