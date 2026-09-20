@@ -1,0 +1,151 @@
+{
+  "phase": "41",
+  "phase_name": "Collaborator Discovery & Mobile Contact Matching",
+  "timestamp": "2026-09-20T23:10:00Z",
+  "areas_completed": [
+    "Invisible reconciliation — what the inviter sees",
+    "Scope — is mobile in this phase at all?"
+  ],
+  "areas_remaining": [
+    "Duplicates and already-in-roster"
+  ],
+  "decisions": {
+    "Invisible reconciliation — what the inviter sees": [
+      {
+        "question": "When an invited email belongs to an existing member (possibly hidden), what does the inviter see?",
+        "answer": "Always tell me exactly what happened — 'already a member, added to your roster' vs 'signup invite sent'",
+        "options_presented": [
+          "Tell me only when they're publicly findable (recommended)",
+          "Always the same neutral message",
+          "Always tell me exactly what happened"
+        ],
+        "note": "Chosen with the tradeoff stated in the option text: this makes the invite box a way to test whether any address has a Funūn account, including deliberately hidden members. Accepted knowingly, and mitigated by the next decision rather than left open."
+      },
+      {
+        "question": "What stops bulk enumeration now that the box confirms membership?",
+        "answer": "Both — notify the person they were added/looked up, AND cap lookups per member per day",
+        "options_presented": [
+          "Tell the person they were looked up (recommended)",
+          "Hard rate limit plus audit log",
+          "Both",
+          "Nothing for now — beta is small"
+        ],
+        "note": "The two cover different failure modes: the cap defeats volume, the notice defeats quiet targeted checks on one specific person. Exact cap value not yet set."
+      },
+      {
+        "question": "What happens when the address belongs to someone who has blocked the inviter?",
+        "answer": "The action ends — no email of any kind, no roster entry, no disclosure",
+        "options_presented": [
+          "The action ends — nothing sent, nothing added (recommended)",
+          "Add to my private roster, but contact nobody",
+          "Treat them as a non-member and send the signup invite"
+        ],
+        "note": "This is what makes the full-disclosure choice defensible. A block must be unroutable; if any path still delivers a message or confirms the account, the block is decorative. discover_profile_id_by_email already enforces no_block both directions — the NEW reconciliation path is where that could have been routed around."
+      },
+      {
+        "question": "What recourse does the notified person have?",
+        "answer": "Informational notice with a block link; no separate removal mechanism",
+        "options_presented": [
+          "Informational, with a block link (recommended)",
+          "They can request removal from that roster",
+          "Purely informational, no action in the email"
+        ],
+        "note": "No new mechanism needed — the block remedy already exists and, per the previous decision, is now total. Being on a private list that grants nothing is not a harm needing its own dispute flow."
+      }
+    ],
+    "Scope — is mobile in this phase at all?": [
+      {
+        "question": "Where does mobile contact matching sit relative to this phase?",
+        "answer": "Web only — mobile becomes its own research-gated phase",
+        "options_presented": [
+          "Web only, mobile its own phase (recommended)",
+          "Web now, mobile research-only track in this phase",
+          "Keep both as the roadmap has it"
+        ],
+        "note": "Makes the roadmap self-consistent: it already calls mobile 'explicitly future, research-gated... not approved for data collection or implementation.' Phase 41 then has no dependency on a native app, a PSI/OPRF vendor decision, or legal sign-off — none of which exist."
+      },
+      {
+        "question": "What is the deliverable, given manual entry ships and invite-by-email partly ships?",
+        "answer": "Restructure the whole add-collaborator flow — search first, email second, manual last",
+        "options_presented": [
+          "Restructure the whole flow (recommended)",
+          "Add search and fix reconciliation, leave manual alone",
+          "Search only"
+        ],
+        "note": "The ORDER is the fix. The bug is not that search is missing, it is that manual and email are the only doors so people take them. Adding search as a fourth option nobody sees changes nothing. Consequence: this touches an existing screen's IA and needs the empty/loading/error/blocked/hidden states the roadmap lists."
+      },
+      {
+        "question": "Which surfaces get the new flow?",
+        "answer": "One shared add-flow component, used by every surface that can CREATE a collaborator or send an invite",
+        "options_presented": [
+          "One shared flow everywhere (recommended)",
+          "Main Collaborators screen only",
+          "Main screen plus QuickInviteModal"
+        ],
+        "note": "Surfaces found: CollaboratorRoster, QuickInviteModal, CollaboratorInvitePrompt, CollaboratorPicker, PermissionsTab, WorkRoster. The clean line is CREATE vs SELECT — pickers that only choose from an existing roster create nobody and stay untouched. Fixing one door leaves copies of the bug behind the others."
+      },
+      {
+        "question": "Where does the mobile section of the roadmap entry go?",
+        "answer": "Move it into its own new research-gated roadmap phase now",
+        "options_presented": [
+          "New roadmap phase now (recommended)",
+          "Note in CONTEXT.md as deferred",
+          "Write it as a pending todo"
+        ],
+        "note": "Leaving mobile in 41's entry while planning 41 as web-only recreates the stale-document problem fixed in STATE.md the same day. ROADMAP.md is the authoritative ledger; 41's entry should describe only what 41 ships."
+      }
+    ],
+    "What 'Add to roster' creates for a found member": [
+      {
+        "question": "Set claimed_by immediately when adding someone found through search?",
+        "answer": "Link immediately",
+        "options_presented": [
+          "Link immediately (recommended)",
+          "Leave claimed_by null until they act",
+          "A new 'linked' state separate from 'claimed'"
+        ],
+        "note": "You already know it is them. Consistent with notifying them anyway. NOTE the consequence: migration 026:69 grants the claimed member RLS read on that roster row, so they can see the entry made about them."
+      },
+      {
+        "question": "What happens to PRO/IPI/publisher, which are private and excluded from the discovery projection?",
+        "answer": "OWNER MODEL, in the owner's words: rights data lives in the member's own settings; if present the system already knows and she does nothing; if missing, a contextual form field asks her AND updates her settings rather than making a copy; the system holds it but does NOT disclose it to the roster owner 'until it is needed on a contract or an upload for a distributor or something similar where it is required'",
+        "options_presented": [
+          "Blank, marked awaiting-her (offered)",
+          "Let me type them, marked as my guess (offered)",
+          "Prompt her to share when notified (offered)"
+        ],
+        "note": "The owner rejected all three offered options in favour of a deferred-disclosure model. The real promise is 'don't make me re-enter things', NOT 'show me my collaborator's identifiers'. Three disclosure triggers named and left undecided: document need, explicit grant (artist lets a supervisor see it), and project-membership blanket access for release. Existing machinery for the third: project_members (078), work_members + work_member_tier (136)."
+      },
+      {
+        "question": "Should Phase 41 build any rights-data autofill at all?",
+        "answer": "OPEN — referred to Codex",
+        "options_presented": [
+          "No: link, withhold, decide disclosure separately (recommended)",
+          "Contract-only autofill now",
+          "Design the full disclosure model inside 41"
+        ],
+        "note": "BLOCKING. Prompt written at .planning/reviews/CODEX-PROMPT-260920-rights-data-disclosure.md. Also referred: whether a generated split sheet showing a collaborator's IPI is acceptable just-in-time disclosure or should render per-party."
+      }
+    ]
+  },
+  "deferred_ideas": [
+    "Mobile contact matching — its own research-gated roadmap phase (PSI/OPRF evaluation, privacy/legal review, platform policy). Explicitly NOT in Phase 41.",
+    "Rights-data disclosure model — the three triggers. Referred to Codex; likely its own phase.",
+    "Codex review of Phase 41 PLAN.md files once they exist — owner asked for the same run-through/verify/critique pass the storage work got."
+  ],
+  "canonical_refs": [
+    ".planning/quick/260913-personalized-collaborator-invites/SUMMARY.md",
+    ".planning/reviews/CODEX-PROMPT-260920-rights-data-disclosure.md",
+    "lib/collaborators/index.ts",
+    "lib/green-room/discover.ts",
+    "lib/song-passport/legacy.ts",
+    "supabase/migrations/026_collaborator_identity_reconciliation.sql",
+    "supabase/migrations/078_project_members.sql",
+    "supabase/migrations/136_work_members.sql",
+    "supabase/migrations/149_green_room_people_search.sql"
+  ],
+  "areas_in_progress": [
+    "What 'Add to roster' creates for a found member — BLOCKED on Codex"
+  ],
+  "blocked_on": "Codex response at .planning/reviews/CODEX-RESPONSE-260920-rights-data-disclosure.md"
+}
