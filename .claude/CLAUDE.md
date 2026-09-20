@@ -367,6 +367,8 @@ Three pillars:
 ## Project Skills
 
 - **Spike findings for funun** (Buffer integration — BYOK auth, calendar→post mapping, connect/push UX; implementation patterns, constraints, gotchas) → `Skill("spike-findings-funun")`
+- **Sketch findings for funun** (My Catalogue / Phase 37 UI — the work-page diary, AI-entry moment, hygiene nudges, destination doors) → `Skill("sketch-findings-funun")`
+- **Label integrity for funun** (find names that assert more than the data carries — a column, status, flag or predicate whose name claims something nothing checks; two confirmed production instances) → `Skill("label-integrity-funun")`
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
