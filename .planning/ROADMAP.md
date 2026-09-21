@@ -2683,12 +2683,12 @@ Plans:
 
 ---
 
-### Phase 41: Collaborator Discovery & Mobile Contact Matching
+### Phase 41: Collaborator Discovery (web)
 
 **Goal:** Let a Member add the right person to My Roster without accidentally sending a signup
 email to an existing Funūn member, while preserving a clear manual path for professional and rights
-records. Extend that foundation to optional native-mobile contact discovery only when Funūn can do
-so without treating a member's address book as a platform-owned lead database.
+records. Native-mobile contact discovery was split out on 2026-09-21 and lives in **Phase 41.1**;
+this phase is web only.
 
 **Web experience — approved order:**
 
@@ -2728,6 +2728,45 @@ so without treating a member's address book as a platform-owned lead database.
 - Every path needs keyboard, screen-reader, responsive, empty, loading, error, duplicate, blocked,
   hidden-profile, and race-condition states before release.
 
+**Dependencies:** Phase 12 People Search and Phase 13 trust/safety; canonical Member identity and
+existing-member collaborator reconciliation; the personalized collaborator-invitation work recorded in
+`.planning/quick/260913-personalized-collaborator-invites/`.
+
+**Prerequisite — containment, not new work.** Before this phase's linking path ships, remove or mask the
+initiator-facing service-role projection of other parties' live `user_profiles` rights fields
+(`app/(artist)/split-sheets/[id]/page.tsx:176-248`; `components/split-sheets/SplitSheetBuilder.tsx:667-687`,
+which renders "IPI # (live from Settings)"). Phase 41 creates more claimed links, and every new link
+enlarges the population already exposed by that join. The executed split-sheet PDF deliberately omits IPI
+(`lib/vault/pdf/split-sheet.test.ts:212-223`), so the editor and the document currently disagree.
+
+**Migrations:** Unassigned. Claim numbers only during implementation planning after checking
+`supabase/migrations/`, untracked files, `.planning/quick/**`, and the authoritative migration ledger.
+Two partial unique indexes on `collaborators` are expected; a **preflight duplicate reconciliation is
+mandatory before them**, because migration 148's repair pass added no invariant and migration 179 can
+recreate the duplicates.
+
+**Status:** Owner-approved and roadmapped 2026-09-13. **Discussed 2026-09-20/21 — 22 decisions captured in
+`41-CONTEXT.md`; ready for planning.** Scope narrowed to web only: mobile contact matching moved to its own
+phase below. Rights-data autofill explicitly excluded — this phase links identity only.
+
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD — run `/gsd-plan-phase 41`. Context is captured; discuss-phase is complete.
+
+### Phase 41.1: Mobile Contact Discovery — research-gated
+
+**Split out of Phase 41 on 2026-09-21 (owner).** Phase 41's entry described contact matching while
+simultaneously calling it *"explicitly future, research-gated work... not approved for data collection or
+implementation."* Those could not both govern a phase being planned, so the mobile slice lives here and
+Phase 41's entry now describes only what Phase 41 ships.
+
+**Goal:** Optional native-mobile contact discovery that lets a Member see which of their contacts are
+already on Funūn — without treating an address book as a platform-owned lead database.
+
+**NOT APPROVED FOR IMPLEMENTATION.** The first work here is research and a threat model, not code.
+
 **Future native-mobile slice — Find from contacts:**
 
 - Present an optional, just-in-time Contacts permission with plain-language purpose text, never as a
@@ -2757,22 +2796,26 @@ so without treating a member's address book as a platform-owned lead database.
 - Provide **Not now**, permission-revocation recovery, contact-refresh controls, and a clear method to
   delete any retained discovery state. The app must remain fully usable without contact access.
 
-**Dependencies:** Phase 12 People Search and Phase 13 trust/safety; canonical Member identity and
-existing-member collaborator reconciliation; the personalized collaborator-invitation work recorded in
-`.planning/quick/260913-personalized-collaborator-invites/`. The mobile slice additionally depends on a
-native Funūn application, privacy/legal approval, mobile-platform policy review, and an approved contact
-discovery threat model.
 
-**Migrations:** Unassigned. Claim numbers only during implementation planning after checking
-`supabase/migrations/`, untracked files, `.planning/quick/**`, and the authoritative migration ledger.
+**The blocking technical question.** Unsalted hashes of phone numbers and emails are explicitly rejected:
+those identifier spaces are small and guessable, so a hash is not a privacy control. A private-contact-
+discovery design must be **selected and threat-modelled before implementation** — for example an
+appropriate private-set-intersection / OPRF service, or a tightly bounded ephemeral alternative. That is a
+vendor evaluation with a legal review attached, not an implementation detail.
 
-**Status:** Owner-approved and roadmapped 2026-09-13. Web implementation planning has not started.
-Mobile contact discovery is explicitly future, research-gated work and is not approved for data
-collection or implementation yet.
+**Dependencies:** Phase 41 (web discovery) shipped; a native Funūn application; privacy/legal approval;
+mobile-platform contact-permission policy review; and an approved contact-discovery threat model
+documenting raw-identifier transit, retention, deletion, breach impact, vendor access, abuse controls,
+rate limits, auditability, and permission revocation.
+
+**Migrations:** None until a design is chosen and approved.
+
+**Status:** Research-gated. Not approved for data collection or implementation.
 
 **Plans:** 0 plans
 
 Plans:
 
-- [ ] TBD — run `/gsd-discuss-phase 41` before planning, with a separate mobile privacy/threat-model
-  checkpoint rather than treating Contacts permission as ordinary UI work.
+- [ ] TBD — run `/gsd-discuss-phase 41.1` first, then a research-only pass. Do not plan implementation
+  before the threat model and vendor decision exist.
+
