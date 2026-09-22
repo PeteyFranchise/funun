@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sanitizeCollaborator } from '@/lib/collaborators'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
+import {
+  mustBlockActionForEmail,
+  BLOCKED_ACTION_ERROR,
+  BLOCKED_ACTION_STATUS,
+} from '@/lib/trust-safety/block-check'
 
 // ─── GET /api/collaborators ───────────────────────────────────
 // Returns the authenticated user's full collaborator roster,
@@ -47,6 +52,18 @@ export async function POST(request: Request) {
   if (typeof update.email === 'string') {
     const email = update.email.trim().toLowerCase()
     update.email = email
+
+    // Block gate — BEFORE the lookup and the insert. This route carries no
+    // `alreadyMember` flag, which is exactly what makes its disclosure easy
+    // to miss: the insert below uses `.select()`, and migration 179's
+    // BEFORE INSERT trigger has already set claimed_by from this email with
+    // no block predicate, so the returned row confirms a blocked member's
+    // Funūn account to the person they blocked. Checking first means no row
+    // is ever created. Same generic, block-state-agnostic error as
+    // follows/connections/endorsements/wall/release-comments (13-03).
+    if (await mustBlockActionForEmail(createServiceClient(), user.id, email)) {
+      return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+    }
 
     const { data: existing, error: lookupError } = await supabase
       .from('collaborators')
