@@ -1,4 +1,5 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createServiceClient } from '@/lib/supabase/server'
+import { resolveCollaboratorIdentityHints } from '@/lib/collaborators/identity-hints.server'
 import { CollaboratorRoster } from '@/components/collaborators/CollaboratorRoster'
 import type { CollaboratorProfile } from '@/lib/collaborators'
 import { Topbar } from '@/components/layout/Topbar'
@@ -28,24 +29,18 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
 
   const collaborators = (data ?? []) as CollaboratorProfile[]
 
-  // Resolve the Funūn handle for each claimed collaborator so member cards can
-  // link to that member's profile. RLS-scoped read — members whose handle isn't
-  // visible to this user simply won't get a profile link (graceful).
-  const claimedIds = Array.from(
-    new Set(collaborators.map(c => c.claimed_by).filter((v): v is string => Boolean(v)))
+  // Viewer-scoped @handle for each claimed row, so two collaborators named
+  // Eric are distinguishable. This replaced a raw `user_profiles(id, handle)`
+  // read that was described as RLS-scoped but is not an authorization boundary
+  // (user_profiles SELECT is `USING (true)`, column-limited only). The resolver
+  // applies is_public, profile visibility and BOTH block directions, and never
+  // throws: an unresolvable state yields no handles rather than a 500.
+  const identityHints = await resolveCollaboratorIdentityHints(
+    supabase,
+    createServiceClient(),
+    user?.id ?? null,
+    collaborators
   )
-  let memberHandles: Record<string, string> = {}
-  if (claimedIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, handle')
-      .in('id', claimedIds)
-    memberHandles = Object.fromEntries(
-      (profiles ?? [])
-        .filter((p): p is { id: string; handle: string } => Boolean(p.handle))
-        .map(p => [p.id, p.handle])
-    )
-  }
 
   // Latest invite per collaborator — drives each card's "Invited …" status and
   // the Resend affordance. RLS "Inviting user manages invites" (migration 018)
@@ -98,7 +93,7 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
           collaborators={collaborators}
           credits={credits}
           initialTab={initialTab}
-          memberHandles={memberHandles}
+          identityHints={identityHints}
           inviteStatus={inviteStatus}
         />
       </div>

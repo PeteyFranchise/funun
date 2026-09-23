@@ -303,7 +303,7 @@ export function profileMatchesRole(row: Pick<DiscoverProfileRow, 'roles' | 'indu
 // public profile route (app/u/[handle]/page.tsx) enforces. The searching
 // viewer is never the row's owner (self is excluded via `.neq('id', viewerId)`
 // in the query below), so `viewerIsOwner` is always false here.
-function rowProfileVisibility(row: DiscoverProfileRow): ProfileVisibility {
+function rowProfileVisibility(row: Pick<DiscoverProfileRow, 'profile_visibility'>): ProfileVisibility {
   return row.profile_visibility != null && isValidProfileVisibility(row.profile_visibility)
     ? row.profile_visibility
     : 'public'
@@ -315,8 +315,20 @@ function rowOpenToVisibility(row: DiscoverProfileRow): OpenToVisibility {
     : 'public'
 }
 
-/** True when this row should appear in People Search results at all for a non-owner viewer. */
-export function isDiscoverRowVisible(row: DiscoverProfileRow, isConnected: boolean): boolean {
+/**
+ * True when this row should appear in People Search results at all for a
+ * non-owner viewer.
+ *
+ * Takes only the `profile_visibility` column (widened from the full
+ * DiscoverProfileRow, which every existing caller still satisfies) so other
+ * surfaces that must answer the same question — e.g. the collaborator roster's
+ * handle resolver in lib/collaborators/identity-hints.server.ts — can call THIS
+ * function instead of re-deriving the rule from the contracts and drifting.
+ */
+export function isDiscoverRowVisible(
+  row: Pick<DiscoverProfileRow, 'profile_visibility'>,
+  isConnected: boolean
+): boolean {
   return isProfileVisibleTo(rowProfileVisibility(row), false, isConnected)
 }
 

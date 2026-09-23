@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sanitizeCollaborator } from '@/lib/collaborators'
+import type { CollaboratorProfile } from '@/lib/collaborators'
+import { resolveCollaboratorIdentityHints } from '@/lib/collaborators/identity-hints.server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import {
   mustBlockActionForEmail,
@@ -10,7 +12,21 @@ import {
 
 // ─── GET /api/collaborators ───────────────────────────────────
 // Returns the authenticated user's full collaborator roster,
-// ordered alphabetically by name.
+// ordered alphabetically by name, plus the viewer-scoped identity hints the
+// pickers need to tell two same-named collaborators apart.
+//
+// `identityHints` is an ADDITIVE top-level field keyed by collaborator ROW id:
+// every existing consumer reads `json.data` and is unaffected. It carries the
+// member's public @handle and nothing else — never an email, legal name,
+// phone, address, PRO, IPI, publisher, MLC/SoundExchange id, or internal UUID
+// (Phase 41 D-10/D-22) — and only for rows whose handle this viewer is allowed
+// to see (lib/collaborators/identity-hints.server.ts).
+//
+// The resolver never throws: when profile/connection/block resolution fails it
+// returns NO hints and the roster still renders. Chosen over failing the whole
+// request so an unreadable `blocks` table degrades to "no handles" rather than
+// an empty picker — and because one uniform empty-hint outcome cannot be read
+// as "this person blocked you".
 export async function GET() {
   const supabase = await createApiClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -26,7 +42,15 @@ export async function GET() {
     .order('name', { ascending: true })
 
   if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
-  return NextResponse.json({ data })
+
+  const identityHints = await resolveCollaboratorIdentityHints(
+    supabase,
+    createServiceClient(),
+    user.id,
+    (data ?? []) as CollaboratorProfile[]
+  )
+
+  return NextResponse.json({ data, identityHints })
 }
 
 // ─── POST /api/collaborators ──────────────────────────────────
