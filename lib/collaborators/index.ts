@@ -31,6 +31,46 @@ export const COLLABORATOR_EDITABLE_FIELDS = [
   // Note: claimed_by is intentionally excluded — never client-settable (T-04-02)
 ] as const
 
+/**
+ * Explicit column projection for every roster READ that reaches a browser.
+ *
+ * `select('*')` was the previous shape and it is not a boundary: it hands back
+ * whatever the table happens to hold, including `claimed_by` — the blocked
+ * member's account id — with no chance for a caller to reason about it. Every
+ * column here is the OWNER'S OWN data on their own row, so nothing is withheld
+ * from them; the point is that the list is stated, so a future column joins it
+ * by a decision rather than by default.
+ *
+ * `claimed_by` is deliberately included: the identity resolver needs it to
+ * decide visibility. It is stripped afterwards, per row, by
+ * redactHiddenMemberLinks (lib/collaborators/identity-hints.server.ts).
+ */
+export const COLLABORATOR_ROSTER_COLUMNS = [
+  'id',
+  'user_id',
+  'name',
+  'first_name',
+  'middle_name',
+  'last_name',
+  'name_suffix',
+  'email',
+  'phone',
+  'pro',
+  'ipi',
+  'publisher',
+  'administrator',
+  'mlc_id',
+  'soundexchange_id',
+  'mailing_address',
+  'legal_name',
+  'status',
+  'claimed_by',
+  'archived_at',
+  'is_favorite',
+  'created_at',
+  'updated_at',
+].join(', ')
+
 /** The only two values collaborators.status may hold (migration 066 CHECK). */
 const COLLABORATOR_STATUS_VALUES = ['pending', 'confirmed'] as const
 type CollaboratorStatus = (typeof COLLABORATOR_STATUS_VALUES)[number]

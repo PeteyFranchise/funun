@@ -104,7 +104,7 @@ describe('/api/collaborators active roster identity', () => {
     const orderSpy = jest.fn(async () => ({ data: rows, error: null }))
     const isSpy = jest.fn(() => ({ order: orderSpy }))
     const eqSpy = jest.fn(() => ({ is: isSpy }))
-    const selectSpy = jest.fn(() => ({ eq: eqSpy }))
+    const selectSpy = jest.fn((_columns: string) => ({ eq: eqSpy }))
 
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: auth(),
@@ -118,6 +118,10 @@ describe('/api/collaborators active roster identity', () => {
     // resolves no handles without touching a profile, connection or block.
     expect(await res.json()).toEqual({ data: rows, identityHints: {} })
     expect(isSpy).toHaveBeenCalledWith('archived_at', null)
+    // Explicit projection, never select('*') — the column list is stated so a
+    // future column joins the payload by decision rather than by default.
+    expect(selectSpy).toHaveBeenCalledWith(expect.stringContaining('claimed_by'))
+    expect(selectSpy).not.toHaveBeenCalledWith('*')
   })
 
   it('GET adds only privacy-filtered identity hints alongside the untouched roster', async () => {
@@ -140,8 +144,12 @@ describe('/api/collaborators active roster identity', () => {
       data: rows,
       // row-2's member is is_public = false and row-3 is unclaimed, so only
       // the public member contributes a handle — and the hint carries the
-      // handle alone, never an email, legal name or rights identifier.
-      identityHints: { 'row-1': { handle: 'ericsmith' } },
+      // handle plus the block decision, never an email, legal name or rights
+      // identifier.
+      identityHints: {
+        'row-1': { handle: 'ericsmith', memberVisible: true },
+        'row-2': { handle: null, memberVisible: true },
+      },
     })
   })
 
@@ -161,7 +169,50 @@ describe('/api/collaborators active roster identity', () => {
     const res = await GET()
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ data: rows, identityHints: {} })
+    // A failed block lookup is not evidence of safety: every claimed row loses
+    // its member state AND its claimed_by, and the roster still renders.
+    expect(await res.json()).toEqual({
+      data: [{ id: 'row-1', user_id: USER_ID, name: 'Eric Smith', archived_at: null }],
+      identityHints: { 'row-1': { handle: null, memberVisible: false } },
+    })
+  })
+
+  it('GET withholds claimed_by for a BLOCKED pair, and keeps the row', async () => {
+    const rows = [
+      { id: 'row-1', user_id: USER_ID, name: 'Eric Smith', pro: 'ASCAP', claimed_by: MEMBER_ID, archived_at: null },
+      { id: 'row-2', user_id: USER_ID, name: 'Eric Chan', pro: 'BMI', claimed_by: HIDDEN_MEMBER_ID, archived_at: null },
+    ]
+
+    ;(createApiClient as jest.Mock).mockResolvedValue({ auth: auth(), from: rosterReadClient(rows) })
+    ;(createServiceClient as jest.Mock).mockReturnValue(
+      blocksClient({ data: [{ blocker_id: MEMBER_ID, blocked_id: USER_ID }], error: null })
+    )
+
+    const res = await GET()
+    const body = await res.json()
+
+    // `claimed_by` IS the disclosure: it is the blocked member's account id,
+    // and every picker keys its "Funūn member" label off it. The ROW stays —
+    // a block on this platform filters rather than severs, so the owner keeps
+    // their own entry, their name for that person and their PRO.
+    expect(body.data[0]).toEqual({
+      id: 'row-1',
+      user_id: USER_ID,
+      name: 'Eric Smith',
+      pro: 'ASCAP',
+      archived_at: null,
+    })
+    expect(body.data[0]).not.toHaveProperty('claimed_by')
+    expect(JSON.stringify(body)).not.toContain(MEMBER_ID)
+
+    // The hidden-but-unblocked member is untouched: claimed_by still present,
+    // memberVisible still true. Whether a hidden member's membership may be
+    // disclosed is Phase 41's D-01a, and this does not answer it.
+    expect(body.data[1].claimed_by).toBe(HIDDEN_MEMBER_ID)
+    expect(body.identityHints).toEqual({
+      'row-1': { handle: null, memberVisible: false },
+      'row-2': { handle: null, memberVisible: true },
+    })
   })
 
   it('POST reuses the active row with the same normalized email instead of inserting', async () => {

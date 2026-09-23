@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
-import { sanitizeCollaborator } from '@/lib/collaborators'
+import { COLLABORATOR_ROSTER_COLUMNS, sanitizeCollaborator } from '@/lib/collaborators'
 import type { CollaboratorProfile } from '@/lib/collaborators'
-import { resolveCollaboratorIdentityHints } from '@/lib/collaborators/identity-hints.server'
+import {
+  redactHiddenMemberLinks,
+  resolveCollaboratorIdentityHints,
+} from '@/lib/collaborators/identity-hints.server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import {
   mustBlockActionForEmail,
@@ -23,10 +26,16 @@ import {
 // to see (lib/collaborators/identity-hints.server.ts).
 //
 // The resolver never throws: when profile/connection/block resolution fails it
-// returns NO hints and the roster still renders. Chosen over failing the whole
-// request so an unreadable `blocks` table degrades to "no handles" rather than
-// an empty picker — and because one uniform empty-hint outcome cannot be read
-// as "this person blocked you".
+// returns NO handles and the roster still renders. Chosen over failing the
+// whole request so an unreadable `blocks` table degrades to "no handles"
+// rather than an empty picker — and because one uniform empty-hint outcome
+// cannot be read as "this person blocked you".
+//
+// `data` is NO LONGER the raw table row. `claimed_by` is stripped from every
+// row whose member state this viewer may not see, because that column is the
+// blocked member's account id and every picker that reads this response keys
+// its "Funūn member" label off it. The row itself stays — it is the caller's
+// own roster entry, and a block on this platform filters rather than severs.
 export async function GET() {
   const supabase = await createApiClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -36,21 +45,25 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('collaborators')
-    .select('*')
+    .select(COLLABORATOR_ROSTER_COLUMNS)
     .eq('user_id', user.id)
     .is('archived_at', null)
     .order('name', { ascending: true })
 
   if (error) return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
 
+  const rows = (data ?? []) as unknown as CollaboratorProfile[]
   const identityHints = await resolveCollaboratorIdentityHints(
     supabase,
     createServiceClient(),
     user.id,
-    (data ?? []) as CollaboratorProfile[]
+    rows
   )
 
-  return NextResponse.json({ data, identityHints })
+  return NextResponse.json({
+    data: redactHiddenMemberLinks(rows, identityHints),
+    identityHints,
+  })
 }
 
 // ─── POST /api/collaborators ──────────────────────────────────
