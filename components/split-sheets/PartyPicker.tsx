@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { CollaboratorProfile } from '@/lib/collaborators'
-import { assembleDisplayName } from '@/lib/collaborators'
+import type {
+  CollaboratorIdentityHint,
+  CollaboratorIdentityHints,
+} from '@/lib/collaborators/display-identity'
+import {
+  matchesCollaboratorSearch,
+  readIdentityHints,
+} from '@/lib/collaborators/display-identity'
+import { CollaboratorIdentityLabel } from '@/components/collaborators/CollaboratorIdentityLabel'
 import { PRO_LABELS, PRO_VALUES } from '@/lib/metadata/schema'
 import {
   isAutoInviteEligible,
@@ -47,6 +55,10 @@ const labelClass = 'block text-xs font-medium uppercase tracking-wide text-white
 
 export function PartyPicker({ onSelect }: Props) {
   const [roster, setRoster] = useState<CollaboratorProfile[]>([])
+  // Server-decided, viewer-scoped @handle per roster ROW id. The same shared
+  // identity stack the roster card renders — picking the wrong same-named
+  // party onto a split sheet is the most expensive version of this mistake.
+  const [identityHints, setIdentityHints] = useState<CollaboratorIdentityHints>({})
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [addingNew, setAddingNew] = useState(false)
@@ -59,6 +71,7 @@ export function PartyPicker({ onSelect }: Props) {
       .then(r => r.json())
       .then(json => {
         if (Array.isArray(json.data)) setRoster(json.data)
+        setIdentityHints(readIdentityHints(json.identityHints))
       })
       .catch(() => {
         // non-blocking — picker degrades to fast-add-only
@@ -78,8 +91,11 @@ export function PartyPicker({ onSelect }: Props) {
   }, [open])
 
   const active = roster.filter(c => !c.archived_at)
-  const searchQuery = search.toLowerCase()
-  const filtered = active.filter(c => assembleDisplayName(c).toLowerCase().includes(searchQuery))
+  // Matches the assembled name AND the visible handle, with or without '@'.
+  const searchQuery = search.trim()
+  const filtered = active.filter(c =>
+    matchesCollaboratorSearch(c, identityHints[c.id], searchQuery)
+  )
 
   function handlePick(collab: CollaboratorProfile) {
     onSelect({ kind: 'full', collaborator: collab })
@@ -140,7 +156,12 @@ export function PartyPicker({ onSelect }: Props) {
                   <li className="px-4 py-2 text-sm text-white/30">No results</li>
                 ) : (
                   filtered.map(collab => (
-                    <PartyPickerItem key={collab.id} collab={collab} onSelect={handlePick} />
+                    <PartyPickerItem
+                      key={collab.id}
+                      collab={collab}
+                      hint={identityHints[collab.id] ?? null}
+                      onSelect={handlePick}
+                    />
                   ))
                 )}
               </ul>
@@ -165,9 +186,11 @@ export function PartyPicker({ onSelect }: Props) {
 // ─── PartyPickerItem ─────────────────────────────────────────────────
 function PartyPickerItem({
   collab,
+  hint,
   onSelect,
 }: {
   collab: CollaboratorProfile
+  hint?: CollaboratorIdentityHint | null
   onSelect: (c: CollaboratorProfile) => void
 }) {
   const proLabel =
@@ -184,8 +207,15 @@ function PartyPickerItem({
         onClick={() => onSelect(collab)}
         className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left hover:bg-white/5"
       >
-        <span>
-          <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
+        <span className="min-w-0">
+          {/* linkProfile stays off: the row is a button, so an anchor here
+              would be invalid markup. The handle still renders as text. */}
+          <CollaboratorIdentityLabel
+            collaborator={collab}
+            hint={hint}
+            align="left"
+            nameClassName="text-sm text-white"
+          />
           <span className="block text-xs text-lavdim">{proLabel}</span>
         </span>
         <span
