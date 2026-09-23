@@ -26,19 +26,43 @@ export const BLOCKED_ACTION_ERROR = 'This action could not be completed'
 export const BLOCKED_ACTION_STATUS = 400
 
 /**
- * True when a block exists in EITHER direction between viewerId and
- * otherId. Uses the SERVICE client (loadBlockedIds requires it — the
- * viewer's own session can only read blocks they themselves placed, per
- * blocks_select_own RLS) so this can also see blocks placed against the
- * viewer, without ever exposing that direction to the caller.
+ * True when the action must be refused — because a block exists in EITHER
+ * direction between viewerId and otherId, OR because the block lookup could
+ * not be completed.
+ *
+ * Named "must block the action" rather than "is blocked" for the same reason
+ * mustBlockActionForEmail below is: a failed lookup is not evidence of a
+ * block, but it is not evidence of safety either, so the action fails
+ * CLOSED and the name must not claim more than the data carries. (It was
+ * called `isBlockedRelativeTo` while loadBlockedIds swallowed its error and
+ * returned an empty set, so the answer was "false, nobody is blocked" on a
+ * failed lookup — a fail-OPEN gate wearing a predicate's name.)
+ *
+ * The catch here is not a blanket error swallow: this is the ONE boundary
+ * where a refusal must be byte-identical to a real block's refusal. Callers
+ * return the shared BLOCKED_ACTION_ERROR / BLOCKED_ACTION_STATUS above for
+ * `true`, so an infrastructure failure and a real block are indistinguishable
+ * to the client — which is exactly 13-03's requirement — while the write
+ * itself is never performed either way. The driver error is not discarded;
+ * loadBlockedIds attaches it to `.cause` for the server log.
+ *
+ * Uses the SERVICE client (loadBlockedIds requires it — the viewer's own
+ * session can only read blocks they themselves placed, per blocks_select_own
+ * RLS) so this can also see blocks placed against the viewer, without ever
+ * exposing that direction to the caller.
  */
-export async function isBlockedRelativeTo(
+export async function mustBlockActionBetween(
   service: SupabaseClient,
   viewerId: string,
   otherId: string
 ): Promise<boolean> {
   if (viewerId === otherId) return false
-  const blockedIds = await loadBlockedIds(service, viewerId)
+  let blockedIds: Set<string>
+  try {
+    blockedIds = await loadBlockedIds(service, viewerId)
+  } catch {
+    return true
+  }
   return blockedIds.has(otherId)
 }
 
@@ -78,5 +102,5 @@ export async function mustBlockActionForEmail(
   if (error) return true
   if (typeof data !== 'string' || !data) return false
 
-  return isBlockedRelativeTo(service, viewerId, data)
+  return mustBlockActionBetween(service, viewerId, data)
 }

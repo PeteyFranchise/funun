@@ -156,7 +156,7 @@ describe('lib/trust-safety/block-check — mustBlockActionForEmail', () => {
   it('returns false for a self-invite — the caller’s own email is not a block', async () => {
     const service = serviceClient({ accountId: CALLER, blocks: [] })
     expect(await mustBlockActionForEmail(service as never, CALLER, 'me@example.com')).toBe(false)
-    // isBlockedRelativeTo short-circuits on viewerId === otherId, so the
+    // mustBlockActionBetween short-circuits on viewerId === otherId, so the
     // blocks table is never consulted for a self-invite.
     expect(service.from).not.toHaveBeenCalled()
   })

@@ -1,7 +1,7 @@
 import { authorizeRequestTarget } from './request-target'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
-import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 
 // ─── authorizeRequestTarget — sync-library admission gate (26-06) ────────
 // Replaces the beta `is_public !== true` inline check with a sync_listings
@@ -18,12 +18,12 @@ jest.mock('@/lib/trust-safety/contracts', () => ({
   isProfileVisibleTo: jest.fn(),
 }))
 jest.mock('@/lib/trust-safety/block-check', () => ({
-  isBlockedRelativeTo: jest.fn(),
+  mustBlockActionBetween: jest.fn(),
 }))
 
 const mockedComputeStage3 = computeStage3 as jest.MockedFunction<typeof computeStage3>
 const mockedIsProfileVisibleTo = isProfileVisibleTo as jest.MockedFunction<typeof isProfileVisibleTo>
-const mockedIsBlockedRelativeTo = isBlockedRelativeTo as jest.MockedFunction<typeof isBlockedRelativeTo>
+const mockedMustBlockActionBetween = mustBlockActionBetween as jest.MockedFunction<typeof mustBlockActionBetween>
 
 function projectRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -74,7 +74,7 @@ function makeService(opts: {
 beforeEach(() => {
   mockedComputeStage3.mockReset()
   mockedIsProfileVisibleTo.mockReset()
-  mockedIsBlockedRelativeTo.mockReset()
+  mockedMustBlockActionBetween.mockReset()
   mockedComputeStage3.mockReturnValue({
     required: [],
     recommended: [],
@@ -85,7 +85,7 @@ beforeEach(() => {
     sampleBlock: false,
   })
   mockedIsProfileVisibleTo.mockReturnValue(true)
-  mockedIsBlockedRelativeTo.mockResolvedValue(false)
+  mockedMustBlockActionBetween.mockResolvedValue(false)
 })
 
 describe('authorizeRequestTarget — sync-library admission gate', () => {
@@ -127,7 +127,7 @@ describe('authorizeRequestTarget — sync-library admission gate', () => {
 
   it('still applies the block gate on top of admission (unchanged behavior)', async () => {
     const service = makeService({})
-    mockedIsBlockedRelativeTo.mockResolvedValue(true)
+    mockedMustBlockActionBetween.mockResolvedValue(true)
 
     const result = await authorizeRequestTarget(service as never, 'buyer-1', 'proj-1')
 

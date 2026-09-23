@@ -411,8 +411,16 @@ function getBlockReadClient(): SupabaseClient | null {
 //      oracle the table policy exists to prevent.
 //
 // The check is FAIL-CLOSED on error, deliberately, matching the RPC form.
-// Do NOT reuse `loadBlockedIds` from lib/green-room/discover.ts: it
-// discards its `error` and would flip this gate fail-open.
+//
+// This paragraph used to read "Do NOT reuse `loadBlockedIds` from
+// lib/green-room/discover.ts: it discards its `error` and would flip this
+// gate fail-open." That was true, and routing around it here left the
+// shared function fail-open for its eight other call sites. `loadBlockedIds`
+// now THROWS on query error, so the hazard is gone and that warning is
+// recorded here only so the next reader knows why this file ever had one.
+// Keep this local query's own fail-closed branch either way: it is a
+// two-id existence check, not a set union, and it must stay independent of
+// what a shared helper happens to do.
 //
 // This helper deliberately takes NO client parameter. It used to, and the
 // parameter was named `service` while the feed path passed a user-scoped
