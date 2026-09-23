@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildEndorsementNotification } from '@/lib/social/notifications'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   // and return the same generic, block-state-agnostic error any other
   // rejected endorsement would get.
   const service = createServiceClient()
-  if (await isBlockedRelativeTo(service, user.id, profileId)) {
+  if (await mustBlockActionBetween(service, user.id, profileId)) {
     return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
   }
 

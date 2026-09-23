@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeStage3 } from '@/lib/vault/stage3'
 import { isAdmittedToSyncLibrary } from '@/lib/deals/catalog'
 import { isProfileVisibleTo } from '@/lib/trust-safety/contracts'
-import { isBlockedRelativeTo } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween } from '@/lib/trust-safety/block-check'
 
 // ─── authorizeRequestTarget (T-16-23) ─────────────────────────────────────
 // Shared target authorization for the buyer request pathway. Both
@@ -124,7 +124,13 @@ export async function authorizeRequestTarget(
   // connection of the artist, so viewerIsConnection is always false here.
   if (!isProfileVisibleTo(visibility, false, false)) return { ok: false }
 
-  if (await isBlockedRelativeTo(service, buyerUserId, project.user_id)) return { ok: false }
+  // Fail closed for the same reason the `!owner` check two lines up does: a
+  // block state we cannot read is not a licence to open a deal thread with
+  // the artist. mustBlockActionBetween returns true when the lookup itself
+  // fails, so this collapses into the same `{ ok: false }` every other
+  // refusal here returns — the buyer sees "this isn't available", never a
+  // reason.
+  if (await mustBlockActionBetween(service, buyerUserId, project.user_id)) return { ok: false }
 
   return {
     ok: true,

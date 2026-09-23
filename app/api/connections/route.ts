@@ -6,7 +6,7 @@ import {
   buildConnectionAcceptedNotification,
 } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 const ACTIVE_CONNECTION_STATUSES = ['pending', 'accepted']
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   // request would get — checked BEFORE the existingActive precheck below so
   // a blocked pair never even reaches that (equally generic) 409 path.
   const service = createServiceClient()
-  if (await isBlockedRelativeTo(service, user.id, addresseeId)) {
+  if (await mustBlockActionBetween(service, user.id, addresseeId)) {
     return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
   }
 

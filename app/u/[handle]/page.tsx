@@ -211,8 +211,26 @@ export default async function PublicProfilePage({
     // never fetches — or exposes via timing — any of that data. blockedIds
     // is also reused further down to filter wall/endorsement/comment
     // authors the viewer is blocked with, independent of the profile owner.
-    const blockedIds = viewerId ? await loadBlockedIds(createServiceClient(), viewerId) : new Set<string>()
-    if (blockedIds.has(profile.id)) notFound()
+    //
+    // A FAILED lookup renders the same notFound() a real block does, not an
+    // error page. This route has exactly one refusal shape by design — a
+    // nonexistent handle, a private profile and a block are already
+    // indistinguishable here — and an unreadable block set is simply one
+    // more reason this viewer may not be shown this profile. Adding a second,
+    // differently-shaped failure would make the refusal surface non-uniform
+    // for no gain. Fail-closed matters more than accuracy here: rendering
+    // the profile on a lookup failure shows a blocked person's page to the
+    // person they blocked.
+    let blockedIds = new Set<string>()
+    let blockLookupFailed = false
+    if (viewerId) {
+      try {
+        blockedIds = await loadBlockedIds(createServiceClient(), viewerId)
+      } catch {
+        blockLookupFailed = true
+      }
+    }
+    if (blockLookupFailed || blockedIds.has(profile.id)) notFound()
 
     // Derive connect state from the connections table for the viewer<->profile
     // pair. connections_select_participant RLS (migration 035) returns only
