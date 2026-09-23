@@ -152,15 +152,16 @@ connections, endorsements and wall posts already return (13-03).
 
 ## Tests
 
-**+49 tests**, 136 in the five affected suites, 7747 across the repo.
+**+37 test cases** (38 added, 1 renamed away), 93 in the five affected suites,
+7747 across the repo.
 
 | Suite | Total | Covers |
 |---|---|---|
-| `lib/collaborators/identity-hints.server.test.ts` | 27 | both block directions separately; hidden ≠ blocked; failed block lookup → `false` for every row; failed profile lookup → `true`; blocked and unblocked rows side by side; `redactHiddenMemberLinks` |
-| `lib/collaborators/display-identity.test.ts` | 26 | `isMemberVisible`; `memberAffordances`; `visibleHandle` block gate across all four consumers; suppression-only hint survives parsing |
+| `lib/collaborators/identity-hints.server.test.ts` | 23 | both block directions separately; hidden ≠ blocked; failed block lookup → `false` for every row; failed profile lookup → `true`; blocked and unblocked rows side by side; `redactHiddenMemberLinks` |
+| `lib/collaborators/display-identity.test.ts` | 25 | `isMemberVisible`; `memberAffordances`; `visibleHandle` block gate across all four consumers; suppression-only hint survives parsing |
 | `components/collaborators/CollaboratorCard.test.tsx` | 20 | markup: no badge, no `/messages?with=`, no profile link, no "Start a split sheet"; owner's own entry intact; redacted row reads as unclaimed; unblocked baseline unchanged |
 | `app/api/collaborators/route.test.ts` | 7 | `claimed_by` absent from the payload for a blocked pair, present for a hidden one; explicit projection, never `select('*')` |
-| `app/api/collaborators/[id]/invite/route.test.ts` | 17 | generic refusal in both directions and on both branches; fail-closed on lookup error; `alreadyMember` unchanged for an unblocked member |
+| `app/api/collaborators/[id]/invite/route.test.ts` | 18 | generic refusal in both directions and on both branches; fail-closed on lookup error; `alreadyMember` unchanged for an unblocked member |
 
 Assertions are on `renderToStaticMarkup` output, as #98 does — Jest here is
 node-only with no jsdom.
