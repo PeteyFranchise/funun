@@ -25,12 +25,31 @@ import { assembleDisplayName } from '@/lib/collaborators'
  * a stale copy of one — a member can change their handle at any time.
  *
  * `handle` is null (or the hint is absent) whenever the viewer may not see it.
- * The type carries exactly one field: it is an identity DISAMBIGUATOR, not a
+ * The type carries exactly two fields, both of them DECISIONS rather than
+ * data: it is an identity disambiguator plus one disclosure flag, not a
  * profile projection, so there is nowhere to put an email, a legal name, a
  * phone number, a rights identifier or an internal UUID.
  */
 export type CollaboratorIdentityHint = {
   handle: string | null
+  /**
+   * Whether this row's MEMBER-derived affordances may render at all: the
+   * "✓ Funūn member" state, the Message link, and the profile link on the
+   * name and avatar.
+   *
+   * TWO SIGNALS, NOT ONE. `handle` carries the full visibility chain
+   * (is_public + profile_visibility + connection + block). `memberVisible`
+   * carries ONE predicate: `false` if and only if a block exists in either
+   * direction (or the block lookup could not be completed, which fails
+   * closed).
+   *
+   * A hidden, connections-only or `is_public: false` member is still
+   * `memberVisible: true`. They ARE a member; whether their membership may
+   * be disclosed to the roster owner is Phase 41's D-01a, an OPEN owner
+   * decision. Collapsing the two signals would settle D-01a by accident, in
+   * the suppressing direction, which this work must not do.
+   */
+  memberVisible: boolean
 }
 
 /** Row-id keyed hints. Keyed by `collaborators.id`, never by member id: two
@@ -77,11 +96,23 @@ export function collaboratorInitials(c: Partial<CollaboratorProfile>): string {
 /**
  * The handle a component may actually render, or null.
  *
- * Returns null for an absent hint, an empty handle, or a handle that does not
+ * Returns null for an absent hint, an empty handle, a handle that does not
  * match the stored grammar — a component must not be the place where a
- * malformed value becomes a link target.
+ * malformed value becomes a link target — or a hint whose `memberVisible` is
+ * explicitly false.
+ *
+ * The block gate lives HERE rather than at each call site because the handle
+ * reaches a page through four of them (the identity label's text, the profile
+ * href, the picker's search index and the ambiguity predicate), and a gate
+ * repeated four times is a gate that will be forgotten once. The resolver
+ * never emits a handle alongside `memberVisible: false`, so this is belt to
+ * that braces; it is also what makes a hostile or hand-built hint unable to
+ * reintroduce the handle of someone on the other side of a block.
  */
-export function visibleHandle(hint: CollaboratorIdentityHint | null | undefined): string | null {
+export function visibleHandle(
+  hint: { handle?: string | null; memberVisible?: boolean } | null | undefined
+): string | null {
+  if (hint?.memberVisible === false) return null
   const value: unknown = hint?.handle
   if (typeof value !== 'string') return null
   const raw = value.trim().replace(/^@+/, '')
@@ -95,10 +126,55 @@ export function formatMemberHandle(handle: string | null | undefined): string | 
   return raw ? `@${raw}` : null
 }
 
-/** The member profile href for a safely visible handle, else null. */
+/**
+ * True when member-derived affordances may render for this row.
+ *
+ * An ABSENT hint reads as visible, and that is deliberate: the server
+ * resolver emits an explicit `memberVisible: false` for every claimed row it
+ * refuses (including on a failed block lookup), so "no hint" means "no member
+ * to suppress" — an unclaimed row, or a surface that resolves no hints at
+ * all — not "decision unknown".
+ */
+export function isMemberVisible(hint: CollaboratorIdentityHint | null | undefined): boolean {
+  return hint?.memberVisible !== false
+}
+
+/** The member profile href for a safely visible handle, else null. The block
+ *  gate is already inside visibleHandle, so there is nothing to repeat here. */
 export function memberProfileHref(hint: CollaboratorIdentityHint | null | undefined): string | null {
   const handle = visibleHandle(hint)
   return handle ? `/u/${handle}` : null
+}
+
+/**
+ * Every member-derived affordance a roster surface may offer for ONE row,
+ * decided in ONE place so the card, the list row and the ⋯ menu cannot drift.
+ *
+ * The Message link is the reason this exists as a shared derivation rather
+ * than three inline conditions: `claimed_by` is an ACTION target, and a
+ * `/messages?with=` control aimed at someone who blocked you is not merely a
+ * disclosure — it is an invitation to an interaction the DM route will
+ * refuse, which is a poor experience for both people.
+ */
+export type CollaboratorMemberAffordances = {
+  memberVisible: boolean
+  profileHref: string | null
+  messageHref: string | null
+}
+
+export function memberAffordances(
+  collaborator: Partial<CollaboratorProfile>,
+  hint?: CollaboratorIdentityHint | null
+): CollaboratorMemberAffordances {
+  if (!isMemberVisible(hint)) {
+    return { memberVisible: false, profileHref: null, messageHref: null }
+  }
+  const claimedBy = typeof collaborator.claimed_by === 'string' ? collaborator.claimed_by.trim() : ''
+  return {
+    memberVisible: true,
+    profileHref: memberProfileHref(hint),
+    messageHref: claimedBy ? `/messages?with=${encodeURIComponent(claimedBy)}` : null,
+  }
 }
 
 /**
@@ -185,8 +261,18 @@ export function readIdentityHints(value: unknown): CollaboratorIdentityHints {
   const hints: CollaboratorIdentityHints = {}
   for (const [id, raw] of Object.entries(value as Record<string, unknown>)) {
     if (typeof raw !== 'object' || raw === null) continue
-    const handle = visibleHandle({ handle: (raw as { handle?: unknown }).handle as string | null })
-    if (handle) hints[id] = { handle }
+    // `memberVisible: false` is a SUPPRESSION instruction, so an entry that
+    // carries nothing else must survive this parse — dropping it would fall
+    // back to "no hint", which reads as visible. Only an explicit `false`
+    // suppresses: an absent key is indistinguishable from an absent row, so
+    // treating it as suppression would buy no safety and would silently
+    // strip the member state from every legacy payload.
+    const memberVisible = (raw as { memberVisible?: unknown }).memberVisible !== false
+    const handle = visibleHandle({
+      handle: (raw as { handle?: unknown }).handle as string | null,
+      memberVisible,
+    })
+    if (handle || !memberVisible) hints[id] = { handle, memberVisible }
   }
   return hints
 }

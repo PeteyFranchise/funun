@@ -4,7 +4,7 @@ import type {
   CollaboratorIdentityHint,
   CollaboratorIdentityHints,
 } from '@/lib/collaborators/display-identity'
-import { visibleHandle } from '@/lib/collaborators/display-identity'
+import { isMemberVisible, visibleHandle } from '@/lib/collaborators/display-identity'
 import { isDiscoverRowVisible, loadBlockedIds } from '@/lib/green-room/discover'
 
 // ─── Collaborator identity hints — the ONE handle authorization boundary ──
@@ -32,13 +32,35 @@ import { isDiscoverRowVisible, loadBlockedIds } from '@/lib/green-room/discover'
 //      accepted connection between the viewer and that member.
 //
 // Anything else — missing row, hidden profile, malformed handle, block, failed
-// lookup — degrades to NO hint. One outcome for every refusal, so the absence
-// of a handle never says which rule refused it.
+// lookup — degrades to NO handle. One outcome for every refusal, so the
+// absence of a handle never says which rule refused it.
+//
+// ─── The SECOND signal: memberVisible ────────────────────────────────────
+//
+// `claim_collaborators()` stamps `claimed_by` at signup, when no block can
+// exist yet — blocks reference account ids and the account is being created.
+// A block placed AFTERWARDS was never applied to the already-stamped row, and
+// there is no write left to gate: only reads. So the roster's member-derived
+// affordances (the "✓ Funūn member" state, the Message link, the profile
+// link) need their own predicate, and it is NOT the handle chain above.
+//
+// `memberVisible` is false if and ONLY if a block exists in either direction,
+// or the block lookup could not be completed (fail closed, matching this
+// resolver's posture after PR #97). A hidden, connections-only or
+// `is_public: false` member stays `memberVisible: true`: they ARE a member,
+// and whether that may be disclosed is Phase 41's D-01a — an OPEN owner
+// decision this resolver must not settle in either direction by accident.
+//
+// Consequence: this map now carries an entry for EVERY claimed row, not only
+// the ones with a visible handle. A `{ handle: null, memberVisible: false }`
+// entry is a suppression instruction, and callers strip `claimed_by` from the
+// payload for exactly those rows (see redactHiddenMemberLinks below).
 //
 // WHAT THIS MAY NEVER CARRY: email, legal name, phone, mailing address, PRO,
 // IPI, publisher, MLC id, SoundExchange id, or any internal UUID. The
 // projection below is the enforcement; CollaboratorIdentityHint has exactly
-// one field so there is nowhere else to put them (Phase 41 D-10/D-11/D-22).
+// two fields, both of them decisions, so there is nowhere else to put them
+// (Phase 41 D-10/D-11/D-22).
 // ─────────────────────────────────────────────────────────────────────────
 
 /** Exactly the columns the decision needs. No PII column is readable from
@@ -55,12 +77,15 @@ type IdentityProfileRow = {
 type RosterRow = Pick<CollaboratorProfile, 'id'> & { claimed_by?: string | null }
 
 /**
- * Resolves the viewer-visible `@handle` for each claimed roster row.
+ * Resolves the viewer-visible `@handle`, and the member-visibility decision,
+ * for each claimed roster row.
  *
- * Returns a map keyed by `collaborators.id` containing ONLY the rows whose
- * handle this viewer may see; an absent key means "no handle", with no
- * distinguishable reason. Never throws: every failure path collapses to an
- * empty map, which is the fail-closed direction (no handle is shown).
+ * Returns a map keyed by `collaborators.id` with an entry for every CLAIMED
+ * row. `handle` is non-null only for the rows whose handle this viewer may
+ * see; an absent handle means "no handle", with no distinguishable reason.
+ * `memberVisible` is false only for a block (or an incomplete block lookup).
+ * Never throws: every failure path degrades to no handles, and a failed block
+ * lookup additionally degrades to `memberVisible: false` for every row.
  *
  * @param supabase session-bound client — reads the public-safe profile columns
  *                 and the viewer's own accepted connections under RLS
@@ -81,19 +106,35 @@ export async function resolveCollaboratorIdentityHints(
   )
   if (claimedIds.length === 0) return {}
 
+  // Base map: one entry per CLAIMED row, carrying the member-visibility
+  // decision alone. Handles are filled in below only where the full
+  // visibility chain clears.
+  const seed = (memberVisible: (memberId: string) => boolean): CollaboratorIdentityHints => {
+    const base: CollaboratorIdentityHints = {}
+    for (const row of rows) {
+      const memberId = row.claimed_by
+      if (!memberId) continue
+      base[row.id] = { handle: null, memberVisible: memberVisible(memberId) }
+    }
+    return base
+  }
+
   // loadBlockedIds THROWS when the `blocks` query fails (PR #97) — it can no
   // longer report "nobody is blocked" from a failed lookup, because no Set
   // value can mean "everyone might be blocked". Catching it HERE, at the
   // resolver boundary, is the refusal shape this surface owes: the roster
-  // still renders, with no handles at all. The throw must not escape as a 500,
-  // and the old swallow (an empty block set) must never come back — that is
-  // the fail-OPEN direction, and it would show a blocked member's handle.
+  // still renders, with no handles and no member affordances at all. The
+  // throw must not escape as a 500, and the old swallow (an empty block set)
+  // must never come back — that is the fail-OPEN direction, and it would show
+  // a blocked member's handle and offer to message them.
   let blockedIds: Set<string>
   try {
     blockedIds = await loadBlockedIds(service, viewerId)
   } catch {
-    return {}
+    return seed(() => false)
   }
+
+  const hints = seed(memberId => !blockedIds.has(memberId))
 
   const [profileResult, connectionResult] = await Promise.all([
     supabase.from('user_profiles').select(IDENTITY_HINT_COLUMNS).in('id', claimedIds),
@@ -105,8 +146,11 @@ export async function resolveCollaboratorIdentityHints(
   ])
 
   // An unreadable profile table is an unknown visibility state, not a public
-  // one: refuse every handle rather than guess.
-  if (profileResult.error) return {}
+  // one: refuse every handle rather than guess. It says nothing about blocks,
+  // though, so the already-decided memberVisible flags stand — conflating the
+  // two would suppress the member state of every unblocked row on a transient
+  // profiles outage, which is D-01a's question, not this one.
+  if (profileResult.error) return hints
 
   // An unreadable connections table only ever REMOVES handles (a
   // connections_only profile stays hidden), so it degrades in the safe
@@ -121,7 +165,6 @@ export async function resolveCollaboratorIdentityHints(
     if (row && typeof row.id === 'string') profilesById.set(row.id, row)
   }
 
-  const hints: CollaboratorIdentityHints = {}
   for (const row of rows) {
     const memberId = row.claimed_by
     if (!memberId) continue
@@ -137,9 +180,40 @@ export async function resolveCollaboratorIdentityHints(
     const handle = visibleHandle({ handle: profile.handle })
     if (!handle) continue
 
-    const hint: CollaboratorIdentityHint = { handle }
+    const hint: CollaboratorIdentityHint = { handle, memberVisible: true }
     hints[row.id] = hint
   }
 
   return hints
+}
+
+// ─── Payload redaction ───────────────────────────────────────────────────
+//
+// `claimed_by` IS the disclosure: it is the blocked member's account id, and
+// it reaches the browser through the roster page's props and through
+// GET /api/collaborators. Suppressing the card's affordances without
+// stripping the id would leave the fact one devtools panel away.
+//
+// The row itself STAYS. Blocking on this platform severs nothing — a block
+// inserts a `blocks` row and existing connections and follows are left in
+// place and filtered at read time by `no_block()`. A block is a filter, not a
+// severance, so the roster matches: filter at read, never unclaim the row.
+// Unclaiming would destroy a real link and lose it permanently on unblock.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Strips `claimed_by` from every row whose member state this viewer may not
+ * see, leaving the owner's own entry — their name for that person, their
+ * notes, their PRO — completely intact.
+ */
+export function redactHiddenMemberLinks<T extends { id: string; claimed_by?: string | null }>(
+  rows: T[],
+  hints: CollaboratorIdentityHints
+): T[] {
+  return rows.map(row => {
+    if (isMemberVisible(hints[row.id])) return row
+    const copy: Record<string, unknown> = { ...row }
+    delete copy.claimed_by
+    return copy as T
+  })
 }
