@@ -4,6 +4,18 @@ import { GET, POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
+  // The pre-insert block gate resolves the supplied email through the
+  // service-only find_auth_user_id_by_email RPC. Every case in THIS file is
+  // an unblocked pair, so the RPC resolves to no account and the gate falls
+  // through without reading `blocks` at all. The gate's own behaviour — both
+  // block directions, the fail-closed lookup error, and the proof that no
+  // row is created — lives in __tests__/collaborator-invite-block-gate.test.ts.
+  createServiceClient: jest.fn(() => ({
+    rpc: jest.fn(async () => ({ data: null, error: null })),
+    from: jest.fn(() => {
+      throw new Error('block gate must not read blocks when no account resolves')
+    }),
+  })),
 }))
 
 jest.mock('@/lib/accounts/member-api-gate', () => ({

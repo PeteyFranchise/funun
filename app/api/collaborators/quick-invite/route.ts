@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sendCollaboratorInvite } from '@/lib/collaborators/invite'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
+import {
+  mustBlockActionForEmail,
+  BLOCKED_ACTION_ERROR,
+  BLOCKED_ACTION_STATUS,
+} from '@/lib/trust-safety/block-check'
 
 // ─── POST /api/collaborators/quick-invite ────────────────────────────────
 // Standalone "invite a collaborator with just first name + email" path
@@ -44,7 +49,22 @@ export async function POST(request: Request) {
   }
   const { first_name: firstName, email } = parsed.data
 
-  // ── 3. Reuse an existing active roster row for this email, if any. ────
+  // ── 3. Block gate — BEFORE any roster lookup or insert. ───────────────
+  // A block in either direction ends the action. This must run before the
+  // insert below, not after: migration 179's BEFORE INSERT trigger sets
+  // claimed_by from the email with no block predicate, and the
+  // `alreadyMember: true` response further down would then confirm a
+  // blocked member's Funūn account to the person they blocked — exactly
+  // the reverse-lookup disclosure ROADMAP.md forbids. Checking first means
+  // no row exists, so there is nothing to disclose. The generic error is
+  // the shared, block-state-agnostic one used by follows/connections/
+  // endorsements/wall/release-comments (13-03: no distinguishable "you are
+  // blocked" state anywhere).
+  if (await mustBlockActionForEmail(createServiceClient(), user.id, email)) {
+    return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+  }
+
+  // ── 4. Reuse an existing active roster row for this email, if any. ────
   // Prevents a second roster row every time the artist re-invites the same
   // person from the modal.
   const { data: existing, error: lookupError } = await supabase
@@ -107,7 +127,7 @@ export async function POST(request: Request) {
     })
   }
 
-  // ── 4. Send the invite via the shared helper ───────────────────────────
+  // ── 5. Send the invite via the shared helper ───────────────────────────
   const result = await sendCollaboratorInvite(supabase, {
     collaborator: { id: collaborator.id, name: collaborator.name, email: collaborator.email },
     invitingUserId: user.id,

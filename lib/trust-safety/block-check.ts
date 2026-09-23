@@ -41,3 +41,42 @@ export async function isBlockedRelativeTo(
   const blockedIds = await loadBlockedIds(service, viewerId)
   return blockedIds.has(otherId)
 }
+
+/**
+ * True when the action must be refused because the supplied email belongs to
+ * an account blocked in either direction relative to viewerId — OR because
+ * the identity lookup could not be completed, which is why this is named
+ * "must block the action" rather than "is blocked": a failed lookup is not
+ * evidence of a block, but it is not evidence of safety either, so the
+ * action fails CLOSED.
+ *
+ * Why an email-shaped entry point exists at all: the collaborator roster is
+ * the one write surface where the target identity is supplied as an email
+ * rather than an account id. Migration 179's BEFORE INSERT OR UPDATE OF
+ * email trigger then resolves that email to a confirmed Member and writes
+ * claimed_by with no block predicate, so a route that inserts first has
+ * already disclosed the target's membership by the time it could check.
+ * Resolving and checking HERE, before any write, means the trigger never
+ * fires and there is no row to disclose.
+ *
+ * The email is resolved through the service-only find_auth_user_id_by_email
+ * RPC (migration 177). Neither the email nor the resolved account id is ever
+ * returned to the caller — only the boolean.
+ */
+export async function mustBlockActionForEmail(
+  service: SupabaseClient,
+  viewerId: string,
+  email: string | null | undefined
+): Promise<boolean> {
+  const normalized = (email ?? '').trim().toLowerCase()
+  if (!normalized) return false
+
+  const { data, error } = await service.rpc('find_auth_user_id_by_email', {
+    p_email: normalized,
+  })
+  // Fail closed: an unknown identity state must not be written through.
+  if (error) return true
+  if (typeof data !== 'string' || !data) return false
+
+  return isBlockedRelativeTo(service, viewerId, data)
+}
