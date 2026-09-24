@@ -1,7 +1,8 @@
-# Phase 41: Collaborator Discovery & Mobile Contact Matching - Context
+# Phase 41: Collaborator Discovery (web) - Context
 
 **Gathered:** 2026-09-21
-**Status:** Ready for planning
+**Status:** ⚠ **BLOCKED — one unresolved conflict (D-01a). Not plannable until it is settled.**
+Everything else is corrected and ready.
 
 <domain>
 ## Phase Boundary
@@ -38,20 +39,50 @@ member's identifiers, and any change to the People Search projection.
   Chosen with the tradeoff stated: this makes the invite box a way to test whether an address
   has a Funūn account, including a deliberately hidden member. Accepted knowingly and mitigated
   by D-02 rather than left open.
+- **D-01a — UNRESOLVED CONFLICT. This blocks planning.** D-01 does not merely accept a tradeoff;
+  **it contradicts the roadmap.** `ROADMAP.md:2700-2704` states that on the invite-by-email path,
+  *"a hidden or blocked identity must not be exposed through a reverse-lookup result."* D-03
+  closes the **blocked** half. **D-01 is precisely the hidden half**: a hidden member's address
+  returns "already a member."
+
+  This was missed during discussion. The tradeoff was surfaced and accepted, but nobody checked
+  that the roadmap already prohibited it — the entry's constraints were read as two
+  (`resist enumeration`, `must not claim they are not a member`) when there are three.
+
+  **Two owner-approved documents now disagree, and a planner cannot choose between them.**
+  Resolution is one of:
+  1. **Amend the roadmap** — accept the weakening explicitly, in the entry, with the reasoning.
+     Keeps D-01 as chosen.
+  2. **Narrow D-01** — distinguish only when the member is publicly discoverable, and return the
+     neutral result for hidden/connections-only. Leaks exactly what People Search already leaks.
+     Keeps the roadmap intact.
+  3. **Something else the owner decides.**
+
+  Until then, treat D-01 as **provisional**. Do not plan the disclosure copy.
 - **D-02:** Contained **both** ways. The person is notified they were added, and lookups are
-  rate-limited per member per day. The two cover different failures: the cap defeats volume, the
-  notice defeats quiet targeted checks on one specific person. Exact cap value is a planning
-  decision.
+  rate-limited per member per day. Exact cap value is a planning decision.
+  **These mitigate; they do not make D-01 privacy-safe, and must not be described as preserving
+  the People Search boundary.** A daily cap reduces scale without stopping a *targeted* test of
+  one address. A notice reaches the target only *after* the inviter has already learned the fact.
+  D-01 is a deliberate weakening of a privacy rule, accepted with mitigations — not a reuse of
+  the existing doctrine.
 - **D-03:** **A block in either direction ends the whole action.** No email of any kind, no
-  roster entry, no disclosure that the account exists. This is what makes D-01 defensible: a
-  block any path can route around is decorative. `discover_profile_id_by_email` already enforces
+  roster entry, no disclosure that the account exists. A block any path can route around is
+  decorative. **This closes the *blocked* half of the roadmap rule at `ROADMAP.md:2700-2704`;
+  it does not close the *hidden* half — that conflict is unresolved and is flagged below.** `discover_profile_id_by_email` already enforces
   `no_block` both directions (migration 149); the new path is where that could have been routed
   around.
 - **D-04:** Blocks are **revalidated at write time**, inside the transaction, because a block can
   be created between the search result rendering and the write. Blocked, newly hidden, stale and
   ineligible targets all return the same generic failure.
-- **D-05:** The notification to the added person is **informational, with a block link**. No
-  separate removal mechanism — the block remedy already exists and, per D-03, is now total.
+- **D-05:** The notification to the added person is **informational, with a block link** —
+  **but this decision is incomplete, not merely underdocumented.** Blocks have no coupling to
+  collaborator rows (`supabase/migrations/035_connections_blocks.sql:79-110`), and a claimed row
+  cannot be hard-deleted by the owner, only archived
+  (`app/api/collaborators/[id]/route.ts:38-89`). A notified person can block *future* contact but
+  **cannot remove or hide the existing record about them.** The earlier claim that the block
+  remedy was "already total" was wrong. Planning must either add a rule for this or state
+  explicitly that no removal right exists — it must not assume the block covers it.
 
 ### Scope and shape
 
@@ -66,9 +97,26 @@ member's identifiers, and any change to the People Search projection.
   the roadmap requires.
 - **D-08:** **One shared add-flow component**, used by every surface that can CREATE a
   collaborator or send an invite. The clean line is create versus select: pickers that only
-  choose from an existing roster create nobody and stay untouched. Surfaces to audit:
-  `CollaboratorRoster`, `QuickInviteModal`, `CollaboratorInvitePrompt`, `CollaboratorPicker`,
-  `PermissionsTab`, `WorkRoster`.
+  choose from an existing roster create nobody and stay untouched.
+
+  **Corrected surface inventory.** The earlier list carried a false positive and a false
+  negative; planning from it would have spent effort on a non-creator while leaving a
+  duplicate-producing path untouched:
+
+  | Surface | Creates a roster row? | In scope |
+  |---|---|---|
+  | `components/collaborators/CollaboratorRoster.tsx` | yes | **yes** |
+  | `components/collaborators/QuickInviteModal.tsx` | yes | **yes** |
+  | `components/collaborators/CollaboratorForm.tsx` | yes | **yes** |
+  | `components/split-sheets/PartyPicker.tsx` | **yes — was missing from the list** | **yes** |
+  | `components/collaborators/CollaboratorInvitePrompt.tsx` | no — invites *after* creation | audit only |
+  | `components/collaborators/CollaboratorPicker.tsx` | no — selects existing | no |
+  | `components/settings/PermissionsTab.tsx` | no — consent management | **no** |
+  | `components/catalogue/WorkRoster.tsx` | verify before planning | TBD |
+
+  **`PartyPicker` matters most.** Its own submit path accepts **email OR phone**
+  (`components/split-sheets/PartyPicker.tsx:262-303`), and a phone-only row has no email — so the
+  existing dedupe, gated on `if (typeof update.email === 'string')`, skips it entirely.
 
 ### Linking and rights data
 
@@ -109,16 +157,25 @@ member's identifiers, and any change to the People Search projection.
   arbiter; check-then-insert, an advisory lock alone, or an ordinary upsert are insufficient.
 - **D-17:** **Preflight before any constraint.** Migration 148 already ran a repair pass for this
   duplicate class and migration 179 landed afterwards and can recreate it, so production may hold
-  duplicates a unique index would reject. Legacy consolidation is a **dedicated data migration,
-  not Phase 41 work** — Phase 41 must simply not create new duplicates.
+  duplicates a unique index would reject. Legacy consolidation is a **dedicated data migration**
+  — and a **named, owned prerequisite that must complete before the index step**, not a deferred
+  idea. Left unowned it makes D-16's concurrency guarantee aspirational, since the indexes are
+  the final race arbiter and cannot be created while duplicates exist. Phase 41 must additionally
+  not create new duplicates.
 - **D-18:** A database expression index must use normalized equality on
   `lower(btrim(email))`. The current check uses `.ilike()`, which is a pattern comparison, does
   not trim a stored value, and treats `%`/`_` in input as wildcards.
 
 ### Response shape and leakage
 
-- **D-19:** **One response shape** for created, reused and resurfaced. Same status, keys, copy
-  and notification behaviour. **Do not return `email`, `claimed_by`, rights fields,
+- **D-19:** **One response shape** for created, reused and resurfaced — same status, keys and
+  copy — **scoped to roster-resolution outcomes after a server-verified member match. D-01 alone
+  governs member-match versus signup-invite feedback**, which is a different fact and stays
+  distinguishable.
+  **Uniform response does NOT mean uniform side effects.** Notifying on every idempotent retry
+  lets repeated clicks, client retries or concurrent requests generate target-facing noise, which
+  is harassment-shaped. Notify only on a **defined durable transition** — normally first link —
+  and keep that transition bit server-side so the response still cannot reveal it. **Do not return `email`, `claimed_by`, rights fields,
   `merged_into`, or `reused`.** The existing create route returns `reused`, and quick-invite
   returns `reused` plus `alreadyMember`; those belong to the old email-entry behaviour and must
   not be copied here — under D-10 they become an oracle revealing that a private
@@ -218,8 +275,13 @@ order in which the six surfaces are migrated to the shared flow.
   **not** something this phase uses.
 
 ### Established Patterns
-- Client code may never supply or choose `claimed_by`. Migration 179 establishes it; this phase
-  must hold it.
+- **The server derives and revalidates `claimed_by`; the client never assigns it.** Migration 179
+  establishes this. Stated earlier as "the client may never choose the destination account ID",
+  which is too literal to implement — an explicit Add button must identify *which* search result
+  was chosen, and People Search already returns a profile `id` for that purpose
+  (`lib/green-room/discover.ts:80-95`). A profile id is acceptable as **untrusted** input provided
+  the transaction rechecks visibility, self, blocks and eligibility; an opaque server-issued token
+  is an equally acceptable design.
 - Dedupe fails closed on a lookup error rather than inserting
   (`app/api/collaborators/route.ts:61-65`). Preserve that posture.
 - Alert and response content is summary-only; raw records stay server-side.
@@ -264,8 +326,9 @@ order in which the six surfaces are migrated to the shared flow.
   `components/split-sheets/SplitSheetBuilder.tsx:667-687`). Phase 41 creates more claimed links,
   and every new link enlarges the population already exposed by that join. This is containment of
   an existing disclosure, not new autofill.
-- **Legacy duplicate consolidation** — a dedicated data migration (D-17), sequenced before the
-  unique indexes.
+- **Legacy duplicate consolidation** — a dedicated data migration (D-17). **Promoted from a
+  deferred idea to a named prerequisite**: it must complete before the unique-index step, or
+  D-16's race guarantee does not hold.
 - **`collaborators.ipi` for claimed rows** — a stale owner-typed copy beside a canonical profile
   value, for a number that routes money. Addressed in the rights-disclosure phase.
 - **`view_private_rights_identifiers`** — exists in the permission catalogue with grant and
