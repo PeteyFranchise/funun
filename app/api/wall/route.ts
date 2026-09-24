@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildWallPostNotification } from '@/lib/social/notifications'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 import { profileDisplayTitle } from '@/lib/profile/display-name'
 import { checkRateLimit } from '@/lib/security/rate-limit'
 
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   // and return the same generic, block-state-agnostic error any other
   // rejected wall post would get.
   const service = createServiceClient()
-  if (await isBlockedRelativeTo(service, user.id, profileId)) {
+  if (await mustBlockActionBetween(service, user.id, profileId)) {
     return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
   }
 

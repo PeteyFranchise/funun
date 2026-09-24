@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { sanitizeCollaborator } from '@/lib/collaborators'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
+import {
+  mustBlockActionForEmail,
+  BLOCKED_ACTION_ERROR,
+  BLOCKED_ACTION_STATUS,
+} from '@/lib/trust-safety/block-check'
 
 // ─── PATCH /api/collaborators/[id] ───────────────────────────
 // Updates a collaborator the authenticated user owns.
@@ -21,6 +26,20 @@ export async function PATCH(
   const update = sanitizeCollaborator(body)
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
+  // Block gate — only when the caller supplies an email, and BEFORE the
+  // update. Migration 179's trigger is `BEFORE INSERT OR UPDATE OF email`,
+  // so editing an existing roster card's email to a blocked member's
+  // address sets claimed_by exactly as an insert would, and the `.select()`
+  // below hands that back. Same disclosure, different verb. Same generic,
+  // block-state-agnostic error as the other block-gated routes (13-03).
+  // The stored value's casing is deliberately left untouched here — only
+  // the block lookup normalizes, exactly as the trigger's own match does.
+  if (typeof update.email === 'string') {
+    if (await mustBlockActionForEmail(createServiceClient(), user.id, update.email)) {
+      return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+    }
   }
 
   const { data, error } = await supabase

@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { CollaboratorProfile } from '@/lib/collaborators'
-import { assembleDisplayName } from '@/lib/collaborators'
+import type {
+  CollaboratorIdentityHint,
+  CollaboratorIdentityHints,
+} from '@/lib/collaborators/display-identity'
+import {
+  collaboratorDisplayName,
+  matchesCollaboratorSearch,
+  readIdentityHints,
+} from '@/lib/collaborators/display-identity'
+import { CollaboratorIdentityLabel } from '@/components/collaborators/CollaboratorIdentityLabel'
 import { CollaboratorForm } from '@/components/collaborators/CollaboratorForm'
 import { PRO_LABELS } from '@/lib/metadata/schema'
 
@@ -18,6 +27,14 @@ import { PRO_LABELS } from '@/lib/metadata/schema'
 //   ALL COLLABORATORS — remaining non-favorites
 // Archived collaborators (archived_at set) are excluded from all groups (D-12).
 // When search is active groups collapse to a single flat results list.
+//
+// Selection is where "which Eric?" actually costs something, so each row shows
+// the SAME identity stack as the roster card — the shared
+// CollaboratorIdentityLabel, fed by the server-decided identity hints the
+// roster endpoint returns — and search matches the visible handle as well as
+// the name. Status and PRO stay as tertiary detail. The duplicate-remediation
+// affordance deliberately does NOT appear here: a picker must make the right
+// row identifiable; editing the roster belongs on the roster screen.
 
 type Props = {
   onSelect: (collaborator: CollaboratorProfile) => void
@@ -27,6 +44,7 @@ type Props = {
 
 export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
   const [roster, setRoster] = useState<CollaboratorProfile[]>([])
+  const [identityHints, setIdentityHints] = useState<CollaboratorIdentityHints>({})
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -39,6 +57,7 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
       .then(r => r.json())
       .then(json => {
         if (Array.isArray(json.data)) setRoster(json.data)
+        setIdentityHints(readIdentityHints(json.identityHints))
       })
       .catch(() => {
         // non-blocking — picker degrades to empty state
@@ -63,10 +82,12 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
   const excluded = new Set(excludeIds)
   const active = roster.filter(c => !c.archived_at && !excluded.has(c.id))
 
-  // Build grouped lists (no search) or flat filtered list (search active)
-  const searchQuery = search.toLowerCase()
+  // Build grouped lists (no search) or flat filtered list (search active).
+  // Search matches the assembled name AND the visible handle, typed with or
+  // without a leading '@'.
+  const searchQuery = search.trim()
   const matchesSearch = (c: CollaboratorProfile) =>
-    assembleDisplayName(c).toLowerCase().includes(searchQuery)
+    matchesCollaboratorSearch(c, identityHints[c.id], searchQuery)
 
   // Sort active non-favorites by created_at DESC for Most Recent group
   const activeSortedByRecent = [...active].sort(
@@ -92,7 +113,11 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
   }
 
   function handleNewSaved(collab: CollaboratorProfile) {
-    setRoster(prev => [...prev, collab].sort((a, b) => assembleDisplayName(a).localeCompare(assembleDisplayName(b))))
+    setRoster(prev =>
+      [...prev, collab].sort((a, b) =>
+        collaboratorDisplayName(a).localeCompare(collaboratorDisplayName(b))
+      )
+    )
     handleSelect(collab)
   }
 
@@ -159,7 +184,12 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
                     <li className="px-4 py-2 text-sm text-white/30">No results</li>
                   ) : (
                     flatFiltered.map(collab => (
-                      <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                      <PickerItem
+                        key={collab.id}
+                        collab={collab}
+                        hint={identityHints[collab.id] ?? null}
+                        onSelect={handleSelect}
+                      />
                     ))
                   )
                 ) : (
@@ -175,7 +205,12 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
                           FAVORITES
                         </li>
                         {favorites.map(collab => (
-                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                          <PickerItem
+                            key={collab.id}
+                            collab={collab}
+                            hint={identityHints[collab.id] ?? null}
+                            onSelect={handleSelect}
+                          />
                         ))}
                       </>
                     )}
@@ -186,7 +221,12 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
                           RECENTLY ADDED
                         </li>
                         {mostRecent.map(collab => (
-                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                          <PickerItem
+                            key={collab.id}
+                            collab={collab}
+                            hint={identityHints[collab.id] ?? null}
+                            onSelect={handleSelect}
+                          />
                         ))}
                       </>
                     )}
@@ -197,7 +237,12 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
                           ALL COLLABORATORS
                         </li>
                         {allRest.map(collab => (
-                          <PickerItem key={collab.id} collab={collab} onSelect={handleSelect} />
+                          <PickerItem
+                            key={collab.id}
+                            collab={collab}
+                            hint={identityHints[collab.id] ?? null}
+                            onSelect={handleSelect}
+                          />
                         ))}
                       </>
                     )}
@@ -227,9 +272,11 @@ export function CollaboratorPicker({ onSelect, excludeIds = [] }: Props) {
 // Individual row inside the picker dropdown list.
 function PickerItem({
   collab,
+  hint,
   onSelect,
 }: {
   collab: CollaboratorProfile
+  hint?: CollaboratorIdentityHint | null
   onSelect: (c: CollaboratorProfile) => void
 }) {
   const proLabel =
@@ -244,7 +291,14 @@ function PickerItem({
         onClick={() => onSelect(collab)}
         className="w-full px-4 py-2 text-left hover:bg-white/5"
       >
-        <span className="block text-sm text-white">{assembleDisplayName(collab)}</span>
+        {/* linkProfile stays off: this row IS a button, and an anchor inside
+            a button is invalid markup. The handle still renders as text. */}
+        <CollaboratorIdentityLabel
+          collaborator={collab}
+          hint={hint}
+          align="left"
+          nameClassName="text-sm text-white"
+        />
         <span className="block text-xs text-lavdim">{detail}</span>
       </button>
     </li>

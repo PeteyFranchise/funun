@@ -303,7 +303,7 @@ export function profileMatchesRole(row: Pick<DiscoverProfileRow, 'roles' | 'indu
 // public profile route (app/u/[handle]/page.tsx) enforces. The searching
 // viewer is never the row's owner (self is excluded via `.neq('id', viewerId)`
 // in the query below), so `viewerIsOwner` is always false here.
-function rowProfileVisibility(row: DiscoverProfileRow): ProfileVisibility {
+function rowProfileVisibility(row: Pick<DiscoverProfileRow, 'profile_visibility'>): ProfileVisibility {
   return row.profile_visibility != null && isValidProfileVisibility(row.profile_visibility)
     ? row.profile_visibility
     : 'public'
@@ -315,8 +315,20 @@ function rowOpenToVisibility(row: DiscoverProfileRow): OpenToVisibility {
     : 'public'
 }
 
-/** True when this row should appear in People Search results at all for a non-owner viewer. */
-export function isDiscoverRowVisible(row: DiscoverProfileRow, isConnected: boolean): boolean {
+/**
+ * True when this row should appear in People Search results at all for a
+ * non-owner viewer.
+ *
+ * Takes only the `profile_visibility` column (widened from the full
+ * DiscoverProfileRow, which every existing caller still satisfies) so other
+ * surfaces that must answer the same question — e.g. the collaborator roster's
+ * handle resolver in lib/collaborators/identity-hints.server.ts — can call THIS
+ * function instead of re-deriving the rule from the contracts and drifting.
+ */
+export function isDiscoverRowVisible(
+  row: Pick<DiscoverProfileRow, 'profile_visibility'>,
+  isConnected: boolean
+): boolean {
   return isProfileVisibleTo(rowProfileVisibility(row), false, isConnected)
 }
 
@@ -416,16 +428,46 @@ async function loadRelationships(supabase: SupabaseClient, viewerId: string): Pr
   return { followingIds, connectedIds }
 }
 
+// Message thrown when the bidirectional block lookup cannot be completed.
+//
+// Deliberately generic and deliberately NOT built from the Postgres error
+// text (unlike resolveDiscoverEmailProfileId below, whose failure carries no
+// safety meaning). Two independent reasons:
+//   1. 13-03's non-negotiable rule — no distinguishable "you are blocked"
+//      state anywhere. A raw `new row violates row-level security policy` or
+//      an `invalid input syntax for type uuid` reaching a client is a
+//      distinguishable shape, and this string is the ONLY thing a caller that
+//      simply lets the throw propagate can surface.
+//   2. Every caller then inherits a safe default: propagating is safe because
+//      the message can never say "block" and can never carry database text.
+// The driver error is preserved on `.cause` for server-side logs only.
+export const BLOCK_LOOKUP_FAILED = 'This request could not be completed'
+
 // Bidirectional block set. Uses the SERVICE client because the `blocks` RLS
 // policy only exposes rows where blocker_id = auth.uid() (so a viewer can
 // never learn "who blocked me" through the session client). The union is
 // computed server-side and used ONLY to exclude rows from the result — it is
 // never returned to the client, so block state stays invisible to both sides.
+//
+// THROWS on query error, and must keep throwing. This function used to
+// destructure only `{ data }` and let `(data ?? [])` turn a failed query into
+// an empty set — i.e. "nobody is blocked" — so every gate built on it
+// (nine write routes, the buyer catalogue, People Search, both profile
+// renders) silently PERMITTED the action the moment the `blocks` query
+// failed. Fail-closed cannot be expressed in the return type: there is no
+// Set value meaning "everyone might be blocked", so throwing is the only
+// honest signal, and each caller decides its own refusal shape.
 export async function loadBlockedIds(service: SupabaseClient, viewerId: string): Promise<Set<string>> {
-  const { data } = await service
+  const { data, error } = await service
     .from('blocks')
     .select('blocker_id, blocked_id')
     .or(`blocker_id.eq.${viewerId},blocked_id.eq.${viewerId}`)
+
+  if (error) {
+    const failure = new Error(BLOCK_LOOKUP_FAILED)
+    ;(failure as Error & { cause?: unknown }).cause = error
+    throw failure
+  }
 
   const ids = new Set<string>()
   for (const row of (data ?? []) as { blocker_id: string; blocked_id: string }[]) {
@@ -462,6 +504,12 @@ export async function loadDiscoverResults(
   const textQuery = !emailQuery ? buildDiscoverTextQuery(filters.q) : null
   if (filters.q && !emailQuery && !textQuery) return { results: [], nextCursor: null }
 
+  // loadBlockedIds' throw is deliberately left to propagate, exactly as
+  // resolveDiscoverEmailProfileId's is above. GET /api/green-room/discover
+  // already wraps this whole call in a catch that returns the generic
+  // `Failed to search people` 500, so an unreadable block set returns NO
+  // people rather than a result page that silently includes the ones this
+  // viewer must not see.
   const [relationships, blockedIds] = await Promise.all([
     loadRelationships(supabase, viewerId),
     loadBlockedIds(service, viewerId),

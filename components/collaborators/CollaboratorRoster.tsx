@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { CollaboratorProfile } from '@/lib/collaborators'
 import { CollaboratorCard } from '@/components/collaborators/CollaboratorCard'
+import type { CollaboratorIdentityHints } from '@/lib/collaborators/display-identity'
+import { ambiguousCollaboratorIds } from '@/lib/collaborators/display-identity'
 import { CollaboratorForm } from '@/components/collaborators/CollaboratorForm'
 import { CollaboratorInvitePrompt } from '@/components/collaborators/CollaboratorInvitePrompt'
 import { QuickInviteModal } from '@/components/collaborators/QuickInviteModal'
@@ -30,31 +32,80 @@ type CreditRow = CollaboratorProfile & {
   split_sheet_parties?: SplitSheetParty[]
 }
 
+export type RosterView = 'cards' | 'list'
+
+// Per-viewer layout preference. Read AFTER mount (see the effect below), never
+// during render: this page is server-rendered, and seeding state from
+// localStorage during render makes the client's first paint disagree with the
+// server's HTML.
+const VIEW_STORAGE_KEY = 'funun:collaborators:view'
+
+function isRosterView(value: unknown): value is RosterView {
+  return value === 'cards' || value === 'list'
+}
+
 type Props = {
   collaborators: CollaboratorProfile[]
   credits: CreditRow[]
   initialTab?: 'roster' | 'credits'
-  memberHandles?: Record<string, string>
+  /**
+   * Server-resolved, viewer-scoped identity hints keyed by collaborator ROW id
+   * (never by member id — two legacy rows can point at the same member).
+   * Only rows whose handle this viewer may see appear here; see
+   * lib/collaborators/identity-hints.server.ts for the disclosure rule.
+   */
+  identityHints?: CollaboratorIdentityHints
   inviteStatus?: Record<string, { sentAt: string; status: string }>
+  /** First-paint layout. Always the server-safe default in the app; the stored
+   *  preference is applied after mount. Tests pass it to render both views. */
+  initialView?: RosterView
 }
 
 export function CollaboratorRoster({
   collaborators,
   credits,
   initialTab = 'roster',
-  memberHandles = {},
+  identityHints = {},
   inviteStatus = {},
+  initialView = 'cards',
 }: Props) {
   const [activeTab, setActiveTab] = useState<'roster' | 'credits'>(initialTab)
+  const [view, setView] = useState<RosterView>(initialView)
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [quickInviteOpen, setQuickInviteOpen] = useState(false)
   const [list, setList] = useState<CollaboratorProfile[]>(
     collaborators.filter(collaborator => !collaborator.archived_at)
   )
+  // Apply the stored layout preference after hydration. Storage access is
+  // wrapped because it throws outright in some privacy modes; when it throws
+  // or holds nothing usable, the default first paint simply stands.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(VIEW_STORAGE_KEY)
+      if (isRosterView(stored)) setView(stored)
+    } catch {
+      // No stored preference available — keep the default layout.
+    }
+  }, [])
+
+  function chooseView(next: RosterView) {
+    setView(next)
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, next)
+    } catch {
+      // Preference is a convenience, never a precondition for the toggle.
+    }
+  }
+
   // Post-save invite nudge (D-08a) — set only when the just-saved row is a
   // NEW collaborator with a non-empty email; never gates the save itself.
   const [invitePromptFor, setInvitePromptFor] = useState<CollaboratorProfile | null>(null)
+  // Collision state is computed ONCE from the active list and passed down, so
+  // a card never decides on its own whether it is ambiguous. Rows keep being
+  // keyed by id below — never by name or handle, both of which change.
+  const ambiguousIds = ambiguousCollaboratorIds(list, identityHints)
+
   // Claimed collaborator rows prove identity, not authorship. Flatten only
   // real split-sheet relationships so a bare email/name match can never be
   // presented as a song credit, even if a future server query regresses.
@@ -171,6 +222,32 @@ export function CollaboratorRoster({
         </div>
         {activeTab === 'roster' && !creating && (
           <div className="flex items-center gap-2">
+            {/* Layout toggle — quiet, in the same control vocabulary as the
+                secondary "Add collaborator" button beside it. The list view is
+                where same-name collaborators are actually scanned for, so both
+                layouts render the identical identity stack. */}
+            {list.length > 0 && (
+              <div
+                role="group"
+                aria-label="Roster layout"
+                className="mr-1 flex items-center gap-0.5 rounded-lg border border-hairstrong p-0.5"
+              >
+                {(['cards', 'list'] as const).map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => chooseView(option)}
+                    aria-pressed={view === option}
+                    className={[
+                      'rounded-[6px] px-2.5 py-1 text-xs font-semibold capitalize transition',
+                      view === option ? 'bg-white/10 text-white' : 'text-lavdim hover:text-white',
+                    ].join(' ')}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Invite is now the primary path (owner steer, 260825-i4i
                 follow-up) — skips the artist re-typing a collaborator's
                 own rights details. */}
@@ -298,7 +375,13 @@ export function CollaboratorRoster({
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
+          <div
+            className={
+              view === 'list'
+                ? 'flex flex-col gap-2'
+                : 'grid gap-3 grid-cols-[repeat(auto-fill,minmax(156px,1fr))]'
+            }
+          >
             {list.map(collab =>
               editingId === collab.id ? (
                 <div key={collab.id} className="sm:col-span-2 lg:col-span-3">
@@ -312,6 +395,7 @@ export function CollaboratorRoster({
                 <CollaboratorCard
                   key={collab.id}
                   collaborator={collab}
+                  variant={view === 'list' ? 'row' : 'card'}
                   onEdit={() => {
                     setEditingId(collab.id)
                     setCreating(false)
@@ -321,7 +405,8 @@ export function CollaboratorRoster({
                   onFavoriteToggle={() => handleFavoriteToggle(collab)}
                   onInvite={() => handleInvite(collab.id)}
                   invite={inviteStatus[collab.id] ?? null}
-                  memberHandle={collab.claimed_by ? memberHandles[collab.claimed_by] ?? null : null}
+                  identityHint={identityHints[collab.id] ?? null}
+                  isAmbiguous={ambiguousIds.has(collab.id)}
                 />
               )
             )}

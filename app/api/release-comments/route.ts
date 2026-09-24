@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildReleaseCommentNotification } from '@/lib/social/notifications'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     .select('user_id, title')
     .eq('id', projectId)
     .maybeSingle()
-  if (project && (await isBlockedRelativeTo(service, user.id, project.user_id))) {
+  if (project && (await mustBlockActionBetween(service, user.id, project.user_id))) {
     return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
   }
 

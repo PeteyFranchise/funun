@@ -202,8 +202,10 @@ describe('placement destination block check — direct bidirectional `blocks` re
   })
 
   it('FAILS CLOSED: a query error hides the destination', async () => {
-    // The RPC version returned false on error. That must not regress into
-    // fail-open, which is what reusing `loadBlockedIds` would give.
+    // The RPC version returned false on error, and this local check must
+    // keep matching it. (It used to say "which is what reusing
+    // `loadBlockedIds` would give" — loadBlockedIds now throws on error, so
+    // that is no longer the contrast; this gate is pinned on its own terms.)
     const { isDestinationVisible, caller } = await setup([], { message: 'boom' })
     await expect(
       isDestinationVisible(caller.client as never, 'profile', DEST, null, VIEWER)

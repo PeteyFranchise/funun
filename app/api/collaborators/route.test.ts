@@ -1,9 +1,21 @@
-import { createApiClient } from '@/lib/supabase/server'
+import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
 import { GET, POST } from './route'
 
 jest.mock('@/lib/supabase/server', () => ({
   createApiClient: jest.fn(),
+  // The pre-insert block gate resolves the supplied email through the
+  // service-only find_auth_user_id_by_email RPC. Every case in THIS file is
+  // an unblocked pair, so the RPC resolves to no account and the gate falls
+  // through without reading `blocks` at all. The gate's own behaviour — both
+  // block directions, the fail-closed lookup error, and the proof that no
+  // row is created — lives in __tests__/collaborator-invite-block-gate.test.ts.
+  createServiceClient: jest.fn(() => ({
+    rpc: jest.fn(async () => ({ data: null, error: null })),
+    from: jest.fn(() => {
+      throw new Error('block gate must not read blocks when no account resolves')
+    }),
+  })),
 }))
 
 jest.mock('@/lib/accounts/member-api-gate', () => ({
@@ -11,6 +23,50 @@ jest.mock('@/lib/accounts/member-api-gate', () => ({
 }))
 
 const USER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+const MEMBER_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+const HIDDEN_MEMBER_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+
+// A session client whose `collaborators` read returns `rows`, and whose
+// profile/connection reads back the identity-hint resolver.
+function rosterReadClient(rows: unknown[]) {
+  return jest.fn((table: string) => {
+    if (table === 'collaborators') {
+      return {
+        select: () => ({
+          eq: () => ({ is: () => ({ order: async () => ({ data: rows, error: null }) }) }),
+        }),
+      }
+    }
+    if (table === 'user_profiles') {
+      return {
+        select: () => ({
+          in: async () => ({
+            data: [
+              { id: MEMBER_ID, handle: 'ericsmith', is_public: true, profile_visibility: 'public' },
+              { id: HIDDEN_MEMBER_ID, handle: 'erichan', is_public: false, profile_visibility: 'public' },
+            ],
+            error: null,
+          }),
+        }),
+      }
+    }
+    if (table === 'connections') {
+      return { select: () => ({ eq: () => ({ or: async () => ({ data: [], error: null }) }) }) }
+    }
+    throw new Error(`unexpected read of ${table}`)
+  })
+}
+
+// The service client the resolver uses for the bidirectional block set.
+function blocksClient(result: { data: unknown; error: { message: string } | null }) {
+  return {
+    rpc: jest.fn(async () => ({ data: null, error: null })),
+    from: jest.fn((table: string) => {
+      if (table !== 'blocks') throw new Error(`service client must only read blocks, got ${table}`)
+      return { select: () => ({ or: async () => result }) }
+    }),
+  }
+}
 
 function postRequest(body: unknown) {
   return new Request('http://t.local/api/collaborators', {
@@ -26,6 +82,16 @@ function auth() {
 describe('/api/collaborators active roster identity', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    // jest.clearAllMocks() clears calls but NOT a mockReturnValue, so the two
+    // GET cases below would otherwise leak their service client into the POST
+    // cases. Re-assert the strict default every test: the POST block gate must
+    // still never read `blocks` when no account resolves from the email.
+    ;(createServiceClient as jest.Mock).mockReturnValue({
+      rpc: jest.fn(async () => ({ data: null, error: null })),
+      from: jest.fn(() => {
+        throw new Error('block gate must not read blocks when no account resolves')
+      }),
+    })
     ;(requireMemberApiAccount as jest.Mock).mockImplementation(async (_client: unknown, user: { id: string } | null) =>
       user
         ? { ok: true, user }
@@ -38,7 +104,7 @@ describe('/api/collaborators active roster identity', () => {
     const orderSpy = jest.fn(async () => ({ data: rows, error: null }))
     const isSpy = jest.fn(() => ({ order: orderSpy }))
     const eqSpy = jest.fn(() => ({ is: isSpy }))
-    const selectSpy = jest.fn(() => ({ eq: eqSpy }))
+    const selectSpy = jest.fn((_columns: string) => ({ eq: eqSpy }))
 
     ;(createApiClient as jest.Mock).mockResolvedValue({
       auth: auth(),
@@ -48,8 +114,105 @@ describe('/api/collaborators active roster identity', () => {
     const res = await GET()
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ data: rows })
+    // identityHints is additive: `data` is unchanged, and an unclaimed roster
+    // resolves no handles without touching a profile, connection or block.
+    expect(await res.json()).toEqual({ data: rows, identityHints: {} })
     expect(isSpy).toHaveBeenCalledWith('archived_at', null)
+    // Explicit projection, never select('*') — the column list is stated so a
+    // future column joins the payload by decision rather than by default.
+    expect(selectSpy).toHaveBeenCalledWith(expect.stringContaining('claimed_by'))
+    expect(selectSpy).not.toHaveBeenCalledWith('*')
+  })
+
+  it('GET adds only privacy-filtered identity hints alongside the untouched roster', async () => {
+    const rows = [
+      { id: 'row-1', user_id: USER_ID, name: 'Eric Smith', claimed_by: MEMBER_ID, archived_at: null },
+      { id: 'row-2', user_id: USER_ID, name: 'Eric Chan', claimed_by: HIDDEN_MEMBER_ID, archived_at: null },
+      { id: 'row-3', user_id: USER_ID, name: 'Eric', claimed_by: null, archived_at: null },
+    ]
+
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: auth(),
+      from: rosterReadClient(rows),
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(blocksClient({ data: [], error: null }))
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      data: rows,
+      // row-2's member is is_public = false and row-3 is unclaimed, so only
+      // the public member contributes a handle — and the hint carries the
+      // handle plus the block decision, never an email, legal name or rights
+      // identifier.
+      identityHints: {
+        'row-1': { handle: 'ericsmith', memberVisible: true },
+        'row-2': { handle: null, memberVisible: true },
+      },
+    })
+  })
+
+  it('GET still returns the roster, with no handles, when the block lookup fails', async () => {
+    const rows = [
+      { id: 'row-1', user_id: USER_ID, name: 'Eric Smith', claimed_by: MEMBER_ID, archived_at: null },
+    ]
+
+    ;(createApiClient as jest.Mock).mockResolvedValue({
+      auth: auth(),
+      from: rosterReadClient(rows),
+    })
+    ;(createServiceClient as jest.Mock).mockReturnValue(
+      blocksClient({ data: null, error: { message: 'blocks unavailable' } })
+    )
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    // A failed block lookup is not evidence of safety: every claimed row loses
+    // its member state AND its claimed_by, and the roster still renders.
+    expect(await res.json()).toEqual({
+      data: [{ id: 'row-1', user_id: USER_ID, name: 'Eric Smith', archived_at: null }],
+      identityHints: { 'row-1': { handle: null, memberVisible: false } },
+    })
+  })
+
+  it('GET withholds claimed_by for a BLOCKED pair, and keeps the row', async () => {
+    const rows = [
+      { id: 'row-1', user_id: USER_ID, name: 'Eric Smith', pro: 'ASCAP', claimed_by: MEMBER_ID, archived_at: null },
+      { id: 'row-2', user_id: USER_ID, name: 'Eric Chan', pro: 'BMI', claimed_by: HIDDEN_MEMBER_ID, archived_at: null },
+    ]
+
+    ;(createApiClient as jest.Mock).mockResolvedValue({ auth: auth(), from: rosterReadClient(rows) })
+    ;(createServiceClient as jest.Mock).mockReturnValue(
+      blocksClient({ data: [{ blocker_id: MEMBER_ID, blocked_id: USER_ID }], error: null })
+    )
+
+    const res = await GET()
+    const body = await res.json()
+
+    // `claimed_by` IS the disclosure: it is the blocked member's account id,
+    // and every picker keys its "Funūn member" label off it. The ROW stays —
+    // a block on this platform filters rather than severs, so the owner keeps
+    // their own entry, their name for that person and their PRO.
+    expect(body.data[0]).toEqual({
+      id: 'row-1',
+      user_id: USER_ID,
+      name: 'Eric Smith',
+      pro: 'ASCAP',
+      archived_at: null,
+    })
+    expect(body.data[0]).not.toHaveProperty('claimed_by')
+    expect(JSON.stringify(body)).not.toContain(MEMBER_ID)
+
+    // The hidden-but-unblocked member is untouched: claimed_by still present,
+    // memberVisible still true. Whether a hidden member's membership may be
+    // disclosed is Phase 41's D-01a, and this does not answer it.
+    expect(body.data[1].claimed_by).toBe(HIDDEN_MEMBER_ID)
+    expect(body.identityHints).toEqual({
+      'row-1': { handle: null, memberVisible: false },
+      'row-2': { handle: null, memberVisible: true },
+    })
   })
 
   it('POST reuses the active row with the same normalized email instead of inserting', async () => {

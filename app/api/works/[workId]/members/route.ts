@@ -7,6 +7,11 @@ import { planWriterPromotion } from '@/lib/catalogue/splits'
 import { loadWorkSplits } from '@/lib/catalogue/splits-io'
 import { planWorkMemberAdmission } from '@/lib/catalogue/member-admission'
 import { requireMemberApiAccount } from '@/lib/accounts/member-api-gate'
+import {
+  mustBlockActionForEmail,
+  BLOCKED_ACTION_ERROR,
+  BLOCKED_ACTION_STATUS,
+} from '@/lib/trust-safety/block-check'
 
 // ─── POST /api/works/[workId]/members — invite, tiers, and the separate
 // writer promotion (S-02) ─────────────────────────────────────────────
@@ -68,6 +73,11 @@ export async function POST(request: Request, { params }: RouteCtx) {
   }
   const userId = memberAccount.user.id
 
+  // Service-role client. Needed by the pre-insert block gate below (blocks
+  // placed AGAINST the caller are invisible to the caller's own session,
+  // per blocks_select_own RLS) and by the membership write further down.
+  const service = createServiceClient()
+
   // Membership changes are an administer capability (doctrine scope item
   // 9) — canManageMembership's rule, enforced here through
   // resolveWorkAccess() requiring the administer tier. The tier is a
@@ -105,6 +115,19 @@ export async function POST(request: Request, { params }: RouteCtx) {
     collaborator = existing as CollaboratorRow
   } else {
     const { first_name: firstName, email } = input
+
+    // Block gate — BEFORE the roster lookup and the insert. This branch is
+    // quick-invite's insert in a second place: migration 179's BEFORE
+    // INSERT trigger sets claimed_by from this caller-supplied email with
+    // no block predicate, and the response below returns both the
+    // collaborator row and `admission` ('direct-link' vs 'invite-required'),
+    // either of which confirms a blocked member's Funūn account to the
+    // person they blocked. Checking first means no row is created. Same
+    // generic, block-state-agnostic error as the other block-gated routes
+    // (13-03: no distinguishable "you are blocked" state anywhere).
+    if (await mustBlockActionForEmail(service, userId, email)) {
+      return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
+    }
 
     const { data: existingByEmail, error: lookupError } = await supabase
       .from('collaborators')
@@ -156,8 +179,8 @@ export async function POST(request: Request, { params }: RouteCtx) {
   // Migration 136 revokes INSERT/UPDATE/DELETE on work_members from
   // authenticated and anon — every membership write goes through a
   // service-role route that has already proved the caller's tier on this
-  // specific work (resolveWorkAccess, above).
-  const service = createServiceClient()
+  // specific work (resolveWorkAccess, above). The client itself is created
+  // earlier now, because the pre-insert block gate needs it too.
 
   let splitSheetId: string | null = null
   let splitParties: Record<string, unknown>[] | null = null

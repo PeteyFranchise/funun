@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createApiClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { buildNewFollowerNotification } from '@/lib/social/notifications'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 
 const DEMO = process.env.NEXT_PUBLIC_VAULT_DEMO === 'true'
 
@@ -28,7 +28,7 @@ async function mutate(request: Request, action: 'follow' | 'unfollow') {
     // and return the same generic, block-state-agnostic error every other
     // rejected follow would get.
     const service = createServiceClient()
-    if (await isBlockedRelativeTo(service, user.id, followeeId)) {
+    if (await mustBlockActionBetween(service, user.id, followeeId)) {
       return NextResponse.json({ error: BLOCKED_ACTION_ERROR }, { status: BLOCKED_ACTION_STATUS })
     }
 

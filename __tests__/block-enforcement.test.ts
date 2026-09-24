@@ -10,7 +10,7 @@
 
 import { readFileSync } from 'fs'
 import path from 'path'
-import { isBlockedRelativeTo, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
+import { mustBlockActionBetween, BLOCKED_ACTION_ERROR, BLOCKED_ACTION_STATUS } from '@/lib/trust-safety/block-check'
 import { loadWall } from '@/lib/social/wall'
 import { loadEndorsements } from '@/lib/social/endorsements'
 import { loadReleaseComments } from '@/lib/social/comments'
@@ -36,10 +36,10 @@ function tableBuilder(rows: unknown[]) {
   return builder
 }
 
-describe('lib/trust-safety/block-check — isBlockedRelativeTo', () => {
+describe('lib/trust-safety/block-check — mustBlockActionBetween', () => {
   it('returns false for the same id without querying', async () => {
     const service = { from: jest.fn() }
-    const result = await isBlockedRelativeTo(service as never, 'me', 'me')
+    const result = await mustBlockActionBetween(service as never, 'me', 'me')
     expect(result).toBe(false)
     expect(service.from).not.toHaveBeenCalled()
   })
@@ -50,7 +50,7 @@ describe('lib/trust-safety/block-check — isBlockedRelativeTo', () => {
         tableBuilder([{ blocker_id: 'me', blocked_id: 'them' }])
       ),
     }
-    const result = await isBlockedRelativeTo(service as never, 'me', 'them')
+    const result = await mustBlockActionBetween(service as never, 'me', 'them')
     expect(result).toBe(true)
   })
 
@@ -60,13 +60,13 @@ describe('lib/trust-safety/block-check — isBlockedRelativeTo', () => {
         tableBuilder([{ blocker_id: 'them', blocked_id: 'me' }])
       ),
     }
-    const result = await isBlockedRelativeTo(service as never, 'me', 'them')
+    const result = await mustBlockActionBetween(service as never, 'me', 'them')
     expect(result).toBe(true)
   })
 
   it('returns false when no block row exists either direction', async () => {
     const service = { from: jest.fn(() => tableBuilder([])) }
-    const result = await isBlockedRelativeTo(service as never, 'me', 'them')
+    const result = await mustBlockActionBetween(service as never, 'me', 'them')
     expect(result).toBe(false)
   })
 

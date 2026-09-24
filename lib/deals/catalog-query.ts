@@ -272,6 +272,15 @@ export async function loadCatalogPage(
   // Anonymous visitor: skip block resolution entirely (Pitfall 3) — there
   // is no real account id to check blocks against, and blockedIds stays
   // an empty set so the exclusion check below is inert for anon reads.
+  //
+  // A FAILED lookup for a real buyer is deliberately NOT caught here. The
+  // exclusion below is the only thing keeping a blocked artist's catalogue
+  // out of this buyer's results, so an unreadable block set means this
+  // function cannot produce a result it is allowed to return — and an empty
+  // page would be a worse lie than an error, since it renders as "nothing
+  // matched". The throw carries loadBlockedIds' generic BLOCK_LOOKUP_FAILED
+  // message, never a Postgres string, so every caller (two server-rendered
+  // catalogue pages, two API routes) surfaces a plain failure.
   const blockedIds = buyerUserId ? await loadBlockedIds(service, buyerUserId) : new Set<string>()
 
   // Usage-cleared filter (D-15): one batched existence check against

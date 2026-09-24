@@ -1,6 +1,6 @@
 import { loadCatalogPage } from './catalog-query'
 import { buildCatalogFilter } from './catalog'
-import { loadBlockedIds } from '@/lib/green-room/discover'
+import { loadBlockedIds, BLOCK_LOOKUP_FAILED } from '@/lib/green-room/discover'
 
 // ─── loadCatalogPage — anonymous-safe branch (23-03 Task 1) ──────────────
 // RESEARCH Pitfall 3: passing an anonymous visitor's null id straight into
@@ -11,6 +11,9 @@ import { loadBlockedIds } from '@/lib/green-room/discover'
 // authenticated block-exclusion path unchanged.
 
 jest.mock('@/lib/green-room/discover', () => ({
+  // requireActual keeps BLOCK_LOOKUP_FAILED real so the assertion below
+  // pins the shipped constant rather than a retyped copy of it.
+  ...jest.requireActual('@/lib/green-room/discover'),
   loadBlockedIds: jest.fn(),
 }))
 
@@ -171,6 +174,25 @@ describe('loadCatalogPage — authenticated buyer (buyerUserId = real id)', () =
 
     expect(mockedLoadBlockedIds).toHaveBeenCalledWith(service, 'buyer-1')
     expect(result.data).toEqual([])
+  })
+
+  // Quick task 260923: loadBlockedIds now THROWS when the `blocks` query
+  // fails instead of returning an empty set. loadCatalogPage deliberately
+  // does not catch it — block exclusion is the only thing keeping a blocked
+  // artist's catalogue out of this buyer's results, so a page it cannot
+  // filter must not be returned. An empty page would be the worse lie: it
+  // renders as "nothing matched".
+  it('propagates a failed block lookup instead of returning an unfiltered page', async () => {
+    const project = projectRow({ user_id: 'blocked-owner' })
+    const service = makeService(
+      [project],
+      [{ id: 'blocked-owner', profile_visibility: 'public' }]
+    )
+    mockedLoadBlockedIds.mockRejectedValue(new Error(BLOCK_LOOKUP_FAILED))
+
+    await expect(loadCatalogPage(service as never, 'buyer-1', BASE_FILTER, 1)).rejects.toThrow(
+      BLOCK_LOOKUP_FAILED
+    )
   })
 
   it('returns cards for a non-blocked owner (authenticated behavior unchanged)', async () => {

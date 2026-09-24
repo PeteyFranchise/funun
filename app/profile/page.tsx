@@ -134,6 +134,18 @@ export default async function OwnerProfilePage() {
     // blocked (or who has blocked the owner) just because the underlying
     // read RLS is `USING (true)`. Reuses the same bidirectional blocked-id
     // set as the public profile route (lib/green-room/discover.ts).
+    //
+    // A failed lookup is deliberately NOT caught. blockedIds is the only
+    // filter applied to the wall/endorsement/comment authors rendered below,
+    // so continuing with an empty set renders content from exactly the
+    // people this owner blocked. Letting the throw propagate means the page
+    // renders nothing at all — the owner sees a generic error, which is the
+    // correct trade: a missing page is recoverable, a rendered block-evading
+    // post is not. Unlike /u/[handle] this is NOT notFound(): the owner's
+    // own profile provably exists, and a 404 here would be a lie that sends
+    // them hunting for a deleted account. The message is loadBlockedIds'
+    // generic BLOCK_LOOKUP_FAILED — it never names a block and never carries
+    // Postgres text, in any environment.
     const blockedIds = await loadBlockedIds(service, user.id)
 
     wall = {
