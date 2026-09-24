@@ -2819,3 +2819,228 @@ Plans:
 - [ ] TBD — run `/gsd-discuss-phase 41.1` first, then a research-only pass. Do not plan implementation
   before the threat model and vendor decision exist.
 
+---
+
+### Phase 42: Member Requests Center & Settings IA
+
+**Goal:** Move permission decisions, rights-information updates, and holder-side master claims out of
+Settings into one Member action center, with consistent Dashboard and notification entry points.
+
+**Product boundary:** Settings retains durable Rights & identity, Public profile, and Payouts data.
+`/requests` owns Needs your decision, Active access, and History. Existing domain tables, mutation routes,
+authorization, and audit behavior remain authoritative; the new aggregate is read-only.
+
+**Dependencies:** Existing Phase 38.1 workspace permission, rights-proposal, and master-claim workflows;
+the existing Dashboard next-moves and notification systems. This phase is independent of Phase 41.
+
+**Migrations:** None expected. Discovery of a schema need is a stop/re-plan condition, not permission to
+slip SQL into a UI plan.
+
+**Status:** Owner-approved and planned 2026-09-23. Ready for execution.
+
+**Plans:** 4 executable slices
+
+Plans:
+
+- [ ] 42-01-PLAN.md — server-only aggregate read model, projections, ordering, failure states, counts
+- [ ] 42-02-PLAN.md — `/requests` UI and domain-preserving decision controls
+- [ ] 42-03-PLAN.md — Dashboard, navigation badge, summary notifications, deep links
+- [ ] 42-04-PLAN.md — Settings cleanup, legacy redirects, accessibility and owner UAT
+
+### Phase 43: External Payout Profile & Consent Foundation
+
+**Goal:** Let a Member safely maintain reusable off-platform payment instructions and tax documents in
+Settings without exposing those secrets through workspace roles or confusing them with Stripe Connect.
+
+**Security boundary:** This is restricted financial/tax data. Generic workspace permissions remain
+structurally unable to grant `manage_payouts` or `view_tax_information`. Raw saved values never round-trip
+to the browser and never enter logs, notifications, URLs, analytics, audit payloads, or the public repo.
+
+**Dependencies:** An approved threat model, KMS/envelope-encryption architecture, step-up authentication,
+retention/deletion policy, legal/privacy scope, and named operational owners. None may be invented during
+schema implementation.
+
+**Migrations:** Unassigned and human-gated. Production is at 227; **228 is reserved for the storage-
+attribution repair and is unavailable**. Select a number only immediately before authoring after scanning
+migration files, untracked files, quick work, and the authoritative ledger. Plans never apply SQL.
+
+**Status:** Owner-approved product direction 2026-09-23. Plan 43-01 is the required architecture gate;
+sensitive implementation is blocked until that gate is approved.
+
+**Plans:** 4 slices
+
+Plans:
+
+- [ ] 43-01-PLAN.md — threat model, processor/KMS, scope, retention, step-up and human architecture gate
+- [ ] 43-02-PLAN.md — human-gated schema/RLS and server crypto boundary; author only, never apply
+- [ ] 43-03-PLAN.md — masked Member-only Payout Profile APIs and Settings UI
+- [ ] 43-04-PLAN.md — authorization, leakage, key-rotation, restore, legal/security and owner release gate
+
+### Phase 43.1: External Payout Delivery & Package Integration
+
+**Goal:** Let a named payer request the exact information needed, let each contributor consent to an
+immutable snapshot, deliver it through expiring recipient-scoped access, and place readiness—not secrets—
+in upload/delivery packages.
+
+**Dependencies:** Phase 42 shipped; Phase 43 production migration, KMS, step-up auth, retention, runbooks,
+and security verification complete; legal/privacy approval for recipient and jurisdiction scope.
+
+**Migrations:** Unassigned and human-gated. Migration 228 remains unavailable. The disclosure-request
+schema may be authored only after the same full number preflight and may never be applied autonomously.
+
+**Default delivery rule:** An ordinary asset package may contain a status manifest plus an expiring secure
+link. It may not contain bank details, tax identifiers/forms, secret-bearing URLs, or unrestricted storage
+links. A static encrypted export is explicitly deferred behind its own owner/security/legal checkpoint.
+
+**Status:** Planned 2026-09-23; blocked on Phase 43 verification.
+
+**Plans:** 4 slices
+
+Plans:
+
+- [ ] 43.1-01-PLAN.md — payer request lifecycle and contributor decisions in Requests
+- [ ] 43.1-02-PLAN.md — immutable consent snapshot and recipient-scoped access grant
+- [ ] 43.1-03-PLAN.md — verified recipient portal, expiry/revoke, metadata-only audit
+- [ ] 43.1-04-PLAN.md — readiness manifest, package leakage scan, finance UAT and launch gate
+
+---
+
+### Phase 44: Writer's Room Members, Presence & Persistent Chat
+
+**Goal:** Make room access and room-specific presence immediately understandable, then add one persistent
+room conversation that stays distinct from section comments, Studio Notes, and direct messages.
+
+**Product boundary:** **Room members** means accepted people with room access. Green **Here now** means the
+Member currently has that Writer's Room open; it does not mean generally online or actively writing.
+Room chat is creative context and cannot create authorship, credit, splits, ownership, approvals, custody,
+or delivery authority.
+
+**Dependencies:** Existing Writer's Room membership and the private authorized Realtime presence channel.
+The chat plans require explicit retention, removal/block, edit/delete, notification, and moderation
+decisions before schema work.
+
+**Migrations:** Presence/member UI requires none. Chat migration is unassigned and human-gated. Production
+is at 227 and migration 228 is reserved/unavailable; execution must run a fresh number preflight.
+
+**Status:** Owner-approved and planned 2026-09-23. Implementation has not started.
+
+**Plans:** 4 slices
+
+Plans:
+
+- [ ] 44-01-PLAN.md — compact member identity, truthful room presence, accessibility and responsive layout
+- [ ] 44-02-PLAN.md — chat doctrine, human-gated schema/RLS, authorization and removal/block semantics
+- [ ] 44-03-PLAN.md — persistent desktop rail/mobile drawer, replies/mentions and notification behavior
+- [ ] 44-04-PLAN.md — Studio Note/section/take bridges, privacy tests, realtime verification and owner UAT
+
+### Phase 44.1: Writer's Room Managed Live Sessions
+
+**Goal:** Add optional camera/microphone sessions and DAW-window screen sharing inside the Writer's Room
+without running a Funūn SFU, recording sessions, or confusing WebRTC audio with a durable song asset.
+
+**Provider gate:** Daily, LiveKit, Twilio, and Zoom Video SDK are first-class candidates; none is selected.
+Run comparable spikes, produce a neutral cost/security/UX brief, and stop for an owner decision before
+installing a production SDK. For Zoom, evaluate the customizable Video SDK—not Meeting SDK—and verify the
+current Build Platform credit conversion at the gate.
+
+**Dependencies:** Phase 44 member/presence authorization. A provider selection, budget/alert thresholds,
+DPA/privacy posture, duration/idle limits, and owner-approved spike are required before production work.
+
+**Migrations:** Unassigned/human-gated if session persistence or usage ledgers require schema. Migration
+228 remains unavailable.
+
+**Status:** Owner-approved direction; research/provider gate first. No vendor selected or installed.
+
+**Plans:** 4 slices
+
+Plans:
+
+- [ ] 44.1-01-PLAN.md — neutral managed-provider spikes, cost/security/DAW tests and owner selection gate
+- [ ] 44.1-02-PLAN.md — provider-neutral session lifecycle, server tokens, revocation, usage/cost controls
+- [ ] 44.1-03-PLAN.md — live-session UI, devices, DAW-window sharing, reconnect and responsive behavior
+- [ ] 44.1-04-PLAN.md — access/privacy/cost/browser verification, incident fallback and owner UAT
+
+### Phase 44.2: Writer's Room Synchronized Take Playback
+
+**Goal:** Let an authorized host audition an existing protected take in sync for room participants while
+each listener fetches the protected asset directly and the call carries transport state only.
+
+**Dependencies:** Phase 44 room authorization and existing protected take access. It can be developed
+against an abstract realtime transport; broad rollout with the live-session UI follows Phase 44.1.
+
+**Migrations:** None expected. Discovery of durable session state is a stop/re-plan condition.
+
+**Status:** Owner-approved and planned; implementation has not started.
+
+**Plans:** 3 slices
+
+Plans:
+
+- [ ] 44.2-01-PLAN.md — host/transport protocol, monotonic timing, reconnect and drift-correction design
+- [ ] 44.2-02-PLAN.md — protected per-listener playback and live-session integration
+- [ ] 44.2-03-PLAN.md — multi-browser drift, revocation, poor-network, accessibility and owner UAT
+
+### Phase 45: Funūn Bridge — DAW Audio Transfer
+
+**Goal:** Give producers a secure desktop companion that watches a managed Funūn Drop folder, confirms the
+destination room, uploads resumably, records provenance, and pulls protected takes into an import folder—
+removing manual browse/upload/delete work without pretending local bytes never exist.
+
+**Dependencies:** Storage attribution/admission and quota controls; larger-file policy; resumable signed
+upload design; device authorization/revocation; OS keychain; threat model; and an owner checkpoint for the
+first desktop OS. Existing marker exports are compatibility aids, not native DAW connectors.
+
+**Migrations:** Unassigned and human-gated. Production is at 227 and 228 is reserved/unavailable. No SQL
+may be applied autonomously.
+
+**Status:** Owner-approved product direction and planned. Blocked on architecture/security/storage gates.
+
+**Plans:** 5 slices
+
+Plans:
+
+- [ ] 45-01-PLAN.md — threat model, OS/runtime decision, spool/retention, file classes and architecture gate
+- [ ] 45-02-PLAN.md — device authorization, signed resumable upload, completion, provenance and cost controls
+- [ ] 45-03-PLAN.md — desktop Bridge core, managed folders, validation, retry/recovery and keychain security
+- [ ] 45-04-PLAN.md — explicit room targeting, Writer's Room integration and protected pull-to-folder
+- [ ] 45-05-PLAN.md — OS parity, crash/revoke/storage/UAT verification and staged rollout gate
+
+### Phase 45.1: DAW Plugin & High-Fidelity Live-Audio Research
+
+**Goal:** Determine whether AU/VST3—and later AAX—can safely justify direct DAW insertion, bus capture, or
+higher-fidelity live collaboration after Bridge usage proves real demand.
+
+**Boundary:** Research only. Network and disk work may never run on the realtime audio thread. No plugin
+implementation, SDK commitment, signing/notarization program, or AAX commitment is approved.
+
+**Dependencies:** Phase 45 usage evidence and representative DAW/OS test hosts.
+
+**Migrations:** None.
+
+**Status:** Research approved; implementation not approved.
+
+**Plans:** 2 research slices
+
+Plans:
+
+- [ ] 45.1-01-PLAN.md — AU/VST3/AAX, licensing/signing, host QA and audio-thread feasibility research
+- [ ] 45.1-02-PLAN.md — live/reference audio modes, bus capture, demand evidence and owner decision brief
+
+### Phase 45.2: Writer's Room Session Recording Research
+
+**Goal:** Define whether recording can ever be offered lawfully and safely before any provider recording,
+transcription, summary, composition, or retained ephemeral chat is enabled.
+
+**Dependencies:** Legal/privacy analysis of participant consent and jurisdictions; product decisions for
+notice, refusal, retention, deletion, export, access, evidence claims, storage/cost and incident response;
+provider-specific behavior from the Phase 44.1 selection.
+
+**Migrations:** None for research.
+
+**Status:** Research/legal work approved; recording implementation is not approved.
+
+**Plans:** 1 research slice
+
+Plans:
+
+- [ ] 45.2-01-PLAN.md — consent/legal/provider matrix, retention/access/cost threat model and owner brief
