@@ -2819,3 +2819,245 @@ Plans:
 - [ ] TBD — run `/gsd-discuss-phase 41.1` first, then a research-only pass. Do not plan implementation
   before the threat model and vendor decision exist.
 
+
+---
+
+## Writer's Room design wave (bench-01, 2026-09-24)
+
+A full-day design session produced a working prototype of the Writer's Room at
+`private/bench/index.html` (gitignored, throwaway). Ten components were harvested from 21st.dev
+and re-skinned to Funūn tokens; five planning notes were filed in `.planning/todos/pending/`.
+
+**Four of the ten picks turned out to be LESS capable than what Funūn already ships** — the
+presence band, the collaborator picker, the hum recorder and the activity list all exist. That
+shaped the whole wave: these phases are mostly **re-skins of surfaces already wired to real
+data**, which is the cheapest kind of change to land. Read each phase's linked todo before
+planning; the reasoning lives there, not here.
+
+**Prototype:** `private/bench/index.html` — serve it with
+`python3 -m http.server 4321 -d private/bench` and open `http://127.0.0.1:4321`.
+
+---
+
+### Gate 0: Sound Vault card grid — ground-colour density test
+
+**Goal:** Settle the app's ground colour before anything below it is built on top of one.
+
+The owner chose **neutral black** (`#000` page, neutral card surfaces, zinc secondary text in
+place of Funūn's lavender) during the bench session. Every screen that decision was made against
+had **one panel on it**, and black flatters a sparse page. The Sound Vault grid is the densest
+screen in the app — twelve `VaultProjectCard`s at once, each carrying full-bleed cover art, a
+gloss scrim, a status chip, a coloured readiness ring and a right-hand label.
+
+**What the test has to answer:**
+
+1. Does the ~4% separation between `#000` and `#0a0a0c` hold when twelve cards tile, or do the
+   hairlines have to carry the whole grid and turn it into a spreadsheet?
+2. Does cover art read as attached to the page, or does it float?
+3. Is the emerald/amber/rose readiness banding informative at twelve-up, or noise?
+
+**Cheaper alternative to test at the same time:** rather than splitting the ground per screen
+(rejected — shared components would need two visual truths), **lift `--card`**. The page stays
+true black and cards separate by surface instead of by hairline. One token, no split.
+
+**Why this is a gate and not a phase:** the answer changes the token values that every phase
+below inherits. Getting it wrong means re-skinning twice.
+
+**Cost:** ~1 token-swap + the grid on the bench. The token system already carries it —
+1,751 usages of `text-lav`/`text-lavdim`/`border-hair`/`bg-card`/`bg-card2` re-skin from two
+files; only **33 hardcoded `rgba(199,203,247,…)` values** across ~10 files need hand-fixing
+(mostly `components/playbook/`, plus `selects-player/theme.ts`, `admin/console-theme.ts`,
+`buyer/fnbl-theme.ts`).
+
+**Status:** Not started. Blocks Phase 42.
+
+---
+
+### Gate 0.1: Gradient budget cleanup
+
+**Goal:** Bring the app back to sketch 005-C's locked rule — **one gradient per screen, spent on
+the primary action.**
+
+The bench has **12 rules painting `var(--grad)`**; on the Chat surface three are visible at once
+(sent bubbles, send button, avatar). The shipped app has not been audited against this rule since
+the tabs and composers multiplied. `ComposerCard.tsx` and `GuidingLine.tsx` both carry header
+comments explaining the budget — they are the reference for what compliance looks like.
+
+**Status:** Not started. Can run in parallel with Gate 0.
+
+---
+
+### Phase 42: Writer's Room — room shell (presentation only, no schema)
+
+**Goal:** Make the room legible to someone who has never opened one, and make the things a writer
+reaches for constantly reachable from anywhere in it.
+
+1. **First-visit state.** `ComposerCardEmptyState` restyled to the room's current language, with
+   each tile naming the tab its result will live in (`lands in Takes`, `lands in Lyrics`). Tapping
+   one opens the real action inline and lights the destination tab. The room teaches its own
+   structure by being used.
+2. **Drop the four-verb composer from the in-progress room.** Owner decision, 2026-09-24. This
+   **departs from sketch 005-C** ("every song page leads with the composer"), which was ratified
+   before these tabs existed and before every verb had a better home of its own. The guiding line
+   survives and still carries the single next step.
+3. **Origin line** — one row showing the idea the room was promoted from. The data is already
+   fetched and discarded: `app/(artist)/vault/works/[workId]/page.tsx:398` queries
+   `ideas.promoted_work_id`. Closes the Ideas→Room loop for free.
+4. **Presence as a collapsing pill** that opens into the avatar grid, with add-to-room. Reclaims
+   ~75px of vertical space on every visit. **Presence ≠ roster**: added people show as "not in the
+   room" and anyone currently present cannot be removed from a presence widget.
+5. **Rearrangeable tabs** with no visual change at rest — `@dnd-kit/sortable` is already a
+   dependency. Needs a keyboard path (`Cmd/Ctrl+Arrow`) since there is no visible handle.
+6. **Docked transport** on every tab, context-aware: the arrangement on the Song tab, the current
+   take elsewhere. Must route through `take-transport.ts`'s active-player registry rather than
+   assuming one player exists — that registry is why one spacebar does not toggle every take.
+7. **Take browser** — a flat pill row stops working around six takes. Recent (default) / Starred /
+   source filters / search / date groups. Needs **`is_favorite` on work_versions** (precedent:
+   `collaborators.is_favorite`, `IdeaRating`).
+8. **Share a take as a link** — revocable and expiring, with the file a deliberate second step.
+   `navigator.share({files})` covers Mail/Messages/AirDrop in one API where supported.
+   Rename the existing take "Export" to **Markers**, which is what it does.
+9. **Light mode** — Funūn is dark-only by construction (`color-scheme: dark`). The bench proved it
+   is achievable but the state colours do not survive a flip: dark encodes state as a light tint
+   on a dark wash, light needs the inverse. Every hardcoded tint is a bug waiting.
+
+**Depends on:** Gate 0 (ground colour), Gate 0.1 (gradient budget).
+
+**Migrations:** One — `is_favorite` on work_versions. Claim the number at planning time.
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run `/gsd-discuss-phase 42` first.
+
+---
+
+### Phase 43: Writer's Room — the musical grid
+
+**Goal:** Let a writer talk in bars instead of timecodes. "The bass drops at bar 17" is what people
+actually say; `2:14` is what the product currently forces.
+
+1. **Song-level tempo, metre and key**, inherited by every take, with a per-take override for the
+   rare take cut to a different click. This is the **DEFAULT-PERFORMER RULE's** inheritance shape
+   ("sections inherit unless tagged") and storing it per-take instead was a modelling error caught
+   by the owner during the bench session.
+2. **A musical counter docked above the waveform** — bar|beat|tick at 960 ppqn, selection start/end/
+   length, and the song facts editable in place. Collapsible, because a grid of numbers is the most
+   intimidating thing on the screen for someone who has never used a DAW; the choice is remembered.
+3. **Bar lines on the waveform**, thinning automatically as they crowd.
+4. **Grid snapping and bar-range selection** — drag to select bars 17–21, snapped to the current
+   grid resolution.
+5. **Notes pinned to bars, not just timestamps.** Pre-roll already exists — `PRE_ROLL_MS = 2000` in
+   `take-transport.ts` means jumping to a stamp lands 2s early so you hear the run-up.
+
+**Tempo detection is explicitly OUT.** `bpm` is `delivery_safe` in the song passport and buyers
+filter on `bpmMin`/`bpmMax` in `lib/deals/catalog.ts` — a wrong auto-detected value hides a song
+from the right search. Detection may *suggest*; a human confirms. Same posture `ai-tag.ts` already
+takes with AI output. Detection is also unreliable on exactly Funūn's hardest inputs: a hummed
+melody has no transients to lock onto.
+
+**Note:** `PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.5]` in `take-transport.ts` omits 2× deliberately
+("rarely useful on music", D-17). Do not add it back.
+
+**Depends on:** Phase 42 (the dock carries the bar readout).
+
+**Migrations:** Song-level `bpm`/`num`/`den`/`key`/`offset`, plus an override shape on versions.
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run `/gsd-discuss-phase 43` first.
+
+---
+
+### Phase 44: Song Builder — arrange, stack, audition
+
+**Goal:** Answer "does take 2's verse work against take 10's hook?" by listening rather than
+imagining.
+
+Full design, schema and constraints:
+**`.planning/todos/pending/2026-09-24-song-builder-arrangement-and-audition.md`** — read it before
+planning; the reasoning does not fit here.
+
+The three decisions that matter:
+
+1. **The sections ARE the lyric blocks.** No second list. Reordering the words reorders the song,
+   `deriveBlockNumerals()` keeps labels honest, and a linked repeat inherits its source's take.
+   A separate section list would drift from the lyrics within a week.
+2. **The instrumental is one continuous bed**, ducked by gain automation per section — not a clip
+   re-assigned per section. A section with no vocal keeps playing.
+3. **Vocals are a stack**, all layers scheduled at the same `when`. This is what makes the feature
+   work with **no instrumental at all** — an a cappella arrangement of stacked takes is a song, and
+   must be a clean state rather than a degraded one.
+
+**Most of the engine already exists** in `lib/catalogue/record-over-beat.ts`, written for one beat
+plus vocal clips: `RecordingClip` holds a decoded `AudioBuffer` with trim and position,
+`clipTimelineWindow()` returns exactly the `source.start(when, offset, duration)` triple,
+`levelMatchedVolumes()` balances two sources, and `encodeWav()` renders the result.
+
+**Scope boundary: this is not a DAW.** No effects, no automation beyond the bed duck, no mixing.
+
+**Depends on:** Phase 43 (bars are the arrangement's unit).
+
+**Migrations:** `'assembly'` as a fourth `VersionSource`; derived credits on an assembly; bar
+length per lyric block; arrangement persistence reconciled against live block ids (reuse
+`reconcileWriterRoomLayout()`, do not write a second reconciler).
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run `/gsd-discuss-phase 44` first.
+
+---
+
+### Phase 45: Studio-quality vocal capture
+
+**Goal:** A vocalist with a good microphone and a real chain records a **keeper** vocal in Funūn
+that a producer pulls straight into their DAW.
+
+Full analysis: **`.planning/todos/pending/2026-09-24-studio-quality-vocal-capture.md`**.
+
+**Three things in today's path would each disqualify a master:** `getUserMedia({audio: true})`
+lets the browser apply automatic gain control (it pumps a sustained vocal); every candidate codec
+is lossy; and `encodeWav()` writes 16-bit.
+
+**Three of the four fixes are parameters on shipping code.** The storage layer is already correct —
+`ALLOWED_AUDIO_TYPES` accepts WAV and FLAC, `MAX_AUDIO_SIZE` is 250MB, `tus-js-client` handles
+resumable upload, and Web Audio processes in 32-bit float internally.
+
+**The one genuinely new piece:** capture-offset calibration, so a take lands sample-aligned rather
+than a few milliseconds late forever. `clipTimelineWindow()` already accepts a `timingOffsetMs`.
+
+**Not an engineering problem:** monitoring latency. Every decent interface has direct hardware
+monitoring; the singer listens through the interface, not the app. That is onboarding copy.
+
+**Tier question — must be settled first.** Every paid-tier artefact in the repo is **buyer-side**.
+This would be the **first artist-facing paid feature**, a distinct business-model conversation, and
+Phase 24 self-serve is already on hold pending one. Fold it in rather than opening a second.
+
+**Depends on:** nothing technical. Can ship independently of 42–44.
+
+**Migrations:** None expected.
+
+**Status:** Designed 2026-09-24. Tier decision outstanding.
+
+**Plans:** 0 plans — settle the tier question, then `/gsd-discuss-phase 45`.
+
+---
+
+### Backlog from the same session (todos, not yet phases)
+
+- **`/actions` slash commands in composers** —
+  `.planning/todos/pending/2026-09-24-actions-slash-commands-in-composers.md`. Mechanism
+  prototyped; the command set needs product input. Must be a **shared composer behaviour** across
+  all five conversation surfaces, not a chat feature.
+- **`#hashtag` filing and recognition** —
+  `.planning/todos/pending/2026-09-24-hashtag-filing-and-recognition.md`. **Blocked on a
+  decision**, not on effort: `lib/tagging/ai-tag.ts` constrains tags to a controlled vocabulary
+  *on purpose* ("constrain, then drop the rest", T-30-04). Open hashtags would be a third
+  namespace and would recreate the filter-invisibility that comment guards against.
+- **Pro-audio upgrades within the mission** (discussion) —
+  `.planning/todos/pending/2026-09-24-discuss-pro-audio-upgrades-within-mission.md`. Proposes a
+  test ("does this strengthen rights, provenance or delivery — or is it a production feature
+  wearing audio clothes?") and a principle to ratify: **measure and deliver, never alter the
+  stored bytes.**
+- **Room chat is a fifth conversation surface.** Funūn already has DMs, Studio Notes threads with
+  reactions, timed take comments and per-block lyric comments. Decide what belongs in chat versus
+  Notes before building it, or the same conversation splits across two tabs.
