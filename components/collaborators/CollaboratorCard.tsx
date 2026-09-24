@@ -9,7 +9,7 @@ import {
   collaboratorDisplayName,
   collaboratorEditActionLabel,
   collaboratorInitials,
-  memberProfileHref,
+  memberAffordances,
 } from '@/lib/collaborators/display-identity'
 import { CollaboratorIdentityLabel } from '@/components/collaborators/CollaboratorIdentityLabel'
 import { PRO_LABELS } from '@/lib/metadata/schema'
@@ -35,6 +35,29 @@ import { PRO_LABELS } from '@/lib/metadata/schema'
 // Identity comes from the shared display contract
 // (lib/collaborators/display-identity.ts) plus a server-decided
 // CollaboratorIdentityHint. The card never resolves a handle itself.
+//
+// BLOCK-AWARE READS: the hint's `memberVisible` flag is false ONLY when a
+// block exists in either direction, and when it is false this card renders
+// none of the member-derived affordances — no "✓ Funūn member" state, no
+// Message link (the worst of them: an affordance aimed at someone who blocked
+// you), no profile link on the name or avatar, and no "Start a split sheet",
+// whose mere presence is itself a membership tell.
+//
+// What such a row DOES keep is everything an UNCLAIMED row has, Invite button
+// included. The server strips `claimed_by` for exactly these rows, so the card
+// reads them as unclaimed and renders the ordinary non-member layout — and a
+// lone card with no call to action would be as legible a tell as the badge it
+// replaced. The invite route refuses the pair with the shared,
+// block-state-agnostic error (13-03), so acting on it discloses nothing
+// either.
+//
+// The ROW DOES NOT VANISH. It is the owner's own roster entry — their name
+// for that person, their notes, their PRO — and a block on this platform
+// filters rather than severs. Only the member-derived parts go.
+//
+// `memberVisible` is NOT the handle predicate. A hidden, connections-only or
+// is_public:false member keeps every affordance below; whether their
+// membership may be disclosed is Phase 41's D-01a, an open owner decision.
 
 type Props = {
   collaborator: CollaboratorProfile
@@ -67,6 +90,114 @@ function timeAgo(iso: string): string {
   const weeks = Math.floor(days / 7)
   if (weeks < 5) return `${weeks}w ago`
   return new Date(iso).toLocaleDateString()
+}
+
+const MENU_ITEM_CLASS =
+  'block w-full px-3 py-2 text-left text-[13px] text-lav transition hover:bg-white/5 hover:text-white'
+
+type MenuProps = {
+  collaborator: CollaboratorProfile
+  identityHint?: CollaboratorIdentityHint | null
+  /** The row has an invite on record (or one was just sent) and is not claimed. */
+  canResendInvite: boolean
+  onClose: () => void
+  onEdit: () => void
+  onArchive?: () => void
+  onDelete?: () => void
+  onResend: () => void
+}
+
+/**
+ * The ⋯ dropdown panel.
+ *
+ * Extracted from CollaboratorCard as its own component for one reason: the
+ * Message link is the WORST of this roster's block leaks — an affordance
+ * aimed at someone who blocked you — and a panel that only exists inside a
+ * `menuOpen` state cannot be asserted on by a markup test, so the assertion
+ * that it is gone would pass whether or not the gate existed. Rendering it
+ * directly is what lets that assertion actually bite.
+ *
+ * It re-derives the affordances from the SAME shared helper the card uses,
+ * rather than receiving hrefs as props, so the disclosure decision has
+ * exactly one definition (lib/collaborators/display-identity.ts).
+ */
+export function CollaboratorCardMenu({
+  collaborator,
+  identityHint,
+  canResendInvite,
+  onClose,
+  onEdit,
+  onArchive,
+  onDelete,
+  onResend,
+}: MenuProps) {
+  const isClaimed = isClaimedCollaborator(collaborator)
+  const { memberVisible, profileHref, messageHref } = memberAffordances(collaborator, identityHint)
+
+  return (
+    <div
+      role="menu"
+      className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-hairstrong bg-card2 py-1 text-left shadow-cta"
+    >
+      {profileHref && (
+        <Link href={profileHref} role="menuitem" className={MENU_ITEM_CLASS} onClick={onClose}>
+          View profile
+        </Link>
+      )}
+      {isClaimed && memberVisible && (
+        <Link
+          href={`/split-sheets/new?collaborator=${collaborator.id}`}
+          role="menuitem"
+          className={MENU_ITEM_CLASS}
+          onClick={onClose}
+        >
+          Start a split sheet
+        </Link>
+      )}
+      {messageHref && (
+        <Link href={messageHref} role="menuitem" className={MENU_ITEM_CLASS} onClick={onClose}>
+          Message
+        </Link>
+      )}
+      {canResendInvite && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => { onClose(); onResend() }}
+          className={MENU_ITEM_CLASS}
+        >
+          Resend invite
+        </button>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => { onClose(); onEdit() }}
+        className={MENU_ITEM_CLASS}
+      >
+        Edit
+      </button>
+      {isClaimed ? (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => { onClose(); onArchive?.() }}
+          className="block w-full px-3 py-2 text-left text-[13px] text-amber-300/90 transition hover:bg-white/5 hover:text-amber-300"
+        >
+          Archive
+        </button>
+      ) : (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => { onClose(); onDelete?.() }}
+          className="block w-full px-3 py-2 text-left text-[13px] text-red-400/90 transition hover:bg-white/5 hover:text-red-400"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  )
 }
 
 export function CollaboratorCard({
@@ -141,10 +272,10 @@ export function CollaboratorCard({
 
   // The profile link exists only where the SAFE handle exists — the same hint
   // the visible @handle comes from, so a link can never outlive the
-  // disclosure decision that produced it.
-  const profileHref = isClaimed ? memberProfileHref(identityHint) : null
-  const menuItemClass =
-    'block w-full px-3 py-2 text-left text-[13px] text-lav transition hover:bg-white/5 hover:text-white'
+  // disclosure decision that produced it. `memberVisible` is the second,
+  // block-only signal; it gates the member state and the Message link.
+  const { memberVisible, profileHref: hintProfileHref } = memberAffordances(collaborator, identityHint)
+  const profileHref = isClaimed ? hintProfileHref : null
 
   const favoriteButton = (
     <button
@@ -180,73 +311,16 @@ export function CollaboratorCard({
         <span className="text-lg leading-none">⋯</span>
       </button>
       {menuOpen && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-hairstrong bg-card2 py-1 text-left shadow-cta"
-        >
-          {profileHref && (
-            <Link href={profileHref} role="menuitem" className={menuItemClass} onClick={() => setMenuOpen(false)}>
-              View profile
-            </Link>
-          )}
-          {isClaimed && (
-            <Link
-              href={`/split-sheets/new?collaborator=${collaborator.id}`}
-              role="menuitem"
-              className={menuItemClass}
-              onClick={() => setMenuOpen(false)}
-            >
-              Start a split sheet
-            </Link>
-          )}
-          {isClaimed && collaborator.claimed_by && (
-            <Link
-              href={`/messages?with=${collaborator.claimed_by}`}
-              role="menuitem"
-              className={menuItemClass}
-              onClick={() => setMenuOpen(false)}
-            >
-              Message
-            </Link>
-          )}
-          {!isClaimed && (hasBeenInvited || inviteState === 'sent') && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); runInvite(true) }}
-              className={menuItemClass}
-            >
-              Resend invite
-            </button>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { setMenuOpen(false); onEdit() }}
-            className={menuItemClass}
-          >
-            Edit
-          </button>
-          {isClaimed ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); onArchive?.() }}
-              className="block w-full px-3 py-2 text-left text-[13px] text-amber-300/90 transition hover:bg-white/5 hover:text-amber-300"
-            >
-              Archive
-            </button>
-          ) : (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); onDelete?.() }}
-              className="block w-full px-3 py-2 text-left text-[13px] text-red-400/90 transition hover:bg-white/5 hover:text-red-400"
-            >
-              Delete
-            </button>
-          )}
-        </div>
+        <CollaboratorCardMenu
+          collaborator={collaborator}
+          identityHint={identityHint}
+          canResendInvite={!isClaimed && (hasBeenInvited || inviteState === 'sent')}
+          onClose={() => setMenuOpen(false)}
+          onEdit={onEdit}
+          onArchive={onArchive}
+          onDelete={onDelete}
+          onResend={() => runInvite(true)}
+        />
       )}
     </div>
   )
@@ -296,10 +370,20 @@ export function CollaboratorCard({
   // Primary action — state-driven. member → quiet ✓; just sent → quiet
   // confirmation; already invited → quiet status (Resend lives in the ⋯
   // menu); never invited → loud Invite.
+  //
+  // A row the viewer may not see as a member shows NO member state. It does
+  // NOT lose the Invite button: the server has already stripped `claimed_by`
+  // from that row, so it arrives looking exactly like an unclaimed one, and
+  // withholding the CTA would put the tell back — a single card with no action
+  // is as legible as a badge. The invite route refuses the pair with the
+  // shared, block-state-agnostic error every other gated action returns, so
+  // the resting state discloses nothing and acting discloses nothing specific.
   const primaryAction = isClaimed ? (
-    <p className={`flex items-center gap-1.5 text-[12.5px] font-semibold text-brandindigo ${isRow ? '' : 'justify-center'}`}>
-      <span aria-hidden>✓</span> Funūn member
-    </p>
+    memberVisible ? (
+      <p className={`flex items-center gap-1.5 text-[12.5px] font-semibold text-brandindigo ${isRow ? '' : 'justify-center'}`}>
+        <span aria-hidden>✓</span> Funūn member
+      </p>
+    ) : null
   ) : inviteState === 'sent' ? (
     <p className="text-[12.5px] font-semibold text-brandindigo">
       {didResend ? 'Invite resent ✓' : 'Invite sent ✓'}

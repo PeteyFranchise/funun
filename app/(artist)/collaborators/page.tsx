@@ -1,6 +1,10 @@
 import { createServerClient, createServiceClient } from '@/lib/supabase/server'
-import { resolveCollaboratorIdentityHints } from '@/lib/collaborators/identity-hints.server'
+import {
+  redactHiddenMemberLinks,
+  resolveCollaboratorIdentityHints,
+} from '@/lib/collaborators/identity-hints.server'
 import { CollaboratorRoster } from '@/components/collaborators/CollaboratorRoster'
+import { COLLABORATOR_ROSTER_COLUMNS } from '@/lib/collaborators'
 import type { CollaboratorProfile } from '@/lib/collaborators'
 import { Topbar } from '@/components/layout/Topbar'
 
@@ -22,12 +26,12 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
   // My Roster: collaborators this user has added (Phase 1 behavior)
   const { data } = await supabase
     .from('collaborators')
-    .select('*')
+    .select(COLLABORATOR_ROSTER_COLUMNS)
     .eq('user_id', user?.id ?? '')
     .is('archived_at', null)
     .order('name', { ascending: true })
 
-  const collaborators = (data ?? []) as CollaboratorProfile[]
+  const rosterRows = (data ?? []) as unknown as CollaboratorProfile[]
 
   // Viewer-scoped @handle for each claimed row, so two collaborators named
   // Eric are distinguishable. This replaced a raw `user_profiles(id, handle)`
@@ -39,8 +43,20 @@ export default async function CollaboratorsPage({ searchParams }: PageProps) {
     supabase,
     createServiceClient(),
     user?.id ?? null,
-    collaborators
+    rosterRows
   )
+
+  // `claimed_by` IS the disclosure — it is the member's account id, and these
+  // rows become client props. Stripping it for a non-memberVisible row is what
+  // stops a blocked member's account reaching the browser at all, rather than
+  // merely being unrendered. Done AFTER the resolver, which needs the column.
+  //
+  // The row itself stays: a block on this platform filters rather than severs
+  // (app/api/network/blocks/route.ts inserts a row and stops; connections and
+  // follows are left in place and filtered at read time by no_block()), so the
+  // roster matches. Unclaiming would destroy a real link and lose it on
+  // unblock, which is why this needed no migration.
+  const collaborators = redactHiddenMemberLinks(rosterRows, identityHints)
 
   // Latest invite per collaborator — drives each card's "Invited …" status and
   // the Resend affordance. RLS "Inviting user manages invites" (migration 018)

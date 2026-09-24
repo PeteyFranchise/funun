@@ -98,7 +98,18 @@ function rosterRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function renderRoster(rows: unknown[], initialView: RosterView, hints: Record<string, { handle: string | null }> = {}) {
+// Hints always carry BOTH signals. `memberVisible` is true for every case in
+// this file: it is false ONLY for a block, which the roster's own suite covers
+// in CollaboratorCard.test.tsx.
+function hintFor(handle: string | null, memberVisible = true) {
+  return { handle, memberVisible }
+}
+
+function renderRoster(
+  rows: unknown[],
+  initialView: RosterView,
+  hints: Record<string, { handle: string | null; memberVisible: boolean }> = {}
+) {
   return renderToStaticMarkup(
     <CollaboratorRoster
       collaborators={rows as never}
@@ -114,7 +125,7 @@ describe('CollaboratorRoster layout toggle', () => {
   const views: RosterView[] = ['cards', 'list']
 
   it.each(views)('renders the same identity stack in the %s view', view => {
-    const markup = renderRoster([rosterRow()], view, { 'row-1': { handle: 'ericsmith' } })
+    const markup = renderRoster([rosterRow()], view, { 'row-1': hintFor('ericsmith') })
 
     expect(markup).toContain('Eric Smith')
     expect(markup).toContain('@ericsmith')
@@ -124,7 +135,7 @@ describe('CollaboratorRoster layout toggle', () => {
   })
 
   it.each(views)('leaks no private roster field in the %s view', view => {
-    const markup = renderRoster([rosterRow()], view, { 'row-1': { handle: 'ericsmith' } })
+    const markup = renderRoster([rosterRow()], view, { 'row-1': hintFor('ericsmith') })
 
     for (const secret of Object.values(ROSTER_PRIVATE)) {
       expect(markup).not.toContain(secret)
