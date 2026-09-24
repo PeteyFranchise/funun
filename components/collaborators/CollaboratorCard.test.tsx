@@ -134,11 +134,18 @@ describe('CollaboratorCard legacy duplicate remediation', () => {
     expect(markup).not.toContain('Add last name')
   })
 
-  it('offers no remediation when a visible handle already disambiguates', () => {
-    const markup = render({}, hintFor('ericsmith'), { isAmbiguous: true })
+  // Reversed 2026-09-24 by owner decision. The handle disambiguates the ROWS;
+  // it does not supply the surname a split sheet needs, so it must not silence
+  // the ask. The original test asserted the opposite.
+  it('still offers remediation on an ambiguous row that already shows a handle', () => {
+    const markup = render(
+      { name: 'Eric', first_name: 'Eric', last_name: null },
+      hintFor('djsoko'),
+      { isAmbiguous: true }
+    )
 
-    expect(markup).not.toContain('Add last name')
-    expect(markup).not.toContain('Edit details')
+    expect(markup).toContain('@djsoko')
+    expect(markup).toContain('Add last name')
   })
 
   it('offers no remediation on a row nothing collides with', () => {

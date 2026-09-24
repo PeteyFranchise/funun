@@ -104,7 +104,7 @@ export function CollaboratorRoster({
   // Collision state is computed ONCE from the active list and passed down, so
   // a card never decides on its own whether it is ambiguous. Rows keep being
   // keyed by id below — never by name or handle, both of which change.
-  const ambiguousIds = ambiguousCollaboratorIds(list, identityHints)
+  const ambiguousIds = ambiguousCollaboratorIds(list)
 
   // Claimed collaborator rows prove identity, not authorship. Flatten only
   // real split-sheet relationships so a bare email/name match can never be

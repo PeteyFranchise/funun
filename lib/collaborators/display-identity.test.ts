@@ -147,13 +147,17 @@ describe('collaborator display identity — collision detection', () => {
     expect(ids).toEqual(new Set(['a', 'b']))
   })
 
-  it('does not flag rows a visible handle already tells apart', () => {
-    const ids = ambiguousCollaboratorIds(
-      [row({ id: 'a', name: 'Eric' }), row({ id: 'b', name: 'Eric' })],
-      { a: hintFor('ericsmith') }
-    )
-    expect(ids).toEqual(new Set())
-  })
+  // Owner decision 2026-09-24 reversed the original rule: a visible @handle used
+  // to exclude a row here. It tells two rows apart ON SCREEN, but it is not a
+  // name — @djsoko does not identify a person to a PRO, and a split sheet needs
+  // the surname.
+  //
+  // That rule is now enforced STRUCTURALLY rather than by assertion: this
+  // function no longer accepts identity hints, so it cannot consider a handle
+  // even by mistake. A unit test here cannot prove the absence of a parameter,
+  // so the behavioural proof lives in CollaboratorRoster.test.tsx, where hints
+  // and collisions actually meet. Do not re-add a hints argument to "restore
+  // coverage" — the missing parameter IS the coverage.
 
   it('ignores archived rows — they are not on the roster the owner is scanning', () => {
     const ids = ambiguousCollaboratorIds([

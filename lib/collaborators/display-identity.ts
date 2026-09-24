@@ -218,14 +218,22 @@ export function matchesCollaboratorSearch(
  * label AND neither of them carries a visible handle. One Eric with a handle
  * beside one without is already distinguishable, so neither is flagged.
  */
+// Takes no identity hints, deliberately. It used to accept them so a visible
+// @handle could exclude a row from collision detection; that rule was reversed
+// on 2026-09-24 and the parameter went with it rather than lingering as an
+// ignored argument that implies handles are still considered. They are not.
 export function ambiguousCollaboratorIds(
-  rows: Pick<CollaboratorProfile, 'id' | 'name' | 'first_name' | 'middle_name' | 'last_name' | 'name_suffix' | 'archived_at'>[],
-  hints: CollaboratorIdentityHints = {}
+  rows: Pick<CollaboratorProfile, 'id' | 'name' | 'first_name' | 'middle_name' | 'last_name' | 'name_suffix' | 'archived_at'>[]
 ): Set<string> {
   const groups = new Map<string, string[]>()
   for (const row of rows) {
     if (row.archived_at) continue
-    if (visibleHandle(hints[row.id])) continue
+    // A visible @handle used to exclude a row from collision detection here,
+    // on the reasoning that the handle already tells two rows apart. It does —
+    // on screen. But a handle is not a name: @djsoko does not identify a person
+    // to a PRO, and a split sheet needs the surname. Two same-named
+    // collaborators still need last names even when the roster can distinguish
+    // them, so a handle must not silence the ask. Owner decision 2026-09-24.
     const key = normalizeIdentityText(collaboratorDisplayName(row))
     if (!key) continue
     const bucket = groups.get(key)
