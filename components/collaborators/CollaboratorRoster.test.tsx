@@ -171,3 +171,51 @@ describe('CollaboratorRoster layout toggle', () => {
     expect(markup).toContain('>list<')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// The behavioural proof for the 2026-09-24 rule change. `ambiguousCollaborator
+// Ids` no longer accepts identity hints, so a unit test there cannot show that
+// handles are ignored — the parameter's absence is structural. THIS is where
+// the two actually meet: two same-named members, both with visible handles,
+// must BOTH still be asked for a surname. A handle disambiguates the rows; a
+// split sheet needs the name.
+// ─────────────────────────────────────────────────────────────────────────
+describe('CollaboratorRoster same-name remediation', () => {
+  const eric = (id: string) => ({
+    id,
+    user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    name: 'Eric',
+    first_name: 'Eric',
+    last_name: null,
+    claimed_by: `member-${id}`,
+    archived_at: null,
+    is_favorite: false,
+    status: 'confirmed',
+  })
+
+  function renderRoster(view: RosterView) {
+    return renderToStaticMarkup(
+      <CollaboratorRoster
+        collaborators={[eric('a'), eric('b')] as never}
+        credits={[]}
+        identityHints={{
+          a: { handle: 'ericsmashjohnson', memberVisible: true },
+          b: { handle: 'djsoko', memberVisible: true },
+        }}
+        initialView={view}
+      />
+    )
+  }
+
+  it.each(['cards', 'list'] as const)(
+    'asks BOTH handled Erics for a last name in %s view — the handle is not a name',
+    view => {
+      const markup = renderRoster(view)
+
+      expect(markup).toContain('@ericsmashjohnson')
+      expect(markup).toContain('@djsoko')
+      // Two rows, two asks. Before 2026-09-24 the handles suppressed both.
+      expect(markup.match(/Add last name/g) ?? []).toHaveLength(2)
+    }
+  )
+})

@@ -347,11 +347,20 @@ export function CollaboratorCard({
     />
   )
 
-  // Legacy/unclaimed collision remedy. Never invents an identifier — it asks
-  // the owner for the one piece of data that would actually disambiguate, and
-  // falls back to the full form when a last name is already on file.
+  // Collision remedy. Never invents an identifier — it asks the owner for the
+  // one piece of data that would actually disambiguate, and falls back to the
+  // full form when a last name is already on file.
+  //
+  // Fires on ANY collision, including rows that already show a handle. The
+  // first version required `!profileHref`, on the reasoning that a visible
+  // @handle already tells two rows apart. It does — on screen. But a handle is
+  // not a name: @djsoko does not identify a person to a PRO, and a split sheet
+  // needs the surname. Two same-named collaborators still need last names even
+  // when the roster can distinguish them, so the handle must not silence the
+  // ask. Owner decision 2026-09-24, from looking at two handled Erics and still
+  // wanting their surnames.
   const ambiguityAction =
-    isAmbiguous && !profileHref ? (
+    isAmbiguous ? (
       <button
         type="button"
         onClick={onEdit}
