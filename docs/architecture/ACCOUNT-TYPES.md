@@ -98,6 +98,43 @@ they should use a separate personal Member login.
 The account-context resolver fails closed to staff-only context if legacy data contains an
 unexpected staff/member or staff/buyer overlap.
 
+## Naming discipline
+
+Two Funūn names contain the word "Team" and mean unrelated things. One of them is public.
+
+| Written in full | What it is | Structural signal |
+|---|---|---|
+| **Funūn Team Member** | Staff operating the business | `funun_staff` + server-verified `staff_roles[]` |
+| **Team** (pricing tier) | A Member tier — a Member workspace sized for several people | a Member's plan; no staff concept whatsoever |
+
+Rules:
+
+1. **Never write "Team Member" without "Funūn".** The bare form is the collision. In code
+   comments, planning docs, commit messages and conversation, it is always *Funūn Team Member*.
+2. **Never call the pricing tier a "Team account".** It is the **Team tier** of a Member account.
+   Labels, management companies and multi-artist rosters on that tier and on Entourage are
+   **Members** — the Member umbrella explicitly covers managers and label executives — not Client
+   Partners.
+3. **When a name is ambiguous, cite the structural signal, not the name.** `user_profiles`,
+   `funun_staff`, `buyer_members` → `buyer_orgs` are greppable and cannot drift; a name can.
+   This is the same rule as the `owner_segment` lesson: a label that nothing checks is not
+   evidence.
+
+## Public marketing surfaces address Members only
+
+The marketing site sells the **Member** workspace and nothing else. Its pricing tiers, its
+sign-up and sign-in entries, and its onboarding path are all Member-facing.
+
+- Every tier — Writer, Studio, Team, Entourage — is a Member tier.
+- "Talk to us" on the larger tiers is *answered by* Funūn Team Members, but what it creates at the
+  end is a **Member workspace**.
+- `/signin` is the single sign-in surface for everyone; `lib/auth/postSignInPath.ts` resolves the
+  destination *after* authentication (a Client Partner relationship → `/sync/catalog`, staff →
+  `/admin/client-partners`, everyone else → `/vault`). The marketing page links there because it
+  is the one door, not because the page addresses those audiences.
+
+Owner instruction, 2026-09-26: *"WE ARE ONLY talking about user accounts for Members."*
+
 ## Contract and licensing homes
 
 - Contract Locker is available to every Member, including managers who are not writers.
