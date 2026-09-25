@@ -2115,6 +2115,20 @@ for your music career" is off funun.studio.** Search results update on the next 
 Planning docs only, no shipped code, nothing waiting to deploy: the exclusivity blocker, the FAQ
 record, and the `authorises → authorizes` fix. They need a follow-up PR whenever convenient.
 
+## Where we stopped — 2026-09-25, end of day
+
+Owner called it: *"save what we have, we have to pick up later."* Everything below is committed
+and backed up; nothing is half-applied.
+
+**Done today, after the Codex rewrites landed:** header built (waveform mark at the footer's exact
+geometry, `(fuh-NOON)` phonetic, links centred on the page via a 1fr/auto/1fr grid), sphere hover
+card raised above the avatars and the sphere's z-index range trapped so it stops painting over the
+nav, Voices rebuilt to take **both text and audio quotes** with a real `<audio>` player, and
+*Morning Light* removed from the page entirely.
+
+**The page is structurally finished.** Six sections, a header, a footer, no dead layout. What
+stands between it and shipping is not design work — it is four decisions and one page of writing.
+
 ## Tomorrow, in order
 
 1. **Decide the twelve CTA destinations.** Nine resolve to existing routes (`/signin`,
@@ -2128,6 +2142,11 @@ record, and the `authorises → authorizes` fix. They need a follow-up PR whenev
    executable. CLAUDE.md requires phase work to start there.
 4. **Then port** — a route in the Next app, mostly static markup, sphere and Selects marked
    `priority`.
+
+5. **Testimonials** — the format question is settled (both text and audio, mechanism built and
+   verified). What is left is sourcing, consent and ops: who gets asked, what the release says,
+   where clips live, and how someone gets taken off the page. Full write-up in
+   `.planning/todos/pending/2026-09-25-testimonial-audio-sourcing-and-consent.md`.
 
 **Also on the list, owner-raised 2026-09-25:** *how do we populate the audio in the testimonial
 cards, how does anyone submit a testimonial, and what are the logistics around that part of the
