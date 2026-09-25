@@ -1723,3 +1723,21 @@ to the plugin exploration.
 Order is now: start the song → bring in who you're writing with → send it out, get it back → the
 record writes itself → take it out. Production sits before the ledger settles, which is the real
 sequence.
+
+### Step 5 gains the credits payoff (2026-09-25)
+
+> Masters, artwork and metadata land in one place, **credits already filled in from the writing
+> rather than a last-minute round of emails.** A readiness score tells you what is still missing,
+> and when the song is release-ready it is ready to submit to The Crate.
+
+Framed as a **payoff, not a repeat**. Step 2 already says "Nobody is chasing a PRO number the week
+a release is due", so a second no-chasing line would be padding. This one says *why* there is
+nothing to chase — the credits came out of the writing. Step 2 collects, step 5 is where they are
+simply already there.
+
+Accurate: collaborator records feed splits, contracts and registrations
+(`018_collaborators_split_sheets.sql`), and Metadata Studio holds the credits.
+
+**Watch the length.** Step 5 is now three clauses and four rendered lines against two or three
+elsewhere. Defensible as the closing step, but if it gets heavy the readiness-score sentence is the
+one to cut — "release-ready" survives without it.
