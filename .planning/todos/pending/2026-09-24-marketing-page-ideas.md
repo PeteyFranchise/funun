@@ -2157,10 +2157,18 @@ song. Replaced with **Paper**, which is genuinely Maya Reyes's in
 faithful to shipped data, not less. `morning-light.jpg` deleted from `private/bench/img/art/`;
 no reference to the song remains anywhere on the page.
 
-Note while in there: only **Paper** and **Moonlight** are actually Maya's in the sample catalogue.
-`midnight-ride.jpg` is Sable Roy's *Cross the Wire* and `golden-hour.jpg` is Ledger & Vine's.
-The mock attributes all four to Maya. Harmless in a mockup, but it is invented data on a page
-whose whole argument is that Funūn does not invent data — worth a decision before this ships.
+**Correction to my first note on this.** I flagged that the mock credits Maya with covers the
+sample data assigns to Sable Roy and Ledger & Vine, and called it "invented data on a page whose
+argument is that Funūn does not invent data." That overstated it. `SAMPLE_CATALOG_ROWS` is
+described in its own header as the **empty-state fallback** — Maya Reyes, Sable Roy, Ledger &
+Vine, Odile Faye and The Warm Fronts are all invented, and Maya appears nowhere outside sample
+data and tests. There is no real artist to mis-credit. Owner confirmed the intent: *"use her fake
+song called paper we made up."*
+
+What is left is cosmetic only — the mock's durations and two of its titles drift from the sample
+rows (Moonlight is 3:05 there, 3:41 here; "Midnight Ride" is not a title in the data at all).
+Worth tidying if the mock ever gets pointed at the real sample constant; not a truth problem.
+**The one genuinely real thing on this page was *Morning Light*, and it is gone.**
 
 ### Bug: the sphere hover card was painted over by the avatars (2026-09-25)
 
