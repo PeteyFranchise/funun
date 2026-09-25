@@ -662,3 +662,29 @@ follow:
    the page is public.
 
 Codex has been asked to flag it specifically as a service promise rather than a feature claim.
+
+### Release Report — "Get it out there" + registration tracking (2026-09-25)
+
+| | |
+|---|---|
+| Was | **Take it out** — Build a single, snippet, EP, or album with the full readiness checklist for going out. |
+| Now | **Get it out there** — Build a single, snippet, EP or album, and walk the checklist that gets it out the door. Copyright, your PRO, SoundExchange — we track what's registered and what isn't, so the paperwork that pays you doesn't get missed. |
+
+**The wording is load-bearing. Funūn does not register anything on an artist's behalf.** Wave 2
+pillar 3 is *guided checklists* for copyright.gov eCO, ASCAP/BMI/SESAC/SOCAN and SoundExchange,
+with deep links and per-project status tracking. Confirmed 2026-09-25: no code anywhere submits to
+a PRO — the registrations page renders guidance ("Copyright — US Copyright Office") and tracks
+state; Songtrust has a guide card and a CWR export hook, and full API integration is still a
+pending BD conversation.
+
+So **"we track what's registered and what isn't" is true. "We make sure you're registered" would
+not be** — it invites the reading that Funūn files for you, and an artist who believed that and
+skipped their own PRO registration would lose real money. In a rights product that is the exact
+class of overclaim worth being pedantic about. Codex has been given the constraint explicitly.
+
+### Incidental find: "shop" is Funūn's own contractual word
+
+`lib/sync-library/agreement.ts:150` — *"This one-time agreement authorizes Funūn to represent and
+**shop** your submitted songs for sync licensing."* The owner independently reached for "shopping
+your tracks" when asking for the Crate copy. That is the in-house word, already in a signed
+agreement, and it is worth reusing deliberately rather than paraphrasing around it.
