@@ -3217,8 +3217,19 @@ hazard** — most 21st.dev components target v4 and unmatched classes fail silen
 
 #### 46.1 — Three hero banners, finished
 
-Slide 1 (Writer's Room neon) is the only one with real content; 2 and 3 are placeholders, each
-meant to showcase something unique about Funūn. **Subjects undecided.**
+**The carousel is an announcement rail, not three general showcases** (owner, 2026-09-25). Each
+slide introduces a **specific new feature or offer**: the kicker is the frame (`Introducing`), the
+sign is the payload (the feature name), and the lede places it in the product (`Now inside Funūn…`)
+before saying what it does.
+
+That is why Codex's proposed kicker rewrite (`Introducing` → `Built for the writing room`) was
+declined — it read the kicker as empty because it did not know the rail's purpose.
+
+Slide 1 announces the Writer's Room. **Slides 2 and 3 are placeholders, and their briefs are now
+much narrower: pick two more features to announce.** The roadmap already holds the candidates —
+Song Builder (Phase 44), the musical grid (Phase 43), studio-quality vocal capture (Phase 45), The
+Crate. An announcement rail also implies a maintenance question worth deciding once: what happens
+to a slide when its feature stops being new.
 
 **Division of labour, agreed 2026-09-25:** the owner generates imagery (prompts A and B already
 written); this phase does integration — compositing live text over the facade plate, colour-matching

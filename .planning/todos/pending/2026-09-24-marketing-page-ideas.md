@@ -1140,3 +1140,31 @@ page or any popover.
 
 `24-bit keeper takes` is on the card, but Codex is right that it must not go public until the
 deployed recorder reliably produces 24-bit/48 kHz across supported browsers. That is Phase 45 work.
+
+### Hero carousel purpose CLARIFIED (owner, 2026-09-25)
+
+> *"I wanted these heros to highlight specific new features or offers from Funūn, hence Introducing
+> Writer's Room, because writer's room is the feature. It can say inside Funūn, or now inside
+> Funūn, or something else like that in the rest of the copy."*
+
+**It is an announcement rail.** Structure per slide:
+
+| Element | Role | Slide 1 |
+|---|---|---|
+| Kicker | the frame | `Introducing` |
+| Sign | the payload — the feature name | `Writer's Room` |
+| Lede | places it in the product, then says what it does | `Now inside Funūn. Write the topline together — …` |
+
+This **settles the one Codex rewrite that was declined on instinct.** Codex called `Introducing`
+empty; it is empty as a *positioning* line and load-bearing as an *announcement* frame. It had the
+copy but not the design intent, which is a good example of why a copy reviewer needs the structure
+explained, not just the strings.
+
+**It also narrows 46.1 considerably.** Slides 2 and 3 were "showcase something unique about Funūn",
+which is an essay prompt. They are now "pick two more features to announce" — and the roadmap
+already holds the candidates: Song Builder (44), the musical grid (43), studio-quality vocal
+capture (45), The Crate.
+
+**One question an announcement rail creates:** what happens to a slide once its feature is no
+longer new? Either the rail is maintained as features ship, or "Introducing" quietly becomes
+untrue. Worth deciding once rather than per slide.
