@@ -1563,3 +1563,43 @@ The house demo persona from Funūn's own tests (`maya-reyes` in `lib/handles/`, 
 
 Which is the section's argument stated once more, quietly: everyone else's details had to be
 collected. Maya's were already there.
+
+### The Morning Light cast joins the sphere (2026-09-25)
+
+**25 faces now.** The five film characters use their **actual renders** from
+`public/assets/{maya,jonah,marcus,rae,anna}.png` — no stock stand-ins needed, they already existed.
+Cast and roles taken from `public/morning-light-treatment.html`:
+
+| Character | Card reads |
+|---|---|
+| Maya Reyes | Artist · the one who starts it — @maya-reyes |
+| Jonah Vale | Artist · producer — @jonahvale |
+| Marcus Dune | Industry · manager — @marcusdune |
+| Rae Kim | Industry · A&R — @raekim |
+| Anna Rose | Filmmaker · licensing the song — *(no handle row)* |
+
+**Maya was already in the sphere as a stock photo** before this — she is the house demo persona
+across the test suite (`maya-reyes` in `lib/handles/`, "Maya R." in `singer-options.test.ts`) *and*
+the film's protagonist. She now uses her real render.
+
+### "Client Partner" removed — internal vocabulary
+
+Anna Rose was first carded as *"Client Partner · the buyer"* with a row reading *"no handle, by
+design."* Both came straight from the film treatment, which maps the cast onto Funūn's account
+model. **Owner: that is an internal phrase.** `ACCOUNT-TYPES.md` defines Client Partner as a
+structural account class; it means nothing to a visitor and leaks house terminology onto a public
+page.
+
+She is now **"Filmmaker · licensing the song"**, and her fourth row is dropped entirely rather than
+reworded — her three empty writer fields are explained by the role itself. Swept the page for the
+rest of the internal taxonomy (`Team Member`, `funun_staff`, `Member workspace`): all clear.
+
+### Crop bug: `sips -c` does not resize first
+
+The five renders were initially cropped with `sips -c 400 400`, which takes the centre 400×400
+**pixels** with no scaling — so Maya's 960×1200 source became a tight slice of her middle, not her
+face. The Pexels images were unaffected because Pexels fits-then-crops server-side.
+
+Fixed by resizing the short side to 400 first (`--resampleWidth` for portraits,
+`--resampleHeight` for landscape) and cropping after. Worth remembering: **`sips -c` crops,
+`sips -Z`/`--resample*` scales, and cropping without scaling first is almost never what you want.**
