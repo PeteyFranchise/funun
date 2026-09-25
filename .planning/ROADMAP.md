@@ -3181,3 +3181,76 @@ favouriting. Those are net-new.
 - **Room chat is a fifth conversation surface.** Funūn already has DMs, Studio Notes threads with
   reactions, timed take comments and per-block lyric comments. Decide what belongs in chat versus
   Notes before building it, or the same conversation splits across two tabs.
+
+
+### Phase 46: The marketing page — finish it and ship it
+
+**Goal:** funun.studio shows a finished marketing page to logged-out visitors instead of a sign-in
+form.
+
+Full analysis: **`.planning/todos/pending/2026-09-24-marketing-page-ideas.md`** (the hub — idea
+board, every copy decision with its source, the Room service-promise gap list) and
+**`2026-09-24-marketing-site-needed.md`** (build-target constraints, Midjourney prompts).
+
+**A working prototype already exists** at `private/bench/marketing.html` (gitignored; durable copy
+in `~/Desktop/funun-bench-backup/`). Hero carousel, voice testimonials, three pricing tiers with 14
+info popovers, the Entourage enterprise band, footer. Copy has had a full pass against source —
+every product claim on it is traced to a `file:line`.
+
+**The page is for a later public launch, not for beta partners** (owner, 2026-09-25). Beta doctrine
+is explicitly different: workspaces start free with usage *measured but not enforced*
+(`docs/architecture/ACCOUNT-TYPES.md`).
+
+#### 46.0 — GATE: build target (blocks everything below)
+
+**Undecided, and deferred to Codex's recommendation** (owner, 2026-09-25). Three options: a route
+in the Next app, a separate build target carrying the full React stack, or adopting that stack
+app-wide. `www.funun.studio` already resolves to the Next app and `app/page.tsx` redirects
+logged-out visitors to `/signin`, so the app holds the domain either way.
+
+The real question underneath: **does this page need React at all?** The bench prototype is plain
+HTML/CSS/JS — carousel, popovers, audio players, reveal-on-scroll all working with no framework.
+
+Verified absent from the app, 2026-09-25: shadcn/ui, Radix, `cn()`, `clsx`, `tailwind-merge`, cva,
+`lucide-react`, `framer-motion`, and shadcn's colour tokens. **Tailwind 4 vs 3.4 is the recurring
+hazard** — most 21st.dev components target v4 and unmatched classes fail silently, no CI signal.
+
+#### 46.1 — Three hero banners, finished
+
+Slide 1 (Writer's Room neon) is the only one with real content; 2 and 3 are placeholders, each
+meant to showcase something unique about Funūn. **Subjects undecided.**
+
+**Division of labour, agreed 2026-09-25:** the owner generates imagery (prompts A and B already
+written); this phase does integration — compositing live text over the facade plate, colour-matching
+ambient to `#818cf8`/`#d946ef`, preload and LCP handling, and a CSS fallback so the hero is legible
+before the image lands. The `PLACEHOLDER · Midjourney facade plate pending` ribbon comes out then.
+
+Slides 2 and 3 are **probably product screenshots, not renders** — a generated image of software is
+a picture of something that does not exist.
+
+#### 46.2 — Copy final, from the Codex review
+
+The review prompt is written and carries three questions: a line-level copy pass, the free-tier
+storage allowance, and 46.0's build target. A voice pass is already underway — two habits to finish
+hunting: abstract nouns doing verb work, and uncontracted forms.
+
+#### 46.3 — Continue the 21st.dev harvest
+
+More detail, functionality and components where they earn their place. Method unchanged from the
+bench-01 wave: analyse, re-skin to Funūn tokens, build on the bench, keep what survives. **Shape
+depends on 46.0.**
+
+#### Blocks publishing, not building
+
+The pricing half describes a commercial model that does not exist. None of this stops the page
+being finished; all of it stops it going live.
+
+- **No enforced storage cap.** Metered only — migration 222 says it *"does not enforce a limit"*.
+  The page implies a ceiling in two places.
+- **No tiers in code.** Writer / Studio / Room and Entourage are bench placeholders.
+- **PitchPlug is metered** (`claimAiUsage`) with no quota stated on the page.
+- **The Room service promises have no implementation**: no Talent Services staff role (`StaffRole`
+  has nine values, none is it — `tms` is HR), no assignment model, no console, no à la carte
+  services catalogue. Seven-item gap list in the hub todo.
+- **Shipping means changing `app/page.tsx`'s logged-out redirect**, which is the decision that
+  makes this page the homepage.
