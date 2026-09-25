@@ -456,3 +456,31 @@ Recommended shape was **unlimited takes + a meter on lossless/uploads only**.
 Sent to Codex as a second section of the copy-review prompt, asking specifically whether capping
 takes is ever right, whether egress changes the shape, whether to state a limit before enforcement
 exists, and what the upgrade moment should feel like.
+
+### Bug found while reviewing the full page: the carousel was never cycling (2026-09-25)
+
+All three hero slides were rendering **stacked vertically** — `heroA` at y=88, `heroB` at 975,
+`heroC` at 1823 — so the page opened with three heroes in a row instead of one rotating slide.
+Page height was 4,988px; it is 3,253px with the fix.
+
+The JS was fine. `showSlide()`, the dots, the dwell timer and hover-pause all worked and were
+correctly toggling an `.on` class. **The CSS was losing on specificity:**
+
+```css
+.slide{display:none}        /* specificity 10 */
+#heroA{…display:grid…}      /* specificity 100 — wins */
+```
+
+and `#heroC` carries an **inline** `style="…display:grid…"`, which beats any selector at all.
+
+Fixed with `.slide:not(.on){display:none!important}` — only the *hiding* is forced, so each slide
+keeps its own natural display (grid for A and C, block for B) when shown.
+
+**This is the third time this session an ID or inline rule silently beat a display toggle** — the
+earlier two were `[hidden]` losing to `#heroA{display:grid}` and to `.mcount`, both fixed with the
+`[hidden]{display:none!important}` guard further down the stylesheet. That guard did not cover this
+one because the carousel toggles a class, not the `hidden` attribute.
+
+**Rule for this file:** any element whose visibility is toggled should use the `hidden` attribute,
+not a bespoke class, so the one existing `!important` guard covers it. Worth a pass to convert
+`.slide` to `hidden` if the carousel survives into the real page.
