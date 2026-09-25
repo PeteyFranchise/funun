@@ -7,6 +7,38 @@ status: pending
 kind: collection
 ---
 
+## ✅ VERDICT 2026-09-24 — two of six survive
+
+All six were stitched into one page on the bench (`private/bench/marketing.html`, gitignored) with
+both heroes and both backgrounds behind toggles, so they could be judged as a set rather than one
+at a time. Owner reviewed the assembled page.
+
+| Pick | Verdict |
+|------|---------|
+| 1. Illuminated glow hero | **KEEP** |
+| 2. Voice testimonials | **KEEP** |
+| 4. Radial glow background | **CUT** — flat black wins |
+| 5. Image stream corridor | **CUT** |
+| 6. Pricing table | **CUT** |
+| Footer (earlier) | **CUT** as designed — a footer is still needed, this one is not it |
+| 3. Onboarding card | Separate bucket — an in-app restyle, not marketing |
+
+**Two consequences worth acting on:**
+
+1. **The artist opt-in decision is no longer blocking anything.** It was taken to make pick 5's
+   corridor of cover art safe. With that hero cut, nothing on the marketing page needs artists'
+   artwork. The consent design is still sound and still recorded below — but it is now optional
+   groundwork, not a prerequisite. **Do not build it just because it was decided.**
+2. **Flat black is confirmed twice over.** It was chosen for the app in the morning and has now
+   beaten the radial-glow alternative on a marketing page too. Gate 0 (the Vault grid density test)
+   still stands for the app, but the ground question is no longer genuinely open on marketing.
+
+**Why the two that survived, survived:** both put *the artist* on screen. The illuminated hero
+makes the claim in words; the testimonials let other people make it. The three that were cut were
+all about the product's shape — a corridor of artwork, a decorative ground, a table of tiers.
+
+---
+
 ## What this is
 
 A running list of component designs the owner liked but did not want built yet. Collected
