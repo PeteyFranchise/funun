@@ -33,6 +33,15 @@ at a time. Owner reviewed the assembled page.
    beaten the radial-glow alternative on a marketing page too. Gate 0 (the Vault grid density test)
    still stands for the app, but the ground question is no longer genuinely open on marketing.
 
+**Rule learned while building it — the restraint doctrine is an APP doctrine.** The pricing
+section was first built obeying sketch 005-C's one-gradient-per-screen budget and the owner's
+verdict was that it "doesn't hit like the examples." It did not, because that rule exists so a tool
+someone works in for eight hours does not shout at them. A marketing page's job is the opposite.
+Rebuilt with ambient section glows, a physically raised chosen card, the price itself rendered in
+the gradient, a strikethrough on the yearly saving, filled glowing ticks and a CTA with internal
+structure (label left, arrow in its own disc right), it landed. **Marketing needs its own budget,
+or everything built for it comes out polite and forgettable.**
+
 **Why the two that survived, survived:** both put *the artist* on screen. The illuminated hero
 makes the claim in words; the testimonials let other people make it. The three that were cut were
 all about the product's shape — a corridor of artwork, a decorative ground, a table of tiers.
