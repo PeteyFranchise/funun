@@ -323,10 +323,27 @@ less padding, no card fill. Now it uses `.pcard`'s exact border, fill, radius an
 (verified equal in the DOM, not by eye), with a soft radial light from the CTA end so a very wide
 band does not have dead space in the middle. Same family, different shape.
 
-**Open:** is Entourage a *tier* (a fourth card with its own entitlements) or a *discount program*
-applied to Room seats? The bench treats it as the second, because it is a band and not a card. That
-is a real pricing-model decision, not a layout one, and it belongs in the business-model
-conversation with the rest of the tiers.
+**RESOLVED 2026-09-25 (owner):** *"I almost want this to be a fourth tier, but not with its own
+card, like a custom tier for companies and labels."* It **is** a fourth tier — deliberately in a
+band rather than a card.
+
+That makes Codex's objection a description of the intent rather than a fault. What was actually
+wrong was the copy: *"volume discounts"* reads as a promotion, not a tier. The band now carries a
+tier's anatomy in a band's shape:
+
+> **Entourage**  `CUSTOM`
+> Labels, management companies and multi-artist rosters
+> Everything in Room, scoped to your organisation — seats, roles and services built around how your
+> team already works.
+> → Talk to us
+
+Three things make it read as a tier rather than a promo: **a name in the price position** (`CUSTOM`
+where the cards show a number), **an audience line** matching the cards' `who`, and **"Everything in
+Room"**, which is the same inheritance phrasing the other tiers use and places it above Room in the
+ladder.
+
+Still no fourth card, which also preserves the reason the band exists: enterprise has no price, and
+a fourth card would show an empty slot where the other three show a number.
 
 ### Free tier — final row order (2026-09-25)
 
