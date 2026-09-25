@@ -18,6 +18,28 @@ permissions.
 | **Limited guest/signature recipient** | Complete one invited action without receiving a full Funūn workspace | Narrow token, invitation, or signing record | Only the invited room, decision, or signature flow |
 | **Funūn Team Member Account** | Operating the Funūn business | `funun_staff` row plus server-verified `staff_roles[]` | Internal staff/admin surfaces |
 
+```mermaid
+flowchart TB
+  subgraph classes["Three identity classes"]
+    direction LR
+    M["<b>Member</b><br/>user_profiles row<br/>creative professionals"]
+    G["<b>Limited guest</b><br/>narrow token or invitation<br/>one invited action, then expires"]
+    S["<b>Funūn Team Member</b><br/>funun_staff + verified staff_roles<br/>internal, structurally separate"]
+  end
+
+  CP["<b>Client Partner</b><br/>a relationship, NOT an identity class<br/>buyer_members into a verified buyer_orgs"]
+
+  M -- "may hold" --> CP
+
+  style CP stroke-dasharray: 5 5
+```
+
+The dashed box is the point: **Client Partner hangs off Member. It is not a fourth column.** A
+songwriter who also licenses music for a production company is one Member holding a Client
+Partner relationship — not two accounts. Professional roles (artist, producer, manager, music
+supervisor and the rest) describe the person and appear nowhere in this diagram on purpose: they
+grant nothing. See *Roles, relationships, and rights are separate* below.
+
 Client Partner is **not an identity class**. It is a verified organization relationship granted
 to a Member through `buyer_members` and `buyer_orgs`. A Member may be a songwriter in their
 personal context, a workspace member for several professional teams, and a music buyer for one
