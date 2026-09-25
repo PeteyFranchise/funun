@@ -753,3 +753,24 @@ That closer is doing more work than the line it replaced. "Designed with topline
 is a claim about intent, which anyone can assert. "Built for the way toplines actually get written"
 is a claim about the *method* — and the three sentences before it are the evidence, so it reads as
 a conclusion rather than a boast.
+
+### Sound Vault — wrong subject on "go out" (2026-09-25)
+
+Owner: *"should this be 'it can go out' rather than you can go out?"* Yes — **the artist does not go
+out, the release does.** But plain "it" would have inherited a broken antecedent: the nearest nouns
+in the sentence were "readiness score" and "release asset", neither of which goes anywhere.
+
+| | |
+|---|---|
+| Was | One place for every release **asset**, with a readiness score that tells you what is still missing before **you** can go out. |
+| Now | One place for everything **a release** needs, with a readiness score that tells you what's still missing before **it** can go out. |
+
+Naming the release as the thing that *needs* assets makes "it" resolve correctly, and it is shorter
+than spelling out "before the release can go out".
+
+Swept the other eleven popovers for the same fault: the only other second-person subject is
+Contract Locker's *"so you can see what is signed"*, where the artist genuinely is the one seeing.
+Correct as written.
+
+**Still outstanding in that same row:** "what is signed and what is still outstanding" is
+uncontracted, part of the voice pass Codex has been asked to run across everything.
