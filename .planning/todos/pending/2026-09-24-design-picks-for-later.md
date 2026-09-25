@@ -1,3 +1,6 @@
+
+> **Hub:** `.planning/todos/pending/2026-09-24-marketing-page-ideas.md` — idea board, Midjourney
+> asset list, and the tagline-removal record all live there.
 ---
 created: 2026-09-24T00:00:00Z
 title: Design picks saved for later — destination undecided (marketing site vs everywhere)
@@ -18,7 +21,7 @@ at a time. Owner reviewed the assembled page.
 | 1. Illuminated glow hero | **KEEP** |
 | 2. Voice testimonials | **KEEP** |
 | 4. Radial glow background | **CUT** — flat black wins |
-| 5. Image stream corridor | **CUT** |
+| 5. Image stream corridor | **DEFERRED** — revisit when artist artwork volume supports it |
 | 6. Pricing table | **CUT** |
 | Footer (earlier) | **REVISIT** — first attempt was a rule with links under it, which is not the design. Rebuilt as the source intends: a card with rounded top corners, inset from the page edge, a radial glow from the top centre and a blurred light bar on the edge, plus a waveform wordmark and iconed social links. |
 | 3. Onboarding card | Separate bucket — an in-app restyle, not marketing |
@@ -235,6 +238,24 @@ lands. That is exactly the kind of thing only the density test will show.
 ---
 
 ## 5. Image stream hero (the corridor)
+
+> **STATUS CHANGED 2026-09-24 — CUT → DEFERRED (owner).** Not cut on the idea, cut on the
+> *inventory*. The corridor only works if the cards flying past are real album artwork from real
+> Funūn artists — a corridor of placeholder squares is worse than no corridor, and stock art would
+> be a lie about who is on the platform.
+>
+> **Trigger to revisit:** enough released/unreleased artwork in the catalogue to fill two rails
+> without repeating and without a single artist dominating. Rough shape: ~24+ distinct covers
+> across ~12+ artists, so the loop reads as a roster rather than as a slideshow.
+>
+> **When it comes back, these need answers:** does an artist opt in to appearing? does the card
+> link to their profile or release page? does it pull live from the catalogue or from a curated
+> list? (Live means an unfinished or unflattering cover can land on the homepage.)
+>
+> The working prototype is on the bench — `private/bench/marketing.html`, the "Hero: image stream"
+> toggle. It survives there; nothing needs rebuilding from scratch. The CSS-only 3D corridor
+> (`perspective` + `transform-style: preserve-3d` on `.corridor`, kept off `#heroB` because
+> `container-type` applies layout containment and flattens it) is the part that took the work.
 
 **Source:** 21st.dev, `image-stream-hero.tsx`. Two rails of image cards fly out of a vanishing
 point toward the viewer, opening into a diagonal corridor, with your headline sitting on top.
