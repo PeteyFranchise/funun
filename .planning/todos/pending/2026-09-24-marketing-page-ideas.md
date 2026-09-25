@@ -1808,3 +1808,21 @@ every track already clearable."*
 - **All CTAs are `href="#"`**, now including "Submit a song" and "What makes a song Crate-ready".
   The second one promises an eligibility page that does not exist, and the Crate rules (two
   disqualifiers + the BGV clause) are real and worth writing down somewhere public.
+
+### Bug: 21 of 25 sphere faces never loaded (2026-09-25)
+
+Owner: "the avatars are empty." **Exactly 4 of 25 images had loaded** — the tell, because the code
+said `im.loading = i < 4 ? 'eager' : 'lazy'`.
+
+That line came straight from the 21st.dev source, where the images sit in normal document flow.
+**Sphere nodes are absolutely positioned and re-transformed every animation frame**, so the
+browser's lazy-load visibility heuristic never fires: it reasons about layout position, and these
+nodes never move in layout, only visually. The 21 lazy images sat pending forever.
+
+Fixed by loading all 25 eagerly, which is correct here regardless — every face is on screen at
+once, so there is nothing to defer.
+
+**General rule worth keeping: `loading="lazy"` and transform-positioned elements do not mix.**
+This is the second thing inherited verbatim from a 21st.dev component that behaved differently in
+context — the first was `sips`-style centre cropping. Ported code needs its assumptions re-checked,
+not just its dependencies.
