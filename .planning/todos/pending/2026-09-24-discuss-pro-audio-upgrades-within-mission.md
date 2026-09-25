@@ -41,9 +41,17 @@ And the standing principle that falls out of it:
 **Loudness and true-peak analysis.** LUFS and dBTP measurement on every master. This is
 a **readiness gate**, not production — distributors reject over-peaking files, and a
 release that fails at the distributor after the artist thought it was done is exactly
-the failure the Sound Vault exists to prevent. Partial groundwork exists:
-`lib/catalogue/take-export-audition.ts`, and the bench already sketches an "analysing
-loudness and true peak" state.
+the failure the Sound Vault exists to prevent.
+
+**Correction (Codex, 2026-09-24):** this note originally claimed partial groundwork in
+`lib/catalogue/take-export-audition.ts`. That module only formats Adobe Audition marker
+CSV and performs **no audio analysis**. LUFS, true-peak, clipping, DC-offset and silence
+detection are **net-new work**.
+
+The one real precedent is `lib/watermark/stream-preview.ts:104-152` — a private RIFF/WAVE
+parser that already extracts sample rate, bit depth and channel count. It exists only for
+watermark rendering and is not wired to upload validation, but it is the closest thing to
+a header inspector already in the tree.
 
 **Spec validation on upload.** Sample rate, bit depth, clipping, DC offset, channel
 count, silence at head and tail. A plain "this will be rejected by your distributor, and

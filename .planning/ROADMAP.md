@@ -2864,10 +2864,17 @@ true black and cards separate by surface instead of by hairline. One token, no s
 below inherits. Getting it wrong means re-skinning twice.
 
 **Cost:** ~1 token-swap + the grid on the bench. The token system already carries it —
-1,751 usages of `text-lav`/`text-lavdim`/`border-hair`/`bg-card`/`bg-card2` re-skin from two
-files; only **33 hardcoded `rgba(199,203,247,…)` values** across ~10 files need hand-fixing
-(mostly `components/playbook/`, plus `selects-player/theme.ts`, `admin/console-theme.ts`,
-`buyer/fnbl-theme.ts`).
+**1,753** usages of `text-lav`/`text-lavdim`/`border-hair`/`bg-card`/`bg-card2` re-skin from two
+files. **40** lavender `rgba(...)` literals exist across 16 files; two are the canonical variables
+in `app/globals.css`, leaving **38 hand-fixes across 15 files**: `components/vault/PlaybackView.tsx`,
+`PublicPlaybackView.tsx`, `VaultProjectCard.tsx`, `components/buyer/fnbl-theme.ts`,
+`antenna/OpportunityCard.tsx`, `admin/HealthRulesForm.tsx`, `admin/console-theme.ts`,
+`playbook/Rail2.tsx`, `playbook/AccessEditorMatrix.tsx`, `profile/ProfileView.tsx`,
+`coach/RightsCoach.tsx`, `selects-player/theme.ts`, `benchmarks/BenchmarkView.tsx`,
+`app/(artist)/earnings/page.tsx`, `app/(artist)/vault/[projectId]/readiness/page.tsx`.
+
+*(Counts corrected by the Codex verification pass, 2026-09-24 — the original figures under-counted
+by scoping the grep to `app/` and `components/` only.)*
 
 **Status:** Not started. Blocks Phase 42.
 
@@ -2897,12 +2904,21 @@ reaches for constantly reachable from anywhere in it.
    one opens the real action inline and lights the destination tab. The room teaches its own
    structure by being used.
 2. **Drop the four-verb composer from the in-progress room.** Owner decision, 2026-09-24. This
-   **departs from sketch 005-C** ("every song page leads with the composer"), which was ratified
-   before these tabs existed and before every verb had a better home of its own. The guiding line
-   survives and still carries the single next step.
-3. **Origin line** — one row showing the idea the room was promoted from. The data is already
-   fetched and discarded: `app/(artist)/vault/works/[workId]/page.tsx:398` queries
-   `ideas.promoted_work_id`. Closes the Ideas→Room loop for free.
+   **departs from sketch 005-C** ("every song page leads with the composer"), ratified before these
+   tabs existed and before every verb had a better home. The guiding line survives and still carries
+   the single next step.
+
+   **Sequencing is not optional here** (Codex, 2026-09-24): `WorkPage.tsx:796-849,1567-1593` routes
+   the live Hum / Write lyrics / Add audio / Note callbacks *through* the card, `WorkPage.test.tsx`
+   enforces composer-first ordering, and the shipped room has no replacement tabs — the tabs are a
+   bench invention. **Build and test every destination action first, update the ratified Phase 37
+   contract (`37-10-PLAN.md`), and remove the populated-state card last.** Deleting it early removes
+   working entry points with nothing behind them.
+3. ~~**Origin line**~~ — **CUT. This already ships.**
+   `app/(artist)/vault/works/[workId]/page.tsx:868-879` renders "Started as an idea … View origin →"
+   from the `promoted_work_id` query. The original claim that the data was "fetched and discarded"
+   was wrong — the query was read at line 398 and the render was never checked. Whatever design work
+   happens here is a **restyle of a shipped feature**, not a new one.
 4. **Presence as a collapsing pill** that opens into the avatar grid, with add-to-room. Reclaims
    ~75px of vertical space on every visit. **Presence ≠ roster**: added people show as "not in the
    room" and anyone currently present cannot be removed from a presence widget.
@@ -2977,16 +2993,58 @@ Full design, schema and constraints:
 **`.planning/todos/pending/2026-09-24-song-builder-arrangement-and-audition.md`** — read it before
 planning; the reasoning does not fit here.
 
-The three decisions that matter:
+### ⚠ The original central decision was WRONG — corrected 2026-09-24 after Codex review
 
-1. **The sections ARE the lyric blocks.** No second list. Reordering the words reorders the song,
-   `deriveBlockNumerals()` keeps labels honest, and a linked repeat inherits its source's take.
-   A separate section list would drift from the lyrics within a week.
-2. **The instrumental is one continuous bed**, ducked by gain automation per section — not a clip
+The design session concluded "the sections ARE the lyric blocks, no second list." **That is unsafe
+and must not be built.**
+
+`lyric_blocks.author_user_id` is not metadata. Migration 135 says of it: *"it is set automatically
+from whoever wrote the block and it is **the fact that MOVES SPLITS**"*, and
+`app/api/works/[workId]/blocks/route.ts:159-190` sets it from the authenticated caller on **every**
+insert, calling it *"the one field on this table with money attached."*
+
+So making arrangement sections into lyric blocks means **adding an instrumental break, an intro or
+a vamp would attribute a writing credit that moves money to whoever clicked +.** That is the exact
+failure this product exists to prevent.
+
+**Corrected model:** one canonical **`work_sections`** table carrying order and bar length, with
+lyric content and authorship attached only to sections that actually have words. Arrangement facts
+live on the section; authorship stays on the lyric.
+
+The instinct behind the original decision still holds — the arrangement and the lyrics must not
+drift into two competing structures — but the answer is *one section table that lyrics hang off*,
+not *lyrics doing double duty as structure*.
+
+### The decisions that survive
+
+1. **The instrumental is one continuous bed**, ducked by gain automation per section — not a clip
    re-assigned per section. A section with no vocal keeps playing.
-3. **Vocals are a stack**, all layers scheduled at the same `when`. This is what makes the feature
+2. **Vocals are a stack**, all layers scheduled at the same `when`. This is what makes the feature
    work with **no instrumental at all** — an a cappella arrangement of stacked takes is a song, and
    must be a clean state rather than a degraded one.
+3. **A linked repeat inherits its source's take** by default.
+
+### Further corrections from the same review
+
+- **Do NOT reuse `reconcileWriterRoomLayout()`** as the arrangement reconciler. Room layout is
+  *private, per-viewer presentation* that deliberately cannot alter evidence
+  (`migrations/176_writer_room_personal_layouts.sql`). An arrangement is **shared, authoritative**
+  state needing FK-backed references, concurrency handling and explicit inherit-unless-overridden
+  rules.
+- **Reordering becomes a provenance fact.** `migrations/138`'s reorder RPC permits a null actor
+  precisely because position is presentation today. If reordering changes rendered audio, record
+  the authenticated actor and an immutable arrangement revision.
+- **`performers` JSON is not evidence of a performance.** Every uploaded version automatically
+  receives the work's primary performer regardless of what is audible
+  (`versions/complete/route.ts:80-123`), and block singer lists are declared *plans*. An assembly
+  cannot treat either as proof that a contributing take contains that person.
+- **Derived credits need a new relation**, not JSON copying — assembly→source edges with lineage
+  (`work_assemblies`, `work_assembly_sections`, `work_assembly_layers(source_version_id, role,
+  gain, timing)`, `work_version_credit_sources`), materialised server-side, never accepted from a
+  client.
+- **`'assembly'` must be added in five exhaustive places**, not one: the DB check constraint
+  (`migrations/162`), two TypeScript unions (`versions.ts`, `types/catalogue.ts`), the route
+  allowlists (`upload-intent`, `complete`) and the presentation map.
 
 **Most of the engine already exists** in `lib/catalogue/record-over-beat.ts`, written for one beat
 plus vocal clips: `RecordingClip` holds a decoded `AudioBuffer` with trim and position,
@@ -2997,9 +3055,14 @@ plus vocal clips: `RecordingClip` holds a decoded `AudioBuffer` with trim and po
 
 **Depends on:** Phase 43 (bars are the arrangement's unit).
 
-**Migrations:** `'assembly'` as a fourth `VersionSource`; derived credits on an assembly; bar
-length per lyric block; arrangement persistence reconciled against live block ids (reuse
-`reconcileWriterRoomLayout()`, do not write a second reconciler).
+**Migrations:** a `work_sections` table (order + bar length, lyrics optional); `'assembly'` as a
+fourth `VersionSource` across all five touch points; assembly→source credit-lineage tables;
+shared arrangement persistence with its own reconciler (**not** `reconcileWriterRoomLayout()`).
+
+**Highest risk to design around — AI laundering.** `app/api/works/[workId]/ai-entries/route.ts`
+currently accepts any same-work version with no direct AI entry. An assembly containing an AI
+source could therefore satisfy the human-take rule behind the Crate vocal gate unless the route
+either excludes `source='assembly'` outright or recursively verifies immutable source ancestry.
 
 **Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
 
@@ -3018,9 +3081,19 @@ Full analysis: **`.planning/todos/pending/2026-09-24-studio-quality-vocal-captur
 lets the browser apply automatic gain control (it pumps a sustained vocal); every candidate codec
 is lossy; and `encodeWav()` writes 16-bit.
 
-**Three of the four fixes are parameters on shipping code.** The storage layer is already correct —
-`ALLOWED_AUDIO_TYPES` accepts WAV and FLAC, `MAX_AUDIO_SIZE` is 250MB, `tus-js-client` handles
-resumable upload, and Web Audio processes in 32-bit float internally.
+**Three of the four capture fixes are parameters on shipping code**, and Web Audio processes in
+32-bit float internally so nothing is lost before encoding.
+
+**The storage claim was WRONG and the correction adds real scope** (Codex, 2026-09-24). Writer's
+Room takes do **not** use the 250MB resumable path — that is `lib/storage/index.ts`, a separate
+legacy `release-audio` bucket. Takes go through `lib/catalogue/version-upload-client.ts`, capped at
+**`MAX_BYTES = 50 * 1024 * 1024`** (`lib/catalogue/audio-mime.ts:13`) via a **one-shot signed
+upload**. A five-minute 24-bit/48kHz stereo keeper is ~86MB and **would be rejected today**.
+
+So the lossless path additionally needs: its own raised cap, a resumable uploader, and completion
+verification. It must also stay on **unique private version paths with `upsert: false`** — the
+legacy helper writes a stable path with `upsert: true` and a public URL, which would overwrite
+evidence.
 
 **The one genuinely new piece:** capture-offset calibration, so a take lands sample-aligned rather
 than a few milliseconds late forever. `clipTimelineWindow()` already accepts a `timingOffsetMs`.
@@ -3039,6 +3112,33 @@ Phase 24 self-serve is already on hold pending one. Fold it in rather than openi
 **Status:** Designed 2026-09-24. Tier decision outstanding.
 
 **Plans:** 0 plans — settle the tier question, then `/gsd-discuss-phase 45`.
+
+---
+
+### Already shipped — do not rebuild (Codex verification, 2026-09-24)
+
+The design session found seven overlaps by hand. The verification pass found six more. Check these
+before planning any phase above.
+
+- **Audio content hashing** — `lib/metadata/delivery-safe.ts:72-89`,
+  `app/api/works/[workId]/passport/artifacts/route.ts`, `migrations/155` — SHA-256 over master bytes
+  and generated artifacts, in an append-only Passport custody ledger. Runs at export, not upload.
+- **Metadata-delivery hashing** — `app/api/vault/[projectId]/tracks/[trackId]/metadata/sidecar/route.ts`,
+  `migrations/142` — source audio and derived sidecars hashed independently with immutable manifests.
+- **Expiring, revocable share links** — `app/api/ideas/[ideaId]/share-links/route.ts`,
+  `migrations/169` — hashed 1–30-day tokens with revocation and single-claimant enforcement. This is
+  an invitation flow, not anonymous playback, but Phase 42's take-sharing should follow its shape
+  rather than invent one.
+- **Audio header inspection** — `lib/watermark/stream-preview.ts:104-152` — a RIFF/WAVE parser
+  reading sample rate, bit depth and channels. Built for watermarking, not wired to upload
+  validation, but it is the nearest thing to a spec validator in the tree.
+- **Section reordering** — `app/api/works/[workId]/blocks/reorder/route.ts`, `migrations/138` — a
+  transactional complete-set reorder RPC with concurrency validation and one diary event.
+- **Working BPM/key precedent** — `migrations/168`, the producer-handoff complete route — bounded
+  BPM and normalised key already stored as handoff context.
+
+**Confirmed NOT to exist:** any LUFS/true-peak analyser, any tempo or key detector, and take
+favouriting. Those are net-new.
 
 ---
 

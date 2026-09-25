@@ -51,10 +51,27 @@ level and still have resolution left.
 
 ## What is already right
 
-- `lib/storage/index.ts` — `ALLOWED_AUDIO_TYPES` already accepts `audio/wav`,
-  `audio/x-wav`, `audio/flac`. The storage layer is ready for lossless.
-- `MAX_AUDIO_SIZE = 250MB`. Five minutes of 24-bit/48k mono WAV is ~43MB; stereo ~86MB.
-- `tus-js-client` already handles resumable upload of large files.
+- Web Audio processes internally in **32-bit float**, so nothing is lost before encoding.
+- `encodeWav()` exists and needs a wider sample format, not a rewrite.
+
+## ⚠ CORRECTED 2026-09-24 — the storage claim in this note was WRONG
+
+This note originally cited `lib/storage/index.ts` (WAV/FLAC allowed, 250MB, `tus-js-client`). **That
+is the legacy `release-audio` bucket, not the Writer's Room path.**
+
+Writer's Room takes go through `lib/catalogue/version-upload-client.ts`, capped at
+**`MAX_BYTES = 50 * 1024 * 1024`** (`lib/catalogue/audio-mime.ts:13`), via a **one-shot signed
+upload** — no resumability. A five-minute 24-bit/48kHz stereo keeper is ~86MB and **would be
+rejected today**.
+
+So the lossless path needs three things this note did not account for:
+
+1. its own raised size cap,
+2. a resumable uploader (the stems path already uses TUS — look there, not at `lib/storage`),
+3. completion verification.
+
+It must also stay on **unique private version paths with `upsert: false`**. The legacy helper writes
+a stable path with `upsert: true` and returns a public URL — reusing it would overwrite evidence.
 - Web Audio processes internally in **32-bit float**, so nothing is lost before encoding.
 - `encodeWav()` exists and needs a wider sample format, not a rewrite.
 

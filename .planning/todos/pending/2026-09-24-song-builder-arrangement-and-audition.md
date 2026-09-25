@@ -6,6 +6,22 @@ severity: medium
 status: pending
 ---
 
+> ## ⚠ CORRECTED 2026-09-24 after Codex verification
+>
+> **The central decision in this note — "the sections ARE the lyric blocks" — is unsafe and must
+> not be built as written.** `lyric_blocks.author_user_id` is described in migration 135 as *"the
+> fact that MOVES SPLITS"*, and `blocks/route.ts` sets it from the caller on every insert (*"the one
+> field on this table with money attached"*). Making arrangement sections into lyric blocks would
+> attribute a **writing credit that moves money** to whoever adds an instrumental break.
+>
+> Use one canonical **`work_sections`** table for order and bar length, with lyrics and authorship
+> attached only to sections that have words. See Phase 44 in `ROADMAP.md` for the corrected model
+> and four further corrections (layout reconciler, reorder provenance, credit lineage, the five
+> `'assembly'` touch points, and the AI-laundering risk).
+>
+> Everything else in this note stands: the continuous bed, vocal stacking, a cappella as a clean
+> state, and the tempo-inheritance shape.
+
 ## What
 
 A **Song** surface in the Writer's Room where a writer lays the song out in sections,
