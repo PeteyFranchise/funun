@@ -102,3 +102,48 @@ remove the need for framer-motion entirely, since a played-progress fill is a CS
 on Funūn's existing waveform code it would be smaller, correct, and have one fewer dependency.
 
 ---
+
+## 3. Onboarding card
+
+**Source:** 21st.dev, `onboarding.tsx`. A centred card: hero image, a photo-upload row, a name
+field with an `@` icon, and a Continue button. Contents fade in one after another.
+
+**Liked for:** the welcome moment. A calm, single-card first impression.
+
+**NOT a marketing component.** This is in-app onboarding, so it belongs in a different bucket
+from picks 1 and 2 — and Funūn **already has this screen.**
+
+- `components/handles/ChooseHandleGate.tsx` — the hard gate a signed-in account with no handle sees
+  *instead of* the app, mounted in `app/(artist)/layout.tsx`.
+- `components/onboarding/FirstSignInWelcome.tsx` and `RightsSetupReminder.tsx`.
+
+So this is a **restyle candidate for `ChooseHandleGate`**, not a new screen.
+
+**Two doctrine conflicts if used as-is:**
+
+1. **It conflates display name with handle.** The field is labelled "Display Name" but behaves like
+   a username — an `@` icon, and the demo strips input to letters, numbers and underscores. Funūn
+   keeps these **deliberately separate** (Phase 36: "mandatory @handle for user accounts, artist
+   display name separate"). Merging them in the UI would undo that.
+2. **A "Continue" button implies you can move on.** `ChooseHandleGate`'s header is explicit that a
+   skip, a dismiss, a close control, a "later" link and an escape-key handler are *"deliberately
+   absent, and not to be added back."* There is exactly one way past it — pick a handle — plus
+   sign-out, which is an exit rather than a skip. Any restyle has to preserve that.
+
+**Dependencies: four, and it is the full shadcn stack** — `lucide-react`, `framer-motion`,
+`@radix-ui/react-slot`, `class-variance-authority`, plus shadcn's `Button` and `Input` primitives.
+It is also written against shadcn's semantic tokens (`bg-card`, `text-muted-foreground`,
+`border-input`, `bg-background`), none of which exist in Funūn. **This is the "adopt shadcn"
+decision in component form** — see the top of this session's discussion.
+
+**Smaller traps:**
+
+- `AnimatePresence` wraps an element that is always mounted, so it does nothing. `AnimatePresence`
+  only animates children entering and leaving conditionally. Harmless, but it signals the code was
+  not carefully reviewed.
+- "PNG or JPEG, up to 5MB" is hardcoded copy, not tied to any real limit.
+
+**Effort read:** the layout is worth copying by eye. The code is not — taking it would pull in four
+dependencies and a parallel token system to restyle a screen that already exists and already works.
+
+---
