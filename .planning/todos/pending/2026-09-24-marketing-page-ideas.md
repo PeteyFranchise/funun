@@ -697,3 +697,23 @@ line on the page has to move.
 Worth a trigger note: the copy and the capability have to change in the same release. A marketing
 page that promises filing before the code files is the failure mode; a page still saying "we track"
 a month after filing ships is only a missed opportunity. Bias to updating late, not early.
+
+### Bug: gradient price had a sliver clipped off the last digit (2026-09-25)
+
+Owner spotted it on the Studio card's `$19` — the right edge of the 9 was shaved.
+
+**Cause:** `.pcard.pop .prow .amt` paints the price with `background:var(--grad)` +
+`background-clip:text`, and carries `letter-spacing:-.04em`. Letter-spacing is applied **after every
+character including the last one**, so at 54px the layout box ended 2.16px short of where the 9's
+ink actually paints. The gradient is clipped to the box, so the overhanging sliver got no paint.
+
+Measured rather than eyeballed: box width 101.58px against a −2.16px letter-spacing tail.
+
+**Fix:** `padding-right:.06em` (3.24px at this size) to extend the painted box past the glyph, with
+`margin-right:-.06em` cancelling it so `/month` does not shift. Box is now 104.89px and the layout
+is identical by construction.
+
+**Only the gradient card was affected.** Room's `$49` is solid colour, so its box ending early
+costs nothing — there is no background to clip. Worth remembering: **any `background-clip:text`
+element with negative letter-spacing has this bug**, and it is invisible until the final glyph
+happens to have ink near its right edge. A `$17` would have hidden it; the 9 exposed it.
