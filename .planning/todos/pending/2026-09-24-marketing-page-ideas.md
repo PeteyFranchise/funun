@@ -1758,3 +1758,53 @@ handoff stages (`received`, `working`, `returned` from `producer-handoff.ts:23`)
 
 Kept "without chasing anyone" out on purpose — steps 2 and 5 already carry that idea and a third
 would make it a tic.
+
+## The Crate section built (2026-09-25)
+
+Page is now **hero → how it works → The Crate → collaborator sphere → voices → pricing → footer.**
+
+### The angle came from doctrine, not invention
+
+`docs/pitch-deck-copy-bank.md`: *"The Crate is not the front door to Funūn. It is an opportunity
+unlocked over time as artists and labels use the Writer's Room, Song Passport, master storage,
+metadata, collaboration, split sheets and Contract Locker."*
+
+So the section is not "submit your music here" — it is **you don't apply, you qualify**, and the
+five steps directly above it *are* the qualification. That ties the page together rather than
+bolting on another feature block.
+
+> **We shop it. You keep the rights.**
+> The Crate is Funūn's curated sync catalogue. A spot in it is earned, not bought — and once a song
+> is in, our team puts it in front of the supervisors we work with.
+>
+> • **An earned spot.** No pitch to write. The splits, credits and metadata you already sorted *are*
+>   the qualification.
+> • **We do the shopping.** When a brief comes in that fits, your song goes out in a Selects — like
+>   the one here — with the rights already settled.
+> • **One agreement, then done.** It authorises us to represent and shop what you submit. Price and
+>   terms are still negotiated per deal.
+
+Third beat is lifted from the real agreement (`lib/sync-library/agreement.ts:150`), including the
+per-deal caveat — that sentence is what the artist actually signs.
+
+### The visual is the Selects player
+
+Owner's call, and the right one: **show the artefact a supervisor receives** rather than describe
+it. Recreated in HTML/CSS from `public/maya-selects-desktop.html` — brand row, watermarked-preview
+pill, hero artist block, numbered track list — rather than screenshotted, so it restyles with the
+tokens and stays sharp at any size.
+
+**Real assets throughout.** Maya Reyes' four tracks with their actual cover art from
+`public/buyer-catalogue/` (morning-light, moonlight, midnight-ride, golden-hour), resized to 240px
+into `img/art/`. No stock, no invented titles — and it connects to the film, where Maya is the
+artist whose song moves through the whole relay.
+
+Caption does the work the copy would otherwise need: *"A Selects, as a supervisor receives it —
+every track already clearable."*
+
+### Still open on the page
+
+- **An FAQ** — do you take a cut, who owns my masters, what happens if I leave.
+- **All CTAs are `href="#"`**, now including "Submit a song" and "What makes a song Crate-ready".
+  The second one promises an eligibility page that does not exist, and the Crate rules (two
+  disqualifiers + the BGV clause) are real and worth writing down somewhere public.
