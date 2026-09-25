@@ -1826,3 +1826,39 @@ once, so there is nothing to defer.
 This is the second thing inherited verbatim from a 21st.dev component that behaved differently in
 context — the first was `sips`-style centre cropping. Ported code needs its assumptions re-checked,
 not just its dependencies.
+
+### CORRECTION: "you don't apply, you qualify" was wrong (2026-09-25)
+
+Owner: *"how can we curate and accept people's songs if they don't submit them? We built that
+feature into our backend CRM… they still have to actually submit a song over to us before that
+relationship can be established."*
+
+Correct, and the error was substantive rather than stylistic. **Submission is a required, distinct
+act.** The agreement says so directly — `lib/sync-library/agreement.ts:73`: *"it covers each Song
+the Artist **submits to** and that Funūn **admits into** the Sync Library."* Two events. And
+`lib/sync-library/readiness.ts:40` references a staff `pending_admit` review label, so the review
+queue is real.
+
+**The failure mode this copy would have caused:** an artist reads "you don't apply", completes the
+five steps, and waits. Nothing happens, because nothing was ever sent. That is a conversion bug,
+not a wording preference — the section exists to cause one action and the copy quietly removed it.
+
+It also contradicted the page: step 5 of how-it-works already said *"ready to submit to The Crate."*
+
+The three beats are now the three real events — **submit → review → shop**:
+
+1. **You submit, we review.** We can't see inside your vault until you send a song over —
+   submitting is free, and it's what starts the relationship.
+2. **Admission is the earned part.** No pitch to write. The splits, credits and metadata you
+   already sorted are what the song is judged on.
+3. **Then we shop it.** One agreement authorises us to represent what you submit — price and terms
+   still negotiated per deal.
+
+"Earned" survives where it belongs: on **admission**, not on the absence of a step. And *"we can't
+see inside your vault until you send a song over"* makes submitting read as telling them what you
+have, rather than asking permission.
+
+**Lesson worth keeping:** the doctrine line that inspired the original framing ("The Crate is not
+the front door") is about **positioning** — it means the Crate is not how you discover Funūn. I
+read it as **mechanics** and wrote away a required step. Doctrine about why something exists is not
+doctrine about how it works.
