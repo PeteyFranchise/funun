@@ -2115,6 +2115,26 @@ for your music career" is off funun.studio.** Search results update on the next 
 Planning docs only, no shipped code, nothing waiting to deploy: the exclusivity blocker, the FAQ
 record, and the `authorises → authorizes` fix. They need a follow-up PR whenever convenient.
 
+### Scope of this page: the Member account class, and nothing else (2026-09-26)
+
+Owner, stated flatly: **"WE ARE ONLY talking about user accounts for Members."** Recording it
+because the page contains a name collision that will otherwise be re-litigated every few sessions.
+
+- **All four tiers are Member tiers.** Writer, Studio, **Team** and Entourage. Member is the
+  umbrella class covering artists, writers, producers, managers, publishers, attorneys, engineers
+  and label executives, so Entourage's *"labels, management companies and multi-artist rosters"*
+  are Members buying a larger Member workspace — **not Client Partners**.
+- **The collision:** the tier is named **Team**; the staff account class is named **Funūn Team
+  Member** (`funun_staff`). Unrelated things. Owner ruled on this when the tier was named:
+  *"there won't be internal confusion, team member logins don't have @handles and all use funun
+  email accounts."* The ruling stands; this line exists so nobody reopens it.
+- **"Talk to us"** on Team and Entourage is *answered by* staff, but what it creates is a Member
+  workspace. The CTA is a Member CTA.
+- **`/signin` is the app's single sign-in surface for all three classes** — `postSignInPath`
+  branches after authentication (buyer → `/sync/catalog`, staff → `/admin/client-partners`,
+  everyone else → `/vault`). The page links there because that is the one door, not because the
+  page addresses those audiences.
+
 ### CTA #1 resolved: Sign in opens a dialog (2026-09-25)
 
 **The count in this doc was wrong.** It said twelve unresolved CTAs. Measured off the rendered

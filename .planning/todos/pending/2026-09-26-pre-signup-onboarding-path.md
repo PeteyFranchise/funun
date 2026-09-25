@@ -5,6 +5,19 @@
 **Owner:** *"we need to develop a quick onboarding path that drives emotional engagement, then
 ask for a signup and take them to a quick tutorial afterward."*
 
+## Scope: Members only
+
+**Owner, 2026-09-26: "DO NOT confuse Team Member (staff) or Client Partner accounts with what we
+are doing now. WE ARE ONLY talking about user accounts for Members."**
+
+Everything here is the **Member** account class — the umbrella in `docs/architecture/
+ACCOUNT-TYPES.md` covering artists, writers, producers, managers, publishers, attorneys,
+engineers and label executives. Not Funūn Team Members (`funun_staff`), not Client Partners
+(`buyer_members` → `buyer_orgs`).
+
+The staff-side onboarding components named below appear **only as evidence that nothing
+member-facing exists**. They are not a starting point and not a pattern to copy.
+
 This replaces the CTA question rather than answering it. "Start a song" was going to point at
 `/signup`; it now points at a path that does not exist yet.
 
