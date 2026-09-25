@@ -267,3 +267,26 @@ my song rejected", so the marketing page should link somewhere that says it. Not
 
 **Free now stands at 11 rows against Studio's 5.** See the imbalance note above — this is past the
 point of being cosmetic.
+
+### Entourage — enterprise pricing (owner copy, 2026-09-25)
+
+**"Entourage" is new. It appears nowhere in `app/`, `components/`, `lib/`, `docs/`, `.planning/`
+or `supabase/`** — checked before shipping it. Owner coined it in session as the name for
+enterprise/volume pricing. Recording the origin so that when it is built nobody goes looking for a
+prior definition that does not exist.
+
+Shipped on the bench as a **band under the pricing grid, not a fourth card** — a card would read as
+another tier to choose from, a band reads as a door out of the grid:
+
+> **Got a large team?**
+> Talk to us about Entourage pricing — volume discounts for rosters, labels and management
+> companies. → *Talk to us*
+
+"Rosters, labels and management companies" is an inference about who a large team is, not something
+verified against the product. If Entourage is aimed at someone else — publishers, sync agencies,
+production houses — that line should change.
+
+**Open:** is Entourage a *tier* (a fourth card with its own entitlements) or a *discount program*
+applied to Room seats? The bench treats it as the second, because it is a band and not a card. That
+is a real pricing-model decision, not a layout one, and it belongs in the business-model
+conversation with the rest of the tiers.
