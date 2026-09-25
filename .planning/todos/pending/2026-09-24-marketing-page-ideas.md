@@ -107,3 +107,32 @@ as interactive, collaborative, and first of its kind for topline writing:
 > every line remembers who wrote it.
 
 Not ratified. "First of its kind" is a claim worth checking before it goes on a public page.
+
+## Free tier contents (bench, 2026-09-25)
+
+Owner added four surfaces to the Free/"Writer" tier so they would not be forgotten. Each carries
+an info button (a real `<button>`, not a hover tooltip — works on touch, reaches the keyboard,
+one open at a time, closes on outside click or Escape).
+
+**The info copy is lifted from the shipped surfaces, not written for marketing.** Verified
+2026-09-25:
+
+| Row | Heading | Copy source |
+|---|---|---|
+| Community access | The Green Room | `components/green-room/GreenRoomHub.tsx:39` — "Share what you're making, find the people you need, and keep your creative relationships close." |
+| Sound Vault | Masters, artwork and documents | Paraphrased from the vault readiness model (`app/(artist)/vault/page.tsx`, `lib/vault/readiness.ts`). **The only one of the four not lifted verbatim** — there is no single shipped lede for the Vault. Worth writing one properly. |
+| Metadata Studio | Release metadata | `components/vault/MetadataStudio.tsx:341` — "Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere." |
+| Release Report | Take it out | `app/(artist)/vault/new/page.tsx:141` — "Build a single, snippet, EP, or album with the full readiness checklist for going out." |
+
+### Open questions
+
+- **Free now shows 8 rows against Studio's 5.** Logically fine — the paid tiers lead with
+  "Everything in Writer" so they inherit all eight — but visually the free column is the longest,
+  which is the opposite of what a pricing table usually wants to say. Either trim what Free
+  itemises or give the paid tiers more of their own rows.
+- **Is all of this actually free?** These are placeholder tiers; the business model is undecided
+  (`2026-09-24-marketing-site-needed.md`). Putting Sound Vault, Metadata Studio and Release Report
+  under Free is a pricing claim, not a design choice — it needs the business-model conversation
+  before it goes on a public page.
+- The info pattern is generic: any feature row can become `{t, h, i}` instead of a plain string.
+  Only these four use it so far.
