@@ -1603,3 +1603,17 @@ face. The Pexels images were unaffected because Pexels fits-then-crops server-si
 Fixed by resizing the short side to 400 first (`--resampleWidth` for portraits,
 `--resampleHeight` for landscape) and cropping after. Worth remembering: **`sips -c` crops,
 `sips -Z`/`--resample*` scales, and cropping without scaling first is almost never what you want.**
+
+### Marcus re-cropped with an offset; Jonah left alone (2026-09-25)
+
+**Marcus Dune** — his face sits upper-left in the 560×704 source (the rest is a car door), so a
+centre crop put him against the edge. Re-cropped 380×380 from offset `(y20, x20)` via
+`sips --cropOffset`, then scaled to 400. Head now centred.
+
+**Jonah Vale — left as-is, deliberately.** His source is a 512×512 macro of half a face, so the
+avatar already shows everything that exists; cropping cannot widen what was never photographed.
+His legibility issue at 70 px is the film's blue/magenta grade, not framing — an exposure question,
+and the owner chose to keep the original look.
+
+Useful for later: `sips --cropOffset offsetY offsetX` works (Y before X), and `ffmpeg` is available
+if a still is ever needed from `anna.mp4`, `marcus.mp4` or `rae.mp4`. There is no `jonah.mp4`.
