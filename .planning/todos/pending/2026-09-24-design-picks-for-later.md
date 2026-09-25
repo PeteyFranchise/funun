@@ -250,3 +250,53 @@ Getting this wrong on the marketing page of a rights platform would be a bad loo
 would not be for most products.
 
 ---
+
+## 6. Pricing table
+
+**Source:** 21st.dev, `studiova-luxury-pricing-table.tsx`. Three tiers, a monthly/annual toggle with
+a −20% badge, a highlighted "Most popular" middle card, gold accents on near-black.
+
+**Liked for:** the pricing layout.
+
+**Candidate home:** marketing site.
+
+**Dependencies: none.** Plain React, Tailwind and inline SVG.
+
+### Two things that must be removed before it is ever shown to anyone
+
+1. **It ships the author's advertising.** `brandBacklink` defaults to `https://scriptly.store/`,
+   **every tier's CTA defaults to that same URL**, and there is a hardcoded
+   *"Powered by Scriptly.Store ↗"* link in the footer. This is not a bug — it is a deliberate
+   backlink placed in the component. Left in, Funūn's pricing page would send buying customers to
+   a third party's store.
+2. **It ships fabricated social proof.** *"Trusted by 320+ founders and studios worldwide"* is
+   hardcoded, not a prop. On a pricing page that is a factual claim about the business. Publishing
+   it unedited would be a straightforward lie.
+
+### Traps
+
+- **Two classes that silently do nothing on Tailwind 3.4:** `py-0.2` (the spacing scale has no
+  `0.2` — it goes 0, 0.5, 1, 1.5…) and `active:scale-98` (the scale scale has no `98`). Both fail
+  with no error, so the annual badge padding and the button press effect just would not happen.
+- **A whole parallel palette in hardcoded hex** — `#090a0f` ground, `#E2B774` gold, `#0e0f17` cards.
+  Gold, not Funūn's indigo→fuchsia. Re-tinting is straightforward but touches every element.
+- Default tier copy is a web-design agency's ("WebGL effects", "dedicated Slack channel"). Props,
+  so trivially replaced — but a reminder that nothing in the defaults is reusable.
+- Credit where due: `target="_blank"` **does** carry `rel="noopener noreferrer"` here, unlike the
+  voice-testimonials pick.
+
+### The real blocker is not the component
+
+**Funūn has no pricing to put in it.**
+
+- Phase 24 self-serve is **ON HOLD pending a business-model discussion**.
+- Every paid-tier artefact in the repo is **buyer-side** (`docs/buyer-paid-tiers-and-content-protection.md`,
+  `24-RESEARCH-paid-tiers.md`, `post-beta-ai-pricing-and-governance.md`).
+- The one artist-facing tier candidate — studio-quality vocal capture — has an open tier question
+  (`2026-09-24-studio-quality-vocal-capture.md`).
+
+So this is the same shape as the footer: **the presentation of a decision that has not been made.**
+Worth keeping, worthless until the business model is settled. Whatever that discussion concludes
+should drive the number of tiers and what separates them — not this component's three-tier shape.
+
+---
