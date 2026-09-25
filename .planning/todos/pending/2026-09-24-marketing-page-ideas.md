@@ -1392,3 +1392,48 @@ decades-of-experience claim (owner's own, about their own team).
 
 **One still gated:** `24-bit keeper takes` must not go public until the deployed recorder reliably
 produces 24-bit/48 kHz across supported browsers. Phase 45.
+
+## Collaborator sphere section added (2026-09-25)
+
+New `#people` section between the hero carousel and the testimonials, illustrating the
+collaborator pitch: **"Add them once. Stop chasing the details."**
+
+Twelve faces orbit on a draggable sphere with momentum and auto-rotation. **Hovering one pauses the
+rotation and opens a card with their PRO, IPI and publisher** — which is the whole argument made
+visible: the details you would otherwise be chasing are already on file.
+
+### What was ported from 21st.dev `image-sphere`, and what was not
+
+**Ported (the geometry, which is the component's actual value):** Fibonacci sphere distribution for
+even coverage without pole clustering; Y-then-X rotation matrices; depth-driven scale, opacity and
+z-index; drag with momentum decay and a speed clamp.
+
+**Not ported:** React, `lucide-react` (its only dependency, absent from Funūn), the modal, and the
+collision-detection pass — at twelve nodes on a 560px sphere nothing overlaps, so it would be
+solving a problem this section does not have.
+
+Roughly 90 lines of vanilla JS against the component's ~600 of TSX. That ratio is itself evidence
+for the Phase 46.0 decision: **the value was the maths, not the framework.**
+
+### Faces are placeholders and must be replaced
+
+Owner: *"just use the images already in the sphere since they are just intended to paint the idea."*
+They are the source component's own stock photos, hotlinked from `cdn.21st.dev`. Two consequences
+before this page goes public: **they are not Funūn artists**, and **the page depends on a third
+party's CDN**. Either commission real opted-in artist photos or self-host replacements.
+
+The **fields** are real, though — name, PRO, IPI, publisher and contact are the columns
+`018_collaborators_split_sheets.sql` actually stores. IPIs are deliberately `00000`-prefixed so no
+string on the page can collide with a real person's real identifier.
+
+### Bug this surfaced: the retired corridor killed every later script
+
+Rebuilding heroB as the Sound Vault announcement removed `#stage` and `.corridor`, but
+`buildCorridor()` still ran and dereferenced them. **One unguarded throw took out every script
+after it**, including the sphere — which is why it rendered zero nodes while the element itself
+existed. Fixed with an early return.
+
+Third time this session a single throw has silently disabled everything downstream (the earlier two
+were TDZ errors in appended blocks). **Standing lesson for this file: any initialiser that queries
+the DOM needs a null guard, because the bench's scripts all share one scope and one failure is
+total.**
