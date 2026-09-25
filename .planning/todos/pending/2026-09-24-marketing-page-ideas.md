@@ -946,3 +946,23 @@ non-coercive when it generates revenue.
 manifest references 15 rooms; `nav.ts` declares 6. `talent-services` is one of the nine orphans, so
 its doctrine is filed to a room that does not exist in the nav. Typing the field would make this
 enforceable.
+
+### Room row order (2026-09-25)
+
+Owner: put the two new perks last. Final order:
+
+1. Everything in Studio
+2. Team workspaces and roles
+3. Roster and catalogue views
+4. Audit surfaces
+5. Onboarding help
+6. **Dedicated Talent Services liaison**
+7. **À la carte label services**
+
+Reads better than the earlier placement: the software rows establish what the tier *is*, then the
+two human-service rows land as the payoff at the bottom of the card, right above "Talk to us" — the
+CTA that exists precisely because those two need a conversation. Both are Room-only.
+
+Also caught while syncing: **the à la carte row had never been added to the Codex prompt.** The
+bench and the prompt had drifted by one row. Both now match — worth spot-checking the prompt
+against the rendered page before sending it, since they are maintained separately.
