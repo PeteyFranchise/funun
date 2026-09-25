@@ -375,18 +375,33 @@ Three pillars:
 
 ## Account Vocabulary
 
-**Funūn has three account classes: Member, Client Partner, and Funūn Team Member.**
+**Funūn has three identity classes: Member, limited guest/signature recipient, and
+Funūn Team Member. Client Partner is NOT one of them** — it is a verified organization
+relationship held BY a Member. Aligned to `docs/architecture/ACCOUNT-TYPES.md`, which is
+canonical; this section previously counted Client Partner as a third class and did not
+count the guest context, which invited exactly the wrong mental model.
 
-- Member is the full-user umbrella for artists, writers, producers, managers,
+- **Member** is the full-user umbrella for artists, writers, producers, managers,
   publishers, attorneys, engineers, label executives, curators, and other creative
   professionals. A `user_profiles` row is the current structural Member signal.
-- Client Partner access comes from an explicit `buyer_members` relationship to a
-  verified `buyer_orgs` organization. It may coexist with a Member workspace on the
-  same auth identity. Never infer it from a “Music Supervisor” profile role or require
-  `app_metadata.role='buyer'` when a valid membership exists.
-- Funūn Team Member access comes from `funun_staff` and server-verified staff roles.
+- **Limited guest / signature recipient** is a narrow, expiring invitation or signing
+  context — one invited action, no workspace. If they later join, they become a Member
+  without losing the evidence attached to the invitation.
+- **Funūn Team Member** access comes from `funun_staff` and server-verified staff roles.
   Staff identities stay separate and fail closed out of Member/Client Partner contexts.
-- Guests and signature recipients are limited invitation contexts, not account classes.
+- **Client Partner is a relationship, not an identity.** It comes from an explicit
+  `buyer_members` link to a verified `buyer_orgs` organization, and coexists with a Member
+  workspace on the same auth identity — a songwriter who also licenses music for a
+  production company is **one Member holding a Client Partner relationship**, not two
+  accounts. Never infer it from a “Music Supervisor” profile role or require
+  `app_metadata.role='buyer'` when a valid membership exists.
+
+**Naming discipline.** Two names contain "Team" and mean unrelated things, and one is
+public: **Funūn Team Member** is staff (`funun_staff`); **Team** is a *Member* pricing tier
+on the marketing site. Never write "Team Member" without "Funūn"; never call the tier a
+"Team account". When a name is ambiguous, cite the structural signal (`user_profiles`,
+`funun_staff`, `buyer_members`→`buyer_orgs`) rather than the name — a name can drift, and a
+label nothing checks is not evidence.
 
 Professional roles describe a person and may prefill forms; they never grant workspace
 access, authorship, ownership, signing authority, licensing power, or payment rights.
