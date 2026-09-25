@@ -2056,3 +2056,41 @@ name).
 
 **Convention restated so it is unambiguous: US spelling in page copy, planning docs, commit
 messages and chat — `catalogue` is the sole exception, because it is a product name.**
+
+## FAQ section built (2026-09-25)
+
+Page is now **hero → 01 How it works → 02 Collaborators → 03 The Crate → 04 Voices → 05 Questions →
+06 Pricing → footer.** Numbering picked it up automatically.
+
+**Open two-column, no accordion.** The page already has 17 click-to-reveal popovers, and an FAQ is
+the wrong place to hide answers — someone reading it is anxious about ownership or lock-in, and
+making them click to learn whether you take a cut is backwards.
+
+Heading is *"The things people actually ask"*, not "FAQ". The subhead concedes something on
+purpose: *"If something here is unclear, that's our problem — tell us and we'll fix the wording."*
+A page that admits its copy might be confusing reads as more honest than one asserting everything
+is obvious.
+
+### The six, and where each answer came from
+
+| Question | Source |
+|---|---|
+| Can I still shop my songs elsewhere? | Core product grants Funūn nothing — the sync agreement is opt-in and separate |
+| Who owns my masters? | Funūn stores, does not own |
+| What happens if I stop paying, or leave? | `ACCOUNT-TYPES.md` almost verbatim — read-only, nothing deleted or rewritten |
+| Can anyone see what I'm working on? | Private room vs Green Room boundary |
+| What if my co-writer isn't on Funūn? | `018_collaborators_split_sheets.sql` — records exist without accounts |
+| Do I have to use The Crate? | Opt-in; the rest works identically without it |
+
+The third is the strongest and it was already written — a cancelled workspace keeping its rights
+evidence readable is a promise most products cannot make.
+
+### Deliberately absent
+
+**What changes when a song enters The Crate.** Exclusivity of representation is an open placeholder
+in `lib/sync-library/agreement.ts`, counsel-gated. Blocker logged at
+`2026-09-25-crate-exclusivity-term-blocks-faq-answer.md`. Verified programmatically that no
+"non-exclusive" or "we don't sign exclusive deals" claim appears anywhere in the section.
+
+**Also out:** pricing-tier detail (placeholders) and anything about AI (invites a conversation this
+page does not want).
