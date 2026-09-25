@@ -2181,3 +2181,24 @@ Sticky with a backdrop blur; the hairline border only appears once scrolled, so 
 over the hero and defined over content.
 
 **Still `href="#"`** — sign-in should point at `/signin`, which exists. Part of tomorrow's CTA pass.
+
+### Bug: popovers on the Team card's last rows were covered by the Entourage band (2026-09-25)
+
+Two problems in one symptom.
+
+**1. A stacking-context trap.** `.pgrid` had `z-index:1; position:relative`, which **creates a
+stacking context** — so `.fpop`'s `z-index:40` only competed with its siblings inside the grid,
+never with the band. `.teamstrip` also sat at `z-index:1` and came later in the DOM, so it painted
+on top. **Raising the popover's z-index would have done nothing**; the fix was raising `.pgrid` to
+3.
+
+Worth remembering as the general trap: *a child's z-index is meaningless outside its own stacking
+context, and `position:relative` + any `z-index` creates one.*
+
+**2. The panel ran past the card.** The à la carte popover overflowed the card bottom by 34px,
+landing 2px from the band. Now popovers measure once visible and flip upward when they would run
+past the card, with their own reversed entrance keyframes so they still spring from the right
+direction.
+
+The flip is selective, not blanket — verified: the two bottom Team rows flip, the Writer's Room and
+AI-bench popovers do not, and all four clear the band.
