@@ -3183,6 +3183,98 @@ favouriting. Those are net-new.
   Notes before building it, or the same conversation splits across two tabs.
 
 
+
+### ⚑ Codex risk register — Writer's Room wave (2026-09-24, folded in 2026-09-25)
+
+Source: `.planning/reviews/CODEX-RESPONSE-260924-writers-room-design-wave-verification.md`.
+
+**Only the three headline corrections and the Gate 0 counts were folded in on the 24th. These ten
+were not, and the review's verdict was "this wave is not safe to plan against unchanged."** Each
+must be answered in its phase's plan before that phase is executed.
+
+#### HIGH
+
+**H1 — Adding an `assembly` source in one layer breaks or misclassifies uploads.** *(Phase 44)*
+The DB check, two TypeScript unions, route allowlists and the presentation map are all exhaustive:
+`lib/catalogue/versions.ts:15,90-94` · `types/catalogue.ts:70-82` ·
+`app/api/works/[workId]/versions/upload-intent/route.ts:11-13,49-50` ·
+`.../versions/complete/route.ts:16-18` · `supabase/migrations/162_writer_room_record_over_beat.sql:7-10`.
+All five change together or none do.
+
+**H2 — Derived credits can become unsupported delivery facts.** *(Phase 44)*
+`app/api/works/[workId]/versions/complete/route.ts:90-123` · `lib/song-passport/schema.ts:145-158`.
+Assembly credits must retain source-version lineage and confirmation state, not copy mutable names
+into a flat JSON array. Codex's proposed relations: `work_assemblies`, `work_assembly_sections`,
+`work_assembly_layers(source_version_id, role, gain, timing)`, `work_version_credit_sources` —
+materialized **server-side** from those edges, never accepted from a client.
+
+**H3 — Take links expose unreleased material if a bearer URL maps straight to Storage.** *(cross-cutting)*
+`app/api/ideas/[ideaId]/share-links/route.ts:8-46` · `supabase/migrations/169_ideas_inbox.sql:312-339`.
+Scope every link to one version and permission, store **only a token hash**, enforce
+expiry/revocation on every request, issue a short-lived signed playback URL only after validation,
+separate streaming from download, keep an audit trail.
+
+**H4 — "Never alter stored bytes" needs an original-versus-derived distinction.** *(Phase 44)*
+`lib/catalogue/record-over-beat.ts:88-120,123-137` · `RecordOverBeatStudio.tsx:637-679` ·
+`supabase/migrations/162_writer_room_record_over_beat.sql:1-5,124-127`. Rendering resamples and
+quantizes but correctly saves a **new** rough version while retaining raw clips. Phase 44 must
+preserve that pattern, hash every source and output, and never overwrite an input object.
+
+#### MEDIUM
+
+**M1 — Reusing the legacy release helper would overwrite evidence.** *(Phase 45)*
+`lib/storage/index.ts:27-38` writes a stable path with `upsert: true` and returns a **public** URL.
+Studio capture must stay on unique private version paths with `upsert: false`.
+
+**M2 — Mutable song defaults could silently rewrite delivery truth.** *(Phase 43)*
+`supabase/migrations/151_song_passport_foundation.sql:45-71,195-209`. Confirmed version facts and
+snapshots must stay historical even after a writer changes the room's BPM, metre or key.
+
+**M3 — Browser constraints do not prove keeper quality.** *(Phase 45)*
+Device constraints may be ignored; AudioWorklet capture and 24-bit encoding are new code. The file
+needs **recorded actual settings plus a content hash** before it can be called delivery-grade.
+*(This also gates the marketing page's `24-bit keeper takes` row — see Phase 46.)*
+
+**M4 — Open hashtag trending could disclose private-room subject matter.** *(todo: hashtags)*
+Aggregation must be restricted to public or explicit opt-in surfaces, never derived from private
+Writer's Rooms.
+
+#### Plan corrections not yet folded in
+
+**P1 — Phase 43 musical defaults need a specific schema.** Codex's design:
+`work_musical_defaults(work_id PK, bpm NUMERIC(6,3), meter_numerator SMALLINT, meter_denominator
+SMALLINT, musical_key TEXT, downbeat_offset_ms INTEGER, updated_by, updated_at, revision)` plus
+`work_version_musical_overrides(work_version_id PK, nullable override columns, confirmed_by,
+confirmed_at)`, NULL meaning inherit, resolved with `COALESCE`. **Freeze** BPM/key into the
+version-targeted Passport value on confirm so later song-default edits cannot rewrite an older
+master's delivery facts. Metre needs a new Passport field only once its delivery mapping is decided.
+
+**P2 — Phase 43's buyer-filter statement skips a required mapping.**
+`lib/deals/catalog.ts:327-360` · `supabase/migrations/001_initial_schema.sql:125-126`. Buyers filter
+`tracks.bpm` and `tracks.key_signature`, **not** Song Passport rows. Graduation/delivery must
+explicitly copy confirmed version BPM/key into the selected release track, with conflict handling
+rather than silent overwrite.
+
+**P3 — Phase 44 must not reuse `reconcileWriterRoomLayout()` as the arrangement reconciler.**
+`lib/catalogue/blocks.ts:139-180` · `lib/catalogue/writer-room-layout.ts:3-8,90-138` ·
+`supabase/migrations/176_writer_room_personal_layouts.sql:1-20,50-54`. Room layout is **private
+per-user presentation that deliberately cannot alter evidence**; arrangement needs shared
+authoritative persistence, FK-backed section/take references, concurrency handling and explicit
+"inherit unless overridden" rules.
+
+**P4 — Reordering changes meaning under the proposed model.**
+`supabase/migrations/138_work_diary_events.sql:475-483` permits a null actor because position is
+presentation that moves no authorship or money. If reordering sections changes rendered audio,
+position becomes a provenance fact: record the authenticated actor and an immutable arrangement
+revision.
+
+**P5 — Credits can currently be asserted without proof of the claimed performance.**
+`app/api/works/[workId]/versions/complete/route.ts:80-123` ·
+`app/api/works/[workId]/blocks/[blockId]/route.ts:25-33,251-267`. Every uploaded version
+automatically receives the work's primary performer regardless of what is audible, and lyric-block
+singer lists are manually declared plans. **`performers` JSON is not evidence** that a contributing
+take contains that person.
+
 ### Phase 46: The marketing page — finish it and ship it
 
 **Goal:** funun.studio shows a finished marketing page to logged-out visitors instead of a sign-in
