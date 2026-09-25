@@ -59,3 +59,46 @@ anywhere and costs nothing to install. That makes it unusually cheap for how str
 marketing hero and wrong inside a working tool — which is an argument for "marketing only."
 
 ---
+
+## 2. Voice testimonials
+
+**Source:** 21st.dev, `voice-testimonial.tsx`. A grid of testimonial cards, each with a photo,
+a quote, and a small audio player with an animated waveform. "Load more" fades in the rest.
+
+**Liked for:** testimonials you can *hear*. On a music platform that is more on-brand than a wall
+of text quotes.
+
+**Candidate home:** marketing site (social proof section). A second use worth considering: artist
+spotlights on a public profile or release page.
+
+**Dependencies:** `react-icons` (new — one X/Twitter icon, replaceable with inline SVG) and
+`framer-motion` (new — drives the waveform bars only).
+
+**Funūn could do this better than the original.** The published version animates **random** bars
+that have nothing to do with the audio. Funūn already extracts real waveform peaks
+(`peaksFromBuffer`, `PEAKS_BAR_COUNT = 200` in `lib/catalogue/waveform.ts`) and renders them in the
+Writer's Room. Feeding real peaks in would make the bars actually match the voice — and would
+remove the need for framer-motion entirely, since a played-progress fill is a CSS transition.
+
+**Traps — this one has genuine defects, not just version drift:**
+
+- **Hydration mismatch (the serious one).** `WaveVariants()` runs `Math.random()` at **module
+  scope**, and bar heights use `Math.random()` inline during render. In Next.js the server and the
+  client generate different numbers, so React will warn and re-render — the classic
+  "text content did not match" hydration error. Must be seeded, or moved into `useEffect`, or
+  replaced with real peaks (preferred).
+- **Every audio file is loaded on mount.** `new Audio()` is constructed for all testimonials in a
+  `useEffect`, so eight clips begin fetching before anyone presses play. Should be lazy.
+- **`window.open(url, "_blank")` with no `noopener`** — reverse-tabnabbing risk on the social link.
+- **Not keyboard accessible.** Play, pause and the social link are `onClick` on `<span>`/`<div>`
+  with no button semantics, no focus, no Enter/Space.
+- **Undefined class** `testimonial-partially-visible` is referenced but never written.
+- **Placeholder image** points at `via.placeholder.com`, and `next/image` needs any external domain
+  declared in `next.config.mjs`.
+- **Its own theming system.** A `mode: "light" | "dark"` prop with ternaries on every element. Funūn
+  themes with CSS tokens; adopting this as-is would create a second, parallel way to do theming.
+
+**Effort read:** the layout and the idea are worth taking; the implementation mostly is not. Rebuilt
+on Funūn's existing waveform code it would be smaller, correct, and have one fewer dependency.
+
+---
