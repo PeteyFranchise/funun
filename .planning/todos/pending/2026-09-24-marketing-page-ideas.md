@@ -1437,3 +1437,28 @@ Third time this session a single throw has silently disabled everything downstre
 were TDZ errors in appended blocks). **Standing lesson for this file: any initialiser that queries
 the DOM needs a null guard, because the bench's scripts all share one scope and one failure is
 total.**
+
+### Hidden gems in the sphere (owner, 2026-09-25)
+
+Four classical composers orbit among the twelve placeholder collaborators — **J.S. Bach, Beethoven,
+Mozart and Clara Schumann** — 16 faces total.
+
+**The joke is structural, not decorative.** Their cards fill exactly the same fields as everyone
+else's; only the answers change:
+
+> **J.S. Bach** · Composer · Leipzig, 1685–1750
+> PRO **—** · IPI **—** · Publisher **Public domain · 1750**
+
+Which quietly makes a real point for a rights product: the paperwork question does not change
+depending on who you are working with. Sometimes the answer is just "nobody to clear this with."
+
+**Portraits are public domain** — Wikimedia Commons, all pre-1900 artworks. URLs were **resolved
+through the Wikipedia REST API rather than guessed**: my four hand-written `upload.wikimedia.org`
+URLs all 404'd, because the thumbnails live on `thumb.wikimedia.org`. Verified all 16 images load
+(`naturalWidth > 0`) before committing.
+
+Clara Schumann is in deliberately — a composer, performer and editor, and the only one of the four
+who worked as all three.
+
+**Same caveat as the other faces:** these hotlink a third-party CDN. Public-domain artwork is safe
+to reproduce, but the dependency is not — self-host before this page is public.
