@@ -192,3 +192,61 @@ the top sit on black — the same card could read as two different weights depen
 lands. That is exactly the kind of thing only the density test will show.
 
 ---
+
+## 5. Image stream hero (the corridor)
+
+**Source:** 21st.dev, `image-stream-hero.tsx`. Two rails of image cards fly out of a vanishing
+point toward the viewer, opening into a diagonal corridor, with your headline sitting on top.
+
+**Liked for:** a hero that leads with images rather than describing them.
+
+**Candidate home:** marketing site hero.
+
+**Dependencies: none** beyond a `cn()` helper. No framer-motion, no icon library. It is CSS
+keyframes generated in JS plus CSS 3D transforms.
+
+### This is the best-built component in the collection
+
+Worth recording, because it sets the bar for what "good" looks like when judging the others:
+
+- **Every parameter is documented with the artefact it prevents.** Depth is authored as *apparent
+  size*, geometrically, because spacing z evenly makes near cards tear apart. The rails open early
+  and hold (`fan > 1`) because parallel rails project to a cone with no bend.
+- **Cards are born *across* the centre line** (`railBirth` is negative), so the vanishing point is
+  never uncovered. Born on their own side, a hole blinks open at dead centre once per cycle.
+- **Negative `animationDelay`** drops each card mid-flight, so the corridor is already full on the
+  first frame rather than filling up after you arrive.
+- **`prefers-reduced-motion` pauses rather than disables.** Because each card is already mid-flight,
+  pausing freezes a finished composition; disabling would collapse everything onto the axis. That
+  is a genuinely thoughtful accessibility decision, not a checkbox.
+- **`React.useId()` namespaces the keyframes**, so two instances on one page cannot collide.
+- Decorative layer is `aria-hidden`; every length is `cqw` so it scales at any size.
+
+### Traps
+
+- **Container queries are load-bearing.** `containerType: inline-size` plus `cqw` on *every* length.
+  Fine on current browsers (Chrome 105+, Safari 16+), but on anything older the entire corridor
+  collapses — there is no fallback. Worth a support floor decision before shipping it publicly.
+- **Performance.** 18 cards by default (9 × 2 rails), each a full image, all animating in 3D
+  continuously. `backfaceVisibility: hidden` helps. Test on a low-end phone before committing.
+- **`loading="lazy"` on cards that are visible immediately** — may delay the corridor's first paint.
+  Should be `eager` for the first few.
+- Demo images come from an external R2 CDN and would all need replacing.
+
+### The question that actually matters for Funūn
+
+**The images would be cover art — and that is other people's work.**
+
+A corridor of record covers flying at the viewer is a strong, on-brand hero for a music platform.
+But Funūn is a *rights* company, and putting artists' artwork on a marketing page needs their
+permission. Options, in rough order of safety:
+
+1. Funūn's own releases, or art the company commissioned.
+2. Opt-in — artists tick a box to be featured. Slower, but it becomes a *benefit* rather than a
+   liability, and it is the answer most consistent with what Funūn sells.
+3. Abstract gradients instead of covers (the demo mixes both). Safe, and loses most of the point.
+
+Getting this wrong on the marketing page of a rights platform would be a bad look in a way it
+would not be for most products.
+
+---
