@@ -1935,3 +1935,28 @@ layers, the `.reveal` filter — and it was wrong both times. It was plausible, 
 evidence I had, and one controlled test with a plain control disproved it in under a minute. The
 control is what did the work: without it I would have "confirmed" the theory and shipped a false
 rule into the roadmap.
+
+### Sphere and cover images halved to 280px (2026-09-25)
+
+**1,740K → 672K, a 62% cut** — better than the ~50% predicted, because JPEG size falls faster than
+linearly with dimension.
+
+Measured headroom after the change, on fresh cache-busted fetches:
+
+| | |
+|---|---|
+| Source | 280px |
+| Largest node rendered | 72px |
+| Ratio | **3.9×** |
+| Headroom on a 2× retina display | **1.9×** |
+
+Still nearly double the pixels a retina screen needs, and no visible loss at display size.
+
+**This is what makes eager loading the right answer rather than a tradeoff.** The only real
+objection to loading all 25 faces up front was weight; the weight just dropped by two thirds. When
+the page becomes a Next route, these want `priority` on `next/image` — not because lazy is broken
+(it is not, see the correction above) but because a sphere that fills in as you scroll reads as a
+half-loaded page.
+
+400px originals kept at `/tmp/img-400-backup/` for the session. Not worth preserving further given
+the retina headroom.
