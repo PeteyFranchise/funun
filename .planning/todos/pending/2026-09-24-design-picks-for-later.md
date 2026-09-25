@@ -147,3 +147,48 @@ decision in component form** — see the top of this session's discussion.
 dependencies and a parallel token system to restyle a screen that already exists and already works.
 
 ---
+
+## 4. Radial glow background
+
+**Source:** 21st.dev, `tailwind-css-background-snippet.tsx`. Despite the wrapper, the whole thing
+is **one CSS gradient**:
+
+```
+radial-gradient(125% 125% at 50% 10%, #000 40%, #63e 100%)
+```
+
+Black through the top and middle, blooming to a blue-purple at the bottom corners. A "lit from
+below" page ground.
+
+**Liked for:** the background itself.
+
+**Dependencies: none. Traps: none.** The only pick in this collection with a clean bill. The
+arbitrary-property syntax `[background:…]` works on Tailwind 3.4 as written. The `cn()` import is
+unnecessary (one static string) and the two nested wrapper divs are redundant — the gradient could
+be one line on `body`.
+
+**Candidate home: anywhere — and that is the point.** This is not really a component, it is a
+**proposal about the app's ground colour**, which lands directly on an unresolved decision.
+
+**It conflicts with the current ground choice.** The owner selected **neutral black** on
+2026-09-24 — flat `#000` page, neutral card surfaces. This gradient is the opposite instinct: the
+page is not flat, it glows. Both cannot be true.
+
+Worth noting the two are *not* far apart in spirit. Funūn's original `ink` (`#0a0a0f`) is black
+with an indigo undertone, and this gradient is black with an indigo bloom — a more dramatic version
+of the same idea. `#63e` (`#6633ee`) is in the same family as Funūn's `--indigo` (`#818cf8`), just
+deeper and more saturated.
+
+**Tie this to Gate 0.** The Sound Vault grid test is meant to settle whether flat neutral black
+survives at density. This gradient belongs in that same test as a third option:
+
+1. Ink (`#0a0a0f`, indigo undertone)
+2. Neutral black (flat `#000`) ← current choice
+3. **Radial glow** (`#000` → indigo bloom) ← this pick
+
+One caution to check there: a gradient ground behind **twelve tiled cards** behaves differently
+from a gradient behind one hero. Cards at the bottom of the grid would sit on purple while cards at
+the top sit on black — the same card could read as two different weights depending on where it
+lands. That is exactly the kind of thing only the density test will show.
+
+---
