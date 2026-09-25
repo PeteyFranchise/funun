@@ -1982,3 +1982,17 @@ for masters.
 **Pattern worth watching:** this is the third time a fact has drifted across surfaces on this page
 (the others were the attribution unit — line vs section — and the eyebrow numbers). Anything stated
 in more than one place should be checked against the others when it changes.
+
+**Credits added to both Sound Vault surfaces** (2026-09-25): *masters, stems, artwork, **credits**,
+metadata and documents.* Real — `types/catalogue.ts:82` has `performers` as declared per-recording
+credits feeding DDEX.
+
+**Step 5 deliberately excluded.** It already says *"credits already filled in from the writing
+rather than a last-minute round of emails"*, which is stronger than a list item because it says
+where the credits came from. Adding them to its list would mention credits twice in one sentence.
+
+So the division is: the two Sound Vault surfaces enumerate what the vault **holds**; step 5
+explains how the credits **got there**.
+
+**Six items is the ceiling for that list** — past this it reads as inventory rather than copy. If
+anything else needs adding, group rather than extend.
