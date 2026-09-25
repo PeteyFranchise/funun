@@ -1750,3 +1750,11 @@ admitted somewhere before the step paid off.
 "**Your** distributor" is deliberate — Funūn does not distribute. Same boundary honesty as step 3
 conceding that the DAW is where the work happens. Both paths verified: `distributor` appears in
 `lib/vault/readiness.ts` and `types/index.ts`, and Metadata Studio exports for that handoff.
+
+**Step 3's closing clause rewritten** (owner: confusing). Was *"the room knows where it got to"* —
+vague about what is tracked, and it made the software the subject of a benefit line. Now: *"you can
+see whether it has been opened, worked on or sent back."* Three specifics, and they are the real
+handoff stages (`received`, `working`, `returned` from `producer-handoff.ts:23`) in plain language.
+
+Kept "without chasing anyone" out on purpose — steps 2 and 5 already carry that idea and a third
+would make it a tic.
