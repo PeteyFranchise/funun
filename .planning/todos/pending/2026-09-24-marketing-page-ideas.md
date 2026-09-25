@@ -2149,6 +2149,19 @@ not the head start it looks like.
 - **Publishing** — the business-model conversation. Tiers, storage caps and the Room service
   promises are all described on the page and unimplemented. Finishing is not blocked; going live is.
 
+### Morning Light is out of the Selects mock (2026-09-25)
+
+The mock's hero cover and track 1 were `morning-light.jpg` / *Morning Light* — the owner's own
+song. Replaced with **Paper**, which is genuinely Maya Reyes's in
+`lib/deals/catalog-sample.ts:78`-area sample data (3:24, `paper.jpg`), so the mock is now *more*
+faithful to shipped data, not less. `morning-light.jpg` deleted from `private/bench/img/art/`;
+no reference to the song remains anywhere on the page.
+
+Note while in there: only **Paper** and **Moonlight** are actually Maya's in the sample catalogue.
+`midnight-ride.jpg` is Sable Roy's *Cross the Wire* and `golden-hour.jpg` is Ledger & Vine's.
+The mock attributes all four to Maya. Harmless in a mockup, but it is invented data on a page
+whose whole argument is that Funūn does not invent data — worth a decision before this ships.
+
 ### Bug: the sphere hover card was painted over by the avatars (2026-09-25)
 
 Owner: *"info cards not legible when you click on them, some avatars land in front of them."*
