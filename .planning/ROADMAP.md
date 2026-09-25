@@ -3201,12 +3201,30 @@ every product claim on it is traced to a `file:line`.
 is explicitly different: workspaces start free with usage *measured but not enforced*
 (`docs/architecture/ACCOUNT-TYPES.md`).
 
-#### 46.0 — GATE: build target (blocks everything below)
+#### 46.0 — GATE: build target — **RESOLVED 2026-09-25**
 
-**Undecided, and deferred to Codex's recommendation** (owner, 2026-09-25). Three options: a route
-in the Next app, a separate build target carrying the full React stack, or adopting that stack
-app-wide. `www.funun.studio` already resolves to the Next app and `app/page.tsx` redirects
-logged-out visitors to `/signin`, so the app holds the domain either way.
+**Option A: a route in the existing Next app**, built as mostly static server-rendered markup.
+Client JS only where state genuinely requires it — carousel controls, accessible popovers, custom
+audio-player state, and a reveal observer if CSS alone will not do. React is the delivery shell,
+not the interaction model.
+
+**Option C rejected on evidence.** Adopting shadcn/Radix/framer-motion/lucide would save an
+estimated **20–35%** of porting work — primitive setup, some keyboard/focus behaviour, variant
+plumbing, icons, motion scaffolding. It would not save deciding what a component should do in
+Funūn, rewriting its content and hierarchy, reskinning, responsive composition, product-state
+integration, accessibility verification or testing. Not worth a second design system.
+
+**Option B rejected too:** dropping React from the implementation does not erase a separate build
+target's cost — another deployment, domain/rewrite config, analytics, consent handling, headers,
+preview workflow, and a design system that drifts. *"The low-cost version of plain HTML is not a
+second site; it is plain semantic markup rendered by the existing Next route."*
+
+**Tailwind:** stay on 3.4 tokens, use scoped CSS or CSS modules for facade-specific work, never
+paste unsupported v4 utilities, and keep any v4 upgrade a separate change with before/after visual
+checks. Treat 21st.dev as **visual reference** — port interaction and composition deliberately
+rather than letting a component marketplace choose the architecture.
+
+Full reasoning: `.planning/reviews/2026-09-25-codex-marketing-copy-review.md`.
 
 The real question underneath: **does this page need React at all?** The bench prototype is plain
 HTML/CSS/JS — carousel, popovers, audio players, reveal-on-scroll all working with no framework.
@@ -3239,11 +3257,15 @@ before the image lands. The `PLACEHOLDER · Midjourney facade plate pending` rib
 Slides 2 and 3 are **probably product screenshots, not renders** — a generated image of software is
 a picture of something that does not exist.
 
-#### 46.2 — Copy final, from the Codex review
+#### 46.2 — Copy final — **DONE 2026-09-25**
 
-The review prompt is written and carries three questions: a line-level copy pass, the free-tier
-storage allowance, and 46.0's build target. A voice pass is already underway — two habits to finish
-hunting: abstract nouns doing verb work, and uncontracted forms.
+Codex review received, verified against source, and fully applied. Every rewrite landed except four
+declined on owner decisions; all overclaims fixed bar those four and one gated on Phase 45. Both
+taglines chosen and placed. Tier renamed Room → Team. US spelling confirmed as the convention,
+`catalogue` excepted.
+
+Copy is final pending the hero subjects in 46.1. Report:
+`.planning/reviews/2026-09-25-codex-marketing-copy-review.md`.
 
 #### 46.3 — Continue the 21st.dev harvest
 
