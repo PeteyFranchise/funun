@@ -2129,6 +2129,18 @@ record, and the `authorises → authorizes` fix. They need a follow-up PR whenev
 4. **Then port** — a route in the Next app, mostly static markup, sphere and Selects marked
    `priority`.
 
+**Also on the list, owner-raised 2026-09-25:** *how do we populate the audio in the testimonial
+cards, how does anyone submit a testimonial, and what are the logistics around that part of the
+page?* Written up in
+`.planning/todos/pending/2026-09-25-testimonial-audio-sourcing-and-consent.md`. The short version:
+**there is no audio** — `VOICES` (marketing.html:987) has no URL field, the waveform is
+`Math.sin`-derived noise, and the play button runs a `setInterval` over a progress fraction. Three
+play buttons that make no sound is the one thing on this page that actively misleads rather than
+merely being placeholder, so the port cannot carry the mock player across. Nothing in the product
+supports testimonials either — zero code hits for the word — and
+`lib/workspaces/consent-service.ts` is workspace-access consent, not a likeness release, so it is
+not the head start it looks like.
+
 ## Not blocked on us
 
 - **Hero art** — owner generates the Midjourney facade plate for slide 1 (prompts written); slides
