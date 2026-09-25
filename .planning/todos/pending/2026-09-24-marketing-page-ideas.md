@@ -119,6 +119,8 @@ one open at a time, closes on outside click or Escape).
 
 | Row | Heading | Copy source |
 |---|---|---|
+| Contract Locker | The paperwork behind your money | `app/(artist)/contracts/page.tsx:208` — "the paperwork behind your money". **Replaced the old "Split sheets and e-sign" row** rather than joining it: Split Sheets is a tab *inside* the Locker (`:213`, `:242`), so listing both was the container and one of its contents. The keyword now lives in the info line. |
+| Collaborator profiles | Add once, auto-fill everywhere | `app/(artist)/collaborators/page.tsx:105` — "Your roster — add once, auto-fill everywhere." Fields named in the copy are real columns in migration `018_collaborators_split_sheets.sql`: name, email, phone, pro, ipi, publisher, role. |
 | Community access | The Green Room | `components/green-room/GreenRoomHub.tsx:39` — "Share what you're making, find the people you need, and keep your creative relationships close." |
 | Sound Vault | Masters, artwork and documents | Paraphrased from the vault readiness model (`app/(artist)/vault/page.tsx`, `lib/vault/readiness.ts`). **The only one of the four not lifted verbatim** — there is no single shipped lede for the Vault. Worth writing one properly. |
 | Metadata Studio | Release metadata | `components/vault/MetadataStudio.tsx:341` — "Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere." |
