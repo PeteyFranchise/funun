@@ -688,3 +688,12 @@ class of overclaim worth being pedantic about. Codex has been given the constrai
 **shop** your submitted songs for sync licensing."* The owner independently reached for "shopping
 your tracks" when asking for the Crate copy. That is the in-house word, already in a signed
 agreement, and it is worth reusing deliberately rather than paraphrasing around it.
+
+**Owner, 2026-09-25: automated submission is the direction of travel, not shipped yet.** That
+confirms the current wording is the one to hold. It also upgrades cleanly — when filing actually
+ships, *"we track what's registered and what isn't"* becomes *"we file it for you"* and no other
+line on the page has to move.
+
+Worth a trigger note: the copy and the capability have to change in the same release. A marketing
+page that promises filing before the code files is the failure mode; a page still saying "we track"
+a month after filing ships is only a missed opportunity. Bias to updating late, not early.
