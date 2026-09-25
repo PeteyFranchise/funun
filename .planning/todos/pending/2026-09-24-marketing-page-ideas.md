@@ -122,6 +122,8 @@ one open at a time, closes on outside click or Escape).
 | Contract Locker | The paperwork behind your money | `app/(artist)/contracts/page.tsx:208` — "the paperwork behind your money". **Replaced the old "Split sheets and e-sign" row** rather than joining it: Split Sheets is a tab *inside* the Locker (`:213`, `:242`), so listing both was the container and one of its contents. The keyword now lives in the info line. |
 | Collaborator profiles | Add once, auto-fill everywhere | `app/(artist)/collaborators/page.tsx:105` — "Your roster — add once, auto-fill everywhere." Fields named in the copy are real columns in migration `018_collaborators_split_sheets.sql`: name, email, phone, pro, ipi, publisher, role. |
 | Community access | The Green Room | `components/green-room/GreenRoomHub.tsx:39` — "Share what you're making, find the people you need, and keep your creative relationships close." |
+| Antenna | Opportunities, matched to you | Opportunity types verified in `lib/matching/antenna.ts`: `sync`, `placement`, `playlist`, `brand` (plus the `sync_supervisor` / `playlist_curator` / `brand_music_director` counterpart roles). The four named in the copy are real enum values. |
+| PitchPlug | The outreach, written for you | The eight audiences named come from `lib/tools/pitchplug.ts:33-75`: Spotify mood/indie curator, SubmitHub blog, Hip-Hop/R&B blog, YouTube channel, college radio, TikTok sound page, sync/licensing platform, venue booker. |
 | Sound Vault | Masters, artwork and documents | Paraphrased from the vault readiness model (`app/(artist)/vault/page.tsx`, `lib/vault/readiness.ts`). **The only one of the four not lifted verbatim** — there is no single shipped lede for the Vault. Worth writing one properly. |
 | Metadata Studio | Release metadata | `components/vault/MetadataStudio.tsx:341` — "Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere." |
 | Release Report | Take it out | `app/(artist)/vault/new/page.tsx:141` — "Build a single, snippet, EP, or album with the full readiness checklist for going out." |
@@ -207,3 +209,28 @@ PII minimisation, and dressing it up as a privacy feature would overstate it.
 **If the RLS changes, this line has to change.** It is the only sentence on the page that makes a
 security promise. A `p:` field on a feature row renders it as a separated line with a lock glyph;
 the pattern is reusable but nothing else uses it yet.
+
+### Antenna + PitchPlug in Free — three things to settle
+
+Added 2026-09-25 on owner instruction. Two findings that the copy had to work around:
+
+**1. PitchPlug does not write briefs — it writes cold emails.** The request was to describe it as
+crafting "the briefs you need to land the opportunities". Its system prompt
+(`lib/tools/pitchplug.ts:98`) reads: *"You write the kind of short, human cold emails that actually
+get replies"*, and the API returns `{ subject, body }` (`app/api/tools/pitchplug/route.ts:160`).
+
+In this industry a **brief** is normally the *buyer's* spec — what a supervisor is looking for —
+and that artifact lives on the client-partner side (Brief Builder), not in the artist's PitchPlug.
+Copy therefore says *"Turns a song into the pitch that lands it."* **If "briefs" meant something
+the artist should be able to produce and PitchPlug does not, that is a product gap, not a copy
+choice.** Worth a decision.
+
+**2. PitchPlug is metered.** `app/api/tools/pitchplug/route.ts:121` calls `claimAiUsage(...)` and
+`finishAiUsage(...)` around each generation — there is an AI admission gate, and every run spends
+Anthropic API credits. Listing it under Free without a quota answer promises something uncapped
+that is not uncapped. The quota itself was not read; do that before any number goes on the page.
+
+**3. Free is now 10 rows against Studio's 5.** The free column is twice the length of the paid one
+directly beside it. Logically defensible (paid tiers lead with "Everything in Writer") but it reads
+as though the paid tiers are the thinner offer. This needs fixing before the page is public —
+either Free itemises less, or the paid tiers get more of their own rows.
