@@ -20,7 +20,7 @@ at a time. Owner reviewed the assembled page.
 | 4. Radial glow background | **CUT** — flat black wins |
 | 5. Image stream corridor | **CUT** |
 | 6. Pricing table | **CUT** |
-| Footer (earlier) | **CUT** as designed — a footer is still needed, this one is not it |
+| Footer (earlier) | **REVISIT** — first attempt was a rule with links under it, which is not the design. Rebuilt as the source intends: a card with rounded top corners, inset from the page edge, a radial glow from the top centre and a blurred light bar on the edge, plus a waveform wordmark and iconed social links. |
 | 3. Onboarding card | Separate bucket — an in-app restyle, not marketing |
 
 **Two consequences worth acting on:**
