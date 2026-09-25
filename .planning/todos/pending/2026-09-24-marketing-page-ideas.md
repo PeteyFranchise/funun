@@ -1862,3 +1862,21 @@ have, rather than asking permission.
 the front door") is about **positioning** — it means the Crate is not how you discover Funūn. I
 read it as **mechanics** and wrote away a required step. Doctrine about why something exists is not
 doctrine about how it works.
+
+### Bug: four sections all numbered "01" (2026-09-25)
+
+Caused by copying the eyebrow block for each new section and never changing the digit. Sections
+read 01 / 01 / 01 / 01 / 02.
+
+**Fixed by numbering at runtime in document order** rather than hardcoding, so adding or reordering
+a section renumbers itself — the same copy-paste will not reintroduce it.
+
+One trap in doing so: `.n` is used twice on the page, for eyebrow numbers *and* for testimonial
+names inside `.vwho`. An unscoped `.n` selector would have replaced Nia, Marcus and Priya with
+"04", "05", "06". Scoped to `.eyebrow .n` and verified the names survive.
+
+Order is now **01 How it works · 02 Collaborators · 03 The Crate · 04 Voices · 05 Pricing**.
+
+**Worth revisiting:** The Crate is one of the three acquisition tools and Collaborators is a
+supporting feature, so there is a case for swapping them to 02/03. Now that numbering is automatic
+that is a one-line move.
