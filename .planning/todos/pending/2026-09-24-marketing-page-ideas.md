@@ -1490,3 +1490,37 @@ single `<img>` and nothing else.
 **Still to do before publishing:** self-host all 20. Pexels permits the use but the page currently
 depends on two third-party CDNs staying up, and a hero section that silently empties is worse than
 one with fewer faces.
+
+### Sphere images self-hosted (2026-09-25)
+
+All 20 downloaded to `private/bench/img/face-01..20.jpg` and the sphere repointed to relative
+paths. **Zero remote image references remain** — verified in the rendered page, every `src` matches
+`/img/face-`. 1.2 MB total.
+
+Both CDNs are now gone as runtime dependencies. The licences always permitted the use; the
+*dependency* was the risk, and a hero section that silently empties because someone else's CDN
+blipped is worse than one with fewer faces.
+
+`private/` is gitignored, so the images live on disk and in `~/Desktop/funun-bench-backup/img/`,
+not in the repo. **When this becomes a real Next route (46.0), they move to `public/` and get
+committed** — at which point 1.2 MB of stock photography needs a second look.
+
+**No child image is present.** `13594616` was excluded at selection and never entered the page;
+confirmed again by rendering all 20 as a contact sheet and checking each. Every face is an adult.
+(#19 is Mozart, painted as a young man — an 18th-century portrait, labelled a composer.)
+
+### Headroom, measured
+
+| | |
+|---|---|
+| Nodes | 20 |
+| Front-facing at once | 7 |
+| Node diameter | 70 px |
+| Tightest neighbour gap | 52 px |
+
+Fibonacci spacing shrinks as 1/√N, so geometry holds to roughly **35–40 faces** (gap ≈ 37 px) and
+nodes only touch around 55–60.
+
+**Weight binds before geometry does.** 20 faces = 1.2 MB; 40 would be ~2.4 MB in a section many
+visitors scroll past, above the fold on mobile. Dropping the crop from 400 px to 280 px roughly
+halves the bytes with no visible loss at a 70 px display size — do that before adding more.
