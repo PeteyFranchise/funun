@@ -183,3 +183,27 @@ checklists" (ambiguous — may or may not mean Rights Coach).
 `requiresSyncLibraryAccess`, shown only once the artist has ≥1 admitted song, and the code comment
 calls it *"progressive disclosure; earned, not given."* Listing it as a plan entitlement would
 contradict how it ships.
+
+### Privacy note on Collaborator profiles — verified, not asserted
+
+Owner asked for a line saying collaborator details are shared need-to-know. **A privacy claim about
+PII on a public pricing page is a representation, not copy**, so it was checked against RLS before
+being written. It holds:
+
+- `collaborators` — `USING (auth.uid() = user_id)` (`018_collaborators_split_sheets.sql:30-31`).
+  An artist's roster is readable by that artist only. Nobody else can query it.
+- `split_sheet_parties` — two SELECT policies: *"Initiator sees all parties"* and *"Party sees own
+  row"* `USING (auth.uid() = user_id)` (`018:82`, `018:89`). A co-writer on a sheet cannot read
+  another co-writer's PRO or IPI. Migration 064 rewrote the initiator policy for recursion and
+  left the party-row policy explicitly unchanged (`064:181`).
+
+Shipped copy: *"Need-to-know by default. Your roster is yours alone, and on a split sheet each
+person sees their own row — not everyone else's details."*
+
+**Deliberately not claimed:** migration 115 also revokes column-level SELECT on `approval_token`
+and grants an explicit allowlist instead. That is anti-hijack hardening on an approval link, not
+PII minimisation, and dressing it up as a privacy feature would overstate it.
+
+**If the RLS changes, this line has to change.** It is the only sentence on the page that makes a
+security promise. A `p:` field on a feature row renders it as a separated line with a lock glyph;
+the pattern is reusable but nothing else uses it yet.
