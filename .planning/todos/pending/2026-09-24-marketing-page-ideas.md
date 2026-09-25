@@ -1219,3 +1219,30 @@ sentence on the page an outsider could challenge.
 **Also unresolved: length.** 210 characters against the previous ~120, rendering as a five-line
 block directly beneath the neon sign — which should be the loudest element in the hero. If the
 lede stays this long, the sign's dominance is worth re-checking at desktop width.
+
+### Spelling convention: US, with one deliberate exception (2026-09-25)
+
+Owner asked whether it is "organisation" or "organization". **Organization.** Measured against the
+codebase rather than guessed:
+
+| British | count | American | count |
+|---|---|---|---|
+| organisation | **0** | organization | **63** |
+| authorise | 5 | authorize | **425** |
+| organise | 0 | organize | 8 |
+| personalise | 0 | personalize | 6 |
+| colour | 25 | color | **3108** |
+| licence | 6 | license | **105** |
+
+So: **US spelling throughout** (`-ize`, `-ization`, `-or`, `license`).
+
+**The deliberate exception is `catalogue` — 620 uses against 160 for `catalog`.** That is not
+inconsistency, it is a product name: The Catalogue, "your catalogue". Keep it.
+
+Fixed on the bench: `organisation` → `organization`, and heroB's headline "Your work, front and
+centre" → "front and center". The remaining `colour`/`centre` matches are inside my own CSS
+comments, not copy.
+
+**Worth telling Codex** if it reviews again — its report used British forms throughout
+("organisation", "prioritise", "authorised"), so its suggested copy would import the wrong
+convention if pasted verbatim.
