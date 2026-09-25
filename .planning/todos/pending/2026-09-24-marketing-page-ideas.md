@@ -286,6 +286,19 @@ another tier to choose from, a band reads as a door out of the grid:
 verified against the product. If Entourage is aimed at someone else — publishers, sync agencies,
 production houses — that line should change.
 
+**Why a band and not a fourth card** (owner asked, 2026-09-25):
+
+Three cards is the standard because it creates a middle to anchor on — the "most chosen" tier sits
+centre and carries the weight. A fourth removes the centre, drops each card from a third of the
+width to a quarter so every feature list wraps harder, and breaks to 2x2 on tablet, which reads as
+two separate comparisons. The specific killer: **enterprise has no price**, so a fourth card shows
+an empty slot where the other three show a number — that reads as broken, not bespoke.
+
+The band originally looked unfinished, and that was materials rather than shape: thinner radius,
+less padding, no card fill. Now it uses `.pcard`'s exact border, fill, radius and padding
+(verified equal in the DOM, not by eye), with a soft radial light from the CTA end so a very wide
+band does not have dead space in the middle. Same family, different shape.
+
 **Open:** is Entourage a *tier* (a fourth card with its own entitlements) or a *discount program*
 applied to Room seats? The bench treats it as the second, because it is a band and not a card. That
 is a real pricing-model decision, not a layout one, and it belongs in the business-model
