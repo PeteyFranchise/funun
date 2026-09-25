@@ -4,6 +4,30 @@
 **Why this file:** marketing ideas were scattering across three todos. This is the hub — the
 idea board and the asset list live here; the deep write-ups stay in their own files below.
 
+## Audience — decided 2026-09-25
+
+**This page is for a later public launch, not for the current beta partners.** Owner, 2026-09-25:
+*"we are building this landing page for a little later, not for our current beta partners."*
+
+That matters for how every open question on this page gets read:
+
+- The tier names, prices and the Entourage band describe a **future** commercial shape. They are not
+  a description of what beta partners have, and nothing here should be shown to them as if it were.
+- Beta doctrine is explicitly different: `docs/architecture/ACCOUNT-TYPES.md` — *"During beta,
+  workspaces begin on a free active plan while seat, roster, storage, AI, e-sign, and
+  audio-processing usage is measured but not enforced."* A page advertising paid tiers and storage
+  limits is describing a state that does not exist yet and will not during beta.
+- So the enforcement gaps flagged throughout (no storage cap, PitchPlug's unstated quota, two
+  storage rows implying two pools) are **not blockers on the page** — they are blockers on
+  *publishing* it. The page can be finished; it cannot go live ahead of the billing work.
+
+**"Room" is a bench placeholder, not a Funūn account tier.** Checked 2026-09-25: no named
+subscription tiers exist anywhere in the repo, and there is no customer-success role. The dedicated
+named human that does exist in doctrine is one **Account Executive per Client Partner org**
+(migration `090_buyer_orgs_ae_assignment`, leadership-assigned, never automatic) — buyer side, not
+artist subscribers. A dedicated-success-person benefit on a paid artist tier would be new product;
+the AE model is the precedent to copy.
+
 ## Related files
 
 | File | Holds |
