@@ -1524,3 +1524,42 @@ nodes only touch around 55–60.
 **Weight binds before geometry does.** 20 faces = 1.2 MB; 40 would be ~2.4 MB in a section many
 visitors scroll past, above the fold on mobile. Dropping the crop from 400 px to 280 px roughly
 halves the bytes with no visible loss at a 70 px display size — do that before adding more.
+
+### Sphere roster rebuilt against explicit criteria (2026-09-25)
+
+Owner set three: **a visible human face · bright and vibrant · high resolution.** Plus a standing
+rule — **no children.**
+
+Rather than eyeball it, candidates were filtered by **measured luminance** — each downscaled to
+40×40, averaged with the Rec. 601 weights, and rejected below L≈95. That threshold rejected
+**31 of 42** candidates in one search and **19 of 30** in another, which is roughly the proportion
+that "looks fine in a grid" would have let through.
+
+**Final roster: 20.** 15 Pexels (13 solo portraits, 2 band shots), 4 public-domain composers, and
+Maya Reyes. All self-hosted at `img/face-01..20.jpg`, 1.4 MB, zero remote references.
+
+**Cut in the rebuild**, having failed at least one criterion:
+
+| Failure | Examples |
+|---|---|
+| No person at all | a bridge, a piano keyboard, studio gear |
+| Person present, no readable face | producers shot from behind, distant figures |
+| Too dark (L21–L47) | stage shots that read as silhouettes at 70 px |
+
+**The child photo (`13594616`) resurfaced in a second search and was excluded again.** Worth noting
+it ranks well on Pexels for musician queries, so it will keep appearing — any future additions need
+the same check.
+
+**Two faces are deliberately below the threshold:** Bach (L70) and Beethoven (L40). They are
+18th-century oil portraits and a brightened Beethoven would look wrong. Every Pexels face passes.
+
+### Maya Reyes is the in-joke
+
+The house demo persona from Funūn's own tests (`maya-reyes` in `lib/handles/`, "Maya R." in
+`singer-options.test.ts`). **Her card is the only one with a fourth row:**
+
+> **Maya Reyes** · Songwriter · already on Funūn
+> PRO ASCAP · IPI 00001928640 · Publisher Reyes Songs · **Funūn @maya-reyes**
+
+Which is the section's argument stated once more, quietly: everyone else's details had to be
+collected. Maya's were already there.
