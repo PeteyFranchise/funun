@@ -2041,3 +2041,18 @@ where a wrong answer costs money or trust, not just clarity.
   probably product screenshots, not renders.
 - **Drift watch** — three facts have diverged across surfaces so far (attribution unit, eyebrow
   numbers, the vault asset list). Sweep anything stated twice before this goes live.
+
+### Spelling slip: "authorises" reached the page (2026-09-25)
+
+Owner caught it. The Crate's third beat read *"One agreement **authorises** us to represent what you
+submit"* — British, against the established US convention.
+
+**The source I was paraphrasing says "authorizes."** `lib/sync-library/agreement.ts` is already
+American; the error came from rewriting rather than quoting. On a legal-adjacent sentence, the
+verbatim source was the safer thing to copy and I did not.
+
+Page re-swept after the fix: zero British spellings in copy, `catalogue` excepted (7 uses, product
+name).
+
+**Convention restated so it is unambiguous: US spelling in page copy, planning docs, commit
+messages and chat — `catalogue` is the sole exception, because it is a product name.**
