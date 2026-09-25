@@ -584,3 +584,29 @@ styling. Same class of collision as the carousel bug — worth checking any new 
 file against `.pcard li` before assuming it is unstyled.
 
 The pattern is reusable: any feature row can now swap `i:` for `l:`. Only the AI bench uses it.
+
+### Voice pass started — "make this sound more human" (2026-09-25)
+
+Owner flagged the `Unlimited songs` popover. Three things were making it stiff, and all three are
+systemic rather than local:
+
+1. **Abstract nouns doing verb work.** *"nothing meters how much you write"* — "meters" is a
+   utility-billing verb. Elsewhere: "surfaced against", "captured once".
+2. **Internal framing leaking out.** *"Audio is the part that costs"* is a sentence from a margin
+   discussion, not something you say to a writer. It tells them about our cost structure instead of
+   their experience.
+3. **No contractions anywhere.** "that is what", "you are pitching", "they are about", "it is not".
+   Formal register reads as corporate, and it is the cheapest thing to fix.
+
+Rewritten:
+
+| | |
+|---|---|
+| Was | **The song count is never the limit** — Start as many songs as you want — nothing meters how much you write. Audio is the part that costs: takes and masters use storage, and that is what the paid tiers raise. |
+| Now | **We don't count songs** — Start as many as you want. Nobody should have to decide whether an idea deserves a slot. Audio's the part that adds up — takes and masters take up real room, and that's what you're paying for when you move up. |
+
+The new middle sentence is the point: it gives a *reason* with a point of view rather than stating
+a policy. That is the difference between product copy and a terms page.
+
+**The rest of the popovers have not had this pass.** Codex's prompt now names the two habits
+explicitly and asks for the same treatment throughout, with this row as the worked example.
