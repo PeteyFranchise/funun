@@ -1352,3 +1352,43 @@ of the page.
   Writer's Room, Sound Vault, split sheets and registrations, not a four-word slogan.
 - **Social/OG cards** are the one future slot worth revisiting — a short line under the logo is
   exactly what they want, and nothing exists there yet.
+
+## Codex review CLOSED — final two items applied (2026-09-25)
+
+**1. Rough takes are now stated as free.** The page had gone silent on it, which left a reader to
+assume takes eat the allowance — the exact anxiety Codex's report warned about.
+
+> Start as many as you want. Nobody should have to decide whether an idea deserves a slot. **Rough
+> takes are included — humming an idea never counts against your storage.**
+
+No number named, because nothing is enforced yet (`222_workspace_usage_metering.sql`: *"does not
+enforce a limit"*). This is the qualitative interim copy Codex recommended, in Funūn's voice rather
+than its phrasing.
+
+**2. Antenna and The Crate are now distinguished in one line.** Both previously read as sync
+features with no stated difference:
+
+> …You get a shortlist, not another feed to dig through. **Antenna brings the brief to you; The
+> Crate puts your song where supervisors come looking.**
+
+Outbound versus inbound, in one sentence, inside the popover that already explains Antenna — so it
+costs no extra row.
+
+### Every Codex item is now resolved
+
+| Category | Status |
+|---|---|
+| Rewrites (43 rows) | Applied, except four declined on owner decisions |
+| Overclaims (11) | Fixed, except "first", "dedicated" and "decades" (owner) and 24-bit (gated on Phase 45) |
+| Inconsistencies (9) | All closed |
+| Taglines (5) | Two chosen — feature in the hero, company in the footer |
+| Free tier allowance | Model adopted; interim copy applied; number withheld until enforcement |
+| Build target | Option A, recorded as Phase 46.0 resolved |
+
+**Four declined, each recorded with its reason:** the `Introducing` kicker (it is an announcement
+frame, not positioning), the `Entourage` name (now deliberately a fourth tier), the `dedicated`
+liaison label (body softened instead, which addressed the actual overclaim), and the
+decades-of-experience claim (owner's own, about their own team).
+
+**One still gated:** `24-bit keeper takes` must not go public until the deployed recorder reliably
+produces 24-bit/48 kHz across supported browsers. Phase 45.
