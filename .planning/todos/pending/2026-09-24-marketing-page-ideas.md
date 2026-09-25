@@ -1625,3 +1625,57 @@ final is `440x440 --cropOffset 0 65`, which keeps the centring and restores head
 All four fixable cast crops are now framed at a consistent scale, so the five read as a set rather
 than one wide shot among four close-ups. Jonah stays as shot — his source is a macro and there is
 nothing wider to crop to.
+
+## "How it works" section added (2026-09-25)
+
+Page is now **hero → how it works → collaborator sphere → voices → pricing → footer.**
+
+### Why the page needed it
+
+All ten CTAs were dead links, and **three promised destinations the page did not have**: "See how
+it works" (×2) and "How The Crate works". The page was asking a question it never answered.
+
+Underneath that was a structural gap: **the three features the hero announces were never
+explained.** Writer's Room, Sound Vault and The Crate each got a slide, then did not reappear until
+they were rows in a pricing table. The only section explaining anything in depth was the
+collaborator sphere — a supporting feature, not the wedge.
+
+### Source and the one thing that changed
+
+Structure from 21st.dev's `how-it-works-2`: a vertical rail of numbered nodes joined by a hairline.
+Not ported — React, `@remixicon/react`, `class-variance-authority`, shadcn's `Badge`, `cn()`. All
+absent, and the component is a flex list once the plumbing comes out. Icons are four inline SVGs
+in the page's existing stroke style.
+
+**The steps were rewritten entirely.** The source's *Create account → Configure workflow → Invite
+team → Ship* is a SaaS onboarding pattern, and the owner's instinct was to keep it as "set up your
+Funūn workspace in 4 quick steps".
+
+**That would have contradicted the hero.** The Writer's Room pitch is *hum a melody* — immediate,
+no setup. A section opening with "first, configure your workflow" puts admin in front of value, and
+a topliner does not want a workspace, they want a song.
+
+Same four-step format, different subject — the arc of one song:
+
+| | Step | Surface tagged |
+|---|---|---|
+| 1 | Start the song | Writer's Room |
+| 2 | Bring in who you're writing with | Collaborators |
+| 3 | The record writes itself | Splits · Contract Locker |
+| 4 | Take it out | Sound Vault · The Crate |
+
+Subhead makes the contrast explicit: *"No setup, no workspace to configure. Start writing and the
+paperwork assembles itself behind you."*
+
+**Step 3 is the point.** It surfaces the splits story, previously the page's most underweighted
+asset — the actual wedge no writing tool has — which until now lived only inside popovers and half
+a hero clause. The final node is the only one filled with the brand gradient: the arc ends on
+taking it out.
+
+### Still missing from the page
+
+- **A Crate section.** Named as an acquisition tool, it is the money story, and "How The Crate
+  works" is still a dead CTA. One hero slide and a popover is not enough.
+- **An FAQ.** Rights products generate objections that kill signups silently — *do you take a cut,
+  who owns my masters, what happens to my songs if I leave.*
+- **All 10 CTAs are still `href="#"`.**
