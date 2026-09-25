@@ -1098,3 +1098,45 @@ limits — never a playback meter.
 
 **Writer's Room (the product) vs Room (the tier).** Codex suggests renaming the tier `Team`. This
 gets harder to unpick the longer it waits — support, billing and copy all inherit it.
+
+## Codex rewrites APPLIED to the bench (2026-09-25)
+
+Counts changed: Free 11 / Studio **7** (was 8 — two storage rows collapsed to one) / Room 7.
+
+Verified after applying: zero occurrences of `every line remembers`, `first room`,
+`one-stop-licensed`, `auto-fill everywhere`, `Audit surfaces`, `Placeholder tiers` in the rendered
+page or any popover.
+
+### The substantive corrections, not just style
+
+- **Per-line attribution removed everywhere.** `author_user_id` is a column on `lyric_blocks`
+  (135:219); a block holds one `text` field. Copy now says "section", which is what the schema
+  supports.
+- **"First" removed from the hero.** Prior art cited by Codex: Songcraft, Lyree, Soundtrap.
+- **"Know who owns it" → "keep track of who contributed what."** Contribution records support an
+  ownership discussion; they do not determine legal ownership.
+- **"One-stop-licensed" → "ready for one-stop clearance."** The former asserts a licence exists.
+- **Crate pitching promise softened** to "ready for our team to pull when the right brief comes in"
+  — no longer commits human effort per admitted song.
+- **AI contract check** no longer claims "completeness and accuracy"; now "a structured second
+  read… It can miss things. It isn't legal advice."
+- **Privacy line** no longer promises row-isolation, which may be the wrong model for an executed
+  split sheet and would have to hold across exports, notifications and support tooling.
+- **Two storage rows collapsed into one.** There is one meter (`storage_bytes_ingested`), so two
+  rows implied two quotas that do not exist.
+- **Storage explanation dropped** from the Unlimited songs popover until enforcement ships.
+- **Footer**: `Sync licensing` is the category above these products, not one of them → `Antenna`.
+
+### Four Codex rewrites NOT applied — they contradict explicit owner decisions
+
+| Codex wanted | Why it was not applied |
+|---|---|
+| Hero kicker `Introducing` → `Built for the writing room` | Owner explicitly asked for *"Introducing Writer's Room"* as the slide's structure, with the neon sign as the payoff. Changing the kicker breaks that design intent, and the objection is stylistic rather than a risk. |
+| Drop the name `Entourage` | Owner coined it deliberately this session for enterprise pricing. Codex's concern — that it reads as a fourth tier — is real and recorded, but the name is an owner decision. |
+| `Dedicated Talent Services liaison` → `Your Talent Services contact` | Owner asked for "dedicated". The **body copy** was softened per Codex (no more "assigned to your account", "build the gameplan"), so the overclaim risk is largely addressed; the label is the owner's call. |
+| Drop "decades of combined industry experience" | Owner's own claim about their team. Kept, but Codex's note that it needs substantiation and reads generic is recorded. |
+
+### Still gated, not applied as shippable
+
+`24-bit keeper takes` is on the card, but Codex is right that it must not go public until the
+deployed recorder reliably produces 24-bit/48 kHz across supported browsers. That is Phase 45 work.
