@@ -821,3 +821,49 @@ Both readings are defensible as product:
 Whichever is chosen, the pricing rows should say it plainly. Two rows implying two quotas while the
 system meters one is the kind of gap that surfaces as a support ticket. Folded into the Free-tier
 allowance question already with Codex.
+
+## Room gains a Dedicated Talent Services liaison (2026-09-25)
+
+Owner decision. Shipped on the bench as Room's second row:
+
+> **One person who knows your catalogue**
+> A Funūn liaison assigned to your account. They build the gameplan, pull in the right specialists,
+> and stay the one person you deal with — tracking what's committed, what's next, and what actually
+> matters for the opportunity in front of you. They work for Funūn, not as your manager, agent or
+> publisher. The decisions stay yours.
+
+Counts now Free 11 / Studio 8 / Room 6.
+
+**The copy is drawn from the doctrine rather than invented.** `.planning/deliberations/
+organizational-doctrine/functional-team-doctrines.md` §4 "Talent Services and Member Success":
+*"one visible relationship owner"*, gameplans, coordinating specialists, *"track commitments,
+milestones, risks, consent and follow-up"*, and explaining *"what can be completed later and what
+becomes necessary for a particular opportunity."* The row's closing boundary is the doctrine's own:
+*"does not automatically make Funūn the member's legal manager, agent, fiduciary, publisher, label
+or attorney."*
+
+### What this commits to that does not exist yet
+
+This is the **biggest promise on the page**, and unlike the others it has no implementation at all:
+
+1. **No staff role.** `StaffRole` has nine values — leadership, ae, bd, anr, it, legal, tms,
+   accounting, marketing. **None is talent services.** `tms` is HR: §12 says it *"serves Funūn
+   employees and internal Team Members"* and *"does not recruit artists or buyers."* Nobody can
+   currently be assigned this job in the system.
+2. **No assignment model.** The AE side has one — migration `090_buyer_orgs_ae_assignment`, one AE
+   per Client Partner org, set by leadership. There is no equivalent binding a liaison to a Member.
+3. **No console.** §4 describes the surface this person would work in — member goals, gameplans,
+   services, responsible teams, tasks, communications, consent, risks, outcomes. It does not exist.
+4. **It scales with headcount, not with code.** Same class as the Crate pitching promise but
+   stronger: "dedicated" implies one person per account. At N paying Room accounts that is a
+   staffing formula, not a feature flag.
+
+**Nearest existing job is A&R.** §1 gives A&R *"continuity of the creative relationship — from
+discovery through development, readiness, opportunity and follow-through"* plus contextual
+onboarding. The open question is whether Talent Services is a distinct job or A&R's
+post-signing half: A&R is discovery-and-development-led, §4 is retention-and-service-led. One
+person at this stage, two later, most likely.
+
+**Before this ships:** add the staff role, decide the assignment model (copy the AE precedent —
+leadership assigns, never automatic), and decide what "dedicated" means in hours or response time.
+An artist paying for a named person will measure it.
