@@ -484,3 +484,51 @@ one because the carousel toggles a class, not the `hidden` attribute.
 **Rule for this file:** any element whose visibility is toggled should use the `hidden` attribute,
 not a bespoke class, so the one existing `!important` guard covers it. Worth a pass to convert
 `.slide` to `hidden` if the carousel survives into the real page.
+
+## 21st.dev `animated-tooltip` — verdict and what was taken (2026-09-25)
+
+**Cannot drop in.** Every dependency is absent from Funūn, verified 2026-09-25: `framer-motion`,
+`tailwind-merge`, `clsx`, `class-variance-authority`, `lucide-react`, the `cn()` helper
+(`lib/utils.ts` does not exist), the shadcn `foreground`/`background`/`muted-foreground` tokens
+(**zero** matches in `tailwind.config.ts`), and `next/image` (unused anywhere in the repo — the
+presence band uses a raw `<img>` with an eslint-disable).
+
+**Wrong component for the pricing rows,** independent of dependencies:
+
+- Hover-only. The pricing popovers hold 2–3 sentences; hover does not exist on touch and you cannot
+  move a pointer into a panel that closes when you leave the trigger. These are toggletips
+  (click-triggered) on purpose.
+- Its trigger is a 56px circular `<Image>`, not an ⓘ button.
+- `whiteSpace: "nowrap"` — built for a name and a job title. The Writer's Room popover is ~180
+  characters and would run off-screen.
+- Fixed `-top-16`, no flip logic. Rows near the bottom of a card would push it off.
+
+**Right component for a different surface:** it is an avatar-stack tooltip, and Funūn has an avatar
+stack — `components/catalogue/WriterRoomPresence.tsx`, plus the collapsing-pill→avatars variant on
+bench 01. If it gets ported anywhere, it is there. Port cost is the same list above: rewrite
+framer-motion as WAAPI/CSS, drop `cn()`, map tokens, swap `next/image` for `<img>`.
+
+### What was taken instead (look, not code)
+
+1. **Spring entrance.** The source pops in at `scale 0.6` with overshoot (framer spring, stiffness
+   260 / damping 10). Approximated in `@keyframes fpop-in` — scale .82 → 1.025 → .995 → 1 over
+   340ms. The popovers previously had **no animation at all**. Respects
+   `prefers-reduced-motion`.
+2. **The two fading hairlines** along the bottom edge — the detail that makes the source read as
+   crafted. Theirs are emerald + sky; these are the Funūn gradient endpoints, as two background
+   gradients on one `<i class="fline">` at different widths and offsets.
+3. **Deliberately NOT taken: the mouse-tracking tilt.** It rotates the card −45°..45° by cursor X.
+   That only makes sense on a hover trigger; these panels open on click and stay open, so there is
+   no cursor to track.
+
+### Two real bugs this surfaced
+
+**1. The bench was never rendering the product's font.** `app/layout.tsx:2` loads Inter and wires it
+as `--font-sans` (`tailwind.config.ts:31`), but `marketing.html` used a bare
+`ui-sans-serif, system-ui, …` stack — SF Pro on this Mac. **Every screenshot reviewed so far has
+been the wrong typeface.** Inter is now loaded in the bench and confirmed active.
+
+**2. The popover heading was smaller than its own body text** — 11px heading over 12px body. The
+source's hierarchy is 16px bold name over 12px designation, and that contrast is most of why it
+looked better. Heading is now 14.5px at -.012em.
+
