@@ -335,3 +335,51 @@ block.
 **The copy travels inline in the prompt rather than by repo reference, on purpose.** The bench file
 is gitignored (`.gitignore:45`), so Codex cannot read it — and the invented pricing numbers should
 not be committed to a public repository just to make them reviewable.
+
+## Studio repositioned as the AI tier (2026-09-25)
+
+Owner: *"Add PitchPlug to Studio since it requires AI and that costs us money"*, then *"find a way
+to describe all these AI powered tools for that most chosen card."*
+
+PitchPlug moved out of Free. Studio now leads with the whole bench:
+
+- `The whole AI tool bench` → *Eleven tools, one subscription.* Names PitchPlug, EPK.fyi,
+  DropReady, SoundBait, SpotPitch, DistroAdvisor, RoyaltyAudit, then covers contract review,
+  document drafting, campaign planning and auto-tagging.
+- `AI contract check` → *Read before you sign.* Completeness and accuracy, "not legal advice, and
+  it does not pretend to be" — matching the boundary `lib/contracts/verify.ts` already draws.
+
+**This is a better pricing story than it was.** Studio previously offered storage, export and
+support — no reason to exist. "The tier where the AI lives" is a reason, and it puts the metered
+cost consistently behind the paywall. Counts: Free 11, Studio 7, Room 5, which also narrows the
+imbalance that has been flagged three times.
+
+Every tool named is a shipped Anthropic-backed surface, verified 2026-09-25 by grepping
+`@anthropic-ai/sdk` and `claimAiUsage` across `app/` and `lib/`.
+
+### Two consequences that are product decisions, not copy
+
+**1. The line now cuts through Contract Locker and the vault tools.** AI contract verification is
+reached from `components/contracts/ContractUpload.tsx` — inside the Locker, which is a **Free**
+row. AI document generation is reached from `components/vault/ToolSidePanel.tsx`. Putting "AI
+contract check" in Studio means the free Contract Locker becomes storage and status only, with the
+reading behind the paywall. That may well be right, but it is a change to what the free product
+does, and it is not visible from the pricing card alone.
+
+**2. Studio's blurb no longer matches.** *"For people cutting keepers, not sketches"* describes
+audio quality — the old positioning. If Studio is the AI tier, the blurb should say so. Left
+unchanged deliberately; Codex has been asked to propose a replacement.
+
+### Also unpriced
+
+The six registry tools (`lib/tools/registry.ts:23-65`) — EPK.fyi, DropReady, SoundBait,
+DistroAdvisor, RoyaltyAudit, SpotPitch — appear in **no tier as named rows**, only inside the AI
+bench popover. If any is meant to be separately gated or separately sold, nothing says so.
+
+### Model versions — unrelated but found while surveying
+
+Two model strings are hardcoded across the AI surfaces: `claude-sonnet-4-6` (10 occurrences) and
+`claude-sonnet-4-20250514` (7). `lib/anthropic/index.ts:4` exports the latter as the shared
+`MODEL`, and several routes ignore it and hardcode their own. Both are older than current Sonnet 5
+/ Opus 5. Two separate issues: a constant that should be one import, and a model refresh that
+moves both output quality and cost. Not a marketing item — logged here so it is not lost.
