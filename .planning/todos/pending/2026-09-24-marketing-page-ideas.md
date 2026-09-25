@@ -1960,3 +1960,25 @@ half-loaded page.
 
 400px originals kept at `/tmp/img-400-backup/` for the session. Not worth preserving further given
 the retina headroom.
+
+### Stems added — and the asset list made consistent (2026-09-25)
+
+Owner asked to add stems to the Sound Vault hero. The same list turned out to appear **three times
+with three different contents**:
+
+| Where | Was |
+|---|---|
+| Hero slide 2 lede | Masters, artwork, metadata and documents |
+| Sound Vault popover | **the master** (singular), artwork, metadata and documents |
+| How-it-works step 5 | Masters, artwork and metadata — **no documents** |
+
+Now one canonical list everywhere: **masters, stems, artwork, metadata and documents.**
+
+Stems are real and distinct — `components/vault/StemsUpload.tsx` (310 lines), and they use the
+250MB resumable upload path rather than the 50MB one-shot route Writer's Room takes use
+(`lib/catalogue/audio-mime.ts:13`). Worth knowing they are a separate asset class, not a synonym
+for masters.
+
+**Pattern worth watching:** this is the third time a fact has drifted across surfaces on this page
+(the others were the attribution unit — line vs section — and the eyebrow numbers). Anything stated
+in more than one place should be checked against the others when it changes.
