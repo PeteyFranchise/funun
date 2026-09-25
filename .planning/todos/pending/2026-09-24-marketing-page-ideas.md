@@ -136,3 +136,48 @@ one open at a time, closes on outside click or Escape).
   before it goes on a public page.
 - The info pattern is generic: any feature row can become `{t, h, i}` instead of a plain string.
   Only these four use it so far.
+
+## Full artist-workspace inventory (verified 2026-09-25)
+
+Source of truth: `components/nav/ArtistNav.tsx:43-79` (the rail), plus surfaces reached from
+elsewhere. Captured because the Free tier was assembled ad hoc and nobody had the whole list.
+
+**Already in the Free tier:** Sound Vault · Collaborators · Green Room ("Community access") ·
+Metadata Studio · Release Report · split sheets (one drawer of Contract Locker) · "Rights
+checklists" (ambiguous — may or may not mean Rights Coach).
+
+**Not mentioned anywhere in pricing:**
+
+| Surface | Route | What it is |
+|---|---|---|
+| Writer's Room | `/vault/new` → song door | **The hero of the marketing page, and not a bullet in any tier.** |
+| Ideas | `/ideas` | First item in the rail. Capture before it is a song. |
+| Messages | `/messages` | "Your direct conversations". Not in the rail — reached via `MessagesIcon`. |
+| Contract Locker | `/contracts` | Broader than the split sheets already listed; `alsoMatches: ['/split-sheets']` |
+| PitchPlug | `/tools/pitchplug` | AI-written pitch emails |
+| Antenna | `/antenna` | "Your Antenna" — opportunity matching |
+| Benchmarks | `/benchmarks` | "How your growth compares to artists who broke through at your stage, in your genre" |
+| Launchpad | `/launchpad` | "Your release marketing playbook — what to do before, during, and after launch" |
+| Rights Coach | `/coach` | Guided rights/registration help |
+| Deals | `/deals` | License Requests |
+| Earnings | `/earnings` | "Royalties collected across your partners — mechanical, performance, sync & library" |
+| Sync Library | `/sync-library` | "Songs Funūn is representing for sync licensing" |
+
+(`/settings` is in the rail but is not a feature to sell. `/dashboard`, `/curators`,
+`/opportunities` exist as routes but are not in the artist rail.)
+
+### How these split for pricing
+
+1. **Free-tier candidates** — Writer's Room, Ideas, Messages, Contract Locker (whole). The
+   workspace working. The Writer's Room omission is the one actual gap: the hero slide announces
+   it and no tier lists it.
+2. **Needs the business-model conversation** — PitchPlug, Antenna, Benchmarks, Launchpad, Rights
+   Coach. Growth and pitch tools. PitchPlug spends Anthropic API credits per run, so it carries a
+   marginal cost the others do not.
+3. **Almost certainly not free** — Deals, Earnings, Sync Library. Money moving and Funūn
+   representing the catalogue.
+
+**Sync Library must not go in a tier list at all as things stand.** `ArtistNav.tsx` gates it with
+`requiresSyncLibraryAccess`, shown only once the artist has ≥1 admitted song, and the code comment
+calls it *"progressive disclosure; earned, not given."* Listing it as a plan entitlement would
+contradict how it ships.
