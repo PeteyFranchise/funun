@@ -867,3 +867,82 @@ person at this stage, two later, most likely.
 **Before this ships:** add the staff role, decide the assignment model (copy the AE precedent —
 leadership assigns, never automatic), and decide what "dedicated" means in hours or response time.
 An artist paying for a named person will measure it.
+
+## Room also gains "À la carte label services" (2026-09-25)
+
+> **The team, when you actually need them**
+> Playlist pitching, A&R, consulting — the things a label does, available to book project by
+> project from people with decades of combined industry experience. Priced per engagement, not
+> bundled into your plan. Your liaison tells you when something is worth it and when it isn't.
+
+Room is now 7 rows. Counts: Free 11 / Studio 8 / Room 7.
+
+**"Priced per engagement, not bundled into your plan" is load-bearing.** À la carte means paid
+separately. Without that sentence the row reads as "every label service included for $49", which
+would be the largest overclaim on the page by an order of magnitude.
+
+The closing line ties back to the liaison and to §4's *"without coercion"* principle — the person
+recommending a paid service is also the person who will say when not to buy one. That is a
+deliberate echo, not filler.
+
+**Nothing here exists in code.** No services catalogue, no à la carte/add-on model, and no human
+playlist pitching — `SpotPitch` (`lib/tools/registry.ts:64`) is an AI tool that drafts a pitch, not
+a person who places records. The "decades of combined industry experience" claim is the owner's own
+statement about their team and was not independently verified.
+
+---
+
+# ⚑ GAPS TO TAKE TO CODEX — Room tier service promises
+
+Owner, 2026-09-25: *"just make a note of this for now and we will get back with codex about filling
+in the gaps."* Everything below is unbuilt. The page is for a later launch, so none of it blocks
+finishing the page — all of it blocks publishing it.
+
+## 1. No staff role exists for Talent Services
+
+`lib/admin/staff-role.ts` declares nine: `leadership` `ae` `bd` `anr` `it` `legal` `tms`
+`accounting` `marketing`. **None is talent services.** `tms` is HR — §12: *"serves Funūn employees
+and internal Team Members… does not recruit artists or buyers under the TMS recruiting label."*
+Nobody can be assigned this job in the system today.
+
+Wider gap: **15 functional doctrines, 9 staff roles.** Six functions have doctrine but no role —
+Talent Services & Member Success, Sync & Licensing, Catalogue/Metadata/Verification Ops, Training &
+Enablement, Trust & Safety, Support Operations.
+
+## 2. No assignment model
+
+The AE precedent exists and should be copied: migration `090_buyer_orgs_ae_assignment` — one AE per
+Client Partner org, nullable until **leadership** sets it via a staff-only PATCH route, column
+deliberately staff-only and not in the authenticated SELECT allowlist. There is no Member-side
+equivalent. Per account doctrine, assignment must never be automatic.
+
+## 3. No console
+
+§4 specifies the surface in detail — member goals, gameplans, services, responsible teams, tasks,
+communications, consent, risks, outcomes. None of it is built.
+
+## 4. "Dedicated" is undefined
+
+It scales with headcount, not code: at N paying Room accounts you need ≈N liaisons. Decide what
+dedicated means in response time or hours. **An artist paying for a named person will measure it,
+and that is the number they will measure.**
+
+## 5. Is Talent Services a distinct job, or A&R's second half?
+
+§1 gives A&R *"continuity of the creative relationship — from discovery through development,
+readiness, opportunity and follow-through"* plus contextual onboarding. §4 is retention- and
+service-led where §1 is discovery- and development-led. Plausibly one person now, two later. The
+role list implicitly answers "not separate yet."
+
+## 6. No à la carte services model
+
+No catalogue, no pricing model, no booking flow, no human playlist pitching. Needs: what is on the
+menu, who delivers each, how it is priced and booked, and how the liaison's recommendation stays
+non-coercive when it generates revenue.
+
+## 7. Playbook room keys are unenforced
+
+`roomKey` is typed `string` (`lib/playbook/publication-manifest.ts:5`), not `PlaybookRoomId`. The
+manifest references 15 rooms; `nav.ts` declares 6. `talent-services` is one of the nine orphans, so
+its doctrine is filed to a room that does not exist in the nav. Typing the field would make this
+enforceable.
