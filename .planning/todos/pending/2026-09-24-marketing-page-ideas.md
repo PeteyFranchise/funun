@@ -532,3 +532,38 @@ been the wrong typeface.** Inter is now loaded in the bench and confirmed active
 source's hierarchy is 16px bold name over 12px designation, and that contrast is most of why it
 looked better. Heading is now 14.5px at -.012em.
 
+
+### Popovers restyled to the source palette + possessive headings (2026-09-25)
+
+Owner: *"use their colors and font design"*, then *"say Your Masters, etc here, so it feels like
+theirs."*
+
+**Inverted to the source's palette.** shadcn's `bg-foreground` / `text-background` render as a
+near-white card with near-black type on a dark page, and that inversion is most of why the
+reference looked lifted rather than cut into the surface. Now `#fafafa` panel, `#09090b` heading,
+`#71717a` body, with the source's own `emerald-500` / `sky-500` hairlines instead of the Funūn
+substitutes.
+
+**Type scale matched:** 16px/700 heading over 12px body — the source's `text-base font-bold` over
+`text-xs`. It had been 11px over 12px, i.e. the heading was *smaller* than its own body copy.
+
+**Possessive headings**, applied to four of twelve — not all, because "your" on every row reads as
+a sales tic:
+
+- Sound Vault → *Your masters, artwork and documents*
+- Metadata Studio → *Your release metadata*
+- Writer's Room → *Where your song gets written*
+- Antenna → *Opportunities, matched to your catalogue*
+
+**Writer's Room copy extended** with notes and comments: *"Notes and comments land on the line they
+are about, not in a thread nobody reads."*
+
+**Live chat deliberately not claimed.** Owner asked for "notes and chat". Studio Notes is shipped
+(`lib/catalogue/studio-notes.ts`, 246 lines) and per-block lyric comments are shipped
+(`components/catalogue/LyricCommentsPanel.tsx`), but **there is no room-chat component in the
+repo** — it is a bench concept from 2026-09-24. Naming it would be advertising something unbuilt.
+If chat ships, the copy can add it.
+
+**Bugs avoided in the restyle:** `overflow:hidden` was added to clip the hairlines to the rounded
+corners, which would have clipped the arrow (`top:-4px`) and the hairlines (`bottom:-1px`) — both
+sit outside the box. Removed; hairlines moved to `bottom:0` instead.
