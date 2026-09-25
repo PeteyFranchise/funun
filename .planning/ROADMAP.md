@@ -3164,6 +3164,15 @@ favouriting. Those are net-new.
 
 ### Backlog from the same session (todos, not yet phases)
 
+- **DAW plugin for producer handoffs** (future exploration, 2026-09-25) —
+  `.planning/todos/pending/2026-09-25-explore-daw-plugin-for-producer-handoffs.md`. **Not a move
+  toward competing with DAWs** — the "this is not a DAW" boundary (`ROADMAP.md:3074`) stands. The
+  round trip already ships: markers out (Phase 40), `sent→received→working→returned→reviewed`
+  state, mix back via `ReturnedMixReviewCard`. It costs the producer five manual steps across two
+  applications. Question is whether a plugin removes that friction **without making the provenance
+  record implicit** — every crossing is currently an event with a file attached, and a frictionless
+  path that skips the record would be a downgrade wearing an upgrade's clothes.
+
 - **`/actions` slash commands in composers** —
   `.planning/todos/pending/2026-09-24-actions-slash-commands-in-composers.md`. Mechanism
   prototyped; the command set needs product input. Must be a **shared composer behaviour** across
