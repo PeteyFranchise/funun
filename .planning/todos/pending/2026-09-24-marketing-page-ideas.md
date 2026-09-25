@@ -717,3 +717,32 @@ is identical by construction.
 costs nothing — there is no background to clip. Worth remembering: **any `background-clip:text`
 element with negative letter-spacing has this bug**, and it is invisible until the final glyph
 happens to have ink near its right edge. A `$17` would have hidden it; the 9 exposed it.
+
+### The "first" claim now appears twice (2026-09-25)
+
+Owner asked to close the Writer's Room popover with *"the first collaborative room designed with
+topline writers in mind."* Added. Also contracted "they are about" → "they're about" as part of the
+voice pass.
+
+**But the page now makes the same claim twice, in two different sets of words:**
+
+| Where | Line |
+|---|---|
+| Hero lede | "**The first** room built for writing a topline together." |
+| Writer's Room popover | "**The first** collaborative room designed with topline writers in mind." |
+
+Two problems with that:
+
+1. **Redundancy.** A reader who opens the popover has already read the hero. Restating the
+   positioning in fresh words reads as a page that does not know what it already said.
+2. **It doubles the exposure on a superlative.** "First" is the one claim on this page that an
+   outside party could dispute — co-writing tools exist, and "designed with topline writers in
+   mind" is a narrower framing than "first room for writing a topline," so the two are not even
+   defensible on identical grounds.
+
+**Recommendation: keep it in one place.** The hero is where positioning belongs; a feature popover
+should say what the feature does. If the popover keeps a closing line, something like "Built for
+the way toplines actually get written" makes the same point without re-litigating primacy.
+
+Left as-is for now — the owner asked for it explicitly, and Codex has been asked to rule on both
+whether the claim survives scrutiny and which of the two should carry it.
