@@ -1999,7 +1999,7 @@ anything else needs adding, group rather than extend.
 
 ---
 
-# ⏸ STOPPING POINT — end of 2026-09-25
+# ⏸ STOPPING POINT (superseded — see the end of this file)
 
 ## The page as it stands
 
@@ -2094,3 +2094,52 @@ in `lib/sync-library/agreement.ts`, counsel-gated. Blocker logged at
 
 **Also out:** pricing-tier detail (placeholders) and anything about AI (invites a conversation this
 page does not want).
+
+---
+
+# ⏸ END OF DAY — 2026-09-25 (final)
+
+## The page is structurally complete
+
+hero carousel → **01** How it works → **02** Collaborators → **03** The Crate → **04** Voices →
+**05** Questions → **06** Pricing → footer. Every section built. 30 images, 672K, all self-hosted.
+
+## Shipped to production today
+
+PR #102 merged to `main`. The only runtime change is the tagline removal — `app/layout.tsx`'s meta
+description, and the subtitle under the wordmark on signin and unsubscribe. **"The operating system
+for your music career" is off funun.studio.** Search results update on the next crawl.
+
+## Three commits sit on this branch, unmerged
+
+Planning docs only, no shipped code, nothing waiting to deploy: the exclusivity blocker, the FAQ
+record, and the `authorises → authorizes` fix. They need a follow-up PR whenever convenient.
+
+## Tomorrow, in order
+
+1. **Decide the twelve CTA destinations.** Nine resolve to existing routes (`/signin`,
+   `/sync-library`, `#how`). Three do not: two "Talk to us" buttons need a contact route or a
+   mailto, and "How The Crate works" / "What makes a song Crate-ready" are the same missing page.
+   **This blocks the port** — a route cannot ship with links that do not resolve.
+2. **Write the Crate-eligibility page.** The only item needing genuinely new writing. The rules are
+   real and documented: two disqualifiers plus the BGV clause,
+   `lib/catalogue/ai-entries.ts:183-213`.
+3. **Plan Phase 46 through `/gsd-plan-phase`.** Scoped in the roadmap, not yet planned as
+   executable. CLAUDE.md requires phase work to start there.
+4. **Then port** — a route in the Next app, mostly static markup, sphere and Selects marked
+   `priority`.
+
+## Not blocked on us
+
+- **Hero art** — owner generates the Midjourney facade plate for slide 1 (prompts written); slides
+  2 and 3 are probably product screenshots.
+- **The Crate FAQ answer** — counsel/BD ruling on exclusivity of representation.
+- **Publishing** — the business-model conversation. Tiers, storage caps and the Room service
+  promises are all described on the page and unimplemented. Finishing is not blocked; going live is.
+
+## Where everything lives
+
+- Working files: `private/bench/marketing.html` + `img/` (gitignored)
+- Durable copies: `~/Desktop/funun-bench-backup/` — both benches, all 30 images, the roadmap
+  snapshot, the Codex prompt and review
+- The record: this file and `.planning/`, committed and pushed
