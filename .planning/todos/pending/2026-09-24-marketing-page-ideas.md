@@ -2215,9 +2215,34 @@ AI-bench popovers do not, and all four clear the band.
 Parenthesised, lowercase "fuh", uppercase "NOON" marking the stress. Hidden below 560px so it does
 not crowd the mobile header.
 
-**Header wordmark now uses the footer's waveform**, scaled to 72%. Owner: it reads better than the
-solid gradient square, and it does — it is a mark rather than a shape. Both are built from one
-shared `WAVE` array so they cannot drift.
+**Header wordmark now uses the footer's waveform** — at the footer's *exact* geometry, not a
+reduction. Owner: it reads better than the solid gradient square, and it does — it is a mark
+rather than a shape. Both are built from one shared `WAVE` array so they cannot drift.
+
+My first pass scaled the bars to 72% (`width:2.5px`, `gap:2px`, `Math.round(h*0.72)`) on the
+assumption that a header mark should be smaller than a footer mark. It read thin and weedy.
+Measured side by side, the footer is `3px` wide / `2.5px` gap / heights `9 16 24 13 20 8`; the
+header is now identical, with the wordmark lifted 15px → 17px to sit under it. **The mark is the
+mark at any size** — scale the lockup by leaving the mark alone and moving the type.
+
+### Nav links centre on the page, not in the gap (2026-09-25)
+
+`.navrow` was `flex` + `justify-content:space-between`. That centres the link block in the space
+*left over* between the wordmark and "Sign in" — and since `Funūn (fuh-NOON)` is far wider than
+`Sign in`, the four links sat visibly right of centre. Owner caught it: *"the four in the center
+are not centered… center them with the page not in between the other words."*
+
+Fixed by making the row a three-column grid, `1fr auto 1fr`, so the middle column is the page's
+true centre regardless of what flanks it. Measured: the link block's midpoint is now **0.0px** off
+the viewport midpoint (was ~28px right).
+
+**One trap this introduced, and the fix.** `.navlinks{display:none}` below 780px removes the
+element from the grid flow entirely, so with auto-placement the sign-in link slid into the middle
+column — 164px short of the right rail on a 375px screen. Each item is now pinned to its own
+column (`grid-column:1/2/3`), which holds whether or not the middle one is rendered. Re-measured
+at 375px: 24px inset on both sides, no horizontal overflow. The nav cursor still tracks — it is
+positioned inside `.navlinks`, which stays `position:relative`, so the grid change is invisible
+to it.
 
 ### It also caught an error in the Selects mock
 
