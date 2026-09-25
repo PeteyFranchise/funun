@@ -383,3 +383,34 @@ Two model strings are hardcoded across the AI surfaces: `claude-sonnet-4-6` (10 
 `MODEL`, and several routes ignore it and hardcode their own. Both are older than current Sonnet 5
 / Opus 5. Two separate issues: a constant that should be one import, and a model refresh that
 moves both output quality and cost. Not a marketing item — logged here so it is not lost.
+
+### Overclaim caught: "Unlimited songs and takes" → "Unlimited songs" (2026-09-25)
+
+Owner: *"we cannot say Unlimited Songs and Takes, only the songs are unlimited but once we add so
+much audio we have to charge for that storage."* Correct, and it was the clearest overclaim on the
+page. Replaced with:
+
+> **Unlimited songs** → *The song count is never the limit.* Start as many songs as you want —
+> nothing meters how much you write. Audio is the part that costs: takes and masters use storage,
+> and that is what the paid tiers raise.
+
+**No number is stated, deliberately.** What the code actually enforces today:
+
+- **Per-file caps exist.** 50MB per take (`lib/catalogue/audio-mime.ts:13`), 250MB per track
+  (`lib/storage/index.ts:7`), 25MB for lyric lift (`lib/catalogue/lyric-lift.ts:3`).
+- **No account-level storage cap is enforced.** Storage *is* metered —
+  `storage_bytes_ingested` in `lib/workspaces/usage.ts` and migration
+  `222_workspace_usage_metering.sql` — but 222:6 states it plainly: *"it does not enforce a limit,
+  consume a Member credit, or authorize access"*, and `usage.ts:130` says *"Beta usage is
+  observational. Failure must never block the underlying action."*
+
+**So the page now implies a ceiling the product does not apply.** "That is what the paid tiers
+raise" and Studio's existing "Larger take storage" both describe a limit that exists as a
+measurement and not as an enforcement. That is fine for a page that is not live, but the cap has to
+be real before this ships — otherwise the first free user to upload 80GB is a support conversation
+nobody planned. Either implement enforcement, or soften both lines.
+
+The metering plumbing being already built is the good news: `WORKSPACE_USAGE_METRICS` also tracks
+`ai_requests`, `ai_input_tokens`, `ai_output_tokens`, `esign_requests` and
+`audio_processing_seconds` — so the cost basis for the whole tier conversation is already being
+observed, just not billed against.
