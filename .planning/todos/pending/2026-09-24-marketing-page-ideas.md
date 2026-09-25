@@ -1256,3 +1256,38 @@ to", "in future", and period-inside-quotes): clean. The only matches the punctua
 were SVG filter attribute values, not prose.
 
 Applies to anything written for Funūn from here, including copy pasted back from Codex.
+
+## Tier renamed: Room → Team (owner, 2026-09-25)
+
+The ladder is now **Writer → Studio → Team → Entourage**. `The Writer's Room` the *product* is
+untouched — only the tier moved.
+
+Codex flagged the original collision: the core product and the top tier both called Room, which
+billing, support and copy would all inherit.
+
+### The two objections raised and how they resolved
+
+**"Team" vs "Funūn Team Member".** Raised because *Team Member* is an account class meaning
+**staff** (`funun_staff`), and TMS — Team Member Services — is the internal HR function.
+
+**Owner: not a real risk.** *"Team member logins don't have @handles and all use Funūn email
+accounts."* The two populations are structurally distinguishable at the identity layer, which
+`ACCOUNT-TYPES.md` corroborates: staff identities *"stay separate and fail closed out of
+Member/Client Partner contexts."* Anyone asking "Team Member or Team plan?" resolves it by looking
+for an @handle. **Accepted.**
+
+**"Roster" was proposed and withdrawn.** It is the worst available option, and checking it first
+would have saved a round trip:
+
+- `roster_relationships` is a core access-control concept — proposing, consenting, ending and
+  blocking workspace↔member relationships. `CLAUDE.md`: *"Relationships grant workspace access."*
+- *"Your private roster"* already appears **on this page**, meaning the collaborator roster.
+- **"Roster and catalogue views" is a feature row inside the very tier being renamed.**
+
+`Label` is also unavailable in practice — 3,511 hits, mostly `<label>` elements, plus "À la carte
+label services" in this tier. Of the alternatives tested, only **Crew** and **Ensemble** are clean
+(zero hits across `app/`, `components/`, `lib/`, `supabase/migrations/`), and neither was needed.
+
+**Lesson worth keeping:** every rename in this codebase should be grepped before it is proposed.
+Room, Team and Roster each collided with something, and the collisions were not guessable — they
+were in migrations and access-control vocabulary, not in the UI.
