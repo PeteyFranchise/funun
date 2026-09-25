@@ -53,6 +53,39 @@ readiness gates, the splits nudge, the vocal-state check.
 - **Is it per-room or per-person?** "Re-track the bridge" is the room's; "listen to v12" is mine.
   Mixing them without a distinction makes the list everyone's and no one's.
 
+## Also raised: notifications inside the room
+
+Owner-raised in the same breath, 2026-09-24. Likely the same surface, so noting it here.
+
+**Verified what already exists (2026-09-24):**
+
+- A **global** notification system — `lib/notifications/index.ts`, `app/api/notifications/route.ts`,
+  and a bell in the nav (`components/nav/NotificationBell.tsx`, `NotificationPanel.tsx`).
+- The room **already broadcasts** its own events. `lib/catalogue/room-collaboration.ts` defines
+  `CollaborationHint` as `lock_changed | lyric_saved | comment_changed | suggestion_changed`
+  (per block) and `track_comment_changed` (per version), delivered over Supabase Realtime.
+
+**The gap between them:** those broadcasts are *ephemeral* — `WriterRoomPresence` hands them to
+`onLiveHint` so the UI can refresh, and then they are gone. They are a sync mechanism, not a
+record. So the room knows what happened and the app has a bell, but there is nowhere in the room
+that says *"while you were away: Marcus signed the split sheet, Nia added Take 5, Priya replied to
+your note on bar 17."*
+
+**Questions to settle:**
+
+- **In-room feed vs the global bell — which owns it?** Duplicating every room event into the global
+  bell would drown it. Most likely the room surface is scoped and unread-aware, and only a few
+  event types escalate to the bell (someone signed, someone was added, you were @mentioned).
+- **Is this the Diary?** The Diary already records what happened in the room. The difference is
+  *unread state* and *addressed-to-you* — a diary is history, a notification is an obligation. They
+  may be one surface with a filter rather than two.
+- **Relationship to ToDos.** A notification says something happened; a ToDo says something needs
+  doing. They overlap ("splits unsigned" is both). Decide whether they are one inbox with two
+  kinds, or two surfaces — before building either.
+- **Presence privacy line holds here too.** `WriterRoomPresence` promises *"creative context only —
+  no keystrokes or productivity tracking."* A notification feed that reports how often someone
+  edited would break that promise in a way the presence pill deliberately avoids.
+
 ## Related
 
 - `components/catalogue/GuidingLine.tsx` — the one-step rule and its type-level guard
