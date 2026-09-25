@@ -630,3 +630,35 @@ person.
 ("Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere").
 Deliberate — marketing can be warmer than an in-app subtitle — but if the in-app copy ever gets its
 own voice pass, these two should be reconciled rather than drifting further apart.
+
+### The Crate copy now carries a service promise (2026-09-25)
+
+Owner asked to add "our team gets to work shopping your tracks for you" after the Sync Library
+clause. Shipped as:
+
+> The Crate is Funūn's curated sync catalogue — one-stop-licensed, so a supervisor can clear a song
+> in one call. Submitting is free; getting in is earned. The moment a song is admitted, your Sync
+> Library opens **and our team starts putting it in front of the supervisors we work with.**
+
+**Verified before writing it.** This is the one line on the page that commits *people* to an
+action, so it was checked against the actual workflow rather than assumed:
+
+- The AE surface says, in its own empty state, *"Pull tracks from The Crate and send this client a
+  first Selects"* (`components/admin/SelectsBuilder.tsx` and the Selects admin page).
+- Selects recipients are `buyer_orgs` — Client Partners, i.e. supervisors and music buyers.
+
+So the pipeline is real and shipped: admitted song → Crate → AE builds a Selects → lands with a
+buyer.
+
+**But it is a promise about human effort, not software.** A feature claim is true when the code
+runs; this one is true only while there is a team with capacity to work the catalogue. Two things
+follow:
+
+1. **It does not scale automatically.** If Crate admissions outpace AE headcount, the sentence
+   quietly becomes false for the artists at the back of the queue — and they will have read it on
+   the pricing page.
+2. **It sets an expectation with no stated frequency.** "Starts putting it in front of" implies
+   activity, not a single attempt. Worth deciding whether that is the intended commitment before
+   the page is public.
+
+Codex has been asked to flag it specifically as a service promise rather than a feature claim.
