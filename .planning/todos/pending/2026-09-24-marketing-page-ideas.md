@@ -1168,3 +1168,37 @@ capture (45), The Crate.
 **One question an announcement rail creates:** what happens to a slide once its feature is no
 longer new? Either the rail is maintained as features ship, or "Introducing" quietly becomes
 untrue. Worth deciding once rather than per slide.
+
+### Hero lede — owner's compromise (2026-09-25)
+
+> The first room built for writing a topline together — by multiplatinum, Grammy-winning and
+> Grammy-nominated songwriters. See who's in the room, who's on each section, and leave the session
+> knowing who did what.
+
+Owner: *"My team of consultants and I are all multiplatinum writers, Grammy nominees and Grammy
+winners."* So the credential describes **who built it**, which is why it takes an em dash — a comma
+left it ambiguous whether those songwriters built the room or write in it.
+
+Copy-edits applied to the owner's draft:
+
+- **`multiplatinum-Grammy winners` → separated.** The hyphen welded two distinct achievements into
+  one compound, reading as a "multiplatinum-Grammy" award, which does not exist.
+- **`writers` → `songwriters`** (owner). Precise for this audience, and it avoids the ambiguity with
+  "writers" as the Writer tier's name.
+- **Grammy capitalised** — a proper noun and a Recording Academy trademark.
+
+### ⚠ "The first" is still live, and is the page's one contestable claim
+
+Codex found prior art — [Songcraft](https://songcraft.io/), [Lyree](https://lyree.io/) (markets
+lines being marked as they land), [Soundtrap](https://www.soundtrap.com/content/product/online-daw-features).
+**The credential does not narrow the claim**: who built the room has no bearing on whether it was
+first.
+
+Argued once and not pressed further — it is an owner call. The case for dropping it: the credential
+is the *stronger* line alone. "First" is contestable and every startup says it; "built by Grammy
+winners" is specific, verifiable and uncopyable. Dropping "first" costs nothing and removes the one
+sentence on the page an outsider could challenge.
+
+**Also unresolved: length.** 210 characters against the previous ~120, rendering as a five-line
+block directly beneath the neon sign — which should be the loudest element in the hero. If the
+lede stays this long, the sign's dominance is worth re-checking at desktop width.
