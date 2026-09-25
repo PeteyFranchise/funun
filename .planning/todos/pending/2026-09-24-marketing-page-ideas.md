@@ -1291,3 +1291,31 @@ label services" in this tier. Of the alternatives tested, only **Crew** and **En
 **Lesson worth keeping:** every rename in this codebase should be grepped before it is proposed.
 Room, Team and Roster each collided with something, and the collisions were not guessable — they
 were in migrations and access-control vocabulary, not in the UI.
+
+## Hero gains a tagline line (owner picked #1, 2026-09-25)
+
+The hero is now four elements rather than three:
+
+| Element | Content |
+|---|---|
+| Kicker | `INTRODUCING` |
+| Sign | `Writer's Room` (neon) |
+| **Tagline** | **Write together. Leave knowing who did what.** (43 chars, 17–21px, white, semibold) |
+| Lede | The first room built for writing a topline together — by multiplatinum, Grammy-winning and Grammy-nominated songwriters. See who's in the room and who's on each section. (169 chars) |
+
+**This is a feature tagline, not a company one.** Of Codex's five, #1 and #2 describe the Writer's
+Room; #3–#5 describe the platform arc and are candidates to replace the retired company tagline.
+That slot stays empty for now — the auth wordmark subtitle was deliberately removed, and the meta
+description carries a descriptive sentence instead. The natural future home for a company tagline
+is the footer wordmark (`.fmarkrow`).
+
+### Why the lede changed too
+
+Tagline #1 ends *"leave knowing who did what"* and the lede ended *"leave the session knowing who
+did what"* — the same sentence twice in two registers. The lede surrendered that clause to the
+tagline, which fixed a second problem at the same time: **it was 210 characters rendering as five
+lines directly under the neon sign**, competing with the thing it was supposed to introduce. Now
+43 + 169, with the short line carrying the payoff and the long one carrying the credential and the
+detail.
+
+The sign is the loudest element in the hero again, which is the point of an announcement rail.
