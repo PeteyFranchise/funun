@@ -1698,3 +1698,28 @@ file, the split sheet reflects reality, the song is release-ready.
 Note for future editors: **"section" in step 3 is deliberate.** It was "line" until Codex found
 `author_user_id` sits on `lyric_blocks`, making attribution block-level. Do not "fix" it back to
 the punchier, false version.
+
+### Fifth step added: the producer round trip (2026-09-25)
+
+> **Send it out, get it back** — Your timed comments export as DAW markers, so notes land on the
+> timeline where the work actually happens. The mix comes back into the room, and the room knows
+> where it got to. `MARKER EXPORT · PRODUCER HANDOFF`
+
+**Every clause maps to shipped code**, checked before writing: marker export in three formats
+(`take-export-audition.ts`, `take-export-formats.ts`, rendered at `TimedTrackPlayer.tsx:1097`), the
+returned mix (`ReturnedMixReviewCard` at `WorkPage.tsx:1613`), and the stage the room tracks
+(`producer-handoff.ts:23`, timeline at `WorkPage.tsx:1620`).
+
+**Deliberately absent: `connect`, `sync`, `plugin`, `integrate`.** Swept the rendered section to
+confirm. None of that exists — a handoff plugin is a **backlog exploration**
+(`2026-09-25-explore-daw-plugin-for-producer-handoffs.md`), not a plan, and previewing it would be
+the exact overclaim the Codex pass spent its time removing.
+
+**It answers the producer objection anyway.** *"Notes land on the timeline where the work actually
+happens"* concedes the point on purpose: your DAW is where you work, Funūn is not asking you to
+leave it. That is a stronger position than claiming integration, and it stays true whatever happens
+to the plugin exploration.
+
+Order is now: start the song → bring in who you're writing with → send it out, get it back → the
+record writes itself → take it out. Production sits before the ledger settles, which is the real
+sequence.
