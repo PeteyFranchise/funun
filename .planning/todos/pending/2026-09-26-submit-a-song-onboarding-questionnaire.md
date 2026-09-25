@@ -1,0 +1,119 @@
+# "Submit a song" → an onboarding that lands the song in the right room
+
+**Captured:** 2026-09-26 · **Status:** approach owner-approved, question set in review
+**Answers:** marketing CTA #3 — "Submit a song" (hero C and The Crate section)
+**Scope:** Member accounts only
+
+## The owner's shape of it
+
+> *"Have them upload the song into their own vault and make sure they understand that this is a
+> private vault and not yet a submission our staff can determine for The Crate. But what this WILL
+> or CAN do is get them into Funūn with a song directly in the Release Report room, and then the
+> system can carry them through the way to submitting for the actual THE CRATE."*
+
+So: the CTA does not submit anything. It gets a real song into a private Sound Vault, puts it in
+the right room, and teaches the path to The Crate on the way.
+
+## This holds against doctrine — checked, not assumed
+
+- **"The Crate is offered, never assumed"** (deliberation decision #10, owner 2026-08-30). Someone
+  who clicked a button inside the Crate section has **declared** intent; answering a declared
+  intent is not assuming it.
+- **Private vault ≠ submission** matches the real mechanics: submission is an explicit per-track
+  action (`components/vault/TrackList.tsx:345` → `/api/sync-library/submit`), and the owner's own
+  earlier correction — *"they still have to actually submit a song over to us."*
+- **The fork already exists.** `/vault/new` is a two-door chooser (`Door = 'choose' | 'song' |
+  'release'`): *The Writer's Room* — "Start a song. Hum it, write lyrics, upload a take" — and
+  *The Release Report* — "Start a release… with the full readiness checklist for going out." The
+  questionnaire is a richer version of a shipped screen, not net-new.
+
+## Three conditions it must respect
+
+1. **Keep all four doors open.** Decision #10 names Crate / Release / Registration / Distribution
+   as first-class, with *"same guidance energy for the artist who never submits to it."* Highlight
+   Crate; never remove the others. This matters most in the failure case — someone who arrives for
+   sync and turns out to be ineligible must land somewhere useful, not in a dead end.
+2. **Nothing stands between a person and their work.** `docs/architecture/ACCOUNT-TYPES.md`:
+   profile completion *"is never required before capturing an idea, entering a Writer's Room,
+   uploading a take, writing lyrics, or leaving a note."* **The song goes in first; the questions
+   come after, and every one is skippable.** A questionnaire that gates the upload inverts the rule.
+3. **Crate-eligible and release-ready are different checks.** `lib/vault/readiness.ts` measures
+   assets and metadata. The Crate disqualifiers are AI-provenance (`lib/catalogue/ai-entries.ts:183`).
+   **A song can hit 100% readiness and still be ineligible.** The onboarding must never imply the
+   meter is the gate.
+
+## Why this beats a static eligibility page
+
+The two Crate disqualifiers are already *questions*:
+
+1. did the whole master come out of a tool? (wholly AI master — ineligible on ownership grounds)
+2. for every voice on it, can you point to the human take it came from? (the BGV clause)
+
+Asking those once at upload is better than discovering them at rejection, and the doctrine already
+carries the one-pass fix for the second — *"track a rough human take of that part so the tool can
+build from it instead."* The questionnaire teaches eligibility **by asking about their song**
+rather than making them read our rules. This may retire the "What makes a song Crate-ready" page
+we owed, or reduce it to a reference the questionnaire links to.
+
+Tone, per the catalogue doctrine: hygiene moments run **warmer than legal** — citation is a badge,
+not a confession. Nobody is confessing to using a tool.
+
+## Draft question set — IN REVIEW, owner adding input
+
+Marked **[doctrine]** where a question exists because the doctrine requires it, **[thesis]** where
+it exists because it is what Funūn is for, and **[cut?]** where it is defensible to drop.
+
+**Before any question: the song is already uploaded and already theirs.** The first screen is a
+statement, not an ask — *"It's in your vault. It's private; nobody at Funūn can see it yet."*
+
+1. **"Where's this song at right now?"** **[doctrine — routing]**
+   - It's done — mixed, mastered, ready to go out → **Release Report**
+   - It's close — needs a mix or a master → **Release Report**
+   - Still writing it → **Writer's Room**
+
+2. **"Who else is on it?"** **[thesis]**
+   - Just me
+   - A few people, and I know how to reach them
+   - A few people, and tracking them down is the problem  ← *the moment the product pays off*
+
+3. **"Are the splits agreed?"** **[thesis]**
+   - Agreed and written down
+   - Agreed out loud, nothing signed
+   - Not yet
+
+4. **"Did any of this come out of an AI tool?"** **[doctrine — disqualifier 1]**
+   - No
+   - Some of it — instruments, beats, a melody or a lyric line
+   - The whole track came out of a tool  ← *not Crate-eligible; still a real song in their vault*
+
+5. **"The voices on it — can you point to the human take each one came from?"** **[doctrine —
+   disqualifier 2, the BGV clause]** *(only if the song has vocals)*
+   - Every voice started with a person singing
+   - Some were built by a tool from a take we have
+   - At least one has no human take behind it  ← *the hard no, with the one-pass fix offered*
+
+6. **"Where do you want this song to end up?"** (choose any) **[doctrine — keeps the four doors
+   open]**
+   - Out on DSPs
+   - Up for sync
+   - Registered properly
+   - Not sure yet
+
+7. **[cut?]** **"Anything in it you didn't make — a sample, an interpolation?"** Real for sync, but
+   not one of the two disqualifiers, and the readiness checklist already covers clearance. Included
+   for the owner to keep or cut.
+
+## What they see at the end
+
+Not a score. Three plain statements:
+
+- **where the song lives now** — the room it landed in, and that it is private
+- **what it is missing** — from the real readiness gaps for *that* song
+- **The Crate, specifically** — eligible / not yet, here is the one thing / not eligible, here is
+  why — and in every one of those three cases, the other doors are still on screen
+
+## Open
+
+Where the flow lives (a route before `/signup`, or the first run after it), whether it is one
+screen or a short stack, how upload-before-account works at all given a song has to belong to
+someone, and whether question 1's answer can be inferred from what they uploaded rather than asked.
