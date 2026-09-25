@@ -610,3 +610,23 @@ a policy. That is the difference between product copy and a terms page.
 
 **The rest of the popovers have not had this pass.** Codex's prompt now names the two habits
 explicitly and asks for the same treatment throughout, with this row as the worked example.
+
+### Metadata Studio — "music supervisors" replaces "licensing" (2026-09-25)
+
+Owner asked to add sync licensees / music supervisors to the audience list. Rather than stack all
+three, **"music supervisors" replaced "licensing"** — they cover the same ground, and a person
+beats a category. A supervisor is who actually places the song; "licensing" is a department noun.
+
+| | |
+|---|---|
+| Was | Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere. |
+| Now | Everything radio, DJs, music supervisors and distributors need — fill it in once, and it exports clean everywhere it goes. |
+
+Also applied the voice pass from the row above: "captured once, exported anywhere" is passive and
+abstract; "fill it in once, and it exports clean everywhere it goes" is the same promise said by a
+person.
+
+**This now diverges from the shipped app line** in `components/vault/MetadataStudio.tsx`
+("Everything radio, DJs, licensing, and distributors need — captured once, exported anywhere").
+Deliberate — marketing can be warmer than an in-app subtitle — but if the in-app copy ever gets its
+own voice pass, these two should be reconciled rather than drifting further apart.
