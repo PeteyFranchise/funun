@@ -1,11 +1,60 @@
 # Testimonials: where does the audio come from, and how does anyone submit one?
 
-**Captured:** 2026-09-25 · **Status:** open — product + legal + ops, not a build task yet
+**Captured:** 2026-09-25 · **Status:** format DECIDED (both) · sourcing, consent and ops still open
 **Surface:** marketing page section 04 "Voices" (`private/bench/marketing.html`, `#voices`)
 **Owner asked:** *"how do we populate the audio in these testimonial cards? How can someone
 submit a testimonial? And the logistics surrounding this part of the website page."*
 
-## What is actually on the page today
+## DECIDED 2026-09-25: both formats, one grid
+
+Owner: *"let's do text quotes and also figure out how to do audio quotes like the ones seen here
+as well, so we can use both."* And, on what the clips are for: *"aren't these little audio
+snippets supposed to be people talking about things they like about Funūn, recorded
+testimonials?"* — yes. That is the section. We have none yet because nobody has been asked.
+
+So the card takes either shape and the switch is one field: **an entry with no `a` renders as a
+text quote, an entry with `a` gets a player.** The section can ship as text and gain audio one
+person at a time, which matches how these will actually arrive.
+
+### The audio mechanism, built and verified
+
+- **Peaks are data, not something the page works out.** The clip and its peak array are produced
+  together at ingest by `private/bench/tools/audio-peaks.py` (copied to the Desktop backup, since
+  `private/` is gitignored) — ffmpeg decodes to 8kHz mono PCM, python buckets it into 40 RMS
+  values normalised to the loudest. A card then costs one mp3 plus forty numbers. No
+  `AudioContext`, no fetch-and-decode on load.
+- **`preload="none"`.** Verified: zero network requests for the clip until the play button is
+  pressed, so the page costs nothing on a phone for a visitor who never plays one.
+- **Real `<audio>`, driven by `timeupdate`.** Verified playing: `currentTime` 2.62 of a real
+  `duration` 11.44, 8 of 40 bars lit, `aria-valuenow` 22, running time counting. Pause, the
+  `ended` reset and one-clip-at-a-time all verified.
+- **Scrubbing needs a Range-capable host.** python's `http.server` sends no `Accept-Ranges`, so on
+  the bench Chrome reports `seekable.end` as **0 even after a full playthrough** and any seek
+  clamps to zero and restarts the clip — which reads worse than a dead control. The handler now
+  refuses to scrub unless the whole clip is seekable. Verified both ways: inert on 4321, and
+  against a throwaway Range-capable server on 4322 it scrubbed to **8.57s against a target of
+  8.58s** with 29/40 bars lit. Vercel and Supabase Storage both answer Range.
+- **A clip that 404s removes its own player**, leaving a clean text quote rather than a dead
+  button on a public page.
+
+### The placeholder clip is synthetic on purpose
+
+First attempt used 28 seconds of *Morning Light* as a stand-in. Owner, immediately: *"it's playing
+a song I wrote, that shouldn't be there."* Right — a placeholder must not be anyone's work,
+because a placeholder is exactly the thing that survives to production by accident. Replaced with
+macOS `say` output that announces itself: *"This is a placeholder clip. It is not a real
+testimonial, and it is nobody's voice…"* 11 seconds, 68KB. If it ever leaks into a build it says
+so out loud. (The Selects mock in section 03 still shows Maya Reyes artwork and a *Morning Light*
+track title — that is cover art and a title in a mockup, nothing plays, and it was an explicit
+earlier choice. Flagging it only so the call is conscious.)
+
+### Still open
+
+Everything below that is not the mechanism: who is asked, how they are asked, what the release
+says, where the files live, who approves, and how someone gets taken off the page. The build is
+no longer the hard part.
+
+## What the page did before this (kept, because it explains the shape)
 
 **There is no audio.** Not a missing file, not an unwired player — no audio concept at all:
 
