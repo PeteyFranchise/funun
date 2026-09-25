@@ -744,5 +744,12 @@ Two problems with that:
 should say what the feature does. If the popover keeps a closing line, something like "Built for
 the way toplines actually get written" makes the same point without re-litigating primacy.
 
-Left as-is for now — the owner asked for it explicitly, and Codex has been asked to rule on both
-whether the claim survives scrutiny and which of the two should carry it.
+**RESOLVED 2026-09-25 (owner agreed).** Primacy stays in the hero only. The popover now closes
+with *"Built for the way toplines actually get written"* — owner: *"built for the way toplines
+actually get written is better."* Verified: "first" appears exactly once across the entire rendered
+page, popover text included.
+
+That closer is doing more work than the line it replaced. "Designed with topline writers in mind"
+is a claim about intent, which anyone can assert. "Built for the way toplines actually get written"
+is a claim about the *method* — and the three sentences before it are the evidence, so it reads as
+a conclusion rather than a boast.
