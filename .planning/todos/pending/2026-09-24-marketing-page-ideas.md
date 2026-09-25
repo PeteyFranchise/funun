@@ -774,3 +774,26 @@ Correct as written.
 
 **Still outstanding in that same row:** "what is signed and what is still outstanding" is
 uncontracted, part of the voice pass Codex has been asked to run across everything.
+
+### Studio gains "More Sound Vault storage" (2026-09-25)
+
+Added on owner instruction, in sentence case to match the neighbouring rows ("Sound Vault" is the
+proper noun; "storage" is not). Studio is now 8 rows; counts are Free 11 / Studio 8 / Room 5, the
+closest they have been.
+
+**This asserts something not yet decided: that takes and Sound Vault assets are two separate
+quotas.** Studio now lists `Larger take storage` and `More Sound Vault storage` as distinct
+benefits. That reads as two pools. In the code there is one metric — `storage_bytes_ingested`
+(`lib/workspaces/usage.ts`, migration 222) — and it is observational, not enforced, so neither
+model exists yet.
+
+Both readings are defensible as product:
+
+- **One pool** — simpler to explain, simpler to meter, and the Free copy already says *"takes and
+  masters take up real room"*, which implies a single bucket.
+- **Two pools** — matches how a writer thinks. Working takes are scratch; Sound Vault assets are the
+  finished record. Filling up on demos should not block you delivering a master.
+
+Whichever is chosen, the pricing rows should say it plainly. Two rows implying two quotas while the
+system meters one is the kind of gap that surfaces as a support ticket. Folded into the Free-tier
+allowance question already with Codex.
