@@ -414,3 +414,45 @@ The metering plumbing being already built is the good news: `WORKSPACE_USAGE_MET
 `ai_requests`, `ai_input_tokens`, `ai_output_tokens`, `esign_requests` and
 `audio_processing_seconds` — so the cost basis for the whole tier conversation is already being
 observed, just not billed against.
+
+## Free tier audio allowance — OPEN, sent to Codex (2026-09-25)
+
+Owner: *"we need to decide on how many audio takes and wav storage until we ask them to upgrade to
+Studio"*, then chose to get a second opinion before deciding.
+
+### The measured cost basis
+
+Derived from what the code writes, not estimated:
+
+| Path | Format | Per minute | 2 GB holds |
+|---|---|---|---|
+| Hum / punch capture | `audio/webm;codecs=opus` ~96 kbps | **0.72 MB** | ~47 hours |
+| Rendered stem + mix | 16-bit WAV stereo, `encodeWav()` | **10.6 MB** | 64 three-min mixes |
+| Studio lossless | 24-bit/48k WAV stereo | **17.3 MB** | 39 three-min mixes |
+| Uploaded master | any, 250 MB cap per track | — | 8 maxed uploads |
+
+Sources: codec order `lib/catalogue/hum-capture.ts:36-40`; `encodeWav()` writes 16-bit PCM at
+native rate, `min(2, channels)` — `lib/catalogue/record-over-beat.ts:89-111`, used for stem and mix
+at `RecordOverBeatStudio.tsx:620,650`.
+
+### The finding that should drive the decision
+
+**Capping takes is the wrong lever.** A take costs 0.72 MB/min — a user would have to hum for 47
+hours to reach 2 GB. A take cap therefore saves almost nothing while penalising the single
+behaviour the product most wants (living in the Writer's Room). The cost sits in WAV: stems, mixes
+and uploads, 15x more per minute.
+
+That line is already half-drawn on the pricing card — Studio advertises `Lossless 24-bit capture`.
+Recommended shape was **unlimited takes + a meter on lossless/uploads only**.
+
+### Still unresolved
+
+- **Egress, not storage, is probably the real cost.** At 2 GB, storage is cents per user per month.
+  Repeated playback of one's own takes may dominate. Actual Supabase rates on the current plan were
+  deliberately not quoted from memory — they need checking before any number is locked.
+- **Nothing enforces a cap today** (222:6). Stating a limit on the page before the product applies
+  one is a promise in the wrong direction.
+
+Sent to Codex as a second section of the copy-review prompt, asking specifically whether capping
+takes is ever right, whether egress changes the shape, whether to state a limit before enforcement
+exists, and what the upgrade moment should feel like.
