@@ -567,3 +567,20 @@ If chat ships, the copy can add it.
 **Bugs avoided in the restyle:** `overflow:hidden` was added to clip the hairlines to the rounded
 corners, which would have clipped the arrow (`top:-4px`) and the hairlines (`bottom:-1px`) — both
 sit outside the box. Removed; hairlines moved to `bottom:0` instead.
+
+### AI bench popover: prose → bulleted list (2026-09-25)
+
+Owner: *"give this more bullet-like format instead of a huge paragraph. easier on the eyes."*
+Correct — seven product names inside running prose is the hardest possible way to scan seven
+product names.
+
+The popover now takes an optional `l:` array instead of `i:` prose. Each entry is either
+`[name, description]` (rendered `<strong>name</strong> — description`) or a plain string for a
+trailing catch-all line. Eight rows, one per tool plus the "plus…" line.
+
+**Specificity note:** `.fpop ul li` is scoped at three parts (12) deliberately, because the popover
+lives *inside* a `.pcard li` (11) and would otherwise inherit the pricing row's 13.5px lavender
+styling. Same class of collision as the carousel bug — worth checking any new nested list in this
+file against `.pcard li` before assuming it is unstyled.
+
+The pattern is reusable: any feature row can now swap `i:` for `l:`. Only the AI bench uses it.
