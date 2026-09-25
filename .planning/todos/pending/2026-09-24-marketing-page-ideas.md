@@ -1319,3 +1319,36 @@ lines directly under the neon sign**, competing with the thing it was supposed t
 detail.
 
 The sign is the loudest element in the hero again, which is the point of an announcement rail.
+
+## Company tagline chosen: "Make the song. Keep the record." (owner, 2026-09-25)
+
+Codex candidate #4. Placed in the **footer, under the wordmark** — the one slot a company line
+belongs in on this page:
+
+> **Funūn**
+> Make the song. Keep the record.
+> © 2026 Funūn. All rights reserved.
+
+**Why this one works:** *record* carries both meanings at once — the recording you make and the
+documentation you keep. That is the entire product in four words, and it is the same duality the
+meta description spells out at length ("where songs get written and the rights get recorded").
+Unlike the retired tagline it is not a category claim, so nobody else can already be using it.
+
+### The two taglines now in play, and their scopes
+
+| Scope | Line | Where |
+|---|---|---|
+| Feature — the Writer's Room | Write together. Leave knowing who did what. | Hero, under the neon sign |
+| Company — Funūn | Make the song. Keep the record. | Footer, under the wordmark |
+
+They do not compete: one is about a room, the other about a platform, and they sit at opposite ends
+of the page.
+
+### Deliberately NOT placed anywhere else
+
+- **The auth wordmark stays bare.** The subtitle was removed on purpose — someone reaching signin
+  knows what they came for. A better tagline does not change that argument.
+- **The meta description stays descriptive.** Search results want the concrete sentence naming
+  Writer's Room, Sound Vault, split sheets and registrations, not a four-word slogan.
+- **Social/OG cards** are the one future slot worth revisiting — a short line under the logo is
+  exactly what they want, and nothing exists there yet.
