@@ -2131,9 +2131,21 @@ Built as a native `<dialog>` — focus trapping, an inert background and `::back
 those are what hand-rolled modals get wrong. The header link keeps `href="/signin"` and the script
 upgrades it, so with no JS the real page is still the destination.
 
-**Two things deliberately not copied from the source.** It has a *Remember me* checkbox;
-`app/(auth)/signin/page.tsx` has no such field, and a control that does nothing is the kind of lie
-this product cannot afford. And its social row is GitHub + Google; ours is Google + Apple,
+**Remember me: omitted, then added on owner request — and it now has to be wired.** I left it out
+because `app/(auth)/signin/page.tsx` has no such field and a control that does nothing is the kind
+of lie this product cannot afford. Owner asked for it, so it is in, with a meaning attached rather
+than as decoration:
+
+> **checked** (the default, which matches how Supabase behaves today) → a persistent cookie that
+> survives closing the browser. **unchecked** → a session cookie that dies with the window.
+
+Funūn is cookie-session based via `@supabase/auth-helpers-nextjs`, so this maps to cookie lifetime
+and is genuinely implementable. **The port must wire it or drop the box** — a comment sits directly
+above the handler in the bench saying exactly that. Built as a real `<input type="checkbox">` with
+`appearance:none` rather than a div pretending to be one, so the label click, the focus ring and
+the space bar all still work; verified the label toggles it and it posts as `name="remember"`.
+
+**One thing deliberately not copied.** The source's social row is GitHub + Google; ours is Google + Apple,
 **disabled**, under the line *"Google and Apple sign-in are on the roadmap. Email and password
 today."* — `signInWithOAuth` appears nowhere in the codebase. Roadmapped in the backlog.
 
