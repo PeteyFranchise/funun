@@ -1741,3 +1741,12 @@ Accurate: collaborator records feed splits, contracts and registrations
 **Watch the length.** Step 5 is now three clauses and four rendered lines against two or three
 elsewhere. Defensible as the closing step, but if it gets heavy the readiness-score sentence is the
 one to cut — "release-ready" survives without it.
+
+**Step 5 now names both destinations** (owner, 2026-09-25): *"it goes out to your distributor — or
+into The Crate for sync."* Ending only on The Crate made the step read as sync-only, when most
+writers arrive wanting to release and the Crate is upside on top. It also implied you had to be
+admitted somewhere before the step paid off.
+
+"**Your** distributor" is deliberate — Funūn does not distribute. Same boundary honesty as step 3
+conceding that the DAW is where the work happens. Both paths verified: `distributor` appears in
+`lib/vault/readiness.ts` and `types/index.ts`, and Metadata Studio exports for that handoff.
