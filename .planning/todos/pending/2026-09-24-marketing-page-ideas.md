@@ -1058,3 +1058,43 @@ is actually done.
 The audience decision (later public launch, not beta partners), the app-vs-static-site question
 (largely answered — `funun.studio` already serves the app), the Room service-promise gap list, and
 the business-model dependencies that block publishing but not building.
+
+---
+
+# CODEX REVIEW RECEIVED (2026-09-25)
+
+Full report: **`.planning/reviews/2026-09-25-codex-marketing-copy-review.md`**
+
+## Verified against source before accepting
+
+| Codex claim | Verdict |
+|---|---|
+| "Every line remembers who wrote it" overclaims granularity | **CONFIRMED.** `author_user_id` is a column on `lyric_blocks` (migration 135:219), and a block holds one `text TEXT` field — arbitrary lines, one author. There is no per-line author record anywhere in the schema. Attribution is **block-level**. |
+| "The whole AI tool bench" is a scope promise needing an accurate list | **Holds.** 12 files import `@anthropic-ai/sdk`, consistent with eleven artist-facing tools plus shared infra. |
+| "Song diary" should be capitalised if Diary is a named surface | **CONFIRMED.** `components/catalogue/DiaryFeed.tsx` exists — it is a named surface. |
+
+## The three decisions this settles
+
+**1. The "first" claim is dead.** Prior art: Songcraft (real-time collaborative songwriting with
+comments and chat), Lyree (co-writers in one song, *lines marked as they land*), Soundtrap. It
+comes out of the hero. Two of my own earlier tagline candidates rested on it and are void too.
+
+**2. Build target — Phase 46.0 RESOLVED: option A.** A route in the existing Next app, built as
+mostly static server-rendered markup, with client code only for the carousel, popovers, audio state
+and a reveal observer. React is the delivery shell, not the interaction model. **Option C rejected
+on evidence** — adopting shadcn/Radix/framer-motion would save an estimated 20–35% of porting work,
+which does not justify a second design system. Treat 21st.dev as visual reference only.
+
+**3. Storage — option A plus rollout discipline D.** Unlimited songs; compressed takes unmetered
+for upgrade purposes; a starter allowance (2 GB suggested) covering masters, stems and lossless;
+Studio raises it. **Publish no number until enforcement ships.** Interim copy: Free "Unlimited
+songs. Rough takes included." / Studio "Lossless capture and more audio storage."
+
+Egress, not storage, is the real cost: 2 GB stored ≈ $0.042/month, but played ten times ≈
+$0.60–$1.80. Mitigate with preview derivatives, CDN caching, short-lived signed URLs and rate
+limits — never a playback meter.
+
+## The naming collision worth deciding early
+
+**Writer's Room (the product) vs Room (the tier).** Codex suggests renaming the tier `Team`. This
+gets harder to unpick the longer it waits — support, billing and copy all inherit it.
