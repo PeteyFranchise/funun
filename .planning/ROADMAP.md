@@ -3173,6 +3173,17 @@ favouriting. Those are net-new.
   record implicit** — every crossing is currently an event with a file attached, and a frictionless
   path that skips the record would be a downgrade wearing an upgrade's clothes.
 
+- **Google and Apple sign-in (OAuth)** — owner-requested 2026-09-25 while designing the marketing
+  page's sign-in dialog. **Nothing exists today:** `signInWithOAuth` appears nowhere in the
+  codebase (`app`, `lib`, `components`), and `app/(auth)/signin/page.tsx:49` authenticates with
+  `supabase.auth.signInWithPassword` only. Supabase supports both providers, so this is provider
+  configuration plus a callback route plus identity-linking rules — the last of which is the real
+  work here, not the button: a Member who signed up with a password and later arrives via Google
+  must land on the same account, and Funūn Team identities must stay out of Member OAuth
+  entirely (`docs/architecture/ACCOUNT-TYPES.md`). The marketing dialog already renders both
+  buttons disabled with the line *"Google and Apple sign-in are on the roadmap. Email and password
+  today."* — so the copy is already honest and can stay while this waits.
+
 - **`/actions` slash commands in composers** —
   `.planning/todos/pending/2026-09-24-actions-slash-commands-in-composers.md`. Mechanism
   prototyped; the command set needs product input. Must be a **shared composer behaviour** across

@@ -2115,6 +2115,39 @@ for your music career" is off funun.studio.** Search results update on the next 
 Planning docs only, no shipped code, nothing waiting to deploy: the exclusivity blocker, the FAQ
 record, and the `authorises → authorizes` fix. They need a follow-up PR whenever convenient.
 
+### CTA #1 resolved: Sign in opens a dialog (2026-09-25)
+
+**The count in this doc was wrong.** It said twelve unresolved CTAs. Measured off the rendered
+DOM: **29** — thirteen in the body, sixteen in the footer, which the original count never
+included.
+
+**Sign in is now a modal, not a page jump.** Owner picked a login-card design and asked for it
+skinned to Funūn. Built on Funūn tokens — none of the source's stack is here (no shadcn, no Radix,
+no `cn()`, no `lucide-react`, all verified absent), so installing seven Radix packages for one
+card was never the move. What carried over is the *skin*: the drawn accent grid with a shimmer as
+each line lands, rising sparks, the vignette, the card's fade-up.
+
+Built as a native `<dialog>` — focus trapping, an inert background and `::backdrop` come free, and
+those are what hand-rolled modals get wrong. The header link keeps `href="/signin"` and the script
+upgrades it, so with no JS the real page is still the destination.
+
+**Two things deliberately not copied from the source.** It has a *Remember me* checkbox;
+`app/(auth)/signin/page.tsx` has no such field, and a control that does nothing is the kind of lie
+this product cannot afford. And its social row is GitHub + Google; ours is Google + Apple,
+**disabled**, under the line *"Google and Apple sign-in are on the roadmap. Email and password
+today."* — `signInWithOAuth` appears nowhere in the codebase. Roadmapped in the backlog.
+
+**One browser bug found and worked around.** `<dialog>` is specified to close on Escape. In the
+bench's embedded browser it does not: a trusted Escape keydown reaches the document
+(`isTrusted: true`, `defaultPrevented: false`) and the dialog's `cancel` event never fires.
+Added an explicit Escape handler with a comment saying not to delete it as redundant — closing an
+already-closed dialog is a no-op where native behaviour works.
+
+Verified: opens from the header, mark renders the shared six-bar waveform, focus lands in Email,
+password peek toggles both ways, backdrop click closes, Escape closes, focus returns to the
+trigger, and the spark canvas stops and clears on close rather than animating behind a closed
+dialog.
+
 ## Where we stopped — 2026-09-25, end of day
 
 Owner called it: *"save what we have, we have to pick up later."* Everything below is committed
