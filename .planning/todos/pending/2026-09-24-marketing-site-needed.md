@@ -132,3 +132,43 @@ Bench toggle wired at `[data-signfont]` — `Grand Hotel` (1930s connected scrip
 Milshire reference), `Yellowtail` (brush script, more honky-tonk), `Monoton` (deco double-stroke,
 reads literally as tube but Vegas not Nashville), `Lobster` (bold, common on the web). All four
 verified loading. If Prompt B is used instead, this choice goes away.
+
+---
+
+## Two findings that change this todo (2026-09-25)
+
+### 1. www.funun.studio already serves the Next app, not GitHub Pages
+
+Verified by visiting it: the domain resolves to the Vercel-deployed Next app and redirects
+logged-out visitors to `/signin`. Confirmed by the rendered page — the auth layout's wordmark,
+"Welcome back", "Sign in to your vault."
+
+**So the app-vs-static-site question is mostly already answered.** The app owns the domain. Putting
+the marketing page inside the Next app is now the low-friction option — a route and a redirect
+change. A separate static site would mean carving out a path or subdomain and repointing DNS away
+from what already works.
+
+It also means `app/page.tsx`'s logged-out redirect to `/signin` is effectively the homepage
+decision: **right now the public face of funun.studio is a sign-in form.** Whatever the marketing
+page becomes, shipping it means changing that redirect so logged-out visitors land on the page
+instead.
+
+### 2. The GitHub Pages constraint may be stale — VERIFY BEFORE RELYING ON IT
+
+`gh api repos/PeteyFranchise/funun/pages` still reports `source: main/`, `url:
+http://www.funun.studio/`, `status: built`, and a root `CNAME` file contains `www.funun.studio`.
+But **DNS resolves the domain to Vercel**, and there is no `index.html` at the repo root for Pages
+to serve — only `README.md` and a `docs/` folder of engineering markdown.
+
+That matters because CLAUDE.md and
+`.planning/todos/pending/2026-09-20-make-repo-private-when-affordable.md` both record a standing
+constraint: *"GitHub Pages serves www.funun.studio from main, and Pages on a private repository
+requires a paid GitHub plan — flipping visibility on the Free plan takes the site down."*
+
+**If Pages is not actually serving the domain, that constraint does not apply** and the
+repo-privacy decision is less blocked than recorded. Two configs can both claim a domain; only DNS
+decides which one answers.
+
+**Do not act on this without confirming properly** — check the DNS records for `www.funun.studio`
+and `funun.studio`, and whether the Vercel project holds the domain. This is an observation from
+one browser visit plus the API config, not a DNS audit.
