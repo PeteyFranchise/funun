@@ -995,3 +995,66 @@ vocabulary. Slang dates fastest on a pricing page, which is the page people revi
 
 Considered and rejected: *"The song's the easy part."* Punchier and true to how writers talk, but
 it undercuts a hero whose entire pitch is that writing together is the hard, valuable thing.
+
+---
+
+# ⚑ SCOPE FOR THE MARKETING PAGE PHASE (owner, 2026-09-25)
+
+**Everything built so far is a work in progress, not a finished design.** The bench page is a
+prototype for scoping this phase, not a deliverable. When this becomes a phase, it covers:
+
+## 1. Three hero banners, designed to completion
+
+Slide 1 (illuminated / Writer's Room neon) is the only one with real content. Slides 2 and 3 are
+placeholders, and each is meant to showcase something unique about Funūn.
+
+- **All three finished, not one.** Subjects for 2 and 3 still undecided — see the carousel note
+  above. Likely candidates are splits settled before anyone asks, every line remembering who wrote
+  it, the Sound Vault readiness gate, takes and versions.
+- **Expect to need Midjourney or another image AI** for at least slide 1's facade plate; prompts A
+  and B are already written in `2026-09-24-marketing-site-needed.md`. Slides 2 and 3 may be product
+  screenshots rather than renders — a generated image of software is a picture of something that
+  does not exist.
+- The CSS neon sign and its `PLACEHOLDER · Midjourney facade plate pending` ribbon come out when
+  the real plate lands.
+
+## 2. More 21st.dev components as needed
+
+Harvesting continues during the phase — additional detail, functionality and design components
+from 21st.dev where they earn their place. Same working method as the bench-01 wave: analyse,
+re-skin to Funūn tokens, build on the bench, keep what survives.
+
+## 3. DECISION: adopt the full React component stack, or keep re-skinning?
+
+This is the "option C" question from the start of this session and it is still open. 21st.dev
+components assume plumbing Funūn does not have — verified absent 2026-09-25: `shadcn/ui`, Radix,
+`cn()`/`lib/utils.ts`, `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`,
+`framer-motion`, and shadcn's `foreground`/`background`/`muted-foreground` tokens (**zero** in
+`tailwind.config.ts`).
+
+**Adopt:** components paste in and work. Enormous speed-up if the plan is to keep harvesting.
+**Keep re-skinning:** what happened all session — every component hand-ported to Funūn tokens.
+Slower per component, no new dependencies, no second design system inside the app.
+
+Evidence from this session worth weighing:
+
+- Every one of the ten components harvested needed re-skinning anyway, because the *look* was
+  wanted and the *purpose* usually was not.
+- **Tailwind 4 vs 3.4 is the recurring trap.** Funūn is on 3.4; most 21st.dev components are
+  written for v4, and unmatched utility classes fail **silently** — no error, no CI signal. This
+  was the single most repeated hazard across all ten reviews.
+- Adopting the stack inside the *app* is a much bigger decision than adopting it for a *marketing
+  page*. A standalone marketing surface could take the full stack without the app inheriting it —
+  which may be the answer that unblocks this without committing the product.
+
+## 4. Deeper dive to completion + Codex review
+
+Finish the page properly, then a full Codex pass. The copy-review prompt in the session scratchpad
+is a first pass on copy plus the storage question; the phase wants a wider review once the design
+is actually done.
+
+## Reminder of what is already recorded above
+
+The audience decision (later public launch, not beta partners), the app-vs-static-site question
+(largely answered — `funun.studio` already serves the app), the Room service-promise gap list, and
+the business-model dependencies that block publishing but not building.
