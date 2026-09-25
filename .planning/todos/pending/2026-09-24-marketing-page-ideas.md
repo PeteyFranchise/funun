@@ -1996,3 +1996,48 @@ explains how the credits **got there**.
 
 **Six items is the ceiling for that list** — past this it reads as inventory rather than copy. If
 anything else needs adding, group rather than extend.
+
+---
+
+# ⏸ STOPPING POINT — end of 2026-09-25
+
+## The page as it stands
+
+| # | Section | State |
+|---|---|---|
+| — | Hero carousel | 3 announcement slides: Writer's Room (neon) · Sound Vault · The Crate. All three carry `Placeholder · slide art pending`. |
+| 01 | How it works | 5 steps, all present-tense and verified against shipped code |
+| 02 | Collaborators | 25-face sphere, hover for PRO/IPI/publisher. Includes 4 composers and the 5 Morning Light cast. |
+| 03 | The Crate | Copy + a recreated Selects player with Maya's real tracks and cover art |
+| 04 | Voices | 3 voice testimonials (placeholder people) |
+| 05 | Pricing | Writer / Studio / Team + the Entourage band, 17 info popovers |
+| — | Footer | 4 columns, wordmark, company tagline |
+
+Images: **30 files, 672K**, all self-hosted, no remote dependencies.
+
+## NEXT SESSION: the FAQ section
+
+Owner: *"let's add the FAQ section tomorrow."* It is the last structural gap. Rights products
+generate specific objections that kill signups silently, and the page answers none of them:
+
+- **Do you take a cut?** The sync agreement is per-deal negotiated — `lib/sync-library/agreement.ts`
+  is the source of truth, do not invent terms.
+- **Who owns my masters?** Funūn stores; it does not own. Worth saying plainly.
+- **What happens to my songs if I leave?** `ACCOUNT-TYPES.md` covers the read-only/export
+  behaviour for paused workspaces — check it rather than guessing.
+- **Is my private work visible to anyone?** The Green Room / private-room boundary.
+- **Do I have to use The Crate?** No — it is opt-in and earned.
+- **What if my co-writer isn't on Funūn?** Collaborator records exist without accounts.
+
+**Every answer must be verified against source before it is written.** These are the questions
+where a wrong answer costs money or trust, not just clarity.
+
+## Also still open
+
+- **Twelve CTAs on `href="#"`** — including "What makes a song Crate-ready", which promises an
+  eligibility page. The Crate rules (two disqualifiers + the BGV clause,
+  `lib/catalogue/ai-entries.ts:183-213`) are real and worth writing down publicly.
+- **Hero art** — slide 1 needs the Midjourney facade plate (prompts written); slides 2 and 3 are
+  probably product screenshots, not renders.
+- **Drift watch** — three facts have diverged across surfaces so far (attribution unit, eyebrow
+  numbers, the vault asset list). Sweep anything stated twice before this goes live.
