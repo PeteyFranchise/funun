@@ -1679,3 +1679,22 @@ taking it out.
 - **An FAQ.** Rights products generate objections that kill signups silently — *do you take a cut,
   who owns my masters, what happens to my songs if I leave.*
 - **All 10 CTAs are still `href="#"`.**
+
+### How-it-works copy, final (2026-09-25)
+
+**Step 1** gained *"Free to start"* — not *"fast and free to sign up"*, which the owner first
+proposed. Naming signup puts an account between the reader and the song, reinstating the setup
+frame the section exists to remove; and free-to-*start* is the bigger claim anyway, since the
+Writer tier is a real product rather than a trial. "Fast" was dropped as unverifiable.
+
+**Step 4** was rewritten around *release-ready* (owner). Its old ending — "a route into The Crate
+when it is ready" — was the vaguest line in the section, hedged because Crate admission is earned.
+It now names the mechanism (`lib/vault/readiness.ts`) rather than sloganeering, and keeps the
+honesty: the song becomes *ready to submit*, not *accepted*.
+
+Each step now ends on a **state** rather than an activity — the room is open, the details are on
+file, the split sheet reflects reality, the song is release-ready.
+
+Note for future editors: **"section" in step 3 is deliberate.** It was "line" until Codex found
+`author_user_id` sits on `lyric_blocks`, making attribution block-level. Do not "fix" it back to
+the punchier, false version.
