@@ -2202,3 +2202,29 @@ direction.
 
 The flip is selective, not blanket — verified: the two bottom Team rows flip, the Writer's Room and
 AI-bench popovers do not, and all four clear the band.
+
+### Header mark + the phonetic, found not guessed (2026-09-25)
+
+**The phonetic is `(fuh-NOON)`.** Confirmed in three independent places rather than invented:
+
+- `app/help/page.tsx` — `Funūn <span className="pron">(fuh-NOON)</span>`
+- `components/selects-player/SelectsPlayer.tsx` — `<span>Funūn</span><span className="phon">(fuh-NOON)</span>`
+- `.planning/phases/31-.../31-UI-SPEC.md` — *"brand **FUNŪN (fuh-NOON)**… the phonetic matches
+  `app/help/page.tsx`"*
+
+Parenthesised, lowercase "fuh", uppercase "NOON" marking the stress. Hidden below 560px so it does
+not crowd the mobile header.
+
+**Header wordmark now uses the footer's waveform**, scaled to 72%. Owner: it reads better than the
+solid gradient square, and it does — it is a mark rather than a shape. Both are built from one
+shared `WAVE` array so they cannot drift.
+
+### It also caught an error in the Selects mock
+
+I had built `.phon` holding the word *"selects"*, copied from `public/maya-selects-desktop.html`.
+**The real `SelectsPlayer.tsx` puts `(fuh-NOON)` in that slot.** The static mockup and the shipped
+component disagree, and the component is right.
+
+**Second time those two have diverged** — the first was the brand casing. Rule: for anything
+Selects-shaped, `components/selects-player/SelectsPlayer.tsx` is the reference, not the design
+HTML. The mockup is older.
