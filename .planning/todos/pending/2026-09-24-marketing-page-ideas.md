@@ -1462,3 +1462,31 @@ who worked as all three.
 
 **Same caveat as the other faces:** these hotlink a third-party CDN. Public-domain artwork is safe
 to reproduce, but the dependency is not — self-host before this page is public.
+
+### Sphere faces moved to Pexels + four rappers (2026-09-25)
+
+**20 faces now.** 16 Pexels musicians (12 from `musician portrait`, 4 eccentric ones from `rapper`)
+plus the 4 public-domain composers.
+
+**Why the swap off 21st.dev:** those were the demo component's own mirror assets with unknown
+provenance. **Pexels License is explicit — free for commercial use, no attribution required** — so
+this is a real licensing improvement, not just a visual one. Zero `cdn.21st.dev` references remain.
+
+URL shape is constructible, which made selection cheap:
+`images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?w=400&h=400&fit=crop&dpr=2`
+
+**Selection method:** built a throwaway contact sheet of 26 then 28 candidates as circular crops
+and picked by eye, because alt text on Pexels is generic ("musician", "music") and cannot
+distinguish a portrait from a wide stage shot.
+
+**Deliberately excluded:** `13594616` is a child — attaching an invented PRO and IPI to a photo of a
+kid is not something to put on a pricing page. Also dropped `191240` (piano keys, no person) and
+`32452520` / `8041026` / `7502106` / `13038203` (wide shots with no readable face at 60px).
+
+**The ID numbers were never in the page.** They were labels on my contact sheet so the choices
+could be named. Verified after the swap: the sphere renders zero text, and every node contains a
+single `<img>` and nothing else.
+
+**Still to do before publishing:** self-host all 20. Pexels permits the use but the page currently
+depends on two third-party CDNs staying up, and a hero section that silently empties is worse than
+one with fewer faces.
