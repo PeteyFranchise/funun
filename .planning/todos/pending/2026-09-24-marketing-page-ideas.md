@@ -1246,3 +1246,13 @@ comments, not copy.
 **Worth telling Codex** if it reviews again — its report used British forms throughout
 ("organisation", "prioritise", "authorised"), so its suggested copy would import the wrong
 convention if pasted verbatim.
+
+**CONFIRMED as the standing convention (owner, 2026-09-25): US usage throughout, with `catalogue`
+as the single deliberate exception.**
+
+Swept the whole bench file, comments included — zero British spellings remain, and `catalogue`'s 5
+uses are untouched. Also checked usage beyond spelling (whilst/amongst/towards/learnt, "different
+to", "in future", and period-inside-quotes): clean. The only matches the punctuation check found
+were SVG filter attribute values, not prose.
+
+Applies to anything written for Funūn from here, including copy pasted back from Codex.
