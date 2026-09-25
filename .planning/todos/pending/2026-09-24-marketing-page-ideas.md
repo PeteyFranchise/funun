@@ -2137,6 +2137,28 @@ record, and the `authorises → authorizes` fix. They need a follow-up PR whenev
 - **Publishing** — the business-model conversation. Tiers, storage caps and the Room service
   promises are all described on the page and unimplemented. Finishing is not blocked; going live is.
 
+### Bug: the sphere hover card was painted over by the avatars (2026-09-25)
+
+Owner: *"info cards not legible when you click on them, some avatars land in front of them."*
+
+`.sphere-card` was `z-index:60`. The nodes are given `zIndex = 1000 + Math.round(z)` every frame
+so that the front of the sphere overlaps the back — measured range **820–1187**. So every avatar
+outranked the card, and the ones nearest the viewer sat right on top of the name and the IPI.
+Card raised to **2000**, above the highest node.
+
+**The same z-index range was also escaping the section.** Nodes at 1000+ beat the sticky header's
+`z-index:200`, so eight of them were painting over the nav whenever the sphere scrolled past it —
+visible in the full-page captures taken earlier the same day, and never reported because it reads
+as a quirk rather than a bug. Fixed by making `.sphere-wrap` a stacking context
+(`position:relative; z-index:0`), which confines the whole 820–2000 range to the sphere and puts
+the wrap itself below the nav. Verified: 8 nodes still intersect the nav box geometrically, all of
+them now behind it.
+
+**Third fix, same complaint:** a card opened from a node near the bottom of the sphere ran off the
+bottom edge. It now flips above the face when `top + cardH` would exceed the sphere height — the
+same treatment the pricing popovers got. The height is measured once when the card is shown, not
+in `paint()`, which runs every frame and would force a layout each time.
+
 ### Open the bench over HTTP, never as a file preview (2026-09-25)
 
 Owner reported the sphere avatars were empty again. They were not. The page was being viewed in
