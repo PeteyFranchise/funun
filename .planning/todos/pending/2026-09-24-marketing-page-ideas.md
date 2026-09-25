@@ -303,3 +303,35 @@ band does not have dead space in the middle. Same family, different shape.
 applied to Room seats? The bench treats it as the second, because it is a band and not a card. That
 is a real pricing-model decision, not a layout one, and it belongs in the business-model
 conversation with the rest of the tiers.
+
+### Free tier — final row order (2026-09-25)
+
+Writer's Room added first (it is what the hero announces, and the inventory above flagged its
+absence as the one real gap). Sound Vault moved to third on owner direction.
+
+1. The Writer's Room — *Where the song gets written.* Copy from `app/(artist)/vault/new/page.tsx:126-129`
+2. Unlimited songs and takes
+3. Sound Vault
+4. Contract Locker
+5. Collaborator profiles (+ privacy line)
+6. Rights checklists
+7. Community access
+8. Metadata Studio
+9. Antenna
+10. Unlock sync opportunities
+11. PitchPlug
+12. Release Report
+
+Ten of the twelve carry an info popover. **12 rows against Studio's 5 and Room's 5** — the
+imbalance noted above is now at its widest and needs a layout answer before the page is public.
+
+### Codex copy review — prepared, not yet run
+
+Prompt written to the session scratchpad as `codex-copy-review-prompt.md`. It asks for line-level
+rewrites, overclaim flags, terminology inconsistencies, a verdict on the hero lede's "first of its
+kind" claim, and three to five replacement taglines — returned as a single copy-paste-ready fenced
+block.
+
+**The copy travels inline in the prompt rather than by repo reference, on purpose.** The bench file
+is gitignored (`.gitignore:45`), so Codex cannot read it — and the invented pricing numbers should
+not be committed to a public repository just to make them reviewable.
