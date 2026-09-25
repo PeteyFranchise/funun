@@ -966,3 +966,32 @@ CTA that exists precisely because those two need a conversation. Both are Room-o
 Also caught while syncing: **the à la carte row had never been added to the Codex prompt.** The
 bench and the prompt had drifted by one row. Both now match — worth spot-checking the prompt
 against the rendered page before sending it, since they are maintained separately.
+
+### Studio blurb rewritten — "cutting keepers" retired (2026-09-25)
+
+| | |
+|---|---|
+| Was | For people cutting keepers, not sketches. |
+| Now | For when the song's done and the work isn't. |
+
+Two reasons the old line had to go, and only one of them was style:
+
+1. **"Keeper" is not house vocabulary.** Checked: the word appears nowhere in `lib/`,
+   `components/`, `app/`, `docs/` or the deliberations. What the product actually says is *rough
+   take*, *rough vocal*, *rough mix*, *scratch take*. And "sketches" is a visual-art word, not a
+   music one — the line mixed an authentic studio term with a borrowed one.
+2. **It described the previous version of the card.** "Cutting keepers, not sketches" is an
+   audio-quality pitch, which fit when Studio was lossless capture plus storage. Studio now leads
+   with eleven AI tools and an AI contract check. The blurb was describing a tier that no longer
+   exists.
+
+The replacement names what Studio actually is — everything *after* the writing. Every tool on the
+card (pitch, press kit, captions, editorial pitch, metadata check, PRO audit, contract review)
+happens once the song exists, so the line and the rows finally agree.
+
+**Deliberately no slang.** The owner asked for more modern lingo; the modernity here is in the
+rhythm — contractions, conversational cadence, a sentence that turns — rather than in borrowed
+vocabulary. Slang dates fastest on a pricing page, which is the page people revisit.
+
+Considered and rejected: *"The song's the easy part."* Punchier and true to how writers talk, but
+it undercuts a hero whose entire pitch is that writing together is the hard, valuable thing.
