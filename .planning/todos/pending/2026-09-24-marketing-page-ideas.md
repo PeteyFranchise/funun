@@ -1617,3 +1617,11 @@ and the owner chose to keep the original look.
 
 Useful for later: `sips --cropOffset offsetY offsetX` works (Y before X), and `ffmpeg` is available
 if a still is ever needed from `anna.mp4`, `marcus.mp4` or `rae.mp4`. There is no `jonah.mp4`.
+
+**Rae Kim re-cropped too** (2026-09-25). His face sat high and right of centre with a window filling
+the left third. First attempt at `380x380 --cropOffset 0 95` centred him but clipped his hair;
+final is `440x440 --cropOffset 0 65`, which keeps the centring and restores headroom.
+
+All four fixable cast crops are now framed at a consistent scale, so the five read as a set rather
+than one wide shot among four close-ups. Jonah stays as shot — his source is a macro and there is
+nothing wider to crop to.
