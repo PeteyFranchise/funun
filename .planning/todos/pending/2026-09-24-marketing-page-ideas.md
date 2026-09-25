@@ -234,3 +234,36 @@ that is not uncapped. The quota itself was not read; do that before any number g
 directly beside it. Logically defensible (paid tiers lead with "Everything in Writer") but it reads
 as though the paid tiers are the thinner offer. This needs fixing before the page is public —
 either Free itemises less, or the paid tiers get more of their own rows.
+
+### "Unlock sync opportunities" → The Crate (added 2026-09-25)
+
+Shipped copy: *"The Crate is Funūn's curated sync catalogue — one-stop-licensed, so a supervisor
+can clear a song in a single call. Submitting is free. Getting in is earned, and the moment one
+song is admitted your Sync Library opens."*
+
+**This resolves the Sync Library problem flagged in the inventory above.** The earlier concern was
+that Sync Library could not be a plan entitlement, because `ArtistNav.tsx` gates it behind
+`requiresSyncLibraryAccess` — shown only after ≥1 admitted song, commented *"earned, not given."*
+The owner's own framing — *unlock*, and *submit* — is the resolution: what is free is the **right
+to submit**, not access to the library. The copy says both halves out loud so the page does not
+promise the gated thing.
+
+"One-stop-licensed" is from doctrine, not invented: `lib/catalogue/ai-entries.ts:196` — *"the Crate
+one-stop-licenses the master."*
+
+**Eligibility rules deliberately left off the pricing page** (`lib/catalogue/ai-entries.ts:183-213`,
+owner-refined 2026-08-30). Two disqualifiers and one disclosure tier:
+
+1. **Wholly AI-generated masters** — not eligible, ownership grounds. "No owner to license from."
+   Applies even when the composition is human: a genre-flip remix is an AI-rendered master.
+2. **AI vocals** — the one hard no, lead or background (the BGV clause). Single test: *"can you
+   point to the human take it came from?"* YES → eligible, disclosed. NO → hard no. The one-pass
+   fix is to track a rough human take so the tool builds from it.
+3. Everything else — AI instrumentation, MIDI, beats, component-level lyric or melody inside an
+   otherwise human-produced master — **is eligible and disclosed, full stop.**
+
+These belong on a submission page, not in a pricing tooltip. But they are the answer to "why was
+my song rejected", so the marketing page should link somewhere that says it. Noted as a gap.
+
+**Free now stands at 11 rows against Studio's 5.** See the imbalance note above — this is past the
+point of being cosmetic.
