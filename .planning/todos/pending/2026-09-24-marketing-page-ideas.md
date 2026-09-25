@@ -2137,6 +2137,20 @@ record, and the `authorises → authorizes` fix. They need a follow-up PR whenev
 - **Publishing** — the business-model conversation. Tiers, storage caps and the Room service
   promises are all described on the page and unimplemented. Finishing is not blocked; going live is.
 
+### Open the bench over HTTP, never as a file preview (2026-09-25)
+
+Owner reported the sphere avatars were empty again. They were not. The page was being viewed in
+the desktop app's **local-file preview**, which loads the HTML as a `data:text/html,...` document
+— and a `data:` URL has no base, so every relative reference is unresolvable. Measured in that
+tab: `allImgs: 30, allBroken: 30`, with `src` still the literal string `img/face-01.jpg`. The
+same page in a tab on the server: **30 images, 0 broken**, and `curl` returns `200` for every
+face. Nothing was wrong with the page.
+
+This will recur every time the bench is opened from Finder or the file tree, and it looks exactly
+like a real bug. **The bench must be viewed at `http://127.0.0.1:4321/marketing.html`**, served by
+`python3 -m http.server 4321 -d private/bench`. Anything that inlines the HTML and drops the
+sibling `img/` folder will show empty avatars, missing cover art and a bare Selects mock.
+
 ## Where everything lives
 
 - Working files: `private/bench/marketing.html` + `img/` (gitignored)
