@@ -15,7 +15,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="text-lg font-semibold tracking-tight text-white">
             Funūn
           </Link>
-          <p className="mt-1 text-sm text-white/50">The operating system for your music career.</p>
         </div>
         {children}
       </div>

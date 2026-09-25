@@ -2819,3 +2819,583 @@ Plans:
 - [ ] TBD — run `/gsd-discuss-phase 41.1` first, then a research-only pass. Do not plan implementation
   before the threat model and vendor decision exist.
 
+
+---
+
+## Writer's Room design wave (bench-01, 2026-09-24)
+
+A full-day design session produced a working prototype of the Writer's Room at
+`private/bench/index.html` (gitignored, throwaway). Ten components were harvested from 21st.dev
+and re-skinned to Funūn tokens; five planning notes were filed in `.planning/todos/pending/`.
+
+**Four of the ten picks turned out to be LESS capable than what Funūn already ships** — the
+presence band, the collaborator picker, the hum recorder and the activity list all exist. That
+shaped the whole wave: these phases are mostly **re-skins of surfaces already wired to real
+data**, which is the cheapest kind of change to land. Read each phase's linked todo before
+planning; the reasoning lives there, not here.
+
+**CLAIM VERIFICATION GATE — run before planning ANY phase below.**
+
+These phases were written from a design session and rest on many specific claims about the
+existing codebase. A Codex pass on 2026-09-24 found three of them wrong, and **every one came from
+reading part of a file and inferring the rest**:
+
+- "the origin idea is fetched and discarded" — it renders 470 lines further down; already shipped
+- "takes use the 250MB resumable path" — that is the legacy bucket; takes cap at 50MB one-shot
+- "arrangement sections can be lyric blocks" — `author_user_id` is *"the fact that MOVES SPLITS"*,
+  so an instrumental break would have attributed a writing credit that moves money
+
+The third is why this is a gate and not advice. **An unverified claim in a rights product is not a
+docs bug, it is a money bug.**
+
+Before `/gsd-discuss-phase N` on any phase here: list the claims that phase depends on, confirm
+each against source with a `file:line`, and mark anything unconfirmed UNVERIFIABLE rather than
+assuming. Claims about **absence** ("nothing renders this", "no field exists") require reading the
+whole file, not the top of it. The verification prompt and its results are in
+`.planning/reviews/CODEX-RESPONSE-260924-writers-room-design-wave-verification.md`.
+
+**Prototype:** `private/bench/index.html` — serve it with
+`python3 -m http.server 4321 -d private/bench` and open `http://127.0.0.1:4321`.
+
+---
+
+### Gate 0: Sound Vault card grid — ground-colour density test
+
+**Goal:** Settle the app's ground colour before anything below it is built on top of one.
+
+The owner chose **neutral black** (`#000` page, neutral card surfaces, zinc secondary text in
+place of Funūn's lavender) during the bench session. Every screen that decision was made against
+had **one panel on it**, and black flatters a sparse page. The Sound Vault grid is the densest
+screen in the app — twelve `VaultProjectCard`s at once, each carrying full-bleed cover art, a
+gloss scrim, a status chip, a coloured readiness ring and a right-hand label.
+
+**What the test has to answer:**
+
+1. Does the ~4% separation between `#000` and `#0a0a0c` hold when twelve cards tile, or do the
+   hairlines have to carry the whole grid and turn it into a spreadsheet?
+2. Does cover art read as attached to the page, or does it float?
+3. Is the emerald/amber/rose readiness banding informative at twelve-up, or noise?
+
+**Cheaper alternative to test at the same time:** rather than splitting the ground per screen
+(rejected — shared components would need two visual truths), **lift `--card`**. The page stays
+true black and cards separate by surface instead of by hairline. One token, no split.
+
+**Why this is a gate and not a phase:** the answer changes the token values that every phase
+below inherits. Getting it wrong means re-skinning twice.
+
+**Cost:** ~1 token-swap + the grid on the bench. The token system already carries it —
+**1,753** usages of `text-lav`/`text-lavdim`/`border-hair`/`bg-card`/`bg-card2` re-skin from two
+files. **40** lavender `rgba(...)` literals exist across 16 files; two are the canonical variables
+in `app/globals.css`, leaving **38 hand-fixes across 15 files**: `components/vault/PlaybackView.tsx`,
+`PublicPlaybackView.tsx`, `VaultProjectCard.tsx`, `components/buyer/fnbl-theme.ts`,
+`antenna/OpportunityCard.tsx`, `admin/HealthRulesForm.tsx`, `admin/console-theme.ts`,
+`playbook/Rail2.tsx`, `playbook/AccessEditorMatrix.tsx`, `profile/ProfileView.tsx`,
+`coach/RightsCoach.tsx`, `selects-player/theme.ts`, `benchmarks/BenchmarkView.tsx`,
+`app/(artist)/earnings/page.tsx`, `app/(artist)/vault/[projectId]/readiness/page.tsx`.
+
+*(Counts corrected by the Codex verification pass, 2026-09-24 — the original figures under-counted
+by scoping the grep to `app/` and `components/` only.)*
+
+**Status:** Not started. Blocks Phase 42.
+
+---
+
+### Gate 0.1: Gradient budget cleanup
+
+**Goal:** Bring the app back to sketch 005-C's locked rule — **one gradient per screen, spent on
+the primary action.**
+
+The bench has **12 rules painting `var(--grad)`**; on the Chat surface three are visible at once
+(sent bubbles, send button, avatar). The shipped app has not been audited against this rule since
+the tabs and composers multiplied. `ComposerCard.tsx` and `GuidingLine.tsx` both carry header
+comments explaining the budget — they are the reference for what compliance looks like.
+
+**Status:** Not started. Can run in parallel with Gate 0.
+
+---
+
+### Phase 42: Writer's Room — room shell (presentation only, no schema)
+
+**Goal:** Make the room legible to someone who has never opened one, and make the things a writer
+reaches for constantly reachable from anywhere in it.
+
+1. **First-visit state.** `ComposerCardEmptyState` restyled to the room's current language, with
+   each tile naming the tab its result will live in (`lands in Takes`, `lands in Lyrics`). Tapping
+   one opens the real action inline and lights the destination tab. The room teaches its own
+   structure by being used.
+2. **Drop the four-verb composer from the in-progress room.** Owner decision, 2026-09-24. This
+   **departs from sketch 005-C** ("every song page leads with the composer"), ratified before these
+   tabs existed and before every verb had a better home. The guiding line survives and still carries
+   the single next step.
+
+   **Sequencing is not optional here** (Codex, 2026-09-24): `WorkPage.tsx:796-849,1567-1593` routes
+   the live Hum / Write lyrics / Add audio / Note callbacks *through* the card, `WorkPage.test.tsx`
+   enforces composer-first ordering, and the shipped room has no replacement tabs — the tabs are a
+   bench invention. **Build and test every destination action first, update the ratified Phase 37
+   contract (`37-10-PLAN.md`), and remove the populated-state card last.** Deleting it early removes
+   working entry points with nothing behind them.
+3. ~~**Origin line**~~ — **CUT. This already ships.**
+   `app/(artist)/vault/works/[workId]/page.tsx:868-879` renders "Started as an idea … View origin →"
+   from the `promoted_work_id` query. The original claim that the data was "fetched and discarded"
+   was wrong — the query was read at line 398 and the render was never checked. Whatever design work
+   happens here is a **restyle of a shipped feature**, not a new one.
+4. **Presence as a collapsing pill** that opens into the avatar grid, with add-to-room. Reclaims
+   ~75px of vertical space on every visit. **Presence ≠ roster**: added people show as "not in the
+   room" and anyone currently present cannot be removed from a presence widget.
+5. **Rearrangeable tabs** with no visual change at rest — `@dnd-kit/sortable` is already a
+   dependency. Needs a keyboard path (`Cmd/Ctrl+Arrow`) since there is no visible handle.
+6. **Docked transport** on every tab, context-aware: the arrangement on the Song tab, the current
+   take elsewhere. Must route through `take-transport.ts`'s active-player registry rather than
+   assuming one player exists — that registry is why one spacebar does not toggle every take.
+7. **Take browser** — a flat pill row stops working around six takes. Recent (default) / Starred /
+   source filters / search / date groups. Needs **`is_favorite` on work_versions** (precedent:
+   `collaborators.is_favorite`, `IdeaRating`).
+8. **Share a take as a link** — revocable and expiring, with the file a deliberate second step.
+   `navigator.share({files})` covers Mail/Messages/AirDrop in one API where supported.
+   Rename the existing take "Export" to **Markers**, which is what it does.
+9. **Light mode** — Funūn is dark-only by construction (`color-scheme: dark`). The bench proved it
+   is achievable but the state colours do not survive a flip: dark encodes state as a light tint
+   on a dark wash, light needs the inverse. Every hardcoded tint is a bug waiting.
+
+**Depends on:** Gate 0 (ground colour), Gate 0.1 (gradient budget).
+
+**Migrations:** One — `is_favorite` on work_versions. Claim the number at planning time.
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the take-browser and share-link claims), then `/gsd-discuss-phase 42`.
+
+---
+
+### Phase 43: Writer's Room — the musical grid
+
+**Goal:** Let a writer talk in bars instead of timecodes. "The bass drops at bar 17" is what people
+actually say; `2:14` is what the product currently forces.
+
+1. **Song-level tempo, metre and key**, inherited by every take, with a per-take override for the
+   rare take cut to a different click. This is the **DEFAULT-PERFORMER RULE's** inheritance shape
+   ("sections inherit unless tagged") and storing it per-take instead was a modelling error caught
+   by the owner during the bench session.
+2. **A musical counter docked above the waveform** — bar|beat|tick at 960 ppqn, selection start/end/
+   length, and the song facts editable in place. Collapsible, because a grid of numbers is the most
+   intimidating thing on the screen for someone who has never used a DAW; the choice is remembered.
+3. **Bar lines on the waveform**, thinning automatically as they crowd.
+4. **Grid snapping and bar-range selection** — drag to select bars 17–21, snapped to the current
+   grid resolution.
+5. **Notes pinned to bars, not just timestamps.** Pre-roll already exists — `PRE_ROLL_MS = 2000` in
+   `take-transport.ts` means jumping to a stamp lands 2s early so you hear the run-up.
+
+**Tempo detection is explicitly OUT.** `bpm` is `delivery_safe` in the song passport and buyers
+filter on `bpmMin`/`bpmMax` in `lib/deals/catalog.ts` — a wrong auto-detected value hides a song
+from the right search. Detection may *suggest*; a human confirms. Same posture `ai-tag.ts` already
+takes with AI output. Detection is also unreliable on exactly Funūn's hardest inputs: a hummed
+melody has no transients to lock onto.
+
+**Note:** `PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.5]` in `take-transport.ts` omits 2× deliberately
+("rarely useful on music", D-17). Do not add it back.
+
+**Depends on:** Phase 42 (the dock carries the bar readout).
+
+**Migrations:** Song-level `bpm`/`num`/`den`/`key`/`offset`, plus an override shape on versions.
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the tempo/DDEX mapping claims), then `/gsd-discuss-phase 43`.
+
+---
+
+### Phase 44: Song Builder — arrange, stack, audition
+
+**Goal:** Answer "does take 2's verse work against take 10's hook?" by listening rather than
+imagining.
+
+Full design, schema and constraints:
+**`.planning/todos/pending/2026-09-24-song-builder-arrangement-and-audition.md`** — read it before
+planning; the reasoning does not fit here.
+
+### ⚠ The original central decision was WRONG — corrected 2026-09-24 after Codex review
+
+The design session concluded "the sections ARE the lyric blocks, no second list." **That is unsafe
+and must not be built.**
+
+`lyric_blocks.author_user_id` is not metadata. Migration 135 says of it: *"it is set automatically
+from whoever wrote the block and it is **the fact that MOVES SPLITS**"*, and
+`app/api/works/[workId]/blocks/route.ts:159-190` sets it from the authenticated caller on **every**
+insert, calling it *"the one field on this table with money attached."*
+
+So making arrangement sections into lyric blocks means **adding an instrumental break, an intro or
+a vamp would attribute a writing credit that moves money to whoever clicked +.** That is the exact
+failure this product exists to prevent.
+
+**Corrected model:** one canonical **`work_sections`** table carrying order and bar length, with
+lyric content and authorship attached only to sections that actually have words. Arrangement facts
+live on the section; authorship stays on the lyric.
+
+The instinct behind the original decision still holds — the arrangement and the lyrics must not
+drift into two competing structures — but the answer is *one section table that lyrics hang off*,
+not *lyrics doing double duty as structure*.
+
+### The decisions that survive
+
+1. **The instrumental is one continuous bed**, ducked by gain automation per section — not a clip
+   re-assigned per section. A section with no vocal keeps playing.
+2. **Vocals are a stack**, all layers scheduled at the same `when`. This is what makes the feature
+   work with **no instrumental at all** — an a cappella arrangement of stacked takes is a song, and
+   must be a clean state rather than a degraded one.
+3. **A linked repeat inherits its source's take** by default.
+
+### Further corrections from the same review
+
+- **Do NOT reuse `reconcileWriterRoomLayout()`** as the arrangement reconciler. Room layout is
+  *private, per-viewer presentation* that deliberately cannot alter evidence
+  (`migrations/176_writer_room_personal_layouts.sql`). An arrangement is **shared, authoritative**
+  state needing FK-backed references, concurrency handling and explicit inherit-unless-overridden
+  rules.
+- **Reordering becomes a provenance fact.** `migrations/138`'s reorder RPC permits a null actor
+  precisely because position is presentation today. If reordering changes rendered audio, record
+  the authenticated actor and an immutable arrangement revision.
+- **`performers` JSON is not evidence of a performance.** Every uploaded version automatically
+  receives the work's primary performer regardless of what is audible
+  (`versions/complete/route.ts:80-123`), and block singer lists are declared *plans*. An assembly
+  cannot treat either as proof that a contributing take contains that person.
+- **Derived credits need a new relation**, not JSON copying — assembly→source edges with lineage
+  (`work_assemblies`, `work_assembly_sections`, `work_assembly_layers(source_version_id, role,
+  gain, timing)`, `work_version_credit_sources`), materialised server-side, never accepted from a
+  client.
+- **`'assembly'` must be added in five exhaustive places**, not one: the DB check constraint
+  (`migrations/162`), two TypeScript unions (`versions.ts`, `types/catalogue.ts`), the route
+  allowlists (`upload-intent`, `complete`) and the presentation map.
+
+**Most of the engine already exists** in `lib/catalogue/record-over-beat.ts`, written for one beat
+plus vocal clips: `RecordingClip` holds a decoded `AudioBuffer` with trim and position,
+`clipTimelineWindow()` returns exactly the `source.start(when, offset, duration)` triple,
+`levelMatchedVolumes()` balances two sources, and `encodeWav()` renders the result.
+
+**Scope boundary: this is not a DAW.** No effects, no automation beyond the bed duck, no mixing.
+
+**Depends on:** Phase 43 (bars are the arrangement's unit).
+
+**Migrations:** a `work_sections` table (order + bar length, lyrics optional); `'assembly'` as a
+fourth `VersionSource` across all five touch points; assembly→source credit-lineage tables;
+shared arrangement persistence with its own reconciler (**not** `reconcileWriterRoomLayout()`).
+
+**Highest risk to design around — AI laundering.** `app/api/works/[workId]/ai-entries/route.ts`
+currently accepts any same-work version with no direct AI entry. An assembly containing an AI
+source could therefore satisfy the human-take rule behind the Crate vocal gate unless the route
+either excludes `source='assembly'` outright or recursively verifies immutable source ancestry.
+
+**Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
+
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the work_sections model and every credit-lineage claim), then `/gsd-discuss-phase 44`.
+
+---
+
+### Phase 45: Studio-quality vocal capture
+
+**Goal:** A vocalist with a good microphone and a real chain records a **keeper** vocal in Funūn
+that a producer pulls straight into their DAW.
+
+Full analysis: **`.planning/todos/pending/2026-09-24-studio-quality-vocal-capture.md`**.
+
+**Three things in today's path would each disqualify a master:** `getUserMedia({audio: true})`
+lets the browser apply automatic gain control (it pumps a sustained vocal); every candidate codec
+is lossy; and `encodeWav()` writes 16-bit.
+
+**Three of the four capture fixes are parameters on shipping code**, and Web Audio processes in
+32-bit float internally so nothing is lost before encoding.
+
+**The storage claim was WRONG and the correction adds real scope** (Codex, 2026-09-24). Writer's
+Room takes do **not** use the 250MB resumable path — that is `lib/storage/index.ts`, a separate
+legacy `release-audio` bucket. Takes go through `lib/catalogue/version-upload-client.ts`, capped at
+**`MAX_BYTES = 50 * 1024 * 1024`** (`lib/catalogue/audio-mime.ts:13`) via a **one-shot signed
+upload**. A five-minute 24-bit/48kHz stereo keeper is ~86MB and **would be rejected today**.
+
+So the lossless path additionally needs: its own raised cap, a resumable uploader, and completion
+verification. It must also stay on **unique private version paths with `upsert: false`** — the
+legacy helper writes a stable path with `upsert: true` and a public URL, which would overwrite
+evidence.
+
+**The one genuinely new piece:** capture-offset calibration, so a take lands sample-aligned rather
+than a few milliseconds late forever. `clipTimelineWindow()` already accepts a `timingOffsetMs`.
+
+**Not an engineering problem:** monitoring latency. Every decent interface has direct hardware
+monitoring; the singer listens through the interface, not the app. That is onboarding copy.
+
+**Tier question — must be settled first.** Every paid-tier artefact in the repo is **buyer-side**.
+This would be the **first artist-facing paid feature**, a distinct business-model conversation, and
+Phase 24 self-serve is already on hold pending one. Fold it in rather than opening a second.
+
+**Depends on:** nothing technical. Can ship independently of 42–44.
+
+**Migrations:** None expected.
+
+**Status:** Designed 2026-09-24. Tier decision outstanding.
+
+**Plans:** 0 plans — settle the tier question, run the **Claim Verification Gate** above (the upload-path and codec claims), then `/gsd-discuss-phase 45`.
+
+---
+
+### Already shipped — do not rebuild (Codex verification, 2026-09-24)
+
+The design session found seven overlaps by hand. The verification pass found six more. Check these
+before planning any phase above.
+
+- **Audio content hashing** — `lib/metadata/delivery-safe.ts:72-89`,
+  `app/api/works/[workId]/passport/artifacts/route.ts`, `migrations/155` — SHA-256 over master bytes
+  and generated artifacts, in an append-only Passport custody ledger. Runs at export, not upload.
+- **Metadata-delivery hashing** — `app/api/vault/[projectId]/tracks/[trackId]/metadata/sidecar/route.ts`,
+  `migrations/142` — source audio and derived sidecars hashed independently with immutable manifests.
+- **Expiring, revocable share links** — `app/api/ideas/[ideaId]/share-links/route.ts`,
+  `migrations/169` — hashed 1–30-day tokens with revocation and single-claimant enforcement. This is
+  an invitation flow, not anonymous playback, but Phase 42's take-sharing should follow its shape
+  rather than invent one.
+- **Audio header inspection** — `lib/watermark/stream-preview.ts:104-152` — a RIFF/WAVE parser
+  reading sample rate, bit depth and channels. Built for watermarking, not wired to upload
+  validation, but it is the nearest thing to a spec validator in the tree.
+- **Section reordering** — `app/api/works/[workId]/blocks/reorder/route.ts`, `migrations/138` — a
+  transactional complete-set reorder RPC with concurrency validation and one diary event.
+- **Working BPM/key precedent** — `migrations/168`, the producer-handoff complete route — bounded
+  BPM and normalised key already stored as handoff context.
+
+**Confirmed NOT to exist:** any LUFS/true-peak analyser, any tempo or key detector, and take
+favouriting. Those are net-new.
+
+---
+
+### Backlog from the same session (todos, not yet phases)
+
+- **DAW plugin for producer handoffs** (future exploration, 2026-09-25) —
+  `.planning/todos/pending/2026-09-25-explore-daw-plugin-for-producer-handoffs.md`. **Not a move
+  toward competing with DAWs** — the "this is not a DAW" boundary (`ROADMAP.md:3074`) stands. The
+  round trip already ships: markers out (Phase 40), `sent→received→working→returned→reviewed`
+  state, mix back via `ReturnedMixReviewCard`. It costs the producer five manual steps across two
+  applications. Question is whether a plugin removes that friction **without making the provenance
+  record implicit** — every crossing is currently an event with a file attached, and a frictionless
+  path that skips the record would be a downgrade wearing an upgrade's clothes.
+
+- **`/actions` slash commands in composers** —
+  `.planning/todos/pending/2026-09-24-actions-slash-commands-in-composers.md`. Mechanism
+  prototyped; the command set needs product input. Must be a **shared composer behaviour** across
+  all five conversation surfaces, not a chat feature.
+- **`#hashtag` filing and recognition** —
+  `.planning/todos/pending/2026-09-24-hashtag-filing-and-recognition.md`. **Blocked on a
+  decision**, not on effort: `lib/tagging/ai-tag.ts` constrains tags to a controlled vocabulary
+  *on purpose* ("constrain, then drop the rest", T-30-04). Open hashtags would be a third
+  namespace and would recreate the filter-invisibility that comment guards against.
+- **Pro-audio upgrades within the mission** (discussion) —
+  `.planning/todos/pending/2026-09-24-discuss-pro-audio-upgrades-within-mission.md`. Proposes a
+  test ("does this strengthen rights, provenance or delivery — or is it a production feature
+  wearing audio clothes?") and a principle to ratify: **measure and deliver, never alter the
+  stored bytes.**
+- **Room chat is a fifth conversation surface.** Funūn already has DMs, Studio Notes threads with
+  reactions, timed take comments and per-block lyric comments. Decide what belongs in chat versus
+  Notes before building it, or the same conversation splits across two tabs.
+
+
+
+### ⚑ Codex risk register — Writer's Room wave (2026-09-24, folded in 2026-09-25)
+
+Source: `.planning/reviews/CODEX-RESPONSE-260924-writers-room-design-wave-verification.md`.
+
+**Only the three headline corrections and the Gate 0 counts were folded in on the 24th. These ten
+were not, and the review's verdict was "this wave is not safe to plan against unchanged."** Each
+must be answered in its phase's plan before that phase is executed.
+
+#### HIGH
+
+**H1 — Adding an `assembly` source in one layer breaks or misclassifies uploads.** *(Phase 44)*
+The DB check, two TypeScript unions, route allowlists and the presentation map are all exhaustive:
+`lib/catalogue/versions.ts:15,90-94` · `types/catalogue.ts:70-82` ·
+`app/api/works/[workId]/versions/upload-intent/route.ts:11-13,49-50` ·
+`.../versions/complete/route.ts:16-18` · `supabase/migrations/162_writer_room_record_over_beat.sql:7-10`.
+All five change together or none do.
+
+**H2 — Derived credits can become unsupported delivery facts.** *(Phase 44)*
+`app/api/works/[workId]/versions/complete/route.ts:90-123` · `lib/song-passport/schema.ts:145-158`.
+Assembly credits must retain source-version lineage and confirmation state, not copy mutable names
+into a flat JSON array. Codex's proposed relations: `work_assemblies`, `work_assembly_sections`,
+`work_assembly_layers(source_version_id, role, gain, timing)`, `work_version_credit_sources` —
+materialized **server-side** from those edges, never accepted from a client.
+
+**H3 — Take links expose unreleased material if a bearer URL maps straight to Storage.** *(cross-cutting)*
+`app/api/ideas/[ideaId]/share-links/route.ts:8-46` · `supabase/migrations/169_ideas_inbox.sql:312-339`.
+Scope every link to one version and permission, store **only a token hash**, enforce
+expiry/revocation on every request, issue a short-lived signed playback URL only after validation,
+separate streaming from download, keep an audit trail.
+
+**H4 — "Never alter stored bytes" needs an original-versus-derived distinction.** *(Phase 44)*
+`lib/catalogue/record-over-beat.ts:88-120,123-137` · `RecordOverBeatStudio.tsx:637-679` ·
+`supabase/migrations/162_writer_room_record_over_beat.sql:1-5,124-127`. Rendering resamples and
+quantizes but correctly saves a **new** rough version while retaining raw clips. Phase 44 must
+preserve that pattern, hash every source and output, and never overwrite an input object.
+
+#### MEDIUM
+
+**M1 — Reusing the legacy release helper would overwrite evidence.** *(Phase 45)*
+`lib/storage/index.ts:27-38` writes a stable path with `upsert: true` and returns a **public** URL.
+Studio capture must stay on unique private version paths with `upsert: false`.
+
+**M2 — Mutable song defaults could silently rewrite delivery truth.** *(Phase 43)*
+`supabase/migrations/151_song_passport_foundation.sql:45-71,195-209`. Confirmed version facts and
+snapshots must stay historical even after a writer changes the room's BPM, metre or key.
+
+**M3 — Browser constraints do not prove keeper quality.** *(Phase 45)*
+Device constraints may be ignored; AudioWorklet capture and 24-bit encoding are new code. The file
+needs **recorded actual settings plus a content hash** before it can be called delivery-grade.
+*(This also gates the marketing page's `24-bit keeper takes` row — see Phase 46.)*
+
+**M4 — Open hashtag trending could disclose private-room subject matter.** *(todo: hashtags)*
+Aggregation must be restricted to public or explicit opt-in surfaces, never derived from private
+Writer's Rooms.
+
+#### Plan corrections not yet folded in
+
+**P1 — Phase 43 musical defaults need a specific schema.** Codex's design:
+`work_musical_defaults(work_id PK, bpm NUMERIC(6,3), meter_numerator SMALLINT, meter_denominator
+SMALLINT, musical_key TEXT, downbeat_offset_ms INTEGER, updated_by, updated_at, revision)` plus
+`work_version_musical_overrides(work_version_id PK, nullable override columns, confirmed_by,
+confirmed_at)`, NULL meaning inherit, resolved with `COALESCE`. **Freeze** BPM/key into the
+version-targeted Passport value on confirm so later song-default edits cannot rewrite an older
+master's delivery facts. Metre needs a new Passport field only once its delivery mapping is decided.
+
+**P2 — Phase 43's buyer-filter statement skips a required mapping.**
+`lib/deals/catalog.ts:327-360` · `supabase/migrations/001_initial_schema.sql:125-126`. Buyers filter
+`tracks.bpm` and `tracks.key_signature`, **not** Song Passport rows. Graduation/delivery must
+explicitly copy confirmed version BPM/key into the selected release track, with conflict handling
+rather than silent overwrite.
+
+**P3 — Phase 44 must not reuse `reconcileWriterRoomLayout()` as the arrangement reconciler.**
+`lib/catalogue/blocks.ts:139-180` · `lib/catalogue/writer-room-layout.ts:3-8,90-138` ·
+`supabase/migrations/176_writer_room_personal_layouts.sql:1-20,50-54`. Room layout is **private
+per-user presentation that deliberately cannot alter evidence**; arrangement needs shared
+authoritative persistence, FK-backed section/take references, concurrency handling and explicit
+"inherit unless overridden" rules.
+
+**P4 — Reordering changes meaning under the proposed model.**
+`supabase/migrations/138_work_diary_events.sql:475-483` permits a null actor because position is
+presentation that moves no authorship or money. If reordering sections changes rendered audio,
+position becomes a provenance fact: record the authenticated actor and an immutable arrangement
+revision.
+
+**P5 — Credits can currently be asserted without proof of the claimed performance.**
+`app/api/works/[workId]/versions/complete/route.ts:80-123` ·
+`app/api/works/[workId]/blocks/[blockId]/route.ts:25-33,251-267`. Every uploaded version
+automatically receives the work's primary performer regardless of what is audible, and lyric-block
+singer lists are manually declared plans. **`performers` JSON is not evidence** that a contributing
+take contains that person.
+
+### Phase 46: The marketing page — finish it and ship it
+
+**Goal:** funun.studio shows a finished marketing page to logged-out visitors instead of a sign-in
+form.
+
+Full analysis: **`.planning/todos/pending/2026-09-24-marketing-page-ideas.md`** (the hub — idea
+board, every copy decision with its source, the Room service-promise gap list) and
+**`2026-09-24-marketing-site-needed.md`** (build-target constraints, Midjourney prompts).
+
+**A working prototype already exists** at `private/bench/marketing.html` (gitignored; durable copy
+in `~/Desktop/funun-bench-backup/`). Hero carousel, voice testimonials, three pricing tiers with 14
+info popovers, the Entourage enterprise band, footer. Copy has had a full pass against source —
+every product claim on it is traced to a `file:line`.
+
+**The page is for a later public launch, not for beta partners** (owner, 2026-09-25). Beta doctrine
+is explicitly different: workspaces start free with usage *measured but not enforced*
+(`docs/architecture/ACCOUNT-TYPES.md`).
+
+#### 46.0 — GATE: build target — **RESOLVED 2026-09-25**
+
+**Option A: a route in the existing Next app**, built as mostly static server-rendered markup.
+Client JS only where state genuinely requires it — carousel controls, accessible popovers, custom
+audio-player state, and a reveal observer if CSS alone will not do. React is the delivery shell,
+not the interaction model.
+
+**Option C rejected on evidence.** Adopting shadcn/Radix/framer-motion/lucide would save an
+estimated **20–35%** of porting work — primitive setup, some keyboard/focus behaviour, variant
+plumbing, icons, motion scaffolding. It would not save deciding what a component should do in
+Funūn, rewriting its content and hierarchy, reskinning, responsive composition, product-state
+integration, accessibility verification or testing. Not worth a second design system.
+
+**Option B rejected too:** dropping React from the implementation does not erase a separate build
+target's cost — another deployment, domain/rewrite config, analytics, consent handling, headers,
+preview workflow, and a design system that drifts. *"The low-cost version of plain HTML is not a
+second site; it is plain semantic markup rendered by the existing Next route."*
+
+**Tailwind:** stay on 3.4 tokens, use scoped CSS or CSS modules for facade-specific work, never
+paste unsupported v4 utilities, and keep any v4 upgrade a separate change with before/after visual
+checks. Treat 21st.dev as **visual reference** — port interaction and composition deliberately
+rather than letting a component marketplace choose the architecture.
+
+Full reasoning: `.planning/reviews/2026-09-25-codex-marketing-copy-review.md`.
+
+The real question underneath: **does this page need React at all?** The bench prototype is plain
+HTML/CSS/JS — carousel, popovers, audio players, reveal-on-scroll all working with no framework.
+
+Verified absent from the app, 2026-09-25: shadcn/ui, Radix, `cn()`, `clsx`, `tailwind-merge`, cva,
+`lucide-react`, `framer-motion`, and shadcn's colour tokens. **Tailwind 4 vs 3.4 is the recurring
+hazard** — most 21st.dev components target v4 and unmatched classes fail silently, no CI signal.
+
+#### 46.1 — Three hero banners, finished
+
+**The carousel is an announcement rail, not three general showcases** (owner, 2026-09-25). Each
+slide introduces a **specific new feature or offer**: the kicker is the frame (`Introducing`), the
+sign is the payload (the feature name), and the lede places it in the product (`Now inside Funūn…`)
+before saying what it does.
+
+That is why Codex's proposed kicker rewrite (`Introducing` → `Built for the writing room`) was
+declined — it read the kicker as empty because it did not know the rail's purpose.
+
+**Slides decided 2026-09-25 (owner):** 1 Writer's Room · 2 **Sound Vault** · 3 **The Crate**.
+
+The selection principle is acquisition, not novelty: *"let's start with the tools that can get us
+some users now."* Those three are the wedge — write in the room, keep the assets, get the song in
+front of supervisors.
+
+**The rail rotates.** Owner: *"then we need to begin making slides for some of the other tools and
+occasionally add or swap them."* That answers the maintenance question an announcement rail creates
+— a slide is retired or swapped rather than left saying "Introducing" about something two years
+old. Future candidates: Song Builder (44), the musical grid (43), studio-quality vocal capture (45),
+Antenna, Metadata Studio.
+
+All three slides are built and share one structure — kicker / title / tagline / lede / CTA. Slide 1
+keeps the neon sign, which belongs to the Writer's Room alone; slides 2 and 3 use a gradient
+typographic title. **Each still carries a `Placeholder · slide art pending` ribbon** — only slide 1
+has a defined art direction (the Midjourney facade plate).
+
+**Division of labour, agreed 2026-09-25:** the owner generates imagery (prompts A and B already
+written); this phase does integration — compositing live text over the facade plate, colour-matching
+ambient to `#818cf8`/`#d946ef`, preload and LCP handling, and a CSS fallback so the hero is legible
+before the image lands. The `PLACEHOLDER · Midjourney facade plate pending` ribbon comes out then.
+
+Slides 2 and 3 are **probably product screenshots, not renders** — a generated image of software is
+a picture of something that does not exist.
+
+#### 46.2 — Copy final — **DONE 2026-09-25**
+
+Codex review received, verified against source, and fully applied. Every rewrite landed except four
+declined on owner decisions; all overclaims fixed bar those four and one gated on Phase 45. Both
+taglines chosen and placed. Tier renamed Room → Team. US spelling confirmed as the convention,
+`catalogue` excepted.
+
+Copy is final pending the hero subjects in 46.1. Report:
+`.planning/reviews/2026-09-25-codex-marketing-copy-review.md`.
+
+#### 46.3 — Continue the 21st.dev harvest
+
+More detail, functionality and components where they earn their place. Method unchanged from the
+bench-01 wave: analyse, re-skin to Funūn tokens, build on the bench, keep what survives. **Shape
+depends on 46.0.**
+
+#### Blocks publishing, not building
+
+The pricing half describes a commercial model that does not exist. None of this stops the page
+being finished; all of it stops it going live.
+
+- **No enforced storage cap.** Metered only — migration 222 says it *"does not enforce a limit"*.
+  The page implies a ceiling in two places.
+- **No tiers in code.** Writer / Studio / Room and Entourage are bench placeholders.
+- **PitchPlug is metered** (`claimAiUsage`) with no quota stated on the page.
+- **The Room service promises have no implementation**: no Talent Services staff role (`StaffRole`
+  has nine values, none is it — `tms` is HR), no assignment model, no console, no à la carte
+  services catalogue. Seven-item gap list in the hub todo.
+- **Shipping means changing `app/page.tsx`'s logged-out redirect**, which is the decision that
+  makes this page the homepage.
