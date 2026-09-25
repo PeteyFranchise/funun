@@ -3335,11 +3335,22 @@ before saying what it does.
 That is why Codex's proposed kicker rewrite (`Introducing` → `Built for the writing room`) was
 declined — it read the kicker as empty because it did not know the rail's purpose.
 
-Slide 1 announces the Writer's Room. **Slides 2 and 3 are placeholders, and their briefs are now
-much narrower: pick two more features to announce.** The roadmap already holds the candidates —
-Song Builder (Phase 44), the musical grid (Phase 43), studio-quality vocal capture (Phase 45), The
-Crate. An announcement rail also implies a maintenance question worth deciding once: what happens
-to a slide when its feature stops being new.
+**Slides decided 2026-09-25 (owner):** 1 Writer's Room · 2 **Sound Vault** · 3 **The Crate**.
+
+The selection principle is acquisition, not novelty: *"let's start with the tools that can get us
+some users now."* Those three are the wedge — write in the room, keep the assets, get the song in
+front of supervisors.
+
+**The rail rotates.** Owner: *"then we need to begin making slides for some of the other tools and
+occasionally add or swap them."* That answers the maintenance question an announcement rail creates
+— a slide is retired or swapped rather than left saying "Introducing" about something two years
+old. Future candidates: Song Builder (44), the musical grid (43), studio-quality vocal capture (45),
+Antenna, Metadata Studio.
+
+All three slides are built and share one structure — kicker / title / tagline / lede / CTA. Slide 1
+keeps the neon sign, which belongs to the Writer's Room alone; slides 2 and 3 use a gradient
+typographic title. **Each still carries a `Placeholder · slide art pending` ribbon** — only slide 1
+has a defined art direction (the Midjourney facade plate).
 
 **Division of labour, agreed 2026-09-25:** the owner generates imagery (prompts A and B already
 written); this phase does integration — compositing live text over the facade plate, colour-matching
