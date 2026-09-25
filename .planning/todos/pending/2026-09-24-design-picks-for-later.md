@@ -249,6 +249,45 @@ permission. Options, in rough order of safety:
 Getting this wrong on the marketing page of a rights platform would be a bad look in a way it
 would not be for most products.
 
+### ✅ OWNER DECISION 2026-09-24 — option 2, artists opt in
+
+Featuring an artist's cover art on Funūn's marketing becomes **a perk they choose**, not a use
+Funūn assumes. This is the answer most consistent with what the product sells.
+
+**Do not build a fresh consent mechanism — Funūn already has two, and they carry doctrine.**
+
+**1. Sync-library inclusion (Phase 26) is the closest pattern.** `lib/sync-library/` is exactly
+this shape: an artist opts a work into a Funūn-facing surface, gated properly —
+`eligibility.ts`, `readiness.ts`, `gate.ts`, `submission.ts`, and crucially `agreement.ts` /
+`mint-agreement.ts`, so the opt-in produces a **record of what was agreed**, not just a boolean.
+
+**2. The workspace consent doctrine says how to store it.** Migration 195 is emphatic that a
+consent record and the permission it grants are **separate things**: *"Approval is RECORDED here
+and ISSUED elsewhere … Deleting every row in this table changes nobody's access."*
+`issueMemberConsent()` in `lib/workspaces/consent-service.ts` is the sole writer of the actual
+grant. Applied here: a `featured_consent` row is evidence; whatever the marketing page reads should
+be a separate, revocable permission — not the consent row itself.
+
+**Three questions to settle before building:**
+
+- **Who is entitled to consent?** A release has multiple rights holders. One writer ticking a box
+  must not commit three co-writers' and a label's artwork. The sync-library gate already reasons
+  about eligibility across a work's members — reuse that reasoning rather than checking
+  `user_id == owner`.
+- **What exactly is being agreed to?** "Cover art on the funun.studio home page" is a different
+  permission from "cover art in any Funūn marketing, anywhere, forever." Mint the narrower one and
+  name the surface.
+- **Revocation has to actually work.** A marketing site is typically statically generated —
+  GitHub Pages serves `www.funun.studio` from `main`. If an artist withdraws consent and the page
+  is a prebuilt artifact, **their artwork stays live until someone rebuilds.** That is the exact
+  failure this whole feature exists to avoid. Either the corridor loads its images at runtime from
+  a live endpoint that honours revocation, or withdrawal must trigger a rebuild automatically.
+  Decide which before the site's architecture is chosen — this constrains it.
+
+**Upside worth noting:** done this way the corridor becomes a reason to use Funūn rather than a
+liability. "Get your cover on the front page" is a benefit a rights platform can credibly offer,
+and the opt-in itself demonstrates the product's whole thesis.
+
 ---
 
 ## 6. Pricing table
