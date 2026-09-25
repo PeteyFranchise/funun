@@ -2143,3 +2143,41 @@ record, and the `authorises → authorizes` fix. They need a follow-up PR whenev
 - Durable copies: `~/Desktop/funun-bench-backup/` — both benches, all 30 images, the roadmap
   snapshot, the Codex prompt and review
 - The record: this file and `.planning/`, committed and pushed
+
+## Header added — and the sign-in gap it closes (2026-09-25)
+
+Owner noticed: **there was no way to sign in from the page.** Verified — zero `<header>`, zero
+`<nav>`, zero sign-in affordance. Not deliberate; the page was built downward from the hero and the
+top never got built. The bench-controls bar sat there and unconsciously filled the space.
+
+**This was a port blocker, not a nicety.** `funun.studio` currently redirects logged-out visitors
+to `/signin`, so the redirect *is* the login path. Step 4 of the port replaces that redirect with
+this page — at which point every returning user would land somewhere with no way in.
+
+### What was built, and why it differs from the component offered
+
+Owner showed 21st.dev's `nav-header`: a centred pill of five tabs with a hover-following indicator
+and `mix-blend-difference` text.
+
+| | Component | Built |
+|---|---|---|
+| Shape | centred pill, nav only | three-part: wordmark · anchors · sign in |
+| Indicator | follows hover | follows **scroll position**, hover previews |
+| Theme | light (white bg, black cursor, blend-difference) | dark, Funūn tokens |
+| Tabs | 5 generic (Home/About/Services/Contact) | 4 real anchors |
+| Deps | framer-motion | none — CSS transition on `left`/`width` |
+
+**Why three-part:** a nav-only component supplies neither identity nor a way back in, which were
+the two actual gaps. The page previously opened with "INTRODUCING" and no indication whose site it
+was.
+
+**Why scroll-driven:** on a 4,000px single-page site, knowing where you *are* beats knowing what
+you are pointing at. Hover still previews and snaps back to the current section on leave.
+
+**Why sign-in is a link, not a button:** two buttons in the header would compete with the hero's
+"Start a song". Returning users scan for the word, not the shape.
+
+Sticky with a backdrop blur; the hairline border only appears once scrolled, so it is invisible
+over the hero and defined over content.
+
+**Still `href="#"`** — sign-in should point at `/signin`, which exists. Part of tomorrow's CTA pass.
