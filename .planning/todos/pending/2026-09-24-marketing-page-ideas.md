@@ -1880,3 +1880,23 @@ Order is now **01 How it works · 02 Collaborators · 03 The Crate · 04 Voices 
 **Worth revisiting:** The Crate is one of the three acquisition tools and Collaborators is a
 supporting feature, so there is a case for swapping them to 02/03. Now that numbering is automatic
 that is a one-line move.
+
+### Two fixes to the Selects mock (2026-09-25)
+
+**1. Covers were empty — lazy loading again.** All four returned `200 OK` yet sat at
+`complete:false` / `naturalWidth:0`. Second time `loading="lazy"` has emptied a section on this
+page (the sphere was the first). These are 9–14 KB covers; there was nothing to defer. **There is
+now no `loading="lazy"` anywhere in the file** — verified zero matches. Treat it as banned here.
+
+**2. The brand mark was inverted.** The real player uses
+`<span class="brandmini">FUNŪN<span class="phon">selects</span></span>` — uppercase headword at
+`.12em` tracking, with a lowercase, normal-tracked, muted word beside it. **The class is literally
+named `phon`**: it is styled as a pronunciation gloss, like a dictionary entry.
+
+I had built it as title-case `Funūn` plus uppercase `SELECTS`, which reads as two labels rather
+than one mark. Now matched: `FUNŪN` uppercase/wide + *selects* lowercase/normal, and the 18px
+gradient chip instead of 14px.
+
+Owner caught this from memory of the design — worth noting that
+`public/maya-selects-desktop.html` is the reference for anything Selects-shaped, and it carries
+details like `.phon` that are easy to lose when recreating by eye.
