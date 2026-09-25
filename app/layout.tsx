@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Funūn',
-  description: 'The operating system for an independent music career — built around Sound Vault.',
+  description: 'Where songs get written and the rights get recorded — Writer’s Room, Sound Vault, split sheets and registrations in one place.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
