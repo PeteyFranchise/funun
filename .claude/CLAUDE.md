@@ -483,6 +483,25 @@ an independent source: cross-referencing those segments against `auth.users` and
 query and would have caught it the same afternoon. "The code ran" and "the answer is right" are
 separate claims, and only the first one is cheap.
 
+**A plan is only as true as its claims about the code.** Before planning a phase, verify every
+factual claim the plan rests on against the actual source, with a `file:line` for each, and mark
+anything you cannot confirm UNVERIFIABLE rather than assuming. Do this per phase, not once at the
+end of a design wave.
+
+On 2026-09-24 a design wave produced four roadmapped phases; a verification pass found three
+claims wrong, and **every one came from reading part of a file and inferring the rest**. One
+claimed a feature was missing that renders 470 lines further down the same file. One cited a
+250MB resumable upload path that belongs to a different bucket — the real cap is 50MB one-shot,
+which invalidated the phase's premise. The third proposed making arrangement sections out of
+`lyric_blocks`, whose `author_user_id` is documented in migration 135 as *"the fact that MOVES
+SPLITS"* — that model would have attributed a writing credit that moves money to whoever added an
+instrumental break.
+
+That last one is why this is a rule and not a preference: **in a rights product an unverified
+claim is not a docs bug, it is a money bug.** Claims about *absence* — "nothing renders this",
+"no such field exists", "it does nothing with it" — cost the most and cannot be established from
+the top of a file. Read the whole thing, or say you did not.
+
 <!-- GSD:profile-start -->
 
 ## Developer Profile

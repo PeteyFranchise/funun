@@ -2834,6 +2834,26 @@ shaped the whole wave: these phases are mostly **re-skins of surfaces already wi
 data**, which is the cheapest kind of change to land. Read each phase's linked todo before
 planning; the reasoning lives there, not here.
 
+**CLAIM VERIFICATION GATE — run before planning ANY phase below.**
+
+These phases were written from a design session and rest on many specific claims about the
+existing codebase. A Codex pass on 2026-09-24 found three of them wrong, and **every one came from
+reading part of a file and inferring the rest**:
+
+- "the origin idea is fetched and discarded" — it renders 470 lines further down; already shipped
+- "takes use the 250MB resumable path" — that is the legacy bucket; takes cap at 50MB one-shot
+- "arrangement sections can be lyric blocks" — `author_user_id` is *"the fact that MOVES SPLITS"*,
+  so an instrumental break would have attributed a writing credit that moves money
+
+The third is why this is a gate and not advice. **An unverified claim in a rights product is not a
+docs bug, it is a money bug.**
+
+Before `/gsd-discuss-phase N` on any phase here: list the claims that phase depends on, confirm
+each against source with a `file:line`, and mark anything unconfirmed UNVERIFIABLE rather than
+assuming. Claims about **absence** ("nothing renders this", "no field exists") require reading the
+whole file, not the top of it. The verification prompt and its results are in
+`.planning/reviews/CODEX-RESPONSE-260924-writers-room-design-wave-verification.md`.
+
 **Prototype:** `private/bench/index.html` — serve it with
 `python3 -m http.server 4321 -d private/bench` and open `http://127.0.0.1:4321`.
 
@@ -2943,7 +2963,7 @@ reaches for constantly reachable from anywhere in it.
 
 **Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
 
-**Plans:** 0 plans — run `/gsd-discuss-phase 42` first.
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the take-browser and share-link claims), then `/gsd-discuss-phase 42`.
 
 ---
 
@@ -2980,7 +3000,7 @@ melody has no transients to lock onto.
 
 **Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
 
-**Plans:** 0 plans — run `/gsd-discuss-phase 43` first.
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the tempo/DDEX mapping claims), then `/gsd-discuss-phase 43`.
 
 ---
 
@@ -3066,7 +3086,7 @@ either excludes `source='assembly'` outright or recursively verifies immutable s
 
 **Status:** Designed and prototyped 2026-09-24. Not discussed, not planned.
 
-**Plans:** 0 plans — run `/gsd-discuss-phase 44` first.
+**Plans:** 0 plans — run the **Claim Verification Gate** above (the work_sections model and every credit-lineage claim), then `/gsd-discuss-phase 44`.
 
 ---
 
@@ -3111,7 +3131,7 @@ Phase 24 self-serve is already on hold pending one. Fold it in rather than openi
 
 **Status:** Designed 2026-09-24. Tier decision outstanding.
 
-**Plans:** 0 plans — settle the tier question, then `/gsd-discuss-phase 45`.
+**Plans:** 0 plans — settle the tier question, run the **Claim Verification Gate** above (the upload-path and codec claims), then `/gsd-discuss-phase 45`.
 
 ---
 
