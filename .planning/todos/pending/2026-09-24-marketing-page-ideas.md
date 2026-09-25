@@ -1900,3 +1900,38 @@ gradient chip instead of 14px.
 Owner caught this from memory of the design — worth noting that
 `public/maya-selects-desktop.html` is the reference for anything Selects-shaped, and it carries
 details like `.phon` that are easy to lose when recreating by eye.
+
+### CORRECTION: lazy loading was never broken (2026-09-25)
+
+I diagnosed the empty sphere faces and empty Selects covers as `loading="lazy"` failing inside
+transformed/filtered containers, and was about to write that into Phase 46 as a constraint.
+**Tested it instead, and the theory is wrong.**
+
+Controlled test — three identical lazy images 9,000px below the fold, in three wrappers:
+
+| Wrapper | Before scroll | After scroll into view |
+|---|---|---|
+| `opacity:0; transform:translateY(10px); filter:blur(4px)` | not loaded | **loaded, 240px** |
+| `opacity:0` only | not loaded | **loaded, 240px** |
+| no wrapper at all | not loaded | **loaded, 240px** |
+
+The plain control failed the first check too, which is the tell: **that is lazy loading working
+exactly as specified.** Transforms, filters and compositing layers are irrelevant.
+
+**What actually happened:** lazy images stay blank until scrolled into view, then pop in. Both the
+owner's screenshots and my own DOM measurements caught them inside that gap. Nothing was broken.
+
+**Eager is still the right call here**, but for a different reason than I gave: with 25 sphere
+faces and 4 covers at 9–14KB each, the pop-in is visible and reads as a half-loaded page. That is a
+perceived-quality decision, not a correctness fix.
+
+**So the Phase 46 note changes.** It is *not* "lazy loading is broken by our reveal animation". It
+is: **`next/image` lazy-loads by default, and for the sphere and the Selects mock that produces a
+visible pop-in — mark those `priority`.** Genuinely heavy below-fold imagery can still lazy-load
+normally.
+
+**Process note.** I gave a confident mechanical explanation twice — containing blocks, compositing
+layers, the `.reveal` filter — and it was wrong both times. It was plausible, it fitted the
+evidence I had, and one controlled test with a plain control disproved it in under a minute. The
+control is what did the work: without it I would have "confirmed" the theory and shipped a false
+rule into the roadmap.
