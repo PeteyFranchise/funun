@@ -48,6 +48,65 @@ so out loud. (The Selects mock in section 03 still shows Maya Reyes artwork and 
 track title — that is cover art and a title in a mockup, nothing plays, and it was an explicit
 earlier choice. Flagging it only so the call is conscious.)
 
+### ⚙️ Logistics: how a testimonial physically gets added, changed or removed (2026-09-26)
+
+Owner's actual question, asked twice and answered as sourcing the first time: *"how do we
+physically update the testimonials or add several more to the marketing page itself?"*
+
+**Today, on the bench:** `VOICES` is a hardcoded array literal in `marketing.html`. Adding one is
+an object — `{n, r, art, i, q}` for text, plus `a:{src, d, peaks}` for audio. Removing one is
+deleting an object.
+
+**What that becomes when ported:** the same array, in a React component. So **every change is a
+code edit, a PR, CI and a deploy** — adding a quote, fixing a typo, or honouring "take me off the
+site." On this repo `main` is protected behind `validate` and CodeQL, so that is a real wait and it
+needs someone who can write TypeScript.
+
+**The audio adds two steps people will forget:**
+
+1. A clip needs its mp3 **and** its 40-number peaks array, produced together by
+   `private/bench/tools/audio-peaks.py`. Add a clip without peaks and the waveform is wrong or
+   missing — the page does not compute them at runtime, on purpose.
+2. Clips need a **public** home. Not `release-audio` / `release-assets` / `release-documents` —
+   those are member release material.
+
+Also unhandled today: **ordering**. Insertion order decides who is first on the grid; there is no
+sort field.
+
+#### The three shapes
+
+| | Add a testimonial | Remove one | Cost to build |
+|---|---|---|---|
+| **1. Hardcoded array** (today) | edit code, PR, CI, deploy | same | nothing |
+| **2. A JSON file in the repo** | edit JSON, PR, CI, deploy | same | ~nothing, but no TypeScript needed |
+| **3. `testimonials` table + admin surface** | a form | instant | migration, RLS, admin page, upload path |
+
+**Option 2 barely differs from 1** — the deploy is the cost, not the syntax.
+
+**The argument that actually decides it is revocation.** A person withdrawing consent should not
+wait for a deploy, and "we'll take it down Monday" is a bad sentence for a company selling rights
+hygiene.
+
+#### Recommendation: 1 now, 3 on a named trigger
+
+Do **not** build a CMS for three quotes. But write the removal runbook **before** the page is
+public, so a revocation is a known ten-minute job rather than a scramble — and set the trigger for
+building option 3 explicitly:
+
+> **Build the table when either happens: a second person asks to be removed, or the grid passes
+> about six testimonials.**
+
+#### If and when option 3 is built, this project already has the pattern
+
+The Playbook solved exactly this — content that starts as a repo file and becomes editable in-app.
+`supabase/migrations/201_playbook_rich_documents.sql` ships `source_kind IN ('native',
+'adopted_markdown')`, a `source_path`, an `adopted_at`, a source hash, and a unique index so one
+file adopts once. The testimonial version: the initial set lives in the repo and is version
+controlled; the moment someone edits one in the admin, the DB row wins.
+
+That gets both halves — reviewable history for what ships first, instant edits and instant removal
+after — without inventing a second content model.
+
 ### Sourcing — a proposal to react to (2026-09-26)
 
 Owner asked the sourcing question again, so here it is as something concrete rather than a list of
