@@ -22,7 +22,7 @@
 - Stripe - Payment processing for subscription tiers
   - SDK/Client: `stripe` 17.7.0 (server), `@stripe/stripe-js` 4.0.0 (client)
   - Auth: `STRIPE_SECRET_KEY` (server-side only, never exposed to browser)
-  - Price IDs configured as env vars: `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_YEARLY`, `STRIPE_PRICE_STUDIO_MONTHLY`, `STRIPE_PRICE_STUDIO_YEARLY`, `STRIPE_PRICE_FOUNDING`
+  - Price IDs configured as env vars: `STRIPE_PRICE_STUDIO_MONTHLY`, `STRIPE_PRICE_STUDIO_YEARLY`, `STRIPE_PRICE_TEAM_MONTHLY`, `STRIPE_PRICE_TEAM_YEARLY`, `STRIPE_PRICE_FOUNDING`
   - Implementation: `lib/stripe/index.ts` exports singleton client and price constants
   - No webhook routes detected in current codebase (may be configured external to app)
 
@@ -95,10 +95,10 @@
 - `NEXT_PUBLIC_VAULT_DEMO` - Feature flag for demo mode (disables auth, uses demo data)
 
 **Price IDs (server-side Stripe):**
-- `STRIPE_PRICE_PRO_MONTHLY`
-- `STRIPE_PRICE_PRO_YEARLY`
 - `STRIPE_PRICE_STUDIO_MONTHLY`
 - `STRIPE_PRICE_STUDIO_YEARLY`
+- `STRIPE_PRICE_TEAM_MONTHLY`
+- `STRIPE_PRICE_TEAM_YEARLY`
 - `STRIPE_PRICE_FOUNDING`
 
 **Secrets location:**

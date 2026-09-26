@@ -38,8 +38,18 @@ Only Studio survives the comparison. Create Stripe products against the current 
 dashboard and export. Rename the keys to the tier names first — or decide the page's tiers are the
 ones that are wrong. Either way it is cheaper now than after live prices exist.
 
-(`founding_member` may be deliberate and unrelated to the public tiers — worth confirming rather
-than deleting.)
+**RESOLVED 2026-09-26.** Owner ruled: **Writer, Studio, Team, Entourage.** Keys renamed to match
+while no Stripe product existed, so it was a pure rename — `pro_*` → `team_*`, `studio_*`
+unchanged, Writer absent (free), Entourage absent (negotiated, no standard recurring price).
+Touched `lib/stripe/index.ts`, `.env.example`, `docs/observability/VENDOR-DIRECTORY.md`,
+`.planning/codebase/INTEGRATIONS.md`. `typecheck:strict` and `lint` clean.
+
+**`founding_member` stays, and now means something.** Owner, same day: a **signup-code-gated,
+limited, lifetime** membership for early adopters *"who don't want a subscription"* — one-time, not
+recurring, with a cap that is **undecided**. Roadmapped as Phase 47.5. The three hard parts are a
+server-enforced cap that cannot oversell, a one-time rather than recurring price, and an
+entitlement that has to keep granting access forever with no renewal event — including after the
+tiers change.
 
 ## ⚠️ The webhook collides
 

@@ -3436,11 +3436,34 @@ a trial" on the marketing page is a net-new concept, not a Stripe toggle.
 
 #### 47.0 — Two things to settle before any Stripe product is created
 
-**The price keys do not match the tiers.** Only *Studio* appears in both `lib/stripe/index.ts` and
-the marketing page; the code also has `pro_*` and `founding_member`, and the page also sells
-*Writer*, *Team* and *Entourage*. Create live prices against today's names and
-`STRIPE_PRICE_PRO_MONTHLY` powers a tier called **Team** forever, in every dashboard and export.
-Rename first, or rule that the page's tiers are the ones that change.
+**~~The price keys do not match the tiers.~~ RESOLVED 2026-09-26 — owner ruled the tiers are
+Writer, Studio, Team, Entourage, and the keys were renamed to match** before any Stripe product
+exists, which made it a pure rename. `pro_*` → `team_*`; `studio_*` unchanged. Writer is absent
+because it is free; Entourage is absent because it is negotiated per organization and has no
+standard recurring price. Changed in `lib/stripe/index.ts`, `.env.example`,
+`docs/observability/VENDOR-DIRECTORY.md` and `.planning/codebase/INTEGRATIONS.md`; `typecheck:strict`
+and `lint` both clean. **Keep key and tier name identical from here — the key is what shows in every
+Stripe dashboard and export.**
+
+#### 47.5 — Founding Member: a limited lifetime membership
+
+**Owner, 2026-09-26.** Not a public tier and not on the pricing grid. A **signup-code-gated,
+limited, lifetime** membership for early adopters *"who don't want a subscription"* — bought once,
+never billed again. **Spots are capped; the number is undecided.**
+
+Three things this needs that the four subscription tiers do not:
+
+- **A one-time price, not recurring.** `STRIPE_PRICE_FOUNDING` already exists as an env var and is
+  kept for exactly this; it must not be created as a recurring price.
+- **A cap that is enforced server-side, and cannot oversell.** "Limited spots" is a promise with
+  money attached — the count has to be authoritative and race-safe at checkout, not a number on a
+  page.
+- **Entitlements that survive forever.** 47.3 decides what a tier unlocks; this one has to keep
+  unlocking it with no renewal event ever arriving, including after the tiers themselves change.
+  A lifetime grant is the hardest entitlement to get right and the most expensive to get wrong.
+
+Signup-code gating fits the current invite-only beta, and the redemption path likely shares
+plumbing with the existing invite flow rather than inventing a second one.
 
 **The webhook collides.** `app/api/webhooks/stripe/route.ts:51` already handles
 `checkout.session.completed` for **deal payments**, and subscription checkout fires the same event.
