@@ -90,6 +90,28 @@ statement, not an ask — *"It's in your vault. It's private; nobody at Funūn c
    - Agreed out loud, nothing signed
    - Not yet
 
+   **Each answer gets a response, owner-directed 2026-09-26** — *"after not yet, say 'don't worry
+   we got you' with an emoji or something."* Matches the house voice already on record: confident,
+   casual, insider; **"We got you."**
+
+   | Answer | Response |
+   |---|---|
+   | Agreed and written down | **Nice. Bring it in and it rides with the song from here.** |
+   | Agreed out loud, nothing signed | **That's most songs. Let's make it real before it matters.** |
+   | Not yet | **No stress — we got you. 🤝** *We'll start a split sheet on this song at even shares. Nothing's locked: you and whoever you wrote it with set the numbers when you're ready.* |
+
+   **The third response is load-bearing, not just warm.** `lib/catalogue/splits.ts` holds the
+   locked rule: *"splits default to EQUAL shares… **The system NEVER proposes contribution-based
+   percentages.** The diary is evidence the writers MAY consult when deciding their own split; it
+   is never an input this product converts into a percentage."* So the reassurance has to promise
+   **even shares the writers control** — never "we'll work out who did what." Saying anything that
+   implies the system will propose a split from the writing would be a doctrine violation dressed
+   up as a kindness.
+
+   The middle answer is the genuinely risky state — a verbal agreement is what turns into a dispute
+   — so it gets urgency without shame. **Owner to confirm or rewrite the first two; only the third
+   was directed.**
+
 4. **"Did any of this come out of an AI tool?"** **[doctrine — disqualifier 1]**
    - No
    - Some of it — instruments, beats, a melody or a lyric line
