@@ -77,7 +77,7 @@
 - **Function:** processes payments and subscription tiers (founding / pro / studio, monthly + yearly price IDs).
 - **Where to look:** `dashboard.stripe.com` → **Payments**, **Developers → Webhooks**, **Logs**. Status: `status.stripe.com`.
 - **On failure:** checkout/billing degrade only — the rest of the app is unaffected. Check the Stripe status page first (provider-side), then Webhooks for delivery failures, then Funūn logs scoped to `lib/stripe`.
-- **Config:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FOUNDING`, `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_YEARLY`, `STRIPE_PRICE_STUDIO_MONTHLY`, `STRIPE_PRICE_STUDIO_YEARLY`.
+- **Config:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_FOUNDING`, `STRIPE_PRICE_STUDIO_MONTHLY`, `STRIPE_PRICE_STUDIO_YEARLY`, `STRIPE_PRICE_TEAM_MONTHLY`, `STRIPE_PRICE_TEAM_YEARLY`.
 
 ### 7. Resend — transactional email
 - **Function:** delivers app email (pitch confirmations, notifications). Sends are async — a Resend outage doesn't block requests.
