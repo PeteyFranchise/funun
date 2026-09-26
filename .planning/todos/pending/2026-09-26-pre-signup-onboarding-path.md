@@ -50,6 +50,31 @@ That collides with emotional engagement in a specific way worth naming up front:
 > *draft they invest in* — complete in itself, nothing to save, nothing to migrate. The signup ask
 > then becomes "do this for real," not "rescue your work."
 
+## Built as a bench mock, 2026-09-26 — `private/bench/onboarding.html`
+
+Shape 1 built and driveable. Two seeded co-writers have a line each; the visitor types one line,
+presses Enter, and **their line attributes to "You" while the split sheet beside it goes from two
+writers at 50% to three at 33.3 / 33.3 / 33.4.** Then the payoff appears.
+
+Verified by actually typing into it, not by reading the code: the block re-attributes, the sheet
+rewrites, the totals sum to 100.0, and the payoff reveals.
+
+**It obeys the two rules that made this design non-obvious:**
+
+- **Nothing is authored.** No record is written, nothing persists past the tab. The sandbox cannot
+  create authorship because `lyric_blocks.author_user_id` is *"the fact that MOVES SPLITS"*.
+- **Even shares, never derived.** The sheet adds the visitor at an equal share and the footer says
+  so out loud: *"Funūn never proposes a split from who wrote what — the diary is evidence you can
+  look at; the numbers are yours to set."* A demo that inferred a split from who typed most would
+  be a doctrine violation dressed up as cleverness, and it is the obvious thing to build.
+
+**One bug found by building it.** The copy read *"watch what happens on the right"* — but the sheet
+stacks **below** the room under 900px, so the instruction was false on a phone, which is where most
+first visits land. Directional language is out; it now names the thing (*"watch what happens to the
+split sheet"*) rather than its position.
+
+Still open: where it lives, whether the ask interrupts or follows, and the post-signup tutorial.
+
 ## Three shapes for the first moment
 
 1. **"Type a line, watch the sheet write itself."** A mini Writer's Room, two seeded co-writers
