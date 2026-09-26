@@ -93,11 +93,32 @@ body (`154:199` onward, ~95 lines): the only writes are `INSERT INTO public.vaul
 `INSERT INTO public.tracks`. **No composer, credit, performer, split, contributor or agreement is
 carried.**
 
-Splits are attached on the release side, not the work side: `split_sheets.vault_project_id`
-references `vault_projects` and is nullable (`018_collaborators_split_sheets.sql:41`); there is no
-`work_id`. Meanwhile authorship lives on the work side as `lyric_blocks.author_user_id`, documented
-in migration 135 as *"the fact that MOVES SPLITS."* Searched `lib/` for a module holding both — none
-joins block authorship to a split sheet.
+**CORRECTION 2026-09-26 — my claim above was wrong on two counts.** I said splits attach only on
+the release side with no `work_id`, and that nothing joins the writing to the sheet. A full trace
+found both links, and the third thing I called a gap turns out to be forbidden on purpose.
+
+1. **`split_sheets.work_id` exists.** Migration 137 (Phase 37.1) adds it — *"links a split sheet to
+   the composition it governs, so a work in My Catalogue can carry a **LIVING DRAFT sheet from the
+   moment it is created**."* My reading of `018` was of the original table, not the current schema.
+2. **Sheet parties and track composer metadata sync bidirectionally.** `lib/split-sheets/
+   project-sync.ts` (Phase 21 `sheet-project-sync`): *"while a linked sheet is still syncing…
+   writers/roles/splits stay linked between the sheet's parties and the linked project's track
+   composer metadata, **in both directions**,"* hooked by the split-sheet and track PATCH routes.
+   My earlier search looked for one module naming both `lyric_blocks` and `split_sheet`, which this
+   bridge does not — it joins sheets to composers, not blocks to sheets. The search was too narrow.
+3. **Authorship must NOT drive percentages, by locked doctrine.** `lib/catalogue/splits.ts`:
+   *"splits default to EQUAL shares… **The system NEVER proposes contribution-based percentages.**
+   The diary is evidence the writers MAY consult… There is deliberately NO function in this module
+   that accepts a contribution signal (word count, block count, edit history, anything). Adding one
+   would be a doctrine violation, not a feature request."*
+
+So the chain the copy describes does exist — work → living-draft sheet from creation → parties ↔
+track composers — and the one link I treated as missing is one the doctrine forbids. What the
+graduation RPC carries is still just the six fields; that part stands. But it is not the only path,
+and "no bridge exists" was false.
+
+**Original claim, left visible because the correction is the point:** ~~Splits are attached on the
+release side, not the work side… none joins block authorship to a split sheet.~~
 
 **OWNER RULING 2026-09-26: leave the copy alone.** *"Disregard this for now, we are working
 through it, don't change the copy."* The gap below is recorded as a live engineering question, not
