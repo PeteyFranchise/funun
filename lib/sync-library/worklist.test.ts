@@ -232,7 +232,7 @@ describe('buildWorklist', () => {
   // Built with ALL SIX entry items complete (the ca919cf2 pattern), asserted
   // INLINE below, so these tests prove the TYPE rule is doing the work
   // rather than an incidentally missing item.
-  describe.each(['snippet', 'unreleased'] as const)('an ineligible %s project', type => {
+  describe.each(['snippet'] as const)('an ineligible %s project', type => {
     it('is NOT presented as ready to admit, even with every entry item complete', () => {
       // INLINE PROOF: the very same track/project data reads all SIX entry
       // items complete when its type is 'single'. The ONLY difference below
@@ -263,7 +263,7 @@ describe('buildWorklist', () => {
 
       // ...and the type rule is the only thing stopping it.
       expect(row.syncEligible).toBe(false)
-      expect(row.ineligibleReason).toContain('singles, EPs and albums')
+      expect(row.ineligibleReason).toContain('finished recordings')
     })
 
     it('is SHOWN with an explicit reason rather than filtered out — a live submission still needs a human decision', () => {
@@ -281,7 +281,7 @@ describe('buildWorklist', () => {
         artistName: 'Jane Doe',
       })
       expect(row.syncEligible).toBe(false)
-      expect(row.ineligibleReason).toContain(type === 'snippet' ? 'snippet' : 'unreleased work')
+      expect(row.ineligibleReason).toContain('snippet')
       expect(row.ineligibleReason).toContain("can't be admitted")
     })
   })

@@ -7,6 +7,20 @@ import { hireCreditsOf } from '@/lib/vault/hire-credits'
 
 type ReadinessInput = {
   type: VaultProjectType
+  // ─── onlyKeys — deriving a requirement set that is NOT the release
+  //     checklist (2026-09-26) ───────────────────────────────────────────
+  // `applies_to` answers "does this row belong on THIS project's release
+  // checklist". The sync catalogue asks a different question — "must this
+  // song meet this requirement to be licensed" — and for four of its six
+  // keys the two answers disagree on an 'unreleased' project, which silently
+  // made a finished master unlicensable for a release-admin reason.
+  //
+  // A caller that knows its own requirement set passes it here and the
+  // `applies_to` filter is bypassed for exactly those keys. Release surfaces
+  // pass nothing and behave as before — this adds a door, it does not move
+  // the existing one. See SYNC_ELIGIBLE_PROJECT_TYPES in
+  // lib/sync-library/readiness.ts for the decision this serves.
+  onlyKeys?: readonly string[]
   distributor?: string | null
   tracks?: {
     id?: string
@@ -162,7 +176,10 @@ export function readinessItemsForProject(input: ReadinessInput): ReadinessItem[]
   const tracksHaveKnownHireCredits = hireCreditsKnown(tracks)
   const hasHiredCollaborator = tracks.some(t => hireCreditsOf(t).length > 0)
 
-  return READINESS_ITEMS.filter(item => item.applies_to.includes(input.type)).map(item => {
+  const wanted = input.onlyKeys
+  return READINESS_ITEMS.filter(item =>
+    wanted ? wanted.includes(item.key) : item.applies_to.includes(input.type)
+  ).map(item => {
     let status: ReadinessItem['status'] = 'missing'
     let earnedPoints: number | undefined
     let note: string | undefined

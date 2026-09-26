@@ -60,10 +60,27 @@ export type SyncReadinessKey = (typeof SYNC_READINESS_KEYS)[number]
 // VaultProjectType values, exactly three qualify:
 //
 //   'single' | 'ep' | 'album'  — released-format works. Eligible.
+//   'unreleased'               — ELIGIBLE since 2026-09-26. See the reversal
+//                                below; this supersedes the 2026-09-09 ruling.
 //   'snippet'                  — a promo clip, not a licensable recording.
-//   'unreleased'               — owner confirmed 2026-09-09 that unreleased
-//                                work has nothing to do with the sync
-//                                catalogue. Out of scope, full stop.
+//                                Still the one ineligible type.
+//
+// ─── REVERSAL, owner 2026-09-26 ──────────────────────────────────────────
+// The 2026-09-09 ruling was "unreleased work has nothing to do with the sync
+// catalogue, out of scope, full stop." The owner reversed it while writing
+// the public Crate-ready page: "a song does not have to be a part of any
+// finished release for the Crate, it just has to be complete, final master,
+// and meet the other criteria for the music supervisors."
+//
+// The reasoning: the six entry keys already test whether a song is actually
+// licensable, and none of them is a release check — isrc_codes,
+// pro_registration and mlc_registration were removed for exactly that reason
+// (see SYNC_READINESS_KEYS above). A project-type label was therefore doing a
+// second, cruder version of a job the six checks already do properly, and it
+// refused finished masters on the strength of which bucket they sat in.
+//
+// 'snippet' stays out: a promo clip is not a finished recording, which is a
+// statement about the work itself rather than about where it was filed.
 //
 // ─── WHY THIS EXISTS: it REPLACES AN ACCIDENTAL EXCLUSION ────────────────
 // Before this constant, 'snippet' and 'unreleased' were kept out of the
@@ -86,13 +103,14 @@ export type SyncReadinessKey = (typeof SYNC_READINESS_KEYS)[number]
 // readiness item, so the gate holds no matter what the registry emits.
 // Changing this array changes who may be licensed — it is an owner
 // decision, not a refactor, and lib/sync-library/readiness.test.ts pins it.
-export const SYNC_ELIGIBLE_PROJECT_TYPES = ['single', 'ep', 'album'] as const
+export const SYNC_ELIGIBLE_PROJECT_TYPES = ['single', 'ep', 'album', 'unreleased'] as const
 
 export type SyncEligibleProjectType = (typeof SYNC_ELIGIBLE_PROJECT_TYPES)[number]
 
 /**
- * True only for a released-format project type ('single' | 'ep' | 'album').
- * Fails closed: 'snippet', 'unreleased', and any value that is not a
+ * True for every project type that may be licensed ('single' | 'ep' | 'album'
+ * | 'unreleased').
+ * Fails closed: 'snippet' and any value that is not a
  * VaultProjectType at all (a row read straight from the DB's unconstrained
  * `type` column) all return false.
  */
@@ -117,11 +135,11 @@ export function isSyncEligibleProjectType(type: VaultProjectType): boolean {
 // isSyncEligibleProjectType(), so SYNC_ELIGIBLE_PROJECT_TYPES stays the
 // single definition of the rule and this stays the single definition of
 // how we explain it.
-const SYNC_INELIGIBLE_TYPE_REASON: Record<'snippet' | 'unreleased', string> = {
+// Only 'snippet' can be refused on type since the 2026-09-26 reversal —
+// 'unreleased' is eligible, so its sentence is gone rather than left to rot.
+const SYNC_INELIGIBLE_TYPE_REASON: Record<'snippet', string> = {
   snippet:
-    "This song can't be admitted — it's a snippet, a promo clip rather than a licensable recording, and the sync catalogue lists singles, EPs and albums only. Submit the full recording from a single, EP or album project instead.",
-  unreleased:
-    "This song can't be admitted — it's an unreleased work, and the sync catalogue lists singles, EPs and albums only. It can be submitted again once its project is set up as a single, EP or album.",
+    "This song can't be admitted — it's a snippet, a promo clip rather than a licensable recording, and the sync catalogue lists finished recordings. Submit the full recording instead.",
 }
 
 // Fails closed on a value that is not a VaultProjectType at all (a row read
@@ -129,7 +147,7 @@ const SYNC_INELIGIBLE_TYPE_REASON: Record<'snippet' | 'unreleased', string> = {
 // generic sentence. The raw value is deliberately NOT interpolated — an
 // unvalidated DB string does not belong in copy we hand to a browser.
 const SYNC_INELIGIBLE_TYPE_REASON_FALLBACK =
-  "This song can't be admitted — its project type isn't one the sync catalogue lists. The sync catalogue lists singles, EPs and albums only."
+  "This song can't be admitted — its project type isn't one the sync catalogue lists. The sync catalogue lists finished recordings."
 
 /**
  * Why an ineligible project type cannot enter the sync catalogue, phrased
@@ -139,7 +157,7 @@ const SYNC_INELIGIBLE_TYPE_REASON_FALLBACK =
  */
 export function syncIneligibleTypeReason(type: VaultProjectType): string | null {
   if (isSyncEligibleProjectType(type)) return null
-  return SYNC_INELIGIBLE_TYPE_REASON[type as 'snippet' | 'unreleased'] ?? SYNC_INELIGIBLE_TYPE_REASON_FALLBACK
+  return SYNC_INELIGIBLE_TYPE_REASON[type as 'snippet'] ?? SYNC_INELIGIBLE_TYPE_REASON_FALLBACK
 }
 
 /** The one track this Sync Readiness check is for. */
@@ -200,6 +218,12 @@ export type SyncReadinessInput = {
 export function syncReadinessForTrack(input: SyncReadinessInput): ReadinessItem[] {
   const projectInput: Parameters<typeof readinessItemsForProject>[0] = {
     type: input.type,
+    // The six are asked for BY NAME, not inherited from the release
+    // checklist's applies_to table (2026-09-26). That table is maintained for
+    // a different purpose, and for an 'unreleased' project it omits four of
+    // the six — so the gate used to refuse a finished master by never
+    // emitting the items it then required. Sync owns its own requirement set.
+    onlyKeys: SYNC_READINESS_KEYS,
     tracks: [input.track],
     assets: input.assets,
     documents: input.documents,

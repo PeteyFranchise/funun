@@ -369,7 +369,7 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
   // (lib/deals/catalog.ts) has enforced that at the BUYER gate since
   // ca919cf2; this route did not, so an ineligible project could be admitted
   // and then never render to a buyer.
-  describe.each(['snippet', 'unreleased'] as const)('an ineligible %s project', type => {
+  describe.each(['snippet'] as const)('an ineligible %s project', type => {
     it('cannot be admitted, and the refusal NAMES the reason — with all six entry items complete', async () => {
       // INLINE PROOF (ca919cf2 pattern): this same project data reads all six
       // entry items complete as a 'single'. Only `type` differs below, so the
@@ -391,8 +391,8 @@ describe('POST /api/sync-library/admin/[listingId]', () => {
 
       // Says NO, says WHY, says WHAT WOULD CHANGE IT.
       expect(body.error).toContain("can't be admitted")
-      expect(body.error).toContain(type === 'snippet' ? 'snippet' : 'unreleased work')
-      expect(body.error).toContain('singles, EPs and albums')
+      expect(body.error).toContain('snippet')
+      expect(body.error).toContain('finished recordings')
       expect(body.error).toContain(
         type === 'snippet' ? 'Submit the full recording' : 'once its project is set up as a single, EP or album'
       )
