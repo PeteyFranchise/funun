@@ -31,7 +31,7 @@ const BASE_ROW: WorklistRow = {
 }
 
 const INELIGIBLE_REASON =
-  "This song can't be admitted — it's an unreleased work, and the sync catalogue lists singles, EPs and albums only. It can be submitted again once its project is set up as a single, EP or album."
+  "This song can't be admitted — it's a snippet, a promo clip rather than a licensable recording, and the sync catalogue lists finished recordings. Submit the full recording instead."
 
 describe('SyncReadinessWorklist', () => {
   it('renders an ELIGIBLE, checklist-complete pending_admit row as "Ready to admit"', () => {
@@ -69,7 +69,7 @@ describe('SyncReadinessWorklist', () => {
     // decision must not silently vanish from the surface that explains it.
     expect(html).toContain('Golden Hour')
     expect(html).not.toContain('Nothing on the worklist')
-    expect(html).toContain('unreleased work')
-    expect(html).toContain('singles, EPs and albums')
+    expect(html).toContain('snippet')
+    expect(html).toContain('finished recordings')
   })
 })

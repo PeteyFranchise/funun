@@ -191,8 +191,11 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
   })
 
   it('fails closed when an entry item is ABSENT because the registry did not emit it', () => {
-    // readinessItemsForProject filters by applies_to. This is the BACKSTOP
-    // path, no longer the type rule — see the project-type describe below.
+    // The BACKSTOP path: a caller that lets readinessItemsForProject filter by
+    // applies_to can still hand the gate an incomplete list, and the gate must
+    // refuse it. Sync itself no longer takes this path — syncReadinessForTrack
+    // passes `onlyKeys: SYNC_READINESS_KEYS` (2026-09-26) — but the fail-closed
+    // behaviour has to hold for every caller, so this keeps exercising it.
     const unreleasedItems = readinessItemsForProject({
       type: 'unreleased',
       tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() }],
@@ -208,17 +211,44 @@ describe('isRightsReady — the six-item sync-catalogue entry gate (2026-09-09 d
   })
 })
 
-// ─── The project-TYPE condition (2026-09-10, second pass) ─────────────────
-// The sync catalogue licenses released-format recordings. Owner confirmed
-// 2026-09-09 that 'unreleased' has nothing to do with it; 'snippet' is a
-// promo clip, not a licensable recording.
+// ─── The project-TYPE condition (2026-09-10; reversed 2026-09-26) ─────────
+// The sync catalogue licenses FINISHED RECORDINGS. 'snippet' is a promo clip,
+// not one, and is the single ineligible type.
+//
+// 'unreleased' was ineligible under the 2026-09-09 ruling and became eligible
+// on 2026-09-26: a finished master is licensable whatever bucket it sits in,
+// and the six entry keys already test whether it is genuinely ready. The same
+// change gave sync its own requirement set (readinessItemsForProject's
+// `onlyKeys`) so the gate no longer inherits which items exist from the
+// release checklist's applies_to table.
 //
 // Every test below hands isRightsReady an item list in which ALL SIX entry
 // items read 'complete' — deliberately, so the verdict can only come from
 // the type rule. Nothing here is allowed to pass or fail incidentally on a
 // missing readiness item.
 describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TYPES)', () => {
-  const INELIGIBLE_TYPES: VaultProjectType[] = ['snippet', 'unreleased']
+  const INELIGIBLE_TYPES: VaultProjectType[] = ['snippet']
+
+  // The six asked for BY NAME, exactly as syncReadinessForTrack does since
+  // 2026-09-26. entryGateItems() above deliberately does NOT do this — it
+  // lets applies_to filter, so the release-admin items are present-and-
+  // missing and the "fixture is honest" test can prove the gate ignores
+  // them. Here the question is the type rule, so the item list has to be the
+  // one production builds: all six, whatever the project type.
+  function sixFor(type: VaultProjectType): ReadinessItem[] {
+    return readinessItemsForProject({
+      type,
+      onlyKeys: SYNC_READINESS_KEYS,
+      distributor: null,
+      tracks: [{ id: 'track-1', isrc: null, iswc: null, metadata: completeComposers() }],
+      assets: [{ type: 'cover_art' }],
+      documents: [
+        { type: 'copyright_registration', status: 'signed' },
+        { type: 'hire_right', status: 'signed' },
+        { type: 'split_sheet', status: 'signed' },
+      ],
+    })
+  }
 
   function admitted(type: VaultProjectType): CatalogProjectLike {
     return { has_admitted_sync_listing: true, type }
@@ -227,7 +257,7 @@ describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TY
   it.each([...SYNC_ELIGIBLE_PROJECT_TYPES])(
     'a project of type %s with all six items complete PASSES the gate',
     type => {
-      const items = entryGateItems({ type })
+      const items = sixFor(type)
       const statusByKey = Object.fromEntries(items.map(i => [i.key, i.status]))
       for (const key of SYNC_READINESS_KEYS) {
         expect(statusByKey[key]).toBe('complete')
@@ -285,7 +315,18 @@ describe('isRightsReady — the project-type allowlist (SYNC_ELIGIBLE_PROJECT_TY
   it('the allowlist is the only difference — same items, opposite verdicts', () => {
     const items = entryGateItems()
     expect(isRightsReady(admitted('album'), items)).toBe(true)
-    expect(isRightsReady(admitted('unreleased'), items)).toBe(false)
+    expect(isRightsReady(admitted('snippet'), items)).toBe(false)
+  })
+
+  // ─── THE 2026-09-26 REVERSAL, PINNED ───────────────────────────────────
+  // An 'unreleased' project with the six complete now PASSES. This is the
+  // assertion that would have to be deleted to quietly put the old rule
+  // back, which is the point of writing it down.
+  it('an unreleased project with the six complete is licensable', () => {
+    const items = sixFor('unreleased')
+    expect(isSyncEntryComplete(items)).toBe(true)
+    expect(isSyncEligibleProjectType('unreleased')).toBe(true)
+    expect(isRightsReady(admitted('unreleased'), items)).toBe(true)
   })
 })
 

@@ -131,15 +131,21 @@ what held it back and send it again.
 ## Open before this ships
 
 1. **Route undecided.** Recommend a public artist-side page mirroring `/sync`.
-2. **⚠️ The `unreleased` project type conflicts with the owner's instruction.** Owner, 2026-09-26:
-   *"A song does not have to be a part of any finished release for the Crate, it just has to be
-   complete, final master."* The code excludes the `unreleased` vault project type on an explicit
-   earlier ruling — `lib/sync-library/readiness.ts:63-66`, *"owner confirmed 2026-09-09 that
-   unreleased work has nothing to do with the sync catalogue. Out of scope, full stop."* In
-   practice `/vault/new` only offers single/snippet/EP/album, so a finished master filed today
-   passes; but **a completed master sitting in an older `unreleased` project is blocked**, which is
-   exactly the case the owner described as eligible. The file warns that changing the array *"is an
-   owner decision, not a refactor,"* and `readiness.test.ts` pins it. **Needs an owner ruling.**
+2. ~~The `unreleased` project type conflicts with the owner's instruction.~~ **RESOLVED and shipped
+   2026-09-26.** Owner ruled a finished master is licensable whatever bucket it sits in, reversing
+   the 2026-09-09 ruling. Two changes were needed, not one:
+   - `SYNC_ELIGIBLE_PROJECT_TYPES` now admits `'unreleased'`; `'snippet'` is the only ineligible
+     type, and the staff refusal sentences were rewritten ("finished recordings", not "singles, EPs
+     and albums only") because the old wording became false.
+   - **The type gate was not the only thing blocking it.** For an `unreleased` project the release
+     checklist's `applies_to` table emits only 2 of the 6 sync keys, and the entry gate fails closed
+     on an absent key — so opening the type gate alone would have produced a song that is eligible
+     and permanently un-admittable. Sync now asks for its six **by name**, via a new `onlyKeys`
+     option on `readinessItemsForProject`, instead of inheriting which items exist from a table
+     maintained for releases. Release checklists are untouched.
+
+   Full CI gate green: migrations verify, `typecheck:strict`, `lint --max-warnings=0`, 7,745 tests,
+   both audits.
 3. **"Best two or three songs" is advice, not a limit.** The submit route batches up to
    `MAX_TRACK_IDS = 50`. If it should be a cap, that is a product rule, not copy.
 4. **The resubmission sentence is unconfirmed** — true, but the owner has not ruled on including it.
