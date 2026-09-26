@@ -2235,11 +2235,18 @@ page that explains it. The other three do not:
 So the three wait for feature pages, and the footer flag now names them alongside Follow and
 Contact. Dead footer links: 12 → 11.
 
-**A content finding worth separating from the link question.** The footer advertises four products
-and the page explains three. Antenna is sold in the pricing table and never introduced — a reader
-meets the word for the first time as a line item, and can only find out what it is by clicking an
-info dot. Either Antenna earns a place in the page's narrative, or it should not sit in the footer
-as a peer of three things the page actually argues for. **Not a link problem; a copy decision.**
+**~~A content finding worth separating from the link question.~~ RESOLVED the same day, by the
+differentiators section.** The finding was: the footer advertises four products and the page
+explains three; Antenna is sold in the pricing table and never introduced. True when written.
+**Then `#tools` was built an hour later and Antenna became its default panel** — *"The brief comes
+to you."* So Antenna is now on the page in three places, and its footer link resolves to `#tools`.
+Product is half placeholder rather than three-quarters, and dead links went 19 → 18.
+
+**I then repeated the stale finding to the owner as if it were still open, and he caught it.**
+Worth recording as a instance of a hazard already named in this doc: *"fact drift across surfaces
+— a structural property of a page where most facts appear in 2-3 places."* The drift here was not
+between surfaces but **between a note and the work that had already answered it.** A finding
+written before a build is not a finding after it.
 
 Feature pages are also the natural landing spot for the "Start a song" work
 (`2026-09-26-pre-signup-onboarding-path.md`) — worth scoping them once rather than twice.
