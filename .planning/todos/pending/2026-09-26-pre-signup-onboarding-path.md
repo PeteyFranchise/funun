@@ -50,6 +50,57 @@ That collides with emotional engagement in a specific way worth naming up front:
 > *draft they invest in* — complete in itself, nothing to save, nothing to migrate. The signup ask
 > then becomes "do this for real," not "rescue your work."
 
+## ⚠️ RELOCATED — this belongs on the invited path, not the homepage (2026-09-26)
+
+Owner, after driving the mock: *"When do they see this onboarding sequence? This makes sense if
+they are invited to join and write inside someone's Writer's Room."* And before that: *"I would
+like them to actually be able to join the room via a link. Actually feel the product before
+signing up."*
+
+He is right, and it reframes the feature. A cold marketing visitor joining a fabricated room with
+two invented co-writers is theatre. **A real co-writer sending you a link is a shipped, intended
+path** — and it has genuine motivation behind it, because someone you know asked.
+
+### Three facts that decide how this gets built
+
+1. **The entry point exists and is deliberately public.** `/join/[inviteToken]`, exempt from
+   `middleware.ts`'s `isProtected`: *"collaborators access approval and invite pages without a
+   Funūn account (D-15, D-08)."*
+2. **It is view-only today.** `app/join/[inviteToken]/page.tsx`: *"View-only collaborator profile
+   page. Renders the data an artist recorded for this collaborator so they can verify it and flag
+   corrections. **No edit controls — self-edit is deferred (D-09).**"* Writing in the room before
+   signup does not exist.
+3. **A guest cannot author a block — by schema, not by policy.**
+   `lyric_blocks.author_user_id UUID REFERENCES auth.users` (`135_works_core.sql:219`), described
+   at `:201` as *"the ✍ writer badge; it is set automatically."* No account means no user id means
+   no authorship. That is a foreign key, and no amount of UI works around it.
+
+### The resolution: guests suggest, members author
+
+There is already a contribution shape that is **not** authorship: **lyric suggestions** —
+`app/api/works/[workId]/blocks/[blockId]/suggestions/route.ts`, with its own normalisation
+(`normalizeSuggestedText`), rate limiting and notifications. A suggestion is a proposal on someone
+else's block. It moves nothing and it needs no writer badge.
+
+So the honest shape of what the owner described:
+
+> An invited guest opens the link, sees the **real** room, and can **suggest** lines. Mike and Cece
+> see the suggestions attributed to the name the guest typed. Nothing the guest writes creates
+> authorship — and **signing up acquires a concrete job**: an account turns a suggestion into a
+> contribution, a typed name into an `@handle`, and a guest into someone who can be on the sheet
+> at all.
+
+That keeps provenance intact, invents no new authorship concept, and makes the signup ask a door
+rather than a wall. The suggestions route is authenticated today (`createApiClient` +
+`resolveWorkAccess`), so a guest-capable path is the actual work.
+
+### What this makes the bench mock
+
+`private/bench/onboarding.html` is now a **simulation** of the invited experience, for cold
+visitors who were never invited. Still worth having — it is the only way someone who has not been
+sent a link can feel this — but it is the weaker sibling and should not pretend otherwise. The
+real thing is the invited path.
+
 ## Built as a bench mock, 2026-09-26 — `private/bench/onboarding.html`
 
 Shape 1 built and driveable. Two seeded co-writers have a line each; the visitor types one line,
