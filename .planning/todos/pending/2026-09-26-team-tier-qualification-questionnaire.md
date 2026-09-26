@@ -17,17 +17,17 @@ Member workspace. Nothing here creates a Client Partner.
 **The rule: more than 10 seats → a Funūn Team Member picks it up as an Entourage conversation.
 10 or fewer → self-serve Team, with onboarding help offered afterwards.**
 
-## ⚠️ The label breaks under this
+## The label — RESOLVED 2026-09-26
 
-If most people answering "ten or fewer" are sent to sign themselves up, then **"Talk to us"
-promised a conversation that does not happen.** Two honest ways out:
+"Talk to us" on the Team card promised a conversation that, under this rule, most people never get:
+answer *ten or fewer* and you are sent to sign yourself up. **Owner changed it to "See if Team
+fits"** — a label that is true in both outcomes, and one that reads as an invitation to find out
+rather than a sales gate.
 
-- change the Team button to something that covers both outcomes — *"See if Team fits"*, *"Tell us
-  about your team"* — and keep "Talk to us" for Entourage, where a person genuinely replies; or
-- keep the label and make sure the small-team ending still *offers* the conversation rather than
-  just closing the door with a signup link.
-
-Worth deciding before the questionnaire is built, because it changes the first screen's promise.
+**Entourage keeps "Talk to us."** There, a person genuinely does reply, so the promise holds.
+Applied to the bench: `cta:'See if Team fits'` on the team tier; the Entourage band's
+`.tscta` is unchanged. Verified in the rendered DOM — the four pricing CTAs now read
+`Start free · Start a trial · See if Team fits · Talk to us`.
 
 ## What exists, and what does not
 
