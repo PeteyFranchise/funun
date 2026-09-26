@@ -2422,6 +2422,25 @@ bottom edge. It now flips above the face when `top + cardH` would exceed the sph
 same treatment the pricing popovers got. The height is measured once when the card is shown, not
 in `paint()`, which runs every frame and would force a layout each time.
 
+### The file-preview trap now announces itself (2026-09-26)
+
+Third time this cost us, twice as a false "the images are broken" report. Closing the stray
+`file://` tabs fixes today; it does not fix the next time someone opens one from Finder.
+
+**Every bench page now carries an eight-line wrong-origin guard.** If `location.protocol` is not
+`http:` or `https:`, an amber bar pins to the top: *"Opened as a local file — images and links
+will not load. Serve the bench and open it on http://127.0.0.1:4321."* Over http it does not
+render at all.
+
+**The first version of the guard was itself an instance of the bug it exists to catch.** It built
+the URL with `location.pathname.split('/').pop()` — and on a `data:` URL, which is what the
+desktop app's preview produces, **`pathname` is the entire inlined document**. The banner printed
+a screenful of percent-encoded CSS. It now only trusts that value if it matches
+`/^[\w.-]{1,40}\.html$/`.
+
+Verified both ways: banner shown and 61px tall over `file://`, absent over `http://` with all ten
+sections rendering.
+
 ### Open the bench over HTTP, never as a file preview (2026-09-25)
 
 Owner reported the sphere avatars were empty again. They were not. The page was being viewed in
