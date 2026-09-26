@@ -64,6 +64,27 @@ Release Room to get a head start on metadata, artwork and paperwork. This is the
 and it is **not** built. It needs a release shell that can exist in a pre-master state and accept
 the master later — which is close to relaxing that parameter plus a status for "no master yet."
 
+**Owner's alternative, 2026-09-26: start the Song Passport before the Release Room.** Noted, and
+it turns out to be the existing architecture rather than a change — which makes this the cheaper of
+the two routes.
+
+- `song_passports.work_id` is `NOT NULL UNIQUE` referencing `public.works`
+  (`151_song_passport_foundation.sql:16`). **One passport per work, hanging off the work — the
+  Writer's Room side.** It has nothing to do with a release.
+- It is created lazily on first passport action: `INSERT INTO public.song_passports (work_id,
+  created_by) … ON CONFLICT (work_id) DO NOTHING` (`152_song_passport_discovery.sql:111`), guarded
+  to the work owner.
+- So the passport **already precedes the Release Report by design**. Graduation is the passport
+  *producing* a release, not a release producing a passport.
+
+That collapses capability #2 to a single blocker rather than a new concept: the passport can
+already accumulate metadata, lyrics, identifiers and approvals on an unfinished song. What it
+cannot do is **open a Release Report shell before a master is designated**, because
+`p_master_designation_id` is required and FK-constrained. Relaxing that one parameter — plus a
+"no master yet" state on the shell — is most of the feature.
+
+Cross it when we get there; recorded so the cheaper route is not rediscovered from scratch.
+
 ### 3. Carry-over that is live, not a one-time copy — and it is thinner than the page claims
 
 Graduation copies **six fields, once, one way**: title, release date, label, UPC, ISRC and lyrics,
