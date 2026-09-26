@@ -3173,6 +3173,17 @@ favouriting. Those are net-new.
   record implicit** — every crossing is currently an event with a file attached, and a frictionless
   path that skips the record would be a downgrade wearing an upgrade's clothes.
 
+- **Google and Apple sign-in (OAuth)** — owner-requested 2026-09-25 while designing the marketing
+  page's sign-in dialog. **Nothing exists today:** `signInWithOAuth` appears nowhere in the
+  codebase (`app`, `lib`, `components`), and `app/(auth)/signin/page.tsx:49` authenticates with
+  `supabase.auth.signInWithPassword` only. Supabase supports both providers, so this is provider
+  configuration plus a callback route plus identity-linking rules — the last of which is the real
+  work here, not the button: a Member who signed up with a password and later arrives via Google
+  must land on the same account, and Funūn Team identities must stay out of Member OAuth
+  entirely (`docs/architecture/ACCOUNT-TYPES.md`). The marketing dialog already renders both
+  buttons disabled with the line *"Google and Apple sign-in are on the roadmap. Email and password
+  today."* — so the copy is already honest and can stay while this waits.
+
 - **`/actions` slash commands in composers** —
   `.planning/todos/pending/2026-09-24-actions-slash-commands-in-composers.md`. Mechanism
   prototyped; the command set needs product input. Must be a **shared composer behaviour** across
@@ -3399,3 +3410,194 @@ being finished; all of it stops it going live.
   services catalogue. Seven-item gap list in the hub todo.
 - **Shipping means changing `app/page.tsx`'s logged-out redirect**, which is the decision that
   makes this page the homepage.
+
+---
+
+### Phase 47: Member subscriptions — checkout, billing, and what a plan actually buys
+
+**Goal:** a Member can pay for a tier, and the tier means something the code enforces.
+
+Full analysis: **`.planning/todos/pending/2026-09-26-stripe-subscriptions-setup-and-phase.md`**.
+
+**Why now:** the marketing page's pricing block (Phase 46) describes a commercial model that does
+not exist. Phase 46 records that as "blocks publishing, not building" — this is the phase that
+unblocks it. Not urgent for conversion: beta is invite-only, so most visitors end at the gate
+(owner, 2026-09-26: *"most people won't pass that gate anyway"*). This is groundwork.
+
+**More scaffolding exists than expected.** `lib/stripe/index.ts` already declares a five-key
+`STRIPE_PRICES` map (`pro_monthly`, `pro_yearly`, `studio_monthly`, `studio_yearly`,
+`founding_member`), env-driven, and `.env.example:21-25` documents all five. **Nothing consumes
+it** — grepped `app/`, `lib/`, `components/`; the declaration is the only hit. Stripe itself is
+live for Connect payouts and per-deal payment, so the account, the client and the webhook route
+all exist.
+
+**No trial exists.** No `trial_end`, `trial_period`, `free_trial` or `'trialing'` anywhere. "Start
+a trial" on the marketing page is a net-new concept, not a Stripe toggle.
+
+#### 47.0 — Two things to settle before any Stripe product is created
+
+**~~The price keys do not match the tiers.~~ RESOLVED 2026-09-26 — owner ruled the tiers are
+Writer, Studio, Team, Entourage, and the keys were renamed to match** before any Stripe product
+exists, which made it a pure rename. `pro_*` → `team_*`; `studio_*` unchanged. Writer is absent
+because it is free; Entourage is absent because it is negotiated per organization and has no
+standard recurring price. Changed in `lib/stripe/index.ts`, `.env.example`,
+`docs/observability/VENDOR-DIRECTORY.md` and `.planning/codebase/INTEGRATIONS.md`; `typecheck:strict`
+and `lint` both clean. **Keep key and tier name identical from here — the key is what shows in every
+Stripe dashboard and export.**
+
+#### 47.5 — Founding Member: a limited lifetime membership
+
+**Owner, 2026-09-26.** Not a public tier and not on the pricing grid. A **signup-code-gated,
+limited, lifetime** membership for early adopters *"who don't want a subscription"* — bought once,
+never billed again. **Spots are capped; the number is undecided.**
+
+Three things this needs that the four subscription tiers do not:
+
+- **A one-time price, not recurring.** `STRIPE_PRICE_FOUNDING` already exists as an env var and is
+  kept for exactly this; it must not be created as a recurring price.
+- **A cap that is enforced server-side, and cannot oversell.** "Limited spots" is a promise with
+  money attached — the count has to be authoritative and race-safe at checkout, not a number on a
+  page.
+- **Entitlements that survive forever.** 47.3 decides what a tier unlocks; this one has to keep
+  unlocking it with no renewal event ever arriving, including after the tiers themselves change.
+  A lifetime grant is the hardest entitlement to get right and the most expensive to get wrong.
+
+Signup-code gating fits the current invite-only beta, and the redemption path likely shares
+plumbing with the existing invite flow rather than inventing a second one.
+
+**The webhook collides.** `app/api/webhooks/stripe/route.ts:51` already handles
+`checkout.session.completed` for **deal payments**, and subscription checkout fires the same event.
+Until that handler disambiguates by mode or metadata, a subscription payment can be processed as a
+deal payment. **Money path — first slice, not a later hardening pass.**
+
+#### 47.1 — Owner setup
+
+Products and recurring prices in Stripe **test mode**; fill the five `STRIPE_PRICE_*` values.
+Standing rule: any `.env.local` change means fully overwriting the `Funūn .env.local` Dashlane note.
+
+#### 47.2 — Checkout and subscription state
+
+Session creation per price key; where a Member's plan lives and its lifecycle (active, past due,
+cancelled, resumed). Billing portal, proration, cancellation, tax.
+
+#### 47.3 — Entitlements: the real scope
+
+**Nothing in the app reads a plan today.** Every row on the marketing page's tier cards is a
+promise about what a plan unlocks, and not one is enforced. Deciding and implementing what each
+tier gates is larger than taking the payment, and it is the slice that turns the pricing copy from
+a claim into behaviour. Phase 46's blocker list — the unenforced storage cap, the metered PitchPlug
+with no stated quota, the Room service promises with no implementation — all land here.
+
+#### 47.4 — A trial, if wanted
+
+Net-new. Worth deciding whether it is a Stripe trial or an invite-era grace period; during beta
+those may be the same thing.
+
+---
+
+### Phase 48: The marketing-page editor — governed sections for the marketing team
+
+**Goal:** a Funūn Team Member with the `marketing` role can change the parts of the public
+marketing page that actually rotate, without a developer and without a deploy — and cannot
+silently change what the page claims.
+
+**Doctrine:** `.planning/reviews/CODEX-RESPONSE-260926-marketing-page-editor-doctrine.md`
+(Codex, 690 lines). **Verified against the code:**
+`.planning/reviews/CODEX-VERIFICATION-260926-marketing-page-editor-doctrine.md` — no false claims,
+two missed reuse opportunities, one overstated priority, three owner rulings outstanding.
+
+**Why it exists:** Phase 46 ships a page whose heroes and testimonials will rotate and whose every
+product line is a claim traced to a `file:line`. Today both require a pull request. Revocation of
+a testimonial requires a deploy, which is an unacceptable sentence from a company selling rights
+hygiene.
+
+**The governing rule, which is the whole phase in one line:**
+
+> **If changing this could change what a reasonable visitor believes Funūn does, costs, permits,
+> protects, owns, guarantees or will do for them, treat it as a claim.**
+
+Three governance classes, not two: **editorial content** (marketing edits, leadership publishes),
+**verified claims** (evidence required; read-only in the editor for v1), **controlled policy text**
+(never in the editor at all). Classify the smallest meaningful statement, never the section — a
+testimonial can be editorial content wrapped around a claim.
+
+#### 48.0 — Three owner rulings, before any build
+
+Two of them change v1 scope. All three are Codex disagreeing with a stated owner preference.
+
+1. **Does the AI writing assistant ship in v1?** Owner asked for chat-to-edit from the dashboard.
+   Doctrine says defer it until a claim registry exists, *"otherwise the assistant will provide
+   confidence theatre."*
+2. **Open testimonial intake form, or an expiring subject-specific link?** Owner asked for an
+   online form. Doctrine wants the open form only after moderation, identity confirmation and
+   malware handling have been exercised.
+3. **Emergency suppression bypasses leadership approval** — *"suppress first and investigate
+   second."* A deliberate carve-out from the owner's approval rule. Right, but accept it knowingly.
+
+#### 48.1 — Foundations: the section registry and the publication workflow
+
+Section **types** are code-defined; section **instances** are database-managed. A later section is
+configuration-only when it fits a registered type; a genuinely new presentation is not.
+
+Publication: draft isolation → exact-render preview with the production renderer → claim and
+consent validation → leadership approval of a **specific immutable revision** → atomic publish →
+immutable history → one-click rollback → emergency suppression as a separate path. Any edit after
+approval invalidates approval. One person holding both roles still performs two recorded actions.
+
+**Reuse, verified to exist:**
+
+- **`safeNext()`** (`lib/auth/postSignInPath.ts:32`) already validates destinations — rejects
+  protocol-relative `//host` and backslash `/\host`, then re-checks the resolved origin. The CTA
+  allowlist extends this, rather than growing a second validator with different edge cases.
+- **`song_passport_snapshots`** (`151_song_passport_foundation.sql:227`) is already a
+  purpose-tagged, schema-versioned snapshot table. A page manifest is the same idea.
+- **Playbook lifecycle and `playbook_entry_revisions`** for revision vocabulary and immutable
+  history — reused by *pattern*, not by putting marketing rows in the Playbook's tables.
+- **`marketing` is already in `OPERATIONAL_STAFF_ROLES`** — the role passes the staff gate today.
+  What is missing is the page, not the access foundation.
+
+#### 48.2 — Hero carousel
+
+Add, reorder, activate, schedule, set a bounded dwell, upload artwork, edit claim-free campaign
+text, select approved claim blocks, choose CTAs from an allowlist. **Not every hero text field is
+free text** — a tagline or lede can be claim-bearing.
+
+#### 48.3 — Testimonial library, and consent as a publication gate
+
+Identity, quote, optional audio, display selection, ordering and count. Consent is a **hard gate**:
+missing, expired or withdrawn blocks publication. Revocation suppresses first and notifies
+leadership after, removes public renditions, invalidates cache, and records any destination that
+could not be cleared automatically. Originals stay private; public renditions are served through a
+revocable asset identity.
+
+The expiring-intake-link pattern already exists — `/approve/[token]`, `/join/[inviteToken]`,
+`/selects/[token]`, and `artist_invites.invite_token` + `token_expires_at`.
+
+#### 48.4 — Later, in this order
+
+**Claim registry** (the price of editable claims, not a v1 blocker) → **claim checker**, presented
+as *"Evidence found in the deployed product"* and never as *"This claim is true"*, with the
+six-level evidence ladder and an explicit statement of where code-grounded verification stops
+working → **AI writing mode** inside claim-safe boundaries → **collaborator sphere**, which reuses
+the consent lifecycle but is *cheaper, not free*: a photograph plus a professional title implies
+current association and needs its own review.
+
+#### Explicitly out, permanently
+
+Terms, privacy and cookie policies, rights policies, contract templates, sync representation
+authority, Crate admission rules, security and retention promises, prices as free text, arbitrary
+HTML/CSS/JS, tracking pixels, secrets, Member or guest private data, Client Partner records,
+synthetic testimonials, AI-generated people presented as real, unreviewed translations, and
+roadmap items presented as shipped features.
+
+**Not a page builder.** No drag-and-drop layout, no user-supplied markup, no generic JSON renderer.
+Repeatable governed sections, nothing more.
+
+#### Noted, not adopted
+
+The doctrine argues locales will be the first thing to break at 10×. **There is no i18n in this
+codebase at all** — no dependency, no `next.config.mjs` block, and every `locale` match is a
+`toLocaleDateString`-family call. The schema advice (give content a language-independent identity;
+do not make the English string the record key) is cheap insurance and worth taking now. The claim
+that locales break *first* has nothing behind it — more editors and media volume are equally
+plausible, and no localisation is planned.

@@ -18,6 +18,28 @@ permissions.
 | **Limited guest/signature recipient** | Complete one invited action without receiving a full Funūn workspace | Narrow token, invitation, or signing record | Only the invited room, decision, or signature flow |
 | **Funūn Team Member Account** | Operating the Funūn business | `funun_staff` row plus server-verified `staff_roles[]` | Internal staff/admin surfaces |
 
+```mermaid
+flowchart TB
+  subgraph classes["Three identity classes"]
+    direction LR
+    M["<b>Member</b><br/>user_profiles row<br/>creative professionals"]
+    G["<b>Limited guest</b><br/>narrow token or invitation<br/>one invited action, then expires"]
+    S["<b>Funūn Team Member</b><br/>funun_staff + verified staff_roles<br/>internal, structurally separate"]
+  end
+
+  CP["<b>Client Partner</b><br/>a relationship, NOT an identity class<br/>buyer_members into a verified buyer_orgs"]
+
+  M -- "may hold" --> CP
+
+  style CP stroke-dasharray: 5 5
+```
+
+The dashed box is the point: **Client Partner hangs off Member. It is not a fourth column.** A
+songwriter who also licenses music for a production company is one Member holding a Client
+Partner relationship — not two accounts. Professional roles (artist, producer, manager, music
+supervisor and the rest) describe the person and appear nowhere in this diagram on purpose: they
+grant nothing. See *Roles, relationships, and rights are separate* below.
+
 Client Partner is **not an identity class**. It is a verified organization relationship granted
 to a Member through `buyer_members` and `buyer_orgs`. A Member may be a songwriter in their
 personal context, a workspace member for several professional teams, and a music buyer for one
@@ -97,6 +119,43 @@ they should use a separate personal Member login.
 
 The account-context resolver fails closed to staff-only context if legacy data contains an
 unexpected staff/member or staff/buyer overlap.
+
+## Naming discipline
+
+Two Funūn names contain the word "Team" and mean unrelated things. One of them is public.
+
+| Written in full | What it is | Structural signal |
+|---|---|---|
+| **Funūn Team Member** | Staff operating the business | `funun_staff` + server-verified `staff_roles[]` |
+| **Team** (pricing tier) | A Member tier — a Member workspace sized for several people | a Member's plan; no staff concept whatsoever |
+
+Rules:
+
+1. **Never write "Team Member" without "Funūn".** The bare form is the collision. In code
+   comments, planning docs, commit messages and conversation, it is always *Funūn Team Member*.
+2. **Never call the pricing tier a "Team account".** It is the **Team tier** of a Member account.
+   Labels, management companies and multi-artist rosters on that tier and on Entourage are
+   **Members** — the Member umbrella explicitly covers managers and label executives — not Client
+   Partners.
+3. **When a name is ambiguous, cite the structural signal, not the name.** `user_profiles`,
+   `funun_staff`, `buyer_members` → `buyer_orgs` are greppable and cannot drift; a name can.
+   This is the same rule as the `owner_segment` lesson: a label that nothing checks is not
+   evidence.
+
+## Public marketing surfaces address Members only
+
+The marketing site sells the **Member** workspace and nothing else. Its pricing tiers, its
+sign-up and sign-in entries, and its onboarding path are all Member-facing.
+
+- Every tier — Writer, Studio, Team, Entourage — is a Member tier.
+- "Talk to us" on the larger tiers is *answered by* Funūn Team Members, but what it creates at the
+  end is a **Member workspace**.
+- `/signin` is the single sign-in surface for everyone; `lib/auth/postSignInPath.ts` resolves the
+  destination *after* authentication (a Client Partner relationship → `/sync/catalog`, staff →
+  `/admin/client-partners`, everyone else → `/vault`). The marketing page links there because it
+  is the one door, not because the page addresses those audiences.
+
+Owner instruction, 2026-09-26: *"WE ARE ONLY talking about user accounts for Members."*
 
 ## Contract and licensing homes
 

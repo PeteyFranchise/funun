@@ -1999,7 +1999,7 @@ anything else needs adding, group rather than extend.
 
 ---
 
-# ⏸ STOPPING POINT — end of 2026-09-25
+# ⏸ STOPPING POINT (superseded — see the end of this file)
 
 ## The page as it stands
 
@@ -2041,3 +2041,514 @@ where a wrong answer costs money or trust, not just clarity.
   probably product screenshots, not renders.
 - **Drift watch** — three facts have diverged across surfaces so far (attribution unit, eyebrow
   numbers, the vault asset list). Sweep anything stated twice before this goes live.
+
+### Spelling slip: "authorises" reached the page (2026-09-25)
+
+Owner caught it. The Crate's third beat read *"One agreement **authorises** us to represent what you
+submit"* — British, against the established US convention.
+
+**The source I was paraphrasing says "authorizes."** `lib/sync-library/agreement.ts` is already
+American; the error came from rewriting rather than quoting. On a legal-adjacent sentence, the
+verbatim source was the safer thing to copy and I did not.
+
+Page re-swept after the fix: zero British spellings in copy, `catalogue` excepted (7 uses, product
+name).
+
+**Convention restated so it is unambiguous: US spelling in page copy, planning docs, commit
+messages and chat — `catalogue` is the sole exception, because it is a product name.**
+
+## FAQ section built (2026-09-25)
+
+Page is now **hero → 01 How it works → 02 Collaborators → 03 The Crate → 04 Voices → 05 Questions →
+06 Pricing → footer.** Numbering picked it up automatically.
+
+**Open two-column, no accordion.** The page already has 17 click-to-reveal popovers, and an FAQ is
+the wrong place to hide answers — someone reading it is anxious about ownership or lock-in, and
+making them click to learn whether you take a cut is backwards.
+
+Heading is *"The things people actually ask"*, not "FAQ". The subhead concedes something on
+purpose: *"If something here is unclear, that's our problem — tell us and we'll fix the wording."*
+A page that admits its copy might be confusing reads as more honest than one asserting everything
+is obvious.
+
+### The six, and where each answer came from
+
+| Question | Source |
+|---|---|
+| Can I still shop my songs elsewhere? | Core product grants Funūn nothing — the sync agreement is opt-in and separate |
+| Who owns my masters? | Funūn stores, does not own |
+| What happens if I stop paying, or leave? | `ACCOUNT-TYPES.md` almost verbatim — read-only, nothing deleted or rewritten |
+| Can anyone see what I'm working on? | Private room vs Green Room boundary |
+| What if my co-writer isn't on Funūn? | `018_collaborators_split_sheets.sql` — records exist without accounts |
+| Do I have to use The Crate? | Opt-in; the rest works identically without it |
+
+The third is the strongest and it was already written — a cancelled workspace keeping its rights
+evidence readable is a promise most products cannot make.
+
+### Deliberately absent
+
+**What changes when a song enters The Crate.** Exclusivity of representation is an open placeholder
+in `lib/sync-library/agreement.ts`, counsel-gated. Blocker logged at
+`2026-09-25-crate-exclusivity-term-blocks-faq-answer.md`. Verified programmatically that no
+"non-exclusive" or "we don't sign exclusive deals" claim appears anywhere in the section.
+
+**Also out:** pricing-tier detail (placeholders) and anything about AI (invites a conversation this
+page does not want).
+
+---
+
+# ⏸ END OF DAY — 2026-09-25 (final)
+
+## The page is structurally complete
+
+hero carousel → **01** How it works → **02** Collaborators → **03** The Crate → **04** Voices →
+**05** Questions → **06** Pricing → footer. Every section built. 30 images, 672K, all self-hosted.
+
+## Shipped to production today
+
+PR #102 merged to `main`. The only runtime change is the tagline removal — `app/layout.tsx`'s meta
+description, and the subtitle under the wordmark on signin and unsubscribe. **"The operating system
+for your music career" is off funun.studio.** Search results update on the next crawl.
+
+## Three commits sit on this branch, unmerged
+
+Planning docs only, no shipped code, nothing waiting to deploy: the exclusivity blocker, the FAQ
+record, and the `authorises → authorizes` fix. They need a follow-up PR whenever convenient.
+
+### Scope of this page: the Member account class, and nothing else (2026-09-26)
+
+Owner, stated flatly: **"WE ARE ONLY talking about user accounts for Members."** Recording it
+because the page contains a name collision that will otherwise be re-litigated every few sessions.
+
+- **All four tiers are Member tiers.** Writer, Studio, **Team** and Entourage. Member is the
+  umbrella class covering artists, writers, producers, managers, publishers, attorneys, engineers
+  and label executives, so Entourage's *"labels, management companies and multi-artist rosters"*
+  are Members buying a larger Member workspace — **not Client Partners**.
+- **The collision:** the tier is named **Team**; the staff account class is named **Funūn Team
+  Member** (`funun_staff`). Unrelated things. Owner ruled on this when the tier was named:
+  *"there won't be internal confusion, team member logins don't have @handles and all use funun
+  email accounts."* The ruling stands; this line exists so nobody reopens it.
+- **"Talk to us"** on Team and Entourage is *answered by* staff, but what it creates is a Member
+  workspace. The CTA is a Member CTA.
+- **`/signin` is the app's single sign-in surface for all three classes** — `postSignInPath`
+  branches after authentication (buyer → `/sync/catalog`, staff → `/admin/client-partners`,
+  everyone else → `/vault`). The page links there because that is the one door, not because the
+  page addresses those audiences.
+
+### CTA #1 resolved: Sign in opens a dialog (2026-09-25)
+
+**The count in this doc was wrong.** It said twelve unresolved CTAs. Measured off the rendered
+DOM: **29** — thirteen in the body, sixteen in the footer, which the original count never
+included.
+
+**Sign in is now a modal, not a page jump.** Owner picked a login-card design and asked for it
+skinned to Funūn. Built on Funūn tokens — none of the source's stack is here (no shadcn, no Radix,
+no `cn()`, no `lucide-react`, all verified absent), so installing seven Radix packages for one
+card was never the move. What carried over is the *skin*: the drawn accent grid with a shimmer as
+each line lands, rising sparks, the vignette, the card's fade-up.
+
+Built as a native `<dialog>` — focus trapping, an inert background and `::backdrop` come free, and
+those are what hand-rolled modals get wrong. The header link keeps `href="/signin"` and the script
+upgrades it, so with no JS the real page is still the destination.
+
+**Remember me: omitted, then added on owner request — and it now has to be wired.** I left it out
+because `app/(auth)/signin/page.tsx` has no such field and a control that does nothing is the kind
+of lie this product cannot afford. Owner asked for it, so it is in, with a meaning attached rather
+than as decoration:
+
+> **checked** (the default, which matches how Supabase behaves today) → a persistent cookie that
+> survives closing the browser. **unchecked** → a session cookie that dies with the window.
+
+Funūn is cookie-session based via `@supabase/auth-helpers-nextjs`, so this maps to cookie lifetime
+and is genuinely implementable. **The port must wire it or drop the box** — a comment sits directly
+above the handler in the bench saying exactly that. Built as a real `<input type="checkbox">` with
+`appearance:none` rather than a div pretending to be one, so the label click, the focus ring and
+the space bar all still work; verified the label toggles it and it posts as `name="remember"`.
+
+**One thing deliberately not copied.** The source's social row is GitHub + Google; ours is Google + Apple,
+**disabled**, under the line *"Google and Apple sign-in are on the roadmap. Email and password
+today."* — `signInWithOAuth` appears nowhere in the codebase. Roadmapped in the backlog.
+
+**One browser bug found and worked around.** `<dialog>` is specified to close on Escape. In the
+bench's embedded browser it does not: a trusted Escape keydown reaches the document
+(`isTrusted: true`, `defaultPrevented: false`) and the dialog's `cancel` event never fires.
+Added an explicit Escape handler with a comment saying not to delete it as redundant — closing an
+already-closed dialog is a no-op where native behaviour works.
+
+Verified: opens from the header, mark renders the shared six-bar waveform, focus lands in Email,
+password peek toggles both ways, backdrop click closes, Escape closes, focus returns to the
+trigger, and the spark canvas stops and clears on close rather than animating behind a closed
+dialog.
+
+### Footer legal: a note, not four dead links (2026-09-26)
+
+Owner: *"For the legal ones, just one note for now saying that these items are forthcoming but they
+can be added to the waiting list and notified when we open invites to the public."*
+
+Four links replaced by one line:
+
+> Terms, privacy and our rights policy are on the way. We're invite‑only for now — **join the
+> waiting list** and we'll tell you when that changes.
+
+**The waiting list is real.** The form lives inside `/signup` as the D‑11 inline denial capture —
+anyone who tries to sign up without an invite gets it there, behind Turnstile and a rate limit. So
+the note's one link resolves today, unlike the four it replaced. Footer dead links: 16 → 12.
+
+**Layout:** a sentence needs more room than a link list. In four equal columns it was 135px wide
+and wrapped to **seven lines**; the grid is now `1fr 1fr 1.9fr 1fr`, which puts it at four. That
+narrowed Product enough to break "The Writer's Room" across two lines, so footer labels are
+`white-space:nowrap` — they are labels, not prose.
+
+### "Cookie choices" was offering a choice that does not exist (2026-09-26)
+
+Worth recording separately, because it changes what that page should say when it is written.
+**There is no analytics and no tracking in this codebase** — grepped for gtag, Google Analytics,
+PostHog, Plausible, Mixpanel and cookie-banner code; the only hits were the word "plausible" in two
+prose comments. Cookies set:
+
+- Supabase auth session cookies (`middleware.ts:85`) — strictly necessary
+- `funun_svk` (`lib/selects/viewer-cookie.ts`) — a random per-browser id on a shared Selects link,
+  *"NOT a fingerprint, NOT a login… only to correlate a guest's own reaction rows across visits to
+  the SAME Selects link"*
+
+A preferences centre for that is theatre. The honest page says we do not track people, and names
+`funun_svk`. Whether it needs consent is a counsel question.
+
+### ⚠️ Privacy is not merely "forthcoming" once the page is public
+
+Flagged once, owner's call. The page will carry a **waiting-list form that collects email, name and
+a note** — that is personal-data collection, and a privacy notice is normally required for it
+regardless of being in beta. "Forthcoming" is honest while the page is a bench; it is a different
+thing the day the page is live with a form on it. Terms and Privacy should exist before that day;
+Rights policy and Cookie choices can genuinely follow.
+
+### CTA #8, the last group: the footer's four Product links (2026-09-26)
+
+**Only one of the four has anywhere honest to go.** *The Crate* → `#crate`, the section on this
+page that explains it. The other three do not:
+
+- *The Writer's Room* and *Sound Vault* are **step tags inside `#how`** (steps 1 and 5). Pointing
+  two footer links at the same anchor is decoration, not navigation.
+- *Antenna* has **no section at all** — it appears on this page only as a pricing row and the text
+  inside its popover.
+
+So the three wait for feature pages, and the footer flag now names them alongside Follow and
+Contact. Dead footer links: 12 → 11.
+
+**~~A content finding worth separating from the link question.~~ RESOLVED the same day, by the
+differentiators section.** The finding was: the footer advertises four products and the page
+explains three; Antenna is sold in the pricing table and never introduced. True when written.
+**Then `#tools` was built an hour later and Antenna became its default panel** — *"The brief comes
+to you."* So Antenna is now on the page in three places, and its footer link resolves to `#tools`.
+Product is half placeholder rather than three-quarters, and dead links went 19 → 18.
+
+**I then repeated the stale finding to the owner as if it were still open, and he caught it.**
+Worth recording as a instance of a hazard already named in this doc: *"fact drift across surfaces
+— a structural property of a page where most facts appear in 2-3 places."* The drift here was not
+between surfaces but **between a note and the work that had already answered it.** A finding
+written before a build is not a finding after it.
+
+Feature pages are also the natural landing spot for the "Start a song" work
+(`2026-09-26-pre-signup-onboarding-path.md`) — worth scoping them once rather than twice.
+
+### The Selects mock rebuilt against the component — third divergence (2026-09-26)
+
+Owner: *"one thing about this Selects card is that it doesn't look like our product, our product
+looks better."* He was right, and it was not close.
+
+**What the real player actually is** (`components/selects-player/SelectsPlayer.tsx`, 985 lines,
+`theme.ts`): a **centred** hero — a 300px square cover, the `FUNŪN · Selects` chip with its logo
+gradient-clipped to text, a 34px/900 title, a **white** play pill — sitting over an **ambient
+purple wash** (`#7c3aed` + `#D946EF`, blurred 80px, masked to fade by 74%). Below it, *Curated
+tracks* with a song/minute count, and rows carrying **love / pass reactions**. Plus an appbar with
+a licensing cart, a share button and a *Glow Up View* toggle.
+
+**What the mock was:** a horizontal tracklist with a duration column, in this page's neutral greys.
+
+**The palette was the quiet half of the problem.** The player ships its own theme and it is not
+this page's: ground `#08070d`, purple-tinted panels `#0E0D1E`/`#151330`, a true lavender `#C7CBF7`.
+Building the mock from the marketing tokens is what made it read as a different product. Those
+values are now hardcoded in the mock with a comment saying why, since using `var(--card)` here
+would be the bug.
+
+**Third divergence between the static mock and the component; the component has won all three** —
+first brand casing, then the `(fuh-NOON)` gloss, now the whole layout. The rule recorded after the
+second one held: *for anything Selects-shaped, `SelectsPlayer.tsx` is the reference.* It was not
+consulted deeply enough the first two times — only the brand mark was checked, not the structure.
+
+Kept deliberately out of the mock: the cart, back and share buttons, and the Approve /
+Request-changes row. Too much chrome for a card this size, and none of it carries the marketing
+story. The love/pass pair was kept precisely because it does — a supervisor reacting to your song.
+
+## Where we stopped — 2026-09-26
+
+Working through the CTA destinations, one at a time. **29 links, not the twelve this doc used to
+say** — the old count never included the footer's sixteen.
+
+### Resolved and applied to the bench
+
+- **Sign in** → a native `<dialog>` skinned to Funūn tokens, with a Remember me that is defined
+  (persistent vs session cookie) rather than decorative.
+- **How The Crate works** (hero C) → `#crate`. The section below already explains it. Free.
+- **The four Legal links** → one note pointing at `/signup`, where the waiting-list form already
+  lives. Dead footer links 16 → 12.
+- **Team's CTA relabelled** "See if Team fits" — under the ten-seat rule, "Talk to us" promised a
+  conversation most people never get.
+- **Follow column** kept as a placeholder, flagged amber (owner decision).
+
+### Designed, waiting on a build
+
+- **Start a song ×2 / Start free** → the pre-signup onboarding path
+  (`2026-09-26-pre-signup-onboarding-path.md`).
+- **Submit a song ×2** → the intake questionnaire
+  (`2026-09-26-submit-a-song-onboarding-questionnaire.md`), question set owner-reviewed.
+- **What makes a song Crate-ready** → copy written and fully sourced, `.planning/copy/crate-ready-page.md`.
+- **See if Team fits** → the qualification questionnaire
+  (`2026-09-26-team-tier-qualification-questionnaire.md`).
+
+### Waiting on the owner
+
+- **Start a trial** → Phase 47. No trial, no checkout, no subscription exists.
+- **Talk to us** (Entourage) · **Contact** · **the four social links** → no mailbox, no accounts
+  (`2026-09-26-social-accounts-and-a-monitored-mailbox.md`).
+
+### Not yet looked at
+
+The four **Product** footer links — The Writer's Room, Sound Vault, Antenna, The Crate. No feature
+pages exist; The Crate could take `#crate` today. **This is the next thing to pick up.**
+
+### Shipped to `main` as PRs while doing this
+
+- **#103** — a finished master is licensable whatever project holds it. The `unreleased` reversal,
+  plus `onlyKeys` so sync stops inheriting its requirement set from the release checklist.
+- **#104** — Stripe price keys renamed to the tiers we actually sell.
+
+Both off current `main`, both with the full CI validate gate run against their own base. Neither
+merged yet.
+
+## Where we stopped — 2026-09-25, end of day
+
+Owner called it: *"save what we have, we have to pick up later."* Everything below is committed
+and backed up; nothing is half-applied.
+
+**Done today, after the Codex rewrites landed:** header built (waveform mark at the footer's exact
+geometry, `(fuh-NOON)` phonetic, links centred on the page via a 1fr/auto/1fr grid), sphere hover
+card raised above the avatars and the sphere's z-index range trapped so it stops painting over the
+nav, Voices rebuilt to take **both text and audio quotes** with a real `<audio>` player, and
+*Morning Light* removed from the page entirely.
+
+**The page is structurally finished.** Six sections, a header, a footer, no dead layout. What
+stands between it and shipping is not design work — it is four decisions and one page of writing.
+
+## Tomorrow, in order
+
+1. **Decide the twelve CTA destinations.** Nine resolve to existing routes (`/signin`,
+   `/sync-library`, `#how`). Three do not: two "Talk to us" buttons need a contact route or a
+   mailto, and "How The Crate works" / "What makes a song Crate-ready" are the same missing page.
+   **This blocks the port** — a route cannot ship with links that do not resolve.
+2. **Write the Crate-eligibility page.** The only item needing genuinely new writing. The rules are
+   real and documented: two disqualifiers plus the BGV clause,
+   `lib/catalogue/ai-entries.ts:183-213`.
+3. **Plan Phase 46 through `/gsd-plan-phase`.** Scoped in the roadmap, not yet planned as
+   executable. CLAUDE.md requires phase work to start there.
+4. **Then port** — a route in the Next app, mostly static markup, sphere and Selects marked
+   `priority`.
+
+5. **Testimonials** — the format question is settled (both text and audio, mechanism built and
+   verified). What is left is sourcing, consent and ops: who gets asked, what the release says,
+   where clips live, and how someone gets taken off the page. Full write-up in
+   `.planning/todos/pending/2026-09-25-testimonial-audio-sourcing-and-consent.md`.
+
+**Also on the list, owner-raised 2026-09-25:** *how do we populate the audio in the testimonial
+cards, how does anyone submit a testimonial, and what are the logistics around that part of the
+page?* Written up in
+`.planning/todos/pending/2026-09-25-testimonial-audio-sourcing-and-consent.md`. The short version:
+**there is no audio** — `VOICES` (marketing.html:987) has no URL field, the waveform is
+`Math.sin`-derived noise, and the play button runs a `setInterval` over a progress fraction. Three
+play buttons that make no sound is the one thing on this page that actively misleads rather than
+merely being placeholder, so the port cannot carry the mock player across. Nothing in the product
+supports testimonials either — zero code hits for the word — and
+`lib/workspaces/consent-service.ts` is workspace-access consent, not a likeness release, so it is
+not the head start it looks like.
+
+## Not blocked on us
+
+- **Hero art** — owner generates the Midjourney facade plate for slide 1 (prompts written); slides
+  2 and 3 are probably product screenshots.
+- **The Crate FAQ answer** — counsel/BD ruling on exclusivity of representation.
+- **Publishing** — the business-model conversation. Tiers, storage caps and the Room service
+  promises are all described on the page and unimplemented. Finishing is not blocked; going live is.
+
+### Morning Light is out of the Selects mock (2026-09-25)
+
+The mock's hero cover and track 1 were `morning-light.jpg` / *Morning Light* — the owner's own
+song. Replaced with **Paper**, which is genuinely Maya Reyes's in
+`lib/deals/catalog-sample.ts:78`-area sample data (3:24, `paper.jpg`), so the mock is now *more*
+faithful to shipped data, not less. `morning-light.jpg` deleted from `private/bench/img/art/`;
+no reference to the song remains anywhere on the page.
+
+**Correction to my first note on this.** I flagged that the mock credits Maya with covers the
+sample data assigns to Sable Roy and Ledger & Vine, and called it "invented data on a page whose
+argument is that Funūn does not invent data." That overstated it. `SAMPLE_CATALOG_ROWS` is
+described in its own header as the **empty-state fallback** — Maya Reyes, Sable Roy, Ledger &
+Vine, Odile Faye and The Warm Fronts are all invented, and Maya appears nowhere outside sample
+data and tests. There is no real artist to mis-credit. Owner confirmed the intent: *"use her fake
+song called paper we made up."*
+
+What is left is cosmetic only — the mock's durations and two of its titles drift from the sample
+rows (Moonlight is 3:05 there, 3:41 here; "Midnight Ride" is not a title in the data at all).
+Worth tidying if the mock ever gets pointed at the real sample constant; not a truth problem.
+**The one genuinely real thing on this page was *Morning Light*, and it is gone.**
+
+### Bug: the sphere hover card was painted over by the avatars (2026-09-25)
+
+Owner: *"info cards not legible when you click on them, some avatars land in front of them."*
+
+`.sphere-card` was `z-index:60`. The nodes are given `zIndex = 1000 + Math.round(z)` every frame
+so that the front of the sphere overlaps the back — measured range **820–1187**. So every avatar
+outranked the card, and the ones nearest the viewer sat right on top of the name and the IPI.
+Card raised to **2000**, above the highest node.
+
+**The same z-index range was also escaping the section.** Nodes at 1000+ beat the sticky header's
+`z-index:200`, so eight of them were painting over the nav whenever the sphere scrolled past it —
+visible in the full-page captures taken earlier the same day, and never reported because it reads
+as a quirk rather than a bug. Fixed by making `.sphere-wrap` a stacking context
+(`position:relative; z-index:0`), which confines the whole 820–2000 range to the sphere and puts
+the wrap itself below the nav. Verified: 8 nodes still intersect the nav box geometrically, all of
+them now behind it.
+
+**Third fix, same complaint:** a card opened from a node near the bottom of the sphere ran off the
+bottom edge. It now flips above the face when `top + cardH` would exceed the sphere height — the
+same treatment the pricing popovers got. The height is measured once when the card is shown, not
+in `paint()`, which runs every frame and would force a layout each time.
+
+### Open the bench over HTTP, never as a file preview (2026-09-25)
+
+Owner reported the sphere avatars were empty again. They were not. The page was being viewed in
+the desktop app's **local-file preview**, which loads the HTML as a `data:text/html,...` document
+— and a `data:` URL has no base, so every relative reference is unresolvable. Measured in that
+tab: `allImgs: 30, allBroken: 30`, with `src` still the literal string `img/face-01.jpg`. The
+same page in a tab on the server: **30 images, 0 broken**, and `curl` returns `200` for every
+face. Nothing was wrong with the page.
+
+This will recur every time the bench is opened from Finder or the file tree, and it looks exactly
+like a real bug. **The bench must be viewed at `http://127.0.0.1:4321/marketing.html`**, served by
+`python3 -m http.server 4321 -d private/bench`. Anything that inlines the HTML and drops the
+sibling `img/` folder will show empty avatars, missing cover art and a bare Selects mock.
+
+## Where everything lives
+
+- Working files: `private/bench/marketing.html` + `img/` (gitignored)
+- Durable copies: `~/Desktop/funun-bench-backup/` — both benches, all 30 images, the roadmap
+  snapshot, the Codex prompt and review
+- The record: this file and `.planning/`, committed and pushed
+
+## Header added — and the sign-in gap it closes (2026-09-25)
+
+Owner noticed: **there was no way to sign in from the page.** Verified — zero `<header>`, zero
+`<nav>`, zero sign-in affordance. Not deliberate; the page was built downward from the hero and the
+top never got built. The bench-controls bar sat there and unconsciously filled the space.
+
+**This was a port blocker, not a nicety.** `funun.studio` currently redirects logged-out visitors
+to `/signin`, so the redirect *is* the login path. Step 4 of the port replaces that redirect with
+this page — at which point every returning user would land somewhere with no way in.
+
+### What was built, and why it differs from the component offered
+
+Owner showed 21st.dev's `nav-header`: a centred pill of five tabs with a hover-following indicator
+and `mix-blend-difference` text.
+
+| | Component | Built |
+|---|---|---|
+| Shape | centred pill, nav only | three-part: wordmark · anchors · sign in |
+| Indicator | follows hover | follows **scroll position**, hover previews |
+| Theme | light (white bg, black cursor, blend-difference) | dark, Funūn tokens |
+| Tabs | 5 generic (Home/About/Services/Contact) | 4 real anchors |
+| Deps | framer-motion | none — CSS transition on `left`/`width` |
+
+**Why three-part:** a nav-only component supplies neither identity nor a way back in, which were
+the two actual gaps. The page previously opened with "INTRODUCING" and no indication whose site it
+was.
+
+**Why scroll-driven:** on a 4,000px single-page site, knowing where you *are* beats knowing what
+you are pointing at. Hover still previews and snaps back to the current section on leave.
+
+**Why sign-in is a link, not a button:** two buttons in the header would compete with the hero's
+"Start a song". Returning users scan for the word, not the shape.
+
+Sticky with a backdrop blur; the hairline border only appears once scrolled, so it is invisible
+over the hero and defined over content.
+
+**Still `href="#"`** — sign-in should point at `/signin`, which exists. Part of tomorrow's CTA pass.
+
+### Bug: popovers on the Team card's last rows were covered by the Entourage band (2026-09-25)
+
+Two problems in one symptom.
+
+**1. A stacking-context trap.** `.pgrid` had `z-index:1; position:relative`, which **creates a
+stacking context** — so `.fpop`'s `z-index:40` only competed with its siblings inside the grid,
+never with the band. `.teamstrip` also sat at `z-index:1` and came later in the DOM, so it painted
+on top. **Raising the popover's z-index would have done nothing**; the fix was raising `.pgrid` to
+3.
+
+Worth remembering as the general trap: *a child's z-index is meaningless outside its own stacking
+context, and `position:relative` + any `z-index` creates one.*
+
+**2. The panel ran past the card.** The à la carte popover overflowed the card bottom by 34px,
+landing 2px from the band. Now popovers measure once visible and flip upward when they would run
+past the card, with their own reversed entrance keyframes so they still spring from the right
+direction.
+
+The flip is selective, not blanket — verified: the two bottom Team rows flip, the Writer's Room and
+AI-bench popovers do not, and all four clear the band.
+
+### Header mark + the phonetic, found not guessed (2026-09-25)
+
+**The phonetic is `(fuh-NOON)`.** Confirmed in three independent places rather than invented:
+
+- `app/help/page.tsx` — `Funūn <span className="pron">(fuh-NOON)</span>`
+- `components/selects-player/SelectsPlayer.tsx` — `<span>Funūn</span><span className="phon">(fuh-NOON)</span>`
+- `.planning/phases/31-.../31-UI-SPEC.md` — *"brand **FUNŪN (fuh-NOON)**… the phonetic matches
+  `app/help/page.tsx`"*
+
+Parenthesised, lowercase "fuh", uppercase "NOON" marking the stress. Hidden below 560px so it does
+not crowd the mobile header.
+
+**Header wordmark now uses the footer's waveform** — at the footer's *exact* geometry, not a
+reduction. Owner: it reads better than the solid gradient square, and it does — it is a mark
+rather than a shape. Both are built from one shared `WAVE` array so they cannot drift.
+
+My first pass scaled the bars to 72% (`width:2.5px`, `gap:2px`, `Math.round(h*0.72)`) on the
+assumption that a header mark should be smaller than a footer mark. It read thin and weedy.
+Measured side by side, the footer is `3px` wide / `2.5px` gap / heights `9 16 24 13 20 8`; the
+header is now identical, with the wordmark lifted 15px → 17px to sit under it. **The mark is the
+mark at any size** — scale the lockup by leaving the mark alone and moving the type.
+
+### Nav links centre on the page, not in the gap (2026-09-25)
+
+`.navrow` was `flex` + `justify-content:space-between`. That centres the link block in the space
+*left over* between the wordmark and "Sign in" — and since `Funūn (fuh-NOON)` is far wider than
+`Sign in`, the four links sat visibly right of centre. Owner caught it: *"the four in the center
+are not centered… center them with the page not in between the other words."*
+
+Fixed by making the row a three-column grid, `1fr auto 1fr`, so the middle column is the page's
+true centre regardless of what flanks it. Measured: the link block's midpoint is now **0.0px** off
+the viewport midpoint (was ~28px right).
+
+**One trap this introduced, and the fix.** `.navlinks{display:none}` below 780px removes the
+element from the grid flow entirely, so with auto-placement the sign-in link slid into the middle
+column — 164px short of the right rail on a 375px screen. Each item is now pinned to its own
+column (`grid-column:1/2/3`), which holds whether or not the middle one is rendered. Re-measured
+at 375px: 24px inset on both sides, no horizontal overflow. The nav cursor still tracks — it is
+positioned inside `.navlinks`, which stays `position:relative`, so the grid change is invisible
+to it.
+
+### It also caught an error in the Selects mock
+
+I had built `.phon` holding the word *"selects"*, copied from `public/maya-selects-desktop.html`.
+**The real `SelectsPlayer.tsx` puts `(fuh-NOON)` in that slot.** The static mockup and the shipped
+component disagree, and the component is right.
+
+**Second time those two have diverged** — the first was the brand casing. Rule: for anything
+Selects-shaped, `components/selects-player/SelectsPlayer.tsx` is the reference, not the design
+HTML. The mockup is older.
