@@ -12,14 +12,26 @@ import { HANDLE_MIN_LENGTH, HANDLE_MAX_LENGTH, handleFormatError } from '@/lib/h
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { publicAuthError } from '@/lib/auth/public-errors'
 import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
+import {
+  AUTH_CTA,
+  AUTH_ERROR_PANEL,
+  AUTH_FOOT,
+  AUTH_FOOT_LINK,
+  AUTH_H1,
+  AUTH_HINT,
+  AUTH_HINT_BAD,
+  AUTH_HINT_OK,
+  AUTH_INLINE_LINK,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_SUB,
+  AUTH_TEXTAREA,
+} from '@/app/(auth)/auth-ui'
 
 // Debounce delay for the live availability check (D-14, courtesy only) and
 // the shape of a resolved GET /api/handles/available verdict.
 const HANDLE_CHECK_DEBOUNCE_MS = 400
 type HandleRemote = { available: boolean | null; reason: string | null }
-
-const inputClass =
-  'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
 
 // The client state machine is UX only. Migration 214's handle_new_user()
 // independently requires the same exact invite capability + email pair.
@@ -394,13 +406,13 @@ function SignUpFlow() {
 
   if (sent) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <h1 className="text-xl font-semibold text-white">Check your email</h1>
-        <p className="mt-2 text-sm text-white/60">
+      <div className="text-center">
+        <h1 className={AUTH_H1}>Check your email</h1>
+        <p className={AUTH_SUB}>
           We sent a confirmation link to <span className="text-white">{email}</span>. Click it to
           finish setting up your vault.
         </p>
-        <Link href="/signin" className="mt-6 inline-block text-sm text-white hover:underline">
+        <Link href="/signin" className={`mt-6 inline-block ${AUTH_INLINE_LINK}`}>
           Back to sign in
         </Link>
       </div>
@@ -408,29 +420,29 @@ function SignUpFlow() {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
+    <>
       {gateState === 'form' && deepLink && (
         <>
-          <h1 className="text-xl font-semibold text-white">
+          <h1 className={AUTH_H1}>
             {deepLink.inviterName
               ? `${deepLink.inviterName} invited you to Funūn`
               : 'You’ve been invited to Funūn'}
           </h1>
-          <p className="mt-1 text-sm text-white/50">Checking your invite…</p>
+          <p className={AUTH_SUB}>Checking your invite…</p>
         </>
       )}
 
       {gateState === 'form' && !deepLink && (
         <>
-          <h1 className="text-xl font-semibold text-white">Funūn is invite-only — for now.</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <h1 className={AUTH_H1}>Funūn is invite-only — for now.</h1>
+          <p className={AUTH_SUB}>
             We&rsquo;re building this with a founding cohort. Open the secure link in your
             invitation email to create your account.
           </p>
 
           <form onSubmit={handleGateSubmit} className="mt-6 space-y-4">
             <div>
-              <label htmlFor="gate-email" className="block text-sm font-medium text-white/80">
+              <label htmlFor="gate-email" className={AUTH_LABEL}>
                 Need a new invitation link? Enter your email
               </label>
               <input
@@ -441,28 +453,20 @@ function SignUpFlow() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className={inputClass}
+                className={AUTH_INPUT}
               />
             </div>
 
-            {checkError && (
-              <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                {checkError}
-              </p>
-            )}
+            {checkError && <p className={AUTH_ERROR_PANEL}>{checkError}</p>}
 
-            <button
-              type="submit"
-              disabled={checking}
-              className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
-            >
+            <button type="submit" disabled={checking} className={AUTH_CTA}>
               {checking ? 'Checking…' : 'Continue'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-white/50">
+          <p className={AUTH_FOOT}>
             Already have an account?{' '}
-            <Link href="/signin" className="text-white hover:underline">
+            <Link href="/signin" className={AUTH_FOOT_LINK}>
               Sign in
             </Link>
           </p>
@@ -476,17 +480,17 @@ function SignUpFlow() {
             viaDeepLink && /^\/vault\/works\/[^/?#]+$/.test(next ?? '')
           return (
             <>
-              <p className="text-sm font-medium text-white">
+              <p className="text-[12.5px] font-semibold text-white">
                 {viaDeepLink
                   ? deepLink!.inviterName
                     ? `${deepLink!.inviterName} invited you to Funūn`
                     : 'You’ve been invited to Funūn'
                   : "You're invited ✓"}
               </p>
-              <h1 className="mt-1 text-xl font-semibold text-white">
+              <h1 className={`mt-1 ${AUTH_H1}`}>
                 {writerRoomInvite ? 'Create your account to join the song' : 'Create your account'}
               </h1>
-              <p className="mt-1 text-sm text-white/50">
+              <p className={AUTH_SUB}>
                 {writerRoomInvite
                   ? 'You can fill in your profile and rights details later—we’ll help you stay on top of it. For now, let’s write.'
                   : 'Start building your Sound Vault.'}
@@ -494,7 +498,7 @@ function SignUpFlow() {
 
               <form onSubmit={handleSignUpSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-white/80">
+                  <label htmlFor="email" className={AUTH_LABEL}>
                     Email
                   </label>
                   <input
@@ -505,20 +509,18 @@ function SignUpFlow() {
                     required
                     autoComplete="email"
                     placeholder="you@example.com"
-                    className={inputClass}
+                    className={AUTH_INPUT}
                   />
                   {viaDeepLink && (
-                    <p className="mt-1 text-xs text-white/40">
-                      This invite was sent to {deepLink!.email}.
-                    </p>
+                    <p className={AUTH_HINT}>This invite was sent to {deepLink!.email}.</p>
                   )}
                 </div>
                 <div>
-                  <label htmlFor="handle" className="block text-sm font-medium text-white/80">
+                  <label htmlFor="handle" className={AUTH_LABEL}>
                     Handle
                   </label>
-                  <div className="relative mt-1">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13.5px] text-lavdim">
                       @
                     </span>
                     <input
@@ -534,25 +536,25 @@ function SignUpFlow() {
                       autoCorrect="off"
                       spellCheck={false}
                       placeholder="maya-reyes"
-                      className={`${inputClass} pl-7`}
+                      className={`${AUTH_INPUT} pl-7`}
                     />
                   </div>
-                  <p className="mt-1 text-xs text-white/40">
+                  <p className={AUTH_HINT}>
                     This is your permanent public identity — your profile will live at
                     funun.io/u/{handle.trim() || 'your-handle'}. You can change it later.
                   </p>
                   {handleFieldStatus.message && (
-                    <p className="mt-1 text-xs text-rose-300">{handleFieldStatus.message}</p>
+                    <p className={AUTH_HINT_BAD}>{handleFieldStatus.message}</p>
                   )}
                   {handleFieldStatus.status === 'checking' && (
-                    <p className="mt-1 text-xs text-white/40">Checking availability…</p>
+                    <p className={AUTH_HINT}>Checking availability…</p>
                   )}
                   {handleFieldStatus.status === 'available' && (
-                    <p className="mt-1 text-xs text-emerald-300">Available</p>
+                    <p className={AUTH_HINT_OK}>Available</p>
                   )}
                 </div>
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-white/80">
+                  <label htmlFor="password" className={AUTH_LABEL}>
                     Password
                   </label>
                   <input
@@ -564,28 +566,24 @@ function SignUpFlow() {
                     minLength={10}
                     autoComplete="new-password"
                     placeholder="At least 10 characters"
-                    className={inputClass}
+                    className={AUTH_INPUT}
                   />
                 </div>
 
-                {signUpError && (
-                  <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                    {signUpError}
-                  </p>
-                )}
+                {signUpError && <p className={AUTH_ERROR_PANEL}>{signUpError}</p>}
 
                 <button
                   type="submit"
                   disabled={submitting || handleFieldStatus.blocksSubmit}
-                  className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+                  className={AUTH_CTA}
                 >
                   {submitting ? 'Creating account…' : 'Create account'}
                 </button>
               </form>
 
-              <p className="mt-6 text-center text-sm text-white/50">
+              <p className={AUTH_FOOT}>
                 Already have an account?{' '}
-                <Link href="/signin" className="text-white hover:underline">
+                <Link href="/signin" className={AUTH_FOOT_LINK}>
                   Sign in
                 </Link>
               </p>
@@ -595,13 +593,13 @@ function SignUpFlow() {
 
       {gateState === 'existing-account' && (
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-white">You already have an account</h1>
-          <p className="mt-2 text-sm text-white/60">
+          <h1 className={AUTH_H1}>You already have an account</h1>
+          <p className={AUTH_SUB}>
             You already have an account — sign in instead.
           </p>
           <Link
             href={`/signin?email=${encodeURIComponent(email)}${deepLink ? `&invite=${encodeURIComponent(deepLink.token)}` : ''}${next ? `&next=${encodeURIComponent(next)}` : ''}`}
-            className="mt-6 inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
+            className={`mt-6 ${AUTH_CTA}`}
           >
             Sign in
           </Link>
@@ -610,15 +608,15 @@ function SignUpFlow() {
 
       {gateState === 'invite-expired' && (
         <>
-          <h1 className="text-xl font-semibold text-white">This invite has expired</h1>
-          <p className="mt-1 text-sm text-white/50">
+          <h1 className={AUTH_H1}>This invite has expired</h1>
+          <p className={AUTH_SUB}>
             Ask {deepLink?.inviterName ?? 'your inviter'} for a new invite, or join the waiting
             list below and we&rsquo;ll reach out the moment a spot opens.
           </p>
           <button
             type="button"
             onClick={() => setGateState('denied')}
-            className="mt-6 w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
+            className={`mt-6 ${AUTH_CTA}`}
           >
             Join the waiting list
           </button>
@@ -628,24 +626,24 @@ function SignUpFlow() {
       {gateState === 'denied' &&
         (wlSent ? (
           <div className="text-center">
-            <h1 className="text-xl font-semibold text-white">You&rsquo;re on the list</h1>
-            <p className="mt-2 text-sm text-white/60">
+            <h1 className={AUTH_H1}>You&rsquo;re on the list</h1>
+            <p className={AUTH_SUB}>
               We&rsquo;ll email you the moment a spot opens.
             </p>
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-semibold text-white">
+            <h1 className={AUTH_H1}>
               A secure invitation link is required
             </h1>
-            <p className="mt-1 text-sm text-white/50">
+            <p className={AUTH_SUB}>
               Ask your inviter to resend your link, or join the waiting list and we&rsquo;ll reach
               out when a spot opens.
             </p>
 
             <form onSubmit={handleWaitlistSubmit} className="mt-6 space-y-4">
               <div>
-                <label htmlFor="wl-email" className="block text-sm font-medium text-white/80">
+                <label htmlFor="wl-email" className={AUTH_LABEL}>
                   Email
                 </label>
                 <input
@@ -656,11 +654,11 @@ function SignUpFlow() {
                   required
                   autoComplete="email"
                   placeholder="you@example.com"
-                  className={inputClass}
+                  className={AUTH_INPUT}
                 />
               </div>
               <div>
-                <label htmlFor="wl-name" className="block text-sm font-medium text-white/80">
+                <label htmlFor="wl-name" className={AUTH_LABEL}>
                   Name
                 </label>
                 <input
@@ -671,20 +669,19 @@ function SignUpFlow() {
                   required
                   autoComplete="name"
                   placeholder="Your name"
-                  className={inputClass}
+                  className={AUTH_INPUT}
                 />
               </div>
               <div>
-                <label htmlFor="wl-note" className="block text-sm font-medium text-white/80">
+                <label htmlFor="wl-note" className={AUTH_LABEL}>
                   Note (optional)
                 </label>
                 <textarea
                   id="wl-note"
                   value={wlNote}
                   onChange={e => setWlNote(e.target.value)}
-                  rows={3}
                   placeholder="Tell us a bit about you (optional)"
-                  className={`mt-1 resize-none ${inputClass}`}
+                  className={AUTH_TEXTAREA}
                 />
               </div>
 
@@ -699,16 +696,12 @@ function SignUpFlow() {
                 )}
               </div>
 
-              {wlError && (
-                <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                  {wlError}
-                </p>
-              )}
+              {wlError && <p className={AUTH_ERROR_PANEL}>{wlError}</p>}
 
               <button
                 type="submit"
                 disabled={isWaitlistSubmitDisabled(wlSubmitting, siteKey, turnstileToken)}
-                className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+                className={AUTH_CTA}
               >
                 {wlSubmitting ? 'Joining…' : 'Join the waiting list'}
               </button>
@@ -726,7 +719,7 @@ function SignUpFlow() {
             )}
           </>
         ))}
-    </div>
+    </>
   )
 }
 
