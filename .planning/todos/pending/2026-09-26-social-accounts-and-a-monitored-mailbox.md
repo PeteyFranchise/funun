@@ -59,6 +59,14 @@ reason (2026-09-26); the Follow column is the same defect and has not been decid
 - **Until they exist the Follow column should not ship.** Four links to accounts that do not exist
   is the defect the Legal note was written to avoid.
 
-## Decision still open
+## Decided 2026-09-26: the Follow column stays as a placeholder
 
-Whether the bench's Follow column is cut now or left as placeholder. Owner has not ruled.
+Owner: *"leave as a placeholder until the accounts are real."* So the four links remain and the
+column keeps being designed for, rather than quietly disappearing and having to be rebuilt.
+
+**It carries an amber flag, like every other placeholder on this page.** That convention is the
+only reason the invented pricing, the stock sphere faces and the mimed testimonial player have not
+shipped by accident, and four links to accounts that do not exist is the same category of risk. The
+flag names Contact in the same breath, since it has the same cause.
+
+Four placeholder flags on the page now: sphere faces, testimonials, pricing, and this.
