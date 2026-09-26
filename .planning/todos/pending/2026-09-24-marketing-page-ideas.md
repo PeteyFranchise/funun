@@ -2251,6 +2251,35 @@ written before a build is not a finding after it.
 Feature pages are also the natural landing spot for the "Start a song" work
 (`2026-09-26-pre-signup-onboarding-path.md`) — worth scoping them once rather than twice.
 
+### The Selects mock rebuilt against the component — third divergence (2026-09-26)
+
+Owner: *"one thing about this Selects card is that it doesn't look like our product, our product
+looks better."* He was right, and it was not close.
+
+**What the real player actually is** (`components/selects-player/SelectsPlayer.tsx`, 985 lines,
+`theme.ts`): a **centred** hero — a 300px square cover, the `FUNŪN · Selects` chip with its logo
+gradient-clipped to text, a 34px/900 title, a **white** play pill — sitting over an **ambient
+purple wash** (`#7c3aed` + `#D946EF`, blurred 80px, masked to fade by 74%). Below it, *Curated
+tracks* with a song/minute count, and rows carrying **love / pass reactions**. Plus an appbar with
+a licensing cart, a share button and a *Glow Up View* toggle.
+
+**What the mock was:** a horizontal tracklist with a duration column, in this page's neutral greys.
+
+**The palette was the quiet half of the problem.** The player ships its own theme and it is not
+this page's: ground `#08070d`, purple-tinted panels `#0E0D1E`/`#151330`, a true lavender `#C7CBF7`.
+Building the mock from the marketing tokens is what made it read as a different product. Those
+values are now hardcoded in the mock with a comment saying why, since using `var(--card)` here
+would be the bug.
+
+**Third divergence between the static mock and the component; the component has won all three** —
+first brand casing, then the `(fuh-NOON)` gloss, now the whole layout. The rule recorded after the
+second one held: *for anything Selects-shaped, `SelectsPlayer.tsx` is the reference.* It was not
+consulted deeply enough the first two times — only the brand mark was checked, not the structure.
+
+Kept deliberately out of the mock: the cart, back and share buttons, and the Approve /
+Request-changes row. Too much chrome for a card this size, and none of it carries the marketing
+story. The love/pass pair was kept precisely because it does — a supervisor reacting to your song.
+
 ## Where we stopped — 2026-09-26
 
 Working through the CTA destinations, one at a time. **29 links, not the twelve this doc used to
