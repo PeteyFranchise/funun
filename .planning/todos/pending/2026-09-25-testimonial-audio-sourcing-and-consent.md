@@ -48,11 +48,44 @@ so out loud. (The Selects mock in section 03 still shows Maya Reyes artwork and 
 track title — that is cover art and a title in a mockup, nothing plays, and it was an explicit
 earlier choice. Flagging it only so the call is conscious.)
 
-### Still open
+### Sourcing — a proposal to react to (2026-09-26)
 
-Everything below that is not the mechanism: who is asked, how they are asked, what the release
-says, where the files live, who approves, and how someone gets taken off the page. The build is
-no longer the hard part.
+Owner asked the sourcing question again, so here it is as something concrete rather than a list of
+unknowns. The build is not the hard part; none of this is engineering.
+
+**Who.** Beta members, and the population is *tiny* — invite-only, a known list. This is not a
+campaign, it is a handful of conversations. That is an advantage: a personal ask from a person
+converts far better than a broadcast, and at this size a broadcast would look desperate.
+
+**When.** After a value moment, not on a schedule. The three that actually land:
+a split sheet that completed itself · a song going out with its credits already filled in · a Crate
+admission. Asking at a moment someone just felt something beats asking on day 30.
+
+**What to ask for — the part most people get wrong.** Not *"would you say something nice about
+Funūn."* That produces "Funūn is great!", which is worth nothing on a page. Ask for **the specific
+moment**: *"You didn't have to chase anyone for that split sheet — what would you have been doing
+instead?"* The three placeholder quotes already on the bench are the right shape, and they are the
+shape because each one names a thing that stopped happening.
+
+**The release.** Must cover name, role, city, the words, and — for audio — the voice. **Revocable,
+and revocation has to be fast**, which is an argument against baking testimonials into a static
+build. Who holds the signed releases is an open question: the Contract Locker is member-owned
+storage, and a testimonial release is a Funūn-side document, so it is probably not the home.
+
+**Where the files live.** Not `release-audio` / `release-assets` / `release-documents` — those are
+member release material. A testimonial clip is public by design and needs its own path.
+
+**Who approves.** `marketing` is a real `StaffRole`, so there is an owner for this.
+
+**Start with text.** Text quotes need consent and nothing else. Audio needs a recording, a release,
+hosting, a transcript and a moderation path. Ship text from the first two or three people who say
+yes, and add audio for whoever is comfortable recording. The grid already takes both — that was the
+whole point of the format decision.
+
+### Still open after that
+
+What the release document actually says (counsel), where signed releases are filed, and whether a
+transcript is published alongside each clip or only available on request.
 
 ## What the page did before this (kept, because it explains the shape)
 
