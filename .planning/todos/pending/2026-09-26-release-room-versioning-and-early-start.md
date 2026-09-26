@@ -99,7 +99,13 @@ references `vault_projects` and is nullable (`018_collaborators_split_sheets.sql
 in migration 135 as *"the fact that MOVES SPLITS."* Searched `lib/` for a module holding both — none
 joins block authorship to a split sheet.
 
-**⚠️ This bears on copy that is about to ship.** The marketing page says, in step 4, *"Every section
+**OWNER RULING 2026-09-26: leave the copy alone.** *"Disregard this for now, we are working
+through it, don't change the copy."* The gap below is recorded as a live engineering question, not
+as a copy defect and not as a blocker on the page. **Do not edit steps 4 or 5 of the marketing
+page on the strength of this note.** The bridge is being worked through; the copy describes where
+it lands.
+
+**The gap itself, for the engineering work:** The marketing page says, in step 4, *"Every section
 knows who wrote it. By the time the song is finished the split sheet already reflects what actually
 happened,"* and in step 5, *"credits already filled in from the writing rather than a last-minute
 round of emails."* Graduation does not do that today, and no `lib/` module bridges the two. Either
@@ -111,6 +117,7 @@ a money bug, not a docs bug.
 
 1. Confirm the gap independently (trace every path into `tracks.metadata` composers, not just
    graduation) — the claim above is verified for the RPC and for `lib/`, not exhaustively.
-2. Decide the marketing copy either way, since the page is blocked on it.
+2. ~~Decide the marketing copy either way~~ — owner ruled: copy stands, this is an engineering
+   item. The page is not blocked on it.
 3. Turn the passport on for a cohort and let the Release Room read the master designation (#1).
 4. Then the pre-master release shell (#2), then live carry-over (#3).
