@@ -2222,6 +2222,28 @@ regardless of being in beta. "Forthcoming" is honest while the page is a bench; 
 thing the day the page is live with a form on it. Terms and Privacy should exist before that day;
 Rights policy and Cookie choices can genuinely follow.
 
+### CTA #8, the last group: the footer's four Product links (2026-09-26)
+
+**Only one of the four has anywhere honest to go.** *The Crate* → `#crate`, the section on this
+page that explains it. The other three do not:
+
+- *The Writer's Room* and *Sound Vault* are **step tags inside `#how`** (steps 1 and 5). Pointing
+  two footer links at the same anchor is decoration, not navigation.
+- *Antenna* has **no section at all** — it appears on this page only as a pricing row and the text
+  inside its popover.
+
+So the three wait for feature pages, and the footer flag now names them alongside Follow and
+Contact. Dead footer links: 12 → 11.
+
+**A content finding worth separating from the link question.** The footer advertises four products
+and the page explains three. Antenna is sold in the pricing table and never introduced — a reader
+meets the word for the first time as a line item, and can only find out what it is by clicking an
+info dot. Either Antenna earns a place in the page's narrative, or it should not sit in the footer
+as a peer of three things the page actually argues for. **Not a link problem; a copy decision.**
+
+Feature pages are also the natural landing spot for the "Start a song" work
+(`2026-09-26-pre-signup-onboarding-path.md`) — worth scoping them once rather than twice.
+
 ## Where we stopped — 2026-09-26
 
 Working through the CTA destinations, one at a time. **29 links, not the twelve this doc used to
