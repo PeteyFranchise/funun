@@ -540,8 +540,11 @@ function SignUpFlow() {
                     />
                   </div>
                   <p className={AUTH_HINT}>
-                    This is your permanent public identity — your profile will live at
-                    funun.io/u/{handle.trim() || 'your-handle'}. You can change it later.
+                    This is just your username — your profile address, and how people tag you in
+                    a room. Yours will be funun.studio/u/{handle.trim() || 'your-handle'}. Change
+                    it whenever; old links keep working. Split sheets and credits run on your{' '}
+                    <strong className="font-semibold text-lav">legal name, PRO and IPI</strong>,
+                    and you&rsquo;ll add those later.
                   </p>
                   {handleFieldStatus.message && (
                     <p className={AUTH_HINT_BAD}>{handleFieldStatus.message}</p>
