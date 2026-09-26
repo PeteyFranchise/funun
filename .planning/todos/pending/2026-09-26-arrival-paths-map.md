@@ -11,7 +11,7 @@ relocating one of them opened a hole in another. This is the single view.
 
 | Arrival | CTA on the page | What they need | State |
 |---|---|---|---|
-| **Invited co-writer** | *(a link from a friend, not a CTA)* | Join the room, contribute, then sign up | **Designed.** Entry point exists and is public; guests suggest rather than author. `2026-09-26-pre-signup-onboarding-path.md` |
+| **Invited co-writer — invited from *inside* a room** | *(a link from a friend, not a CTA)* | Join the room mid-session, contribute, then sign up | **Designed.** Entry point public; guests suggest rather than author. `2026-09-26-pre-signup-onboarding-path.md` |
 | **Solo writer, cold** | Start a song ×2 · Start free | A reason to begin with no collaborators and no song | **DECIDED: capture.** Built — `private/bench/solo.html` |
 | **Invited collaborator, no song** | *(a link from someone's Collaborators screen)* | Check the details someone recorded about them; claim the identity | **Real today, unaddressed.** See below |
 | **Has a finished song, wants sync** | Submit a song ×2 | Land the song privately, route it to the right room, learn the Crate bar | Question set drafted and owner-reviewed; **no flow around it.** `2026-09-26-submit-a-song-onboarding-questionnaire.md` |
@@ -19,6 +19,37 @@ relocating one of them opened a hole in another. This is the single view.
 
 Plus, after all four: **what happens once they land in a room** —
 `2026-09-26-intent-based-in-app-tutorials.md`.
+
+## The two invited arrivals are different rows in different tables
+
+Owner, 2026-09-26: *"important designation — invited co-writer (has a room, **invited from inside
+the room**)."* The distinction is not cosmetic; the two invites are structurally different and
+conflating them would produce one flow that is wrong for both.
+
+| | Invited **from inside a room** | Invited **from the Collaborators screen** |
+|---|---|---|
+| Record | `work_members` (`136_work_members.sql:82`) | `collaborator_invites` (`018:109`) |
+| Carries a work? | **Yes** — `work_id NOT NULL` | **No** — no `work_id`, no `project_id` |
+| Who they are | `collaborator_id` **or** `user_id` | `collaborator_id` + `inviting_user_id` |
+| They arrive at | a song in progress | their own details, and nothing else |
+| The ask that makes sense | *add something to this* | *check this is right, and claim it* |
+
+### The finding underneath it
+
+**`work_members.user_id` is nullable, and `collaborator_id` is the alternative** — with two partial
+unique indexes, one per identity kind. So **the product already models being in a room without
+having an account.** Someone can be a member of a Writer's Room as a collaborator record, before
+they ever sign up.
+
+That is the foundation the guest-contribution idea needs, and it was already built. It also
+confirms the membership/ownership split from the other direction: `work_members.tier` is
+`'contribute' | 'administer'` — **neither of which is "writer"** — and promotion to a writer is a
+separate route (`/api/works/[workId]/members/[memberId]/promote`), matching `lib/catalogue/
+splits.ts`'s rule that `planWriterPromotion()` is called *"only on an explicit, separate
+writer-promotion action."*
+
+Being in the room, contributing to the room, and owning part of the song are three different
+facts, and the schema keeps them three.
 
 ## Fifth arrival: invited collaborator with no song at all (owner, 2026-09-26)
 
