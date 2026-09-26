@@ -2222,6 +2222,52 @@ regardless of being in beta. "Forthcoming" is honest while the page is a bench; 
 thing the day the page is live with a form on it. Terms and Privacy should exist before that day;
 Rights policy and Cookie choices can genuinely follow.
 
+## Where we stopped — 2026-09-26
+
+Working through the CTA destinations, one at a time. **29 links, not the twelve this doc used to
+say** — the old count never included the footer's sixteen.
+
+### Resolved and applied to the bench
+
+- **Sign in** → a native `<dialog>` skinned to Funūn tokens, with a Remember me that is defined
+  (persistent vs session cookie) rather than decorative.
+- **How The Crate works** (hero C) → `#crate`. The section below already explains it. Free.
+- **The four Legal links** → one note pointing at `/signup`, where the waiting-list form already
+  lives. Dead footer links 16 → 12.
+- **Team's CTA relabelled** "See if Team fits" — under the ten-seat rule, "Talk to us" promised a
+  conversation most people never get.
+- **Follow column** kept as a placeholder, flagged amber (owner decision).
+
+### Designed, waiting on a build
+
+- **Start a song ×2 / Start free** → the pre-signup onboarding path
+  (`2026-09-26-pre-signup-onboarding-path.md`).
+- **Submit a song ×2** → the intake questionnaire
+  (`2026-09-26-submit-a-song-onboarding-questionnaire.md`), question set owner-reviewed.
+- **What makes a song Crate-ready** → copy written and fully sourced, `.planning/copy/crate-ready-page.md`.
+- **See if Team fits** → the qualification questionnaire
+  (`2026-09-26-team-tier-qualification-questionnaire.md`).
+
+### Waiting on the owner
+
+- **Start a trial** → Phase 47. No trial, no checkout, no subscription exists.
+- **Talk to us** (Entourage) · **Contact** · **the four social links** → no mailbox, no accounts
+  (`2026-09-26-social-accounts-and-a-monitored-mailbox.md`).
+
+### Not yet looked at
+
+The four **Product** footer links — The Writer's Room, Sound Vault, Antenna, The Crate. No feature
+pages exist; The Crate could take `#crate` today. **This is the next thing to pick up.**
+
+### Shipped to `main` as PRs while doing this
+
+- **#103** — a finished master is licensable whatever project holds it. The `unreleased` reversal,
+  plus `onlyKeys` so sync stops inheriting its requirement set from the release checklist.
+- **#104** — Stripe price keys renamed to the tiers we actually sell.
+
+Both off current `main`, both with the full CI validate gate run against their own base. Neither
+merged yet.
+
 ## Where we stopped — 2026-09-25, end of day
 
 Owner called it: *"save what we have, we have to pick up later."* Everything below is committed
