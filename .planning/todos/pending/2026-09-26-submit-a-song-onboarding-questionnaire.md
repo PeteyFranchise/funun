@@ -68,8 +68,17 @@ statement, not an ask — *"It's in your vault. It's private; nobody at Funūn c
 
 1. **"Where's this song at right now?"** **[doctrine — routing]**
    - It's done — mixed, mastered, ready to go out → **Release Report**
-   - It's close — needs a mix or a master → **Release Report**
+   - It's close — needs a mix or a master → **Writer's Room / Catalogue**
    - Still writing it → **Writer's Room**
+
+   **Corrected 2026-09-26 — the middle answer used to route to the Release Report. That was
+   wrong.** Owner caught it by asking whether the Release Report accepts successive masters. It
+   does not: `tracks.audio_file_url` is a single column (migration 001:123) and `uploadTrackAudio`
+   upserts to a stable path, so a second upload **overwrites the first in place** — no history, no
+   version list, no current-master flag. Someone still mixing would have had to upload a rough and
+   then silently destroy it. Versions and master designation live on the *work* side, so that is
+   where "not finished yet" belongs, graduating to a Release Report once a master exists. See
+   `2026-09-26-release-room-versioning-and-early-start.md`.
 
 2. **"Who else is on it?"** **[thesis]**
    - Just me
