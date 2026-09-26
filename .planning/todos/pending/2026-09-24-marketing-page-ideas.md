@@ -2180,6 +2180,48 @@ password peek toggles both ways, backdrop click closes, Escape closes, focus ret
 trigger, and the spark canvas stops and clears on close rather than animating behind a closed
 dialog.
 
+### Footer legal: a note, not four dead links (2026-09-26)
+
+Owner: *"For the legal ones, just one note for now saying that these items are forthcoming but they
+can be added to the waiting list and notified when we open invites to the public."*
+
+Four links replaced by one line:
+
+> Terms, privacy and our rights policy are on the way. We're invite‑only for now — **join the
+> waiting list** and we'll tell you when that changes.
+
+**The waiting list is real.** The form lives inside `/signup` as the D‑11 inline denial capture —
+anyone who tries to sign up without an invite gets it there, behind Turnstile and a rate limit. So
+the note's one link resolves today, unlike the four it replaced. Footer dead links: 16 → 12.
+
+**Layout:** a sentence needs more room than a link list. In four equal columns it was 135px wide
+and wrapped to **seven lines**; the grid is now `1fr 1fr 1.9fr 1fr`, which puts it at four. That
+narrowed Product enough to break "The Writer's Room" across two lines, so footer labels are
+`white-space:nowrap` — they are labels, not prose.
+
+### "Cookie choices" was offering a choice that does not exist (2026-09-26)
+
+Worth recording separately, because it changes what that page should say when it is written.
+**There is no analytics and no tracking in this codebase** — grepped for gtag, Google Analytics,
+PostHog, Plausible, Mixpanel and cookie-banner code; the only hits were the word "plausible" in two
+prose comments. Cookies set:
+
+- Supabase auth session cookies (`middleware.ts:85`) — strictly necessary
+- `funun_svk` (`lib/selects/viewer-cookie.ts`) — a random per-browser id on a shared Selects link,
+  *"NOT a fingerprint, NOT a login… only to correlate a guest's own reaction rows across visits to
+  the SAME Selects link"*
+
+A preferences centre for that is theatre. The honest page says we do not track people, and names
+`funun_svk`. Whether it needs consent is a counsel question.
+
+### ⚠️ Privacy is not merely "forthcoming" once the page is public
+
+Flagged once, owner's call. The page will carry a **waiting-list form that collects email, name and
+a note** — that is personal-data collection, and a privacy notice is normally required for it
+regardless of being in beta. "Forthcoming" is honest while the page is a bench; it is a different
+thing the day the page is live with a form on it. Terms and Privacy should exist before that day;
+Rights policy and Cookie choices can genuinely follow.
+
 ## Where we stopped — 2026-09-25, end of day
 
 Owner called it: *"save what we have, we have to pick up later."* Everything below is committed
