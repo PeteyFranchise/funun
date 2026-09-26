@@ -3410,3 +3410,62 @@ being finished; all of it stops it going live.
   services catalogue. Seven-item gap list in the hub todo.
 - **Shipping means changing `app/page.tsx`'s logged-out redirect**, which is the decision that
   makes this page the homepage.
+
+---
+
+### Phase 47: Member subscriptions — checkout, billing, and what a plan actually buys
+
+**Goal:** a Member can pay for a tier, and the tier means something the code enforces.
+
+Full analysis: **`.planning/todos/pending/2026-09-26-stripe-subscriptions-setup-and-phase.md`**.
+
+**Why now:** the marketing page's pricing block (Phase 46) describes a commercial model that does
+not exist. Phase 46 records that as "blocks publishing, not building" — this is the phase that
+unblocks it. Not urgent for conversion: beta is invite-only, so most visitors end at the gate
+(owner, 2026-09-26: *"most people won't pass that gate anyway"*). This is groundwork.
+
+**More scaffolding exists than expected.** `lib/stripe/index.ts` already declares a five-key
+`STRIPE_PRICES` map (`pro_monthly`, `pro_yearly`, `studio_monthly`, `studio_yearly`,
+`founding_member`), env-driven, and `.env.example:21-25` documents all five. **Nothing consumes
+it** — grepped `app/`, `lib/`, `components/`; the declaration is the only hit. Stripe itself is
+live for Connect payouts and per-deal payment, so the account, the client and the webhook route
+all exist.
+
+**No trial exists.** No `trial_end`, `trial_period`, `free_trial` or `'trialing'` anywhere. "Start
+a trial" on the marketing page is a net-new concept, not a Stripe toggle.
+
+#### 47.0 — Two things to settle before any Stripe product is created
+
+**The price keys do not match the tiers.** Only *Studio* appears in both `lib/stripe/index.ts` and
+the marketing page; the code also has `pro_*` and `founding_member`, and the page also sells
+*Writer*, *Team* and *Entourage*. Create live prices against today's names and
+`STRIPE_PRICE_PRO_MONTHLY` powers a tier called **Team** forever, in every dashboard and export.
+Rename first, or rule that the page's tiers are the ones that change.
+
+**The webhook collides.** `app/api/webhooks/stripe/route.ts:51` already handles
+`checkout.session.completed` for **deal payments**, and subscription checkout fires the same event.
+Until that handler disambiguates by mode or metadata, a subscription payment can be processed as a
+deal payment. **Money path — first slice, not a later hardening pass.**
+
+#### 47.1 — Owner setup
+
+Products and recurring prices in Stripe **test mode**; fill the five `STRIPE_PRICE_*` values.
+Standing rule: any `.env.local` change means fully overwriting the `Funūn .env.local` Dashlane note.
+
+#### 47.2 — Checkout and subscription state
+
+Session creation per price key; where a Member's plan lives and its lifecycle (active, past due,
+cancelled, resumed). Billing portal, proration, cancellation, tax.
+
+#### 47.3 — Entitlements: the real scope
+
+**Nothing in the app reads a plan today.** Every row on the marketing page's tier cards is a
+promise about what a plan unlocks, and not one is enforced. Deciding and implementing what each
+tier gates is larger than taking the payment, and it is the slice that turns the pricing copy from
+a claim into behaviour. Phase 46's blocker list — the unenforced storage cap, the metered PitchPlug
+with no stated quota, the Room service promises with no implementation — all land here.
+
+#### 47.4 — A trial, if wanted
+
+Net-new. Worth deciding whether it is a Stripe trial or an invite-era grace period; during beta
+those may be the same thing.
