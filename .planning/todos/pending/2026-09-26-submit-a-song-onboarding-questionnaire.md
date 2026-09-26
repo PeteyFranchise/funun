@@ -130,9 +130,42 @@ statement, not an ask — *"It's in your vault. It's private; nobody at Funūn c
    - Registered properly
    - Not sure yet
 
-7. **[cut?]** **"Anything in it you didn't make — a sample, an interpolation?"** Real for sync, but
-   not one of the two disqualifiers, and the readiness checklist already covers clearance. Included
-   for the owner to keep or cut.
+7. **CUT (owner, 2026-09-26)** — ~~"Anything in it you didn't make — a sample, an
+   interpolation?"~~ *"Cut 7 for now, but make sure we have that question somewhere in the Release
+   Report so it can pass clearances or let us know if we need to search for clearances."*
+
+   **It is already there.** `components/vault/SampleFlagToggle.tsx` — a per-track control reading
+   *"This track contains a sample,"* rendered by `DocumentStage` on
+   `/vault/[projectId]/documents`. Its own header states the consequence:
+
+   > *"Flipping it on reveals a free-text field for sample details and PATCHes the track. Flagging
+   > a sample **creates a required Sample Clearance requirement and caps the readiness score**
+   > until that clearance is signed."*
+
+   The full chain, verified:
+
+   - the toggle writes `tracks.has_sample` and `tracks.sample_details` (real columns, read by
+     `lib/deals/catalog-query.ts`, `lib/selects/tracks-query.ts`, `lib/deals/request-target.ts`)
+   - which drives `sampleBlock` — `lib/sync-library/gate.ts:51`: a sample block routes the buyer
+     to `'contact'` rather than a clean licence
+   - and the buyer-facing label decided 2026-09-09: *"Contains a sample — licensing needs
+     clearance first."*
+   - **SampleClear** (`lib/tools/sampleclear.ts`) does the searching: it identifies the master and
+     publishing holders separately, drafts a request letter to each, offers alternatives, and
+     returns a `risk_level`; the output files as a `sample_clearance` document.
+
+   **Doctrine to respect, from `.planning/deliberations/sync-catalogue-entry-and-samples.md`:**
+   sampled tracks **ARE** included in the default browse — *"Sample-based music is a large share of
+   what supervisors actually place."* And never promise a clearance timeline: an earlier draft
+   floated "typically 4-8 weeks", which *"was invented by the assistant and the owner nearly
+   adopted it… Any timeline on the catalogue must come from Funūn's own completed cases."*
+
+   **The one real gap:** `SampleFlagToggle` has no reference to SampleClear — grepped, nothing.
+   So an artist flags the sample, gets a requirement and a capped score, and is **not handed the
+   tool that drafts the clearance letters.** That is the "let us know if we need to search for
+   clearances" half of the ask, and it is a link, not a build. Second, smaller point: the toggle
+   lives on the documents page, so you meet the question late — worth considering whether the
+   Release Report surfaces it earlier.
 
 ## What they see at the end
 
