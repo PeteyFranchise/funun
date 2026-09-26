@@ -3492,3 +3492,112 @@ with no stated quota, the Room service promises with no implementation — all l
 
 Net-new. Worth deciding whether it is a Stripe trial or an invite-era grace period; during beta
 those may be the same thing.
+
+---
+
+### Phase 48: The marketing-page editor — governed sections for the marketing team
+
+**Goal:** a Funūn Team Member with the `marketing` role can change the parts of the public
+marketing page that actually rotate, without a developer and without a deploy — and cannot
+silently change what the page claims.
+
+**Doctrine:** `.planning/reviews/CODEX-RESPONSE-260926-marketing-page-editor-doctrine.md`
+(Codex, 690 lines). **Verified against the code:**
+`.planning/reviews/CODEX-VERIFICATION-260926-marketing-page-editor-doctrine.md` — no false claims,
+two missed reuse opportunities, one overstated priority, three owner rulings outstanding.
+
+**Why it exists:** Phase 46 ships a page whose heroes and testimonials will rotate and whose every
+product line is a claim traced to a `file:line`. Today both require a pull request. Revocation of
+a testimonial requires a deploy, which is an unacceptable sentence from a company selling rights
+hygiene.
+
+**The governing rule, which is the whole phase in one line:**
+
+> **If changing this could change what a reasonable visitor believes Funūn does, costs, permits,
+> protects, owns, guarantees or will do for them, treat it as a claim.**
+
+Three governance classes, not two: **editorial content** (marketing edits, leadership publishes),
+**verified claims** (evidence required; read-only in the editor for v1), **controlled policy text**
+(never in the editor at all). Classify the smallest meaningful statement, never the section — a
+testimonial can be editorial content wrapped around a claim.
+
+#### 48.0 — Three owner rulings, before any build
+
+Two of them change v1 scope. All three are Codex disagreeing with a stated owner preference.
+
+1. **Does the AI writing assistant ship in v1?** Owner asked for chat-to-edit from the dashboard.
+   Doctrine says defer it until a claim registry exists, *"otherwise the assistant will provide
+   confidence theatre."*
+2. **Open testimonial intake form, or an expiring subject-specific link?** Owner asked for an
+   online form. Doctrine wants the open form only after moderation, identity confirmation and
+   malware handling have been exercised.
+3. **Emergency suppression bypasses leadership approval** — *"suppress first and investigate
+   second."* A deliberate carve-out from the owner's approval rule. Right, but accept it knowingly.
+
+#### 48.1 — Foundations: the section registry and the publication workflow
+
+Section **types** are code-defined; section **instances** are database-managed. A later section is
+configuration-only when it fits a registered type; a genuinely new presentation is not.
+
+Publication: draft isolation → exact-render preview with the production renderer → claim and
+consent validation → leadership approval of a **specific immutable revision** → atomic publish →
+immutable history → one-click rollback → emergency suppression as a separate path. Any edit after
+approval invalidates approval. One person holding both roles still performs two recorded actions.
+
+**Reuse, verified to exist:**
+
+- **`safeNext()`** (`lib/auth/postSignInPath.ts:32`) already validates destinations — rejects
+  protocol-relative `//host` and backslash `/\host`, then re-checks the resolved origin. The CTA
+  allowlist extends this, rather than growing a second validator with different edge cases.
+- **`song_passport_snapshots`** (`151_song_passport_foundation.sql:227`) is already a
+  purpose-tagged, schema-versioned snapshot table. A page manifest is the same idea.
+- **Playbook lifecycle and `playbook_entry_revisions`** for revision vocabulary and immutable
+  history — reused by *pattern*, not by putting marketing rows in the Playbook's tables.
+- **`marketing` is already in `OPERATIONAL_STAFF_ROLES`** — the role passes the staff gate today.
+  What is missing is the page, not the access foundation.
+
+#### 48.2 — Hero carousel
+
+Add, reorder, activate, schedule, set a bounded dwell, upload artwork, edit claim-free campaign
+text, select approved claim blocks, choose CTAs from an allowlist. **Not every hero text field is
+free text** — a tagline or lede can be claim-bearing.
+
+#### 48.3 — Testimonial library, and consent as a publication gate
+
+Identity, quote, optional audio, display selection, ordering and count. Consent is a **hard gate**:
+missing, expired or withdrawn blocks publication. Revocation suppresses first and notifies
+leadership after, removes public renditions, invalidates cache, and records any destination that
+could not be cleared automatically. Originals stay private; public renditions are served through a
+revocable asset identity.
+
+The expiring-intake-link pattern already exists — `/approve/[token]`, `/join/[inviteToken]`,
+`/selects/[token]`, and `artist_invites.invite_token` + `token_expires_at`.
+
+#### 48.4 — Later, in this order
+
+**Claim registry** (the price of editable claims, not a v1 blocker) → **claim checker**, presented
+as *"Evidence found in the deployed product"* and never as *"This claim is true"*, with the
+six-level evidence ladder and an explicit statement of where code-grounded verification stops
+working → **AI writing mode** inside claim-safe boundaries → **collaborator sphere**, which reuses
+the consent lifecycle but is *cheaper, not free*: a photograph plus a professional title implies
+current association and needs its own review.
+
+#### Explicitly out, permanently
+
+Terms, privacy and cookie policies, rights policies, contract templates, sync representation
+authority, Crate admission rules, security and retention promises, prices as free text, arbitrary
+HTML/CSS/JS, tracking pixels, secrets, Member or guest private data, Client Partner records,
+synthetic testimonials, AI-generated people presented as real, unreviewed translations, and
+roadmap items presented as shipped features.
+
+**Not a page builder.** No drag-and-drop layout, no user-supplied markup, no generic JSON renderer.
+Repeatable governed sections, nothing more.
+
+#### Noted, not adopted
+
+The doctrine argues locales will be the first thing to break at 10×. **There is no i18n in this
+codebase at all** — no dependency, no `next.config.mjs` block, and every `locale` match is a
+`toLocaleDateString`-family call. The schema advice (give content a language-independent identity;
+do not make the English string the record key) is cheap insurance and worth taking now. The claim
+that locales break *first* has nothing behind it — more editors and media volume are equally
+plausible, and no localisation is planned.
