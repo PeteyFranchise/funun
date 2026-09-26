@@ -19,8 +19,9 @@ describe('ChooseHandleGate', () => {
 
   it('asks for a handle and shows the public URL shape it produces', () => {
     expect(markup).toContain('Choose your handle')
-    expect(markup).toContain('funun.io/u/your-handle')
-    expect(markup).toContain('You can change it later')
+    expect(markup).toContain('funun.studio/u/your-handle')
+    expect(markup).toContain('old links keep working')
+    expect(markup).toContain('legal name, PRO and IPI')
   })
 
   // D-09: no skip, no dismiss, no close, no "later" affordance. This is the

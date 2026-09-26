@@ -103,7 +103,7 @@ export function SessionIdentityGuard({
     clearTabIdentity()
     const supabase = createClient()
     await supabase.auth.signOut({ scope: 'local' })
-    window.location.assign('/signin?accountChanged=1')
+    window.location.assign('/signin')
   }
 
   return (

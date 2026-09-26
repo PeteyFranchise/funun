@@ -836,6 +836,7 @@ Recent decisions affecting current work (v1.2 The Green Room):
 
 | Date | Slug | Result |
 |---|---|---|
+| 2026-09-26 | 260926-mu9-reskin-the-auth-surface-signin-signup-to | Banner-card shell in the shared (auth) layout — reached forgot-password and update-password too, so all four pages were rewired (leaving them would have shipped a card inside a card). accountChanged notice deleted at both ends. `funun.io`→`funun.studio` and the handle copy no longer calls a handle permanent or implies it reaches a split sheet. Full validate gate green; all four pages visually verified, no hydration mismatch |
 | 2026-09-25 | retire-operating-system-tagline | Tagline removed from 3 shipped files; meta description replaced; typecheck+lint green |
 | 2026-09-06 | phase38-p0-security-hotfix | F1/F7/F10 fixed; migration 187 pushed and verified live |
 | 2026-09-07 | 260907-cust | migration 139's guard blocked the custody RPC; migration 196 applied and re-verified |

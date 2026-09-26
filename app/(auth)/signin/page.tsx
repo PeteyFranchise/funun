@@ -16,9 +16,16 @@ import {
 import { callbackErrorMessage, publicAuthError } from '@/lib/auth/public-errors'
 import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
-
-const inputClass =
-  'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
+import {
+  AUTH_CTA,
+  AUTH_ERROR_PANEL,
+  AUTH_FOOT,
+  AUTH_FOOT_LINK,
+  AUTH_H1,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_SUB,
+} from '@/app/(auth)/auth-ui'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -27,7 +34,6 @@ function SignInForm() {
   const switchToRaw = searchParams.get('switchTo')
   const switchTo: AccountWorkspace | null =
     switchToRaw === 'personal' || switchToRaw === 'team' ? switchToRaw : null
-  const accountChanged = searchParams.get('accountChanged') === '1'
   const supabase = createClient()
 
   const [email, setEmail] = useState(searchParams.get('email') ?? '')
@@ -144,25 +150,19 @@ function SignInForm() {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-      <h1 className="text-xl font-semibold text-white">
+    <>
+      <h1 className={AUTH_H1}>
         {switchTo ? `Switch to ${accountWorkspaceLabel(switchTo)}` : 'Welcome back'}
       </h1>
-      <p className="mt-1 text-sm text-white/50">
+      <p className={AUTH_SUB}>
         {switchTo
           ? `Sign in with your ${switchTo === 'team' ? 'Funūn Team Member' : 'personal Member'} credentials.`
           : 'Sign in to your vault.'}
       </p>
 
-      {accountChanged && (
-        <p className="mt-4 rounded-lg border border-amber-400/25 bg-amber-400/10 p-3 text-sm leading-5 text-amber-100">
-          Your browser session changed in another tab. Sign in to the account you want to use here.
-        </p>
-      )}
-
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-white/80">
+          <label htmlFor="email" className={AUTH_LABEL}>
             Email
           </label>
           <input
@@ -173,15 +173,15 @@ function SignInForm() {
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className={inputClass}
+            className={AUTH_INPUT}
           />
         </div>
         <div>
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="block text-sm font-medium text-white/80">
+          <div className="flex items-baseline justify-between">
+            <label htmlFor="password" className={AUTH_LABEL}>
               Password
             </label>
-            <Link href="/forgot-password" className="text-xs text-white/50 hover:text-white hover:underline">
+            <Link href="/forgot-password" className="text-[11px] text-lavdim hover:text-white hover:underline">
               Forgot password?
             </Link>
           </div>
@@ -193,32 +193,24 @@ function SignInForm() {
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            className={inputClass}
+            className={AUTH_INPUT}
           />
         </div>
 
-        {error && (
-          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-            {error}
-          </p>
-        )}
+        {error && <p className={AUTH_ERROR_PANEL}>{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
+        <button type="submit" disabled={submitting} className={AUTH_CTA}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-white/50">
+      <p className={AUTH_FOOT}>
         New here?{' '}
-        <Link href="/signup" className="text-white hover:underline">
+        <Link href="/signup" className={AUTH_FOOT_LINK}>
           Create an account
         </Link>
       </p>
-    </div>
+    </>
   )
 }
 

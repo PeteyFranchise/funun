@@ -162,8 +162,11 @@ export function ChooseHandleGate({ userId }: { userId: string }) {
               />
             </div>
             <p className="mt-1 text-xs text-white/40">
-              Your profile will live at funun.io/u/{handle.trim() || 'your-handle'}. You can
-              change it later.
+              This is just your username — your profile address, and how people tag you in a
+              room. Yours will be funun.studio/u/{handle.trim() || 'your-handle'}. Change it
+              whenever; old links keep working. Split sheets and credits run on your{' '}
+              <strong className="font-semibold text-lav">legal name, PRO and IPI</strong>, and
+              you&rsquo;ll add those later.
             </p>
             {fieldState.message && (
               <p className="mt-1 text-xs text-rose-300">{fieldState.message}</p>

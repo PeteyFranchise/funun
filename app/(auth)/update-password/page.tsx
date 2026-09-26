@@ -7,9 +7,15 @@ import { createClient } from '@/lib/supabase/client'
 import { postSignInPath } from '@/lib/auth/postSignInPath'
 import { publicAuthError } from '@/lib/auth/public-errors'
 import { reportBrowserAuthEvent, reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
-
-const inputClass =
-  'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
+import {
+  AUTH_CTA,
+  AUTH_ERROR_PANEL,
+  AUTH_H1,
+  AUTH_INLINE_LINK,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_SUB,
+} from '@/app/(auth)/auth-ui'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
@@ -124,12 +130,12 @@ export default function UpdatePasswordPage() {
 
   if (done) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <h1 className="text-xl font-semibold text-white">Password updated</h1>
-        <p className="mt-2 text-sm text-white/60">
+      <div className="text-center">
+        <h1 className={AUTH_H1}>Password updated</h1>
+        <p className={AUTH_SUB}>
           You&apos;re all set. Taking you in…
         </p>
-        <Link href="/signin" className="mt-6 inline-block text-sm text-white hover:underline">
+        <Link href="/signin" className={`mt-6 inline-block ${AUTH_INLINE_LINK}`}>
           Or sign in manually
         </Link>
       </div>
@@ -139,11 +145,11 @@ export default function UpdatePasswordPage() {
   // Recovery link expired or opened without a recovery session.
   if (hasSession === false) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <h1 className="text-xl font-semibold text-white">
+      <div className="text-center">
+        <h1 className={AUTH_H1}>
           {sessionCheckFailed ? 'Could not verify this reset link' : 'Reset link expired'}
         </h1>
-        <p className="mt-2 text-sm text-white/60">
+        <p className={AUTH_SUB}>
           {sessionCheckFailed
             ? 'We could not securely verify this recovery session. Request a fresh link and try again.'
             : 'This password reset link is invalid or has expired. Request a fresh one to continue.'}
@@ -151,7 +157,7 @@ export default function UpdatePasswordPage() {
         </p>
         <Link
           href="/forgot-password"
-          className="mt-6 inline-block text-sm text-white hover:underline"
+          className={`mt-6 inline-block ${AUTH_INLINE_LINK}`}
         >
           Request a new reset link
         </Link>
@@ -160,13 +166,13 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-      <h1 className="text-xl font-semibold text-white">Set a new password</h1>
-      <p className="mt-1 text-sm text-white/50">Choose a password for your account.</p>
+    <>
+      <h1 className={AUTH_H1}>Set a new password</h1>
+      <p className={AUTH_SUB}>Choose a password for your account.</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-white/80">
+          <label htmlFor="password" className={AUTH_LABEL}>
             New password
           </label>
           <input
@@ -178,11 +184,11 @@ export default function UpdatePasswordPage() {
             minLength={8}
             autoComplete="new-password"
             placeholder="At least 8 characters"
-            className={inputClass}
+            className={AUTH_INPUT}
           />
         </div>
         <div>
-          <label htmlFor="confirm" className="block text-sm font-medium text-white/80">
+          <label htmlFor="confirm" className={AUTH_LABEL}>
             Confirm password
           </label>
           <input
@@ -194,24 +200,16 @@ export default function UpdatePasswordPage() {
             minLength={8}
             autoComplete="new-password"
             placeholder="Re-enter your password"
-            className={inputClass}
+            className={AUTH_INPUT}
           />
         </div>
 
-        {error && (
-          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-            {error}
-          </p>
-        )}
+        {error && <p className={AUTH_ERROR_PANEL}>{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting || hasSession === null}
-          className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
+        <button type="submit" disabled={submitting || hasSession === null} className={AUTH_CTA}>
           {submitting ? 'Updating…' : 'Update password'}
         </button>
       </form>
-    </div>
+    </>
   )
 }

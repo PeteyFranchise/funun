@@ -7,9 +7,17 @@ import { createClient } from '@/lib/supabase/client'
 import { publicAuthError } from '@/lib/auth/public-errors'
 import { reportBrowserAuthFailure } from '@/lib/auth/client-diagnostics'
 import { authCopyWithReference, validAuthCorrelationId } from '@/lib/auth/diagnostics'
-
-const inputClass =
-  'mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30 outline-none focus:border-white/30'
+import {
+  AUTH_CTA,
+  AUTH_ERROR_PANEL,
+  AUTH_FOOT,
+  AUTH_FOOT_LINK,
+  AUTH_H1,
+  AUTH_INLINE_LINK,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_SUB,
+} from '@/app/(auth)/auth-ui'
 
 function ForgotPasswordForm() {
   const searchParams = useSearchParams()
@@ -74,13 +82,13 @@ function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center">
-        <h1 className="text-xl font-semibold text-white">Check your email</h1>
-        <p className="mt-2 text-sm text-white/60">
+      <div className="text-center">
+        <h1 className={AUTH_H1}>Check your email</h1>
+        <p className={AUTH_SUB}>
           If an account exists for <span className="text-white">{email}</span>, we&apos;ve sent a
           reset link. Click it to choose a new password.
         </p>
-        <Link href="/signin" className="mt-6 inline-block text-sm text-white hover:underline">
+        <Link href="/signin" className={`mt-6 inline-block ${AUTH_INLINE_LINK}`}>
           Back to sign in
         </Link>
       </div>
@@ -88,15 +96,15 @@ function ForgotPasswordForm() {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-      <h1 className="text-xl font-semibold text-white">Reset your password</h1>
-      <p className="mt-1 text-sm text-white/50">
+    <>
+      <h1 className={AUTH_H1}>Reset your password</h1>
+      <p className={AUTH_SUB}>
         Enter your email and we&apos;ll send you a reset link.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-white/80">
+          <label htmlFor="email" className={AUTH_LABEL}>
             Email
           </label>
           <input
@@ -107,32 +115,24 @@ function ForgotPasswordForm() {
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className={inputClass}
+            className={AUTH_INPUT}
           />
         </div>
 
-        {error && (
-          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-            {error}
-          </p>
-        )}
+        {error && <p className={AUTH_ERROR_PANEL}>{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
-        >
+        <button type="submit" disabled={submitting} className={AUTH_CTA}>
           {submitting ? 'Sending…' : 'Send reset link'}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-white/50">
+      <p className={AUTH_FOOT}>
         Remembered it?{' '}
-        <Link href="/signin" className="text-white hover:underline">
+        <Link href="/signin" className={AUTH_FOOT_LINK}>
           Back to sign in
         </Link>
       </p>
-    </div>
+    </>
   )
 }
 
