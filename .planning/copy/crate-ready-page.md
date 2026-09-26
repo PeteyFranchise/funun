@@ -5,6 +5,10 @@
 **Audience:** Members and prospective Members. Public, logged-out-safe.
 **Route:** undecided. Recommend mirroring `/sync`, which is already *"the public, logged-out-safe
 front door to the buyer world"* — this is its artist-side equivalent and none exists.
+**Built as a bench page 2026-09-26:** `private/bench/crate-ready.html`, so the marketing page's
+"What makes a song Crate-ready" link resolves to something real rather than a decided-but-dead
+href. Backed up as `bench03-crate-ready.html`. Same tokens, same header mark; the copy below is
+what it renders.
 **Voice:** US spelling throughout, `catalogue` the standing exception.
 
 Every factual claim below is traced in the table at the end. Where a claim could not be verified it
