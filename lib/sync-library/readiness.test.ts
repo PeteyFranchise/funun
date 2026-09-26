@@ -91,25 +91,27 @@ describe('SYNC_READINESS_KEYS', () => {
 describe('SYNC_ELIGIBLE_PROJECT_TYPES', () => {
   // ─── DRIFT GUARD ───────────────────────────────────────────────────────
   // Mirrors the SYNC_READINESS_KEYS guard above. This array decides WHO may
-  // be licensed through the sync catalogue at all — adding 'unreleased' or
-  // 'snippet' is an owner decision (the owner confirmed on 2026-09-09 that
-  // unreleased work is out of scope), never a quiet edit.
-  it('is exactly the three released formats', () => {
-    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toEqual(['single', 'ep', 'album'])
-    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toHaveLength(3)
+  // be licensed through the sync catalogue at all — moving a type in or out
+  // is an owner decision, never a quiet edit. 'unreleased' was moved IN on
+  // 2026-09-26, reversing the 2026-09-09 ruling: a finished master is
+  // licensable regardless of which project bucket it sits in, and the six
+  // entry keys already test whether it is actually ready.
+  it('is the four finished-recording formats', () => {
+    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toEqual(['single', 'ep', 'album', 'unreleased'])
+    expect(SYNC_ELIGIBLE_PROJECT_TYPES).toHaveLength(4)
   })
 
-  it('covers every VaultProjectType — the ineligible two are named, not merely absent', () => {
+  it('covers every VaultProjectType — the one ineligible type is named, not merely absent', () => {
     const ALL_TYPES: VaultProjectType[] = ['single', 'snippet', 'ep', 'album', 'unreleased']
     const eligible = ALL_TYPES.filter(isSyncEligibleProjectType)
     const ineligible = ALL_TYPES.filter(t => !isSyncEligibleProjectType(t))
-    expect(eligible).toEqual(['single', 'ep', 'album'])
-    expect(ineligible).toEqual(['snippet', 'unreleased'])
+    expect(eligible).toEqual(['single', 'ep', 'album', 'unreleased'])
+    expect(ineligible).toEqual(['snippet'])
   })
 
-  it('isSyncEligibleProjectType fails closed on snippet and unreleased', () => {
+  it('isSyncEligibleProjectType fails closed on snippet, and only snippet', () => {
     expect(isSyncEligibleProjectType('snippet')).toBe(false)
-    expect(isSyncEligibleProjectType('unreleased')).toBe(false)
+    expect(isSyncEligibleProjectType('unreleased')).toBe(true)
   })
 
   // ─── syncIneligibleTypeReason — the ONE explanation (2026-09-10) ────────
@@ -127,19 +129,21 @@ describe('SYNC_ELIGIBLE_PROJECT_TYPES', () => {
     it('names what the work is, why it is out of scope, and what would change it', () => {
       const snippet = syncIneligibleTypeReason('snippet')
       expect(snippet).toContain('snippet')
-      expect(snippet).toContain('singles, EPs and albums')
+      expect(snippet).toContain('finished recordings')
       expect(snippet).toContain('Submit the full recording')
+    })
 
-      const unreleased = syncIneligibleTypeReason('unreleased')
-      expect(unreleased).toContain('unreleased work')
-      expect(unreleased).toContain('singles, EPs and albums')
-      expect(unreleased).toContain('once its project is set up as a single, EP or album')
+    // 2026-09-26 reversal: 'unreleased' is eligible, so there is nothing to
+    // explain. A leftover refusal sentence here would be a staff surface
+    // telling someone a song is out of scope when the gate admits it.
+    it('has no refusal to give for unreleased — it is eligible now', () => {
+      expect(syncIneligibleTypeReason('unreleased')).toBeNull()
     })
 
     it('fails closed on a type that is not a VaultProjectType at all', () => {
       const reason = syncIneligibleTypeReason('bootleg' as VaultProjectType)
       expect(reason).not.toBeNull()
-      expect(reason).toContain('singles, EPs and albums')
+      expect(reason).toContain('finished recordings')
       // The raw, unvalidated DB value is never echoed back into copy.
       expect(reason).not.toContain('bootleg')
     })
@@ -162,7 +166,7 @@ describe('SYNC_ELIGIBLE_PROJECT_TYPES', () => {
     // regardless of which project the items came from. The type rule lives
     // one layer up, in isRightsReady (lib/deals/catalog.test.ts pins it).
     expect(isSyncEntryComplete(allSixComplete)).toBe(true)
-    expect(isSyncEligibleProjectType('unreleased')).toBe(false)
+    expect(isSyncEligibleProjectType('snippet')).toBe(false)
   })
 })
 
