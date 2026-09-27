@@ -57,7 +57,7 @@ export default async function PitchPlugPage() {
         <div className="mt-16 flex flex-col items-center text-center">
           <p className="text-lg font-medium text-white">No projects yet</p>
           <p className="mt-1 max-w-sm text-sm text-white/50">
-            PitchPlug writes from a real release in your vault. Add a project first.
+            PitchPlug writes from a real release in your Sound Vault. Add a project first.
           </p>
           <Link
             href="/vault/new"

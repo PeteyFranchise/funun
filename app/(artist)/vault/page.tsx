@@ -299,7 +299,7 @@ export default async function VaultPage() {
     projects = (res.data ?? []) as VaultProjectRow[]
     // `works.working_version_id` adds a second works ↔ work_versions
     // relationship. If the qualified collection embed above ever regresses,
-    // do not turn the PostgREST error into a false "Your vault is empty" state.
+    // do not turn the PostgREST error into a false "Your Sound Vault is empty" state.
     error = res.error ?? ownedWorksRes.error ?? workMembershipRes.error
     ownedWorks = (ownedWorksRes.data ?? []) as unknown as WorkRow[]
 
@@ -669,7 +669,7 @@ export default async function VaultPage() {
 
         {error ? (
           <p className="rounded-card border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
-            Couldn’t load your vault: {error.message}
+            Couldn’t load your Sound Vault: {error.message}
           </p>
         ) : cards.length > 0 ? (
           <VaultBrowser cards={cards} />
@@ -678,7 +678,7 @@ export default async function VaultPage() {
           // (Before the catalogue shelf existed this gated on releases alone,
           // which is why it wrongly showed under a populated My Catalogue.)
           <div className="mt-16 flex flex-col items-center text-center">
-            <p className="text-lg font-semibold text-white">Your vault is empty</p>
+            <p className="text-lg font-semibold text-white">Your Sound Vault is empty</p>
             <p className="mt-1 max-w-sm text-sm text-lavdim">
               Every single, snippet, EP, album, and unreleased idea lives here. Start by adding your
               first project.

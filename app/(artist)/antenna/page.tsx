@@ -99,14 +99,14 @@ export default async function AntennaPage() {
           <div className="mt-16 flex flex-col items-center text-center">
             <p className="text-lg font-semibold text-white">No matches yet</p>
             <p className="mt-1 max-w-sm text-sm text-lavdim">
-              As you complete projects in your vault, the Antenna surfaces opportunities you&rsquo;re a
+              As you complete projects in your Sound Vault, the Antenna surfaces opportunities you&rsquo;re a
               strong fit for. Raise a project&rsquo;s readiness to unlock more.
             </p>
             <Link
               href="/vault"
               className="mt-6 rounded-[10px] bg-grad px-5 py-3 text-sm font-bold text-white shadow-cta"
             >
-              Go to your vault
+              Go to your Sound Vault
             </Link>
           </div>
         ) : (

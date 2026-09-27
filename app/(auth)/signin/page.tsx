@@ -157,7 +157,7 @@ function SignInForm() {
       <p className={AUTH_SUB}>
         {switchTo
           ? `Sign in with your ${switchTo === 'team' ? 'Funūn Team Member' : 'personal Member'} credentials.`
-          : 'Sign in to your vault.'}
+          : 'Sign in to your Sound Vault.'}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">

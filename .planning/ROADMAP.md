@@ -3601,3 +3601,65 @@ codebase at all** — no dependency, no `next.config.mjs` block, and every `loca
 do not make the English string the record key) is cheap insurance and worth taking now. The claim
 that locales break *first* has nothing behind it — more editors and media volume are equally
 plausible, and no localisation is planned.
+
+---
+
+### Phase 49: Take it with you — full account data export
+
+**Status:** planned. **Blocks:** the marketing page going live.
+
+The marketing page's pricing FAQ now answers *"What happens to my songs if I stop paying, or
+leave?"* with **"you can always export all of your data — your whole catalogue, in the standard
+formats the rest of the industry reads."** Owner decision 2026-09-26: make the claim, then build
+to it.
+
+**Today that claim is ahead of the product.** Verified 2026-09-26 — plenty of narrow exports ship,
+and no account-level one does:
+
+| Exists | Where |
+|---|---|
+| One vault project | `app/api/vault/[projectId]/export/route.ts` (+ `/status`) |
+| A project's metadata | `app/api/vault/[projectId]/metadata/export/route.ts` |
+| Code sheet | `app/api/metadata/code-sheet/route.ts` |
+| CWR 2.1 registration file | `lib/metadata/cwr.ts` (draft — see `docs/cwr-plan.md`) |
+| Timed comments / pins / ideas / campaigns / a Selects download | their own routes |
+
+**Missing:** one action that produces everything a Member owns. There is no export control on
+`app/(artist)/settings/page.tsx` at all.
+
+#### What it has to cover
+
+A catalogue is not just songs. Anything the person would lose by leaving:
+
+- works, projects, tracks, versions and their audio;
+- split sheets — **including executed PDFs and their signature evidence**, which is the part with
+  legal weight and the part hardest to reconstruct elsewhere;
+- collaborator roster and rights identifiers;
+- contracts and documents;
+- metadata, credits, lyrics and arrangement data;
+- registration status and anything already filed.
+
+#### Constraints that shape it
+
+1. **Asynchronous, not a request/response.** Audio alone will exceed any sane request timeout.
+   Job + notification + signed download link, expiring. `app/api/vault/[projectId]/export/status`
+   already establishes the status-polling shape — reuse it rather than inventing another.
+2. **Standard formats, not a Funūn dump.** The claim says *"the standard formats the rest of the
+   industry reads."* That means CWR for registration, original-quality audio, CSV/JSON for
+   tabular data, and PDFs as PDFs. A proprietary archive would make the sentence false in spirit
+   while technically true.
+3. **Exports must respect the rights boundary.** A Member's export contains other people's
+   personal data — collaborators' legal names, PROs, IPIs, addresses. It must carry what they
+   legitimately hold as a party to those works and no more. This needs the same thinking as
+   `2026-09-26-cross-reference-identity-against-pro-databases.md`, and probably counsel.
+4. **A read-only workspace must still export.** The FAQ answer is specifically about a *paused or
+   cancelled* workspace. If export is gated behind an active subscription the answer is false in
+   exactly the case it was written for. **This is the requirement most likely to be missed.**
+5. **Rate-limit and audit it.** A full-catalogue export is also the perfect exfiltration primitive
+   if an account is compromised.
+
+#### Sequencing
+
+**The marketing page must not go live with this claim before this phase ships.** Phase 46 is
+"finish it and ship it" — that is the dependency. Either this lands first, or the FAQ sentence
+comes back out before launch. Do not let the page ship on a promise.
