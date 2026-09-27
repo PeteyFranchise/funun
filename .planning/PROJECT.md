@@ -28,6 +28,29 @@ Design is locked: a hi-fi handoff (`docs/design/wave-4-social-layer/`, hero scre
 
 Funūn is where an independent artist's whole career lives — and where the industry comes to find them. The Green Room turns a profile into a professional identity and a network: artists connect with producers, supervisors, A&R, and execs, and real relationships — not just tools — are what keep them on the platform.
 
+## Long-Term Operating North Star
+
+**Owner-approved 2026-09-26; planned direction, not current capability.** Funūn will minimize
+avoidable middlemen and develop toward three separate businesses: publishing/administration for
+works it represents, an authorized registration service for works it does not publish, and music
+distribution for authorized masters and releases.
+
+All future identity, collaborator, rights, work, recording, release, authority, payment and
+integration designs must preserve the data and evidence needed for those rails without implying
+authority Funūn does not hold. In particular, publishing ownership, administration, registration
+authority, master ownership, distribution authority, collection authority and payout authority
+remain separate grants; composition, recording and release facts remain separate layers; every
+submission/delivery binds an immutable snapshot and real acknowledgement lifecycle; and canonical
+data remains portable and provider-neutral.
+
+The directness rule is pragmatic: prefer Funūn's own accepted sender/recipient relationships and
+remove duplicate portal entry, but use a partner when it provides necessary legal, commercial or
+technical access. Partners must not become the only copy of Funūn's truth. Collect data
+progressively for a named purpose rather than asking every member for everything at signup.
+
+Canonical doctrine:
+`.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md`.
+
 ---
 
 ## Current Milestone: v1.2 The Green Room
@@ -155,6 +178,7 @@ Next.js 15 App Router · TypeScript · Supabase (PostgreSQL + RLS + Storage + Re
 | Social planning only (no execution) | Meta/TikTok OAuth is meaningful scope; Wave 3 focuses on planning | Calendar + quick tools; scheduling integrations in Wave 4 |
 | Calendar as social spine | Standalone tools stay accessible but campaign view is the organizing frame | Two entry points: campaign calendar + quick tool access |
 | Later/Buffer CSV as V1 export | Largest indie artist tool adoption; CSV avoids OAuth complexity | Export format derived from Later's column schema |
+| Direct registration, publishing and distribution are the company direction (2026-09-26) | Creators should not repeatedly re-enter canonical rights/release data or be forced through avoidable middlemen | Design all future data and authority models for three separate roles: Funūn publisher/admin, registration-only agent for non-published works, and distributor; pursue direct rails in stages and keep claims evidence-bound |
 | Admin gate centralized (Phase 5) | Every `/api/admin/*` route must independently re-verify admin status, not just rely on the `(admin)` layout redirect | `verifyAdmin()` helper in `lib/admin/gate.ts`, called first in every admin API handler |
 | Admin pages read via service client (Phase 5) | Admin pages need full data visibility (e.g. unapproved tips) that RLS would otherwise block for a non-owner read | Admin pages query Supabase directly via `createServiceClient()`, gated by the `(admin)` layout; mutations still route through re-verified API endpoints |
 | `svix` added as a direct dependency (Phase 6) | Resend signs webhooks via Svix under the hood; the pinned `resend@^4.0.0` predates Resend's own `webhooks.verify()` helper, and a 4→6 major upgrade was judged higher-risk than adding the dependency directly | `svix` installed after a blocking human-verify checkpoint reviewing package legitimacy (5yr-old official-org package, ~4.88M weekly downloads) |
@@ -178,6 +202,9 @@ Cumulative platform state: v1.0 (Rights & Registration Rails, Phases 1–4) + v1
 ## After This Milestone (candidates)
 
 Deferred to a later wave (see `.planning/STATE.md` Deferred Items):
+- Direct rights-registration sender onboarding, registration-only service, publishing
+  administration and staged Funūn distribution — owner-approved company direction, sequenced by
+  the direct-rights doctrine and its linked business-track todos
 - Industry Round Table — live panels / replays / Q&A (💡 the "real industry access" differentiator; natural follow-on to The Green Room)
 - Deep external integrations — Songstats, SoundCloud, Bandsintown, YouTube, Buffer API push (SOCIAL-08 spike)
 - Direct social post scheduling / publishing via Meta/TikTok OAuth
@@ -204,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-07-03 — v1.2 The Green Room milestone started*
+*Last updated: 2026-09-26 — direct registration, publishing and distribution north star recorded*

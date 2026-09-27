@@ -19,6 +19,18 @@ Three pillars:
 ---
 <!-- GSD:project-end -->
 
+## Long-Term Company Direction — Direct Rights and Delivery
+
+Owner-approved 2026-09-26: design toward Funūn becoming (1) a publisher/administrator for works it
+represents, (2) an authorized registration service for works it does not publish, and (3) a music
+distributor, while minimizing avoidable middlemen. These are separate legal capacities: never infer
+publishing, registration, distribution, collection or payout authority from another role or from
+mere platform membership. Future identity, rights, work, recording, release and integration plans
+must preserve portable canonical data, provenance, scoped authority, immutable submission/delivery
+snapshots, acknowledgements and corrections. Read
+`.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md` before
+planning or building in these domains; this is a long-term direction, not a current product claim.
+
 <!-- GSD:stack-start source:codebase/STACK.md -->
 
 ## Technology Stack

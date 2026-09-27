@@ -1,7 +1,11 @@
 # CWR (Common Works Registration) — build & business plan
 
-Status: **Path A in progress** · Path B not started (business-gated)
-Last updated: 2026-06-08
+Status: **Path A built as a draft export** · Path B owner-approved direction, not started
+(business/legal/recipient-gated)
+Last updated: 2026-09-26
+
+Company doctrine:
+`.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md`
 
 CWR is the CISAC-standard EDI file format that composition-side societies
 (ASCAP, BMI, SESAC, The MLC, and their international equivalents) accept for
@@ -75,24 +79,49 @@ sender access they need to submit it themselves.
 
 ## Path B — Funūn as the registered sender (the real product)
 
-**Goal:** Funūn becomes a registered CWR submitter and registers works
-centrally on artists' behalf — the Songtrust / CD Baby Pro model. The same
-generator powers it; the difference is the submission rail and the business
-relationships behind it.
+**Goal:** Funūn becomes an approved registration sender with two deliberately
+separate client modes: (A) registering works/shares Funūn represents as a
+publisher or administrator and (B) registering non-administered works under a
+narrow, express filing mandate. The same generator can contribute to both; the
+difference is the recipient-approved submission rail, Funūn's declared
+capacity and the authority bound to each work/share.
+
+This is also part of a wider owner-approved direction: Funūn should eventually
+operate publishing-administration and music-distribution businesses while
+minimizing avoidable middlemen. Those roles may reuse canonical data and
+infrastructure, but their rights and contracts must never be conflated.
 
 ### Business / legal (the long pole — weeks to months)
-1. **Pick the entity model.**
-   - *Admin-agency-only* — we submit registrations, no money flows through us.
-     Recommended start.
-   - *Full publishing administrator* — we collect and pass through royalties for
-     a %. Much bigger: trust/escrow accounting, 1099s, possibly
-     money-transmission considerations. Defer.
-2. **Get Funūn its own publisher IPI** (register a publishing entity).
-3. **Onboard as a CWR sender with each society** — ASCAP, BMI, SESAC, The MLC —
-   each with its own data agreement, test-file cycle, and possible fees.
+1. **Counsel the operating modes.** Start with a registration-only mandate that
+   permits preparation, submission, monitoring and correction without taking
+   publishing or collection rights. Separately define the later publishing-
+   administration agreement and the additional accounting/claims operation it
+   requires.
+2. **Establish Funūn's approved publishing/sender identity** — the legal entity,
+   society affiliation(s), publisher IPI and recipient-specific identifiers.
+   Do not reduce this to “affiliate with CISAC”; CISAC supplies standards and
+   shared infrastructure, while practical onboarding occurs through the
+   applicable societies/recipient programs.
+3. **Evaluate MusicMark first for ASCAP/BMI/SOCAN** — its public materials
+   describe one publisher CWR/EBR submission, a test cycle and first plus
+   society acknowledgements. Confirm Funūn's eligibility, on-behalf-of rules,
+   current format, transport and terms directly. Treat SESAC, GMR, The MLC and
+   international societies as separate recipient workstreams until confirmed.
    (SoundExchange is recording-side / ISRC-fed — *not* CWR; keep separate.)
-4. **Artist authorization** — agreement granting us the right to register their
-   works, explicitly admin-only (we don't take their publishing).
+4. **Bind authority per work/share** — an agreement and machine-readable grant
+   identifying Funūn's capacity, permitted actions, works/shares, territory,
+   term, correction/revocation rules and source instrument.
+5. **Prepare the operation behind the submit button** — conflicts, duplicates,
+   rejections, accepted-with-change outcomes, corrections, registry support and
+   member communications need named owners before a production pilot.
+
+**Dual payoff:** this entity/publisher/society workstream can also advance IPI
+identity consistency. CISAC says publishers may request the IPI Pocket Edition,
+and the ISWC IPI Context Search is a publisher-facing API for finding creator
+IPI numbers from names and known works. That makes the initial entity/capacity
+decision high leverage, but not a universal access grant: registration sender
+approval and each IPI/ISWC service still require their own confirmed eligibility,
+agreements and credentials.
 
 ### Engineering (once the rail exists)
 1. Reuse the Path A generator; swap sender identity to Funūn's onboarded ID
@@ -105,21 +134,36 @@ relationships behind it.
 4. Conflict/duplicate handling and revisions (`REV` transactions).
 
 ### Strategic note
-Path B is a direct shot at the publishing-admin incumbents' core moat — the
-upside, and the reason it's a company-level commitment rather than a sprint.
-Decide deliberately. Start the society onboarding early in parallel with Path A
-engineering, because onboarding is the slow, relationship-driven part.
+Path B is now an owner-approved company direction, not merely a technical
+option. The staged starting mode is registration-only; the longer destination
+also includes publishing administration. That does not let the product imply
+Funūn publishes, administers, collects or distributes before the corresponding
+agreements and operations exist.
+
+Prefer direct recipient relationships and portable standards. A vendor may be
+used when it provides necessary access or reliability, but canonical identity,
+authority, snapshots, submissions, acknowledgements and status remain in
+Funūn, with an exit path.
 
 ---
 
 ## Sequencing
 
-1. **Now:** ship Path A (generator + readiness + acquisition flow). Artists get
-   the IPI flow and a draft CWR export immediately. The Path A generator is
-   architected so the sender identity is a parameter — it drops straight into
-   Path B.
-2. **In parallel:** begin Path B *business* onboarding (society agreements),
-   since that's the long pole.
-3. **Later:** as each society clears, light up central submission + ACK
-   ingestion, and lift the third-party-publisher and international-society
-   limitations.
+1. **Now:** keep Path A labeled as a draft export until its exact profile passes
+   the selected recipient's current validator. Preserve it as a self-submit
+   option even after direct registration exists.
+2. **In parallel:** start counsel/entity/recipient work from the Path B todo;
+   recipient eligibility and testing are the long pole.
+3. **Run the recipient-approved sender pilot:** if onboarding requires
+   publisher/admin repertoire, use one unambiguous work/share under Funūn's own
+   approved capacity; prove rejection, correction and acknowledgements.
+4. **Prove Mode B before its user-facing launch:** use one non-administered work
+   under the separate registration-only mandate. Verify the registry records
+   the intended claimants and does not imply a Funūn publishing interest.
+5. **Expand recipient by recipient:** light up central submission only where
+   authority, validation, secure transport, acknowledgements, corrections and
+   controlled production evidence are complete.
+
+“One click” is not a file upload. Product status must distinguish prepared,
+submitted, received, accepted/accepted-with-change and registered, with
+duplicate, conflict, rejected and revoked/corrected branches.

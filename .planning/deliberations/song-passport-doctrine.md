@@ -1,10 +1,13 @@
 # Song Passport Doctrine
 
-**Status:** Owner-approved product doctrine consolidated on 2026-09-01
+**Status:** Owner-approved product doctrine consolidated on 2026-09-01; direct-rails extension
+approved 2026-09-26
 **Authority:** Canonical internal definition and decision record for Phase 37.3
 **Product home:** Sound Vault, attached to one underlying musical work
 **Internal reference:** The Playbook → Company-wide → Standards & Doctrine
 **Related phases:** 37.3 Song Passport; 37.4 standards exports; 37.5 partner-validated delivery
+**Related company doctrine:**
+`.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md`
 
 ## Executive definition
 
@@ -52,6 +55,9 @@ The governing promise is:
 - Normative CWR, RIN and ERN/DDEX production exports and validation belong to Phase 37.4
 - Certified or accepted direct delivery to any distributor, DSP, society or Secretly
   belongs to Phase 37.5 and requires a named recipient's sandbox/UAT evidence
+- Direct registration, publishing administration and distribution are an owner-approved long-term
+  direction, but each requires its own legal mandate, recipient onboarding and operating evidence;
+  the Passport prepares canonical data and does not itself create any of those roles
 - Content ID, acoustic matching, forensic watermark recovery, collections and payments
   require separate authorized partner programs and production validation
 
@@ -290,6 +296,30 @@ Do not claim simultaneous Google Docs-style editing, universal embedded DDEX ide
 certified delivery, complete native contract generation, counsel-complete sync
 representation, automated Content ID/collections/payments or undefined permanent pricing
 until each claim is supported by the real capability and applicable approvals.
+
+### SP-26 — The Passport must support direct rails without inventing authority
+
+Funūn is designing toward three separate future roles: publisher/administrator for works it
+represents, authorized registration agent for works it does not publish, and distributor for
+authorized masters. The Passport must be capable of preparing the facts and immutable snapshots
+needed by all three, but it must never infer one authority from another.
+
+Every registration or delivery binds the exact capacity in which Funūn acts, the source instrument,
+covered works or recordings, permitted action, territory, term and revocation/correction rules.
+Publishing ownership, administration authority, registration-only authority, master ownership,
+distribution authority, collection authority and payout authority remain separate fields and
+permissions.
+
+Future identity and rights models must preserve writer-versus-publisher shares, people versus legal
+entities, time/territory/right scope, provenance, recipient identifiers, submissions,
+acknowledgements, conflicts, corrections and revocations. Data collection remains progressive and
+purpose-limited: the long-term rail does not justify asking every member for every value on signup
+or exposing private data to collaborators and workspaces.
+
+The canonical model stays standards- and provider-neutral. CWR/EBR, DDEX MWN, ERN and
+recipient-specific messages are adapters generated from an approved snapshot; no partner's schema
+becomes the only copy of Funūn's truth. See the direct-rights doctrine for the required design
+questions and staged operating path.
 
 ## Authority matrix doctrine
 

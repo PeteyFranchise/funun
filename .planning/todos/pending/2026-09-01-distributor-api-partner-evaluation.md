@@ -12,6 +12,7 @@ depends_on:
   - DDEX licence, DPID and production-readiness track where applicable
 files:
   - .planning/ROADMAP.md
+  - .planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md
   - .planning/deliberations/ddex-production-readiness.md
   - .planning/todos/pending/2026-09-01-clean-master-isolation-distributor-delivery.md
 ---
@@ -23,7 +24,9 @@ an approved Song Passport/Release Report package, ingest masters and artwork, va
 release, deliver it to selected DSPs and return reliable status and error information.
 
 The first goal is one safe, observable partner integration - not a universal distributor
-abstraction and not a public promise of one-click distribution.
+abstraction and not a public promise of one-click distribution. Under the owner-approved
+direct-rights doctrine, this is a bridge toward managed and selective direct distribution,
+not a permanent surrender of canonical data, identifiers or the user relationship.
 
 This plan records options for later review. It does not authorize outreach, create a
 developer account, accept commercial terms, select a provider or claim an integration.

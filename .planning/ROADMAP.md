@@ -20,7 +20,7 @@
 - 🧪 **Pilot activation — Phase 37.3: Song Passport** — Slices 1–7 code complete behind global/pilot/emergency server controls; migrations 150–156 applied; deploy and complete pilot UAT before any general-release claim.
 - 📝 **ASAP parallel — DDEX Licence, DPID & Partner Discovery** — owner obtains the free commercial Implementation Licence/DPID and selects one real receiving partner while Phases 37.2/37.3 proceed; no external application or partner contact by agents without owner authority)
 - 📝 **ASAP partner evaluation — Embedded Distributor API** — compare Too Lost (fastest documented public-API pilot), Revelator (strongest API-first strategic comparison), FUGA (enterprise destination) and SonoSuite (scale-dependent white-label alternative); treat DistroKid, TuneCore, CD Baby, Spotify, Apple Music and Secretly as named business-development paths unless they grant an accepted intake contract; select nothing until commercial, compliance, sandbox and delivery-acknowledgment evidence is reviewed)
-- 🧭 **Long-term strategic option — Funūn Distribution** — begin with a clearly disclosed partner-powered branded service, mature into a managed hybrid with Funūn-owned catalogue/QC/support/royalty operations, then pursue selective direct DSP agreements only after Funūn proves catalogue scale, clean rights and fraud performance, partner-grade DDEX delivery, reconciled royalty accounting, reliable payouts and staffed operations; exact distributor-of-record language follows the contracts, and direct distribution is never implied before named DSP acceptance)
+- 🧭 **Owner-approved company direction — Direct registration, publishing & distribution** — minimize avoidable middlemen and develop three legally distinct capabilities: (1) publisher/administrator for works Funūn represents, (2) authorized registration service for works Funūn does not publish, and (3) music distributor. Begin with recipient-approved registration and disclosed partner-powered distribution, then graduate toward Funūn's own sender and selective direct DSP relationships as authority, catalogue scale, clean rights, fraud controls, standards acceptance, acknowledgements, accounting, payouts and staffed operations are proven. Every future identity/rights/release design must preserve canonical, portable data and keep publishing, registration, distribution, collection and payout authority separate. See `.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md`.
 - 📝 **Near-term — Phase 37.4: DDEX Production Readiness** — current partner-approved ERN implementation, real DPIDs, audio/artwork technical details, schema + semantic validation, update/takedown generation and an evidence-backed sandbox handoff package)
 - 📝 **Near-term — Phase 37.5: Partner-Validated Direct Delivery** — one named recipient, secure transport, acknowledgments, retries, corrections, updates/takedowns, sandbox UAT and a controlled production pilot before generalizing)
 - 📝 **Near-term team discussion — Sync Library Operating Model Completion** — complete the curated catalogue lifecycle from invitation/submission through readiness, cultural review, buyer access, matching, artist approval, deals, contracts, delivery, payment and reporting; assign a dedicated phase only after team/counsel decisions)
@@ -3601,3 +3601,101 @@ codebase at all** — no dependency, no `next.config.mjs` block, and every `loca
 do not make the English string the record key) is cheap insurance and worth taking now. The claim
 that locales break *first* has nothing behind it — more editors and media volume are equally
 plausible, and no localisation is planned.
+
+---
+
+### Company north star: Direct registration, publishing & distribution
+
+**Owner-approved direction, 2026-09-26. Not a current-capability claim and not yet assigned a
+phase.** Canonical doctrine:
+`.planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md`.
+
+Funūn should become the place where a creator or authorized team can prepare, authorize, submit,
+track and correct both composition registrations and master releases without repeatedly rebuilding
+the same facts or visiting disconnected portals. The company should minimize avoidable middlemen
+and pursue its own accepted sender/recipient relationships, while using a vendor or upstream
+partner where that is the responsible bridge to a society, collective, DSP or store.
+
+#### The three end-state businesses
+
+1. **Publisher / publishing administrator:** Funūn represents named works or shares under an
+   express publishing or administration agreement and can register and maintain the corresponding
+   claims. Collection and payout arrive only when that operation is independently ready.
+2. **Authorized registration service:** Funūn submits and maintains registrations for works it does
+   not publish under a narrower filing mandate. No publishing interest, administration right or
+   collection authority is inferred from the submission service.
+3. **Distributor:** Funūn delivers authorized masters/releases and operates their status,
+   correction, takedown, reporting and—when ready—royalty-accounting lifecycle. Composition
+   registration authority never implies master-distribution authority.
+
+These capabilities share Song Passport data, snapshots, recipient mappings and acknowledgement
+infrastructure. Their legal grants, permissions, agreements, money flows and product claims remain
+separate.
+
+#### Registration sequence
+
+1. **Canonical readiness:** finish provenance-bearing people/entity identity, writer and publisher
+   shares, time/territory/right scope, authority grants and immutable registration snapshots.
+2. **Recipient validation:** re-validate the draft CWR generator against current recipient
+   specifications; preserve self-submit/export where direct submission is unavailable.
+3. **Business onboarding:** establish the approved Funūn entity/capacity, publisher identity and
+   recipient-assigned sender credentials. Evaluate MusicMark first as the documented direct
+   ASCAP/BMI/SOCAN CWR/EBR path; verify SESAC, GMR, The MLC and international paths separately.
+   Treat this as a two-payoff workstream: the publisher/society strategy may also unlock
+   publisher-facing IPI Pocket Edition and ISWC IPI Context Search access for identity consistency,
+   but registration and lookup access require separate eligibility evidence and credentials.
+4. **Recipient-approved sender pilot:** use the mode the recipient permits for technical onboarding;
+   if publisher/admin repertoire is required, submit one unambiguous work/share under Funūn's own
+   approved capacity and prove acknowledgement, rejection, correction and final registry state.
+5. **Registration-service pilot:** before launching the intended first user-facing service, submit
+   one non-administered work under a separate counsel-approved registration-only mandate and verify
+   no Funūn publishing claim is created.
+6. **Destination-by-destination release:** expose submission only where authority, transport,
+   validation, acknowledgements, corrections/recalls and production evidence exist.
+7. **Publishing administration:** add claims operations, royalty data, statements, accounting,
+   taxes, payouts, audit and support before offering the broader role or collecting income.
+
+The actionable business track is
+`.planning/todos/pending/2026-09-26-start-path-b-cwr-sender-business-track.md`; the technical
+baseline is `docs/cwr-plan.md`.
+
+#### Distribution sequence
+
+Keep the established ladder: disclosed partner-powered pilot → managed hybrid → selective direct
+DSP relationships. Partner selection must preserve canonical Funūn data, identifier continuity,
+full status/history export, correction/takedown control and a practical exit. Graduation requires
+catalogue scale, clean rights, fraud/content-policy performance, accepted DDEX/recipient profiles,
+acknowledgement reliability, reconciled statements, trustworthy payouts and staffed operations.
+
+Tracks:
+
+- `.planning/todos/pending/2026-09-01-distributor-api-partner-evaluation.md`
+- `.planning/todos/pending/2026-09-01-funun-owned-distributor-option.md`
+- `.planning/deliberations/ddex-production-readiness.md`
+
+#### Mandatory influence on future design and data collection
+
+Every future plan that touches identity, contributors, rights, recordings, releases, authority,
+payments or integrations must answer the ten questions in the direct-rights doctrine. At minimum,
+it must preserve:
+
+- person versus legal entity and professional versus legal identity;
+- writer share, publisher share, administration interest and master interest as distinct facts;
+- PRO/CMO, publisher and administrator relationships with provenance and effective scope;
+- publishing, registration, distribution, collection and payout authority as separate grants;
+- composition, recording version and release as separate Song Passport layers;
+- immutable submitted/delivered snapshots and successor corrections;
+- recipient IDs, acknowledgements, conflicts, rejections, recalls/revocations and takedowns;
+- provider-neutral canonical values plus replaceable adapters;
+- progressive, purpose-explained collection instead of one oversized onboarding form; and
+- least-privilege visibility for sensitive identity, rights, contact and financial data.
+
+No UI convenience may flatten these distinctions into one “owner,” “publisher” or “registered”
+field. No integration may make a middleman's schema the only usable copy of Funūn's truth.
+
+#### Claim and governance gate
+
+Until a named rail passes legal/business onboarding, recipient validation, acknowledgement and a
+controlled production pilot, Funūn may say the capability is **planned**, not that it registers,
+publishes, administers, collects or distributes. Owner approval of this direction does not
+authorize agents to submit applications, contact recipients, accept terms or send user data.

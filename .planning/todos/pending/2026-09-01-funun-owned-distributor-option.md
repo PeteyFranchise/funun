@@ -2,8 +2,8 @@
 created: 2026-09-01T19:00:00-04:00
 title: Evaluate Funūn becoming a branded, managed and eventually direct music distributor
 area: distribution-business
-priority: long-term-strategic-option
-status: ready-for-gsd-and-business-discussion
+priority: long-term-owner-approved-direction
+status: direction-approved-operating-model-and-sequencing-still-gated
 depends_on:
   - owner and board-level business-model approval
   - music-distribution counsel and accounting/compliance review
@@ -14,25 +14,28 @@ depends_on:
   - proven artist/label demand and catalogue operating history
 files:
   - .planning/ROADMAP.md
+  - .planning/deliberations/direct-rights-registration-publishing-distribution-doctrine.md
   - .planning/deliberations/ddex-production-readiness.md
   - .planning/todos/pending/2026-09-01-distributor-api-partner-evaluation.md
 ---
 
-## Strategic question
+## Owner-approved direction and remaining strategic question
 
-Should Funūn eventually become the distribution company that contracts with artists and
-labels, delivers their approved releases, receives DSP reporting/revenue and pays the
-right parties - instead of only preparing packages or connecting users to another
-distributor?
+**Owner decision, 2026-09-26:** Funūn should eventually become a distribution company,
+alongside its separate publisher/administrator and authorized rights-registration roles.
+The remaining question is not whether to pursue that destination, but which operating
+model and evidence gates get Funūn there responsibly.
 
 This is achievable, but it is a company-level operating model rather than a single
 software feature. It adds licensing relationships, financial custody, content-policy
 enforcement, fraud exposure, royalty accounting and ongoing partner operations to Funūn's
 responsibilities.
 
-This document records the option for discussion. Funūn does not currently claim to be a
-direct distributor, direct DSP provider, royalty administrator or Content ID partner.
-Nothing here authorizes an application, contract, external outreach or production launch.
+This document records the route to that approved destination. Funūn does not currently
+claim to be a direct distributor, direct DSP provider, royalty administrator or Content ID
+partner. Nothing here authorizes an application, contract, external outreach or production
+launch. The direct-rights doctrine governs shared data and the rule that distribution,
+publishing, registration and collection authority must remain separate.
 
 ## First define what "our own distributor" means
 
