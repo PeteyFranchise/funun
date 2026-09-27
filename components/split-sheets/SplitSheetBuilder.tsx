@@ -65,7 +65,8 @@ export type MyProfilePrefill = {
 }
 
 /** A single persisted party as loaded for edit mode — identity fields are
- * ALREADY live-resolved server-side (lib/split-sheets/live-identity.ts) for
+ * ALREADY resolved server-side
+ * (lib/split-sheets/resolve-party-identities.server.ts, Ruling 2) for
  * a claimed party; `kind` is precomputed by the server from that resolved
  * legal name (empty ⇒ 'fastAdd', present ⇒ 'full'). */
 export type ExistingSheetParty = {

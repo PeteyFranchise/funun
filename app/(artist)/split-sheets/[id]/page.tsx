@@ -9,7 +9,7 @@ import {
 } from '@/components/split-sheets/SplitSheetBuilder'
 import { StagedFlagPanel } from '@/components/split-sheets/StagedFlagPanel'
 import { composeLegalNameFromProfile } from '@/lib/split-sheets/agreement'
-import { resolvePartyIdentity, type LivePartyIdentitySource } from '@/lib/split-sheets/live-identity'
+import { resolvePartyIdentitiesForSheet } from '@/lib/split-sheets/resolve-party-identities.server'
 import type { SplitSheetStatus } from '@/lib/split-sheets/lifecycle'
 import type { ComposerRole } from '@/lib/metadata/schema'
 import {
@@ -21,18 +21,17 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+// Deliberately NO identity columns (legal_name/pro/ipi/publishing_designee/
+// administrator) — this page reads those exclusively through
+// resolvePartyIdentitiesForSheet() below, never from its own query. Pinned
+// by __tests__/split-sheet-identity-boundary.test.ts.
 type PartyDbRow = {
   id: string
   collaborator_id: string | null
   user_id: string | null
   name: string
-  legal_name: string | null
   email: string | null
-  pro: string | null
-  ipi: string | null
   role: string | null
-  publishing_designee: string | null
-  administrator: string | null
   split_percentage: number
   created_at: string
 }
@@ -96,7 +95,7 @@ export default async function SplitSheetDetailPage({
   const { data: sheetData } = await service
     .from('split_sheets')
     .select(
-      'id, status, song_name, artist_name, album_project_title, record_label, vault_project_id, initiator_user_id, split_sheet_parties(id, collaborator_id, user_id, name, legal_name, email, pro, ipi, role, publishing_designee, administrator, split_percentage, created_at)'
+      'id, status, song_name, artist_name, album_project_title, record_label, vault_project_id, initiator_user_id, split_sheet_parties(id, collaborator_id, user_id, name, email, role, split_percentage, created_at)'
     )
     .eq('id', id)
     .maybeSingle()
@@ -123,13 +122,29 @@ export default async function SplitSheetDetailPage({
     )
   }
 
+  // ── The one identity resolver (260926-v1w) — every party's identity for
+  // this sheet, resolved exactly once, server-side. Used below for BOTH
+  // the staged-flag "current value" display and the builder's party list,
+  // so the two can never show different answers for the same party. ────
+  const resolution = await resolvePartyIdentitiesForSheet(sheet.id)
+  const resolvedByPartyId = new Map(resolution.parties.map(p => [p.partyId, p]))
+  const emptyIdentity = {
+    legal_name: null,
+    pro: null,
+    ipi: null,
+    publishing_designee: null,
+    administrator: null,
+  }
+
   // ── R4 guided apply (§19-SPEC.md D-08), owner-only: resolve the staged
   // flag from the ?stagedFlag= deep-link. Defense in depth beyond the
   // flags table's own RLS ("Flagger or sheet owner can view flag",
   // migration 074): the flag's party must belong to THIS sheet and its
   // field must be in the closed allowlist before anything renders. This
   // NEVER writes split_sheet_parties or any term — read-only display
-  // support for the void-first / guided-pointer next step below. ────────
+  // support for the void-first / guided-pointer next step below. The
+  // "current value" shown is the RESOLVED identity (the same value the
+  // builder displays for this party), not a second independent read. ───
   let stagedFlagView: { fieldLabel: string; currentValue: string | null; suggestedValue: string } | null = null
   if (stagedFlag) {
     const { data: flagRow } = await service
@@ -141,9 +156,10 @@ export default async function SplitSheetDetailPage({
     const flaggedParty = flagRow ? parties.find(p => p.id === flagRow.split_sheet_party_id) : undefined
     if (flagRow && flaggedParty && (FLAGGABLE_FIELDS as readonly string[]).includes(flagRow.field)) {
       const field = flagRow.field as FlaggableField
+      const flaggedIdentity = resolvedByPartyId.get(flaggedParty.id)?.identity ?? emptyIdentity
       stagedFlagView = {
         fieldLabel: FLAGGABLE_FIELD_LABELS[field],
-        currentValue: currentValueForFlaggedField(field, flaggedParty),
+        currentValue: currentValueForFlaggedField(field, flaggedIdentity),
         suggestedValue: flagRow.suggested_value as string,
       }
     }
@@ -173,67 +189,8 @@ export default async function SplitSheetDetailPage({
 
   const [selfParty, ...otherPartiesRaw] = parties
 
-  // ── Live identity for every OTHER claimed party (§1, T-18-01a) ──────
-  // Batch: which of the other parties are linked to a CLAIMED
-  // collaborator, then a single artist_profiles read for those users —
-  // scoped strictly by the server-verified collaborators.claimed_by
-  // values, never a client-supplied id.
-  const collaboratorIds = otherPartiesRaw
-    .map(p => p.collaborator_id)
-    .filter((cid): cid is string => Boolean(cid))
-
-  const claimedByByCollaboratorId = new Map<string, string>()
-  if (collaboratorIds.length > 0) {
-    const { data: collabRows } = await service
-      .from('collaborators')
-      .select('id, claimed_by')
-      .in('id', collaboratorIds)
-    for (const row of (collabRows ?? []) as { id: string; claimed_by: string | null }[]) {
-      if (row.claimed_by) claimedByByCollaboratorId.set(row.id, row.claimed_by)
-    }
-  }
-
-  const claimedUserIds = Array.from(new Set(Array.from(claimedByByCollaboratorId.values())))
-  const claimedProfileByUserId = new Map<string, LivePartyIdentitySource>()
-  if (claimedUserIds.length > 0) {
-    const { data: profileRows } = await service
-      .from('user_profiles')
-      .select(
-        'id, pro, ipi, publisher, administrator, legal_first_name, legal_middle_name, legal_last_name, legal_name_suffix'
-      )
-      .in('id', claimedUserIds)
-    for (const row of (profileRows ?? []) as {
-      id: string
-      pro: string | null
-      ipi: string | null
-      publisher: string | null
-      administrator: string | null
-      legal_first_name: string | null
-      legal_middle_name: string | null
-      legal_last_name: string | null
-      legal_name_suffix: string | null
-    }[]) {
-      claimedProfileByUserId.set(row.id, {
-        pro: row.pro,
-        ipi: row.ipi,
-        publishing_designee: row.publisher,
-        administrator: row.administrator,
-        legal_name: composeLegalNameFromProfile(row) || null,
-      })
-    }
-  }
-
   const otherParties: ExistingSheetParty[] = otherPartiesRaw.map(p => {
-    const claimedUserId = p.collaborator_id ? claimedByByCollaboratorId.get(p.collaborator_id) : undefined
-    const claimedProfile = claimedUserId ? claimedProfileByUserId.get(claimedUserId) ?? null : null
-    const frozen: LivePartyIdentitySource = {
-      pro: p.pro,
-      ipi: p.ipi,
-      publishing_designee: p.publishing_designee,
-      administrator: p.administrator,
-      legal_name: p.legal_name,
-    }
-    const resolved = resolvePartyIdentity(frozen, claimedProfile, sheet.status)
+    const resolved = resolvedByPartyId.get(p.id)?.identity ?? emptyIdentity
     const resolvedLegalName = resolved.legal_name ?? ''
     return {
       partyId: p.id,

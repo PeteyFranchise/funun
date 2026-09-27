@@ -1,14 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { identityDigest } from '@/lib/split-sheets/identity-policy'
+import { resolvePartyIdentitiesForSheet } from '@/lib/split-sheets/resolve-party-identities.server'
 
 // ─── §7 identity-update allowlist ──────────────────────────────────────
 // Mass-assignment defense (V5): only these fields may be written by the
-// identity action, to the token's OWN party row (and, when linked, the
-// initiator's collaborators row). No free-text field — legal_name/pro/
-// ipi/publishing_designee/administrator are all structured rights-registry
-// values, never a caller-supplied note (P18-13).
+// identity action, to the token's OWN party row. No free-text field —
+// legal_name/pro/ipi/publishing_designee/administrator are all structured
+// rights-registry values, never a caller-supplied note (P18-13).
 const IDENTITY_FIELDS = ['legal_name', 'pro', 'ipi', 'publishing_designee', 'administrator'] as const
+
+// ─── §7 collaborators write-back allowlist (Ruling 2, Finding D) ───────
+// PERSON-SCOPED ONLY. legal_name/pro/ipi describe the person and are safe
+// to propagate onto their roster-wide collaborators row so future sheets
+// pick them up. publishing_designee and administrator are WORK-SPECIFIC —
+// a publisher/administrator choice for THIS song is not a fact about the
+// person, and collaborators.administrator exists (018/063) but this path
+// must never write it (Finding D: the tempting `publishing_designee ->
+// publisher` mapping is the same error in the opposite direction — a
+// work-specific choice would become a person-scoped default for every
+// future sheet). The two work-specific fields land ONLY on this sheet's
+// own split_sheet_parties row, never on collaborators.
+const COLLABORATOR_WRITEBACK_FIELDS = ['legal_name', 'pro', 'ipi'] as const
 
 // ─── POST /api/approve/[token] ─────────────────────────────────────────
 // Public endpoint — no auth required. The 256-bit token is the authorization
@@ -86,24 +100,48 @@ export async function POST(
     }
 
     // Write target resolved strictly from the token-matched party row
-    // above — never a client-supplied party id (T-18-01b).
+    // above — never a client-supplied party id (T-18-01b). identity_source
+    // and identity_submitted_at (migration 228) land in the SAME UPDATE —
+    // named 'token_holder_submitted' (Finding C), not 'party_asserted':
+    // this records only that the holder of this 256-bit token POSTed the
+    // value, never a claim that the described person asserted it — email
+    // control is unverified and out of scope.
     const { error: updateError } = await service
       .from('split_sheet_parties')
-      .update(update)
+      .update({ ...update, identity_source: 'token_holder_submitted', identity_submitted_at: now })
       .eq('id', party.id)
 
     if (updateError) {
       return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
     }
 
-    // Reuse on future sheets (deliberation §7): OVERWRITE the linked
+    // Reuse on future sheets (deliberation §7): propagate onto the linked
     // collaborators row too, when this party is linked to one — this is
     // the person's own verified data correcting itself (deliberation §1),
     // never a call into or mutation of backfill_claimed_collaborators()
     // (research Pitfall 5; that function stays additive/COALESCE for its
-    // own unrelated callers).
+    // own unrelated callers). PERSON-SCOPED FIELDS ONLY (Ruling 2, Finding
+    // D — see COLLABORATOR_WRITEBACK_FIELDS above): a publishing_designee
+    // or administrator correction stays on THIS sheet's party row and is
+    // never written to the roster-wide collaborators row.
     if (party.collaborator_id) {
-      await service.from('collaborators').update(update).eq('id', party.collaborator_id)
+      const collaboratorUpdate: Record<string, string | null> = {}
+      for (const key of COLLABORATOR_WRITEBACK_FIELDS) {
+        if (key in update) collaboratorUpdate[key] = update[key]
+      }
+      if (Object.keys(collaboratorUpdate).length > 0) {
+        const { error: collaboratorError } = await service
+          .from('collaborators')
+          .update(collaboratorUpdate)
+          .eq('id', party.collaborator_id)
+        // Checked, not swallowed (CLAUDE.md error-handling convention):
+        // the party row's own write already succeeded above, so this
+        // failure is reported as a partial-completion 500 rather than a
+        // false 200 — the caller can retry the whole correction.
+        if (collaboratorError) {
+          return NextResponse.json({ error: 'Request could not be completed.' }, { status: 500 })
+        }
+      }
     }
 
     return NextResponse.json({ ok: true })
@@ -156,6 +194,9 @@ export async function POST(
       }
     }
 
+    // The gate's approval-time baseline (best-effort, see header comment).
+    await recordApprovalIdentityBaseline(service, sheet.id, party.id)
+
     // Notify initiator (best-effort)
     await notifyInitiator(service, sheet, party.name, 'approved', null)
 
@@ -194,10 +235,47 @@ export async function POST(
   // Set sheet status to 'countered'
   await service.from('split_sheets').update({ status: 'countered' }).eq('id', sheet.id)
 
+  // The gate's approval-time baseline (best-effort, see header comment).
+  await recordApprovalIdentityBaseline(service, sheet.id, party.id)
+
   // Notify initiator (best-effort)
   await notifyInitiator(service, sheet, party.name, 'countered', counterSplit)
 
   return NextResponse.json({ ok: true, status: 'countered' })
+}
+
+// ─── The gate's approval-time baseline (Ruling 1) ──────────────────────
+/**
+ * Records this party's resolved-identity digest as the mint gate's
+ * approval-time baseline (identity_digest_at_approval, migration 228).
+ * Finding C: this is NOT a claim that the party reviewed or approved that
+ * identity — a party approves a SPLIT, not an identity (the correction UI
+ * is optional and collapsed). It records only the resolved identity at
+ * the instant this approve/counter response was recorded.
+ *
+ * BEST-EFFORT, matching the already-best-effort notifyInitiator call this
+ * runs alongside: a resolver hiccup must never block a party's
+ * approve/counter action from registering — that action is the one this
+ * route exists to record. The worst case on failure is that no baseline
+ * is recorded, which is exactly today's default state for every party on
+ * every sheet, before this column existed.
+ */
+async function recordApprovalIdentityBaseline(
+  service: ReturnType<typeof createServiceClient>,
+  sheetId: string,
+  partyId: string
+): Promise<void> {
+  try {
+    const resolution = await resolvePartyIdentitiesForSheet(sheetId)
+    const resolvedParty = resolution.parties.find(p => p.partyId === partyId)
+    if (!resolvedParty) return
+    await service
+      .from('split_sheet_parties')
+      .update({ identity_digest_at_approval: identityDigest(resolvedParty.identity) })
+      .eq('id', partyId)
+  } catch {
+    // Best-effort — see header comment above.
+  }
 }
 
 // ─── Initiator notification helper ─────────────────────────────────────

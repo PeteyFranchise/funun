@@ -8,7 +8,8 @@
 // Deliberately compares id/name and split percentage ONLY. A party's
 // identity fields (PRO/IPI/publishing designee/administrator/legal name)
 // can change purely because they live-linked from Settings
-// (lib/split-sheets/live-identity.ts, deliberation §1) — that is NOT a
+// (lib/split-sheets/resolve-party-identities.server.ts, deliberation §1,
+// Ruling 2) — that is NOT a
 // consensus-resetting change (P18-09), so this function is structurally
 // incapable of seeing it: the "before"/"after" snapshots it is handed
 // must already be the FROZEN split_sheet_parties values, and even then,

@@ -2,6 +2,15 @@
 // (18-01 Task 4). Mocked-Supabase style matching docuseal-webhook.test.ts:
 // a fake service client records every write so a test can assert both what
 // happened and, more importantly, what did NOT (T-18-01b).
+//
+// Updated 260926-v1w (Ruling 2 / Finding D): the collaborators write-back
+// used to overwrite ALL FIVE identity fields, silently discarding
+// legal_name/pro/ipi/administrator whenever a caller's payload happened to
+// include publishing_designee (object-spread semantics — the LAST key
+// wins, and publishing_designee has no matching column on `collaborators`,
+// so the whole `update(update)` call would 42703 with the old code, or
+// silently drop fields depending on client behaviour). This file now
+// asserts the CORRECTED, person-scoped-only write-back.
 
 const mockCreateServiceClient = jest.fn()
 jest.mock('@/lib/supabase/server', () => ({
@@ -19,7 +28,10 @@ const SHEET_ID = 'sheet-1'
 
 type Recorded = { updates: { table: string; values: Record<string, unknown>; matchCol: string; matchId: string }[] }
 
-function makeService(partyRow: Record<string, unknown> | null) {
+function makeService(
+  partyRow: Record<string, unknown> | null,
+  opts?: { failUpdateTable?: string }
+) {
   const recorded: Recorded = { updates: [] }
 
   const from = jest.fn((table: string) => {
@@ -32,7 +44,8 @@ function makeService(partyRow: Record<string, unknown> | null) {
     q.update = jest.fn((values: Record<string, unknown>) => ({
       eq: jest.fn((col: string, val: string) => {
         recorded.updates.push({ table, values, matchCol: col, matchId: val })
-        return Promise.resolve({ data: null, error: null })
+        const error = opts?.failUpdateTable === table ? { message: `injected failure: ${table}` } : null
+        return Promise.resolve({ data: null, error })
       }),
     }))
     return q
@@ -74,7 +87,7 @@ beforeEach(() => {
 })
 
 describe('POST /api/approve/[token] — update_identity action', () => {
-  it('writes ONLY the allowlisted fields to the token-matched party row', async () => {
+  it('writes the allowlisted identity fields PLUS the provenance stamp to the token-matched party row', async () => {
     const { client, recorded } = makeService(basePartyRow())
     mockCreateServiceClient.mockReturnValue(client)
 
@@ -104,21 +117,84 @@ describe('POST /api/approve/[token] — update_identity action', () => {
       ipi: '123456789',
       publishing_designee: 'Jane Publishing',
       administrator: 'Some Admin Co',
+      // Finding C: 'token_holder_submitted', never 'party_asserted' — this
+      // records only that the token holder POSTed the value.
+      identity_source: 'token_holder_submitted',
+      identity_submitted_at: expect.any(String),
     })
     expect(partyUpdate!.values).not.toHaveProperty('note')
     expect(partyUpdate!.values).not.toHaveProperty('approval_status')
   })
 
-  it('also overwrites the linked collaborators row when the party has a collaborator_id', async () => {
+  it('propagates ONLY the person-scoped fields (legal_name/pro/ipi) to the linked collaborators row — never publishing_designee/administrator (Ruling 2, Finding D)', async () => {
     const { client, recorded } = makeService(basePartyRow())
     mockCreateServiceClient.mockReturnValue(client)
 
-    await POST(jsonRequest({ action: 'update_identity', legal_name: 'Jane Smith' }), ctx())
+    const res = await POST(
+      jsonRequest({
+        action: 'update_identity',
+        legal_name: 'Jane Smith',
+        pro: 'ascap',
+        ipi: '123456789',
+        publishing_designee: 'Jane Publishing',
+        administrator: 'Some Admin Co',
+      }),
+      ctx()
+    )
 
+    expect(res.status).toBe(200)
+
+    // The party row keeps all five fields — the freeze/gate lives on this
+    // sheet's OWN row, which is exactly where a work-specific choice
+    // belongs.
+    const partyUpdate = recorded.updates.find(u => u.table === 'split_sheet_parties')
+    expect(partyUpdate!.values).toMatchObject({
+      publishing_designee: 'Jane Publishing',
+      administrator: 'Some Admin Co',
+    })
+
+    // The collaborators row — this exact regression the defect shipped —
+    // gets ONLY the person-scoped subset. Before the fix, a payload
+    // containing publishing_designee would silently discard legal_name,
+    // pro, ipi and administrator from this write (or 42703, depending on
+    // client version) because collaborators has no publishing_designee
+    // column.
     const collabUpdate = recorded.updates.find(u => u.table === 'collaborators')
     expect(collabUpdate).toBeDefined()
     expect(collabUpdate!.matchId).toBe(COLLABORATOR_ID)
-    expect(collabUpdate!.values).toEqual({ legal_name: 'Jane Smith' })
+    expect(collabUpdate!.values).toEqual({
+      legal_name: 'Jane Smith',
+      pro: 'ascap',
+      ipi: '123456789',
+    })
+    expect(collabUpdate!.values).not.toHaveProperty('publishing_designee')
+    expect(collabUpdate!.values).not.toHaveProperty('administrator')
+  })
+
+  it('skips the collaborators write entirely when the payload has no person-scoped fields (never issues a no-op UPDATE)', async () => {
+    const { client, recorded } = makeService(basePartyRow())
+    mockCreateServiceClient.mockReturnValue(client)
+
+    const res = await POST(
+      jsonRequest({ action: 'update_identity', publishing_designee: 'Jane Publishing', administrator: 'Some Admin Co' }),
+      ctx()
+    )
+
+    expect(res.status).toBe(200)
+    expect(recorded.updates.find(u => u.table === 'collaborators')).toBeUndefined()
+  })
+
+  it('surfaces a non-200 when the collaborators write-back fails, instead of a silent 200 (the swallowed-error defect)', async () => {
+    const { client, recorded } = makeService(basePartyRow(), { failUpdateTable: 'collaborators' })
+    mockCreateServiceClient.mockReturnValue(client)
+
+    const res = await POST(jsonRequest({ action: 'update_identity', legal_name: 'Jane Smith' }), ctx())
+
+    expect(res.status).not.toBe(200)
+    // The party row's own write already succeeded — this proves the
+    // failure surfaced is the collaborators write, not a masked earlier one.
+    expect(recorded.updates.some(u => u.table === 'split_sheet_parties')).toBe(true)
+    expect(recorded.updates.some(u => u.table === 'collaborators')).toBe(true)
   })
 
   it('never writes to another party row — the update target is resolved strictly from the token (T-18-01b)', async () => {

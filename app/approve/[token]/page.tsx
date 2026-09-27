@@ -4,6 +4,7 @@ import { resolvePartyPhase } from '@/lib/split-sheets/phase'
 import type { PartyPhase, SplitSheetStatus } from '@/lib/split-sheets/phase'
 import type { PartyChangeRecord } from '@/lib/split-sheets/change-summary'
 import { DOCUSEAL_EMBED_BASE } from '@/lib/esign/docuseal'
+import { resolvePartyIdentitiesForSheet } from '@/lib/split-sheets/resolve-party-identities.server'
 
 // Public page — no auth required. /approve is intentionally absent from
 // middleware isProtected (D-15, Plan 01 comment). Force-dynamic because
@@ -20,10 +21,15 @@ export default async function ApprovePage({ params }: Props) {
   const now = new Date().toISOString()
 
   // ── Token lookup — select sheet.status so phase resolution has it
-  // available (RESEARCH Pitfall 1 / gap fix 1). ────────────────────────
+  // available (RESEARCH Pitfall 1 / gap fix 1). Narrowed away from `*`
+  // (260926-v1w) — this page reads party identity fields exclusively
+  // through resolvePartyIdentitiesForSheet() below, never from its own
+  // query. Pinned by __tests__/split-sheet-identity-boundary.test.ts. ──
   const { data: party } = await service
     .from('split_sheet_parties')
-    .select('*, split_sheets(id, song_name, status, initiator_user_id, last_change_summary)')
+    .select(
+      'id, name, role, email, approval_status, token_expires_at, first_viewed_at, split_sheets(id, song_name, status, initiator_user_id, last_change_summary)'
+    )
     .eq('approval_token', token)
     .maybeSingle()
 
@@ -143,6 +149,19 @@ export default async function ApprovePage({ params }: Props) {
     signingSrc = slug ? `${DOCUSEAL_EMBED_BASE}/s/${slug}` : null
   }
 
+  // ── Reader #2: the same resolver every other surface calls, so this
+  // page can never show a different identity than the owner page, the
+  // mint route, or the Certificate of Signature (260926-v1w). Token
+  // possession is the authorization already established above. ────────
+  const resolution = await resolvePartyIdentitiesForSheet(resolvedSheet.id)
+  const resolvedIdentity = resolution.parties.find(p => p.partyId === (party!.id as string))?.identity ?? {
+    legal_name: null,
+    pro: null,
+    ipi: null,
+    publishing_designee: null,
+    administrator: null,
+  }
+
   return (
     <SplitApprovalView
       token={token}
@@ -157,11 +176,11 @@ export default async function ApprovePage({ params }: Props) {
       signingSrc={signingSrc}
       parties={(allParties ?? []) as { id: string; name: string; role: string | null; split_percentage: number }[]}
       partyIdentity={{
-        legalName: (party!.legal_name as string | null) ?? null,
-        pro: (party!.pro as string | null) ?? null,
-        ipi: (party!.ipi as string | null) ?? null,
-        publishingDesignee: (party!.publishing_designee as string | null) ?? null,
-        administrator: (party!.administrator as string | null) ?? null,
+        legalName: resolvedIdentity.legal_name,
+        pro: resolvedIdentity.pro,
+        ipi: resolvedIdentity.ipi,
+        publishingDesignee: resolvedIdentity.publishing_designee,
+        administrator: resolvedIdentity.administrator,
       }}
     />
   )
