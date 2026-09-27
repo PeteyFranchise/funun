@@ -203,7 +203,7 @@ export default async function OpportunityDetailPage({
       ) : (
         <p className="mt-6 rounded-lg border border-white/10 bg-white/[0.02] p-4 text-sm text-white/50">
           You don&rsquo;t have a matched project for this opportunity yet. Raise a project&rsquo;s
-          readiness in your vault to qualify.
+          readiness in your Sound Vault to qualify.
         </p>
       )}
     </div>

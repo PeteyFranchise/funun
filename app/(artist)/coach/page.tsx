@@ -75,7 +75,7 @@ export default async function CoachPage() {
       />
       <div className="flex-1 px-9 py-[30px]">
         {releases.length === 0 ? (
-          <p className="text-[14px] text-lavdim">Add a release to your vault to see its direct-deal eligibility.</p>
+          <p className="text-[14px] text-lavdim">Add a release to your Sound Vault to see its direct-deal eligibility.</p>
         ) : (
           <RightsCoach releases={releases} />
         )}
