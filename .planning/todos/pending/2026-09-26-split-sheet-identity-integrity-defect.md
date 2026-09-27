@@ -50,9 +50,14 @@ model — that is separate roadmap work (see "Deferred" below).
    return nothing.
 3. **Persist at mint, render from what was persisted.** The PDF, the signer preview and the audit
    evidence must all derive from one stored mint snapshot, not from three separate reads.
-4. **A pre-mint conflict gate.** If resolution at mint differs from what the approver last saw,
-   stop. Do not mint silently. (What the gate *offers* — block vs acknowledge — depends on the
-   Decision 2a ruling, still open. Build the gate; make its policy a single, changeable predicate.)
+4. **A pre-mint conflict gate that BLOCKS.** *(Owner ruling 2026-09-26 — see below.)* If
+   resolution immediately before mint differs from the identity the approver actually approved,
+   the request **fails closed**: no PDF rendered, no DocuSeal envelope created, no signer emails,
+   no spend, nothing frozen. Return a structured conflict the initiator can act on, offering:
+   the party's confirmed value; an alternate value that party has explicitly acknowledged for this
+   work; omission of a disputed optional identifier where the agreement permits; or stop and
+   resolve. It is a gate, not a wall — the resolution belongs on the same screen as the refusal.
+   Keep the policy itself one predicate so a future ruling can change it without touching the gate.
 5. **Fix the write-back.** Either drop `publishing_designee` from the collaborators payload and
    check the error, or remove the cross-row write entirely pending the authority ruling.
    **Do not leave a swallowed error in a rights path.**
@@ -75,10 +80,29 @@ which typechecks cleanly and passes every existing test. Require:
   four fields;
 - a negative `grep` assertion that no surface outside the resolver reads party identity columns.
 
-## Open rulings this fix does not decide
+## Rulings
 
-- **Decision 2a** — block vs warn-and-acknowledge at the signature boundary. Codex argues
-  warn-with-override is indefensible at mint against a subject-confirmed value; we had picked warn.
-  Build the gate so the answer is one predicate.
-- **Decision 1** — Codex rejects the owner's 2026-09-26 ruling and wants a masked email with no PRO
-  before email control is proven. Relevant to the claim screen, not to this fix.
+### Decision 2a — BLOCK at mint. Owner ruling, 2026-09-26. SETTLED.
+
+We had leaned toward warn-and-override; Codex argued that is indefensible at the signature
+boundary, and the owner ruled to block.
+
+**The reasoning, recorded so it is not relitigated.** Mint is the irreversible step — its own
+header comment says it is *"the ONLY path that spends money in Phase 17 — each completed document
+bills $0.20 and each signer gets a real email."* Before mint a wrong identifier is a field you
+edit. After mint it is a voided envelope with the spend already committed and every signer asked
+to sign again; and once any party signs, the document's own operative text governs — *"may not be
+modified or amended except by writing and signed by all Co-writers named above."*
+
+The decisive point is not the cost asymmetry, it is **who the disputed value belongs to.** The
+person clicking send is the initiator; the identifier in dispute is the other party's, and that
+party is not present at the moment of the click. A warning only protects anyone if its reader
+knows the right answer — here, by construction, they do not. That is why the conflict exists.
+
+A block costs roughly ten seconds, on the rare send where something genuinely disagrees.
+
+### Decision 1 — still open
+
+Codex rejects the owner's 2026-09-26 ruling (show name, email and PRO pre-authentication) and
+wants a masked email, no PRO, and no field-presence disclosure until email control is proven.
+Relevant to the claim screen, not to this fix. Not yet ruled.
