@@ -15,7 +15,7 @@ export function ItRoomTopBar({
   return (
     <div
       className="sticky top-0 z-[5] flex flex-wrap items-center gap-3 border-b border-[color:var(--border)] px-[28px] py-4 backdrop-blur-[8px]"
-      style={{ background: 'rgba(10,10,15,.82)' }}
+      style={{ background: 'rgba(0,0,0,.82)' }}
     >
       <span className="font-mono text-[12px] text-[color:var(--ink-3)]">
         The Playbook / IT Team /{' '}

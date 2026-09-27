@@ -80,7 +80,7 @@ export function PitchPlugForm({
             <select
               value={projectId}
               onChange={e => setProjectId(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-[#0E0D1E] px-3 py-2.5 text-sm text-white focus:border-white/30 focus:outline-none"
+              className="w-full rounded-lg border border-white/15 bg-card px-3 py-2.5 text-sm text-white focus:border-white/30 focus:outline-none"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>
@@ -93,7 +93,7 @@ export function PitchPlugForm({
 
         {/* Shareable links to include in your pitch */}
         {(artistHandle || selectedProject?.isPublic) && (
-          <div className="rounded-xl border border-white/10 bg-[#0E0D1E] p-4">
+          <div className="rounded-xl border border-white/10 bg-card p-4">
             <p className="mb-3 text-sm font-medium text-white/70">Links to include in your pitch</p>
             <div className="space-y-2">
               {artistHandle && (
@@ -132,7 +132,7 @@ export function PitchPlugForm({
                   className={`flex items-start gap-3 rounded-xl border p-3 text-left transition ${
                     isOn
                       ? 'border-[#818CF8] bg-[#1A1840]'
-                      : 'border-[#1A1838] bg-[#0E0D1E] hover:border-white/25'
+                      : 'border-card2 bg-card hover:border-white/25'
                   }`}
                 >
                   <span
@@ -199,7 +199,7 @@ function LinkRow({
   onCopy: () => void
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#1A1838] px-3 py-2">
+    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-card2 px-3 py-2">
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium text-white">{label}</span>
         <span className="block truncate text-xs text-white/40">{path}</span>

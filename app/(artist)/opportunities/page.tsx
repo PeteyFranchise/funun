@@ -77,7 +77,7 @@ export default async function OpportunitiesPage() {
               <Link
                 key={o.id}
                 href={`/opportunities/${o.id}`}
-                className="flex items-center justify-between gap-4 rounded-xl border border-[#1A1838] bg-[#0E0D1E] p-4 transition hover:border-white/30"
+                className="flex items-center justify-between gap-4 rounded-xl border border-card2 bg-card p-4 transition hover:border-white/30"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">

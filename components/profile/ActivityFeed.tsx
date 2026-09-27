@@ -21,7 +21,7 @@ const KIND: Record<ActivityKind, { stroke: string; path: React.ReactNode }> = {
   placement: { stroke: '#34D399', path: <path d="M20 6 9 17l-5-5" /> },
   release: { stroke: '#818CF8', path: <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></> },
   readiness: { stroke: '#F4C77B', path: <path d="M12 2v4m0 0a6 6 0 0 1 6 6c0 4-3 5-3 8H9c0-3-3-4-3-8a6 6 0 0 1 6-6Z" /> },
-  other: { stroke: '#C7CBF7', path: <circle cx="12" cy="12" r="9" /> },
+  other: { stroke: 'var(--lav)', path: <circle cx="12" cy="12" r="9" /> },
 }
 
 export function ActivityFeed({ state }: { state: ActivityState }) {

@@ -100,7 +100,7 @@ export function PitchCard({
   }
 
   return (
-    <div className="rounded-xl border border-[#1A1838] bg-[#0E0D1E] p-5">
+    <div className="rounded-xl border border-card2 bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">{curator?.name ?? curatorType}</p>

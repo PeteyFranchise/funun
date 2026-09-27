@@ -101,7 +101,7 @@ export function SlotGeneratePanel({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
 
-      <aside className="relative flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#0a0a0f] shadow-2xl">
+      <aside className="relative flex h-full w-full max-w-md flex-col border-l border-white/10 bg-ink shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
           <h2 className="mt-0.5 text-lg font-semibold text-white">{panelTitle}</h2>

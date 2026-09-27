@@ -105,7 +105,7 @@ export default async function OpportunityDetailPage({
 
       <div
         className={`mt-4 rounded-2xl border p-6 ${
-          opportunity.pete_exclusive ? 'border-l-[3px] bg-[#0F0D00]' : 'border-[#1A1838] bg-[#0E0D1E]'
+          opportunity.pete_exclusive ? 'border-l-[3px] bg-[#0F0D00]' : 'border-card2 bg-card'
         }`}
         style={
           opportunity.pete_exclusive ? { borderColor: '#F59E0B', borderLeftColor: '#F59E0B' } : undefined
@@ -175,7 +175,7 @@ export default async function OpportunityDetailPage({
 
       {/* Match + apply */}
       {match ? (
-        <div className="mt-6 rounded-2xl border border-[#1A1838] bg-[#0E0D1E] p-6">
+        <div className="mt-6 rounded-2xl border border-card2 bg-card p-6">
           <h2 className="text-lg font-semibold text-white">Why you matched</h2>
           <div className="mt-4">
             <MatchScoreBar score={match.score} showLabel />

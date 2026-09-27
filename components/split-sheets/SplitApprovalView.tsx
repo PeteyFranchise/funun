@@ -79,7 +79,7 @@ function PartyRows({ parties, partyId }: { parties: Party[]; partyId: string }) 
         <div
           key={p.id}
           className={`flex items-center justify-between rounded-lg px-3 py-2 ${
-            p.id === partyId ? 'bg-[#1A1838]' : ''
+            p.id === partyId ? 'bg-card2' : ''
           }`}
         >
           <div>
