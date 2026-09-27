@@ -170,7 +170,7 @@ export function AttachSheetPanel({
       <div className="rounded-[14px] border border-brandindigo/30 bg-brandindigo/5 p-4">
         <h2 className="text-[13px] font-bold text-white">Attach to a release</h2>
         {projects.length === 0 ? (
-          <p className="mt-2 text-[12.5px] text-lavdim">Create a Vault project first to attach this sheet.</p>
+          <p className="mt-2 text-[12.5px] text-lavdim">Create a Sound Vault project first to attach this sheet.</p>
         ) : (
           <>
             <div className="mt-3 space-y-2">
