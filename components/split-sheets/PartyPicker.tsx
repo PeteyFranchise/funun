@@ -454,11 +454,11 @@ function FastAddForm({
             <div>
               <label className={labelClass}>PRO</label>
               <select value={pro} onChange={e => setPro(e.target.value)} className={`mt-1 ${inputClass}`}>
-                <option value="" className="bg-[#0a0a0f]">
+                <option value="" className="bg-ink">
                   Select PRO (optional)
                 </option>
                 {PRO_VALUES.map(v => (
-                  <option key={v} value={v} className="bg-[#0a0a0f]">
+                  <option key={v} value={v} className="bg-ink">
                     {PRO_LABELS[v]}
                   </option>
                 ))}

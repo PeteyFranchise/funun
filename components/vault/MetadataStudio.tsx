@@ -498,7 +498,7 @@ export function MetadataStudio({
                   onChange={e => setTrack(t.id, { lyrics: e.target.value.slice(0, 20000) })}
                   rows={t.lyrics ? 8 : 3}
                   placeholder={t.language === 'zxx' ? 'Instrumental — no lyrics.' : 'Paste the song lyrics… (embedded into the file as ID3 lyrics and the metadata sidecar)'}
-                  className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-[#0E0D1E] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+                  className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-card px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
                 />
                 <p className="mt-1 text-right text-[11px] text-white/30">{t.lyrics.length.toLocaleString()} / 20,000</p>
               </div>
@@ -905,7 +905,7 @@ function ComposerEditor({
                 className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-3"
               >
                 {COMPOSER_ROLE_VALUES.map(r => (
-                  <option key={r} value={r} className="bg-[#0a0a0f]">{COMPOSER_ROLE_LABELS[r]}</option>
+                  <option key={r} value={r} className="bg-ink">{COMPOSER_ROLE_LABELS[r]}</option>
                 ))}
               </select>
               <select
@@ -917,7 +917,7 @@ function ComposerEditor({
                 className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-2"
               >
                 {PRO_VALUES.map(p => (
-                  <option key={p} value={p} className="bg-[#0a0a0f]">{PRO_LABELS[p]}</option>
+                  <option key={p} value={p} className="bg-ink">{PRO_LABELS[p]}</option>
                 ))}
               </select>
               {/* IPI field with save-to-profile nudge */}
@@ -1106,7 +1106,7 @@ function PerformerEditor({
             className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm text-white focus:border-white/30 focus:outline-none sm:col-span-3"
           >
             {PERFORMER_ROLES.map(r => (
-              <option key={r} value={r} className="bg-[#0a0a0f]">{PERFORMER_ROLE_LABELS[r]}</option>
+              <option key={r} value={r} className="bg-ink">{PERFORMER_ROLE_LABELS[r]}</option>
             ))}
           </select>
           <input
@@ -1464,7 +1464,7 @@ function SelectField({
         className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
       >
         {options.map(o => (
-          <option key={o.value} value={o.value} className="bg-[#0a0a0f]">{o.label}</option>
+          <option key={o.value} value={o.value} className="bg-ink">{o.label}</option>
         ))}
       </select>
     </label>

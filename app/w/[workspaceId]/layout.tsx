@@ -81,7 +81,7 @@ export default async function MemberWorkspaceLayout({ children, params }: Props)
         memberName={memberName}
       />
       <div className="flex min-h-screen flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(10,10,15,.72)] px-6 py-4 backdrop-blur-[20px]">
+        <header className="sticky top-0 z-40 flex items-center justify-end gap-3 border-b border-hair bg-[rgba(0,0,0,.72)] px-6 py-4 backdrop-blur-[20px]">
           <MessagesIcon userId={user.id} />
           <NotificationBell userId={user.id} />
         </header>

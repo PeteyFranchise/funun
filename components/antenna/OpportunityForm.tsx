@@ -14,12 +14,12 @@ const COMP_LABELS: Record<CompensationType, string> = {
 }
 
 const inputCls =
-  'w-full rounded-lg border border-white/15 bg-[#0E0D1E] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none'
+  'w-full rounded-lg border border-white/15 bg-card px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none'
 const labelCls = 'mb-1.5 block text-sm font-medium text-white/70'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-[#1A1838] bg-[#0E0D1E] p-5">
+    <section className="rounded-xl border border-card2 bg-card p-5">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-white/50">{title}</h2>
       <div className="mt-4 space-y-4">{children}</div>
     </section>
@@ -156,7 +156,7 @@ export function OpportunityForm({ demo }: { demo?: boolean }) {
                 className={`rounded-lg border px-4 py-2 text-sm transition ${
                   stages.has(n)
                     ? 'border-[#818CF8] bg-[#1A1840] text-white'
-                    : 'border-[#1A1838] text-white/50 hover:border-white/25'
+                    : 'border-card2 text-white/50 hover:border-white/25'
                 }`}
               >
                 Stage {n}

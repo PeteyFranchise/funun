@@ -17,8 +17,8 @@
 // page shell.
 export const SELP_CSS = `
 .selp{
-  --ground:#08070d; --panel:#0E0D1E; --panel2:#151330; --panel3:#1c1940;
-  --ink:#ffffff; --lav:#C7CBF7; --lavdim:#8b8fbf; --lavdim2:#6a6d99;
+  --ground:#08070d; --panel:var(--card); --panel2:#151330; --panel3:#1c1940;
+  --ink:#ffffff; --lav:#d4d4d8; --lavdim:#8b8fbf; --lavdim2:#6a6d99;
   --border:rgba(199,203,247,.12); --border2:rgba(199,203,247,.22);
   --indigo:#818CF8; --fuchsia:#D946EF; --grad:linear-gradient(105deg,#818CF8 0%,#D946EF 100%);
   --green:#34D399; --green-bg:rgba(52,211,153,.14);

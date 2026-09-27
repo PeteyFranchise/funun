@@ -14,7 +14,7 @@ const STATUS_STYLE: Record<MetricStatus, { chip: string; bar: string; label: str
 const GATE_STYLE: Record<GateState, { chip: string; dot: string }> = {
   qualifies: { chip: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30', dot: '#34D399' },
   almost: { chip: 'text-money2 bg-money/10 border-money/30', dot: '#F59E0B' },
-  locked: { chip: 'text-lavdim bg-white/[.04] border-hairstrong', dot: '#7c80b4' },
+  locked: { chip: 'text-lavdim bg-white/[.04] border-hairstrong', dot: 'var(--lav-dim)' },
 }
 
 function Field({
