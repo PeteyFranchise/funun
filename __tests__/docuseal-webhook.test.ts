@@ -72,6 +72,23 @@ function makeService(
     rpcs: [],
   }
 
+  // resolvePartyIdentitiesForSheet() (260926-v1w, Finding A) does its OWN
+  // independent read of `split_sheets` (status + party rows) — this is a
+  // FIFTH table read alongside the envelope resolve. Derived from this
+  // same envelope fixture's nested split_sheets, with a status added
+  // ('esign_pending' — the completion webhook only ever fires once a
+  // signature request went out, so the sheet is always post-mint at the
+  // point renderAndStoreCertificate calls the resolver). Because these
+  // fixture parties carry no collaborator_id, the resolver's live-profile
+  // lookup is skipped and resolveIdentityFields's post-mint branch returns
+  // each party's row unchanged — the resolved values equal the fixture's
+  // raw legal_name/pro/publishing_designee/administrator exactly, so the
+  // certificate assertions below are unaffected by this indirection.
+  const derivedSheetForResolver = (() => {
+    const nested = (envelopeRow as { split_sheets?: unknown } | null)?.split_sheets
+    return nested ? { ...(nested as Record<string, unknown>), status: 'esign_pending' } : null
+  })()
+
   const from = jest.fn((table: string) => {
     recorded.selectedTables.push(table)
     const q: Record<string, unknown> = {}
@@ -86,7 +103,15 @@ function makeService(
     q.eq = jest.fn(() => resolved())
     q.in = jest.fn(() => resolved())
     q.maybeSingle = jest.fn(() =>
-      Promise.resolve({ data: table === 'esign_envelopes' ? envelopeRow : null, error: null })
+      Promise.resolve({
+        data:
+          table === 'esign_envelopes'
+            ? envelopeRow
+            : table === 'split_sheets'
+              ? derivedSheetForResolver
+              : null,
+        error: null,
+      })
     )
     q.update = jest.fn((values: Record<string, unknown>) => {
       recorded.updates.push({ table, values })

@@ -10,6 +10,8 @@ import { buildFanoutRows } from '@/lib/split-sheets/distribution'
 import { renderCompletionCertificate } from '@/lib/vault/pdf/completion-certificate'
 import { buildSplitSheetExecutedNotification } from '@/lib/social/notifications'
 import { createNotification } from '@/lib/notifications'
+import { resolvePartyIdentitiesForSheet } from '@/lib/split-sheets/resolve-party-identities.server'
+import type { PartyIdentityFields } from '@/lib/split-sheets/identity-policy'
 
 // ─── POST /api/webhooks/docuseal ──────────────────────────────────────
 // The completion half of Funūn's first live e-sign integration (ESIGN-07).
@@ -50,16 +52,16 @@ import { createNotification } from '@/lib/notifications'
 /** The `X-Docuseal-Signature` header carrying `{unixSeconds}.{hexHmac}`. */
 const SIGNATURE_HEADER = 'X-Docuseal-Signature'
 
+// Deliberately NO identity columns (260926-v1w, Finding A) — this route
+// reads party identity exclusively through resolvePartyIdentitiesForSheet()
+// below, never from its own query. Pinned by
+// __tests__/split-sheet-identity-boundary.test.ts.
 type PartyRow = {
   id: string
   user_id: string | null
   name: string
   email: string | null
-  legal_name: string | null
   split_percentage: number
-  pro: string | null
-  publishing_designee: string | null
-  administrator: string | null
 }
 
 type SheetRow = {
@@ -301,9 +303,29 @@ async function renderAndStoreCertificate(args: {
   const { service, sheet, artifacts, executedPath, auditLogPath, certificatePath } = args
 
   try {
+    // Reader #4 (Finding A) — the same resolver every other surface calls.
+    // The sheet is post-mint at this point (the completion webhook only
+    // fires once a signature request went out), so this returns the
+    // PERSISTED MINT SNAPSHOT — the certificate then certifies the same
+    // identity the signed PDF carries, by construction. Inside this
+    // function's own try/catch: a resolver failure degrades the
+    // certificate the same NON-FATAL way a render/upload failure already
+    // does (see this function's header) — the executed document and audit
+    // log are already filed by this point in the route.
+    const resolvedIdentityByPartyId = new Map<string, PartyIdentityFields>(
+      (await resolvePartyIdentitiesForSheet(sheet.id)).parties.map(p => [p.partyId, p.identity])
+    )
+
     const pdf = await renderCompletionCertificate({
       // Funūn's own database rows. Every value here is something Funūn
-      // recorded itself.
+      // recorded itself. Identity fields (legalName/pro/publishingDesignee/
+      // administrator) come from resolvePartyIdentitiesForSheet() — this
+      // sheet is post-mint at this point, so the resolver returns the
+      // PERSISTED MINT SNAPSHOT, which is what makes this certificate
+      // certify the same identity the signed PDF carries, by construction
+      // (260926-v1w, Finding A). Never sheet.split_sheet_parties directly —
+      // that projection carries no identity columns (pinned by
+      // __tests__/split-sheet-identity-boundary.test.ts).
       funuunObserved: {
         songName: sheet.song_name,
         artistName: sheet.artist_name,
@@ -311,14 +333,23 @@ async function renderAndStoreCertificate(args: {
         recordLabel: sheet.record_label,
         splitSheetId: sheet.id,
         executedDocumentPath: executedPath,
-        parties: sheet.split_sheet_parties.map(p => ({
-          legalName: p.legal_name || p.name,
-          professionalName: p.legal_name && p.legal_name !== p.name ? p.name : null,
-          splitPercentage: Number(p.split_percentage),
-          pro: p.pro,
-          publishingDesignee: p.publishing_designee,
-          administrator: p.administrator,
-        })),
+        parties: sheet.split_sheet_parties.map(p => {
+          const identity = resolvedIdentityByPartyId.get(p.id) ?? {
+            legal_name: null,
+            pro: null,
+            ipi: null,
+            publishing_designee: null,
+            administrator: null,
+          }
+          return {
+            legalName: identity.legal_name || p.name,
+            professionalName: identity.legal_name && identity.legal_name !== p.name ? p.name : null,
+            splitPercentage: Number(p.split_percentage),
+            pro: identity.pro,
+            publishingDesignee: identity.publishing_designee,
+            administrator: identity.administrator,
+          }
+        }),
       },
       // Facts DocuSeal reported. Handed through from the adapter WITHOUT
       // reshaping — the adapter already returns this group in the exact
@@ -414,8 +445,7 @@ export async function POST(request: Request) {
         'esign_envelope_signers(id, split_sheet_party_id, docuseal_submitter_id), ' +
         'split_sheets(id, song_name, artist_name, album_project_title, record_label, ' +
         'vault_project_id, initiator_user_id, ' +
-        'split_sheet_parties(id, user_id, name, email, legal_name, split_percentage, ' +
-        'pro, publishing_designee, administrator))'
+        'split_sheet_parties(id, user_id, name, email, split_percentage))'
     )
     .eq('docuseal_submission_id', event.requestId)
     .maybeSingle()

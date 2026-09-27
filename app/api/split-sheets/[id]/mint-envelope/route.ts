@@ -16,6 +16,8 @@ import {
 import { sendSignatureInvite } from '@/lib/split-sheets/esign-invite'
 import type { SignatureInviteResult } from '@/lib/split-sheets/esign-invite'
 import { docusealProvider } from '@/lib/esign/docuseal'
+import { resolvePartyIdentitiesForSheet, type ResolvedParty } from '@/lib/split-sheets/resolve-party-identities.server'
+import { identityDriftSinceLastAction } from '@/lib/split-sheets/identity-policy'
 
 // ─── POST /api/split-sheets/[id]/mint-envelope ────────────────────────
 // Mints the DocuSeal envelope for a split sheet (ESIGN-04/ESIGN-13).
@@ -40,17 +42,16 @@ import { docusealProvider } from '@/lib/esign/docuseal'
 /** Statuses a mint may start from. Anything else is already past this stage. */
 const MINTABLE_STATUSES = new Set(['approved', 'draft'])
 
+// Deliberately NO identity columns (260926-v1w) — this route reads party
+// identity exclusively through resolvePartyIdentitiesForSheet() below,
+// never from its own query. Pinned by
+// __tests__/split-sheet-identity-boundary.test.ts.
 type PartyRow = {
   id: string
   name: string
   email: string | null
   role: string | null
-  pro: string | null
-  ipi: string | null
   split_percentage: number
-  legal_name: string | null
-  publishing_designee: string | null
-  administrator: string | null
 }
 
 /** Envelope history rows used to derive the initiator's recipient sets. */
@@ -125,9 +126,7 @@ export async function POST(
   // below, gated behind this initiator ownership check (audit #1).
   const { data: sheet, error: sheetError } = await apiClient
     .from('split_sheets')
-    .select(
-      '*, split_sheet_parties(id, name, email, role, pro, ipi, split_percentage, legal_name, publishing_designee, administrator)'
-    )
+    .select('*, split_sheet_parties(id, name, email, role, split_percentage)')
     .eq('id', id)
     .eq('initiator_user_id', user.id)
     .maybeSingle()
@@ -158,14 +157,40 @@ export async function POST(
     )
   }
 
+  // ── 2c. The one identity resolver (260926-v1w) — resolved ONCE, used
+  // for the legal-name gate below, the identity-drift gate (3a), and the
+  // agreement/PDF input. No surface after this point reads a party's
+  // identity columns independently. ───────────────────────────────────
+  const resolution = await resolvePartyIdentitiesForSheet(id)
+  const resolvedByPartyId = new Map<string, ResolvedParty>(resolution.parties.map(p => [p.partyId, p]))
+
+  function resolvedIdentityFor(partyId: string) {
+    return (
+      resolvedByPartyId.get(partyId)?.identity ?? {
+        legal_name: null,
+        pro: null,
+        ipi: null,
+        publishing_designee: null,
+        administrator: null,
+      }
+    )
+  }
+
   // A split sheet is a legally-binding record of WHO owns what. A party
   // fast-added by email/phone carries a placeholder `name` but an empty
-  // `legal_name`, which would bind them to the executed instrument under a
-  // non-legal (or em-dash) name. Block the mint until every party has a real
-  // legal name — the initiator's own row is populated + locked from Settings,
-  // so this targets not-yet-completed recipients. Runs with the email gate,
-  // BEFORE any DocuSeal spend. (Phase 18 review WR / research A4.)
-  const missingLegalName = partiesMissingLegalName(parties)
+  // legal name, which would bind them to the executed instrument under a
+  // non-legal (or em-dash) name. Block the mint until every party's
+  // RESOLVED legal name is real — checking the stored row (as this used
+  // to) blocks spuriously when a claimed party's profile supplies the
+  // legal name, and passes wrongly when the stored value is stale. Runs
+  // with the email gate, BEFORE any DocuSeal spend. (Phase 18 review WR /
+  // research A4; behaviour corrected 260926-v1w.)
+  const partiesForLegalNameCheck = parties.map(p => ({
+    id: p.id,
+    name: p.name,
+    legal_name: resolvedIdentityFor(p.id).legal_name,
+  }))
+  const missingLegalName = partiesMissingLegalName(partiesForLegalNameCheck)
   if (missingLegalName.length > 0) {
     return NextResponse.json(
       {
@@ -182,12 +207,44 @@ export async function POST(
   const now = new Date()
   const nowIso = now.toISOString()
 
-  // ── 3. PRE-FLIGHT GATES — both run BEFORE any DocuSeal call ────────
-  // Kept together and first so the two things that must never reach a
-  // real artist's signature are visibly adjacent: unreviewed legal
-  // language, and uncapped spend.
+  // ── 3. PRE-FLIGHT GATES — ALL run BEFORE any DocuSeal call ──────────
+  // Kept together and first so the things that must never reach a real
+  // artist's signature are visibly adjacent: a stale identity nobody
+  // re-confirmed, unreviewed legal language, and uncapped spend.
 
-  // 3a. Counsel gate (P17-09a, T-17-35). No-op outside production;
+  // 3a. IDENTITY DRIFT GATE (Ruling 1, 260926-v1w). BLOCKS — no PDF
+  // rendered, no DocuSeal envelope, no signer emails, no spend, nothing
+  // frozen — when a party's freshly-resolved identity differs from the
+  // identity in force when they last approved/countered. No baseline
+  // (nobody has responded yet, or their row predates migration 228) means
+  // no possible conflict — the fast lane is unaffected, exactly as before
+  // this gate existed (T-v1w-06, accepted DoS disposition).
+  const identityConflicts = signableParties.flatMap(p => {
+    const resolvedParty = resolvedByPartyId.get(p.id)
+    if (!resolvedParty) return []
+    return identityDriftSinceLastAction(
+      {
+        partyId: p.id,
+        partyName: p.name,
+        identityDigestAtApproval: resolvedParty.identity_digest_at_approval,
+        ...resolvedParty.frozen,
+      },
+      resolvedParty.identity
+    )
+  })
+
+  if (identityConflicts.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "One or more collaborators' details have changed since they last responded to this split sheet.",
+        conflicts: identityConflicts,
+      },
+      { status: 409 }
+    )
+  }
+
+  // 3b. Counsel gate (P17-09a, T-17-35). No-op outside production;
   // throws in production while AGREEMENT_CLAUSES is unreviewed.
   try {
     assertCounselReviewedForProduction()
@@ -249,16 +306,29 @@ export async function POST(
   // agreement date, and every party's legal name / PRO / publishing
   // designee / administrator. A reduced input would put the old ambiguous
   // single-percentage table in front of real signers.
-  const agreementParties: SplitSheetParty[] = signableParties.map(p => ({
-    name: p.name,
-    email: p.email,
-    pro: p.pro,
-    ipi: p.ipi,
-    role: p.role,
-    split_percentage: Number(p.split_percentage),
-    legal_name: p.legal_name,
-    publishing_designee: p.publishing_designee,
-    administrator: p.administrator,
+  const agreementParties: SplitSheetParty[] = signableParties.map(p => {
+    const identity = resolvedIdentityFor(p.id)
+    return {
+      name: p.name,
+      email: p.email,
+      pro: identity.pro,
+      ipi: identity.ipi,
+      role: p.role,
+      split_percentage: Number(p.split_percentage),
+      legal_name: identity.legal_name,
+      publishing_designee: identity.publishing_designee,
+      administrator: identity.administrator,
+    }
+  })
+
+  // ── The exact resolved-identity array the PDF above was built from,
+  // persisted verbatim in the SAME insert that records the envelope
+  // (step 6 below) — every post-mint reader (the approval page, the
+  // Certificate of Signature) then gets this snapshot back from
+  // resolvePartyIdentitiesForSheet(), not a second live read. ──────────
+  const partyIdentitySnapshot = signableParties.map(p => ({
+    partyId: p.id,
+    identity: resolvedIdentityFor(p.id),
   }))
 
   const { data: initiatorProfile } = await service
@@ -378,6 +448,9 @@ export async function POST(
       // Unbilled until completion — DocuSeal bills per COMPLETED document
       // (provider gate, 2026-07-20). The webhook (17-07) flips this.
       billed: false,
+      // The one persisted mint snapshot (260926-v1w, migration 228) — the
+      // exact resolved-identity array the PDF above was rendered from.
+      party_identity_snapshot: partyIdentitySnapshot,
     })
     .select('id')
     .single()
