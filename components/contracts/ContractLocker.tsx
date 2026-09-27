@@ -391,7 +391,7 @@ function AttachPanel({ row, projects }: { row: ContractRow; projects: { id: stri
         This sheet isn&apos;t linked to a project yet — attaching moves it (and this project&apos;s readiness) into that release.
       </p>
       {projects.length === 0 ? (
-        <p className="mt-3 text-[12.5px] text-lavdim">Create a Vault project first to attach this sheet.</p>
+        <p className="mt-3 text-[12.5px] text-lavdim">Create a Sound Vault project first to attach this sheet.</p>
       ) : (
         <div className="mt-3 flex items-center gap-2">
           <select

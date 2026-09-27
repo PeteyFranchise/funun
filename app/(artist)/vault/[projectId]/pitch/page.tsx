@@ -50,7 +50,7 @@ export default async function VaultPitchPage({
         <h1 className="mt-1 text-2xl font-semibold text-white">Pitch {project.title}</h1>
         <div className="mt-3 rounded-lg border border-[#818CF8]/30 bg-[#818CF8]/10 px-4 py-2.5 text-sm text-[#C7CBF7]">
           Pitching <span className="font-medium text-white">{project.title}</span> — all fields
-          pre-filled from your vault. Just pick who you&rsquo;re pitching.
+          pre-filled from your Sound Vault. Just pick who you&rsquo;re pitching.
         </div>
       </header>
 

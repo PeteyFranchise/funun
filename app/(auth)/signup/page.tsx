@@ -410,7 +410,7 @@ function SignUpFlow() {
         <h1 className={AUTH_H1}>Check your email</h1>
         <p className={AUTH_SUB}>
           We sent a confirmation link to <span className="text-white">{email}</span>. Click it to
-          finish setting up your vault.
+          finish setting up your Sound Vault.
         </p>
         <Link href="/signin" className={`mt-6 inline-block ${AUTH_INLINE_LINK}`}>
           Back to sign in

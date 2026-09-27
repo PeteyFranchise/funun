@@ -45,7 +45,7 @@ export function RightsCoach({ releases }: { releases: CoachRelease[] }) {
   const current = releases.find(r => r.projectId === selectedId) ?? releases[0]
 
   if (!current) {
-    return <p className="text-[14px] text-lavdim">Add a release to your vault to see its deal eligibility.</p>
+    return <p className="text-[14px] text-lavdim">Add a release to your Sound Vault to see its deal eligibility.</p>
   }
 
   const { result } = current
