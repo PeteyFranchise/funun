@@ -116,6 +116,19 @@ const RETIRED_DECIMAL_PATTERNS = [
   /rgba\(\s*124\s*,\s*128\s*,\s*180\s*,/i,
 ]
 
+// Decimal-rgba spelling of retired hex #c7cbf7, at ANY alpha. This is the
+// hole the original RETIRED_DECIMAL_PATTERNS list left open: 199,203,247 is
+// the decimal spelling of #c7cbf7, which RETIRED_HEXES already lists above,
+// but the decimal-pattern list above covered only four of the five retired
+// hexes and omitted this one. A decimal rgba contains no '#', so the hex
+// scan is structurally blind to it -- PR #118's repaint was partial for
+// exactly this reason. This pattern is intentionally kept separate from
+// RETIRED_DECIMAL_PATTERNS (and its own describe block below, not folded
+// into "no retired palette literal survives") so the existing hex/decimal
+// agreement test keeps passing throughout this fix, and the new scan's RED
+// state is legible on its own.
+const LAVENDER_FAMILY_PATTERN = /rgba\(\s*199\s*,\s*203\s*,\s*247\s*,/i
+
 // The whole allowlist. If the matcher needs more entries to go green, the
 // matcher is wrong, not the code.
 const ALLOWLIST = [
@@ -159,6 +172,41 @@ describe('no retired palette literal survives', () => {
         const hexHit = RETIRED_HEXES.some(hex => lower.includes(hex))
         const decimalHit = RETIRED_DECIMAL_PATTERNS.some(re => re.test(line))
         if (hexHit || decimalHit) {
+          offenders.push(`${rel}:${idx + 1}`)
+        }
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+// ─── Half (c): the lavender rgba family, at any alpha, is gone ────────────
+//
+// Same walker, same allowlist as half (b) -- lib/email is carved out
+// identically. This scan is deliberately its own describe block rather than
+// an addition to RETIRED_DECIMAL_PATTERNS: folding it in would make the
+// existing half (b) test fail too, which would hide the fact that half (b)
+// was never broken -- only the pattern list feeding it had a gap.
+
+describe('no lavender rgba literal survives at any alpha', () => {
+  const files = SCAN_DIRS.flatMap(d => walk(path.join(ROOT, d)))
+
+  it('non-vacuity: the walker found a realistic number of source files', () => {
+    expect(files.length).toBeGreaterThan(200)
+  })
+
+  it('no file outside the lib/email carve-out contains the lavender rgba family at any alpha', () => {
+    const offenders: string[] = []
+    for (const file of files) {
+      const rel = path.relative(ROOT, file)
+      if (ALLOWLIST.includes(rel)) continue
+      // RAW text, comments included -- same deliberate choice as half (b):
+      // a comment naming a retired colour is a stale claim about the
+      // palette and should fail the same gate the code does.
+      const raw = readFileSync(file, 'utf8')
+      const lines = raw.split('\n')
+      lines.forEach((line, idx) => {
+        if (LAVENDER_FAMILY_PATTERN.test(line)) {
           offenders.push(`${rel}:${idx + 1}`)
         }
       })

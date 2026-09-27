@@ -196,7 +196,7 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
           <div
             className="mx-auto mt-2 flex h-[300px] w-[300px] items-center justify-center rounded-full"
             style={{
-              background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(199,203,247,.12) ${score}% 100%)`,
+              background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(255,255,255,.08) ${score}% 100%)`,
             }}
           >
             <div className="flex h-[244px] w-[244px] flex-col items-center justify-center rounded-full bg-[#0c0b1a]">
@@ -213,7 +213,7 @@ export default async function ReadinessPage({ params }: { params: Promise<{ proj
                 {complete} of {total} complete
               </span>
             </div>
-            <div className="h-[9px] overflow-hidden rounded-[5px] bg-[rgba(199,203,247,.12)]">
+            <div className="h-[9px] overflow-hidden rounded-[5px] bg-hair">
               <div className="h-full rounded-[5px] bg-grad" style={{ width: `${pct}%` }} />
             </div>
           </div>
