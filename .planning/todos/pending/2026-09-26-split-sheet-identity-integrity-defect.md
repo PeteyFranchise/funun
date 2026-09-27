@@ -42,12 +42,23 @@ future sheets" behaviour silently does nothing.
 Deliberately narrow. This is containment of a shipped defect, **not** the authority/provenance
 model — that is separate roadmap work (see "Deferred" below).
 
-1. **One server-side resolver.** Extract a single loader (Codex suggests
-   `lib/split-sheets/resolve-party-identities.server.ts`) that takes a sheet id and returns fully
+1. **One server-side resolver — and fix its policy, do not just reuse it.**
+   `lib/split-sheets/resolve-party-identities.server.ts`, taking a sheet id and returning fully
    resolved parties. It must be the only way any surface obtains party identity.
-2. **Three call sites onto it** — the owner page, the approval page, and the mint route. After this,
-   a `grep` for direct `split_sheet_parties` identity-column reads outside the resolver should
-   return nothing.
+   **`resolvePartyIdentity()` is itself wrong for two of its five fields** and must not simply be
+   wrapped: it overwrites all of `pro, ipi, publishing_designee, administrator, legal_name` with
+   any non-blank profile value (`lib/split-sheets/live-identity.ts:47-92`). Per the accepted
+   authority rule, `publishing_designee` and `administrator` are **work-specific** — a publisher
+   for one song is not a fact about a person — and a profile default must not erase a
+   work-specific choice. Routing more callers through the current policy would spread the bug.
+2. **Every read onto it — and note there are four WRITERS, not three readers.**
+   Readers to convert: the owner page, the approval page, the mint route. Writers that legitimately
+   mutate these columns and must stay permitted: the creation route, the guest approval route
+   (`app/api/approve/[token]/route.ts`), the builder save, and the track/composer sync
+   (`app/api/vault/[projectId]/tracks/[trackId]/route.ts:189-202`, which matches parties by
+   `normalizeName()` — a fragile join, recorded as a hazard, not fixed here).
+   The rule is: **designated routes may write; nothing outside the resolver may read for display
+   or minting.**
 3. **Persist at mint, render from what was persisted.** The PDF, the signer preview and the audit
    evidence must all derive from one stored mint snapshot, not from three separate reads.
 4. **A pre-mint conflict gate that BLOCKS.** *(Owner ruling 2026-09-26 — see below.)* If
@@ -58,7 +69,15 @@ model — that is separate roadmap work (see "Deferred" below).
    work; omission of a disputed optional identifier where the agreement permits; or stop and
    resolve. It is a gate, not a wall — the resolution belongs on the same screen as the refusal.
    Keep the policy itself one predicate so a future ruling can change it without touching the gate.
-5. **Fix the write-back.** Either drop `publishing_designee` from the collaborators payload and
+5. **A minimal provenance marker on the party row.** The gate cannot work without one. Approval is
+   **not** identity confirmation — the correction UI is optional, collapsed and separate from
+   approve/counter/sign (`components/split-sheets/SplitApprovalView.tsx:229-260`) — and
+   `first_viewed_at` is only a page-visit stamp (`app/approve/[token]/page.tsx:87-99`), so it
+   cannot stand in. Persist enough to distinguish *"the recipient asserted this"* from *"the
+   inviter copied it from their roster"*. This is not the deferred authority model; it is the
+   minimum the blocking gate logically requires.
+
+6. **Fix the write-back.** Either drop `publishing_designee` from the collaborators payload and
    check the error, or remove the cross-row write entirely pending the authority ruling.
    **Do not leave a swallowed error in a rights path.**
 
@@ -67,6 +86,20 @@ model — that is separate roadmap work (see "Deferred" below).
 Codex's Phases 2–5: the authority/provenance model, the guest email-verification flow, the existing-
 Member review task, disagreement resolution and propagation, and retention. Those need owner
 rulings and probably counsel. Do not let them expand this fix.
+
+## Enforcement — a CI boundary test, not a convention
+
+Convention is precisely what failed here: the resolver already existed and two of three surfaces
+did not call it. Add `__tests__/split-sheet-identity-boundary.test.ts` following the pattern this
+repo already uses (`__tests__/member-api-boundary.test.ts`,
+`__tests__/placements-client-server-boundary.test.ts` both `readFileSync` a protected route and
+assert on its source). CI runs Jest on every PR and every push to main
+(`.github/workflows/quality.yml:3-6`, `:30`), so this is an enforceable rule rather than a comment.
+
+It should fail unless the resolver is the only module reading those columns for display or mint,
+and unless the three surfaces import it. A branded `ResolvedPartyIdentity` type at the PDF sink is
+worth adding as defence in depth, but not as the primary control — TypeScript is structurally
+typed and an assertion bypasses it.
 
 ## Verification this fix needs
 
