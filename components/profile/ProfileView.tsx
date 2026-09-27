@@ -98,7 +98,7 @@ function ReleaseCard({ r }: { r: ProfileRelease }) {
         <span className="absolute bottom-3 left-3 flex h-[34px] w-[34px] items-center justify-center rounded-full border border-white/20 bg-black/55 backdrop-blur">
           <svg viewBox="0 0 24 24" className="ml-[2px] h-[14px] w-[14px]" fill="#fff"><path d="M8 5v14l11-7z" /></svg>
         </span>
-        <span className="absolute -bottom-[18px] right-[14px] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_6px_16px_rgba(0,0,0,.5)]" style={{ background: `conic-gradient(${b.arc} 0 ${r.score}%,rgba(199,203,247,.16) ${r.score}% 100%)` }}>
+        <span className="absolute -bottom-[18px] right-[14px] flex h-12 w-12 items-center justify-center rounded-full shadow-[0_6px_16px_rgba(0,0,0,.5)]" style={{ background: `conic-gradient(${b.arc} 0 ${r.score}%,rgba(255,255,255,.11) ${r.score}% 100%)` }}>
           <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#0c0b1a] text-[15px] font-extrabold tnum" style={{ color: b.value }}>{r.score}</span>
         </span>
       </Link>

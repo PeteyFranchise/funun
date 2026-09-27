@@ -134,7 +134,7 @@ function Toggle({
         className="relative mt-0.5 h-[22px] w-[38px] flex-none rounded-full border transition"
         style={{
           background: checked ? 'var(--indigo, #818CF8)' : 'var(--panel-2)',
-          borderColor: checked ? 'transparent' : 'var(--border-2, rgba(199,203,247,.22))',
+          borderColor: checked ? 'transparent' : 'var(--border-2, rgba(255,255,255,.16))',
         }}
       >
         <span
@@ -298,11 +298,11 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
 
         <div
           className="mt-3.5 flex items-center gap-2.5 rounded-xl border border-dashed p-[11px_13px] text-[12.5px] text-[color:var(--ink-3)]"
-          style={{ borderColor: 'var(--border-2, rgba(199,203,247,.22))', background: 'var(--panel-2)' }}
+          style={{ borderColor: 'var(--border-2, rgba(255,255,255,.16))', background: 'var(--panel-2)' }}
         >
           <span
             className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg border text-[16px]"
-            style={{ borderColor: 'var(--border-2, rgba(199,203,247,.22))', background: 'color-mix(in srgb, var(--indigo,#818CF8) 12%, transparent)' }}
+            style={{ borderColor: 'var(--border-2, rgba(255,255,255,.16))', background: 'color-mix(in srgb, var(--indigo,#818CF8) 12%, transparent)' }}
           >
             {prospectImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -335,7 +335,7 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
         <div className="mt-3 flex items-center gap-3.5">
           <div
             className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-xl border text-[26px]"
-            style={{ borderColor: 'var(--border-2, rgba(199,203,247,.22))', background: 'var(--panel-2)' }}
+            style={{ borderColor: 'var(--border-2, rgba(255,255,255,.16))', background: 'var(--panel-2)' }}
           >
             {prospectImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -347,7 +347,7 @@ export function HealthRulesForm({ config, sampleSignals, configActionPath, prosp
           <div>
             <label
               className="inline-block cursor-pointer rounded-[10px] border px-3.5 py-2 text-[13px] font-bold text-[color:var(--ink)]"
-              style={{ borderColor: 'var(--border-2, rgba(199,203,247,.22))' }}
+              style={{ borderColor: 'var(--border-2, rgba(255,255,255,.16))' }}
             >
               {uploading ? 'Uploading…' : 'Upload / replace image'}
               <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageChange} disabled={uploading} />

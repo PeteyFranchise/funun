@@ -33,7 +33,7 @@ export function OpportunityCard({
       <div
         className="flex h-16 w-16 flex-none items-center justify-center rounded-full"
         style={{
-          background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(199,203,247,.14) ${score}% 100%)`,
+          background: `conic-gradient(#818CF8 0%, #D946EF ${score}%, rgba(255,255,255,.10) ${score}% 100%)`,
         }}
       >
         <span className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#0c0b1a]">

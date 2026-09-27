@@ -198,7 +198,7 @@ export function BenchmarkView({
                     {m.value}
                     <span className="text-[13px] font-semibold text-lavdim">{m.unit}</span>
                   </span>
-                  <div className="relative h-[8px] flex-1 overflow-hidden rounded-full bg-[rgba(199,203,247,.12)]">
+                  <div className="relative h-[8px] flex-1 overflow-hidden rounded-full bg-hair">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.bar }} />
                     <span className="absolute right-0 top-1/2 h-[14px] -translate-y-1/2 border-l border-dashed border-white/50" title="benchmark" />
                   </div>
