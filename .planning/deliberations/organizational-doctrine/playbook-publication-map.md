@@ -57,6 +57,7 @@ The Playbook must support a page or document entry that preserves:
 | Training & Enablement | TMS | Training & Enablement | Internal |
 | Trust & Safety | Trust & Safety | Role Doctrine | Internal; case information excluded |
 | Support Operations | Support Operations | Role Doctrine | Internal |
+| Cookups Product Doctrine | Company-wide | Standards & Doctrine | Internal; future-facing capability warning required |
 | Funūn Deal Flow | Company-wide | Cross-Functional Operations | Internal |
 | Workforce & Commercial Scale | Leadership | Workforce Planning | Restricted |
 | Six-Month Launch Growth Plan | Leadership | Launch Planning | Restricted |
@@ -140,6 +141,9 @@ Checking off a Gameplan does not prove that an approval, licence, payment, verif
 7. Publish through the existing approval workflow.
 8. Record the publication date and superseded source entries.
 9. Never auto-overwrite later in-app edits when a source file changes; surface a reviewable source-change notice.
+
+Future-facing product doctrine may be published only with its capability-status warning intact.
+Roadmap approval is not evidence that the described behavior is deployed, entitled or available.
 
 ## Publication readiness console
 

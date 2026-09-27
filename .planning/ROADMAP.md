@@ -17,6 +17,7 @@
 - 🔭 **Post–Release 39 research — Playbook Long-Horizon Exploration** — preserve, but do not yet schedule, research into workforce skills and capacity forecasting; regulatory and jurisdiction-specific overlays; advanced organizational simulations; cross-department benchmarking; voice-based training; acquisition/merger onboarding; anonymous doctrine-quality reporting; enterprise partner administration; historical decision intelligence; and custom automation/integration marketplaces. Each requires evidence, explicit human-decision boundaries, and security/privacy/legal/accessibility review before it can receive a release number. See `.planning/deliberations/playbook-post-39-research-roadmap.md`.
 - 🧭 **Contract Locker final destination — Independent Legal Services** — after governed templates and narrow self-service terms, partner with qualified law firms so users can request bespoke matters under direct firm engagement and firm-set a la carte pricing; requires lengthy GSD/legal discussion, outside business development and internal platform development)
 - 📝 **Near-term — Phase 37.2: Writer's Room Live Collaboration** — block-level presence, section-aware lyrics/notes editing, soft locks, snapshots, disconnect recovery and meaningful diary events; owner-approved for GSD discussion and planning after the Phase 37.1 device gate)
+- 🧭 **Writer's Room expansion — Cookups** — host-scheduled creative events with shareable Cookup cards, local-time scheduling, account-free attendance and separate viewer/creative passes that may be free, paid, invite-only or application-based. **Studio ($19/month) is the core unlock for starting Writer's Room video and hosting Cookups; the host/owner entitlement funds the session, while Writer Members and account-free guests may join without subscribing. Studio includes one camera per creative participant plus a shared screen; Team ($49/month) adds paired secondary angles, co-host production switching, saved scenes, capacity, simulcast and analytics rather than becoming the first hosting gate.** Open Studio supports a scalable audience around a small creative stage; an optional curated program can simulcast to supported social destinations without exposing the private Writer's Room. A connected camera/screen, stage source, selected program, external simulcast and recording are separate consent/control states. **Cookups by Funūn becomes a focused mobile-first audience destination for discovery, Following, Upcoming, Live now, tickets and authorized replays without creative onboarding; it shares Funūn's identity/backend, while a separate native viewer shell remains evidence-gated.** Paid launch is gated on transparent immutable order economics, a reconciled money ledger, verified provider-managed host payouts, refunds/disputes and financial operations. Standard planning economics are a 5% Studio technology fee with processing shown separately; any 3% Team discount remains cost-gated before publication. Ticket purchase or host payout never creates music credit, ownership or splits. Build as staged event-identity, live-studio, broadcast, paid-commerce and marketplace work; keep media/broadcast vendor choices open. Governed by `.planning/deliberations/cookups-product-doctrine.md`; implementation brief at `.planning/todos/pending/2026-09-26-writers-room-cookup-events-and-guest-access.md`.
 - 🧪 **Pilot activation — Phase 37.3: Song Passport** — Slices 1–7 code complete behind global/pilot/emergency server controls; migrations 150–156 applied; deploy and complete pilot UAT before any general-release claim.
 - 📝 **ASAP parallel — DDEX Licence, DPID & Partner Discovery** — owner obtains the free commercial Implementation Licence/DPID and selects one real receiving partner while Phases 37.2/37.3 proceed; no external application or partner contact by agents without owner authority)
 - 📝 **ASAP partner evaluation — Embedded Distributor API** — compare Too Lost (fastest documented public-API pilot), Revelator (strongest API-first strategic comparison), FUGA (enterprise destination) and SonoSuite (scale-dependent white-label alternative); treat DistroKid, TuneCore, CD Baby, Spotify, Apple Music and Secretly as named business-development paths unless they grant an accepted intake contract; select nothing until commercial, compliance, sandbox and delivery-acknowledgment evidence is reviewed)
@@ -3201,6 +3202,25 @@ favouriting. Those are net-new.
 - **Room chat is a fifth conversation surface.** Funūn already has DMs, Studio Notes threads with
   reactions, timed take comments and per-block lyric comments. Decide what belongs in chat versus
   Notes before building it, or the same conversation splits across two tabs.
+
+- **Cookups — events, audiences, broadcasts and host commerce** (owner-approved direction,
+  2026-09-26) — a host schedules a time-bound creative session and shares a Cookup event card.
+  Eligible participants may join without a Funūn account through an event-scoped guest path, then
+  optionally claim their identity and contributions after experiencing the product. Viewer passes
+  and creative seats remain distinct and may be free, paid or mixed. Open Studio adds scalable
+  viewing around a small creative stage; external social networks receive only a host-curated
+  program or preview. Studio unlocks hosting while free Members and guests can participate; Team
+  adds operating scale, paired secondary cameras and production switching rather than acting as the
+  first host gate. DAW/screen sharing, placement in the viewer program, external simulcast and
+  recording remain separate permissions. A focused Cookups by Funūn audience destination supports
+  host/series follows, repeat attendance, tickets and authorized replays without forcing creative
+  onboarding; it shares the Funūn account/backend, and any separate native app waits for audience
+  retention and mobile economics evidence. Paid admission cannot ship
+  before transparent order economics, an internal
+  reconciled ledger, provider-managed host payouts and refund/dispute controls. The full card,
+  access, broadcast, financial, privacy, rights-separation and staged rollout brief is
+  `.planning/todos/pending/2026-09-26-writers-room-cookup-events-and-guest-access.md`; permanent
+  principles are canonical in `.planning/deliberations/cookups-product-doctrine.md`.
 
 
 

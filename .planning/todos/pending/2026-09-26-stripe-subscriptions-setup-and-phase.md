@@ -83,6 +83,28 @@ Dashlane. Adding five price ids counts.
 6. **A trial, if wanted** — net-new, and worth deciding whether it is a Stripe trial or an
    invite-era grace period, which during beta may be the same thing.
 
+## First owner-approved entitlement — Writer's Room video and Cookups
+
+**Decided 2026-09-26:** Studio ($19/month) unlocks starting video in an owned/authorized Writer's
+Room and hosting Cookups. A Writer-tier Member, invited collaborator or account-free guest can join
+that session as an admitted viewer or creative without subscribing; the host/room owner's plan
+funds the experience. Team ($49/month) adds capacity and operating capabilities—co-hosts,
+moderators, recurring events, social simulcast, advanced analytics and potentially a validated
+transaction-fee discount—but is not the first tier allowed to host or sell passes. Entourage
+provides pooled, scoped organizational use.
+
+This is an entitlement decision, not proof of current behavior. Nothing may advertise it as live
+until the subscription state, access checks and provider-backed media system enforce it. Exact
+minutes, stage size and viewer capacity remain cost-test outputs. Implementation must define the
+accountable entitlement for personal rooms, shared workspaces, transferred works, co-hosted events
+and organizations; the presence of one higher-tier participant must not upgrade a room by accident.
+
+Cookup transaction direction: Studio hosts pay a 5% Funūn technology fee on retained paid-pass
+revenue, with processing shown separately; free/complimentary passes, collected tax and fully
+refunded revenue carry no Funūn fee, and tips start at 0% Funūn fee. A potential 3% Team fee is an
+approved pricing hypothesis, not a published entitlement, until real media, payment, support and
+risk costs validate it.
+
 ## Beta context
 
 Invite-only today, so the funnel mostly ends at the gate — and the denial capture already exists:

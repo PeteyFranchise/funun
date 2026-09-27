@@ -18,6 +18,8 @@ Technical capability does not create business authority. A title does not create
 - [First Six-Month Launch Growth Plan](./first-six-month-launch-growth-plan.md)
 - [Playbook Publication Map](./playbook-publication-map.md)
 - [Playbook Rich-Content Model Build Plan](./playbook-rich-content-model-build-plan.md)
+- [Cookups Product Doctrine](../cookups-product-doctrine.md) — future-facing; Cookups is planned,
+  not shipped
 - [Funūn Deal Flow](../sync-library-operating-model.md#funūn-deal-flow)
 - [A&R source deliberation](../anr-role-and-console-doctrine.md)
 - [Business Development source deliberation](../bdt-role-and-console-doctrine.md)

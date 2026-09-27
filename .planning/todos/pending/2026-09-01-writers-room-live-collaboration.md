@@ -122,6 +122,46 @@ The test must also prove:
 - Diary output records meaningful authored changes without recording every keystroke
 - Existing single-writer and non-Realtime behavior still works
 
+## Approved expansion — Cookups
+
+**Owner decisions, 2026-09-26:** a host can schedule a Cookup; every Cookup needs a reusable event
+card; and an eligible participant can join as a guest without first becoming a Funūn member. Viewer
+passes and creative seats are separate and can each be free, paid, invite-only or application-based.
+Open Studio lets a broad audience watch a creator work, and a host may send a curated live program
+to supported social destinations. Paid Cookups require transparent order economics, a reconciled
+internal ledger and verified provider-managed host payouts before launch.
+
+**Entitlement decision:** Studio ($19/month) is the core unlock for starting Writer's Room video
+and hosting Cookups. The host/room owner's entitlement funds the session; Writer-tier Members,
+invited collaborators and account-free guests can join without subscribing. Team ($49/month) adds
+capacity, co-host/moderator operations, simulcast and analytics rather than becoming the first tier
+allowed to host. Exact media allowances wait for provider cost measurements.
+
+**Media-source decision:** Studio includes one camera per creative participant and one authorized
+screen share, including DAW/system audio only on verified device/browser paths. Team adds paired
+secondary camera devices, more simultaneous sources, co-host production switching and saved scenes.
+A paired phone is a named camera source with microphone/speaker off by default, not a duplicate
+participant. Connected source, creative stage, selected viewer program, external simulcast and
+recording are separate states; authorization for one never implies the next.
+
+The account-free experience is a deliberate acquisition loop: the guest experiences the event
+first, then may claim their participant identity and contributions afterward.
+
+Cookups are a time-bound event layer above the persistent Writer's Room. They reuse presence and
+future live media, but add scheduling, audience/creative capacity, pass policy, event cards, guest
+identity, admission/moderation, curated viewer broadcast, optional social simulcast, host commerce
+and a post-session handoff. A guest credential is scoped, expiring and revocable; it grants no
+permanent room access. Attendance, ticket purchase and contribution never automatically grant
+credit, ownership, splits or room membership. A private Writer's Room is never the outgoing
+broadcast surface.
+
+Full product brief and rollout:
+`.planning/todos/pending/2026-09-26-writers-room-cookup-events-and-guest-access.md`.
+
+Do not silently fold Cookups into Phase 37.2's existing definition of done. Discuss whether they
+become a later phase or a separate phase pair after the underlying live-collaboration and
+guest-identity foundations are evaluated.
+
 ## Claude / GSD instruction
 
 Treat the scope, exclusions, block-level soft-lock model, anti-surveillance doctrine
