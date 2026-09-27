@@ -113,7 +113,7 @@ export function VaultProjectCard({ card }: { card: VaultCard }) {
         <div
           className="absolute -bottom-[26px] right-[18px] z-[3] flex h-[66px] w-[66px] items-center justify-center rounded-full shadow-[0_8px_22px_rgba(0,0,0,.5)]"
           style={{
-            background: `conic-gradient(${b.arc} 0 ${card.score}%,rgba(199,203,247,.14) ${card.score}% 100%)`,
+            background: `conic-gradient(${b.arc} 0 ${card.score}%,rgba(255,255,255,.10) ${card.score}% 100%)`,
           }}
         >
           <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#0c0b1a]">

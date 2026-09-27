@@ -95,7 +95,7 @@ export function RightsCoach({ releases }: { releases: CoachRelease[] }) {
               {result.progress.passed} of {result.progress.total} passed
             </span>
           </div>
-          <div className="h-[9px] overflow-hidden rounded-[5px] bg-[rgba(199,203,247,.12)]">
+          <div className="h-[9px] overflow-hidden rounded-[5px] bg-hair">
             <div className="h-full rounded-[5px] bg-grad" style={{ width: `${pct}%` }} />
           </div>
         </div>

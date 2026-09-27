@@ -110,7 +110,7 @@ export function AccessEditorMatrix({ initialMatrix }: AccessEditorMatrixProps) {
                         className="relative mx-auto h-[20px] w-[36px] flex-none rounded-full border transition disabled:opacity-50"
                         style={{
                           background: granted ? 'var(--indigo, #818CF8)' : 'var(--panel-2)',
-                          borderColor: granted ? 'transparent' : 'var(--border-2, rgba(199,203,247,.22))',
+                          borderColor: granted ? 'transparent' : 'var(--border-2, rgba(255,255,255,.16))',
                         }}
                       >
                         <span
