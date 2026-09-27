@@ -30,8 +30,9 @@
 // partiesActuallyChanged() answers the real question via a genuine
 // before/after diff, reusing summarizePartyChanges() (change-summary.ts)
 // rather than hand-rolling a second comparison — a value-for-value
-// resubmission (or a live-identity-only refresh, which that module is
-// structurally incapable of seeing per its own P18-09 contract) reports
+// resubmission (or a live-identity-only refresh, which
+// lib/split-sheets/resolve-party-identities.server.ts is structurally
+// incapable of seeing per its own P18-09 contract) reports
 // no change, exactly like the diff the initiator already sees on save.
 
 import { summarizePartyChanges, type PartyChangeSnapshot } from './change-summary'
