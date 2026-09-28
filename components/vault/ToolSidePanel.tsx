@@ -6,13 +6,15 @@ import {
   SPLIT_ROLE_LABELS,
   type SplitRole,
 } from '@/lib/tools/splitsheet'
+import { readSampleClearOutput as parseSampleClearOutput, type SampleClearView } from '@/lib/tools/sampleclear'
 
 // ─── ToolSidePanel ───────────────────────────────────────────────────
 // Slide-in panel from the right that hosts any Stage 3 tool, pre-filled
 // with the requirement's data. Closes on Escape or outside click.
 // Reusable across all five tools: SplitSheet renders an editable form
 // (live % total, submit gated at 100%); the AI tools render a Generate
-// button and then their JSON output.
+// button and then their output — SampleClear renders a dedicated view,
+// the rest render as generic JSON.
 
 type DraftContributor = { name: string; email: string; role: SplitRole; percentage: string }
 
@@ -125,7 +127,7 @@ export function ToolSidePanel({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
 
-      <aside className="relative flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#0a0a0f] shadow-2xl">
+      <aside className="relative flex h-full w-full max-w-md flex-col border-l border-white/10 bg-ink shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
           <div className="min-w-0">
@@ -168,6 +170,8 @@ export function ToolSidePanel({
                 onRemove={removeContributor}
               />
             )
+          ) : req.tool === 'sampleclear' && output ? (
+            <SampleClearResult output={output} />
           ) : output ? (
             <JsonOutput data={output} />
           ) : (
@@ -312,7 +316,7 @@ function SplitSheetForm({
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
             >
               {ROLE_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value} className="bg-[#0a0a0f]">
+                <option key={value} value={value} className="bg-ink">
                   {label}
                 </option>
               ))}
@@ -368,6 +372,184 @@ function SplitSheetResult({ output }: { output: Record<string, unknown> }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+// ─── SampleClear result ─────────────────────────────────────────────
+// A dedicated view for the one AI tool whose output is meant to be acted
+// on directly: two separate rights holders to chase and two letters to
+// copy and send. Falls back to the generic renderer from inside this
+// component whenever the payload does not parse, so the call site above
+// stays a single clean branch arm.
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={async () => {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      }}
+      className="rounded-md border border-hairstrong px-2.5 py-1 text-xs text-lav transition hover:border-white/30 hover:text-white"
+    >
+      {copied ? 'Copied' : label}
+    </button>
+  )
+}
+
+const SAMPLECLEAR_RISK_CHIP: Record<'low' | 'medium' | 'high', string> = {
+  low: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30',
+  medium: 'text-money2 bg-money/10 border-money/30',
+  high: 'text-rose-400 bg-rose-400/10 border-rose-400/30',
+}
+
+function SampleClearResult({ output }: { output: Record<string, unknown> }) {
+  const view: SampleClearView | null = parseSampleClearOutput(output)
+  if (!view) return <JsonOutput data={output} />
+
+  const masterDrafted = Boolean(view.masterLetter)
+  const publishingDrafted = Boolean(view.publishingLetter)
+
+  return (
+    <div className="space-y-4">
+      {view.riskLevel && (
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${SAMPLECLEAR_RISK_CHIP[view.riskLevel]}`}
+        >
+          {view.riskLevel.charAt(0).toUpperCase() + view.riskLevel.slice(1)} release risk
+        </span>
+      )}
+
+      {view.assessment && (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-lav">{view.assessment}</p>
+      )}
+
+      <div className="space-y-3">
+        {/* Master — the recording. Visually separate from Publishing below;
+            these are two different companies and the product's whole point
+            is that the artist chases both, not one. */}
+        <div className="rounded-xl border border-hair bg-card p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-lavdim">
+              Master — the recording
+            </p>
+            <span
+              className={
+                masterDrafted
+                  ? 'shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] text-emerald-300'
+                  : 'shrink-0 rounded-full border border-hairstrong bg-card2 px-2 py-0.5 text-[11px] text-lavdim'
+              }
+            >
+              {masterDrafted ? 'Letter drafted' : 'Not drafted yet'}
+            </span>
+          </div>
+
+          <div className="mt-3">
+            <p className="text-[11px] uppercase tracking-wide text-lavdim">Likely rights holder</p>
+            <p className="mt-0.5 text-sm text-lav">{view.master.holder ?? 'Not identified yet'}</p>
+          </div>
+
+          <p className="mt-2 text-[11px] leading-relaxed text-money2">
+            Verify before sending — this is a lead to confirm, not a confirmed counterparty.
+          </p>
+
+          {view.master.contact && (
+            <div className="mt-2">
+              <p className="text-[11px] uppercase tracking-wide text-lavdim">How to contact</p>
+              <p className="mt-0.5 text-sm text-lav">{view.master.contact}</p>
+            </div>
+          )}
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-wide text-lavdim">Request letter</p>
+              {view.masterLetter && <CopyButton text={view.masterLetter} label="Copy letter" />}
+            </div>
+            {view.masterLetter ? (
+              <p className="mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-hair bg-card2 p-3 text-sm leading-relaxed text-lav">
+                {view.masterLetter}
+              </p>
+            ) : (
+              <p className="mt-1.5 rounded-lg border border-hair bg-card2 p-3 text-sm text-lavdim">
+                Not drafted yet.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Publishing — the composition. Kept as its own block, not nested
+            inside or merged with Master above. */}
+        <div className="rounded-xl border border-hair bg-card p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-lavdim">
+              Publishing — the composition
+            </p>
+            <span
+              className={
+                publishingDrafted
+                  ? 'shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] text-emerald-300'
+                  : 'shrink-0 rounded-full border border-hairstrong bg-card2 px-2 py-0.5 text-[11px] text-lavdim'
+              }
+            >
+              {publishingDrafted ? 'Letter drafted' : 'Not drafted yet'}
+            </span>
+          </div>
+
+          <div className="mt-3">
+            <p className="text-[11px] uppercase tracking-wide text-lavdim">Likely rights holder</p>
+            <p className="mt-0.5 text-sm text-lav">{view.publishing.holder ?? 'Not identified yet'}</p>
+          </div>
+
+          <p className="mt-2 text-[11px] leading-relaxed text-money2">
+            Verify before sending — this is a lead to confirm, not a confirmed counterparty.
+          </p>
+
+          {view.publishing.contact && (
+            <div className="mt-2">
+              <p className="text-[11px] uppercase tracking-wide text-lavdim">How to contact</p>
+              <p className="mt-0.5 text-sm text-lav">{view.publishing.contact}</p>
+            </div>
+          )}
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-wide text-lavdim">Request letter</p>
+              {view.publishingLetter && <CopyButton text={view.publishingLetter} label="Copy letter" />}
+            </div>
+            {view.publishingLetter ? (
+              <p className="mt-1.5 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-hair bg-card2 p-3 text-sm leading-relaxed text-lav">
+                {view.publishingLetter}
+              </p>
+            ) : (
+              <p className="mt-1.5 rounded-lg border border-hair bg-card2 p-3 text-sm text-lavdim">
+                Not drafted yet.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {view.alternatives.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-lavdim">
+            If clearance is refused
+          </p>
+          <ul className="mt-1.5 space-y-1.5">
+            {view.alternatives.map((a, i) => (
+              <li key={i} className="flex gap-2 text-sm text-lav">
+                <span className="text-lavdim">•</span>
+                <span className="leading-relaxed">{a}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-xs leading-relaxed text-lavdim">
+        We help you clear it — we cannot clear it for you.
+      </p>
     </div>
   )
 }

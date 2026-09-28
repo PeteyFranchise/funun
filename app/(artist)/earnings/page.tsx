@@ -155,7 +155,7 @@ export default async function EarningsPage() {
                   </span>
                   <span className="mtext tnum text-[15px] font-extrabold">{s.amount}</span>
                 </div>
-                <div className="h-[8px] overflow-hidden rounded-full bg-[rgba(199,203,247,.12)]">
+                <div className="h-[8px] overflow-hidden rounded-full bg-hair">
                   <div className="h-full rounded-full bg-grad-money" style={{ width: `${s.pct}%` }} />
                 </div>
               </div>

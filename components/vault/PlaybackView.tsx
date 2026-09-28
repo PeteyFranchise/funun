@@ -246,7 +246,7 @@ export function PlaybackView({
                     style={{
                       background: filled
                         ? 'linear-gradient(180deg,#818CF8,#D946EF)'
-                        : 'rgba(199,203,247,.18)',
+                        : 'rgba(255,255,255,.13)',
                     }}
                   />
                 </button>
@@ -382,7 +382,7 @@ export function PlaybackView({
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] translate-x-[1px]" fill="currentColor"><path d="M7 5v14l12-7z" /></svg>
           )}
         </button>
-        <div className="relative h-[5px] flex-1 overflow-hidden rounded-full bg-[rgba(199,203,247,.14)]">
+        <div className="relative h-[5px] flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,.10)]">
           <div className="absolute inset-y-0 left-0 rounded-full bg-grad" style={{ width: `${pct}%` }} />
         </div>
         <span className="tnum flex-none text-[12px] font-semibold text-lavdim">

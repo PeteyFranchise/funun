@@ -26,7 +26,7 @@ export function ApplicationInbox({ applicants }: { applicants: Applicant[] }) {
   return (
     <div className="space-y-4">
       {applicants.map(a => (
-        <div key={a.matchId} className="rounded-xl border border-[#1A1838] bg-[#0E0D1E] p-5">
+        <div key={a.matchId} className="rounded-xl border border-card2 bg-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold text-white">{a.artistName}</p>

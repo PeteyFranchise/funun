@@ -294,7 +294,7 @@ export function BuyerOrgsAdmin({
       )}
 
       {showCreateForm && (
-        <div className="mt-1 mb-2 rounded-[10px] border border-brandindigo/30 bg-[#0a0a0f] p-4">
+        <div className="mt-1 mb-2 rounded-[10px] border border-brandindigo/30 bg-ink p-4">
           <h3 className="mb-3 text-[13px] font-bold text-white/70">Create a Client Partner</h3>
           {createError && <p className="mb-3 text-[13px] text-rose-400">{createError}</p>}
           <div className="grid gap-3">
@@ -441,7 +441,7 @@ export function BuyerOrgsAdmin({
                           Add member
                         </button>
                       ) : (
-                        <div className="mt-2 rounded-lg border border-brandindigo/30 bg-[#0a0a0f] p-3">
+                        <div className="mt-2 rounded-lg border border-brandindigo/30 bg-ink p-3">
                           {addMemberError && (
                             <p className="mb-2 text-[12px] text-rose-400">{addMemberError}</p>
                           )}

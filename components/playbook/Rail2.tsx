@@ -171,7 +171,7 @@ export function Rail2({
       </div>
 
       {hasLearningScope && (
-        <Link href="/admin/playbook/search" className={[ROOM_BASE_CLASS, 'mb-2 transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]', searchActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, searchActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : ''].join(' ')} />Knowledge Finder<span className="ml-auto rounded border border-[color:var(--border)] px-1.5 py-0.5 text-[8px] text-[color:var(--ink-3)]">/</span></Link>
+        <Link href="/admin/playbook/search" className={[ROOM_BASE_CLASS, 'mb-2 transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]', searchActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, searchActive ? 'bg-[color:var(--fuchsia)] shadow-[0_0_7px_rgba(217,70,239,.7)]' : ''].join(' ')} />Knowledge Finder<span className="ml-auto rounded border border-[color:var(--border)] px-1.5 py-0.5 text-[8px] text-[color:var(--ink-3)]">/</span></Link>
       )}
 
       {hasLearningScope && features.has('sla_inbox') && <Link href="/admin/playbook/inbox" className={[ROOM_BASE_CLASS, inboxActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : ''].join(' ')}><span className={[ROOM_DOT_CLASS, inboxActive ? 'bg-[color:var(--fuchsia)]' : ''].join(' ')} />Inbox &amp; SLAs</Link>}
@@ -185,7 +185,7 @@ export function Rail2({
           href="/admin/playbook/updates"
           className={[
             ROOM_BASE_CLASS,
-            'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
             updatesActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
           ].join(' ')}
         >
@@ -201,7 +201,7 @@ export function Rail2({
           href="/admin/playbook/my"
           className={[
             ROOM_BASE_CLASS,
-            'mb-2 transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            'mb-2 transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
             myPlaybookActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
           ].join(' ')}
         >
@@ -227,7 +227,7 @@ export function Rail2({
           href="/admin/playbook/learning"
           className={[
             ROOM_BASE_CLASS,
-            'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+            'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
             learningActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
           ].join(' ')}
         >
@@ -248,7 +248,7 @@ export function Rail2({
             href="/admin/playbook/governance"
             className={[
               ROOM_BASE_CLASS,
-              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
               governanceActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
             ].join(' ')}
           >
@@ -264,7 +264,7 @@ export function Rail2({
             href="/admin/playbook/publication"
             className={[
               ROOM_BASE_CLASS,
-              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
               publicationActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
             ].join(' ')}
           >
@@ -294,7 +294,7 @@ export function Rail2({
             href="/admin/playbook/plays"
             className={[
               ROOM_BASE_CLASS,
-              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
               playsActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
             ].join(' ')}
           >
@@ -310,7 +310,7 @@ export function Rail2({
             href="/admin/playbook/access"
             className={[
               ROOM_BASE_CLASS,
-              'transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+              'transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
               accessActive ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
             ].join(' ')}
           >
@@ -337,7 +337,7 @@ function LiveRoomEntry({ room, pathname }: { room: PlaybookRoom; pathname: strin
       href={href}
       className={[
         ROOM_BASE_CLASS,
-        'relative transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+        'relative transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
         active ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
       ].join(' ')}
     >
@@ -388,7 +388,7 @@ function ItRoomEntry({
         href={IT_SUBPAGES[0].href}
         className={[
           ROOM_BASE_CLASS,
-          'relative transition hover:bg-[rgba(199,203,247,.05)] hover:text-[color:var(--ink)]',
+          'relative transition hover:bg-[rgba(255,255,255,.05)] hover:text-[color:var(--ink)]',
           active ? 'bg-[color:var(--panel-2)] font-bold text-[color:var(--ink)]' : '',
         ].join(' ')}
       >

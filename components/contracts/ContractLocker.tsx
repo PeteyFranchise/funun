@@ -49,7 +49,7 @@ function badgeFor(r: ContractRow) {
 
 function DocIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="#C7CBF7" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" className="h-5 w-5 stroke-lav" fill="none" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
       <path d="M14 3v5h5" />
     </svg>
@@ -639,7 +639,7 @@ export function ContractLocker({
                     </span>
                   </span>
                   <span className="inline-flex items-center gap-[7px] text-[13.5px] font-semibold text-lav">
-                    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px]" fill="none" stroke="#7c80b4" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <svg viewBox="0 0 24 24" className="h-[15px] w-[15px] stroke-lavdim" fill="none" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                       {r.source === 'uploaded' ? (
                         <>
                           <path d="M12 16V4m0 0-4 4m4-4 4 4" />

@@ -251,7 +251,7 @@ export function PublicPlaybackView({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(pct)}
-            className="relative h-[6px] w-full cursor-pointer rounded-[3px] bg-[rgba(199,203,247,.16)]"
+            className="relative h-[6px] w-full cursor-pointer rounded-[3px] bg-[rgba(255,255,255,.11)]"
             onClick={e => {
               const rect = e.currentTarget.getBoundingClientRect()
               const frac = (e.clientX - rect.left) / rect.width

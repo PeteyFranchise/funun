@@ -39,7 +39,7 @@ function StemsInfo() {
             onClick={() => setOpen(false)}
             aria-label="Close"
           />
-          <div className="absolute bottom-full left-0 z-50 mb-2 w-[280px] rounded-[10px] border border-hair bg-[#0a0a0f] p-4 shadow-2xl">
+          <div className="absolute bottom-full left-0 z-50 mb-2 w-[280px] rounded-[10px] border border-hair bg-ink p-4 shadow-2xl">
             <div className="mb-2 text-[13px] font-bold text-white">What are stems?</div>
             <p className="text-[12.5px] leading-relaxed text-lavdim">
               Stems are the separated instrument and vocal tracks that make up this song — everything a mixer, remixer, or sync supervisor might need beyond the final master. Zip all files into a single archive before uploading (max 250MB). Name each file clearly, e.g.{' '}

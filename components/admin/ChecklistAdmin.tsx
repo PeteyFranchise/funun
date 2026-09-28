@@ -192,7 +192,7 @@ function SortableRow({
 
       {/* Inline edit form */}
       {isEditing && (
-        <div className="mt-1 mb-2 rounded-[10px] border border-brandindigo/30 bg-[#0a0a0f] p-4">
+        <div className="mt-1 mb-2 rounded-[10px] border border-brandindigo/30 bg-ink p-4">
           <h3 className="text-[13px] font-bold text-white/70 mb-3">Edit item</h3>
           {error && (
             <p className="mb-3 text-[13px] text-rose-400">{error}</p>
@@ -557,7 +557,7 @@ export function ChecklistAdmin({ initialItems }: { initialItems: AdminItem[] }) 
 
       {/* Inline add form */}
       {showAddForm && (
-        <div className="mb-4 rounded-[10px] border border-brandindigo/30 bg-[#0a0a0f] p-4">
+        <div className="mb-4 rounded-[10px] border border-brandindigo/30 bg-ink p-4">
           <h3 className="text-[13px] font-bold text-white/70 mb-3">New checklist item</h3>
           {addError && (
             <p className="mb-3 text-[13px] text-rose-400">{addError}</p>

@@ -237,7 +237,7 @@ function InvalidLinkState() {
         gap: 16,
         padding: 24,
         textAlign: 'center',
-        background: '#0a0a0f',
+        background: 'var(--bg)',
         color: '#ffffff',
         fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif',
       }}
@@ -246,7 +246,7 @@ function InvalidLinkState() {
         width="48"
         height="48"
         viewBox="0 0 24 24"
-        stroke="#7c80b4"
+        className="stroke-lavdim"
         fill="none"
         strokeWidth={1.6}
         strokeLinecap="round"
@@ -257,7 +257,7 @@ function InvalidLinkState() {
         <path d="M13 18l-1 1a3.5 3.5 0 0 1-5-5l1-1" />
       </svg>
       <h1 style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>This link isn&rsquo;t live.</h1>
-      <p style={{ fontSize: 14, lineHeight: 1.6, color: '#C7CBF7', maxWidth: 360, margin: 0 }}>
+      <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--lav)', maxWidth: 360, margin: 0 }}>
         Links expire or get swapped out — ping whoever sent it and they can send you a fresh one.
       </p>
     </div>

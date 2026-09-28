@@ -423,7 +423,7 @@ export function SplitSheetBuilder({ projects = [], myProfile = null, existingShe
           >
             <option value="">Not tied to a release</option>
             {projects.map(p => (
-              <option key={p.id} value={p.id} className="bg-[#0a0a0f]">
+              <option key={p.id} value={p.id} className="bg-ink">
                 {p.title}
               </option>
             ))}
@@ -600,7 +600,7 @@ function PartyRowCard({
           className={`mt-1 ${inputClass}`}
         >
           {COMPOSER_ROLE_VALUES.map(r => (
-            <option key={r} value={r} className="bg-[#0a0a0f]">
+            <option key={r} value={r} className="bg-ink">
               {COMPOSER_ROLE_LABELS[r]}
             </option>
           ))}
@@ -761,7 +761,7 @@ function PartyRowCard({
                   className={`mt-1 ${inputClass}`}
                 >
                   {PRO_VALUES.map(p => (
-                    <option key={p} value={p} className="bg-[#0a0a0f]">
+                    <option key={p} value={p} className="bg-ink">
                       {PRO_LABELS[p]}
                     </option>
                   ))}
@@ -848,7 +848,7 @@ function PartyRowCard({
             className={`mt-1 ${inputClass}`}
           >
             {COMPOSER_ROLE_VALUES.map(r => (
-              <option key={r} value={r} className="bg-[#0a0a0f]">
+              <option key={r} value={r} className="bg-ink">
                 {COMPOSER_ROLE_LABELS[r]}
               </option>
             ))}
@@ -862,7 +862,7 @@ function PartyRowCard({
             className={`mt-1 ${inputClass}`}
           >
             {PRO_VALUES.map(p => (
-              <option key={p} value={p} className="bg-[#0a0a0f]">
+              <option key={p} value={p} className="bg-ink">
                 {PRO_LABELS[p]}
               </option>
             ))}
