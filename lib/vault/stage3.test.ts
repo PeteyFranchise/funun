@@ -14,7 +14,12 @@
 //
 // (The 2026-09-10 deliberation record claims a file at this path already
 // pinned this. It did not exist. It does now.)
-import { computeStage3 } from '@/lib/vault/stage3'
+import {
+  computeStage3,
+  sampleClearKey,
+  allStage3Requirements,
+  findRequirementByKey,
+} from '@/lib/vault/stage3'
 import { hireCreditsOf } from '@/lib/vault/hire-credits'
 
 const PROJECT = { id: 'proj-1', title: 'Midnight Run', type: 'single' }
@@ -110,5 +115,75 @@ describe('hireCreditsOf — the one definition of a hired collaborator', () => {
     expect(hireRights).toHaveLength(1)
     expect(hireRights[0].collaborator).toBe('Marcus Beats')
     expect(hireRights[0].collaboratorRole).toBe('Producer')
+  })
+})
+
+// ─── sampleClearKey / allStage3Requirements / findRequirementByKey ──────
+// These exist so `DocumentStage` can open the SERVER'S OWN sample-clearance
+// requirement after a toggle-ON refresh, rather than inventing one in the
+// browser. `sampleClearKey` is the single spelling of the key; the other
+// two are the lookup the pending-open effect resolves against.
+describe('sampleClearKey — the one definition of the sample-clearance key', () => {
+  it('matches the key computeStage3 puts on the requirement it builds for a flagged track', () => {
+    const stage3 = computeStage3(PROJECT, [SAMPLED_TRACK], [], 100)
+    const req = stage3.required.find(r => r.tool === 'sampleclear')
+    expect(req).toBeDefined()
+    // Compared against the live output, not a duplicated literal — this
+    // fails if either side changes without the other.
+    expect(req!.key).toBe(sampleClearKey('track-1'))
+  })
+})
+
+describe('allStage3Requirements — spans all three partitions', () => {
+  it('still contains a SIGNED sample clearance, which lives in complete, not required', () => {
+    const stage3 = computeStage3(
+      PROJECT,
+      [SAMPLED_TRACK],
+      [{ id: 'doc-1', type: 'sample_clearance', status: 'signed', track_id: 'track-1' }],
+      100
+    )
+    const all = allStage3Requirements(stage3)
+    const found = all.find(r => r.key === sampleClearKey('track-1'))
+    expect(found).toBeDefined()
+    expect(found!.status).toBe('signed')
+    // Confirms the case this helper exists for: a `required`-only search
+    // would miss it.
+    expect(stage3.required.some(r => r.key === sampleClearKey('track-1'))).toBe(false)
+  })
+
+  it('contains no sample-clearance entry for an unflagged track', () => {
+    const stage3 = computeStage3(PROJECT, [CLEAN_TRACK], [], 100)
+    const all = allStage3Requirements(stage3)
+    expect(all.some(r => r.tool === 'sampleclear')).toBe(false)
+  })
+})
+
+describe('findRequirementByKey — pure lookup by reference', () => {
+  const stage3 = computeStage3(PROJECT, [SAMPLED_TRACK], [], 100)
+  const list = allStage3Requirements(stage3)
+  const presentKey = sampleClearKey('track-1')
+
+  it('returns null for a null key', () => {
+    expect(findRequirementByKey(list, null)).toBeNull()
+  })
+
+  it('returns null for an empty list', () => {
+    expect(findRequirementByKey([], 'anything')).toBeNull()
+  })
+
+  it('returns null when the key is not in the list', () => {
+    expect(findRequirementByKey(list, 'not-in-list')).toBeNull()
+  })
+
+  it('returns the very element from the list, by reference, when the key is present', () => {
+    const match = findRequirementByKey(list, presentKey)
+    const original = list.find(r => r.key === presentKey)
+    expect(match).toBe(original)
+  })
+
+  it('returns the first match when two entries share a key', () => {
+    const first = { ...list[0], key: 'dup' }
+    const second = { ...list[0], key: 'dup', trackTitle: 'Different' }
+    expect(findRequirementByKey([first, second], 'dup')).toBe(first)
   })
 })

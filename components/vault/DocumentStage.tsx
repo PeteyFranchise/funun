@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { DocRequirement, Stage3Result } from '@/lib/vault/stage3'
-import { STAGE3_CONTINUE_THRESHOLD } from '@/lib/vault/stage3'
+import {
+  STAGE3_CONTINUE_THRESHOLD,
+  allStage3Requirements,
+  findRequirementByKey,
+  sampleClearKey,
+} from '@/lib/vault/stage3'
 import { DocumentCard } from '@/components/vault/DocumentCard'
 import { ToolSidePanel } from '@/components/vault/ToolSidePanel'
 import { SampleFlagToggle } from '@/components/vault/SampleFlagToggle'
@@ -19,6 +24,14 @@ type StageTrack = {
 // The five Sound Vault stages — documentation is stage 3.
 const STAGE_COUNT = 5
 const STAGE_INDEX = 3
+
+// How long a toggle-ON "open the sample-clearance panel" request waits for
+// the refreshed requirement to arrive before giving up. Long enough for a
+// cold force-dynamic render against Supabase; short enough that a pending
+// open can never survive into an unrelated refresh later in the session.
+const PENDING_OPEN_WINDOW_MS = 10_000
+
+type PendingOpen = { key: string; expiresAt: number }
 
 export function DocumentStage({
   projectId,
@@ -35,9 +48,46 @@ export function DocumentStage({
   const [active, setActive] = useState<DocRequirement | null>(null)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [showComplete, setShowComplete] = useState(false)
+  const [pendingOpen, setPendingOpen] = useState<PendingOpen | null>(null)
 
   const { required, recommended, complete, requiredComplete, requiredTotal, canContinue, sampleBlock } =
     stage3
+
+  // Keyed on the whole `stage3` prop (not the destructured arrays) so this
+  // is stable across client-only re-renders (e.g. setShowComplete) and only
+  // changes identity when the server actually hands down new requirements.
+  // Without this memo the array below is new on every render, which would
+  // re-arm the resolution effect below on every render too.
+  const allRequirements = useMemo(() => allStage3Requirements(stage3), [stage3])
+
+  // Resolves a toggle-ON "open sample clearance for this track" request
+  // against the refreshed requirement list. Found -> open the server's own
+  // object and clear the pending key. Not found and past the deadline ->
+  // give up quietly and open nothing; a pending open that fired minutes
+  // later against an unrelated refresh would be worse than no offer at
+  // all. Not found and still within the window -> wait for exactly the
+  // remaining time (never a fresh full window, so re-renders cannot
+  // stretch the deadline).
+  useEffect(() => {
+    if (!pendingOpen) return
+    const match = findRequirementByKey(allRequirements, pendingOpen.key)
+    if (match) {
+      setActive(match)
+      setPendingOpen(null)
+      return
+    }
+    const remaining = pendingOpen.expiresAt - Date.now()
+    if (remaining <= 0) {
+      setPendingOpen(null)
+      return
+    }
+    const timer = setTimeout(() => setPendingOpen(null), remaining)
+    return () => clearTimeout(timer)
+  }, [pendingOpen, allRequirements])
+
+  function offerSampleClear(trackId: string) {
+    setPendingOpen({ key: sampleClearKey(trackId), expiresAt: Date.now() + PENDING_OPEN_WINDOW_MS })
+  }
 
   async function patchProject(body: Record<string, unknown>, key: string) {
     setBusyKey(key)
@@ -187,6 +237,7 @@ export function DocumentStage({
                 title={t.title}
                 initialHasSample={t.has_sample}
                 initialDetails={t.sample_details}
+                onOpenSampleClear={offerSampleClear}
               />
             ))}
           </div>

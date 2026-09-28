@@ -152,6 +152,17 @@ export type Stage3Result = {
 
 const CONTINUE_THRESHOLD = 60
 
+/**
+ * The single definition of the per-track sample-clearance requirement key.
+ * `computeStage3` builds its SampleClear requirement through this helper;
+ * `components/vault/DocumentStage.tsx` calls it again to look that same
+ * requirement up after a toggle-ON refresh. Two spellings of this string
+ * would let the toggle path and the builder drift apart.
+ */
+export function sampleClearKey(trackId: string): string {
+  return `sampleclear:${trackId}`
+}
+
 export function computeStage3(
   project: ProjectLike,
   tracks: TrackLike[],
@@ -269,7 +280,7 @@ export function computeStage3(
     const docs = byType('sample_clearance').filter(d => d.track_id === t.id)
     const { status, documentId, file_url, signed_at, signers } = bestStatus(docs)
     reqs.push({
-      key: `sampleclear:${t.id}`,
+      key: sampleClearKey(t.id),
       tool: 'sampleclear',
       title: 'Sample clearance',
       protects:
@@ -330,3 +341,31 @@ export function computeStage3(
 }
 
 export const STAGE3_CONTINUE_THRESHOLD = CONTINUE_THRESHOLD
+
+/**
+ * Flattens all three Stage3Result partitions into one list, in the order the
+ * page renders them: required, then recommended, then complete. A lookup
+ * that only searched `required` would miss a requirement that has already
+ * moved to `complete` — e.g. a sample clearance signed earlier in the
+ * session, or before a track was re-flagged. Callers that need to find a
+ * requirement by key (rather than render the sections separately) should
+ * search this, not `required` alone.
+ */
+export function allStage3Requirements(stage3: Stage3Result): DocRequirement[] {
+  return [...stage3.required, ...stage3.recommended, ...stage3.complete]
+}
+
+/**
+ * Pure lookup: the first requirement whose `key` matches, or null. Returns
+ * the element itself — never a spread or reshaped copy. A copy would be a
+ * second, unauthoritative source of truth for the same rights requirement,
+ * which is exactly what "do not invent a requirement in the client" is
+ * guarding against, one step removed.
+ */
+export function findRequirementByKey(
+  requirements: DocRequirement[],
+  key: string | null
+): DocRequirement | null {
+  if (!key) return null
+  return requirements.find(r => r.key === key) ?? null
+}
