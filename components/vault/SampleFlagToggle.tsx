@@ -15,12 +15,20 @@ export function SampleFlagToggle({
   title,
   initialHasSample,
   initialDetails,
+  onOpenSampleClear,
 }: {
   projectId: string
   trackId: string
   title: string
   initialHasSample: boolean
   initialDetails: string | null
+  /**
+   * Reports the bare track id upward after a successful toggle-ON PATCH.
+   * This component knows about tracks, not requirements — it does not
+   * import or construct a Stage 3 requirement. `DocumentStage` is the one
+   * that knows how to turn a track id into a requirement key.
+   */
+  onOpenSampleClear?: (trackId: string) => void
 }) {
   const router = useRouter()
   const [hasSample, setHasSample] = useState(initialHasSample)
@@ -62,7 +70,8 @@ export function SampleFlagToggle({
       setSavedDetails('')
       await patch({ has_sample: false, sample_details: null })
     } else {
-      await patch({ has_sample: true })
+      const ok = await patch({ has_sample: true })
+      if (ok) onOpenSampleClear?.(trackId)
     }
   }
 
@@ -115,6 +124,10 @@ export function SampleFlagToggle({
               {busy ? 'Saving…' : 'Save details'}
             </button>
           )}
+          <p className="mt-2 text-xs text-white/40">
+            SampleClear can help you work out who holds the master and publishing rights —
+            usually different parties — and draft a request to each.
+          </p>
         </div>
       )}
 
