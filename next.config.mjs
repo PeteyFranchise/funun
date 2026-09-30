@@ -37,6 +37,15 @@ const nextConfig = {
   outputFileTracingIncludes: {
     'app/api/**/*': ['./assets/fonts/**'],
     'app/(admin)/playbook/**/*': ['./docs/observability/**'],
+    // app/marketing-document/route.ts reads both files via a
+    // process.cwd()-built path at request time (quick task 260930-ibp) —
+    // the identical invisible-to-the-tracer failure class documented above
+    // for the PDF fonts: resolves fine in local dev, then 404s/throws in
+    // the deployed serverless bundle without this declaration.
+    '/marketing-document': [
+      './assets/marketing/landing.html',
+      './assets/marketing/manifest.json',
+    ],
     '/api/admin/playbook/publication/source': [
       './.planning/deliberations/organizational-doctrine/functional-team-doctrines.md',
       './.planning/deliberations/organizational-doctrine/workforce-and-commercial-scale-plan.md',

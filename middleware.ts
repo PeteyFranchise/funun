@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { isMarketingDocumentPath, shouldRewriteRootToMarketing } from '@/lib/marketing/rootRewrite'
 
 const CLAIM_ORIGIN_HOSTS = new Set(['funun.studio', 'www.funun.studio'])
 
@@ -39,11 +40,19 @@ export async function middleware(req: NextRequest) {
     "worker-src 'self' blob:",
     'upgrade-insecure-requests',
   ].join('; ')
-  const createPassThroughResponse = () => {
+  // Shared by createPassThroughResponse and the anonymous-root rewrite below
+  // — the rewrite target (app/marketing-document/route.ts) fails closed if
+  // x-nonce is absent, so it must carry EXACTLY the same forwarded headers
+  // as every other request, not a fresh Headers built from the raw client
+  // request (which would never have x-nonce set).
+  const buildForwardedRequestHeaders = () => {
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set('x-nonce', nonce)
     requestHeaders.set('Content-Security-Policy', csp)
-    const response = NextResponse.next({ request: { headers: requestHeaders } })
+    return requestHeaders
+  }
+  const createPassThroughResponse = () => {
+    const response = NextResponse.next({ request: { headers: buildForwardedRequestHeaders() } })
     response.headers.set('Content-Security-Policy', csp)
     return response
   }
@@ -58,6 +67,17 @@ export async function middleware(req: NextRequest) {
     }
     response.headers.set('Content-Security-Policy', csp)
     return response
+  }
+
+  // Close the duplicate URL (T-ibp-02): a direct request to the internal
+  // marketing-document path -- a stale link, a bookmarklet, a crawler that
+  // found it some other way -- must never become a second, independently
+  // indexable copy of `/`. No marker header is used: a header a client can
+  // set is not a trustworthy gate, but middleware sees the real pathname
+  // even though an internal NextResponse.rewrite() below never re-enters
+  // middleware, so this check is not spoofable.
+  if (isMarketingDocumentPath(req.nextUrl.pathname)) {
+    return respondWithAuthState(NextResponse.redirect(new URL('/', req.url)))
   }
 
   // Local preview: skip auth so the seeded Sound Vault renders without a session.
@@ -147,6 +167,24 @@ export async function middleware(req: NextRequest) {
     return respondWithAuthState(NextResponse.redirect(url))
   }
 
+  // Anonymous visitors to `/` get the public marketing document instead of
+  // the /signin redirect app/page.tsx would otherwise trigger for them.
+  // Authenticated `/` MUST fall through unchanged past this point: role
+  // routing lives in app/page.tsx, and skipping past it here would also
+  // skip the collaborator-claim completion below (`user && !isAuthRoute`)
+  // -- a regression test in __tests__/marketing-root-route.test.ts asserts
+  // that branch is still reached for authenticated, non-auth-route requests.
+  //
+  // NOTE for local work: the demo-mode early return above fires before
+  // getUser(), so with NEXT_PUBLIC_VAULT_DEMO=true this rewrite never runs
+  // and `/` still goes to /signin. Expected -- do not chase it.
+  if (shouldRewriteRootToMarketing(pathname, Boolean(user))) {
+    const rewriteResponse = NextResponse.rewrite(new URL('/marketing-document', req.url), {
+      request: { headers: buildForwardedRequestHeaders() },
+    })
+    return respondWithAuthState(rewriteResponse)
+  }
+
   // Signup and password-reset entry remain unnecessary for a current session.
   // Signin is excluded because it is also the safe account-replacement surface.
   if (isAuthRoute && user && !pathname.startsWith('/signin')) {
@@ -184,7 +222,20 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api).*)',
+    // `marketing/` (WITH the trailing slash) excluded (F3, verified
+    // empirically against the running dev server on 2026-09-30: a request
+    // to /marketing/fonts/inter-400.woff2 returned this middleware's
+    // Content-Security-Policy response header before this exclusion,
+    // proving getUser() ran for every one of the ~50 image/font requests
+    // an anonymous homepage load makes; /favicon.ico -- already excluded --
+    // was used as the negative control and correctly showed no such
+    // header). The trailing slash matters: a bare `marketing` would ALSO
+    // match `/marketing-document` by prefix, which still needs middleware
+    // to run -- to redirect a direct hit back to `/` (T-ibp-02) and to
+    // receive the forwarded x-nonce header the route handler fails closed
+    // without. Caught by curling /marketing-document directly and getting
+    // a 500 (missing x-nonce) instead of the expected redirect.
+    '/((?!_next/static|_next/image|favicon.ico|marketing/|api).*)',
     '/api/admin/:path*',
   ],
 }
