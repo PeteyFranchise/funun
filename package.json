@@ -29,7 +29,7 @@
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.109.0",
     "archiver": "^8.0.0",
-    "dompurify": "^3.4.15",
+    "dompurify": "^3.4.16",
     "mermaid": "^11.17.2",
     "next": "15.5.24",
     "node-id3": "^0.2.9",
@@ -63,15 +63,16 @@
   },
   "overrides": {
     "browserslist": "4.28.7",
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.8",
     "nanoid": "3.3.18",
     "postcss": "$postcss",
     "qs": "6.16.0",
+    "brace-expansion@5": "5.0.12",
     "minimatch@3.1.5": {
-      "brace-expansion": "1.1.18"
+      "brace-expansion": "1.1.21"
     },
     "minimatch@9.0.9": {
-      "brace-expansion": "2.1.4"
+      "brace-expansion": "2.1.7"
     },
     "next": {
       "sharp": "0.35.4"
