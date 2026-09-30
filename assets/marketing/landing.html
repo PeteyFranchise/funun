@@ -1,0 +1,1871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Funūn — Make the song. Keep the record.</title>
+<meta name="description" content="Funūn is where songwriters and producers write together, keep a Sound Vault of masters and rights documents, and track copyright, PRO and SoundExchange registration — all in one place.">
+<link rel="canonical" href="https://www.funun.studio/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Funūn — Make the song. Keep the record.">
+<meta property="og:description" content="Funūn is where songwriters and producers write together, keep a Sound Vault of masters and rights documents, and track copyright, PRO and SoundExchange registration — all in one place.">
+<meta property="og:url" content="https://www.funun.studio/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Funūn — Make the song. Keep the record.">
+<meta name="twitter:description" content="Funūn is where songwriters and producers write together, keep a Sound Vault of masters and rights documents, and track copyright, PRO and SoundExchange registration — all in one place.">
+<style>
+/* Self-hosted fonts — latin subset only, byte-identical to what Google served
+   on 2026-09-30. unicode-range and font-display:swap preserved exactly; only the
+   url() changes. Widening these or re-subsetting will move line breaks. */
+@font-face{font-family:'Grand Hotel';font-style:normal;font-weight:400;font-display:swap;src:url(/marketing/fonts/grand-hotel-400.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(/marketing/fonts/inter-400.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(/marketing/fonts/inter-500.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(/marketing/fonts/inter-600.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url(/marketing/fonts/inter-700.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url(/marketing/fonts/inter-800.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:900;font-display:swap;src:url(/marketing/fonts/inter-900.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+</style>
+<style>
+:root{
+  --bg:#000000; --card:#0a0a0c; --card-2:#161618; --fg:#ffffff;
+  --lav:#d4d4d8; --lav-dim:#8b8b97;
+  --indigo:#818cf8; --fuchsia:#d946ef; --emerald:#34d399; --amber:#f59e0b; --rose:#f43f5e;
+  --grad:linear-gradient(105deg,#818cf8 0%,#d946ef 100%);
+  --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.17);
+  --page:#000;
+}
+/* pick 4 — the radial glow ground, as an alternative to flat black */
+body[data-bg="glow"]{ --page:transparent; }
+body[data-bg="glow"]::before{
+  content:'';position:fixed;inset:0;z-index:-2;
+  background:radial-gradient(125% 125% at 50% 8%, #000 42%, #3b2a8c 78%, #6d3aa8 100%);
+}
+*{box-sizing:border-box}
+/* an id selector's display beats the UA [hidden] rule, so say it explicitly */
+[hidden]{display:none!important}
+html,body{margin:0}
+/* overflow-x:hidden on <body> makes the BODY a scroll container, so the page
+   ends up with two competing scrollers and the last stretch becomes
+   unreachable — which is what hid the footer. `clip` suppresses the same
+   horizontal overflow without creating a scroll container. */
+body{background:var(--page);color:var(--fg);
+  font-family:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:clip}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ── bench controls ─────────────────────────────── */
+.bench{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;gap:9px;flex-wrap:wrap;
+  align-items:center;padding:9px 14px;background:rgba(10,10,12,.86);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);font-size:11px}
+.bench b{font-weight:700;color:var(--lav);margin-right:4px}
+.seg{display:inline-flex;background:var(--card-2);border:1px solid var(--border);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;color:var(--lav-dim);font:inherit;font-size:11px;font-weight:600;
+  padding:5px 11px;border-radius:999px;cursor:pointer;transition:.16s}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--fg)}
+.note{color:var(--lav-dim);margin-left:auto;font-size:10.5px}
+main{padding-top:44px}
+
+/* ── shared section furniture ───────────────────── */
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px}
+.eyebrow .n{width:30px;height:30px;border-radius:999px;background:var(--card-2);border:1px solid var(--border-strong);
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--indigo)}
+.eyebrow .r{height:1px;width:40px;background:var(--border-strong)}
+.eyebrow .t{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lav-dim)}
+h2.sec{font-size:clamp(28px,4vw,44px);font-weight:700;letter-spacing:-.02em;margin:0 0 12px;line-height:1.08}
+p.sub{font-size:15px;color:var(--lav);max-width:46ch;line-height:1.6;margin:0}
+
+/* ── HERO A: illuminated ────────────────────────── */
+#heroA{position:relative;min-height:88vh;display:grid;place-items:center;overflow:hidden;text-align:center;padding:80px 24px}
+.blooms{position:absolute;inset:0;pointer-events:none}
+.bloom{position:absolute;left:50%;width:min(52em,92vw);aspect-ratio:2/1;border-radius:50%;
+  transform:translateX(-50%);filter:blur(70px);opacity:0}
+.bloom.t{top:-6%;background:radial-gradient(ellipse at center,rgba(129,140,248,.5),transparent 68%);
+  animation:bloomT 1.3s cubic-bezier(.32,.72,0,1) .1s forwards}
+.bloom.b{bottom:-14%;background:radial-gradient(ellipse at center,rgba(217,70,239,.42),transparent 68%);
+  animation:bloomB 1.3s cubic-bezier(.32,.72,0,1) .2s forwards}
+@keyframes bloomT{from{opacity:0;transform:translateX(-50%) translateY(-14%)}to{opacity:.85;transform:translateX(-50%) translateY(0)}}
+@keyframes bloomB{from{opacity:0;transform:translateX(-50%) translateY(14%)}to{opacity:.8;transform:translateX(-50%) translateY(0)}}
+.heroA-in{position:relative;z-index:2;max-width:min(30ch,100%)}
+.heroA-in .kicker{font-size:13px;font-weight:600;color:var(--lav-dim);letter-spacing:.02em;margin:0 0 6px}
+.heroA-in h1{font-size:clamp(30px,6vw,84px);text-wrap:balance;font-weight:700;letter-spacing:-.035em;line-height:1.02;margin:0}
+.glow{display:inline-block;color:#fff;filter:url(#funun-glow);
+  animation:glowIn 1.1s ease-out .15s both}
+@keyframes glowIn{from{opacity:0}24%{opacity:0}to{opacity:1}}
+.heroA-in p.tagline{margin:26px auto 0;max-width:26ch;font-size:clamp(17px,2.4vw,21px);
+  font-weight:650;letter-spacing:-.018em;line-height:1.32;color:#fff}
+.heroA-in p.lede{margin:14px auto 0;max-width:34ch;font-size:15px;line-height:1.6;color:var(--lav)}
+.heroA-in .cta{margin-top:32px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
+
+/* ── HERO B: image-stream corridor ──────────────── */
+/* container-type and perspective must live on DIFFERENT elements: an element is
+   not its own container-query container, and container-type applies layout
+   containment, which breaks a 3D perspective declared on the same node. */
+#heroB{position:relative;min-height:88vh;overflow:hidden;container-type:inline-size}
+.corridor{perspective:30cqw;perspective-origin:50% 55%}
+.corridor{position:absolute;inset:0;pointer-events:none}
+.corridor .stage{position:absolute;inset:0;transform-style:preserve-3d}
+.cardi{position:absolute;left:50%;top:55%;overflow:hidden;backface-visibility:hidden;
+  border:1px solid rgba(255,255,255,.1)}
+.cardi .art{width:100%;height:100%}
+@media(prefers-reduced-motion:reduce){.cardi{animation-play-state:paused!important}}
+.heroB-in{position:relative;z-index:3;min-height:88vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:space-between;text-align:center;padding:96px 24px 64px}
+.heroB-in h1{font-size:clamp(34px,6vw,64px);font-weight:700;letter-spacing:-.03em;line-height:1.05;margin:0;
+  max-width:14ch;text-shadow:0 2px 40px rgba(0,0,0,.9)}
+.heroB-in p{max-width:40ch;font-size:14px;line-height:1.6;color:var(--lav);margin:0;
+  text-shadow:0 2px 20px rgba(0,0,0,.9)}
+.heroB-foot{display:flex;flex-direction:column;align-items:center}
+/* Two scrims, not one. The radial keeps the vanishing point readable behind the
+   headline; the linear pair anchors the top and bottom so text never sits on a
+   bright card. Stitched components almost always need this — each was designed
+   assuming it owned the whole frame. */
+.heroB-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(ellipse 46% 38% at 50% 55%,rgba(0,0,0,.92),transparent 72%),
+    linear-gradient(180deg,#000 0%,rgba(0,0,0,.72) 22%,transparent 44%,
+                    rgba(0,0,0,.72) 74%,#000 100%)}
+.cardi .art{filter:saturate(.85) brightness(.82)}
+
+/* ── buttons ────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:11px;font:inherit;font-size:14px;
+  font-weight:700;padding:13px 22px;cursor:pointer;text-decoration:none;transition:.16s}
+.btn.primary{background:var(--grad);color:#fff;box-shadow:0 14px 34px -12px rgba(217,70,239,.55)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:rgba(255,255,255,.07);color:var(--fg);border:1px solid var(--border-strong)}
+.btn.ghost:hover{background:rgba(255,255,255,.12)}
+
+/* ── testimonials ───────────────────────────────── */
+#voices{padding:110px 0}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:38px}
+.vcard{border:1px solid var(--border);background:var(--card);border-radius:16px;padding:20px;
+  display:flex;flex-direction:column;gap:14px}
+.vtop{display:flex;align-items:center;gap:12px}
+.vav{width:44px;height:44px;border-radius:999px;flex:none;display:grid;place-items:center;
+  font-size:13px;font-weight:800;color:#fff;position:relative;overflow:hidden}
+.vav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;object-position:var(--op,50% 50%);transform:scale(var(--z,1))}
+.vwho{flex:1;min-width:0}
+.vwho .n{display:block;font-size:14px;font-weight:600;color:var(--fg)}
+.vwho .r{display:block;font-size:11.5px;color:var(--lav-dim);margin-top:1px}
+.vquote{font-size:14px;line-height:1.6;color:var(--lav);margin:0}
+.vplayer{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:11px;
+  background:var(--card-2);padding:9px 11px;margin-top:auto}
+/* ^ margin-top:auto, because the grid stretches every card to the tallest in the
+   row. Text-only cards have no player at all; audio cards keep theirs on the
+   floor of the card rather than floating under a short quote. */
+.vplay{width:32px;height:32px;flex:none;border-radius:999px;border:0;background:rgba(255,255,255,.1);
+  color:var(--fg);display:grid;place-items:center;cursor:pointer;padding:0;transition:.15s}
+.vplay:hover{background:var(--grad);color:#fff}
+.vplay svg{display:block}
+.vwave{flex:1;min-width:0;display:flex;align-items:center;gap:1.5px;height:26px;cursor:pointer}
+.vwave i{flex:1;min-width:1px;border-radius:1px;background:var(--lav-dim);opacity:.32;transition:opacity .08s,background .08s}
+.vplay[aria-pressed="true"]{background:var(--grad);color:#fff}
+.vplay:focus-visible,.vwave:focus-visible{outline:2px solid var(--brand-indigo);outline-offset:2px}
+.vdur{flex:none;font-size:11px;color:var(--lav-dim);font-variant-numeric:tabular-nums}
+
+/* ── faq ───────────────────────────────────────────────────────────────
+   Open, not an accordion. The page already has 17 click-to-reveal popovers,
+   and an FAQ is the wrong place to hide answers -- someone reading it is
+   anxious about ownership or lock-in, and making them click to find out
+   whether you take a cut is backwards. */
+#faq{padding:96px 0 40px}
+.faq{margin-top:42px;display:grid;gap:30px 44px;grid-template-columns:repeat(2,1fr)}
+@media(max-width:860px){.faq{grid-template-columns:1fr;gap:26px}}
+.faq h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.015em;color:#fff;line-height:1.35}
+.faq p{margin:8px 0 0;font-size:13.5px;line-height:1.62;color:var(--lav)}
+.faq b{color:#fff;font-weight:650}
+
+/* ── pricing ────────────────────────────────────────
+   The app's one-gradient-per-screen rule is an APP rule. A pricing section has
+   to sell, so it spends: ambient light behind the section, a raised hero card,
+   filled ticks, and a CTA with internal structure. */
+#pricing{position:relative;padding:110px 0 70px;overflow:hidden}
+.pglow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(130px)}
+.pglow.a{top:-6%;right:14%;width:34rem;height:34rem;background:rgba(129,140,248,.14)}
+.pglow.b{bottom:-14%;left:10%;width:32rem;height:32rem;background:rgba(217,70,239,.11)}
+.ptop{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;position:relative;z-index:1}
+.pswitch{display:flex;gap:4px;background:var(--card-2);border:1px solid var(--border);border-radius:999px;padding:4px}
+.pswitch button{border:0;background:transparent;color:var(--lav-dim);font:inherit;font-size:12px;font-weight:600;
+  padding:8px 16px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.16s}
+.pswitch button[aria-pressed="true"]{background:var(--grad);color:#fff;font-weight:700;
+  box-shadow:0 8px 20px -8px rgba(217,70,239,.5)}
+.pswitch .save{font-size:9.5px;font-weight:700;color:var(--emerald);background:rgba(52,211,153,.16);
+  border:1px solid rgba(52,211,153,.32);border-radius:999px;padding:2px 6px}
+.pswitch button[aria-pressed="true"] .save{color:#fff;background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.3)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;margin-top:44px;
+  align-items:stretch;position:relative;z-index:3}
+.pcard{position:relative;border:1px solid var(--border);background:var(--card);border-radius:20px;padding:28px;
+  display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
+.pcard:not(.pop):hover{border-color:var(--border-strong);transform:translateY(-3px)}
+/* the one card that is meant to be chosen, and looks it */
+.pcard.pop{border-color:rgba(217,70,239,.5);background:linear-gradient(180deg,#191330 0%,#0b0a10 62%);
+  box-shadow:0 24px 60px -24px rgba(217,70,239,.35), inset 0 1px 0 rgba(255,255,255,.07);
+  transform:scale(1.025);z-index:2}
+@media(max-width:920px){.pcard.pop{transform:none}}
+.ppill{position:absolute;top:-12px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#fff;background:var(--grad);
+  border-radius:999px;padding:5px 13px;box-shadow:0 8px 22px -8px rgba(217,70,239,.7);white-space:nowrap}
+.pcard h3{margin:0 0 4px;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.pcard .who{font-size:12px;color:var(--lav-dim);margin:0 0 20px}
+.prow{display:flex;align-items:baseline;gap:9px;margin-bottom:10px;flex-wrap:wrap}
+.prow .was{font-size:19px;color:var(--lav-dim);text-decoration:line-through;font-variant-numeric:tabular-nums}
+.prow .amt{font-size:clamp(42px,5vw,54px);font-weight:900;letter-spacing:-.04em;line-height:1;
+  font-variant-numeric:tabular-nums}
+.pcard.pop .prow .amt{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+  color:transparent;padding-right:.06em;margin-right:-.06em}
+.prow .per{font-size:13px;color:var(--lav-dim);font-weight:500}
+.pcard .blurb{font-size:13px;line-height:1.55;color:var(--lav);margin:0 0 22px}
+.pcard hr{border:0;border-top:1px solid var(--border);margin:0 0 20px}
+.pinc{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--lav-dim);margin:0 0 14px}
+.pcard ul{list-style:none;margin:0 0 26px;padding:0;display:flex;flex-direction:column;gap:12px}
+.pcard li{display:flex;gap:11px;font-size:13.5px;color:var(--lav);line-height:1.45;align-items:flex-start}
+.tick{flex:none;width:19px;height:19px;border-radius:999px;display:grid;place-items:center;margin-top:1px;
+  background:var(--grad);box-shadow:0 0 12px -2px rgba(217,70,239,.55)}
+.pcard:not(.pop) .tick{background:rgba(129,140,248,.9);box-shadow:0 0 10px -3px rgba(129,140,248,.6)}
+/* CTA with internal structure — label left, arrow in its own disc right */
+/* team / volume strip — deliberately a BAND, not a fourth pricing card. A card
+   would read as another tier to choose; this reads as a door out of the grid. */
+.teamstrip{margin-top:26px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;
+  position:relative;z-index:1;overflow:hidden;
+  /* same materials as .pcard -- border, fill, radius, padding -- so it reads as
+     the same family. Only the SHAPE differs: a band is a door out of the grid,
+     a fourth card would read as a fourth tier with an empty price slot. */
+  border:1px solid var(--border);background:var(--card);border-radius:20px;padding:26px 28px}
+/* a soft light from the CTA end, so the middle of a very wide band is not dead space */
+.teamstrip::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 180% at 92% 50%,rgba(217,70,239,.16),rgba(129,140,248,.08) 42%,transparent 70%)}
+.teamstrip>*{position:relative}
+.tstext{flex:1 1 320px;min-width:0}
+/* the band carries a tier's anatomy: name, price slot, audience, inclusion line */
+.tsname{margin:0;font-size:18px;font-weight:700;color:#fff;letter-spacing:-.018em;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tsprice{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--lav);border:1px solid rgba(199,203,247,.28);border-radius:999px;padding:3px 9px}
+.tswho{margin:3px 0 0;font-size:12px;color:var(--lav-dim)}
+.tssub{margin:9px 0 0;font-size:13.5px;line-height:1.5;color:var(--lav)}
+.tscta{flex:none;margin-left:auto;display:inline-flex;align-items:center;justify-content:space-between;
+  gap:12px;text-decoration:none;border:1px solid var(--border-strong);
+  background:rgba(255,255,255,.06);color:var(--fg);border-radius:14px;
+  padding:14px 14px 14px 20px;font-size:14px;font-weight:700;transition:.16s}
+.tscta:hover{background:rgba(255,255,255,.1);border-color:rgba(199,203,247,.4);transform:translateY(-1px)}
+.tscta .disc{display:grid;place-items:center;width:32px;height:32px;border-radius:999px;
+  background:rgba(255,255,255,.08)}
+@media(max-width:620px){.teamstrip{align-items:flex-start}
+  .tscta{width:100%;margin-left:0}}
+
+/* feature info affordance — a button, not a hover-only tooltip, so it works on touch
+   and reaches the keyboard. The popover is a sibling so it is not clipped by the li. */
+.pcard li{position:relative}
+.finfo{flex:none;width:15px;height:15px;margin-top:2px;border-radius:999px;cursor:pointer;
+  display:grid;place-items:center;padding:0;font:inherit;line-height:0;
+  background:rgba(199,203,247,.10);border:1px solid rgba(199,203,247,.22);
+  color:var(--lav-dim);transition:.14s}
+.finfo:hover,.finfo[aria-expanded="true"]{background:rgba(129,140,248,.26);
+  border-color:rgba(129,140,248,.55);color:#fff}
+.finfo:focus-visible{outline:2px solid rgba(129,140,248,.9);outline-offset:2px}
+.finfo svg{width:9px;height:9px}
+/* Entrance borrowed from the 21st.dev animated-tooltip: it springs in at scale
+   0.6 with an overshoot rather than just appearing. framer-motion's spring
+   (stiffness 260, damping 10) approximated in keyframes -- no library. */
+@keyframes fpop-in{
+  0%  {opacity:0; transform:translateY(9px) scale(.82)}
+  55% {opacity:1; transform:translateY(-3px) scale(1.025)}
+  78% {transform:translateY(1px) scale(.995)}
+  100%{opacity:1; transform:translateY(0) scale(1)}}
+/* The two fading hairlines along the bottom edge are the detail that makes the
+   source read as crafted. Theirs are emerald + sky; these are the Funun gradient
+   endpoints. One element, two background gradients, different widths/offsets. */
+.fpop .fline{position:absolute;left:0;right:0;bottom:0;height:1px;pointer-events:none;
+  background-image:linear-gradient(90deg,transparent,#10b981,transparent),
+                   linear-gradient(90deg,transparent,#0ea5e9,transparent);
+  background-size:42% 1px, 22% 1px;
+  background-position:8% 0, 38% 0;
+  background-repeat:no-repeat}
+.fpop{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:40;
+  background:#fafafa;border:0;border-radius:12px;
+  padding:13px 15px;font-size:12px;line-height:1.5;color:#71717a;
+  box-shadow:0 24px 56px -16px rgba(0,0,0,.85), 0 2px 6px rgba(0,0,0,.4);
+  animation:fpop-in .34s cubic-bezier(.22,1.2,.36,1) both;
+  transform-origin:top left}
+@media(prefers-reduced-motion:reduce){.fpop{animation:none}}
+.fpop .priv{display:flex;gap:7px;align-items:flex-start;margin-top:9px;padding-top:9px;
+  border-top:1px solid rgba(9,9,11,.12);color:#8b8b93;font-size:11.5px;line-height:1.45}
+.fpop .priv svg{flex:none;width:11px;height:11px;margin-top:2px;color:#10b981}
+.fpop strong{color:#09090b;font-weight:650}
+.fpop ul{list-style:none;margin:3px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.fpop ul li{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;color:#71717a}
+.fpop ul li::before{content:'';flex:none;width:3px;height:3px;border-radius:999px;
+  background:#c4c4cc;transform:translateY(-3px)}
+.fpop b{display:block;color:#09090b;font-size:16px;font-weight:700;letter-spacing:-.017em;
+  line-height:1.22;margin-bottom:5px}
+/* last rows would push the panel past the card and into the band below, so it
+   opens upward instead -- arrow flips with it */
+.fpop.up{top:auto;bottom:calc(100% + 8px);transform-origin:bottom left}
+.fpop.up::before{top:auto;bottom:-4px}
+@keyframes fpop-in-up{
+  0%  {opacity:0; transform:translateY(-9px) scale(.82)}
+  55% {opacity:1; transform:translateY(3px) scale(1.025)}
+  78% {transform:translateY(-1px) scale(.995)}
+  100%{opacity:1; transform:translateY(0) scale(1)}}
+.fpop.up{animation-name:fpop-in-up}
+.fpop::before{content:'';position:absolute;top:-4px;left:22px;width:9px;height:9px;rotate:45deg;
+  background:#fafafa}
+.pbeta{margin:14px 0 0;font-size:11.5px;line-height:1.5;color:var(--lav-dim)}
+.pcta{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  border:0;border-radius:13px;font:inherit;font-size:14px;font-weight:700;padding:13px 14px 13px 20px;
+  cursor:pointer;text-decoration:none;transition:.16s}
+.pcta.solid{background:var(--grad);color:#fff;box-shadow:0 16px 34px -14px rgba(217,70,239,.6)}
+.pcta.solid:hover{filter:brightness(1.08)}
+.pcta.quiet{background:rgba(255,255,255,.06);color:var(--fg);border:1px solid var(--border-strong)}
+.pcta.quiet:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.28)}
+.pcta .disc{width:30px;height:30px;flex:none;border-radius:999px;display:grid;place-items:center;
+  background:rgba(0,0,0,.22);transition:transform .18s}
+.pcta.quiet .disc{background:rgba(255,255,255,.09)}
+.pcta:hover .disc{transform:translate(2px,-2px)}
+/* ── footer ─────────────────────────────────────────
+   The point of the source design is that the footer is a CARD that lifts off
+   the page: big rounded top corners, inset from the edges, a soft radial glow
+   spilling from the top center, and a thin blurred light bar on its edge.
+   A line with links under it is not the same object. */
+.footwrap{max-width:1120px;margin:48px auto 0;padding:0 24px}
+footer{position:relative;border:1px solid var(--border);border-bottom:0;
+  border-radius:40px 40px 0 0;padding:58px 44px 52px;overflow:hidden;
+  background:radial-gradient(42% 150px at 50% 0%, rgba(255,255,255,.07), transparent 70%)}
+@media(max-width:700px){footer{border-radius:28px 28px 0 0;padding:44px 24px 40px}}
+/* the light bar riding the top edge */
+footer::before{content:'';position:absolute;top:0;left:50%;transform:translate(-50%,-50%);
+  width:34%;height:2px;border-radius:999px;filter:blur(1.5px);
+  background:linear-gradient(90deg,transparent,rgba(199,203,247,.55),transparent)}
+.fgrid{display:grid;gap:40px;grid-template-columns:1fr;align-items:start;position:relative;z-index:1}
+@media(min-width:960px){.fgrid{grid-template-columns:1fr 2fr}}
+.fmarkrow{display:flex;align-items:center;gap:11px}
+.fmarkrow .glyph{display:flex;align-items:center;gap:2.5px;height:26px}
+.fmarkrow .glyph i{width:3px;border-radius:999px;background:var(--grad);display:block}
+.fmark{font-size:21px;font-weight:700;letter-spacing:-.015em}
+/* company tagline -- sits with the wordmark, the one slot a company line belongs in */
+.ftag{margin:10px 0 0;font-size:13.5px;font-weight:600;letter-spacing:-.008em;color:var(--lav)}
+.fcopy{font-size:12px;color:var(--lav-dim);margin:16px 0 0;line-height:1.65;max-width:30ch}
+.fcols{display:grid;grid-template-columns:repeat(2,1fr);gap:30px}
+/* Legal is a sentence, not a list, so it gets the room a sentence needs. In
+   four equal columns it was 135px wide and wrapped to seven lines — a wall
+   of text in a nav column. 1.9fr puts it at roughly three. */
+@media(min-width:640px){.fcols{grid-template-columns:1fr 1fr 1.9fr 1fr}}
+.fcol h4{margin:0 0 14px;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--lav-dim)}
+.fcol li a{white-space:nowrap}  /* labels, not prose — the narrower Product column was breaking "The Writer's Room" across two lines */
+.fcol .fnote{margin:0;font-size:12px;line-height:1.65;color:var(--lav-dim);max-width:30ch}
+.fcol .fnote a{color:var(--lav);text-decoration:underline;text-underline-offset:2px}
+.fcol .fnote a:hover{color:#fff}
+.fcol ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+.fcol a{font-size:13px;color:var(--lav);text-decoration:none;display:inline-flex;align-items:center;gap:8px;
+  transition:color .18s,transform .18s}
+.fcol a:hover{color:var(--fg);transform:translateX(2px)}
+.fcol a svg{flex:none;opacity:.7}
+.fcol a:hover svg{opacity:1}
+.reveal{transition:opacity .7s ease,transform .7s cubic-bezier(.32,.72,0,1),filter .7s ease}
+/* Hidden ONLY once JS has confirmed it can reveal them again. Without the
+   .js-reveal gate, one thrown error above leaves every section invisible. */
+.js-reveal .reveal:not(.in){opacity:0;transform:translateY(10px);filter:blur(4px)}
+@media(prefers-reduced-motion:reduce){.js-reveal .reveal:not(.in){opacity:1;transform:none;filter:none}}
+.flag{font-size:11px;color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.28);
+  border-radius:9px;padding:9px 12px;margin:26px 0 0;line-height:1.55}
+
+
+.announce{position:relative;min-height:92vh;display:grid;place-items:center;text-align:center;
+  padding:90px 24px;overflow:hidden}
+.ann-in{position:relative;z-index:2;max-width:min(34ch,100%)}
+.ann-title{margin:14px 0 0;font-size:clamp(40px,8vw,92px);font-weight:800;letter-spacing:-.045em;
+  line-height:1.02;background:var(--grad);-webkit-background-clip:text;background-clip:text;
+  color:transparent;padding-right:.06em;margin-right:-.06em}
+.announce .tagline{margin:22px auto 0;max-width:24ch;font-size:clamp(17px,2.4vw,21px);
+  font-weight:650;letter-spacing:-.018em;line-height:1.32;color:#fff}
+.announce .lede{margin:14px auto 0;max-width:40ch;font-size:15px;line-height:1.6;color:var(--lav)}
+.announce .cta{margin-top:32px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap}
+
+
+/* ── how it works ──────────────────────────────────────────────────────
+   Structure taken from 21st.dev's how-it-works-2: a vertical rail of
+   numbered nodes joined by a hairline. Not ported: React, @remixicon,
+   class-variance-authority, shadcn's Badge and cn() -- all absent here, and
+   the component is a flex list once the plumbing is stripped out. */
+#how{padding:96px 0 20px}
+.steps{list-style:none;margin:44px 0 0;padding:0;max-width:62ch}
+.steps li{display:flex;gap:22px}
+.steps .rail{display:flex;flex-direction:column;align-items:center;flex:none}
+.steps .dot{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;flex:none;
+  background:var(--card-2);border:1px solid var(--border-strong);color:var(--lav)}
+.steps li:last-child .dot{background:var(--grad);border-color:transparent;color:#fff}
+.steps .line{width:1px;flex:1;margin-top:6px;
+  background:linear-gradient(180deg,rgba(199,203,247,.28),rgba(199,203,247,.06))}
+.steps .body{padding-bottom:38px}
+.steps li:last-child .body{padding-bottom:0}
+.steps h3{margin:7px 0 0;font-size:17px;font-weight:700;letter-spacing:-.015em;color:#fff}
+.steps p{margin:7px 0 0;font-size:14px;line-height:1.6;color:var(--lav)}
+.steps .who{display:inline-block;margin-top:9px;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--lav-dim);border:1px solid var(--border);
+  border-radius:999px;padding:3px 9px}
+
+/* ── the crate ─────────────────────────────────────────────────────────
+   Copy on the left, a Selects player on the right -- the artefact a supervisor
+   actually receives. Recreated from public/maya-selects-desktop.html rather
+   than screenshotted, so it restyles with the tokens. */
+#crate{padding:96px 0 30px}
+.csplit{display:grid;gap:40px;grid-template-columns:1fr 1fr;align-items:center}
+@media(max-width:940px){.csplit{grid-template-columns:1fr;gap:34px}}
+.cbeats{list-style:none;margin:26px 0 0;padding:0;display:flex;flex-direction:column;gap:14px}
+.cbeats li{font-size:13.5px;line-height:1.6;color:var(--lav);padding-left:16px;position:relative}
+.cbeats li::before{content:'';position:absolute;left:0;top:8px;width:5px;height:5px;
+  border-radius:999px;background:var(--grad)}
+.cbeats b{color:#fff;font-weight:650}
+.cbeats em{font-style:normal;color:#fff}
+.ccta{margin-top:28px;display:flex;gap:11px;flex-wrap:wrap}
+
+/* ── the Selects mock ──────────────────────────────────────────────────
+   Rebuilt 2026-09-26 against components/selects-player/SelectsPlayer.tsx and
+   its theme.ts, after the owner said it did not look like the product. It
+   did not: the real player is a CENTRED hero — big square cover, the
+   FUNŪN·Selects chip, a white play pill — over a purple ambient wash, with
+   love/pass reactions on each row. The old mock was a horizontal tracklist
+   in the marketing page's neutral greys with none of that.
+
+   The player ships its OWN palette (theme.ts) and it is not this page's:
+   ground #08070d, purple-tinted panels, a true lavender #C7CBF7. Those are
+   hardcoded below on purpose — using the marketing tokens is what made it
+   look like a different product. Third divergence caught between the mock
+   and the component; the component has won all three. */
+.selects{--sground:#08070d;--spanel:#0E0D1E;--spanel2:#151330;--slav:#C7CBF7;
+  --slavdim:#8b8fbf;--sborder:rgba(199,203,247,.12);--sborder2:rgba(199,203,247,.22);
+  --srose:#F9A8C0;--sgreen:#34D399;
+  margin:0;position:relative;overflow:hidden;border:1px solid var(--sborder);
+  border-radius:20px;background:var(--sground);isolation:isolate}
+.sel-amb{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.9;
+  filter:blur(60px) saturate(1.25);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 26%,transparent 74%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 26%,transparent 74%);
+  background:radial-gradient(60% 55% at 30% 20%,#7c3aed,transparent 60%),
+             radial-gradient(55% 55% at 80% 15%,#D946EF,transparent 60%)}
+.sel-in{position:relative;z-index:1}
+.sel-top{display:flex;align-items:center;gap:10px;padding:13px 16px}
+.sel-rnd{width:26px;height:26px;border-radius:50%;background:rgba(10,9,16,.5);
+  border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;flex:none;
+  color:#fff;font-size:10px}
+.sel-abtitle{flex:1;min-width:0;font-size:11.5px;color:var(--slav);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-pill{display:inline-flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:#F4C77B;flex:none}
+.sel-pill::before{content:'';width:5px;height:5px;border-radius:999px;background:#F4C77B}
+/* the hero — centred, which is the single biggest thing the old mock got wrong */
+.sel-hero{text-align:center;padding:2px 20px 0}
+.sel-cover{width:min(168px,48%);aspect-ratio:1;border-radius:16px;margin:0 auto;display:block;
+  object-fit:cover;border:1px solid var(--sborder);box-shadow:0 30px 80px -28px rgba(0,0,0,.85)}
+.sel-chip{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:5px 11px;
+  border-radius:999px;background:rgba(10,9,16,.5);border:1px solid var(--sborder2);
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#fff}
+.sel-chip .logo{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+  color:transparent;font-weight:900;letter-spacing:.06em}
+.sel-chip .sep{opacity:.4}
+.sel-title{margin:9px 0 0;font-size:21px;font-weight:900;letter-spacing:-.035em;line-height:1.05}
+.sel-by{margin:5px 0 0;font-size:11px;color:var(--slavdim)}
+.sel-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0 2px}
+.sel-play{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:#fff;
+  color:#0a0812;border:0;border-radius:999px;padding:8px 22px;font:inherit;font-weight:700;
+  font-size:12.5px;box-shadow:0 14px 34px -16px rgba(255,255,255,.5)}
+.sel-hc{width:30px;height:30px;border-radius:50%;border:1px solid var(--sborder2);
+  background:none;color:var(--slav);display:grid;place-items:center;font-size:11px;flex:none}
+/* the list */
+.sel-head{display:flex;align-items:center;gap:9px;padding:18px 18px 4px}
+.sel-head .l{font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;
+  color:var(--slavdim)}
+.sel-head .cnt{font-size:10.5px;color:var(--slavdim);opacity:.8}
+.sel-list{list-style:none;margin:0;padding:0 12px 6px;display:flex;flex-direction:column;gap:1px}
+.sel-list li{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;
+  padding:6px 6px;border-radius:11px}
+.sel-list li.on{background:var(--spanel2)}
+.sel-list img{width:34px;height:34px;border-radius:7px;object-fit:cover}
+.sel-t{min-width:0}
+.sel-t b{display:block;font-size:12px;font-weight:600;color:#fff;letter-spacing:-.008em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-t span{display:block;font-size:10px;color:var(--slavdim);margin-top:1px}
+.sel-rx{display:flex;align-items:center;gap:2px;flex:none}
+.sel-cbtn{width:24px;height:24px;border-radius:50%;border:0;background:none;color:var(--slavdim);
+  display:grid;place-items:center;padding:0}
+.sel-cbtn svg{width:13px;height:13px}
+.sel-cbtn.love.on{color:var(--srose)}
+.selects figcaption{position:relative;z-index:1;padding:11px 18px 14px;
+  border-top:1px solid var(--sborder);font-size:11px;color:var(--slavdim);line-height:1.5}
+
+/* ── collaborator sphere ───────────────────────────────────────────────
+   Maths ported from 21st.dev's image-sphere (Fibonacci distribution, Y/X
+   rotation matrices, depth-driven scale and fade). The React, framer-motion
+   and lucide parts are not ported -- the bench has no React, and the value of
+   that component is its geometry, not its shell.
+   Initials rather than photographs: a sphere of invented faces would imply
+   real collaborators who do not exist. Matches WriterRoomPresence's fallback. */
+#people{padding:96px 0 40px}
+.sphere-wrap{position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;
+  margin-top:40px}
+/* ^ z-index:0 is load-bearing. It makes a stacking context, so the nodes' 1000+
+   z-indexes compete only in here -- without it they paint over the sticky nav. */
+.sphere{position:relative;width:min(560px,86vw);aspect-ratio:1;cursor:grab;touch-action:none}
+.sphere:active{cursor:grabbing}
+.sphere .node{position:absolute;display:grid;place-items:center;border-radius:999px;
+  font-weight:700;letter-spacing:.01em;color:#fff;user-select:none;
+  background:linear-gradient(145deg,#2a2550,#171334);
+  box-shadow:inset 0 0 0 1px rgba(199,203,247,.22), 0 10px 24px -12px rgba(0,0,0,.9);
+  transition:box-shadow .16s}
+.sphere .node img{width:100%;height:100%;object-fit:cover;border-radius:999px;display:block;
+  pointer-events:none}
+.sphere .node{overflow:hidden}
+.sphere .node[data-hot="1"]{box-shadow:inset 0 0 0 1.5px rgba(217,70,239,.9),
+  0 0 26px -4px rgba(217,70,239,.55), 0 10px 24px -12px rgba(0,0,0,.9)}
+.sphere-card{position:absolute;z-index:2000;min-width:210px;max-width:250px;pointer-events:none;
+  background:#fafafa;border-radius:12px;padding:12px 14px;
+  box-shadow:0 24px 56px -16px rgba(0,0,0,.85), 0 2px 6px rgba(0,0,0,.4);
+  animation:fpop-in .26s cubic-bezier(.22,1.2,.36,1) both}
+.sphere-card b{display:block;color:#09090b;font-size:14.5px;font-weight:700;letter-spacing:-.012em}
+.sphere-card .role{display:block;color:#71717a;font-size:11.5px;margin:1px 0 9px}
+.sphere-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;
+  font-size:11.5px;line-height:1.45}
+.sphere-card dt{color:#a1a1aa;text-transform:uppercase;letter-spacing:.08em;font-size:9.5px;
+  align-self:center}
+.sphere-card dd{margin:0;color:#3f3f46;font-variant-numeric:tabular-nums}
+.sphere-hint{margin:22px 0 0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--lav-dim)}
+@media(prefers-reduced-motion:reduce){.sphere-card{animation:none}}
+
+/* ── header ────────────────────────────────────────────────────────────
+   Three parts, not a centred pill: the page needed identity and a way back
+   in, and a nav-only component supplies neither. The sliding indicator is
+   borrowed from 21st.dev's nav-header, but driven by SCROLL POSITION rather
+   than hover alone -- on a long single-page site, knowing where you are
+   matters more than knowing what you are pointing at. CSS transition on
+   left/width; framer-motion adds nothing here. */
+.nav{position:sticky;top:0;z-index:200;backdrop-filter:blur(14px);
+  background:rgba(10,10,15,.72);border-bottom:1px solid transparent;transition:border-color .25s}
+.nav[data-stuck="1"]{border-bottom-color:var(--border)}
+.navrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;
+  padding-top:13px;padding-bottom:13px}
+.navmark{grid-column:1;display:flex;align-items:center;gap:10px;text-decoration:none;
+  color:#fff;font-size:17px;font-weight:700;letter-spacing:-.015em;justify-self:start}
+.navmark .glyph{display:flex;align-items:center;gap:2.5px;height:26px}
+.navmark .glyph i{width:3px;border-radius:999px;background:var(--grad);display:block}
+.navmark em{font-style:normal;font-size:10.5px;font-weight:500;color:var(--lav-dim);
+  letter-spacing:.01em;margin-left:1px}
+@media(max-width:560px){.navmark em{display:none}}
+.navlinks{grid-column:2;position:relative;display:flex;gap:2px;justify-self:center}
+@media(max-width:780px){.navlinks{display:none}}
+.navlinks a{position:relative;z-index:1;text-decoration:none;color:var(--lav-dim);
+  font-size:13px;font-weight:550;padding:7px 13px;border-radius:999px;transition:color .2s}
+.navlinks a:hover,.navlinks a[aria-current="true"]{color:#fff}
+.navcursor{position:absolute;z-index:0;top:0;height:100%;border-radius:999px;
+  background:rgba(199,203,247,.10);box-shadow:inset 0 0 0 1px rgba(199,203,247,.16);
+  opacity:0;transition:left .28s cubic-bezier(.32,.72,0,1),width .28s cubic-bezier(.32,.72,0,1),opacity .2s}
+.navsignin{grid-column:3;text-decoration:none;color:var(--lav);font-size:13px;font-weight:600;
+  justify-self:end;padding:7px 2px;transition:color .18s}
+.navsignin:hover{color:#fff}
+
+/* ── differentiators ───────────────────────────────────────────────────
+   A SECOND carousel on one page is a risk: the hero already auto-rotates,
+   and two things moving competes for attention while hiding content behind
+   a timer. So this one is MANUAL and tabbed — every name is readable at
+   once, and the art only changes when someone asks it to. */
+.dtabs{display:flex;flex-wrap:wrap;gap:8px;margin:34px 0 22px}
+.dtab{border:1px solid var(--border);background:var(--card);color:var(--lav-dim);
+  font:inherit;font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:999px;
+  cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.dtab:hover{color:var(--fg);border-color:var(--border-strong)}
+.dtab[aria-selected="true"]{color:#fff;border-color:transparent;background:var(--grad)}
+.dpanel{display:grid;gap:26px;align-items:center}
+@media(min-width:860px){.dpanel{grid-template-columns:1fr 1.15fr;gap:40px}}
+.dart.has-shot{padding:10px;background:rgba(14,13,30,.55);border-color:rgba(199,203,247,.12)}
+.dart.has-shot img{width:100%;height:100%;object-fit:cover;object-position:50% 0;border-radius:10px;display:block;box-shadow:0 18px 40px -22px rgba(0,0,0,.9)}
+.dart{position:relative;aspect-ratio:16/10;border-radius:16px;border:1px solid var(--border);
+  background:
+    radial-gradient(70% 60% at 30% 25%, rgba(129,140,248,.16), transparent 70%),
+    radial-gradient(60% 60% at 75% 80%, rgba(217,70,239,.14), transparent 70%),
+    var(--card);
+  display:grid;place-items:center;overflow:hidden}
+.dart span{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--lav-dim);border:1px dashed var(--border-strong);border-radius:999px;padding:7px 13px;
+  text-align:center;max-width:82%}
+.dbody h3{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.02em}
+.dbody .dname{display:block;font-size:10px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--indigo);margin-bottom:9px}
+.dbody p{margin:0;font-size:14px;line-height:1.65;color:var(--lav)}
+@media(prefers-reduced-motion:no-preference){
+  .dpanel.swap{animation:dfade .32s ease}
+  @keyframes dfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+}
+
+/* ── sign-in dialog ────────────────────────────────────────────────────
+   Skin taken from the login card the owner picked; everything else rebuilt on
+   Funūn tokens. Native <dialog> rather than a div: it gives focus trapping,
+   Esc, inert background and ::backdrop for free, and those are the four things
+   hand-rolled modals get wrong. The header link keeps href="/signin", so the
+   real page is still the destination when JS has not run. */
+
+.authwrap{position:relative;width:100%;height:100%;display:grid;place-items:center;padding:24px}
+.authveil{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(78% 58% at 50% 32%, rgba(129,140,248,.14), transparent 62%)}
+.authsparks{position:absolute;inset:0;width:100%;height:100%;opacity:.55;
+  mix-blend-mode:screen;pointer-events:none}
+/* the drawn grid: three rules across, three down, each shimmering once as it lands */
+.authlines{position:absolute;inset:0;pointer-events:none;opacity:.75}
+.authlines i{position:absolute;background:rgba(255,255,255,.10)}
+.authlines .h{left:0;right:0;height:1px;transform:scaleX(0);transform-origin:50% 50%;
+  animation:authX .8s cubic-bezier(.22,.61,.36,1) forwards}
+.authlines .v{top:0;bottom:0;width:1px;transform:scaleY(0);transform-origin:50% 0;
+  animation:authY .9s cubic-bezier(.22,.61,.36,1) forwards}
+.authlines i::after{content:'';position:absolute;inset:0;opacity:0;
+  background:linear-gradient(90deg,transparent,rgba(217,70,239,.5),rgba(129,140,248,.5),transparent);
+  animation:authShim .9s ease-out forwards;animation-delay:inherit}
+@keyframes authX{0%{transform:scaleX(0);opacity:0}60%{opacity:1}100%{transform:scaleX(1);opacity:.75}}
+@keyframes authY{0%{transform:scaleY(0);opacity:0}60%{opacity:1}100%{transform:scaleY(1);opacity:.75}}
+@keyframes authShim{0%{opacity:0}35%{opacity:.5}100%{opacity:0}}
+
+.authcard{position:relative;width:min(384px,100%);border:1px solid var(--border);
+  border-radius:18px;background:rgba(10,10,12,.82);backdrop-filter:blur(16px);
+  padding:26px 24px 22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.95);
+  opacity:0;transform:translateY(18px);animation:authUp .7s cubic-bezier(.22,.61,.36,1) .18s forwards}
+@keyframes authUp{to{opacity:1;transform:none}}
+.authcard .authmark{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;
+  letter-spacing:-.015em;margin-bottom:16px}
+.authcard .authmark .glyph{display:flex;align-items:center;gap:2.5px;height:26px}
+.authcard .authmark .glyph i{width:3px;border-radius:999px;background:var(--grad);display:block}
+.authcard .authmark em{font-style:normal;font-size:10.5px;font-weight:500;color:var(--lav-dim)}
+.authcard h2{margin:0 0 5px;font-size:21px;font-weight:700;letter-spacing:-.02em}
+.authcard .authsub{margin:0 0 20px;font-size:12.5px;line-height:1.55;color:var(--lav-dim)}
+.authfield{margin-bottom:14px}
+.authfield label{display:block;font-size:11.5px;font-weight:600;color:var(--lav);margin-bottom:6px}
+.authinput{position:relative;display:flex;align-items:center}
+.authinput>svg{position:absolute;left:11px;width:15px;height:15px;color:var(--lav-dim);
+  pointer-events:none}
+.authinput input{width:100%;height:40px;border-radius:10px;border:1px solid var(--border);
+  background:#08080a;color:var(--fg);font:inherit;font-size:13.5px;padding:0 12px 0 34px;
+  transition:border-color .15s,box-shadow .15s}
+.authinput input::placeholder{color:#5a5a66}
+.authinput input:focus{outline:0;border-color:rgba(129,140,248,.6);
+  box-shadow:0 0 0 3px rgba(129,140,248,.16)}
+.authinput.pw input{padding-right:38px}
+.authpeek{position:absolute;right:6px;width:28px;height:28px;display:grid;place-items:center;
+  border:0;background:transparent;color:var(--lav-dim);cursor:pointer;border-radius:7px;padding:0}
+.authpeek:hover{color:var(--fg)}
+.authrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px 0 16px}
+.authrow a{font-size:11.5px;color:var(--lav-dim);text-decoration:none}
+.authrow a:hover{color:var(--fg)}
+/* Remember me. A real checkbox with appearance:none rather than a div pretending
+   to be one -- it keeps the label click, the focus ring and the keyboard space bar. */
+.authkeep{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--lav-dim);
+  cursor:pointer;user-select:none}
+.authkeep:hover{color:var(--lav)}
+.authkeep input{appearance:none;-webkit-appearance:none;margin:0;width:15px;height:15px;flex:none;
+  border:1px solid var(--border-strong);border-radius:4.5px;background:#08080a;cursor:pointer;
+  display:grid;place-items:center;transition:background .15s,border-color .15s}
+.authkeep input::after{content:'';width:8px;height:5px;border-left:1.9px solid #fff;
+  border-bottom:1.9px solid #fff;transform:rotate(-45deg) translate(.5px,-1px) scale(.5);
+  opacity:0;transition:opacity .12s,transform .12s}
+.authkeep input:checked{background:var(--grad);border-color:transparent}
+.authkeep input:checked::after{opacity:1;transform:rotate(-45deg) translate(.5px,-1px) scale(1)}
+.authkeep input:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+.authgo{width:100%;height:42px;border:0;border-radius:11px;background:var(--grad);color:#fff;
+  font:inherit;font-size:13.5px;font-weight:650;cursor:pointer;
+  box-shadow:0 10px 26px -12px rgba(217,70,239,.8);transition:filter .15s,transform .1s}
+.authgo:hover{filter:brightness(1.08)} .authgo:active{transform:translateY(1px)}
+.author{position:relative;text-align:center;margin:18px 0 14px}
+.author::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border)}
+.author span{position:relative;background:#0b0b0e;padding:0 9px;font-size:9.5px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:#5a5a66}
+.authoauth{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.authoauth button{height:40px;border-radius:10px;border:1px solid var(--border);background:#08080a;
+  color:var(--lav);font:inherit;font-size:12.5px;font-weight:600;display:flex;align-items:center;
+  justify-content:center;gap:7px;cursor:not-allowed;opacity:.55}
+.authoauth svg{width:15px;height:15px}
+.authnote{margin:10px 0 0;font-size:10.5px;line-height:1.5;color:#5a5a66;text-align:center}
+.authfoot{margin:18px 0 0;padding-top:16px;border-top:1px solid var(--border);
+  font-size:12.5px;color:var(--lav-dim);text-align:center}
+.authfoot a{color:var(--fg);text-decoration:none;font-weight:600}
+.authfoot a:hover{text-decoration:underline}
+.authclose{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;border:0;
+  background:transparent;color:var(--lav-dim);cursor:pointer;display:grid;place-items:center;padding:0}
+.authclose:hover{background:rgba(255,255,255,.07);color:var(--fg)}
+@media(prefers-reduced-motion:reduce){
+  .authcard,.authlines i,.authlines i::after{animation:none;opacity:1;transform:none}
+  .authsparks{display:none}
+}
+
+/* ── hero carousel ────────────────────────────────────────────────── */
+.carousel{position:relative}
+.slide:not(.on){display:none!important}
+/* ^ !important is load-bearing: #heroA/#heroB/#heroC set display by ID, and
+   heroC sets it inline. A class selector cannot beat either one. */
+.cdots{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:8px;align-items:center}
+.cdot{width:26px;height:3px;border-radius:999px;border:0;padding:0;cursor:pointer;
+  background:rgba(255,255,255,.22);overflow:hidden;position:relative}
+.cdot[aria-current="true"]{background:rgba(255,255,255,.28)}
+.cdot[aria-current="true"]::after{content:'';position:absolute;inset:0;transform-origin:left;
+  background:var(--grad);animation:cfill var(--dwell,9s) linear forwards}
+@keyframes cfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.cdot[aria-current="true"]::after{animation:none;transform:scaleX(1)}}
+
+/* ── the neon sign ────────────────────────────────────────────────── */
+#heroA{position:relative;min-height:92vh;display:grid;place-items:center;overflow:hidden;
+  text-align:center;padding:90px 24px}
+/* the building it is bolted to — only visible where the sign's light reaches */
+.wall{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 1px, transparent 1px 78px);
+  -webkit-mask-image:radial-gradient(52% 40% at 50% 42%, #000 0%, rgba(0,0,0,.55) 45%, transparent 78%);
+  mask-image:radial-gradient(52% 40% at 50% 42%, #000 0%, rgba(0,0,0,.55) 45%, transparent 78%)}
+/* the light the sign throws back onto the wall */
+.spill{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;
+  width:min(90rem,150vw);height:42rem;filter:blur(90px);opacity:0;
+  background:radial-gradient(ellipse at center,
+    rgba(217,70,239,.46) 0%, rgba(129,140,248,.34) 36%, transparent 70%);
+  animation:spillOn 2.4s cubic-bezier(.32,.72,0,1) .35s forwards}
+@keyframes spillOn{from{opacity:0}to{opacity:1}}
+/* the mount: a rail above the sign with two brackets and a conduit drop */
+.mount{position:relative;width:min(13rem,42vw);height:16px;margin:0 auto 4px}
+.mount .rail{position:absolute;left:0;right:0;top:0;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22) 18%,rgba(255,255,255,.22) 82%,transparent)}
+/* two drop rods, like a hanging bar sign */
+.mount .brk{position:absolute;top:3px;width:2px;height:13px;
+  background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07))}
+.mount .brk.l{left:22%} .mount .brk.r{right:22%}
+.conduit{display:none}
+.neonwrap{position:relative;z-index:3}
+
+/* real tubes do not snap on — they stutter, then settle */
+@keyframes warmup{
+  0%{opacity:0}   6%{opacity:.85}  9%{opacity:.1}
+  14%{opacity:.9} 17%{opacity:.25} 23%{opacity:1}
+  26%{opacity:.5} 32%{opacity:1}   100%{opacity:1}}
+/* one tube never quite behaves */
+.neon .flick{animation:flick 7s steps(1,end) 2.6s infinite}
+@keyframes flick{0%,96.5%{opacity:1} 97%{opacity:.35} 97.6%{opacity:1} 98.2%{opacity:.5} 98.8%{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  .neon{animation:none}.neon .flick{animation:none}.spill{animation:none;opacity:1}}
+.heroA-in .kicker,.announce .kicker{font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--lav-dim);margin:0 0 20px}
+.heroA-in p.lede{margin:34px auto 0;max-width:36ch;font-size:15px;line-height:1.6;color:var(--lav);
+  position:relative;z-index:3}
+.heroA-in .cta{margin-top:30px;display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
+  position:relative;z-index:3}
+.slidenote{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);z-index:20;
+  font-size:10.5px;color:var(--lav-dim);white-space:nowrap}
+
+/* ── sign cabinet ─────────────────────────────────────────────────────
+   The Milshire's script is not floating — it is mounted on a dark cabinet
+   with a lit edge, bolted to a frame. That panel is half of why it reads as
+   a SIGN rather than as glowing text. */
+.cabinet{position:relative;display:inline-block;padding:.22em .58em .30em;border-radius:.46em;
+  background:linear-gradient(180deg,rgba(18,14,30,.92),rgba(8,6,14,.96));
+  box-shadow:inset 0 0 0 1px rgba(199,203,247,.14),
+             inset 0 1px 0 rgba(255,255,255,.07),
+             0 26px 70px -30px rgba(0,0,0,.95)}
+
+
+
+/* a thin lit pinstripe chasing the cabinet edge, like the tube trim on old signs */
+.cabinet::before{content:'';position:absolute;inset:.16em;border-radius:.34em;pointer-events:none;
+  box-shadow:0 0 0 1.5px rgba(217,70,239,.45), 0 0 14px 1px rgba(217,70,239,.30)}
+/* bolts */
+.cabinet::after{content:'';position:absolute;left:.3em;right:.3em;top:.26em;height:0;pointer-events:none;
+  box-shadow:0 0 0 2px rgba(255,255,255,.10), 100% 0 0 2px rgba(255,255,255,.10)}
+.neon{font-family:var(--signfont,'Grand Hotel'),ui-serif,Georgia,serif;font-weight:400;
+  font-size:clamp(44px,10.5vw,124px);line-height:1.02;letter-spacing:.004em;
+  color:#fff;filter:url(#neon-tube);display:inline-block;padding:0 .06em;
+  animation:warmup 1.5s ease-out .2s both}
+body[data-signfont="Monoton"] .neon{font-size:clamp(30px,7vw,84px);letter-spacing:.02em}
+body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
+</style>
+
+
+</head>
+<body data-bg="black" data-hero="stream">
+
+
+
+<!-- the glow filter, rebuilt in Funūn's indigo→fuchsia instead of the source's warm gold -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- the old headline glow, kept for other slides -->
+    <filter id="funun-glow" color-interpolation-filters="sRGB" x="-60%" y="-220%" width="220%" height="540%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"  result="b3"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="b20"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="38" result="b38"/>
+      <feColorMatrix in="b3"  result="l0" type="matrix" values="1 0 0 0 0  0 .99 0 0 0  0 0 1 0 0  0 0 0 .85 0"/>
+      <feColorMatrix in="b20" result="l2" type="matrix" values=".51 0 0 0 0  0 .55 0 0 0  0 0 .97 0 0  0 0 0 1 0"/>
+      <feColorMatrix in="b38" result="l3" type="matrix" values=".85 0 0 0 0  0 .28 0 0 0  0 0 .94 0 0  0 0 0 .85 0"/>
+      <feMerge><feMergeNode in="l3"/><feMergeNode in="l2"/><feMergeNode in="l0"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- NEON TUBE. A real tube is four things stacked: a near-white core, a
+         saturated sheath right at the glass, a mid bloom, and a wide soft haze
+         that lands on the wall behind. Miss the white core and it reads as
+         colored text; miss the wide haze and it reads as a sticker. -->
+    <filter id="neon-tube" color-interpolation-filters="sRGB" x="-90%" y="-320%" width="280%" height="740%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="n1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5"   result="n5"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14"  result="n14"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="34"  result="n34"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="62"  result="n62"/>
+      <!-- widest haze: fuchsia washing the wall -->
+      <feColorMatrix in="n62" result="h" type="matrix"
+        values=".92 0 0 0 0   0 .18 0 0 0   0 0 1 0 0    0 0 0 .8 0"/>
+      <!-- mid bloom: indigo, the body of the light -->
+      <feColorMatrix in="n34" result="m" type="matrix"
+        values=".58 0 0 0 0   0 .38 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
+      <feColorMatrix in="n14" result="s" type="matrix"
+        values=".70 0 0 0 0   0 .46 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
+      <!-- the sheath hugging the glass -->
+      <feColorMatrix in="n5" result="g" type="matrix"
+        values=".92 0 0 0 0   0 .72 0 0 0   0 0 1 0 0    0 0 0 1 0"/>
+      <!-- the hot core -->
+      <feColorMatrix in="n1" result="c" type="matrix"
+        values="1 0 0 0 .12   0 1 0 0 .10   0 0 1 0 .14   0 0 0 1 0"/>
+      <feMerge>
+        <feMergeNode in="h"/><feMergeNode in="m"/><feMergeNode in="s"/>
+        <feMergeNode in="g"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
+
+<main>
+  <!-- ══ HEADER ══ -->
+  <header class="nav" id="nav">
+    <div class="wrap navrow">
+      <a class="navmark" href="#top" aria-label="Fun&#363;n home">
+        <span class="glyph" aria-hidden="true"></span><span>Fun&#363;n</span><em>(fuh-NOON)</em>
+      </a>
+      <nav class="navlinks" id="navlinks" aria-label="Sections">
+        <span class="navcursor" id="navcursor" aria-hidden="true"></span>
+        <a href="#how">How it works</a>
+        <a href="#crate">The Crate</a>
+        <a href="#faq">Questions</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <a class="navsignin" href="/signin">Sign in</a>
+    </div>
+  </header>
+
+  <div class="carousel" id="carousel">
+  <!-- ══ HERO A ══ -->
+  <section id="heroA" class="slide">
+    <div class="wall" aria-hidden="true"></div>
+    <div class="spill" aria-hidden="true"></div>
+    <div class="heroA-in">
+      <p class="kicker">Introducing</p>
+      <div class="mount" aria-hidden="true">
+        <span class="rail"></span><span class="brk l"></span><span class="brk r"></span>
+        <span class="conduit"></span>
+      </div>
+      <div class="neonwrap">
+        <span class="cabinet"><span class="neon">Writer<span class="flick">&rsquo;</span>s Room</span></span>
+              </div>
+      <p class="tagline">Write together. Leave knowing who did what.</p>
+      <p class="lede">The first room built for writing a topline together &mdash; by multiplatinum,
+        Grammy-winning and Grammy-nominated songwriters. See who&rsquo;s in the room and who&rsquo;s
+        on each section.</p>
+      <div class="cta">
+        <a class="btn primary" href="#">Start a song</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ HERO B ══ -->
+  <section id="heroB" class="slide announce">
+    <div class="ann-in">
+      <p class="kicker">Introducing</p>
+      <h1 class="ann-title">Sound Vault</h1>      <p class="tagline">Everything the release needs, in one place.</p>
+      <p class="lede">Masters, stems, artwork, credits, metadata and documents live together, and a readiness score
+        shows what&rsquo;s done and what still needs doing before release day.</p>
+      <div class="cta">
+        <a class="btn primary" href="#">Start a song</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- placeholder slides so the mechanism is visible; content is yours to decide -->
+  <section id="heroC" class="slide announce">
+    <div class="ann-in">
+      <p class="kicker">Introducing</p>
+      <h1 class="ann-title">The Crate</h1>      <p class="tagline">Where supervisors come looking.</p>
+      <p class="lede">Funūn&rsquo;s curated sync catalogue, for songs with the rights information and
+        approvals needed for one&#8209;stop clearance. Submitting is free; getting in is earned.</p>
+      <div class="cta">
+        <a class="btn primary" href="#">Submit a song</a>
+        <a class="btn ghost" href="#crate">How The Crate works</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="cdots" id="cdots" role="tablist" aria-label="Hero slides"></div>
+  <span class="slidenote">Carousel — hover to pause</span>
+  </div>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section id="how"><div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">How it works</span></div>
+      <h2 class="sec">One song, start to settled.</h2>
+      <p class="sub">No setup, no workspace to configure. Start writing and the paperwork assembles
+        itself behind you.</p>
+    </div>
+    <ol class="steps reveal" id="steps"></ol>
+  </div></section>
+
+  <!-- ══ COLLABORATOR SPHERE ══ -->
+  <section id="people"><div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Collaborators</span></div>
+      <h2 class="sec">Add them once. Stop chasing the details.</h2>
+      <p class="sub">Every writer, producer and featured artist you work with, already on file.
+        Hover anyone to see what Fun&#363;n already knows.</p>
+    </div>
+    <div class="sphere-wrap reveal">
+      <div class="sphere" id="sphere" role="img"
+           aria-label="A rotating sphere of collaborator avatars. Details are listed below."></div>
+      <div class="sphere-card" id="sphereCard" hidden></div>
+      <p class="sphere-hint">Drag to spin &middot; hover a face for their details</p>
+    </div>  </div></section>
+
+  <!-- ══ THE CRATE ══ -->
+  <section id="crate"><div class="wrap">
+    <div class="csplit">
+      <div class="reveal">
+        <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">The Crate</span></div>
+        <h2 class="sec">We shop it. You keep the rights.</h2>
+        <p class="sub">The Crate is Fun&#363;n&rsquo;s curated sync catalogue. A spot in it is earned,
+          not bought &mdash; and once a song is in, our team puts it in front of the people we work
+          with: music supervisors, ad agencies, filmmakers, game studios and brands.</p>
+        <ul class="cbeats">
+          <li><b>You submit, we review.</b> We can&rsquo;t see inside your Sound Vault until you send a
+            song over &mdash; submitting is free, and it&rsquo;s what starts the relationship.</li>
+          <li><b>Admission is the earned part.</b> No pitch to write. We judge the song on
+            quality, and on demand for that kind of music across the projects coming our way.
+            Splits, credits and metadata aren&rsquo;t the test &mdash; Fun&#363;n walks you through
+            getting those right either way.</li>
+          <li><b>Then we shop it.</b> One agreement authorizes us to represent what you submit
+            &mdash; price and terms still negotiated per deal &mdash; and when a brief fits, your
+            song goes out in a Selects like this one. <b>You still own your music.</b> Representing
+            it is not owning it, and nothing you submit changes who the song belongs to.</li>
+        </ul>
+        <div class="ccta">
+          <a class="btn primary" href="#">Submit a song</a>
+          <a class="btn ghost" href="crate-ready.html">What makes a song Crate-ready</a>
+        </div>
+      </div>
+
+      <figure class="selects reveal" aria-label="A Selects playlist as a music supervisor receives it">
+        <div class="sel-amb" aria-hidden="true"></div>
+        <div class="sel-in">
+          <div class="sel-top">
+            <span class="sel-rnd" aria-hidden="true">&larr;</span>
+            <span class="sel-abtitle">Maya Reyes &mdash; for a brief</span>
+            <span class="sel-pill">Watermarked</span>
+          </div>
+          <div class="sel-hero">
+            <img class="sel-cover" src="/marketing/img/art/paper.jpg" alt="">
+            <span class="sel-chip"><span class="logo">FUN&#362;N</span><span class="sep">&middot;</span><span>Selects</span></span>
+            <h3 class="sel-title">Maya Reyes</h3>
+            <p class="sel-by">4 songs &middot; 14 min &middot; for a brief</p>
+            <div class="sel-row">
+              <span class="sel-hc" aria-hidden="true">&#8646;</span>
+              <span class="sel-play">&#9654; Play</span>
+              <span class="sel-hc" aria-hidden="true">&#8595;</span>
+            </div>
+          </div>
+          <div class="sel-head"><span class="l">Curated tracks</span><span class="cnt">4 songs &middot; 14 min</span></div>
+          <ol class="sel-list" id="selList"></ol>
+        </div>
+        <figcaption>A Selects, as a supervisor receives it &mdash; every track already clearable.</figcaption>
+      </figure>
+    </div>
+  </div></section>
+
+  <!-- ══ DIFFERENTIATORS ══ -->
+  <section id="tools"><div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Differentiators</span></div>
+      <h2 class="sec">You make a hot song. Fun&#363;n unlocks opportunities while it&rsquo;s
+        still hot.</h2>
+      <p class="sub">Every one of these features starts from what is already in your Sound Vault,
+        tailored to your music.</p>
+    </div>
+    <div class="dtabs reveal" id="dtabs" role="tablist" aria-label="Differentiators"></div>
+    <div class="dpanel reveal" id="dpanel"></div>
+      </div></section>
+
+  <!-- ══ VOICES ══ -->
+  <section id="voices"><div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Voices</span></div>
+      <h2 class="sec">Hear it from the room.</h2>
+      <p class="sub">The buzz going around about Fun&#363;n.</p>
+    </div>
+    <div class="vgrid" id="vgrid"></div>  </div></section>
+
+  <!-- ══ FAQ ══ -->
+  <section id="faq"><div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow"><span class="n">01</span><span class="r"></span><span class="t">Questions</span></div>
+      <h2 class="sec">The things people actually ask.</h2>
+      <p class="sub">Short answers. If something here is unclear, that&rsquo;s our problem &mdash;
+        tell us and we&rsquo;ll fix the wording. Or reach out and let&rsquo;s chat.</p>
+    </div>
+    <div class="faq reveal" id="faqGrid"></div>
+  </div></section>
+
+  <!-- ══ PRICING ══ -->
+  <section id="pricing">
+    <span class="pglow a" aria-hidden="true"></span><span class="pglow b" aria-hidden="true"></span>
+    <div class="wrap">
+    <div class="ptop reveal">
+      <div>
+        <div class="eyebrow"><span class="n">02</span><span class="r"></span><span class="t">Pricing</span></div>
+        <h2 class="sec">Pick a lane.</h2>
+        <p class="sub">The free plan stays free. Move up when you need more audio, more tools or a place for the whole team.</p>
+      </div>
+      <div class="pswitch" role="group" aria-label="Billing period">
+        <button data-bill="m" aria-pressed="true">Monthly</button>
+        <button data-bill="y" aria-pressed="false">Yearly <span class="save">−20%</span></button>
+      </div>
+    </div>
+    <div class="pgrid" id="pgrid"></div>
+    <div class="teamstrip reveal">
+      <div class="tstext">
+        <p class="tsname">Entourage <span class="tsprice">Custom</span></p>
+        <p class="tswho">Labels, management companies and multi-artist rosters</p>
+        <p class="tssub">Everything in Team, scoped to your organization &mdash; seats, roles and
+          services built around how your team already works.</p>
+      </div>
+      <a class="tscta" href="#"><span>Talk to us</span><span class="disc"></span></a>
+    </div>  </div></section>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="footwrap"><footer>
+    <div class="fgrid">
+      <div class="reveal">
+        <div class="fmarkrow">
+          <span class="glyph" aria-hidden="true"></span>
+          <span class="fmark">Funūn</span>
+        </div>
+        <p class="ftag">Make the song. Keep the record.</p>
+        <p class="fcopy">© <span id="yr"></span> Funūn. All rights reserved.</p>
+      </div>
+      <div class="fcols" id="fcols"></div>
+    </div>  </footer></div>
+</main>
+
+<!-- ══ SIGN-IN DIALOG ══ -->
+
+<script nonce="__CSP_NONCE_PLACEHOLDER__">
+// Bench-only image cache buster. Faces get overwritten in place (same filename,
+// new bytes) while picking, and the browser serves the stale copy -- which reads
+// as "the change didn't work". MUST be declared before any renderer uses it:
+// a `const` further down the file is in the temporal dead zone and throws.
+const ASSET_V='202609271636';
+
+// ── controls ─────────────────────────────────────
+function wireSeg(attr, apply){
+  document.querySelectorAll('.bench [data-'+attr+']').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('.bench [data-'+attr+']').forEach(x=>x.setAttribute('aria-pressed', x===b));
+      apply(b.dataset[attr]);
+    };
+  });
+}
+// ── hero carousel ────────────────────────────────
+const SLIDES=[...document.querySelectorAll('.carousel .slide')];
+const DWELL=9000;
+let cIdx=0, cTimer=null, cPaused=false;
+function showSlide(i){
+  cIdx=(i+SLIDES.length)%SLIDES.length;
+  SLIDES.forEach((s,k)=>s.classList.toggle('on', k===cIdx));
+  [...document.querySelectorAll('.cdot')].forEach((d,k)=>
+    d.setAttribute('aria-current', String(k===cIdx)));
+  // restart the fill animation on the active dot
+  const on=document.querySelector('.cdot[aria-current="true"]');
+  if(on){ on.style.setProperty('--dwell', (DWELL/1000)+'s'); }
+  // the bench hero switch still works: it jumps the carousel
+  document.body.dataset.hero = cIdx===0 ? 'illuminated' : cIdx===1 ? 'stream' : 'other';
+  document.querySelectorAll('.bench [data-hero]').forEach(b=>
+    b.setAttribute('aria-pressed', String((b.dataset.hero==='illuminated'&&cIdx===0)||(b.dataset.hero==='stream'&&cIdx===1))));
+}
+function armCarousel(){
+  clearInterval(cTimer);
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  cTimer=setInterval(()=>{ if(!cPaused) showSlide(cIdx+1); }, DWELL);
+}
+document.getElementById('cdots').innerHTML =
+  SLIDES.map((_,i)=>'<button class="cdot" role="tab" data-slide="'+i+'" aria-label="Slide '+(i+1)+'"></button>').join('');
+document.querySelectorAll('[data-slide]').forEach(b=>{
+  b.onclick=()=>{ showSlide(+b.dataset.slide); armCarousel(); };
+});
+const car=document.getElementById('carousel');
+car.addEventListener('pointerenter',()=>cPaused=true);
+car.addEventListener('pointerleave',()=>cPaused=false);
+showSlide(0); armCarousel();
+
+// the bench switch jumps the carousel rather than toggling display
+wireSeg('hero', v=>{ showSlide(v==='illuminated'?0:1); armCarousel(); });
+wireSeg('bg', v=>{ document.body.dataset.bg=v; });
+wireSeg('signfont', v=>{
+  document.body.dataset.signfont=v;
+  document.documentElement.style.setProperty('--signfont', "'"+v+"'");
+  showSlide(0);
+});
+document.documentElement.style.setProperty('--signfont', "'Grand Hotel'");
+document.body.dataset.signfont='Grand Hotel';
+
+// ── the corridor ─────────────────────────────────
+// Ported from the source's geometry. Depth is authored as APPARENT SIZE and
+// grows geometrically, so consecutive cards keep a constant size ratio and the
+// ribbon never tears. Cards are born ACROSS the axis (railBirth negative) so
+// the vanishing point is never uncovered, and negative animation delays drop
+// every card mid-flight so the corridor is full on the first frame.
+const P = {perspective:30, cardW:18, cardH:25, radius:0.4, birthH:2.6, exitH:46,
+           railBirth:-11, railExit:44, fan:3.3, turnBirth:6, turnExit:28, stops:24};
+const CARDS = 9, SPEED = 20, AXIS = 55;
+// stand-ins for cover art — real ones would come from artists who opted in
+const ART = [
+  'linear-gradient(135deg,#c0532f,#e8b84b)','linear-gradient(140deg,#3f7f6f,#4c8c9b)',
+  'linear-gradient(120deg,#818cf8,#d946ef)','linear-gradient(160deg,#1f2937,#4b5563)',
+  'linear-gradient(135deg,#7c2d12,#b45309)','linear-gradient(150deg,#312e81,#6d28d9)',
+  'linear-gradient(130deg,#065f46,#10b981)','linear-gradient(145deg,#831843,#db2777)',
+  'linear-gradient(125deg,#0c4a6e,#0ea5e9)',
+];
+function railKeyframes(dir, name){
+  let out='';
+  for(let s=0;s<=P.stops;s++){
+    const u=s/P.stops;
+    const scale=(P.birthH/P.cardH)*Math.pow(P.exitH/P.birthH,u);
+    const z=P.perspective*(1-1/scale);
+    const rail=P.railExit-(P.railExit-P.railBirth)*Math.pow(1-u,P.fan);
+    const turn=P.turnBirth+(P.turnExit-P.turnBirth)*u;
+    out += (u*100).toFixed(2)+'%{transform:translate3d('+(dir*rail).toFixed(2)+'cqw,0,'
+         + z.toFixed(2)+'cqw) rotateY('+(-dir*turn).toFixed(2)+'deg)}';
+  }
+  return '@keyframes '+name+'{'+out+'}';
+}
+(function buildCorridor(){
+  const stage=document.getElementById('stage');
+  const corridor=document.querySelector('.corridor');
+  if(!stage||!corridor) return;   // corridor slide retired -- see the image-stream note
+  corridor.style.perspective=P.perspective+'cqw';
+  corridor.style.perspectiveOrigin='50% '+AXIS+'%';
+  const st=document.createElement('style');
+  st.textContent = railKeyframes(1,'railR') + railKeyframes(-1,'railL');
+  document.head.appendChild(st);
+  let html='';
+  ['railR','railL'].forEach(name=>{
+    for(let i=0;i<CARDS;i++){
+      html += '<div class="cardi" style="width:'+P.cardW+'cqw;height:'+P.cardH+'cqw;'
+        + 'margin-left:'+(-P.cardW/2)+'cqw;margin-top:'+(-P.cardH/2)+'cqw;'
+        + 'border-radius:'+P.radius+'cqw;animation:'+name+' '+SPEED+'s linear infinite;'
+        + 'animation-delay:'+(-(i*SPEED)/CARDS)+'s">'
+        + '<div class="art" style="background:'+ART[i%ART.length]+'"></div></div>';
+    }
+  });
+  stage.innerHTML=html;
+})();
+
+// ── voices ───────────────────────────────────────
+// Bars are DETERMINISTIC, not Math.random() — the source randomised on every
+// render, which in Next.js makes the server and client disagree and triggers a
+// hydration mismatch. Real Funūn would feed peaksFromBuffer() here instead.
+// Two kinds of card, one grid. A plain text quote needs consent and nothing
+// else; an audio quote needs a clip, a release and the peaks below. Entries with
+// no `a` render as text -- that is the whole switch, so the section can start as
+// text and gain audio one person at a time.
+//
+// `a.peaks` is DATA, not something the page works out. The clip and its peaks are
+// produced together at ingest by tools/audio-peaks.py, so playing a card costs one
+// mp3 and forty numbers -- no AudioContext, no decode on load. The previous version
+// of this section faked both: the bars came from Math.sin and the play button ran a
+// setInterval over a progress fraction. It played nothing.
+const VOICES = [
+  {n:'Ludwig van Beethoven', r:'Composer \u00b7 Bonn', art:'linear-gradient(135deg,#c0532f,#e8b84b)', i:'LB',
+   img:'/marketing/img/composer-beethoven.jpg', op:'50% 16%', z:1.45,
+   q:'I stopped keeping a splits spreadsheet. The room already knew who wrote what. This is hella fire. \ud83d\udd25\ud83d\udd25\ud83d\udd25'},
+  {n:'Johann Sebastian Bach', r:'Composer \u00b7 Leipzig', art:'linear-gradient(140deg,#3f7f6f,#4c8c9b)', i:'JB',
+   img:'/marketing/img/composer-bach.jpg', op:'53% 4%', z:1.3,
+   q:'Just had a lit session in the Writer\u2019s Room \ud83c\udfa4 Three of us wrote it in one night and nobody had to remember anything the next morning \ud83c\udf19 New album drop soon \ud83d\udcbf'},
+  {n:'Wolfgang Amadeus Mozart', r:'Composer \u00b7 Salzburg', art:'linear-gradient(150deg,#312e81,#6d28d9)', i:'WM',
+   img:'/marketing/img/composer-mozart.jpg', op:'50% 14%', z:1.5,
+   q:'Tbh, I don\u2019t even have to stress about paperwork and chasing down contact info from my collab homies \ud83e\udd1d It\u2019s all here in Fun\u016bn so we can just cookup whenever \ud83c\udfb9 For my metadata, Fun\u016bn lowkey goes hard fr fr \ud83d\udcc4\u2728'},
+];
+function mmss(s){return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0')}
+const ICON_PLAY='<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8.33 5.2v13.6l11-6.8z"/></svg>';
+const ICON_PAUSE='<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>';
+function barColor(i,n){const t=i/Math.max(1,n-1);
+  return 'rgb('+Math.round(129+(217-129)*t)+','+Math.round(140+(70-140)*t)+','+Math.round(248+(239-248)*t)+')';}
+
+(function buildVoices(){
+  const grid=document.getElementById('vgrid'); if(!grid) return;
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+  grid.innerHTML = VOICES.map((v,k)=>{
+    const player = !v.a ? '' :
+      '<div class="vplayer">'
+      + '<button class="vplay" data-v="'+k+'" aria-pressed="false" '
+        + 'aria-label="Play the clip from '+esc(v.n)+'">'+ICON_PLAY+'</button>'
+      + '<span class="vwave" data-w="'+k+'" role="progressbar" aria-valuemin="0" aria-valuemax="100" '
+        + 'aria-valuenow="0" aria-label="'+esc(v.n)+' clip position" tabindex="-1">'
+      + v.a.peaks.map(h=>'<i style="height:'+(h*100).toFixed(1)+'%"></i>').join('')
+      + '</span><span class="vdur" data-d="'+k+'">'+mmss(v.a.d)+'</span>'
+      + '<audio data-a="'+k+'" src="'+esc(v.a.src)+'" preload="none"></audio>'
+      + '</div>';
+    return '<div class="vcard">'
+      // The gradient + initials stay underneath as the fallback layer: if a portrait
+      // is missing or 404s, onerror removes the <img> and the initials show through,
+      // so a broken asset can never leave an empty circle.
+      + '<div class="vtop"><span class="vav" style="background:'+v.art+'">'+v.i
+      +   (v.img ? '<img src="'+v.img+'?v='+ASSET_V+'" alt="" loading="lazy" onerror="this.remove()"'
+      +     ' style="--op:'+(v.op||'50% 50%')+';--z:'+(v.z||1)+'">' : '')
+      + '</span>'
+        + '<span class="vwho"><span class="n">'+esc(v.n)+'</span><span class="r">'+v.r+'</span></span></div>'
+      + '<p class="vquote">\u201c'+esc(v.q)+'\u201d</p>'
+      + player
+      + '</div>';
+  }).join('');
+
+  const audios=[...grid.querySelectorAll('audio[data-a]')];
+  const el=(sel,k)=>grid.querySelector('['+sel+'="'+k+'"]');
+
+  function paint(k,frac,secs){
+    const wave=el('data-w',k); if(!wave) return;
+    const bars=wave.querySelectorAll('i'), cut=Math.floor(frac*bars.length);
+    bars.forEach((b,i)=>{
+      const on=i<cut;
+      b.style.background = on ? barColor(i,bars.length) : 'var(--lav-dim)';
+      b.style.opacity    = on ? '1' : '.32';
+    });
+    wave.setAttribute('aria-valuenow', String(Math.round(frac*100)));
+    const d=el('data-d',k);
+    if(d) d.textContent = frac>0 && frac<1 ? mmss(secs) : mmss(VOICES[k].a.d);
+  }
+
+  function setButton(k,playing){
+    const b=el('data-v',k); if(!b) return;
+    b.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+    b.setAttribute('aria-pressed', playing?'true':'false');
+    b.setAttribute('aria-label', (playing?'Pause':'Play')+' the clip from '+VOICES[k].n);
+  }
+
+  audios.forEach(au=>{
+    const k=+au.dataset.a;
+    const dur=()=>au.duration && isFinite(au.duration) ? au.duration : VOICES[k].a.d;
+    au.addEventListener('timeupdate', ()=>paint(k, au.currentTime/dur(), au.currentTime));
+    au.addEventListener('ended',      ()=>{ setButton(k,false); paint(k,0,0); });
+    au.addEventListener('pause',      ()=>setButton(k,false));
+    au.addEventListener('play',       ()=>{
+      setButton(k,true);
+      audios.forEach(o=>{ if(o!==au && !o.paused) o.pause(); });   // one at a time
+    });
+    // A clip that will not load must not leave a dead play button on a public page.
+    au.addEventListener('error', ()=>{
+      const p=el('data-v',k)?.closest('.vplayer'); if(p) p.remove();   // falls back to a text quote
+    });
+  });
+
+  grid.querySelectorAll('.vplay').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const au=el('data-a', +b.dataset.v);
+      if(au.paused) au.play().catch(()=>{}); else au.pause();
+    });
+  });
+
+  // click the waveform to scrub -- a mouse convenience; the button is the keyboard path
+  grid.querySelectorAll('.vwave').forEach(w=>{
+    w.addEventListener('click', e=>{
+      const k=+w.dataset.w, au=el('data-a',k), r=w.getBoundingClientRect();
+      // Scrubbing needs a host that answers Range requests. Without one the browser
+      // can only seek inside what it has already streamed, and a click past that
+      // clamps to 0 and restarts the clip -- which reads as a broken player, worse
+      // than a dead one. So: only scrub once the whole clip is seekable. python's
+      // http.server sends no Accept-Ranges, so on the bench this stays inert until a
+      // clip has played through; Vercel and Supabase Storage both answer Range.
+      const d=au.duration && isFinite(au.duration) ? au.duration : VOICES[k].a.d;
+      if(!au.seekable.length || au.seekable.end(au.seekable.length-1) < d-0.5) return;
+      const t=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*d;
+      au.currentTime=t; paint(k,t/d,t);
+    });
+  });
+})();
+
+// ── faq ──────────────────────────────────────────
+// Every answer checked against source before writing -- these are the questions
+// where a wrong answer costs money or trust, not just clarity.
+// NOT INCLUDED: what changes when a song enters The Crate. Exclusivity of
+// representation is an open placeholder in lib/sync-library/agreement.ts, to be
+// decided with counsel/BD. See 2026-09-25-crate-exclusivity-term-blocks-faq-answer.md
+const FAQ=[
+ ['Can I still shop my songs elsewhere?',
+  'Yes. The Writer’s Room, Sound Vault and Release Report are yours to use — what you make in them is yours. Funūn takes no ownership and no exclusivity over your songs or your masters. Write here, release wherever you like, pitch to whoever you like.'],
+ ['Who owns my masters?',
+  'You do. Funūn stores them, organizes them and keeps the paperwork straight. It does not take a share of your recordings or your compositions for doing that.'],
+ ['What happens to my songs if I stop paying, or leave?',
+  'Your personal, private Sound Vault catalogue stays yours and stays readable. A paused or cancelled workspace becomes read\u2011only \u2014 your roster, rights evidence, contracts and history are all still there. Billing never deletes, transfers or rewrites what you made, and you can always export all of your data in the standard formats the rest of the industry reads. A song accepted into The Crate is a different thing: that is the public\u2011facing sync catalogue, and we never charge you to keep it there. A spot is earned, not rented \u2014 if your song is in, it stays in, whether or not you are paying us.'],
+ ['What if my song is done and I didn’t write it in the Writer’s Room?',
+  'That’s fine — the Writer’s Room is one door in, not the only one. Start a Release Report in your Sound Vault and upload the finished masters straight into it, then keep the artwork, assets and contracts in the same place. Add co-writers as you go and their details are already on file the next time a split sheet, a credit or a registration needs them.'],
+ ['Can anyone see what I’m working on?',
+  'No. Everything in your Sound Vault is private unless you share it — that is the default, not a setting you have to go and find. A Writer’s Room is private to the people in it. The Green Room is the public side and you choose what goes there — nothing moves from one to the other on its own. Finished songs accepted into our sync catalogue, The Crate, are also public\u2011facing \u2014 but only if you consent first.'],
+ ['What if my co‑writer isn’t on Funūn?',
+  'They don’t need to be. You can save a collaborator’s details and put them on a split sheet before they ever sign up — and their information stays on your roster, not on public display.'],
+ ['Do I need a paid plan to submit to The Crate?',
+  'No. A paid plan is not a requirement for placement — the free Writer plan lists “Submit to The Crate” as part of what it includes. The free Writer plan is enough to send your best work. Upgrade when you want more audio storage or the AI tool bench, not to get through the door.'],
+ ['Do I have to use The Crate?',
+  'No. It’s opt‑in, and skipping it costs you nothing — the room, the Sound Vault and the release checklist all work the same either way.'],
+];
+(function buildFaq(){
+  const g=document.getElementById('faqGrid'); if(!g) return;
+  g.innerHTML=FAQ.map(([q,a])=>'<div><h3>'+q+'</h3><p>'+a+'</p></div>').join('');
+})();
+
+// ── pricing ──────────────────────────────────────
+let bill='m';
+const TIERS=[
+  {id:'free', name:'Writer', who:'Writing solo or just getting started', m:0, y:0,
+   blurb:'Everything you need to write a song and keep track of who contributed what.',
+   feats:[
+     // "every line remembers who wrote it" REMOVED -- author_user_id is a column on
+     // lyric_blocks (migration 135:219) and a block holds one text field. Attribution
+     // is BLOCK-level; there is no per-line author record in the schema.
+     {t:'The Writer\u2019s Room', h:'Where your song gets written',
+      i:'Hum a melody, write lyrics, upload a take or bring in a collaborator. Comments stay with the section or moment they\u2019re about. The room keeps the session history as you work, so you leave knowing who did what.'},
+     // storage explanation dropped until enforcement exists (Codex: do not explain an
+     // unenforced quota here)
+     {t:'Unlimited songs', h:'We don\u2019t count songs',
+      i:'Start as many as you want. Nobody should have to decide whether an idea deserves a slot. Rough takes are included \u2014 humming an idea never counts against your storage.'},
+     {t:'Sound Vault', h:'Your masters, artwork and documents',
+      i:'Keep masters, stems, artwork, credits, metadata and documents together. The readiness score shows what\u2019s ready and what still needs doing before release day.'},
+     {t:'Contract Locker', h:'The paperwork behind your money',
+      i:'Keep split sheets and agreements together. See what\u2019s signed, what\u2019s waiting and who needs a nudge.'},
+     {t:'Collaborator profiles', h:'Add them once. Stop chasing the details.',
+      i:'Save a collaborator\u2019s name, PRO, IPI, publisher and professional contact once. Fun\u016bn can reuse those details when you prepare splits, contracts and registrations, so you\u2019re not chasing one missing IPI the week a release is due.',
+      // softened from the row-isolation promise: that model may be wrong for an executed
+      // split sheet every party must review, and it must hold across exports and support tooling
+      p:'Your private roster stays private. A shared document includes only the fields needed for that document.'},
+     {t:'Rights checklists', h:'Know what still needs filing',
+      i:'Work through copyright, PRO and SoundExchange steps with plain\u2011language guidance, direct links and a status you can come back to. You do the filing; Fun\u016bn keeps the checklist.'},
+     {t:'Community access', h:'The Green Room',
+      i:'Share the work you want people to see, meet potential collaborators and stay in touch \u2014 without turning your private room into a feed.'},
+     {t:'Metadata Studio', h:'Your release metadata',
+      i:'Keep the release details people ask for \u2014 credits, identifiers, lyrics and delivery metadata \u2014 in one place. Fill them in once, then export a clean handoff instead of rebuilding the sheet for every recipient.'},
+     {t:'Antenna', h:'Opportunities, matched to your catalogue',
+      i:'Antenna checks open sync, playlist and brand opportunities against the music in your Sound Vault, then shows you the ones that fit. You get a shortlist, not another feed to dig through. Antenna brings the brief to you; The Crate puts your song where supervisors come looking.'},
+     // "one-stop-licensed" -> "ready for one-stop clearance": the former says a license
+     // already exists. And the pitching promise no longer commits humans per song.
+     {t:'Unlock sync opportunities', h:'Submit to The Crate',
+      i:'The Crate is Fun\u016bn\u2019s curated sync catalogue for songs with the rights information and approvals needed for one\u2011stop clearance. Submitting is free; getting in is earned. Once a song is admitted, your Sync Library opens and it\u2019s ready for our team to pull when the right brief comes in.'},
+     {t:'Release Report', h:'Keep the release paperwork moving',
+      i:'Build the release, then work through the rights checklist: copyright, your PRO and SoundExchange. You do the filing; Fun\u016bn keeps what\u2019s done and what\u2019s still open in one place.'},
+   ], cta:'Request an invite', beta:'Funūn is invite-only while we&rsquo;re in beta. Request an invite and we&rsquo;ll let you know when a spot opens.'},
+  {id:'pro', name:'Studio', who:'Working writers and producers', m:19, y:15, pop:true,
+   blurb:'For when the song\u2019s done and the work isn\u2019t.',
+   feats:[
+     'Everything in Writer',
+     {t:'The whole AI tool bench', h:'Eleven tools, one subscription',
+      l:[['PitchPlug','drafts the outreach around who you\u2019re pitching'],
+         ['EPK.fyi','the press kit'],
+         ['DropReady','release\u2011day captions'],
+         ['SoundBait','TikTok hooks and a posting plan'],
+         ['SpotPitch','the Spotify editorial pitch'],
+         ['DistroAdvisor','flags metadata gaps before you submit'],
+         ['RoyaltyAudit','checks your PRO and split information for gaps'],
+         'Plus a second read on contracts, document drafts, campaign planning and tags suggested from the track.']},
+     // "completeness and accuracy" is not something an AI review can guarantee
+     {t:'AI contract check', h:'Read before you sign',
+      i:'Upload an agreement for a structured second read: missing fields, internal inconsistencies and questions to take back to the other side. It can miss things. It isn\u2019t legal advice.'},
+     // GATED: do not publish until the deployed recorder reliably produces 24-bit/48k
+     {t:'24\u2011bit keeper takes', h:'Record the one you want to keep',
+      i:'Capture a lossless 24\u2011bit/48\u202fkHz take when the idea moves beyond a voice memo.'},
+     // two storage rows collapsed into one -- there is one meter
+     // (storage_bytes_ingested), so two rows implied two quotas that do not exist
+     {t:'More audio storage', h:'More room for keepers',
+      i:'Store more lossless takes, masters and stems.'},
+     'DAW marker export',
+     'Priority support',
+   ], cta:'Request an invite', beta:'Funūn is invite-only while we&rsquo;re in beta. Request an invite and we&rsquo;ll note that Studio is the one you want.'},
+  {id:'team', name:'Team', who:'Teams, labels and managers', m:49, y:39,
+   blurb:'Shared workspaces with roles you can set.',
+   feats:[
+     'Everything in Studio',
+     'Team workspaces and roles',
+     'Roster and catalogue views',
+     'Activity and decision history',
+     'Onboarding help',
+     {t:'Dedicated Talent Services liaison', h:'One contact who knows your catalogue',
+      i:'One Fun\u016bn contact who knows your catalogue, keeps the next steps clear and brings in the right specialist when needed. They\u2019re your point person at Fun\u016bn \u2014 not your manager, agent, publisher or lawyer. You make the calls.'},
+     {t:'A\u0300 la carte label services', h:'Bring in help for a specific project',
+      i:'Bring in playlist pitching, A&amp;R or consulting for a specific project, from people with decades of combined industry experience. Each engagement is scoped and priced separately. Your Fun\u016bn contact can explain the options; you decide what to book.'},
+   // OWNER 2026-09-29 supersedes the 2026-09-26 "See if Team fits" wording: during
+   // beta NOBODY can open an account, so all three CTAs read "Request an invite".
+   // The earlier reasoning still holds and is why we don't say "Talk to us" here --
+   // most teams have ten seats or fewer and would be promised a conversation that
+   // never happens. Entourage keeps "Talk to us"; there a person genuinely replies.
+   ], cta:'Request an invite', beta:'Funūn is invite-only while we&rsquo;re in beta. Request an invite and we&rsquo;ll be in touch about what your group needs.'},
+];
+const TICK='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const ARROW='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+const LOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+const INFO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 11v6M12 7v.1"/></svg>';
+let popN=0;
+// A feature is either a plain string or {t,h,i}. Only the second kind gets an info button.
+function featRow(f){
+  const label = typeof f==='string' ? f : f.t;
+  const row = '<li><span class="tick">'+TICK+'</span><span>'+label+'</span>';
+  if(typeof f==='string') return row+'</li>';
+  const id='fp'+(++popN);
+  return row
+    + '<button class="finfo" type="button" aria-expanded="false" aria-controls="'+id+'"'
+    + ' aria-label="What is '+label+'?" data-pop="'+id+'">'+INFO+'</button>'
+    + '<div class="fpop" id="'+id+'" hidden><b>'+f.h+'</b>'
+    + (f.l ? '<ul>'+f.l.map(x=>'<li><span>'+(Array.isArray(x)
+        ? '<strong>'+x[0]+'</strong> \u2014 '+x[1] : x)+'</span></li>').join('')+'</ul>'
+        : f.i)
+    + (f.p?'<span class="priv">'+LOCK+'<span>'+f.p+'</span></span>':'')
+    + '<i class="fline"></i></div></li>';
+}
+function closePops(except){
+  document.querySelectorAll('.finfo[aria-expanded="true"]').forEach(b=>{
+    if(b===except) return;
+    b.setAttribute('aria-expanded','false');
+    document.getElementById(b.dataset.pop).hidden=true;
+  });
+}
+// delegated, so it survives every renderPricing() re-render
+document.addEventListener('click', e=>{
+  const btn = e.target.closest && e.target.closest('.finfo');
+  if(!btn){ closePops(null); return; }
+  const pop = document.getElementById(btn.dataset.pop);
+  const open = btn.getAttribute('aria-expanded')==='true';
+  closePops(btn);
+  btn.setAttribute('aria-expanded', String(!open));
+  pop.classList.remove('up');
+  pop.hidden = open;
+  if(!open){
+    // measure once visible: if it would run past the card, flip it upward
+    const card = pop.closest('.pcard');
+    if(card && pop.getBoundingClientRect().bottom > card.getBoundingClientRect().bottom - 6){
+      pop.classList.add('up');
+    }
+  }
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closePops(null); });
+
+function renderPricing(){
+  document.getElementById('pgrid').innerHTML = TIERS.map(t=>{
+    const price = bill==='m' ? t.m : t.y;
+    const was = bill==='y' && t.m>0 ? '<span class="was">$'+t.m+'</span>' : '';
+    return '<div class="pcard'+(t.pop?' pop':'')+'">'
+      + (t.pop?'<span class="ppill">Most chosen</span>':'')
+      + '<h3>'+t.name+'</h3><p class="who">'+t.who+'</p>'
+      + '<div class="prow">'+was+'<span class="amt">'+(price===0?'Free':'$'+price)+'</span>'
+        + (price===0?'':'<span class="per">/month</span>')+'</div>'
+      + '<p class="blurb">'+t.blurb+'</p><hr>'
+      + '<p class="pinc">What\u2019s included</p>'
+      + '<ul>'+t.feats.map(featRow).join('')+'</ul>'
+      + (t.beta ? '<p class="pbeta">'+t.beta+'</p>' : '')
+      + '<a class="pcta '+(t.pop?'solid':'quiet')+'" href="#"><span>'+t.cta+'</span>'
+        + '<span class="disc">'+ARROW+'</span></a>'
+      + '</div>';
+  }).join('');
+}
+renderPricing();
+document.querySelectorAll('[data-bill]').forEach(b=>{
+  b.onclick=()=>{ bill=b.dataset.bill;
+    document.querySelectorAll('[data-bill]').forEach(x=>x.setAttribute('aria-pressed', x===b));
+    renderPricing(); };
+});
+
+// ── how it works ─────────────────────────────────
+// Steps are the arc of ONE SONG, not the setup of a tool. The source component's
+// "create account / configure workflow / invite team / ship" would contradict the
+// hero, which promises you can hum an idea with no setup at all.
+const ICON={
+  hum:'<path d="M12 3v11.5"/><path d="M12 14.5a3 3 0 1 1-3 3"/><path d="M12 3c3.2.5 5 2 5 4"/>',
+  people:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5.8"/><path d="M17.5 14.2A5.5 5.5 0 0 1 20.5 19"/>',
+  ledger:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  out:'<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/><path d="M4 21h16"/>',
+  swap:'<path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/>',
+};
+const STEPS=[
+  {k:'hum', t:'Start the song',
+   d:'Hum it, type a lyric, drop in a take. Free to start, and there’s no project to create first — the room opens and the diary starts with it.',
+   w:'Writer’s Room'},
+  {k:'people', t:'Bring in who you’re writing with',
+   d:'Invite a co-writer and their details come with them. Nobody is chasing a PRO number the week a release is due.',
+   w:'Collaborators'},
+  {k:'swap', t:'Send it out, get it back',
+   d:'Your timed comments export as DAW markers, so notes land on the timeline where the work actually happens. The mix comes back into the room, and you can see whether it has been opened, worked on or sent back.',
+   w:'Marker export · Producer handoff'},
+  {k:'ledger', t:'The record writes itself',
+   d:'Every section knows who wrote it. By the time the song is finished the split sheet already reflects what actually happened.',
+   w:'Splits · Contract Locker'},
+  {k:'out', t:'Take it out',
+   d:'Masters, stems, artwork and metadata land in one place, credits already filled in from the writing rather than a last‑minute round of emails. A readiness score tells you what is still missing, and when the song is release‑ready it goes out to your distributor \u2014 or into The Crate for sync.',
+   w:'Sound Vault · The Crate'},
+];
+(function buildSteps(){
+  const ol=document.getElementById('steps'); if(!ol) return;
+  ol.innerHTML=STEPS.map((s,i)=>
+    '<li><div class="rail"><span class="dot">'
+    + '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+ICON[s.k]+'</svg>'
+    + '</span>'+(i<STEPS.length-1?'<span class="line"></span>':'')+'</div>'
+    + '<div class="body"><h3>'+s.t+'</h3><p>'+s.d+'</p>'
+    + '<span class="who">'+s.w+'</span></div></li>').join('');
+})();
+
+// ── the crate: Selects track list ────────────────
+// Maya's tracks and the buyer-catalogue cover art that already ship in public/.
+// 'Paper' is hers in lib/deals/catalog-sample.ts (3:24, paper.jpg) -- it replaced
+// 'Morning Light', which is the owner's own song and does not belong in a mock.
+const SEL=[
+  ['Paper','paper','3:24'],
+  ['Moonlight','moonlight','3:41'],
+  ['Midnight Ride','midnight-ride','2:58'],
+  ['Golden Hour','golden-hour','4:05'],
+];
+(function buildSelects(){
+  const ol=document.getElementById('selList'); if(!ol) return;
+  // love / pass per row — the reaction pair is the interaction that makes the
+  // real player recognisable (SelectsPlayer.tsx's .cbtn.love / .cbtn.pass), and
+  // it is the one that tells the marketing story: a supervisor reacting to your
+  // song. The old mock showed a duration column instead.
+  const HEART='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.3 4.7 13a4.6 4.6 0 0 1 6.5-6.5l.8.8.8-.8A4.6 4.6 0 1 1 19.3 13z"/></svg>';
+  const PASS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  ol.innerHTML=SEL.map(([t,slug],i)=>
+    '<li'+(i===0?' class="on"':'')+'>'
+    + '<img src="/marketing/img/art/'+slug+'.jpg" alt="">'
+    + '<span class="sel-t"><b>'+t+'</b><span>Maya Reyes</span></span>'
+    + '<span class="sel-rx">'
+      + '<span class="sel-cbtn love'+(i===0?' on':'')+'" aria-hidden="true">'+HEART+'</span>'
+      + '<span class="sel-cbtn pass" aria-hidden="true">'+PASS+'</span>'
+    + '</span></li>').join('');
+})();
+
+// ── collaborator sphere ──────────────────────────
+// Fibonacci distribution + Y/X rotation matrices + depth-driven scale/fade,
+// ported from 21st.dev's image-sphere. IPIs are deliberately 00000-prefixed so
+// no string here can collide with a real person's real identifier.
+const PEOPLE=[
+  {n:'Nia Adeyemi',r:'Songwriter · Lagos',pro:'PRS',ipi:'00000114772',pub:'Self-published',img:'/marketing/img/face-01.jpg'},
+  {n:'Sam Ferreira',r:'Featured artist · Lisbon',pro:'SPA',ipi:'00000502883',pub:'Ferreira Music',img:'/marketing/img/face-02.jpg'},
+  {n:'Jules Marchetti',r:'Producer · Milan',pro:'SIAE',ipi:'00000615330',pub:'Nord Editions',img:'/marketing/img/face-03.jpg'},
+  {n:'Theo Lindqvist',r:'Engineer · Stockholm',pro:'STIM',ipi:'00000839062',pub:'—',img:'/marketing/img/face-04.jpg'},
+  {n:'Rosa Delgado',r:'Co-writer · Madrid',pro:'SGAE',ipi:'00000916448',pub:'Delgado Music',img:'/marketing/img/face-05.jpg'},
+  {n:'Aisha Bello',r:'Topliner · Accra',pro:'GHAMRO',ipi:'00001138206',pub:'Self-published',img:'/marketing/img/face-06.jpg'},
+  {n:'Luca Moreau',r:'Co-writer · Montreal',pro:'SOCAN',ipi:'00001249873',pub:'Moreau Editions',img:'/marketing/img/face-07.jpg'},
+  {n:'Ji-woo Han',r:'Topliner · Seoul',pro:'KOMCA',ipi:'00001354092',pub:'Han Songs',img:'/marketing/img/face-08.jpg'},
+  {n:'Imani Clarke',r:'Songwriter · Kingston',pro:'ASCAP',ipi:'00000728471',pub:'Clarke Songs',img:'/marketing/img/face-09.jpg'},
+  {n:'Vee Santana',r:'MC · Bronx',pro:'ASCAP',ipi:'00001573664',pub:'Santana Songs',img:'/marketing/img/face-10.jpg'},
+  {n:'Dex Malone',r:'Guitarist · Detroit',pro:'BMI',ipi:'00001461538',pub:'Malone Publishing',img:'/marketing/img/face-11.jpg'},
+  {n:'Priya Raman',r:'Topliner · London',pro:'PRS',ipi:'00000391556',pub:'Kite Publishing',img:'/marketing/img/face-12.jpg'},
+  {n:'Dani Okonkwo',r:'Co-writer · Toronto',pro:'SOCAN',ipi:'00000447219',pub:'Self-published',img:'/marketing/img/face-13.jpg'},
+  {n:'The Lantern Set',r:'Band · Los Angeles',pro:'BMI',ipi:'00001702884',pub:'Lantern Recordings',img:'/marketing/img/face-14.jpg'},
+  {n:'Night Shift Collective',r:'Band · Berlin',pro:'GEMA',ipi:'00001815330',pub:'Self-published',img:'/marketing/img/face-15.jpg'},
+  {n:'J.S. Bach',r:'Composer · Leipzig, 1685–1750',pro:'—',ipi:'—',pub:'Public domain · 1750',img:'/marketing/img/face-16.jpg'},
+  {n:'Ludwig van Beethoven',r:'Composer · Vienna, 1770–1827',pro:'—',ipi:'—',pub:'Public domain · 1827',img:'/marketing/img/face-17.jpg'},
+  {n:'W.A. Mozart',r:'Composer · Salzburg, 1756–1791',pro:'—',ipi:'—',pub:'Public domain · 1791',img:'/marketing/img/face-18.jpg'},
+  {n:'Clara Schumann',r:'Composer · Leipzig, 1819–1896',pro:'—',ipi:'—',pub:'Public domain · 1896',img:'/marketing/img/face-19.jpg'},
+  {n:'Devin Osei',r:'MC \u00b7 Detroit',pro:'ASCAP',ipi:'00002743918',pub:'Osei Music',img:'/marketing/img/face-31.jpg'},
+  {n:'KW Beats',r:'Producer \u00b7 Los Angeles',pro:'BMI',ipi:'00002810467',pub:'KW Beats Publishing',img:'/marketing/img/face-32.jpg'},
+  {n:'Kelly',r:'Neo soul \u00b7 Houston',pro:'ASCAP',ipi:'00002896520',pub:'Kelly Songs',img:'/marketing/img/face-33.jpg'},
+  {n:'Kaia Brooks',r:'MC \u00b7 Brooklyn',pro:'ASCAP',ipi:'00002216940',pub:'Brooks Publishing',img:'/marketing/img/face-30.jpg'},
+  {n:'Trey Amadi',r:'MC \u00b7 Atlanta',pro:'BMI',ipi:'00002304118',pub:'Amadi Music Group',img:'/marketing/img/face-27.jpg'},
+  {n:'Cory Beaumont',r:'MC \u00b7 New Orleans',pro:'BMI',ipi:'00002418773',pub:'Beaumont Songs',img:'/marketing/img/face-29.jpg'},
+  {n:'Silas Fontaine',r:'Producer \u00b7 Atlanta',pro:'ASCAP',ipi:'00002557206',pub:'Fontaine Productions',img:'/marketing/img/face-28.jpg'},
+  {n:'Wren Kelso',r:'Guitar, vocals \u00b7 Seattle',pro:'BMI',ipi:'00002690345',pub:'Self-published',img:'/marketing/img/face-26.jpg'},
+  {n:'Elena Vasquez',r:'Vocalist · Bogot\u00e1',pro:'SAYCO',ipi:'00002034117',pub:'Vasquez Music',img:'/marketing/img/face-20.jpg'},
+  {n:'Maya Reyes',r:'Artist · the one who starts it',pro:'ASCAP',ipi:'00001928640',pub:'Reyes Songs',img:'/marketing/img/face-21.jpg',handle:'@maya-reyes'},
+  {n:'Jonah Vale',r:'Artist · producer',pro:'BMI',ipi:'00002147805',pub:'Vale Productions',img:'/marketing/img/face-22.jpg',handle:'@jonahvale'},
+  {n:'Marcus Dune',r:'Industry · manager',pro:'—',ipi:'—',pub:'Represents the artist',img:'/marketing/img/face-23.jpg',handle:'@marcusdune'},
+  {n:'Rae Kim',r:'Industry · A&amp;R',pro:'—',ipi:'—',pub:'Signs the song',img:'/marketing/img/face-24.jpg',handle:'@raekim'},
+  {n:'Anna Rose',r:'Filmmaker · licensing the song',pro:'—',ipi:'—',pub:'—',img:'/marketing/img/face-25.jpg'},
+];
+function sphereInitials(name){
+  return name.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+}
+(function initSphere(){
+  const el=document.getElementById('sphere'); if(!el) return;
+  const card=document.getElementById('sphereCard');
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const R=()=>el.clientWidth*0.34, SIZE=()=>el.clientWidth*0.115;
+
+  // Fibonacci sphere — even coverage, no clustering at the poles
+  const golden=(1+Math.sqrt(5))/2, inc=2*Math.PI/golden;
+  const pts=PEOPLE.map((p,i)=>{
+    const t=(i+0.5)/PEOPLE.length;
+    return {phi:Math.acos(1-2*t), theta:inc*i, p};
+  });
+
+  const nodes=pts.map((pt,i)=>{
+    const d=document.createElement('div');
+    d.className='node'; d.dataset.i=i; d.setAttribute('aria-hidden','true');
+    if(pt.p.img){
+      const im=document.createElement('img');
+      im.src=pt.p.img+'?v='+ASSET_V; im.alt=''; im.draggable=false;
+      im.loading='eager';   // NOT lazy: positioned+transformed nodes never trigger the heuristic
+      d.appendChild(im);
+    } else { d.textContent=sphereInitials(pt.p.n); }
+    el.appendChild(d); return d;
+  });
+
+  let rx=14, ry=0, vx=0, vy=0, dragging=false, hot=null, last={x:0,y:0};
+  let cardH=120;   // measured once on show -- reading offsetHeight in paint() would
+                   // force a layout every frame
+
+  function paint(){
+    const r=R(), sz=SIZE(), cx=el.clientWidth/2, cy=el.clientHeight/2;
+    const cX=Math.cos(rx*Math.PI/180), sX=Math.sin(rx*Math.PI/180);
+    const cY=Math.cos(ry*Math.PI/180), sY=Math.sin(ry*Math.PI/180);
+    pts.forEach((pt,i)=>{
+      let x=r*Math.sin(pt.phi)*Math.cos(pt.theta);
+      let y=r*Math.cos(pt.phi);
+      let z=r*Math.sin(pt.phi)*Math.sin(pt.theta);
+      const x1=x*cY+z*sY, z1=-x*sY+z*cY; x=x1; z=z1;           // yaw
+      const y2=y*cX-z*sX, z2=y*sX+z*cX;  y=y2; z=z2;           // pitch
+      const depth=(z+r)/(2*r);                                  // 0 back … 1 front
+      const scale=0.55+depth*0.6;
+      const n=nodes[i], s=sz*scale;
+      n.style.width=n.style.height=s+'px';
+      n.style.fontSize=Math.max(9,s*0.3)+'px';
+      n.style.left=(cx+x)+'px'; n.style.top=(cy+y)+'px';
+      n.style.transform='translate(-50%,-50%)';
+      n.style.opacity=(0.25+depth*0.75).toFixed(3);
+      n.style.zIndex=String(1000+Math.round(z));
+      if(hot===i && card && !card.hidden){
+        let top=cy+y+s/2+12;
+        if(top+cardH>el.clientHeight) top=cy+y-s/2-12-cardH;   // flip above, as the pricing popovers do
+        card.style.left=Math.min(el.clientWidth-130, Math.max(130, cx+x))+'px';
+        card.style.top=top+'px';
+        card.style.transform='translateX(-50%)';
+      }
+    });
+  }
+
+  function tick(){
+    if(!dragging){
+      if(hot===null && !reduce) ry+=0.18;   // auto-rotate, paused on hover
+      ry+=vy; rx+=vx;
+      vx*=0.94; vy*=0.94;
+      if(Math.abs(vx)<0.004) vx=0;
+      if(Math.abs(vy)<0.004) vy=0;
+    }
+    rx=Math.max(-70,Math.min(70,rx));
+    paint(); requestAnimationFrame(tick);
+  }
+
+  el.addEventListener('pointerdown',e=>{
+    dragging=true; vx=vy=0; last={x:e.clientX,y:e.clientY};
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!dragging) return;
+    const dx=e.clientX-last.x, dy=e.clientY-last.y;
+    ry+=dx*0.35; rx-=dy*0.35;
+    vy=Math.max(-5,Math.min(5,dx*0.35)); vx=Math.max(-5,Math.min(5,-dy*0.35));
+    last={x:e.clientX,y:e.clientY};
+  });
+  const stop=()=>{dragging=false;};
+  el.addEventListener('pointerup',stop); el.addEventListener('pointercancel',stop);
+
+  nodes.forEach((n,i)=>{
+    n.addEventListener('pointerenter',()=>{
+      if(dragging) return;
+      hot=i; n.dataset.hot='1';
+      const p=PEOPLE[i];
+      card.innerHTML='<b>'+p.n+'</b><span class="role">'+p.r+'</span>'
+        +'<dl><dt>PRO</dt><dd>'+p.pro+'</dd>'
+        +'<dt>IPI</dt><dd>'+p.ipi+'</dd>'
+        +'<dt>Publisher</dt><dd>'+p.pub+'</dd>'
+        +(p.handle?'<dt>Fun\u016bn</dt><dd>'+p.handle+'</dd>':'')+'</dl>';
+      card.hidden=false;
+      cardH=card.offsetHeight;
+    });
+    n.addEventListener('pointerleave',()=>{
+      if(hot===i){ hot=null; card.hidden=true; }
+      n.removeAttribute('data-hot');
+    });
+  });
+
+  requestAnimationFrame(tick);
+})();
+
+// ── header ───────────────────────────────────────
+// The sliding indicator follows the SECTION YOU ARE IN, not just the link you
+// are pointing at -- hover borrows it, scroll owns it. Hover-only would tell a
+// reader nothing about where they are on a 4,000px page.
+(function nav(){
+  const bar=document.getElementById('nav');
+  const wrap=document.getElementById('navlinks');
+  const cur=document.getElementById('navcursor');
+  if(!bar||!wrap||!cur) return;
+  const links=[...wrap.querySelectorAll('a')];
+  let active=null;
+
+  const move=el=>{
+    if(!el){cur.style.opacity='0';return;}
+    cur.style.left=el.offsetLeft+'px';
+    cur.style.width=el.offsetWidth+'px';
+    cur.style.opacity='1';
+  };
+  const showActive=()=>move(active);
+
+  links.forEach(a=>{
+    a.addEventListener('pointerenter',()=>move(a));
+    a.addEventListener('focus',()=>move(a));
+  });
+  wrap.addEventListener('pointerleave',showActive);
+  wrap.addEventListener('focusout',showActive);
+
+  // which section is in view -> that link is current
+  const ids=links.map(a=>a.getAttribute('href').slice(1));
+  const setActive=()=>{
+    const mid=innerHeight*0.38;
+    let found=null;
+    for(const id of ids){
+      const el=document.getElementById(id); if(!el) continue;
+      const r=el.getBoundingClientRect();
+      if(r.top<=mid && r.bottom>mid) found=id;
+    }
+    links.forEach(a=>{
+      const on=a.getAttribute('href')==='#'+found;
+      a.setAttribute('aria-current', on?'true':'false');
+      if(on) active=a;
+    });
+    if(!found){ active=null; }
+    showActive();
+    bar.dataset.stuck = window.scrollY>8 ? '1' : '0';
+  };
+  addEventListener('scroll', setActive, {passive:true});
+  addEventListener('resize', ()=>{setActive();}, {passive:true});
+  setActive();
+})();
+
+// ── section numbering ────────────────────────────
+// Numbered in document order at runtime rather than hardcoded, because four
+// sections shipped as "01" after their eyebrow markup was copied. Scoped to
+// .eyebrow .n so it never touches the testimonial names, which also use .n.
+document.querySelectorAll('.eyebrow .n').forEach((el,i)=>{
+  el.textContent = String(i+1).padStart(2,'0');
+});
+
+// ── footer ───────────────────────────────────────
+document.querySelector('.tscta .disc').innerHTML = ARROW;
+document.getElementById('yr').textContent = new Date().getFullYear();
+// a waveform glyph rather than a generic square — it echoes the app's own bars
+const WAVE=[9,16,24,13,20,8];
+// One mark, built once, painted into every place it appears -- footer, header and
+// the sign-in dialog. The header briefly used a 72% reduction of it and read thin:
+// the mark is the mark at any size, the lockup scales by moving the type.
+document.querySelectorAll('.fmarkrow .glyph, .navmark .glyph, .authmark .glyph')
+  .forEach(g=>{ g.innerHTML = WAVE.map(h=>'<i style="height:'+h+'px"></i>').join(''); });
+const SOCIAL_ICON = {
+  Instagram:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
+  YouTube:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10.5 9.2v5.6l4.6-2.8z" fill="currentColor" stroke="none"/></svg>',
+  LinkedIn:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7.5 10.5v6M7.5 7.6v.1M11.5 16.5v-6m0 2.2c0-1.2 1-2.2 2.2-2.2s2.3 1 2.3 2.2v3.8"/></svg>',
+  TikTok:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5a4.7 4.7 0 0 0 4.5 3.4v3a7.7 7.7 0 0 1-4.5-1.5v5.9a5.6 5.6 0 1 1-4.8-5.5v3.1a2.5 2.5 0 1 0 1.8 2.4V3h3z"/></svg>',
+  Facebook:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 8.5V6.9c0-.8.2-1.2 1.3-1.2h1.4V3h-2.4c-2.6 0-3.6 1.4-3.6 3.7v1.8H9.3V11h1.9v10h3.3V11h2.3l.4-2.5z"/></svg>',
+  X:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg>',
+};
+// Legal is a NOTE, not four links (owner 2026-09-26). None of those pages
+// exists, and four dead links where the terms should be is worse than saying
+// so. The note points at the waiting list, which is real: the form lives
+// inside /signup as the inline capture for anyone without an invite.
+const FCOLS=[
+  // Antenna and The Crate resolve; the other two do not. The Writer's Room and
+  // Sound Vault are step tags inside #how, and two footer links pointing at one
+  // anchor is decoration rather than navigation, so they wait for feature pages.
+  // (Antenna had no home until #tools was built — it is the default panel there.)
+  {label:'Product', links:['The Writer’s Room','Sound Vault',{t:'Antenna',href:'#tools'},{t:'The Crate',href:'#crate'}]},
+  {label:'Company', links:['About','Careers','Press','Contact']},
+  {label:'Legal',   note:'Terms, privacy and our rights policy are on the way. We’re invite&#8209;only for now — <a href="/signup">join the waiting list</a> and we’ll tell you when that changes.'},
+  {label:'Follow',  links:['Instagram','TikTok','YouTube','Facebook','LinkedIn','X']},
+];
+document.getElementById('fcols').innerHTML = FCOLS.map((c,i)=>
+  '<div class="fcol reveal" style="transition-delay:'+(i*70)+'ms"><h4>'+c.label+'</h4>'
+  + (c.note
+      ? '<p class="fnote">'+c.note+'</p>'
+      : '<ul>'+c.links.map(l=>{
+          const t = typeof l === 'string' ? l : l.t;
+          const href = typeof l === 'string' ? '#' : l.href;
+          return '<li><a href="'+href+'">'+(SOCIAL_ICON[t]||'')+t+'</a></li>';
+        }).join('')+'</ul>')
+  + '</div>').join('');
+
+// ── reveal on scroll (IntersectionObserver, no animation library) ──
+// arm the hidden state only now that we know the observer exists
+if('IntersectionObserver' in window) document.documentElement.classList.add('js-reveal');
+const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }),{threshold:0, rootMargin:'0px 0px 140px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+// ── differentiators ──────────────────────────────
+// Three, not twelve. The tool bench has a dozen entries and most of them —
+// DropReady, SoundBait, SpotPitch, EPK.fyi, DistroAdvisor — are caption and
+// pitch generators every artist tool ships. Standing them next to the ones
+// nobody else does makes the set weaker, not fuller. (SplitSheet is out for a
+// different reason: lib/tools/splitsheet.ts says "Form-driven (not AI)".)
+//
+// These three tell one story in order: the brief finds you, you go after it,
+// and the clearance does not kill it. Every claim below is the tool's own
+// module, not marketing invention.
+const DIFFS=[
+  {k:'Antenna', t:'The brief comes to you.',
+   d:'Antenna checks open sync, playlist and brand opportunities against the music in your Sound Vault, then shows you the ones that fit. A shortlist, not another feed to dig through.',
+   shot:'/marketing/img/tool-antenna-vault-to-brief.png',
+   art:'Midjourney pending &middot; Antenna &mdash; the brief arriving'},
+  {k:'PitchPlug', t:'The email you keep putting off.',
+   d:'Pick who you are pitching \u2014 a Spotify mood curator, a blog, a supervisor \u2014 and PitchPlug writes the outreach from your song and your profile. Not a template with your name dropped into it.',
+   shot:'/marketing/img/tool-pitchplug-pick-writes.png',
+   art:'Midjourney pending &middot; PitchPlug &mdash; the letter that writes itself'},
+  {k:'SampleClear', t:'A sample has two owners. Most people find out late.',
+   // "help", never "clear" (owner 2026-09-26). Clearance is the rights holders'
+   // decision and a meaningful share never clear -- the deliberation records an
+   // invented "typically 4-8 weeks" that nearly shipped. Say the limit out loud.
+   d:'The recording and the composition are almost never held by the same people. SampleClear works out who both are and drafts a request to each, so you are not starting from a blank page. We help you clear it \u2014 we cannot clear it for you. Some samples never do, and the tool tells you when that is likely before you spend a month finding out.',
+   shot:'/marketing/img/tool-sampleclear-two-owners.png',
+   art:'SampleClear &mdash; one sample, two owners'},
+];
+(function buildDiffs(){
+  const tabs=document.getElementById('dtabs'), panel=document.getElementById('dpanel');
+  if(!tabs||!panel) return;
+  tabs.innerHTML = DIFFS.map((d,i)=>
+    '<button class="dtab" role="tab" data-d="'+i+'" aria-selected="'+(i===0)+'">'+d.k+'</button>'
+  ).join('');
+  function show(i){
+    const d=DIFFS[i];
+    panel.innerHTML =
+      '<div class="dart'+(d.shot?' has-shot':'')+'">'
+      +   (d.shot ? '<img src="'+d.shot+'" alt="" loading="lazy" onerror="this.remove()">'
+                   : '<span>'+d.art+'</span>')
+      + '</div>'
+      + '<div class="dbody"><span class="dname">'+d.k+'</span><h3>'+d.t+'</h3><p>'+d.d+'</p></div>';
+    panel.classList.remove('swap'); void panel.offsetWidth; panel.classList.add('swap');
+    tabs.querySelectorAll('.dtab').forEach((b,k)=>b.setAttribute('aria-selected', String(k===i)));
+  }
+  tabs.querySelectorAll('.dtab').forEach(b=>b.addEventListener('click',()=>show(+b.dataset.d)));
+  // arrow keys, because a tablist that only takes clicks is a tablist in name only
+  tabs.addEventListener('keydown', e=>{
+    const cur=[...tabs.querySelectorAll('.dtab')].findIndex(b=>b.getAttribute('aria-selected')==='true');
+    if(e.key!=='ArrowRight' && e.key!=='ArrowLeft') return;
+    e.preventDefault();
+    const next=(cur + (e.key==='ArrowRight'?1:DIFFS.length-1)) % DIFFS.length;
+    show(next); tabs.querySelectorAll('.dtab')[next].focus();
+  });
+  show(0);
+})();
+
+
+
+</script>
+
+
+</body>
+</html>
