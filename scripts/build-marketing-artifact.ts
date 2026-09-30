@@ -305,6 +305,54 @@ const NON_PRODUCTION_FONT_FACE_RE =
   /@font-face\{font-family:'(?:Lobster|Monoton|Yellowtail)'[^}]*\}\n?/g
 const NON_PRODUCTION_FONT_FACE_COUNT = 3
 
+// ─── F2: onerror="this.remove()" is blocked by the app CSP ────────────────
+// The two inline event-handler attributes at (source) :1411 and :2035 are
+// refused: script-src carries a nonce and 'strict-dynamic' but no
+// 'unsafe-inline', and a nonce never covers inline event attributes. Widening
+// the CSP is not an option (checkpoint decision 3, option b). Both are
+// removed here and replaced by a single capture-phase listener injected into
+// the surviving script -- see IMAGE_ERROR_LISTENER below.
+const ONERROR_ATTR_RE = / onerror="this\.remove\(\)"/g
+const ONERROR_ATTR_COUNT = 2
+
+// Anchored on the ASSET_V declaration: it is the first statement in the
+// surviving script (a deliberate ordering constraint -- see the comment
+// immediately above it in the source, "MUST be declared before any renderer
+// uses it"), so injecting the listener directly after it guarantees the
+// listener is registered before buildVoices()/buildDiffs() insert the first
+// <img> synchronously later in the same script.
+const ASSET_V_DECLARATION = "const ASSET_V='202609271636';"
+
+// The comment directly above the first onerror site names the mechanism
+// being removed; left as-is it would describe code that no longer exists.
+// This is the one prose edit this sanitizer makes -- everywhere else,
+// comments are either preserved verbatim or stripped as a whole block.
+const VOICES_FALLBACK_COMMENT_ORIGINAL =
+  '// is missing or 404s, onerror removes the <img> and the initials show through,'
+const VOICES_FALLBACK_COMMENT_UPDATED =
+  '// is missing or 404s, the shared image-error listener above removes the <img> ' +
+  'and the initials show through,'
+
+// Registered ONCE, on `document`, in the CAPTURE phase. This is not a
+// stylistic choice: the DOM 'error' event does not bubble, so a normal
+// (bubble-phase) listener on document would never see it. Capture-phase
+// listeners fire top-down on every matching event regardless of bubbling,
+// so a single registration here also catches <img> elements that do not
+// exist yet -- the ones buildVoices() inserts once via `grid.innerHTML` and
+// the ones buildDiffs()'s show() re-inserts via `panel.innerHTML` on every
+// tab switch. No per-render re-registration is needed.
+export const IMAGE_ERROR_LISTENER =
+  '\n' +
+  '// F2: the two inline onerror attributes removed above are blocked by the app CSP\n' +
+  '// (the nonce on the surviving script tag does not cover inline event-handler attributes).\n' +
+  "// Capture phase, because the 'error' event does not bubble -- a bubble-phase\n" +
+  '// listener on document would never see it. One registration here covers\n' +
+  '// both occurrences below AND every <img> the two renderers insert later via\n' +
+  '// innerHTML, so it never needs to run again after the initial render.\n' +
+  "document.addEventListener('error', function(e){\n" +
+  "  if (e.target instanceof HTMLImageElement) e.target.remove();\n" +
+  '}, true);'
+
 const TITLE_TAG = '<title>Funūn bench 02 — marketing page</title>'
 
 function buildHeadMetadata(): string {
@@ -375,6 +423,24 @@ export function sanitize(sourceHtml: string): SanitizeResult {
     NON_PRODUCTION_FONT_FACE_RE,
     NON_PRODUCTION_FONT_FACE_COUNT,
     'bench-only @font-face rules (Lobster/Monoton/Yellowtail)',
+  )
+  html = removeAllMatches(
+    html,
+    ONERROR_ATTR_RE,
+    ONERROR_ATTR_COUNT,
+    'inline onerror="this.remove()" attributes (F2 -- replaced by capture-phase listener)',
+  )
+  html = replaceExactly(
+    html,
+    VOICES_FALLBACK_COMMENT_ORIGINAL,
+    VOICES_FALLBACK_COMMENT_UPDATED,
+    'voices-card fallback comment (describes the mechanism just removed)',
+  )
+  html = replaceExactly(
+    html,
+    ASSET_V_DECLARATION,
+    ASSET_V_DECLARATION + IMAGE_ERROR_LISTENER,
+    'image-error capture-phase listener injection point',
   )
 
   const { html: rewrittenHtml, paths } = rewriteAssetPaths(html)

@@ -52,6 +52,17 @@ const FLAG_CLASS_PREFIX_RE = /class="flag(?:"|\s)/g
 const MAIN_PADDING_RULE = 'main{padding-top:44px}'
 const BODY_DATA_ATTRS = '<body data-bg="black" data-hero="stream">'
 
+// F2 / checkpoint decision 3 (option b): the two onerror="this.remove()"
+// attributes are replaced by a capture-phase 'error' listener, never left
+// as inline event-handler attributes the app CSP would refuse anyway. This
+// checks for ANY inline event-handler attribute, not just onerror, so a
+// future edit that reintroduces one (onclick, onload, ...) fails loudly
+// instead of shipping a silent CSP violation. The `\b` + trailing `="`
+// anchor is deliberate: an unanchored `on[a-z]+=` also matches `content=`,
+// `font=` and `controls=` inside this document, which are not attributes
+// at all -- verified against the artifact before landing this check.
+const INLINE_EVENT_HANDLER_RE = /\bon[a-z]+="/g
+
 const ASSET_REFERENCE_RE = /\/marketing\/(?:img|fonts)\/[A-Za-z0-9_./-]+/g
 
 export function verifyArtifact(html: string, manifest: MarketingManifest): string[] {
@@ -83,6 +94,15 @@ export function verifyArtifact(html: string, manifest: MarketingManifest): strin
     violations.push(
       `<body data-bg="black" data-hero="stream"> must survive exactly once -- found ` +
         countOccurrences(html, BODY_DATA_ATTRS),
+    )
+  }
+
+  const inlineHandlerMatches = html.match(INLINE_EVENT_HANDLER_RE) ?? []
+  if (inlineHandlerMatches.length > 0) {
+    violations.push(
+      `${inlineHandlerMatches.length} inline event-handler attribute(s) found ` +
+        `(${inlineHandlerMatches.map((m) => m.slice(0, -1)).join(', ')}) -- the app CSP has ` +
+        "no 'unsafe-inline', so these are refused; replace with an addEventListener call",
     )
   }
 

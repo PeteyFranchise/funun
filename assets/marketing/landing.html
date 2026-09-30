@@ -1069,6 +1069,15 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
 // as "the change didn't work". MUST be declared before any renderer uses it:
 // a `const` further down the file is in the temporal dead zone and throws.
 const ASSET_V='202609271636';
+// F2: the two inline onerror attributes removed above are blocked by the app CSP
+// (the nonce on the surviving script tag does not cover inline event-handler attributes).
+// Capture phase, because the 'error' event does not bubble -- a bubble-phase
+// listener on document would never see it. One registration here covers
+// both occurrences below AND every <img> the two renderers insert later via
+// innerHTML, so it never needs to run again after the initial render.
+document.addEventListener('error', function(e){
+  if (e.target instanceof HTMLImageElement) e.target.remove();
+}, true);
 
 // ── controls ─────────────────────────────────────
 function wireSeg(attr, apply){
@@ -1222,10 +1231,10 @@ function barColor(i,n){const t=i/Math.max(1,n-1);
       + '</div>';
     return '<div class="vcard">'
       // The gradient + initials stay underneath as the fallback layer: if a portrait
-      // is missing or 404s, onerror removes the <img> and the initials show through,
+      // is missing or 404s, the shared image-error listener above removes the <img> and the initials show through,
       // so a broken asset can never leave an empty circle.
       + '<div class="vtop"><span class="vav" style="background:'+v.art+'">'+v.i
-      +   (v.img ? '<img src="'+v.img+'?v='+ASSET_V+'" alt="" loading="lazy" onerror="this.remove()"'
+      +   (v.img ? '<img src="'+v.img+'?v='+ASSET_V+'" alt="" loading="lazy"'
       +     ' style="--op:'+(v.op||'50% 50%')+';--z:'+(v.z||1)+'">' : '')
       + '</span>'
         + '<span class="vwho"><span class="n">'+esc(v.n)+'</span><span class="r">'+v.r+'</span></span></div>'
@@ -1843,7 +1852,7 @@ const DIFFS=[
     const d=DIFFS[i];
     panel.innerHTML =
       '<div class="dart'+(d.shot?' has-shot':'')+'">'
-      +   (d.shot ? '<img src="'+d.shot+'" alt="" loading="lazy" onerror="this.remove()">'
+      +   (d.shot ? '<img src="'+d.shot+'" alt="" loading="lazy">'
                    : '<span>'+d.art+'</span>')
       + '</div>'
       + '<div class="dbody"><span class="dname">'+d.k+'</span><h3>'+d.t+'</h3><p>'+d.d+'</p></div>';

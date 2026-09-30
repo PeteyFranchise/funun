@@ -25,6 +25,7 @@ import {
 import {
   assertOccurrences,
   countOccurrences,
+  IMAGE_ERROR_LISTENER,
   injectNoncePlaceholder,
   NONCE_PLACEHOLDER,
   ARTIFACT_OUTPUT_PATH,
@@ -303,6 +304,56 @@ describe('rewriteAssetPaths', () => {
   })
 })
 
+describe('onerror removal and image-error listener injection (F2)', () => {
+  // Mirrors the exact regex the sanitizer runs internally, rather than
+  // importing a private constant -- consistent with how rewriteAssetPaths'
+  // tests above build their own inline fixtures against the exported
+  // primitive rather than reaching into pipeline-internal anchors.
+  const ONERROR_RE = / onerror="this\.remove\(\)"/g
+
+  it('removes both onerror="this.remove()" occurrences regardless of what follows them', () => {
+    // The two real call sites differ in what comes right after the
+    // attribute -- one closes a JS string literal (no ">"), the other
+    // closes the <img> tag itself (ends in ">") -- so the fixture covers
+    // both shapes rather than assuming they behave identically.
+    const input =
+      '\'<img src="a.jpg" alt="" loading="lazy" onerror="this.remove()"\'' +
+      ' + \'<img src="b.jpg" alt="" loading="lazy" onerror="this.remove()">\''
+    const result = removeAllMatches(input, ONERROR_RE, 2, 'test onerror removal')
+    expect(result).not.toContain('onerror')
+    expect(result).toContain('\'<img src="a.jpg" alt="" loading="lazy"\'')
+    expect(result).toContain('+ \'<img src="b.jpg" alt="" loading="lazy">\'')
+  })
+
+  it('throws rather than silently leaving one behind when the observed count drifts', () => {
+    const onlyOne = ' onerror="this.remove()"'
+    expect(() => removeAllMatches(onlyOne, ONERROR_RE, 2, 'test')).toThrow(/expected 2/)
+  })
+
+  it('injects a capture-phase document-level error listener right after the ASSET_V declaration', () => {
+    const declaration = "const ASSET_V='202609271636';"
+    const input = declaration + '\nfunction next(){}'
+    const injected = replaceExactly(
+      input,
+      declaration,
+      declaration + IMAGE_ERROR_LISTENER,
+      'test injection',
+    )
+    expect(injected).toContain("document.addEventListener('error'")
+    // capture phase (the 3rd, `true` argument) -- 'error' does not bubble,
+    // so a bubble-phase listener on document would never see it.
+    expect(injected).toContain(", true);")
+    expect(injected).toContain('e.target instanceof HTMLImageElement')
+    expect(injected.indexOf("addEventListener('error'")).toBeGreaterThan(
+      injected.indexOf('ASSET_V'),
+    )
+    // registered before the next statement in the script runs
+    expect(injected.indexOf('function next')).toBeGreaterThan(
+      injected.indexOf("addEventListener('error'"),
+    )
+  })
+})
+
 describe('injectNoncePlaceholder', () => {
   it('inserts the placeholder on every surviving <script> tag and returns the count', () => {
     const input = '<script>a()</script><p>mid</p><script>b()</script>'
@@ -365,6 +416,36 @@ describe('verifyArtifact', () => {
     const violations = verifyArtifact(html, emptyManifest)
     expect(violations.some((v) => v.includes('not-in-manifest.jpg'))).toBe(true)
   })
+
+  it('flags any inline event-handler attribute independently of the literal list (F2)', () => {
+    const dirty = fixture('dirty-verifier.html')
+    const violations = verifyArtifact(dirty, emptyManifest)
+    expect(violations.some((v) => v.includes('onerror'))).toBe(true)
+  })
+
+  it('does not flag a document-level addEventListener registration as an inline handler', () => {
+    const clean =
+      '<html><body><main><p style="padding-top:0">clean</p></main>' +
+      'main{padding-top:44px}' +
+      '<body data-bg="black" data-hero="stream">' +
+      `<script nonce="${NONCE_PLACEHOLDER}">` +
+      "document.addEventListener('error', function(e){ e.target.remove(); }, true);" +
+      '</script></body></html>'
+    const manifest: MarketingManifest = { ...emptyManifest, nonceScriptCount: 1 }
+    expect(verifyArtifact(clean, manifest)).toEqual([])
+  })
+
+  it('does not false-positive on non-event attributes that merely start with "on" (content=, font=, controls=)', () => {
+    const clean =
+      '<html><body><main>' +
+      '<meta name="x" content="y"><span style="font:1em">t</span><audio controls="controls">' +
+      '</main>' +
+      'main{padding-top:44px}' +
+      '<body data-bg="black" data-hero="stream">' +
+      `<script nonce="${NONCE_PLACEHOLDER}">ok()</script></body></html>`
+    const manifest: MarketingManifest = { ...emptyManifest, nonceScriptCount: 1 }
+    expect(verifyArtifact(clean, manifest)).toEqual([])
+  })
 })
 
 // ─── Assertions over the real generated artifact ─────────────────────────
@@ -400,5 +481,13 @@ describeIfArtifact('the real generated artifact', () => {
     const noncedCount = countOccurrences(html, `<script nonce="${NONCE_PLACEHOLDER}"`)
     expect(scriptCount).toBe(noncedCount)
     expect(scriptCount).toBeGreaterThan(0)
+  })
+
+  it('carries zero inline onerror attributes and a capture-phase replacement instead (F2)', () => {
+    expect(html).not.toContain('onerror=')
+    expect(html.match(/\bon[a-z]+="/g) ?? []).toEqual([])
+    expect(html).toContain("document.addEventListener('error'")
+    expect(html).toContain(', true);')
+    expect(html).toContain('e.target instanceof HTMLImageElement')
   })
 })
