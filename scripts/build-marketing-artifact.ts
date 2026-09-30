@@ -199,10 +199,19 @@ export function rewriteAssetPaths(html: string): AssetRewriteResult {
 export type NonceInjectionResult = { html: string; count: number }
 
 export function injectNoncePlaceholder(html: string): NonceInjectionResult {
-  const openTagRe = /<script(\s[^>]*)?>/g
+  // Case-insensitive on purpose. HTML tag names are case-insensitive, so a
+  // lowercase-only pattern silently skips <SCRIPT> / <Script> — and skipping
+  // is the dangerous direction here: an un-nonced script that the sanitizer
+  // failed to see would be blocked by CSP at runtime, or, worse, a bench
+  // script the strip pass also missed would ship. CodeQL js/bad-tag-filter
+  // flagged exactly this. Today's frozen source is all lowercase; that is a
+  // property of one revision, not a guarantee about the next.
+  const openTagRe = /<script(\s[^>]*)?>/gi
   const matches = html.match(openTagRe) ?? []
   const count = matches.length
-  const result = html.replace(openTagRe, (tag) => tag.replace(/^<script/, `<script nonce="${NONCE_PLACEHOLDER}"`))
+  const result = html.replace(openTagRe, (tag) =>
+    tag.replace(/^<script/i, `<script nonce="${NONCE_PLACEHOLDER}"`)
+  )
   return { html: result, count }
 }
 

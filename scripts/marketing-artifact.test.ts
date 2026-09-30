@@ -491,3 +491,22 @@ describeIfArtifact('the real generated artifact', () => {
     expect(html).toContain('e.target instanceof HTMLImageElement')
   })
 })
+
+// CodeQL js/bad-tag-filter: the nonce regex was lowercase-only, so <SCRIPT>
+// would have been skipped. HTML tag names are case-insensitive; a sanitizer
+// that only handles the casing its current input happens to use is a filter
+// that works by luck. Today's frozen source is all lowercase — that is a fact
+// about one revision, not a guarantee.
+describe('injectNoncePlaceholder — tag casing (CodeQL js/bad-tag-filter)', () => {
+  it('nonces lowercase, uppercase and mixed-case script tags alike', () => {
+    const html = '<script>a</script><SCRIPT>b</SCRIPT><Script type="x">c</Script>'
+    const { html: out, count } = injectNoncePlaceholder(html)
+    expect(count).toBe(3)
+    expect((out.match(/nonce="/g) ?? []).length).toBe(3)
+  })
+
+  it('does not double-nonce a tag that already has one', () => {
+    const { count } = injectNoncePlaceholder('<script nonce="x">a</script>')
+    expect(count).toBe(1)
+  })
+})
