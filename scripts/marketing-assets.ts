@@ -39,7 +39,7 @@ import { dirname, join } from 'node:path'
 // ─── frozen baseline ────────────────────────────────────────────────────
 
 export const FROZEN_SHA256 =
-  'faf382a95319b2c304de57a0bc8c3c894997ab33619c96b754f5821d34c61157'
+  '1995cbe96a0638fcddf8759e836adbbcc6ab1cda43be0fe35e6e62765c973cb5'
 export const FROZEN_LINE_COUNT = 2145
 
 export const BENCH_SOURCE_PATH = 'private/bench/marketing.html'

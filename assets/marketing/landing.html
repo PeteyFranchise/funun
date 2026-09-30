@@ -869,7 +869,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
         Grammy-winning and Grammy-nominated songwriters. See who&rsquo;s in the room and who&rsquo;s
         on each section.</p>
       <div class="cta">
-        <a class="btn primary" href="#">Start a song</a>
+        <a class="btn primary" href="/signup">Start a song</a>
         <a class="btn ghost" href="#how">See how it works</a>
       </div>
     </div>
@@ -883,7 +883,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <p class="lede">Masters, stems, artwork, credits, metadata and documents live together, and a readiness score
         shows what&rsquo;s done and what still needs doing before release day.</p>
       <div class="cta">
-        <a class="btn primary" href="#">Start a song</a>
+        <a class="btn primary" href="/signup">Start a song</a>
         <a class="btn ghost" href="#how">See how it works</a>
       </div>
     </div>
@@ -897,7 +897,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
       <p class="lede">Funūn&rsquo;s curated sync catalogue, for songs with the rights information and
         approvals needed for one&#8209;stop clearance. Submitting is free; getting in is earned.</p>
       <div class="cta">
-        <a class="btn primary" href="#">Submit a song</a>
+        <a class="btn primary" href="/signup">Submit a song</a>
         <a class="btn ghost" href="#crate">How The Crate works</a>
       </div>
     </div>
@@ -955,7 +955,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
             it is not owning it, and nothing you submit changes who the song belongs to.</li>
         </ul>
         <div class="ccta">
-          <a class="btn primary" href="#">Submit a song</a>
+          <a class="btn primary" href="/signup">Submit a song</a>
           <a class="btn ghost" href="crate-ready.html">What makes a song Crate-ready</a>
         </div>
       </div>
@@ -1043,7 +1043,7 @@ body[data-signfont="Lobster"] .neon{font-size:clamp(42px,10vw,116px)}
         <p class="tssub">Everything in Team, scoped to your organization &mdash; seats, roles and
           services built around how your team already works.</p>
       </div>
-      <a class="tscta" href="#"><span>Talk to us</span><span class="disc"></span></a>
+      <a class="tscta" href="/signup"><span>Talk to us</span><span class="disc"></span></a>
     </div>  </div></section>
 
   <!-- ══ FOOTER ══ -->
@@ -1481,7 +1481,7 @@ function renderPricing(){
       + '<p class="pinc">What\u2019s included</p>'
       + '<ul>'+t.feats.map(featRow).join('')+'</ul>'
       + (t.beta ? '<p class="pbeta">'+t.beta+'</p>' : '')
-      + '<a class="pcta '+(t.pop?'solid':'quiet')+'" href="#"><span>'+t.cta+'</span>'
+      + '<a class="pcta '+(t.pop?'solid':'quiet')+'" href="/signup"><span>'+t.cta+'</span>'
         + '<span class="disc">'+ARROW+'</span></a>'
       + '</div>';
   }).join('');
