@@ -14,6 +14,8 @@
     "db:push": "supabase db push",
     "security:migrations:verify": "node scripts/verify-beta-security-migrations.mjs",
     "break-glass": "tsx scripts/break-glass.ts",
+    "marketing:assets": "tsx scripts/marketing-assets.ts",
+    "marketing:assets:check": "tsx scripts/marketing-assets.ts --check",
     "playbook:activation-check": "tsx scripts/check-playbook-activation.ts",
     "export:audition-sample": "tsx scripts/print-audition-sample.ts"
   },
